@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>05 — Compact Matrix</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--primary:#2563eb;--border:#e2e8f0;--muted:#64748b;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:ui-monospace,Consolas,monospace}
+    body{font-family:var(--font);font-size:12px;background:#94a3b8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45)}
+    .dialog{position:relative;width:min(1280px,97vw);max-height:90vh;background:#fff;border-radius:8px;box-shadow:0 24px 48px rgba(15,23,42,.2);display:flex;flex-direction:column;overflow:hidden}
+    .titlebar{background:var(--primary);color:#fff;padding:10px 16px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+    .titlebar .badge{background:#f59e0b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700}
+    .toolbar{display:flex;align-items:center;gap:12px;padding:6px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)}
+    .toolbar label{margin-left:auto;display:flex;align-items:center;gap:6px;color:#0f172a;font-size:12px}
+    .matrix-wrap{flex:1;overflow:auto;max-height:62vh}
+    table.matrix{width:100%;border-collapse:collapse;font-size:12px}
+    .group-row{background:#f1f5f9;cursor:pointer;user-select:none}
+    .group-row:hover{background:#e2e8f0}
+    .group-row td{padding:8px 12px;border-bottom:1px solid var(--border);font-weight:600}
+    .group-row .chev{display:inline-block;width:14px;font-size:9px;color:var(--muted);transition:transform .12s}
+    .group-row.open .chev{transform:rotate(90deg)}
+    .group-row .rid{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:500;margin-right:8px}
+    .group-row .count{margin-left:auto;font-family:var(--mono);font-size:13px;color:#b45309;background:#fef3c7;padding:2px 10px;border-radius:4px;font-weight:700}
+    .group-row .action{font-size:11px;color:var(--primary);font-weight:500;margin-left:12px}
+    .detail-row{display:none}
+    .group-row.open + .detail-wrap{display:table-row-group}
+    .detail-wrap{display:none}
+    .detail-wrap table{width:100%;border-collapse:collapse}
+    .detail-wrap th{text-align:left;padding:5px 12px 5px 36px;font-size:10px;text-transform:uppercase;color:var(--muted);background:#fafafa;border-bottom:1px solid #f1f5f9}
+    .detail-wrap td{padding:6px 12px 6px 36px;border-bottom:1px solid #f8fafc;vertical-align:top}
+    .detail-wrap tr:hover td{background:#f8fafc}
+    .crew-link{font-family:var(--mono);font-weight:600;color:var(--primary);cursor:pointer}
+    .chip{display:inline-block;margin:1px 3px 1px 0;padding:1px 6px;border-radius:3px;background:#fffbeb;border:1px solid #fde68a;font-family:var(--mono);font-size:10px;color:#92400e}
+    .pass-row td{padding:6px 12px;color:var(--muted);font-size:11px;border-bottom:1px solid #f1f5f9}
+    .footer{padding:8px 16px;border-top:1px solid var(--border);text-align:right}
+    .footer button{padding:6px 14px;border:1px solid var(--border);border-radius:4px;background:#fff;cursor:pointer}
+    .tag{position:fixed;bottom:12px;right:12px;background:#0f172a;color:#fff;padding:6px 12px;border-radius:4px;font-size:11px;font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="backdrop"></div>
+  <div class="dialog">
+    <div class="titlebar">SCENARIO Roster Quality Analyzer <span class="badge">67</span></div>
+    <div class="toolbar">
+      <span>147 CREW · 67 WITH FINDINGS</span>
+      <label><input type="checkbox" checked /> Issues only</label>
+    </div>
+    <div class="matrix-wrap">
+      <table class="matrix" id="matrix"></table>
+    </div>
+    <div class="footer"><button>Close</button></div>
+  </div>
+  <div class="tag">05 — Compact Matrix</div>
+  <script src="shared-data.js"></script>
+  <script>
+    const matrix = document.getElementById('matrix');
+    QA_DATA.rules.forEach((rule, i) => {
+      if (!rule.crewCount) {
+        matrix.innerHTML += `
+          <tr class="pass-row"><td colspan="5">
+            <span class="rid">${rule.id}</span> ${rule.label} — <span style="color:#16a34a">✓ 0 crew affected</span>
+          </td></tr>`;
+        return;
+      }
+      const open = i === 1 ? 'open' : '';
+      matrix.innerHTML += `
+        <tr class="group-row ${open}" data-idx="${i}">
+          <td colspan="5">
+            <span class="chev">▶</span>
+            <span class="rid">${rule.id}</span>
+            ${rule.label}
+            <span style="font-weight:400;color:var(--muted);font-size:11px;margin-left:8px">${rule.description}</span>
+            <span class="count" style="float:right">${rule.crewCount} crew</span>
+            <span class="action" style="float:right">${open ? 'Hide details' : 'View details'}</span>
+          </td>
+        </tr>
+        <tbody class="detail-wrap" style="display:${open ? 'table-row-group' : 'none'}" data-for="${i}">
+          <tr><td colspan="5" style="padding:0">
+            <table>
+              <thead><tr>
+                <th style="width:8%">Crew</th><th style="width:10%">Base/Rank</th>
+                <th style="width:10%">Lead-in</th><th style="width:10%">After opt</th><th>Detail</th>
+              </tr></thead>
+              <tbody>
+                ${rule.crew.map(c => `
+                  <tr>
+                    <td><span class="crew-link">${c.id}</span></td>
+                    <td style="font-family:var(--mono)">${c.base}/${c.rank}</td>
+                    <td style="font-family:var(--mono)">${c.leadIn || '—'}</td>
+                    <td style="font-family:var(--mono)">${c.after || '—'}</td>
+                    <td>${c.detail.map(d => `<span class="chip">${d}</span>`).join('')}</td>
+                  </tr>`).join('')}
+                ${rule.crewCount > rule.crew.length ? `<tr><td colspan="5" style="color:var(--muted);font-style:italic;font-size:11px">+ ${rule.crewCount - rule.crew.length} more…</td></tr>` : ''}
+              </tbody>
+            </table>
+          </td></tr>
+        </tbody>`;
+    });
+
+    matrix.addEventListener('click', e => {
+      const row = e.target.closest('.group-row');
+      if (!row) return;
+      const idx = row.dataset.idx;
+      const detail = matrix.querySelector(`.detail-wrap[data-for="${idx}"]`);
+      const isOpen = row.classList.toggle('open');
+      detail.style.display = isOpen ? 'table-row-group' : 'none';
+      row.querySelector('.action').textContent = isOpen ? 'Hide details' : 'View details';
+    });
+  </script>
+</body>
+</html>

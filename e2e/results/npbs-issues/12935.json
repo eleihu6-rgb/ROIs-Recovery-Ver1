@@ -1,0 +1,35 @@
+{
+  "employeeId": "12935",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 111,
+      "name": "Pairing Check-Out Time"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T5",
+      "code": 113,
+      "name": "TAFB"
+    }
+  ],
+  "issues": []
+}

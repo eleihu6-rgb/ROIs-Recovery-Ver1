@@ -1,0 +1,6 @@
+interface:
+  display_name: "118 live server perf oUsLervability"
+  short_description: "Project skill 118-live-server-perf-observability"
+  default_prompt: "Use $118-live-server-perf-observability for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,6 @@
+interface:
+  display_name: "112 dora report"
+  short_description: "Project skill 112-dora-report"
+  default_prompt: "Use $112-dora-report for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

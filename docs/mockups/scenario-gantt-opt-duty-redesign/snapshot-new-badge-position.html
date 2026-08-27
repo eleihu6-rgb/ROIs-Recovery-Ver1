@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Optimizer ⚡ Badge — Pairing TL / Ground TR Outside</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #eef1f5;
+      --surface: #fff;
+      --border: #d4dae3;
+      --text: #1a2332;
+      --muted: #6b7a90;
+      --do: #e8ecf2;
+      --do-text: #5c6b7f;
+      --opt: #f59e0b;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: ui-monospace, Consolas, monospace;
+    }
+    body {
+      font-family: var(--font);
+      font-size: 12px;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+    header { max-width: 920px; margin: 0 auto 20px; }
+    h1 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .lead { color: var(--muted); line-height: 1.5; font-size: 12px; max-width: 720px; }
+    .lead code { font-family: var(--mono); font-size: 11px; background: #e8ecf2; padding: 1px 5px; border-radius: 3px; }
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 920px;
+      margin: 0 auto 24px;
+    }
+    @media (max-width: 720px) { .compare { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel-head h2 { font-size: 13px; font-weight: 700; }
+    .tag {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+    .tag.pairing { background: #dbeafe; color: #1d4ed8; }
+    .tag.ground { background: #dcfce7; color: #15803d; }
+    .panel-body { padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    canvas {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: repeating-linear-gradient(
+        90deg,
+        #f8fafc 0,
+        #f8fafc 33px,
+        #f1f5f9 33px,
+        #f1f5f9 34px
+      );
+    }
+    .caption { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.45; max-width: 340px; }
+    .caption strong { color: var(--text); }
+    .detail {
+      max-width: 920px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .detail h3 { font-size: 12px; color: var(--text); margin-bottom: 8px; }
+    .detail ul { padding-left: 18px; }
+    .detail li { margin-bottom: 4px; }
+    .detail b { color: var(--opt); }
+    .canvas-wrap { position: relative; }
+    .legend-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .legend-row span { display: flex; align-items: center; gap: 5px; }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .swatch.corner { background: #ef4444; }
+    .swatch.badge { background: var(--opt); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Optimizer ⚡ Badge — Outside Puck Corners (F337)</h1>
+    <p class="lead">
+      Matches <code>optimizer-overlay.ts</code> + <code>roster-renderer.ts</code>:
+      text-only amber ⚡ with <strong>no background circle</strong>.
+      Flight / RES pairing → <strong>top-left outside</strong> check-in puck;
+      ground duties (DO, VAC, …) → <strong>top-right outside</strong> the puck.
+      One flash per pairing at first duty pickup; REST bars never duplicate.
+    </p>
+  </header>
+
+  <div class="compare">
+    <section class="panel">
+      <div class="panel-head">
+        <span class="tag pairing">Pairing</span>
+        <h2>Top-left outside (flight / RES)</h2>
+      </div>
+      <div class="panel-body">
+        <div class="canvas-wrap">
+          <canvas id="pairingCanvas" width="280" height="80"></canvas>
+        </div>
+        <p class="caption">
+          <strong>Flight / RES:</strong> ⚡ straddles the check-in puck top-left corner —
+          half above, half left of the puck. One badge per pairing at first duty pickup.
+        </p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="tag ground">Ground</span>
+        <h2>Top-right outside (DO / VAC)</h2>
+      </div>
+      <div class="panel-body">
+        <div class="canvas-wrap">
+          <canvas id="groundCanvas" width="280" height="80"></canvas>
+        </div>
+        <p class="caption">
+          <strong>Ground duty:</strong> ⚡ straddles the puck top-right corner —
+          half above, half right. Standalone ground pucks via <code>drawRosterTask</code>.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <div class="compare" style="grid-template-columns: 1fr;">
+    <section class="panel">
+      <div class="panel-head">
+        <span class="tag pairing">In context</span>
+        <h2>Scenario roster row — pairing + ground</h2>
+      </div>
+      <div class="panel-body">
+        <canvas id="rowCanvas" width="520" height="130"></canvas>
+        <div class="legend-row">
+          <span><i class="swatch corner"></i> Corner anchor (red dot)</span>
+          <span><i class="swatch badge"></i> Optimizer ⚡ (source=CR, amber text only)</span>
+        </div>
+        <p class="caption">
+          Leadin DO (no badge) · CR ground DO (⚡ TR outside) · flight pairing (⚡ TL outside at check-in) · REST bar (no duplicate).
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <aside class="detail">
+    <h3>Implementation checklist</h3>
+    <ul>
+      <li><code>optimizerBadgePositionTopLeftOutside()</code> — pairing / flight / RES at check-in puck</li>
+      <li><code>optimizerBadgePositionTopRightOutside()</code> — ground duties (DO, VAC, ILL, …)</li>
+      <li><code>drawOptimizerBadge()</code> — text-only amber ⚡, no circle; respects textAlign</li>
+      <li><code>roster-renderer.ts</code> — segment group: one TL badge; ground: TR badge in <code>drawRosterTask</code></li>
+      <li>Style: fill <b>#f59e0b</b>, bold 9px, offset = <code>ceil(badgeSize/2)</code> outside corner</li>
+    </ul>
+  </aside>
+
+  <script>
+    const BADGE_FONT = 9;
+    const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    const half = () => Math.ceil(BADGE_FONT / 2);
+
+    function optimizerBadgePositionTopLeftOutside(blockX, blockY) {
+      return { x: blockX - half(), y: blockY - half(), textAlign: 'left' };
+    }
+
+    function optimizerBadgePositionTopRightOutside(blockX, blockY, blockW) {
+      return { x: blockX + blockW + half(), y: blockY - half(), textAlign: 'right' };
+    }
+
+    function drawOptimizerBadge(ctx, x, y, textAlign) {
+      ctx.save();
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = `bold ${BADGE_FONT}px ${FONT}`;
+      ctx.textAlign = textAlign || 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('⚡', x, y);
+      ctx.restore();
+      return { x, y };
+    }
+
+    function drawPuck(ctx, x, y, w, h, label, fill, textColor) {
+      const r = 3;
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = '#d0d7e2';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = textColor;
+      ctx.font = `600 10px ${FONT}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + w / 2, y + h / 2);
+      ctx.restore();
+    }
+
+    function markCorner(ctx, cx, cy) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#ef4444';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── Pairing panel ──
+    (function () {
+      const c = document.getElementById('pairingCanvas');
+      const ctx = c.getContext('2d');
+      const x = 48, y = 28, w = 72, h = 22;
+      drawPuck(ctx, x, y, w, h, 'F8 123', '#4a8fd4', '#fff');
+      markCorner(ctx, x, y);
+      const pos = optimizerBadgePositionTopLeftOutside(x, y);
+      drawOptimizerBadge(ctx, pos.x, pos.y, pos.textAlign);
+      ctx.save();
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(pos.x - 1, pos.y - 1, 12, 12);
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#d97706';
+      ctx.font = `500 9px ${FONT}`;
+      ctx.textAlign = 'left';
+      ctx.fillText('TL outside check-in', x + 4, y + h + 10);
+      ctx.restore();
+    })();
+
+    // ── Ground panel ──
+    (function () {
+      const c = document.getElementById('groundCanvas');
+      const ctx = c.getContext('2d');
+      const x = 48, y = 28, w = 72, h = 22;
+      drawPuck(ctx, x, y, w, h, 'DO', '#e8ecf2', '#5c6b7f');
+      const anchorX = x + w;
+      const anchorY = y;
+      markCorner(ctx, anchorX, anchorY);
+      const pos = optimizerBadgePositionTopRightOutside(x, y, w);
+      drawOptimizerBadge(ctx, pos.x, pos.y, pos.textAlign);
+      ctx.save();
+      ctx.fillStyle = '#d97706';
+      ctx.font = `500 9px ${FONT}`;
+      ctx.textAlign = 'left';
+      ctx.fillText('TR outside ground puck', x, y + h + 10);
+      ctx.restore();
+    })();
+
+    // ── Row context ──
+    (function () {
+      const c = document.getElementById('rowCanvas');
+      const ctx = c.getContext('2d');
+      const rowY = 44;
+      const h = 22;
+
+      for (let i = 0; i < 12; i++) {
+        const gx = 20 + i * 34;
+        ctx.fillStyle = i % 7 === 0 || i % 7 === 6 ? 'rgba(37,99,235,0.04)' : 'transparent';
+        ctx.fillRect(gx, rowY - 8, 34, h + 16);
+        ctx.strokeStyle = '#e8ecf2';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(gx, rowY - 8);
+        ctx.lineTo(gx, rowY + h + 8);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#6b7a90';
+      ctx.font = `500 9px ${FONT}`;
+      ctx.textAlign = 'left';
+      ctx.fillText('Crew 1824 · YVR', 20, 18);
+
+      drawPuck(ctx, 54, rowY, 32, h, 'DO', '#e8ecf2', '#5c6b7f');
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `500 8px ${FONT}`;
+      ctx.fillText('leadin (no ⚡)', 54, rowY + h + 14);
+
+      const grX = 122, grW = 32;
+      drawPuck(ctx, grX, rowY, grW, h, 'DO', '#fef9c3', '#854d0e');
+      markCorner(ctx, grX + grW, rowY);
+      const grPos = optimizerBadgePositionTopRightOutside(grX, rowY, grW);
+      drawOptimizerBadge(ctx, grPos.x, grPos.y, grPos.textAlign);
+      ctx.fillStyle = '#d97706';
+      ctx.font = `600 8px ${FONT}`;
+      ctx.fillText('CR ground → TR outside', grX, rowY + h + 14);
+
+      const flX = 190, flW = 100;
+      drawPuck(ctx, flX, rowY, flW, h, 'F8 123', '#4a8fd4', '#fff');
+      markCorner(ctx, flX, rowY);
+      const flPos = optimizerBadgePositionTopLeftOutside(flX, rowY);
+      drawOptimizerBadge(ctx, flPos.x, flPos.y, flPos.textAlign);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `500 8px ${FONT}`;
+      ctx.fillText('pairing → TL outside at check-in', flX, rowY + h + 14);
+
+      const restX = 310, restW = 34;
+      ctx.fillStyle = 'rgba(91,159,212,0.15)';
+      ctx.fillRect(restX, rowY + h + 4, restW, 6);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `500 8px ${FONT}`;
+      ctx.fillText('REST bar — no duplicate ⚡', restX, rowY + h + 22);
+    })();
+  </script>
+</body>
+</html>

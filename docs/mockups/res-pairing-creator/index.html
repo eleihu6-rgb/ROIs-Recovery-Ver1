@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RES Pairing Creator — Mockups</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .hero { background: linear-gradient(120deg,#0f1b2d,#1a3559); color:#fff; border-radius:10px; padding:22px 24px; margin-bottom:18px; }
+  .hero h1 { margin:0 0 6px; font-size:22px; }
+  .hero p { margin:0; color:#bcd0e8; font-size:13px; max-width:720px; }
+  .cards { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+  @media (max-width:820px){ .cards{ grid-template-columns:1fr; } }
+  .mk { display:block; text-decoration:none; color:inherit; }
+  .mk .card { transition: box-shadow .12s, transform .12s; }
+  .mk:hover .card { box-shadow:0 10px 28px rgba(15,27,45,.14); transform:translateY(-2px); }
+  .mk .num-badge { width:26px; height:26px; border-radius:7px; background:var(--primary); color:#fff; font-weight:700; display:inline-flex; align-items:center; justify-content:center; font-family:var(--mono); }
+  .req td { padding:6px 9px; border-bottom:1px solid var(--border); font-size:12.5px; }
+  .req td:first-child { color:var(--muted); white-space:nowrap; }
+  .pillz { font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px; background:var(--accent); color:var(--primary-600); }
+  .q { border-left:3px solid var(--primary); padding:8px 12px; background:var(--surface-2); border-radius:0 var(--radius) var(--radius) 0; margin-bottom:10px; }
+  .q b { color:var(--primary-600); }
+</style>
+</head>
+<body>
+<div class="mock-shell">
+  <div class="hero">
+    <h1>🛡️ RES Pairing Creator — UI Mockups</h1>
+    <p>A Live-Gantt feature to define, generate and manage <b>reserve (RES) pairings</b> by base, rank and AM/PM timing — replacing the hand-written SQL inserts. Click any card to open the mockup. These are visual drafts; nothing is wired yet.</p>
+  </div>
+
+  <div class="section-title">Recommended flow — 4 screens (Define is one combined workspace)</div>
+  <div class="cards" style="margin-bottom:14px">
+    <a class="mk" href="01-entry-point.html"><div class="card"><div class="card-h"><span class="num-badge">1</span> Entry point</div><div style="padding:11px 13px"><p style="margin:0" class="hint">New icon in the Live Pairing-pane toolbar (Live-only). Shows where it sits among Filter / Sort / Bell.</p></div></div></a>
+    <a class="mk" href="02-define-workspace.html"><div class="card" style="border-color:var(--primary)"><div class="card-h" style="color:var(--primary-600)"><span class="num-badge">2</span> Define workspace ★ <span class="pillz" style="margin-left:auto">combines old 2 + 3</span></div><div style="padding:11px 13px"><p style="margin:0" class="hint">Calendar (canvas + live result) on the left, entry panel (selection mode + base×rank×AM/PM + AM/PM times) on the right. Apply fills cells instantly — no review hop.</p></div></div></a>
+    <a class="mk" href="04-generate-overview.html"><div class="card"><div class="card-h"><span class="num-badge">3</span> Generate &amp; overview</div><div style="padding:11px 13px"><p style="margin:0" class="hint">Pre-generate review (grouped), conflict policy, then result overview by date/base/rank/type.</p></div></div></a>
+    <a class="mk" href="05-manage.html"><div class="card"><div class="card-h"><span class="num-badge">4</span> Manage / modify / delete</div><div style="padding:11px 13px"><p style="margin:0" class="hint">Filter + multi-select existing RES pairings; batch modify plan/times or delete (with 409 guard).</p></div></div></a>
+  </div>
+
+  <div class="section-title">Split alternative (if you prefer two separate steps)</div>
+  <div class="cards" style="margin-bottom:14px">
+    <a class="mk" href="02-define-calendar.html"><div class="card"><div class="card-h"><span class="num-badge">2a</span> Calendar only</div><div style="padding:11px 13px"><p style="margin:0" class="hint">Scope + AM/PM windows + month grid (per-base or per-rank). The result/visualization surface.</p></div></div></a>
+    <a class="mk" href="03-batch-entry.html"><div class="card"><div class="card-h"><span class="num-badge">2b</span> Batch entry only</div><div style="padding:11px 13px"><p style="margin:0" class="hint">Selection mode + base×rank×AM/PM plan matrix + time override. The input surface.</p></div></div></a>
+    <div class="card"><div class="card-h">📌 Requirement coverage</div><div style="padding:4px 6px">
+      <table style="width:100%"><tbody class="req">
+        <tr><td>Pop-up icon (Live only)</td><td><span class="pillz">Screen 1</span></td></tr>
+        <tr><td>Calendar view + date range (2mo)</td><td><span class="pillz">Screen 2</span></td></tr>
+        <tr><td>Base / rank / AM-PM / plan value</td><td><span class="pillz">Screen 2</span></td></tr>
+        <tr><td>Adjust AM/PM start-end</td><td><span class="pillz">Screen 2</span></td></tr>
+        <tr><td>Batch: day / range / day-of-week</td><td><span class="pillz">Screen 2</span></td></tr>
+        <tr><td>Generate + overview (date/base/rank/type)</td><td><span class="pillz">Screen 3</span></td></tr>
+        <tr><td>Backend creates RES pairing rows</td><td><span class="pillz">Screen 3</span></td></tr>
+        <tr><td>Pairing pane refresh + PRAM/PRPM filter</td><td><span class="pillz">Screen 3</span></td></tr>
+        <tr><td>Batch modify / delete</td><td><span class="pillz">Screen 4</span></td></tr>
+      </tbody></table>
+    </div></div>
+  </div>
+
+  <div class="section-title">Decisions to make while you review (these shape the plan)</div>
+  <div class="card" style="padding:12px 14px; margin-bottom:18px">
+    <div class="q"><b>A. Deliverable after you pick</b> — once you choose a mockup direction, I write a design spec + implementation plan, then build (toolbar button + dialog + backend create/modify/delete API). RES pairings stay live-only.</div>
+    <div class="q"><b>B. assignment_group</b> — your example SQL is inconsistent (PRAM block declares <span class="mono">RES</span> but its child joins filter <span class="mono">SBY</span>; PRPM uses <span class="mono">SBY</span> throughout). The mockups show <b>RES</b> group + <span class="mono">PRAM</span>/<span class="mono">PRPM</span> assignment. Confirm RES vs SBY.</div>
+    <div class="q"><b>C. AM/PM codes by division</b> — mockups assume P → <span class="mono">PRAM</span>/<span class="mono">PRPM</span>, and Cabin would map to <span class="mono">CRAM</span>/<span class="mono">CRPM</span> from the assignment dictionary (no hardcoding). OK, or pilot-only for v1?</div>
+    <div class="q"><b>D. Timezone</b> — your SQL writes the wall-clock straight into the <span class="mono">*_utc</span> columns (10:00 → stored as 10:00 UTC, no conversion). Keep that exactly, or convert base-local → real UTC (each base shifts differently)?</div>
+    <div class="q"><b>E. Conflict policy</b> — mockup 4 offers Skip / Overwrite / Add-anyway when a date already has RES. Pick a default.</div>
+  </div>
+
+  <p class="hint">Open <code>docs/mockups/res-pairing-creator/index.html</code> in a browser. Tell me which screens/flow you like (and any changes), plus your calls on B–E, and I'll turn it into a spec + plan.</p>
+</div>
+</body>
+</html>

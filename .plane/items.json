@@ -1,0 +1,762 @@
+[
+  {
+    "seq": 1,
+    "name": "Load whole 2026 data from API - Including Crew ,Flight ,Pairing, Roster and Crew Manday",
+    "id": "d61cea39-088c-45cc-8840-61fc0f4a7691"
+  },
+  {
+    "seq": 3,
+    "name": "Migrate Crew Bids Viewer UI(Dev by Dr.Yu) into Admin Portal",
+    "id": "f2d6b4fa-71c7-404a-981c-3c494e76cd6f"
+  },
+  {
+    "seq": 5,
+    "name": "Admin Report by scenario",
+    "id": "16ff4220-7e9b-4d50-b065-984df524903d"
+  },
+  {
+    "seq": 6,
+    "name": "Conduct Super User Training on latest 2026 Data",
+    "id": "1ee482ab-192a-4594-9ba3-3091f1eb30f4"
+  },
+  {
+    "seq": 8,
+    "name": "Backend provide Crew to Pairing Matrix to OR",
+    "id": "32acd16e-3b31-4a48-86d9-a021a9edc87c"
+  },
+  {
+    "seq": 9,
+    "name": "Dev Pairing, days off, Tier and Reserve Pages",
+    "id": "9fc51683-ca88-4079-95f7-d47d0c513515"
+  },
+  {
+    "seq": 10,
+    "name": "PBS Slover test on Dec 2025 and May 2026",
+    "id": "29cc2177-8a9a-4989-b550-cdef07310cf1"
+  },
+  {
+    "seq": 11,
+    "name": "Conduct Super User Training On Dec 2025 PBS solver, including create scenario, kick off runs, check report and roster detail on Web gantt",
+    "id": "8dc71109-5f1d-4427-aa2e-958ad442dfe6"
+  },
+  {
+    "seq": 12,
+    "name": "Dev RPG Pairing data Load as a scenario",
+    "id": "0fe0552c-9039-4fc1-8edb-6183c891bcf4"
+  },
+  {
+    "seq": 13,
+    "name": "Conduct Feasibility run for June 2026",
+    "id": "b9610c62-68d4-4d93-b4ab-0d46cfcebb7e"
+  },
+  {
+    "seq": 14,
+    "name": "Entire business process testing - setup default bid, current bids for at least 1 crew for each base and rank",
+    "id": "cb96216f-c771-4a36-b580-f3023caa9ea1"
+  },
+  {
+    "seq": 15,
+    "name": "Conduct AI support function testing on Jun 2026",
+    "id": "64e33a64-0196-44d3-a729-4394076d34a9"
+  },
+  {
+    "seq": 16,
+    "name": "Crew Portal training for super User",
+    "id": "ce2cc97f-8dde-44c9-9c60-ec338706271e"
+  },
+  {
+    "seq": 21,
+    "name": "Reload May 2025 POC data and setup cloud env",
+    "id": "84e5a9ef-289c-4f14-9ba6-bf8c9041a03b"
+  },
+  {
+    "seq": 22,
+    "name": "Crew Portal - Login and Dashboard page",
+    "id": "1974f33c-7ecf-49d8-9aab-6151917a359d"
+  },
+  {
+    "seq": 23,
+    "name": "Data Integration Docs",
+    "id": "f7530541-92b6-49e3-94b2-8e7085ec4169"
+  },
+  {
+    "seq": 25,
+    "name": "Current Business Process Study and Map to new PBS",
+    "id": "d542988a-0c7b-4536-a5fb-97e3b1dcf1f5"
+  },
+  {
+    "seq": 31,
+    "name": "Setup 2026-2030 Roster Period and bid window",
+    "id": "f56e9212-954e-49e3-be4e-66231b6bbaf0"
+  },
+  {
+    "seq": 32,
+    "name": "2026 new data load - delta update - study of all possible crew, pairing and roster changes",
+    "id": "58ad7a71-d18f-4cb4-8022-9cd4eef1309e"
+  },
+  {
+    "seq": 33,
+    "name": "2026 Crew Bid load and update",
+    "id": "b8763fca-f2ac-4334-aac2-8a53f839b062"
+  },
+  {
+    "seq": 35,
+    "name": "How to create flight and reserve mix roster line, need to define logic",
+    "id": "84d72d29-9375-4a8f-83a4-e5ba0658229c"
+  },
+  {
+    "seq": 36,
+    "name": "Crew Portal - Pairing Pages",
+    "id": "660c9190-fd21-4f38-9007-aef5b88961ba"
+  },
+  {
+    "seq": 37,
+    "name": "Create test case for Mix Bidding case",
+    "id": "455cf856-adf7-492a-92dc-6dbba4b4d40b"
+  },
+  {
+    "seq": 38,
+    "name": "？Gantt Implement filter and search features",
+    "id": "3b443fda-8895-447d-b9d3-34db52f45c18"
+  },
+  {
+    "seq": 39,
+    "name": "The report migration developed by Dr. Yu",
+    "id": "16fb1157-a079-4d6d-bac1-4f677fda3ae6"
+  },
+  {
+    "seq": 40,
+    "name": "Imported data shows no flight duties with pairings — only ground duties (导入数据没有看见带Pairing的飞行任务，只有地面任务)",
+    "id": "1f4e1217-96b7-4bc8-87d6-5c0df892f957"
+  },
+  {
+    "seq": 41,
+    "name": "UI layout improvement: merge toolbars to reduce vertical space usage (界面布局改进，将工具条合并尽量减少竖向占位)",
+    "id": "cb0dc0fb-8c15-4a81-8914-b161d3db6dfa"
+  },
+  {
+    "seq": 42,
+    "name": "Create a dev/test environment on the cloud server, separate from the user's environment, with automated build & deployment (在云服务器上，创建一套开发测试环境，与用户的环境分开，并且实现自动构建与部署)",
+    "id": "eca125f1-c15a-4c91-a1b5-5e244634ebeb"
+  },
+  {
+    "seq": 43,
+    "name": "Rule integration and rule development (法规集成与法规开发)",
+    "id": "827881dc-3642-4cf5-aba3-2e97c8b77ae8"
+  },
+  {
+    "seq": 44,
+    "name": "Integrate with the optimizer: invoke optimization and get the flow working end-to-end (和优化对接，调用优化，跑通优化流程)",
+    "id": "c3cf3384-dd22-48f9-bf5e-bac7609f376c"
+  },
+  {
+    "seq": 45,
+    "name": "Import pbs_user data manually first; later, once the interface syncs crew data, the pbs_user table must be updated in sync (先手工导入pbs_user 数据，后续接口代码同步crew数据后，需要同步更新pbs_user表数据)",
+    "id": "0904934c-b49d-4439-9f6f-c647da41ef16"
+  },
+  {
+    "seq": 46,
+    "name": "After the interface code updates Crew data, update the pbs_user table in sync (接口代码更新Crew数据后，同步更新pbs_user表)",
+    "id": "2f7249fb-45b9-4a8b-ab26-ad7a37eadca2"
+  },
+  {
+    "seq": 47,
+    "name": "Scenario can open the Gantt from a file (Scenario 能通过文件打开Gantt)",
+    "id": "0c9c9184-9eb5-4e0c-978a-7d685db908c6"
+  },
+  {
+    "seq": 48,
+    "name": "Provide the optimizer with an ro_input.gz file that includes reserve data (给优化提供带reverse的ro_input.gz文件)",
+    "id": "d53f9e52-5b6e-49fa-9043-210936f007d4"
+  },
+  {
+    "seq": 49,
+    "name": "Initialize June reserve data for PBS (给pbs 初始化6月份Reverse 数据)",
+    "id": "639363fa-e3b9-4ffc-b24f-e6e54c916ced"
+  },
+  {
+    "seq": 50,
+    "name": "List pairing numbers.",
+    "id": "393f515e-8e8a-4a28-822d-8d1708eecf76"
+  },
+  {
+    "seq": 51,
+    "name": "When I zoom out the months are off – this looks like it’s July but it’s actually June if you see the NOW dashed line.",
+    "id": "668a02a6-743b-4aab-bc18-8a74d2bc179a"
+  },
+  {
+    "seq": 52,
+    "name": "There should be a way to auto recenter to whatever month you are working on.",
+    "id": "da6a4bcf-dc35-46a4-aebf-c69513e1a8be"
+  },
+  {
+    "seq": 53,
+    "name": "List Credit Time（Hide Block Time）",
+    "id": "df6fd0e8-3c53-4eaa-b425-c2c60758930a"
+  },
+  {
+    "seq": 54,
+    "name": "Gray line around the pairings",
+    "id": "8aea81be-3604-479b-ab06-e00ff096c51d"
+  },
+  {
+    "seq": 55,
+    "name": "The – stopped working when only 26 days were available to view",
+    "id": "f11b4d10-f805-414f-b60c-f40cfa80a4dd"
+  },
+  {
+    "seq": 56,
+    "name": "end date that is before the start date",
+    "id": "7c6d27da-aa99-4d0d-b833-40dc1f462af7"
+  },
+  {
+    "seq": 57,
+    "name": "【To Be Designed】consolidate the pairings",
+    "id": "5d0a9367-9b55-4ca8-8040-4f450e23471d"
+  },
+  {
+    "seq": 58,
+    "name": "（Live Done,Scenario To Be Confirm）no option for open pairings？",
+    "id": "e751d33e-325b-4f3e-9ec3-3fe6759be281"
+  },
+  {
+    "seq": 59,
+    "name": "？705 is partially crewed",
+    "id": "4d405a7d-f2f3-4680-947d-d01126a799ee"
+  },
+  {
+    "seq": 60,
+    "name": "Having filters on each gantt",
+    "id": "ec3dd489-f606-40f8-80ee-a4b3ae4f69f1"
+  },
+  {
+    "seq": 61,
+    "name": "【To Be Designed】Ground tasks – need to give a list of what these might be, SIM CRM TRN etc.",
+    "id": "5fbbd28c-4bd5-45be-93ae-e7bf1841feb8"
+  },
+  {
+    "seq": 62,
+    "name": "can the default when loading be UTC",
+    "id": "79bce235-20dd-4f95-8ade-021fd29295aa"
+  },
+  {
+    "seq": 63,
+    "name": "can’t see what the rule is – specifically",
+    "id": "e3bf8078-7acb-4bbf-a96b-7b60de98f5c4"
+  },
+  {
+    "seq": 64,
+    "name": "[BUG] Can’t filter for pairings in this scenario gantt？",
+    "id": "07ed0b5a-3c85-4927-a16b-11f580ed4af6"
+  },
+  {
+    "seq": 65,
+    "name": "can't see the scenario name in TAB",
+    "id": "b16ada89-b7b3-4142-ae56-4214f6f20c28"
+  },
+  {
+    "seq": 66,
+    "name": "can’t see scenario type",
+    "id": "ab76d5e3-ad03-4313-ae58-7f1d8d558e9e"
+  },
+  {
+    "seq": 67,
+    "name": "【To Be Designed】Once the scenario is open you can’t move around the screen.",
+    "id": "5c50f372-a7a5-448e-b63f-bc9afeae1e61"
+  },
+  {
+    "seq": 68,
+    "name": "？the KPI results show NA",
+    "id": "736568b0-fc8f-4e93-9ba5-d0094700b867"
+  },
+  {
+    "seq": 69,
+    "name": "Gantt add Composition display",
+    "id": "d3e29081-cd96-4b1a-930c-530bc334f91c"
+  },
+  {
+    "seq": 70,
+    "name": "Web UI + optimizer working end-to-end Process; temporary rule checking used for optimization",
+    "id": "6ad88c0a-a5b7-4151-bcb8-876965ff931a"
+  },
+  {
+    "seq": 71,
+    "name": "[OR] 5 May Jen feedback on YEG PBS result",
+    "id": "6afa9dc2-e9e2-4b01-b0b6-275b185b17e1"
+  },
+  {
+    "seq": 72,
+    "name": "[UI] May 5 customer usage feedback ([UI] 5月5日 客户使用反馈)",
+    "id": "6f5c5d1a-5b5c-49f2-bb1d-a6e875bae51d"
+  },
+  {
+    "seq": 74,
+    "name": "[UI] Load S3 pairing into Scenario — import S3 pairings into Scenario ([UI] Load S3 pairing into Scenario 讲S3任务环导入到Scenario)",
+    "id": "871358d2-1014-4ca6-985c-6d50522a512a"
+  },
+  {
+    "seq": 75,
+    "name": "[Rule] Next-generation rule engine design and migration ([Rule] 法规新一代的设计与迁移)",
+    "id": "4095cbaa-df5b-4af4-b8b9-d4fdb8a0ecb2"
+  },
+  {
+    "seq": 76,
+    "name": "Crew Portal -- Days off Page",
+    "id": "2bbaff97-1d90-4b39-ad1e-107339f6b6e6"
+  },
+  {
+    "seq": 77,
+    "name": "【To Be Designed】There a warning if you have unsaved items and you click somewhere where you will lose them?",
+    "id": "6a28f75d-702a-40eb-a3f6-ff24c6e5ad9b"
+  },
+  {
+    "seq": 78,
+    "name": "I see YKF listed – we close that base last fall so we should remove that one.",
+    "id": "f260464b-4795-4843-81e5-694ce33694ec"
+  },
+  {
+    "seq": 79,
+    "name": "When setting up to do a run – what’s the pairing source?",
+    "id": "d4486ccc-8711-4819-95e3-2635401753ed"
+  },
+  {
+    "seq": 80,
+    "name": "Integrate with the optimizer: provide PBS bidding CSV data and tzdata (与优化对接，提供PBS Bidding csv相关数据，以及 tzdata)",
+    "id": "43ca6ff8-846f-4a2d-b2f8-715e6fec8754"
+  },
+  {
+    "seq": 81,
+    "name": "Project Document Collection",
+    "id": "ff23eed0-e1e9-4fa4-98c3-374648738673"
+  },
+  {
+    "seq": 82,
+    "name": "[Interface] Trans Canada & no bider & crew no flying together",
+    "id": "a4e22c5e-cf0a-4ad6-a4e6-6fa48443cd55"
+  },
+  {
+    "seq": 83,
+    "name": "portal- pairing search",
+    "id": "7481a24e-79a0-4b71-8a2e-a77fb918af47"
+  },
+  {
+    "seq": 84,
+    "name": "Line — condition modification (line--条件修改)",
+    "id": "c078817f-91bf-48d1-8a0b-6a65e1d6523f"
+  },
+  {
+    "seq": 85,
+    "name": "RO Scenario: KPI RESULTS should not be randomly generated (RO Scenario，KPI RESULTS不要随机生成)",
+    "id": "4a1e8075-89bb-4655-91c8-f49f9525a2e3"
+  },
+  {
+    "seq": 86,
+    "name": "Scenario is missing some features compared to Live (Scenario，和Live相比，缺少一些功能)",
+    "id": "5c5a35a3-ce60-44bc-8ee9-d8d4369ff678"
+  },
+  {
+    "seq": 87,
+    "name": "？Flight flt_num displays incorrectly — found to be an interface data issue; flight data needs re-importing (Flight flt_num 显示不正确，发现是接口对接数据问题，需要重新导入flight数据)",
+    "id": "26ed3b7b-52a5-459e-803d-198cdb3e28eb"
+  },
+  {
+    "seq": 88,
+    "name": "Credit was added to RosterGround; need to re-import Credit — both old and new (RosterGround 中已经增加了 Credit，需要重新导入一份Credit，新老都需要导入)",
+    "id": "8bf46868-b875-40d8-afd3-f829ef95d1d6"
+  },
+  {
+    "seq": 89,
+    "name": "？Pairing Filter not working (Pairing Filter失效)",
+    "id": "3075741e-da83-4c47-85e2-6bf415f9cd22"
+  },
+  {
+    "seq": 90,
+    "name": "Roster: show how many credit hours and how many days off (DO) each person has (Roster，加上每个人有多少credit hours, 有多少DO)",
+    "id": "b2165832-282a-4940-8763-2c744b4edcf6"
+  },
+  {
+    "seq": 91,
+    "name": "Flight: finding the pairing from a flight is broken (Flight，从flight找到pairing，失效)",
+    "id": "2393da83-7f9e-4d29-9df1-834500dc8172"
+  },
+  {
+    "seq": 92,
+    "name": "Scenario: want to see uncovered hours for pairings (Scenario，pairing想看到未被覆盖的时数)",
+    "id": "97c7e336-8ae5-4b41-b7fd-b23885f49b0d"
+  },
+  {
+    "seq": 93,
+    "name": "What is the \"model\" inside Scenario? (Scenario内的model是什么？)",
+    "id": "cfdc150f-d564-46b3-9ba5-d7af803446bc"
+  },
+  {
+    "seq": 94,
+    "name": "Rule Set page: UI feedback V1 (Rule Set页面，UI反馈V1)",
+    "id": "1618cc7e-4ca8-4ad6-8dcd-a6a7f0032316"
+  },
+  {
+    "seq": 95,
+    "name": "Rule Edit page, Configure rule: some option input methods need improvement (Rule Edit页面，Configure rule，有些选项填写方式需优化)",
+    "id": "ad8722dd-177c-45b2-9485-087b926c204c"
+  },
+  {
+    "seq": 96,
+    "name": "The max open-pane count hint — should the wording be unified? (Open Pane的Max数量提示，文字需要统一吗？)",
+    "id": "3be78ab2-693c-4c1b-9e49-273eae2d0ae7"
+  },
+  {
+    "seq": 97,
+    "name": "Pairing Info: when timezone is set to Airport, is the time the same as UTC? (Pairing Info，时区选择Airport，时刻和UTC一样？)",
+    "id": "d0021f59-1017-499e-a47d-e97c0b2b8188"
+  },
+  {
+    "seq": 98,
+    "name": "Should \"Optimisation\" be standardized to \"Optimization\"? (Optimisation是否需要统一为Optimization)",
+    "id": "1181423b-b88d-4d69-ab6b-1e354155fdc1"
+  },
+  {
+    "seq": 99,
+    "name": "Live Gantt segmented/incremental loading rework (Live Gantt 分段加载改造)",
+    "id": "03341428-d4cb-4b46-8272-8db61f24b201"
+  },
+  {
+    "seq": 100,
+    "name": "ESC has no effect on the left header area? (ESC对左侧header区域无效？)",
+    "id": "4615bc76-7898-4da7-a663-cdb048d3defe"
+  },
+  {
+    "seq": 101,
+    "name": "Header area: when multi-selecting with Ctrl, should the right-click menu pop up automatically? (heade区域，按Ctrl多选，需要自动叫出右键菜单吗?)",
+    "id": "122ddca9-69b5-4d44-b8b4-fe8a4d915982"
+  },
+  {
+    "seq": 102,
+    "name": "[OR] 11th. June Jen feedback on Auto-Assignment (recorded by Ruan.)",
+    "id": "f50acf9d-b502-4faf-a523-434080692eee"
+  },
+  {
+    "seq": 103,
+    "name": "For cross-month duties, how should Credit Hours be attributed to the right month? (对于跨月的任务，应该如何将 Credit Hour 算到对应的月份内？)",
+    "id": "495eb33c-4516-4e3d-82bf-25f40c50127b"
+  },
+  {
+    "seq": 104,
+    "name": "Export API: add filter conditions (导出接口，条件添加)",
+    "id": "a5985d6d-9f04-4f71-8c02-dd017cca2dcd"
+  },
+  {
+    "seq": 105,
+    "name": "API speed/performance optimization (接口速度优化)",
+    "id": "93806ad6-8fc8-4321-bb2a-c4f30a06a84f"
+  },
+  {
+    "seq": 106,
+    "name": "Write test cases (写测试用例)",
+    "id": "e426675e-4c6f-41b1-b100-41ea8463b7bc"
+  },
+  {
+    "seq": 107,
+    "name": "Help / user manual (help  操作手册)",
+    "id": "25c1fee8-2157-40d2-8d23-df29632c7f4d"
+  },
+  {
+    "seq": 108,
+    "name": "Admin side: roster period settings (管理端  roster period 设置，)",
+    "id": "8012d1b5-307b-499b-b23e-a3dbf0ebade8"
+  },
+  {
+    "seq": 109,
+    "name": "[OR] [Consecutive Reserve Request] 11th. June Jen feedback on Auto-Assignment (recorded by Ruan.)",
+    "id": "07259b4b-2273-4502-b4d9-34152ab6b0a6"
+  },
+  {
+    "seq": 110,
+    "name": "Add the \"most flying hours in least flying day\" condition (most flying hours in least flying day 条件新增)",
+    "id": "717308c1-d56e-4175-a545-376368e93505"
+  },
+  {
+    "seq": 111,
+    "name": "Add test cases (增加测试案例)",
+    "id": "7645508a-6471-4180-93da-0720507d2cd1"
+  },
+  {
+    "seq": 112,
+    "name": "Stress / load testing (压测) on Crew Portal",
+    "id": "b3c732b3-6314-4bee-9ea1-acd12833c439"
+  },
+  {
+    "seq": 113,
+    "name": "Run the playbook on the portal (portal 跑 play book。)",
+    "id": "15f4ee29-7002-47d6-b0d7-3d257d5bfcd7"
+  },
+  {
+    "seq": 114,
+    "name": "Write-back / publish API (回传发布接口)",
+    "id": "0faf2eee-68f2-4b32-b7c7-2f0572ea7a4d"
+  },
+  {
+    "seq": 115,
+    "name": "Live-Scenario Gantt Unification",
+    "id": "22168931-fd86-4416-a7fc-260ca81d4a2e"
+  },
+  {
+    "seq": 116,
+    "name": "Port CPP Rules to Rust",
+    "id": "2a5cf19d-6f35-4364-87d7-1453bd7e77c7"
+  },
+  {
+    "seq": 117,
+    "name": "YVR Base Pilot Solver Testing",
+    "id": "8e848085-0a77-4982-a8df-22397433387e"
+  },
+  {
+    "seq": 118,
+    "name": "YVR Base Cabin Crew Solver Testing",
+    "id": "5cec9568-5639-42fb-86e2-40177e053206"
+  },
+  {
+    "seq": 119,
+    "name": "YYC Base Pilot Solver Testing",
+    "id": "7ec3ced5-1302-4541-b3a7-be2c1d957b29"
+  },
+  {
+    "seq": 120,
+    "name": "YYC Base Cabin Crew Solver Testing",
+    "id": "b883dca3-8f97-4cc4-a595-50d2911023a3"
+  },
+  {
+    "seq": 121,
+    "name": "YEG Base Pilot Solver Testing",
+    "id": "ba47d5f9-3ef7-4cb8-b174-5c81427132a2"
+  },
+  {
+    "seq": 122,
+    "name": "YEG Base Cabin Crew Solver Testing",
+    "id": "00032962-5b9a-458d-a8da-9e08056336ae"
+  },
+  {
+    "seq": 123,
+    "name": "YYZ Base Pilot Solver Testing",
+    "id": "2b4cd5e5-1938-4f68-bfd0-056e8bcf992e"
+  },
+  {
+    "seq": 124,
+    "name": "YYZ Base Cabin Crew Solver Testing",
+    "id": "ea6a5d05-0fd0-45e2-8af5-bc3a6ca52777"
+  },
+  {
+    "seq": 125,
+    "name": "YOW Base Pilot Solver Testing",
+    "id": "429a0554-f5a7-4f53-b6fd-c83bf6392eab"
+  },
+  {
+    "seq": 126,
+    "name": "YOW Base Cabin Crew Solver Testing",
+    "id": "c8d3e96c-1dda-40f8-b25c-3cc741ff7eb3"
+  },
+  {
+    "seq": 127,
+    "name": "YUL Base Pilot Solver Testing",
+    "id": "2d2ce0ae-3d32-4872-8b91-fd03393b9240"
+  },
+  {
+    "seq": 128,
+    "name": "YUL Base Cabin Crew Solver Testing[No CC at this Base]",
+    "id": "6f1cd82c-fb4c-4287-a19c-b4c02d351cbb"
+  },
+  {
+    "seq": 129,
+    "name": "Live Gantt — Initial View and Roster Overview",
+    "id": "44c95baa-2cd5-469f-acc1-f6dccebe519b"
+  },
+  {
+    "seq": 130,
+    "name": "Live Gantt — Roster, Pairing and Flight Pane Layout",
+    "id": "c0ab8ee9-98b4-42c2-a998-d17fbb28fc5f"
+  },
+  {
+    "seq": 131,
+    "name": "Live Gantt — Timeline Zoom Controls",
+    "id": "7913420e-2853-4573-97a3-a045bb9300e9"
+  },
+  {
+    "seq": 132,
+    "name": "Live Gantt — Date Range Picker and Sliding Data Window",
+    "id": "5a0b25dc-cabf-4a9f-9a05-5f3d4134b548"
+  },
+  {
+    "seq": 133,
+    "name": "Live Gantt — Crew, Pairing and Flight Filter Dialog",
+    "id": "e75b7dab-1f08-448a-93c2-228c49a4b12e"
+  },
+  {
+    "seq": 134,
+    "name": "Live Gantt — Display Timezone Switcher",
+    "id": "1071d8e7-c752-4aa9-9110-44a4776a295a"
+  },
+  {
+    "seq": 135,
+    "name": "Live Gantt — Flight Navigator (Flight Navi)",
+    "id": "5c4384f6-0058-4511-aef0-f9a66a2157b1"
+  },
+  {
+    "seq": 136,
+    "name": "Live Gantt — Rule Set Selector for Legality Checks",
+    "id": "d093b230-cdea-4c3f-bb90-b11e1bdf2ed7"
+  },
+  {
+    "seq": 137,
+    "name": "Live Gantt — Save, Undo and Redo Workflow",
+    "id": "1d42da0a-bce3-4cff-8d74-34fee712b1be"
+  },
+  {
+    "seq": 138,
+    "name": "Live Gantt — Crew Assignment Editing (Reassign, Swap, Pin, Remove)",
+    "id": "7ca2ec33-c474-452f-92da-034491bdd455"
+  },
+  {
+    "seq": 139,
+    "name": "Live Gantt — Ground Task Creation",
+    "id": "3cc9a7f8-0f39-4f60-a6b1-138b2a8d0d78"
+  },
+  {
+    "seq": 140,
+    "name": "Live Gantt — Keyboard Shortcuts",
+    "id": "709cba8c-2426-43cf-9a70-8f95854c0482"
+  },
+  {
+    "seq": 141,
+    "name": "Bug -  [Scenario Management] JS Error `value.toISOString is not a function` on Save and Delete failure in LIVE mode",
+    "id": "f3db77c9-4aea-4c34-b6d4-515776d4fa82"
+  },
+  {
+    "seq": 142,
+    "name": "Bug - [Optimization Run] Failed optimization run clears \"Basic Info\" panel fields on active scenario card",
+    "id": "8d3c48a0-744e-4dbc-b2e9-92d0bf8436be"
+  },
+  {
+    "seq": 143,
+    "name": "Rule，should be modified",
+    "id": "0e397a94-4180-4333-b3f6-25ad3322b388"
+  },
+  {
+    "seq": 144,
+    "name": "Alert Message is not fully displayed.",
+    "id": "bcaaefd3-0e53-4aec-a2de-9997ab3d8be9"
+  },
+  {
+    "seq": 145,
+    "name": "1. 希望不用筛选条件, 就能看到任务环, 看到之后才知道选什么  2. 查询任务环,感觉任务环多过, 发现有重复和或者飞行也能查出来 乘务任务环的状况",
+    "id": "e820088b-f873-4040-8dac-435e4fdadb8a"
+  },
+  {
+    "seq": 146,
+    "name": "？界面增加删除DO的一些异常",
+    "id": "e3f16efc-7c20-4698-bee4-cd59a40ba54e"
+  },
+  {
+    "seq": 147,
+    "name": "Unnecessary 8004 alert",
+    "id": "368d9c52-0a73-4afb-a1fa-003826034314"
+  },
+  {
+    "seq": 148,
+    "name": "gantt:scenario Draf/Failed状态时，点击打开gantt可以根据是否勾选Leadin Live，如勾选，则打开Gantt时显示Live 预占数据，否则显示空场景",
+    "id": "62d07388-8a67-40f0-b8b6-5d408785da09"
+  },
+  {
+    "seq": 149,
+    "name": "给一些主要功能补齐Playwright 测试用例",
+    "id": "e6e03d55-9fb5-4c30-b0e7-00575ec01406"
+  },
+  {
+    "seq": 150,
+    "name": "Scenario 打开Gantt时 显示场景Tab一直往右设计改动，改为下拉列表显示已打开的场景列表",
+    "id": "b50049b2-fe99-41e1-86e0-d895bf0afcb0"
+  },
+  {
+    "seq": 151,
+    "name": "清理Python 版法规文件，使用Rush版法规开发",
+    "id": "dbbf6713-bbe5-42b8-8285-f76c0c061fec"
+  },
+  {
+    "seq": 152,
+    "name": "Alert in scenario,not work.",
+    "id": "74bb512a-53be-4ffb-9aa1-b6eddccf54df"
+  },
+  {
+    "seq": 153,
+    "name": "Scenario 540&541 no Alert?",
+    "id": "654239c2-890d-42ac-854b-75b797671c31"
+  },
+  {
+    "seq": 154,
+    "name": "Roster disappears after pinning a crew.",
+    "id": "2ae897e9-9d6f-4a59-9852-66ddebad8645"
+  },
+  {
+    "seq": 155,
+    "name": "?Rule Tab 迁移合并至 Legality Tab中",
+    "id": "7957ffca-2554-4846-b79a-406bda5d0cd6"
+  },
+  {
+    "seq": 156,
+    "name": "FLY duty overlap with the DO duty?",
+    "id": "62c87ff2-67d6-40f0-a0c6-792d7fb702ef"
+  },
+  {
+    "seq": 157,
+    "name": "Scenario535，base=YEG，3 crews？25 pairings？",
+    "id": "4d12af0d-49fe-4e61-8780-4cadd73e0d33"
+  },
+  {
+    "seq": 158,
+    "name": "增加Pentest 集成至项目中",
+    "id": "e7551ce1-d3d3-4f69-a7d3-b5d1e2451920"
+  },
+  {
+    "seq": 159,
+    "name": "给教授在服务器上搭建一套自动化部署，当有代码提交时，需要自动部署编译至一套开发环境中",
+    "id": "7ed2c42e-5415-46e3-a78c-e9224a548e9b"
+  },
+  {
+    "seq": 160,
+    "name": "提供给优化的任务环，需要按division过滤",
+    "id": "901bced3-4965-4723-8a01-b157c13115cc"
+  },
+  {
+    "seq": 161,
+    "name": "MCred should be sorted numerically, not alphabetically (as strings).",
+    "id": "aba8c02a-1cdc-4c6d-a5f7-814362a12ecc"
+  },
+  {
+    "seq": 162,
+    "name": "In the Scenario, selecting Jun，only displays Jun 1–28.",
+    "id": "9c121720-4977-4d86-83a3-421446cc6d9d"
+  },
+  {
+    "seq": 163,
+    "name": "Assignment,should support keyword-based assignment search.",
+    "id": "18e7b47c-d4de-4bcd-9981-4ad063f60037"
+  },
+  {
+    "seq": 164,
+    "name": "[API] Wire UI with NOC API",
+    "id": "ac63241a-f78c-4b28-a927-610155f1df49"
+  },
+  {
+    "seq": 165,
+    "name": "RES Pairing Creator",
+    "id": "1b66baa8-f638-490c-bc67-cf6ce4b7dbd1"
+  },
+  {
+    "seq": 166,
+    "name": "Multiple User Operation on Gantt",
+    "id": "f6f8fce9-1fbb-4e35-9cf2-f9481c14dbaf"
+  },
+  {
+    "seq": 167,
+    "name": "In scenario roster quality analysis",
+    "id": "8410e09d-be6f-4e63-8557-af2f6447b5eb"
+  }
+]

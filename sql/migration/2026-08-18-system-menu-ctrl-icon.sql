@@ -1,0 +1,62 @@
+-- Menu/button icon support and initial backfill from the existing frontend icon map.
+DO $$
+BEGIN
+  IF to_regclass('system_menu_ctrl') IS NOT NULL THEN
+    ALTER TABLE system_menu_ctrl ADD COLUMN IF NOT EXISTS icon varchar(50);
+    COMMENT ON COLUMN system_menu_ctrl.icon IS '按钮图标（lucide 图标名）';
+  END IF;
+END $$;
+
+UPDATE system_menu
+SET icon = CASE menu_code
+  WHEN 'ROOT' THEN 'MenuIcon'
+  WHEN 'DASHBOARD' THEN 'LayoutDashboard'
+  WHEN 'LIVE' THEN 'CalendarDays'
+  WHEN 'SCENARIO' THEN 'FlaskConical'
+  WHEN 'DATA' THEN 'Database'
+  WHEN 'LEGALITY' THEN 'Scale'
+  WHEN 'SYSTEM' THEN 'Settings2'
+  WHEN 'PBS' THEN 'CalendarCog'
+  WHEN 'HELP' THEN 'HelpCircle'
+  WHEN 'LIVE_ROSTER' THEN 'CalendarDays'
+  WHEN 'SCENARIO_LIST' THEN 'FlaskConical'
+  WHEN 'SCENARIO_ALL' THEN 'FlaskConical'
+  WHEN 'SCENARIO_PO' THEN 'GitBranch'
+  WHEN 'SCENARIO_RO' THEN 'CalendarDays'
+  WHEN 'SCENARIO_CREW_BIDS' THEN 'FileText'
+  WHEN 'DATA_ORG_BASE' THEN 'Building2'
+  WHEN 'DATA_RANK' THEN 'Award'
+  WHEN 'DATA_FLEET_AIRCRAFT' THEN 'Cpu'
+  WHEN 'DATA_LOCATION_ROUTE' THEN 'MapPin'
+  WHEN 'DATA_ASSIGNMENT' THEN 'ClipboardList'
+  WHEN 'DATA_QUALIFICATION' THEN 'GraduationCap'
+  WHEN 'DATA_COMPOSITION' THEN 'Layers'
+  WHEN 'DATA_ROSTER_PERIOD' THEN 'CalendarDays'
+  WHEN 'DATA_CONFIG_DICTIONARY' THEN 'BookOpen'
+  WHEN 'DATA_QUERY' THEN 'Search'
+  WHEN 'DATA_HOLIDAY' THEN 'CalendarDays'
+  WHEN 'DATA_CREW_MASTER' THEN 'Users'
+  WHEN 'DATA_CREW_WORKLOAD' THEN 'BarChart2'
+  WHEN 'LEGALITY_RULE_SETS' THEN 'Scale'
+  WHEN 'LEGALITY_RULE_INSTANCES' THEN 'ListChecks'
+  WHEN 'LEGALITY_COMPOSITION' THEN 'Layers'
+  WHEN 'LEGALITY_COMP_LOAD' THEN 'Layers'
+  WHEN 'SYSTEM_SCHEDULER' THEN 'Timer'
+  WHEN 'SYSTEM_QUEUE_TASKS' THEN 'Wrench'
+  WHEN 'SYSTEM_GRAFANA' THEN 'Gauge'
+  WHEN 'SYSTEM_PROMETHEUS' THEN 'Gauge'
+  WHEN 'SYSTEM_WINDMILL' THEN 'Settings2'
+  WHEN 'SYSTEM_DATA_QUALITY' THEN 'Gauge'
+  WHEN 'SYSTEM_USER_MGMT' THEN 'UserCog'
+  WHEN 'SYSTEM_PROFILE_MGMT' THEN 'Shield'
+  WHEN 'SYSTEM_MENU_MGMT' THEN 'ListChecks'
+  WHEN 'SYSTEM_PBS_USER_MGMT' THEN 'Users'
+  WHEN 'SYSTEM_DEPT_MGMT' THEN 'Building2'
+  WHEN 'PBS_PERIOD' THEN 'CalendarCog'
+  WHEN 'PBS_BID_DEFINITIONS' THEN 'ListChecks'
+  WHEN 'PBS_BUSINESS_TIME' THEN 'Clock3'
+  WHEN 'PBS_ADMIN_TOOLS' THEN 'Wrench'
+  WHEN 'PBS_SIMULATED_CREW_PORTAL' THEN 'UserCog'
+  ELSE icon
+END
+WHERE icon IS NULL;

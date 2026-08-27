@@ -1,0 +1,62 @@
+{
+  "employeeId": "504",
+  "category": "YVR-737-CA",
+  "context": "Default",
+  "totalProperties": 7,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T5",
+      "code": 104,
+      "name": "Any/Every Layover In Airport"
+    },
+    {
+      "tier": "T7",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T2",
+      "name": "Any Landing In Airport",
+      "code": 101,
+      "page": "pairing",
+      "predicate": "Award Pairings If Any Landing In LAS",
+      "reason": "unsupported-input: tag-list for Any Landing In Airport",
+      "image": "image/pbs/504_PBS-3308_T2-101_unsupported-input_20260621-215620-046.png"
+    },
+    {
+      "tier": "T3",
+      "name": "Any Landing In Airport",
+      "code": 101,
+      "page": "pairing",
+      "predicate": "Award Pairings If Any Landing In PVR If Pairing Check-In Time > 11:00 If Total Legs In Pairing < 3 legs",
+      "reason": "unsupported-input: tag-list for Any Landing In Airport",
+      "image": "image/pbs/504_PBS-3308_T3-101_unsupported-input_20260621-215621-773.png"
+    },
+    {
+      "tier": "T4",
+      "name": "Any/Every Layover In Airport",
+      "code": 104,
+      "page": "pairing",
+      "predicate": "Award Pairings If Any Layover In CUN And Of Duration > 090:00",
+      "reason": "unsupported-input: tag-list for Any/Every Layover In Airport",
+      "image": "image/pbs/504_PBS-3308_T4-104_unsupported-input_20260621-215623-541.png"
+    },
+    {
+      "tier": "T6",
+      "name": "Any Landing In Airport",
+      "code": 101,
+      "page": "pairing",
+      "predicate": "Award Pairings If Any Landing In SJD If Pairing Length < 3 days",
+      "reason": "unsupported-input: tag-list for Any Landing In Airport",
+      "image": "image/pbs/504_PBS-3308_T6-101_unsupported-input_20260621-215627-979.png"
+    }
+  ]
+}

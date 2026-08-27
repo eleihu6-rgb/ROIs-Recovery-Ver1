@@ -1,0 +1,44 @@
+Bid Request
+
+Period: July 2026
+
+----------------------------------------------------------------------------
+Seniority 1              Category YYZ-737-IFD          Employee #           19
+Confirmation: 1625087270 on 2026-06-10T18:22:37 UTC              Default Bid
+----------------------------------------------------------------------------
+Buddies:
+
+Bid Preferences:
+       ---------------------------------------------------
+   1.  Pairing Bid Group
+   2.  Set Condition Maximum Credit Window
+   3.  Prefer Off Friday, Saturday, Sunday
+   4.  Avoid Pairings If Pairing Check-In Time > 15:00
+   5.  Avoid Pairings If Any Landing In AZA, CUN, FLL, JFK, LAS, PSP, SFB, YHZ, YQG, YQT, YUL, YWG, YXE, YYC, YYG
+   6.  Award Pairings If Departing On Monday, Wednesday If Any Landing In YVR
+       Award Pairings
+       ---------------------------------------------------
+       Pairing Bid Group
+       Award Pairings
+       ---------------------------------------------------
+       Reserve Bid Group
+
+----------------------------------------------------------------------------
+Seniority 1              Category YYZ-737-IFD          Employee #           19
+Confirmation: 1625087270 on 2026-06-10T18:22:37 UTC              Current Bid
+----------------------------------------------------------------------------
+Buddies:
+
+Bid Preferences:
+       ---------------------------------------------------
+   1.  Pairing Bid Group
+   2.  Prefer Off Jul 6, 2026, Jul 7, 2026, Jul 8, 2026, Jul 9, 2026, Jul 10, 2026, Jul 20, 2026, Jul 22, 2026, Jul 24, 2026, Jul 26, 2026, Jul 29, 2026, Jul 31, 2026
+   3.  Avoid Pairings If Any Landing In ATW, CUN, FLL, GOH, KIN, MEX, YEG, YHU, YHZ, YKF, YOW, YQM, YQT, YQY, YSJ, YUL, YVR, YWG, YXX, YYC, YYG
+   4.  Award Pairings If Departing On Jul 21, 2026, Jul 23, 2026, Jul 25, 2026, Jul 28, 2026, Jul 30, 2026 If Pairing Number T4514
+   5.  Award Pairings If Departing On Jul 27, 2026 If Pairing Number T4509
+       Award Pairings
+       ---------------------------------------------------
+       Pairing Bid Group
+       Award Pairings
+       ---------------------------------------------------
+       Reserve Bid Group

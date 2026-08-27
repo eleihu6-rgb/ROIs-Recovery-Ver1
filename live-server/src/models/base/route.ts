@@ -1,0 +1,27 @@
+import { pgTable, bigint, varchar, smallint, timestamp } from 'drizzle-orm/pg-core'
+
+export const route = pgTable('route', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  createdBy: varchar('created_by', { length: 30 }).notNull().default('system'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 30 }).notNull().default('system'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  routeId: bigint('route_id', { mode: 'number' }).notNull(),
+  filiale: varchar('filiale', { length: 6 }).notNull(),
+  fltNum: varchar('flt_num', { length: 100 }),
+  depArp: varchar('dep_arp', { length: 3 }),
+  arvArp: varchar('arv_arp', { length: 3 }),
+  segType: varchar('seg_type', { length: 1 }),
+  stdStart: varchar('std_start', { length: 5 }),
+  stdEnd: varchar('std_end', { length: 5 }),
+  fltDtStart: timestamp('flt_dt_start'),
+  fltDtEnd: timestamp('flt_dt_end'),
+  fleetGrp: varchar('fleet_grp', { length: 30 }),
+  fleet: varchar('fleet', { length: 30 }),
+  segSeq: smallint('seg_seq'),
+  minBlh: varchar('min_blh', { length: 5 }),
+  maxBlh: varchar('max_blh', { length: 5 }),
+  flightFlag: varchar('flight_flag', { length: 30 }),
+  flightAssignment: varchar('flight_assignment', { length: 30 }),
+  register: varchar('register', { length: 12 }),
+})

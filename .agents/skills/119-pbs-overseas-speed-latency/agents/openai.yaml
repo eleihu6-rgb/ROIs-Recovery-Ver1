@@ -1,0 +1,6 @@
+interface:
+  display_name: "119 pUsL overseas speed latency"
+  short_description: "Project skill 119-pbs-overseas-speed-latency"
+  default_prompt: "Use $119-pbs-overseas-speed-latency for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

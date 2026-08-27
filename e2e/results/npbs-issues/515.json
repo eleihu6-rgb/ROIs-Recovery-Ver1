@@ -1,0 +1,39 @@
+{
+  "employeeId": "515",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 4,
+  "placed": 2,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 114,
+      "name": "Any/Every Enroute Check-In Time"
+    },
+    {
+      "tier": "T2",
+      "code": 114,
+      "name": "Any/Every Enroute Check-In Time"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T3",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 23, 2026 If Any Landing In CUN If Pairing Number T4553",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/515_PBS-3308_T3-106_not-found_20260625-055739-691.png"
+    },
+    {
+      "tier": "T4",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 22, 2026, Jun 25, 2026, Jun 26, 2026 If Any Landing In YEG If Pairing Number T4587",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/515_PBS-3308_T4-106_not-found_20260625-055740-464.png"
+    }
+  ]
+}

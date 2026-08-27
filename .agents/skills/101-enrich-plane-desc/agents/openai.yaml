@@ -1,0 +1,6 @@
+interface:
+  display_name: "101 enrich plane desc"
+  short_description: "Project skill 101-enrich-plane-desc"
+  default_prompt: "Use $101-enrich-plane-desc for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

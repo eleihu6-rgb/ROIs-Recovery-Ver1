@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RES Pairing Creator — 1. Entry point</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .gantt { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; box-shadow: 0 8px 24px rgba(15,27,45,.08); }
+  .pane-tabbar { display: flex; align-items: center; gap: 4px; height: 34px; padding: 0 8px; background: #0f1b2d; }
+  .pane-tabbar .tab { color: #b9c6d8; font-size: 12px; padding: 4px 10px; border-radius: 5px 5px 0 0; }
+  .pane-tabbar .tab.active { background: #fff; color: var(--fg); font-weight: 600; }
+  .pane-strip { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  .pane-strip .title { font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .pane-strip .title .ico { color: var(--muted); display: inline-flex; }
+  .pane-strip .cond { font-size: 11px; color: var(--muted); }
+  .pane-strip .spacer { flex: 1; }
+  .row-head { display: grid; grid-template-columns: 120px 60px 50px 1fr; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; padding: 5px 8px; border-bottom: 1px solid var(--border); background: #fff; }
+  .pair-row { display: grid; grid-template-columns: 120px 60px 50px 1fr; align-items: center; padding: 7px 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .pair-row .lbl { font-family: var(--mono); font-weight: 600; }
+  .bar { height: 16px; border-radius: 3px; }
+  .bar.res-am { background: var(--am-bg); border: 1px solid var(--am); color: var(--am); }
+  .bar.res-pm { background: var(--pm-bg); border: 1px solid var(--pm); color: var(--pm); }
+  .bar.fly { background: #e7f6ec; border: 1px solid var(--ok); }
+  .bar { display: inline-flex; align-items: center; padding: 0 6px; font-size: 10px; font-weight: 700; font-family: var(--mono); }
+  .entry-wrap { display: flex; gap: 18px; align-items: flex-start; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="mock-shell">
+  <div class="mock-banner">
+    <span class="step">1 / 5</span>
+    <b>Entry point</b> — a new icon in the Live Gantt <b>Pairing pane</b> toolbar. Live-only (RES pairings stay live).
+    <span class="links">
+      <a href="index.html">Index</a>
+      <a class="active" href="01-entry-point.html">1 Entry</a>
+      <a href="02-define-calendar.html">2 Define</a>
+      <a href="03-batch-entry.html">3 Batch</a>
+      <a href="04-generate-overview.html">4 Generate</a>
+      <a href="05-manage.html">5 Manage</a>
+    </span>
+  </div>
+
+  <div class="gantt">
+    <div class="pane-tabbar">
+      <span class="tab">Dashboard</span>
+      <span class="tab active">Live</span>
+      <span class="tab">Scenario</span>
+      <span class="tab">Rule</span>
+      <span class="tab">Data</span>
+    </div>
+    <div class="pane-strip">
+      <span class="title"><span class="ico">🗂️</span> Pairings</span>
+      <span class="cond">Base: YVR, YEG · Jun 2026 · 1,284 pairings</span>
+      <span class="spacer"></span>
+      <div class="icon-cluster">
+        <!-- existing pane buttons -->
+        <button class="icon-btn" title="Recheck legality">🔄</button>
+        <button class="icon-btn" title="Alert center"><span class="count">8</span>🔔</button>
+        <button class="icon-btn" title="Quality">📊</button>
+        <button class="icon-btn" title="Filter">⛃</button>
+        <button class="icon-btn" title="Sort">↕</button>
+        <!-- NEW -->
+        <button class="icon-btn is-new" title="RES Pairing Creator (Live only)">🛡️</button>
+        <button class="icon-btn" title="Settings">⚙</button>
+      </div>
+    </div>
+    <div class="row-head"><div>Pairing</div><div>Base</div><div>Type</div><div>Timeline</div></div>
+    <div class="pair-row"><div class="lbl">PRAM-1000-2200</div><div>YEG</div><div><span class="tag-am">AM</span></div><div><span class="bar res-am" style="width:46%">RES AM · CA 5 / FO 5</span></div></div>
+    <div class="pair-row"><div class="lbl">PRPM-2000-0559</div><div>YEG</div><div><span class="tag-pm">PM</span></div><div><span class="bar res-pm" style="width:38%; margin-left:46%">RES PM · CA 5 / FO 5</span></div></div>
+    <div class="pair-row"><div class="lbl">YVR-YYZ-D1</div><div>YVR</div><div>FLY</div><div><span class="bar fly" style="width:30%; margin-left:8%">AC123</span></div></div>
+    <div class="pair-row"><div class="lbl">PRAM-1000-2200</div><div>YVR</div><div><span class="tag-am">AM</span></div><div><span class="bar res-am" style="width:46%">RES AM · CA 4 / FO 4</span></div></div>
+  </div>
+
+  <div class="entry-wrap">
+    <div class="callout">
+      <b>New button</b> lives in the pane condition-strip icon cluster (next to Filter / Sort), matching §Pane-Toolbar-Home — icon-only, label in tooltip.<br><br>
+      It appears <b>only on Live</b> because RES pairings are real live pairings; Scenario leaves the capability undefined → no button.
+    </div>
+    <div class="card" style="flex:1">
+      <div class="card-h"><span class="ico">🛡️</span> What clicking it opens</div>
+      <div style="padding:12px">
+        <div class="flow">
+          <span class="node">RES Pairing Planner dialog</span>
+          <span class="arr">→</span>
+          <span class="node">Define on calendar (mockup 2)</span>
+          <span class="arr">→</span>
+          <span class="node">Batch entry (mockup 3)</span>
+          <span class="arr">→</span>
+          <span class="node">Generate &amp; overview (mockup 4)</span>
+        </div>
+        <p class="hint" style="margin-top:12px">A second entry — <b>Manage existing RES</b> (mockup 5) — is reachable from the same dialog's header tab, for batch modify / delete of already-generated RES pairings.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

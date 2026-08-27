@@ -1,0 +1,26 @@
+{
+  "name": "e2e-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test --config=config/playwright.config.ts",
+    "test:ui": "playwright test --config=config/playwright.config.ts --ui",
+    "test:headed": "playwright test --config=config/playwright.config.ts --headed",
+    "test:gantt": "playwright test --config=config/playwright.config.ts --project=gantt",
+    "test:gantt:headed": "playwright test --config=config/playwright.config.ts --project=gantt --headed",
+    "test:altair-login": "playwright test --config=config/flair-altair-smoke.config.ts --project=flair-altair-smoke",
+    "test:flair-altair-login": "playwright test --config=config/flair-altair-smoke.config.ts --project=flair-altair-smoke",
+    "test:pbs-portal": "playwright test --config=config/playwright.config.ts --project=pbs-portal",
+    "test:pbs-portal:headed": "playwright test --config=config/playwright.config.ts --project=pbs-portal --headed",
+    "test:pbs-app": "playwright test --config=config/playwright.config.ts --project=pbs-app",
+    "test:pbs-app:headed": "playwright test --config=config/playwright.config.ts --project=pbs-app --headed",
+    "test:smoke": "playwright test --config=config/playwright.config.ts --grep @smoke",
+    "report": "playwright show-report results/html-report",
+    "install:browsers": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "playwright": "^1.59.1"
+  }
+}

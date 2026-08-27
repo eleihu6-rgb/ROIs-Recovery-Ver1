@@ -1,0 +1,71 @@
+import { pgTable, bigint, varchar, integer, smallint, numeric, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+
+export const assignment = pgTable('assignment', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  createdBy: varchar('created_by', { length: 30 }).notNull().default('system'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 30 }).notNull().default('system'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  assignment: varchar('assignment', { length: 20 }).notNull(),
+  description: varchar('description', { length: 100 }).notNull(),
+  type: varchar('type', { length: 3 }).notNull(),
+  isRest: smallint('is_rest').notNull().default(0),
+  colorHex: varchar('color_hex', { length: 6 }).notNull(),
+  label: varchar('label', { length: 100 }),
+  standalone: varchar('standalone', { length: 1 }),
+  btPct: numeric('bt_pct', { precision: 3, scale: 2 }),
+  fdpPct: numeric('fdp_pct', { precision: 3, scale: 2 }),
+  dpPct: numeric('dp_pct', { precision: 3, scale: 2 }),
+  isAdhoc: smallint('is_adhoc').notNull().default(0),
+  defaultLocation: varchar('default_location', { length: 3 }),
+  isRecency: smallint('is_recency').notNull().default(0),
+  fixedStrTm: varchar('fixed_str_tm', { length: 5 }),
+  fixedEndTm: varchar('fixed_end_tm', { length: 5 }),
+  fixedDurationMin: integer('fixed_duration_min'),
+  fixedCreditMin: integer('fixed_credit_min'),
+  displayLabelWhenAvailable: varchar('display_label_when_available', { length: 1 }).notNull().default('N'),
+  defaultAssignmentGroup: varchar('default_assignment_group', { length: 20 }),
+  ftPct: numeric('ft_pct', { precision: 3, scale: 2 }).notNull().default('0'),
+  isQualifier: smallint('is_qualifier').notNull().default(0),
+  wpPct: numeric('wp_pct', { precision: 3, scale: 2 }).notNull().default('0'),
+  restTime: integer('rest_time'),
+  divideCrewManday: varchar('divide_crew_manday', { length: 1 }).notNull().default('E'),
+  recaLabel: varchar('reca_label', { length: 1 }).notNull().default('Y'),
+  orientation: varchar('orientation', { length: 20 }),
+  pairingLabelColorHex: varchar('pairing_label_color_hex', { length: 6 }),
+  segmentLabelColorHex: varchar('segment_label_color_hex', { length: 6 }),
+  tmCreditFlag: smallint('tm_credit_flag'),
+  assignmentUnitType: varchar('assignment_unit_type', { length: 20 }),
+  dpGap: integer('dp_gap').notNull().default(0),
+  beforePctDpGapMin: integer('before_pct_dp_gap_min'),
+  afterPctDpGapMin: integer('after_pct_dp_gap_min'),
+}, (table) => [
+  uniqueIndex('uq_assignment_code').on(table.assignment),
+])
+
+export const assignmentGroup = pgTable('assignment_group', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  createdBy: varchar('created_by', { length: 30 }).notNull().default('system'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 30 }).notNull().default('system'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  assignmentGroup: varchar('assignment_group', { length: 15 }).notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  color: varchar('color', { length: 7 }),
+  allowOverlap: smallint('allow_overlap').notNull().default(0),
+  optimizerIndicator: smallint('optimizer_indicator').notNull(),
+}, (table) => [
+  uniqueIndex('uq_assignment_group_code').on(table.assignmentGroup),
+])
+
+export const assignmentGroupMap = pgTable('assignment_group_map', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  createdBy: varchar('created_by', { length: 30 }).notNull().default('system'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 30 }).notNull().default('system'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  assignmentGroupId: bigint('assignment_group_id', { mode: 'number' }).notNull(),
+  assignmentId: bigint('assignment_id', { mode: 'number' }).notNull(),
+}, (table) => [
+  uniqueIndex('uq_assignment_group_map').on(table.assignmentGroupId, table.assignmentId),
+])

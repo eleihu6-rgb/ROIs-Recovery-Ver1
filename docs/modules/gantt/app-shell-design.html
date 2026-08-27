@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROIS Gantt — App Shell Design v2</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}
+
+/* ── Themes ── */
+:root{
+  --primary:#2563eb;--primary-dim:#1d4ed8;--primary-bg:#eff6ff;--primary-text:#1d4ed8;
+  --bg:#f8fafc;--bg-card:#ffffff;--bg-muted:#f1f5f9;--bg-sidebar:#f8fafc;
+  --bg-hover:#eff6ff;--bg-active:#dbeafe;
+  --fg:#0f172a;--fg-muted:#475569;--fg-subtle:#64748b;
+  --border:#e2e8f0;--border-strong:#cbd5e1;
+  /* semantic status colors */
+  --color-success:#10b981;--color-warning:#f59e0b;--color-danger:#ef4444;
+  --color-success-bg:#dcfce7;--color-success-text:#15803d;
+  --color-warning-bg:#fef9c3;--color-warning-text:#a16207;
+  --color-danger-bg:#fee2e2;--color-danger-text:#b91c1c;
+  --radius:6px;--radius-lg:10px;
+  --nav-h:44px;--tabbar-h:34px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:0 4px 20px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.06);
+  --t:200ms cubic-bezier(.4,0,.2,1);
+  --sidebar-w:200px;--sidebar-col-w:48px;
+}
+[data-theme=emerald]{--primary:#059669;--primary-dim:#047857;--primary-bg:#ecfdf5;--primary-text:#047857;--bg-hover:#d1fae5;--bg-active:#a7f3d0}
+[data-theme=orange] {--primary:#ea580c;--primary-dim:#c2410c;--primary-bg:#fff7ed;--primary-text:#c2410c;--bg-hover:#fed7aa;--bg-active:#fdba74}
+[data-theme=purple] {--primary:#7c3aed;--primary-dim:#6d28d9;--primary-bg:#f5f3ff;--primary-text:#6d28d9;--bg-hover:#ede9fe;--bg-active:#ddd6fe}
+[data-theme=slate]  {--primary:#475569;--primary-dim:#334155;--primary-bg:#f1f5f9;--primary-text:#334155;--bg-hover:#e2e8f0;--bg-active:#cbd5e1}
+[data-dark=true]{
+  --bg:#0d1117;--bg-card:#161b22;--bg-muted:#1c2230;--bg-sidebar:#131820;
+  --bg-hover:rgba(99,130,185,.12);--bg-active:rgba(99,130,185,.2);
+  --fg:#e2e8f0;--fg-muted:#94a3b8;--fg-subtle:#64748b;
+  --border:#1e2d3d;--border-strong:#2d3f52;
+  --color-success:#34d399;--color-warning:#fbbf24;--color-danger:#f87171;
+  --color-success-bg:rgba(16,185,129,.18);--color-success-text:#34d399;
+  --color-warning-bg:rgba(234,179,8,.18);--color-warning-text:#fbbf24;
+  --color-danger-bg:rgba(239,68,68,.18);--color-danger-text:#f87171;
+  --shadow-sm:0 1px 4px rgba(0,0,0,.4);--shadow-md:0 4px 24px rgba(0,0,0,.55)
+}
+
+/* ════════════════════════════════════════
+   SHELL
+   ════════════════════════════════════════ */
+#shell{
+  width:100vw;height:100vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--bg);color:var(--fg);
+}
+
+/* ── SVG Icon helper ── */
+svg.ic{display:inline-block;vertical-align:middle;flex-shrink:0}
+
+/* ── Top Nav ── */
+#topnav{
+  height:var(--nav-h);flex-shrink:0;
+  background:var(--bg-card);border-bottom:1px solid var(--border);
+  display:flex;align-items:stretch;padding:0 8px;
+  box-shadow:var(--shadow-sm);z-index:30;
+  transition:height var(--t),opacity var(--t);position:relative;order:1
+}
+#shell.nav-hidden #topnav{height:0;opacity:0;overflow:hidden;pointer-events:none;border:none}
+
+.nav-logo{
+  display:flex;align-items:center;gap:8px;padding:0 14px 0 4px;
+  font-weight:800;font-size:14px;color:var(--fg);letter-spacing:-.5px;
+  border-right:1px solid var(--border);margin-right:4px;flex-shrink:0;cursor:default;
+  user-select:none
+}
+.nav-logo-box{
+  width:26px;height:26px;background:var(--primary);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:12px;font-weight:900;flex-shrink:0;letter-spacing:0
+}
+.nav-logo-word{color:var(--primary)}
+
+.nav-item{
+  display:flex;align-items:center;gap:6px;padding:0 13px;
+  font-size:12px;font-weight:500;color:var(--fg-muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all 130ms;white-space:nowrap;user-select:none;
+  position:relative
+}
+.nav-item:hover{color:var(--fg);background:var(--bg-muted)}
+.nav-item.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.nav-item svg{opacity:.7;transition:opacity 130ms}
+.nav-item.active svg,.nav-item:hover svg{opacity:1}
+
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:1px}
+.nav-sep{width:1px;height:18px;background:var(--border);margin:0 5px;flex-shrink:0}
+
+/* ── Tab Bar ── */
+#tabbar-wrap{
+  flex-shrink:0;background:var(--bg-card);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;height:var(--tabbar-h);overflow:hidden;
+  transition:height var(--t),opacity var(--t);z-index:20;order:2
+}
+#shell.tabs-hidden #tabbar-wrap{height:0;opacity:0;border:none;pointer-events:none}
+#shell.tabs-bottom #tabbar-wrap{order:4;border-bottom:none;border-top:1px solid var(--border)}
+#shell.tabs-bottom.tabs-hidden #tabbar-wrap{border-top:none}
+
+#tabbar{
+  flex:1;display:flex;align-items:center;padding:0 4px;gap:1px;
+  overflow-x:auto;scrollbar-width:none;height:100%
+}
+#tabbar::-webkit-scrollbar{display:none}
+
+.tab{
+  display:flex;align-items:center;gap:5px;height:26px;padding:0 10px;
+  border-radius:5px;font-size:11.5px;font-weight:500;color:var(--fg-muted);
+  cursor:pointer;white-space:nowrap;transition:all 130ms;user-select:none;flex-shrink:0
+}
+.tab:hover{background:var(--bg-muted);color:var(--fg)}
+.tab.active{background:var(--bg-active);color:var(--primary);font-weight:600}
+.tab-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.tab-close{
+  width:14px;height:14px;border-radius:3px;display:flex;align-items:center;
+  justify-content:center;font-size:13px;line-height:1;
+  opacity:0;transition:opacity 120ms;color:var(--fg-muted)
+}
+.tab:hover .tab-close,.tab.active .tab-close{opacity:.5}
+.tab-close:hover{opacity:1!important;background:rgba(0,0,0,.08)}
+
+.tab-bar-end{
+  display:flex;align-items:center;padding:0 4px;border-left:1px solid var(--border);flex-shrink:0
+}
+.tab-add{
+  width:26px;height:26px;border-radius:5px;display:flex;align-items:center;
+  justify-content:center;color:var(--fg-subtle);cursor:pointer;transition:all 130ms;font-size:16px
+}
+.tab-add:hover{background:var(--bg-muted);color:var(--fg)}
+
+/* ── Workspace ── */
+#workspace{flex:1;display:flex;overflow:hidden;order:3;min-height:0}
+
+/* ── Sidebar ── */
+#sidebar{
+  width:var(--sidebar-w);flex-shrink:0;
+  background:var(--bg-sidebar);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width var(--t);position:relative
+}
+#shell.sidebar-collapsed #sidebar{width:var(--sidebar-col-w)}
+#shell.sidebar-hidden #sidebar{width:0;border-right:none}
+
+/* Sidebar header */
+.sb-header{
+  height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:0 8px 0 12px;border-bottom:1px solid var(--border);
+}
+.sb-module-label{
+  font-size:10px;font-weight:800;color:var(--primary);text-transform:uppercase;
+  letter-spacing:.1em;white-space:nowrap;overflow:hidden;
+  transition:opacity var(--t),max-width var(--t);max-width:130px
+}
+#shell.sidebar-collapsed .sb-module-label{opacity:0;max-width:0}
+
+.sb-toggle-btn{
+  width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--fg-subtle);transition:all 130ms;border:1px solid transparent;flex-shrink:0
+}
+.sb-toggle-btn:hover{background:var(--bg-hover);color:var(--fg);border-color:var(--border)}
+
+/* Expand tab on edge — visible only when icon-only collapsed */
+#sb-expand-tab{
+  position:absolute;right:-1px;top:50%;transform:translateY(-50%);
+  width:14px;height:44px;background:var(--bg-card);border:1px solid var(--border);
+  border-left:none;border-radius:0 6px 6px 0;
+  display:none;align-items:center;justify-content:center;
+  cursor:pointer;z-index:10;color:var(--fg-subtle);
+  transition:all 130ms;box-shadow:2px 0 8px rgba(0,0,0,.08)
+}
+#sb-expand-tab:hover{background:var(--bg-active);color:var(--primary)}
+#shell.sidebar-collapsed #sb-expand-tab{display:flex}
+#shell.sidebar-hidden #sb-expand-tab{display:none}
+
+.sb-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 0}
+.sb-body::-webkit-scrollbar{width:3px}
+.sb-body::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px}
+
+.sb-group-label{
+  padding:10px 12px 3px;font-size:9px;font-weight:800;color:var(--fg-subtle);
+  text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;
+  transition:opacity var(--t);overflow:hidden
+}
+#shell.sidebar-collapsed .sb-group-label{opacity:0}
+
+.sb-item{
+  display:flex;align-items:center;gap:9px;padding:6px 12px;
+  font-size:12px;color:var(--fg-muted);cursor:pointer;
+  border-left:2px solid transparent;white-space:nowrap;
+  transition:all 130ms;user-select:none;overflow:hidden
+}
+.sb-item:hover{background:var(--bg-hover);color:var(--fg)}
+.sb-item.active{background:var(--bg-active);color:var(--primary);border-left-color:var(--primary);font-weight:600}
+.sb-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;opacity:.7}
+.sb-item.active .sb-icon{opacity:1;color:var(--primary)}
+.sb-item:hover .sb-icon{opacity:1}
+.sb-text{overflow:hidden;text-overflow:ellipsis;transition:opacity var(--t),max-width var(--t);max-width:150px}
+#shell.sidebar-collapsed .sb-text{opacity:0;max-width:0}
+
+/* ── Content Area ── */
+#content{flex:1;overflow:auto;background:var(--bg);position:relative;min-width:0;scrollbar-gutter:stable}
+.view{display:none;min-height:100%;padding:20px}
+.view.active{display:block}
+#view-live{padding:0;display:none}
+#view-live.active{display:flex;align-items:center;justify-content:center}
+
+/* ── Dashboard ── */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+.page-title{font-size:15px;font-weight:800;color:var(--fg);letter-spacing:-.4px}
+.page-sub{font-size:11px;color:var(--fg-muted);margin-top:3px}
+
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.stat-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 14px 12px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+  transition:box-shadow 130ms
+}
+.stat-card:hover{box-shadow:var(--shadow-md)}
+.stat-accent{position:absolute;top:0;left:0;right:0;height:3px}
+.stat-ico{position:absolute;top:12px;right:12px;color:var(--border-strong)}
+.stat-lbl{font-size:9.5px;font-weight:700;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.stat-val{font-size:24px;font-weight:800;color:var(--fg);line-height:1;letter-spacing:-.6px;margin-bottom:4px}
+.stat-sub{font-size:10.5px;color:var(--fg-muted)}
+.up{color:var(--color-success);font-weight:600}.dn{color:var(--color-danger);font-weight:600}
+
+.charts-row{display:grid;grid-template-columns:1.1fr 1fr 1.1fr;gap:10px;margin-bottom:12px}
+.chart-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-sm)}
+.chart-title{font-size:11px;font-weight:700;color:var(--fg);margin-bottom:12px;letter-spacing:-.2px}
+
+.bar-chart{display:flex;flex-direction:column;gap:9px}
+.br-row{display:flex;align-items:center;gap:8px;font-size:11px}
+.br-lbl{width:58px;color:var(--fg-muted);flex-shrink:0;text-align:right;font-size:10px;font-weight:500}
+.br-track{flex:1;height:6px;background:var(--bg-muted);border-radius:4px;overflow:hidden}
+.br-fill{height:100%;border-radius:4px;background:var(--primary);transition:width .4s ease}
+.br-val{width:32px;color:var(--fg-subtle);font-size:10px;font-weight:600;text-align:right}
+
+.donut-wrap{display:flex;align-items:center;gap:14px}
+.donut{width:72px;height:72px;border-radius:50%;flex-shrink:0;position:relative}
+.donut::after{content:'';position:absolute;inset:16px;background:var(--bg-card);border-radius:50%}
+.donut-lg{display:flex;flex-direction:column;gap:7px}
+.donut-li{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--fg-muted)}
+.donut-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+.bars16{height:60px;display:flex;align-items:flex-end;gap:2px;padding-top:4px}
+.b16{flex:1;border-radius:2px 2px 0 0;background:var(--primary);opacity:.55;min-height:4px;transition:opacity 130ms;cursor:default}
+.b16:hover{opacity:1}
+.b16-lbl{display:flex;justify-content:space-between;margin-top:5px;font-size:9px;color:var(--fg-subtle)}
+
+.tbl-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+.tbl-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border)}
+.tbl-title{font-size:12px;font-weight:700;color:var(--fg)}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+thead th{text-align:left;padding:7px 12px;font-size:9.5px;font-weight:700;color:var(--fg-subtle);
+  text-transform:uppercase;letter-spacing:.06em;background:var(--bg-muted);border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:8px 12px;color:var(--fg-muted)}
+tbody tr:hover td{background:var(--bg-muted)}
+.td-em{color:var(--fg)!important;font-weight:500}
+
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.02em}
+/* badge-success */ .bg{background:var(--color-success-bg);color:var(--color-success-text)}
+/* badge-primary */ .bb{background:var(--primary-bg);color:var(--primary-text)}
+/* badge-warning */ .by{background:var(--color-warning-bg);color:var(--color-warning-text)}
+/* badge-danger  */ .br2{background:var(--color-danger-bg);color:var(--color-danger-text)}
+/* badge-neutral */ .bs{background:var(--bg-muted);color:var(--fg-muted)}
+
+.gantt-ph{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:40px;text-align:center;box-shadow:var(--shadow-md);max-width:420px
+}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:var(--radius);
+  font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);
+  background:var(--bg-card);color:var(--fg-muted);transition:all 130ms;user-select:none;
+  outline:none
+}
+.btn:hover{background:var(--bg-muted);color:var(--fg)}
+.btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.btn-p{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-p:hover{background:var(--primary-dim);border-color:var(--primary-dim)}
+.btn-sm{padding:4px 10px;font-size:11px}
+
+.icon-btn{
+  width:28px;height:28px;border-radius:5px;display:inline-flex;align-items:center;
+  justify-content:center;cursor:pointer;border:1px solid transparent;
+  background:transparent;color:var(--fg-muted);transition:all 130ms;flex-shrink:0;outline:none
+}
+.icon-btn:hover{background:var(--bg-muted);color:var(--fg);border-color:var(--border)}
+.icon-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.icon-btn.active-state{background:var(--bg-active);color:var(--primary);border-color:var(--primary)}
+
+/* ════════════════════════════════════════
+   CONFIG POPOVER
+   ════════════════════════════════════════ */
+#cfg-popover{
+  position:fixed;top:calc(var(--nav-h) + 8px);right:10px;width:232px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:14px;box-shadow:var(--shadow-md);z-index:200;
+  display:none;
+  transform-origin:top right;
+  animation:popIn 150ms ease
+}
+#cfg-popover.open{display:block}
+@keyframes popIn{from{opacity:0;transform:scale(.95) translateY(-6px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+.cfg-head{
+  font-size:10px;font-weight:800;color:var(--fg-subtle);text-transform:uppercase;
+  letter-spacing:.1em;margin-bottom:12px;padding-bottom:9px;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px
+}
+.cfg-sect{margin-bottom:12px}
+.cfg-sect:last-child{margin-bottom:0}
+.cfg-sect-lbl{font-size:10px;font-weight:700;color:var(--fg-muted);margin-bottom:6px;letter-spacing:.02em}
+.cfg-row{
+  display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer;
+  color:var(--fg-muted);transition:color 130ms;user-select:none;font-size:12px
+}
+.cfg-row:hover{color:var(--fg)}
+
+.tgl{
+  width:32px;height:18px;border-radius:9px;background:var(--border-strong);
+  position:relative;transition:background var(--t);flex-shrink:0;cursor:pointer
+}
+.tgl.on{background:var(--primary)}
+.tgl::after{
+  content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;
+  border-radius:50%;background:#fff;transition:left var(--t);box-shadow:0 1px 3px rgba(0,0,0,.2)
+}
+.tgl.on::after{left:16px}
+
+.swatches{display:flex;gap:6px;flex-wrap:wrap;padding-top:2px}
+.sw{
+  width:24px;height:24px;border-radius:6px;cursor:pointer;border:2px solid transparent;
+  transition:all 130ms;box-shadow:0 1px 4px rgba(0,0,0,.15);position:relative
+}
+.sw:hover{transform:scale(1.15)}
+.sw.sel{border-color:var(--fg)}
+.sw.sel::after{
+  content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:10px;font-weight:900
+}
+</style>
+</head>
+<body>
+
+<div id="shell">
+
+  <!-- ── Top Nav ── -->
+  <nav id="topnav">
+    <div class="nav-logo">
+      <div class="nav-logo-box">R</div>
+      <span class="nav-logo-word">ROIS</span>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="nav-item active" id="ni-dashboard" onclick="setMod('dashboard')">
+      <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </div>
+
+    <!-- Live -->
+    <div class="nav-item" id="ni-live" onclick="setMod('live')">
+      <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Live
+    </div>
+
+    <!-- Rule -->
+    <div class="nav-item" id="ni-rule" onclick="setMod('rule')">
+      <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+      Rule
+    </div>
+
+    <!-- Data -->
+    <div class="nav-item" id="ni-data" onclick="setMod('data')">
+      <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      Data
+    </div>
+
+    <!-- System -->
+    <div class="nav-item" id="ni-system" onclick="setMod('system')">
+      <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      System
+    </div>
+
+    <div class="nav-right">
+      <!-- Tab bar show/hide -->
+      <button class="icon-btn" id="btn-tabs" onclick="togShell('tabs-hidden')" title="Show / Hide tab bar">
+        <svg id="ic-tabs" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20"/><path d="M7 4v5"/></svg>
+      </button>
+
+      <!-- Tab position toggle -->
+      <button class="icon-btn" id="btn-tabpos" onclick="togShell('tabs-bottom')" title="Move tabs top ↔ bottom">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><polyline points="17 7 12 2 7 7"/><polyline points="7 17 12 22 17 17"/></svg>
+      </button>
+
+      <div class="nav-sep"></div>
+
+      <!-- Layout & Theme config -->
+      <button class="icon-btn" id="btn-cfg" onclick="toggleCfg(event)" title="Layout &amp; Theme">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
+      </button>
+
+      <div class="nav-sep"></div>
+
+      <span style="font-size:11px;color:var(--fg-muted);padding:0 6px;white-space:nowrap;font-weight:500">ZY001 · F8</span>
+
+      <!-- Sign out -->
+      <button class="icon-btn" title="Sign out">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── Tab Bar ── -->
+  <div id="tabbar-wrap">
+    <div id="tabbar">
+      <div class="tab active" onclick="setTab(this,'view-dashboard')">
+        <span class="tab-dot" style="background:var(--primary)"></span>
+        Dashboard
+        <span class="tab-close">×</span>
+      </div>
+      <div class="tab" onclick="setTab(this,'view-live')">
+        <span class="tab-dot" style="background:#10b981"></span>
+        Roster
+        <span class="tab-close">×</span>
+      </div>
+      <div class="tab" onclick="setTab(this,'view-rank')">
+        <span class="tab-dot" style="background:#f59e0b"></span>
+        Rank
+        <span class="tab-close">×</span>
+      </div>
+      <div class="tab" onclick="setTab(this,'view-crew')">
+        <span class="tab-dot" style="background:#8b5cf6"></span>
+        Crew Mgmt
+        <span class="tab-close">×</span>
+      </div>
+      <div class="tab" onclick="setTab(this,'view-system')">
+        <span class="tab-dot" style="background:#64748b"></span>
+        Users
+        <span class="tab-close">×</span>
+      </div>
+    </div>
+    <div class="tab-bar-end">
+      <div class="tab-add" title="New tab">＋</div>
+    </div>
+  </div>
+
+  <!-- ── Workspace ── -->
+  <div id="workspace">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <!-- Edge expand tab: visible only when icon-only collapsed -->
+      <div id="sb-expand-tab" onclick="togShell('sidebar-collapsed')" title="Expand sidebar">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+
+      <div class="sb-header">
+        <div class="sb-module-label" id="sb-label">Dashboard</div>
+        <div class="sb-toggle-btn" onclick="togShell('sidebar-collapsed')" title="Collapse sidebar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+      </div>
+
+      <div class="sb-body">
+
+        <!-- Dashboard sub-menu -->
+        <div id="sb-dashboard">
+          <div class="sb-item active" onclick="sbAct(this)" title="Overview">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+            <span class="sb-text">Overview</span>
+          </div>
+        </div>
+
+        <!-- Live sub-menu -->
+        <div id="sb-live" style="display:none">
+          <div class="sb-group-label">Scheduling</div>
+          <div class="sb-item active" onclick="sbAct(this)" title="Roster">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+            <span class="sb-text">Roster</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Pairing">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></span>
+            <span class="sb-text">Pairing</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Flight">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4.5 1.5-6 3L5 8.8l-1 2.7L11 13l-1.5 5.5L13 20l2-3.5 3 1.5-.2 1.2z"/></svg></span>
+            <span class="sb-text">Flight</span>
+          </div>
+        </div>
+
+        <!-- Rule sub-menu -->
+        <div id="sb-rule" style="display:none">
+          <div class="sb-group-label">Rules</div>
+          <div class="sb-item active" onclick="sbAct(this)" title="Rule Templates">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></span>
+            <span class="sb-text">Rule Templates</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Rule Sets">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v6h6"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+            <span class="sb-text">Rule Sets</span>
+          </div>
+        </div>
+
+        <!-- Data sub-menu -->
+        <div id="sb-data" style="display:none">
+          <div class="sb-group-label">Reference Data</div>
+          <div class="sb-item" onclick="sbAct(this)" title="Base">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+            <span class="sb-text">Base</span>
+          </div>
+          <div class="sb-item active" onclick="sbAct(this)" title="Rank">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+            <span class="sb-text">Rank</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Fleet">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4.5 1.5-6 3L5 8.8l-1 2.7L11 13l-1.5 5.5L13 20l2-3.5 3 1.5-.2 1.2z"/></svg></span>
+            <span class="sb-text">Fleet</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Dictionary">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+            <span class="sb-text">Dictionary</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Assignment">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+            <span class="sb-text">Assignment</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Country">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+            <span class="sb-text">Country</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="City">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+            <span class="sb-text">City</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Division">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></span>
+            <span class="sb-text">Division</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Filiale">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
+            <span class="sb-text">Filiale</span>
+          </div>
+          <div class="sb-group-label">Crew</div>
+          <div class="sb-item" onclick="sbAct(this)" title="Crew Mgmt">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            <span class="sb-text">Crew Mgmt</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="CrewBase">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+            <span class="sb-text">CrewBase</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="CrewRank">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+            <span class="sb-text">CrewRank</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="CrewFleet">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4.5 1.5-6 3L5 8.8l-1 2.7L11 13l-1.5 5.5L13 20l2-3.5 3 1.5-.2 1.2z"/></svg></span>
+            <span class="sb-text">CrewFleet</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="CrewQualification">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></span>
+            <span class="sb-text">CrewQualification</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="CrewTeam">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21v-2a4 4 0 0 1 4-4h2"/><circle cx="9" cy="7" r="4"/><path d="M15 11h6"/><path d="M18 8v6"/></svg></span>
+            <span class="sb-text">CrewTeam</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="CrewStatus">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+            <span class="sb-text">CrewStatus</span>
+          </div>
+        </div>
+
+        <!-- System sub-menu -->
+        <div id="sb-system" style="display:none">
+          <div class="sb-group-label">Administration</div>
+          <div class="sb-item active" onclick="sbAct(this)" title="Users">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span class="sb-text">Users</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Profile / Roles">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+            <span class="sb-text">Profile / Roles</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Function">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+            <span class="sb-text">Function</span>
+          </div>
+          <div class="sb-item" onclick="sbAct(this)" title="Audit Log">
+            <span class="sb-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg></span>
+            <span class="sb-text">Audit Log</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main id="content">
+
+      <!-- Dashboard View -->
+      <div id="view-dashboard" class="view active">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Overview</div>
+            <div class="page-sub">April 13, 2026 &middot; F8 Airlines</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+            <button class="btn btn-p btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-accent" style="background:var(--primary)"></div>
+            <div class="stat-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19 4c-2 0-4.5 1.5-6 3L5 8.8l-1 2.7L11 13l-1.5 5.5L13 20l2-3.5 3 1.5-.2 1.2z"/></svg></div>
+            <div class="stat-lbl">Flights Today</div>
+            <div class="stat-val">248</div>
+            <div class="stat-sub"><span class="up">↑ 12</span> vs yesterday</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:#10b981"></div>
+            <div class="stat-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div class="stat-lbl">Active Crew</div>
+            <div class="stat-val">1,847</div>
+            <div class="stat-sub"><span class="up">↑ 23</span> on duty</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:#ef4444"></div>
+            <div class="stat-ico" style="color:var(--color-danger)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            <div class="stat-lbl">Violations</div>
+            <div class="stat-val" style="color:var(--color-danger)">14</div>
+            <div class="stat-sub"><span class="dn">↑ 3</span> new today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-accent" style="background:#f59e0b"></div>
+            <div class="stat-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
+            <div class="stat-lbl">Pending Approvals</div>
+            <div class="stat-val">7</div>
+            <div class="stat-sub">Awaiting review</div>
+          </div>
+        </div>
+
+        <div class="charts-row">
+          <div class="chart-card">
+            <div class="chart-title">Crew by Rank</div>
+            <div class="bar-chart">
+              <div class="br-row"><div class="br-lbl">Captain</div><div class="br-track"><div class="br-fill" style="width:72%"></div></div><div class="br-val">421</div></div>
+              <div class="br-row"><div class="br-lbl">F/O</div><div class="br-track"><div class="br-fill" style="width:88%;opacity:.8"></div></div><div class="br-val">512</div></div>
+              <div class="br-row"><div class="br-lbl">S/E</div><div class="br-track"><div class="br-fill" style="width:25%;opacity:.7"></div></div><div class="br-val">142</div></div>
+              <div class="br-row"><div class="br-lbl">C/A Lead</div><div class="br-track"><div class="br-fill" style="width:55%;opacity:.6"></div></div><div class="br-val">320</div></div>
+              <div class="br-row"><div class="br-lbl">C/A</div><div class="br-track"><div class="br-fill" style="width:100%;opacity:.5"></div></div><div class="br-val">772</div></div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">Crew Status</div>
+            <div class="donut-wrap">
+              <div class="donut" style="background:conic-gradient(var(--primary) 0% 42%,#10b981 42% 68%,#f59e0b 68% 84%,#94a3b8 84% 100%)"></div>
+              <div class="donut-lg">
+                <div class="donut-li"><div class="donut-dot" style="background:var(--primary)"></div>Active 42%</div>
+                <div class="donut-li"><div class="donut-dot" style="background:#10b981"></div>On Duty 26%</div>
+                <div class="donut-li"><div class="donut-dot" style="background:#f59e0b"></div>Reserve 16%</div>
+                <div class="donut-li"><div class="donut-dot" style="background:#94a3b8"></div>Off 16%</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">Flights — Last 14 Days</div>
+            <div class="bars16">
+              <div class="b16" style="height:45%"></div><div class="b16" style="height:62%"></div><div class="b16" style="height:40%"></div><div class="b16" style="height:75%"></div><div class="b16" style="height:58%"></div><div class="b16" style="height:82%"></div><div class="b16" style="height:67%"></div><div class="b16" style="height:90%"></div><div class="b16" style="height:72%"></div><div class="b16" style="height:86%"></div><div class="b16" style="height:63%"></div><div class="b16" style="height:94%"></div><div class="b16" style="height:78%"></div><div class="b16" style="height:100%"></div>
+            </div>
+            <div class="b16-lbl"><span>Apr 1</span><span>Apr 7</span><span>Apr 13</span></div>
+          </div>
+        </div>
+
+        <div class="tbl-card">
+          <div class="tbl-head">
+            <div class="tbl-title">Recent Assignments</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm">Export</button>
+              <button class="btn btn-p btn-sm">+ Assign</button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Crew ID</th><th>Name</th><th>Rank</th><th>Flight</th><th>Route</th><th>Date</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>ZY001</td><td class="td-em">Zhang Yi</td><td>Captain</td><td>F8-201</td><td>PEK→SHA</td><td>Apr 13</td><td><span class="badge bg">On Duty</span></td></tr>
+              <tr><td>LM042</td><td class="td-em">Li Ming</td><td>F/O</td><td>F8-205</td><td>SHA→CAN</td><td>Apr 13</td><td><span class="badge bb">Scheduled</span></td></tr>
+              <tr><td>WJ108</td><td class="td-em">Wang Jing</td><td>C/A Lead</td><td>F8-312</td><td>CAN→CTU</td><td>Apr 14</td><td><span class="badge by">Pending</span></td></tr>
+              <tr><td>CL073</td><td class="td-em">Chen Lei</td><td>Captain</td><td>—</td><td>—</td><td>Apr 14</td><td><span class="badge br2">Violation</span></td></tr>
+              <tr><td>HX200</td><td class="td-em">Han Xiao</td><td>F/O</td><td>F8-410</td><td>PEK→CAN</td><td>Apr 15</td><td><span class="badge bs">Reserve</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Roster / Live -->
+      <div id="view-live" class="view">
+        <div class="gantt-ph">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:14px;opacity:.6"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg>
+          <div style="font-size:15px;font-weight:700;color:var(--fg);margin-bottom:6px">Gantt Roster View</div>
+          <div style="font-size:12px;color:var(--fg-muted);line-height:1.6">Canvas renders here — crew rows × time axis<br>All Gantt interactions preserved inside this tab</div>
+        </div>
+      </div>
+
+      <!-- Rank -->
+      <div id="view-rank" class="view">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Rank Management</div>
+            <div class="page-sub">Manage crew ranks and qualification thresholds</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm">Import</button>
+            <button class="btn btn-p btn-sm">+ New Rank</button>
+          </div>
+        </div>
+        <div class="tbl-card">
+          <table>
+            <thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Crew Count</th><th>Min Hours</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><code style="color:var(--primary-text);font-size:11px;font-weight:600">CPT</code></td><td class="td-em">Captain</td><td>Flight Deck</td><td>421</td><td>1,500 h</td><td><span class="badge bg">Active</span></td><td><button class="btn btn-sm">Edit</button></td></tr>
+              <tr><td><code style="color:var(--primary-text);font-size:11px;font-weight:600">FO</code></td><td class="td-em">First Officer</td><td>Flight Deck</td><td>512</td><td>250 h</td><td><span class="badge bg">Active</span></td><td><button class="btn btn-sm">Edit</button></td></tr>
+              <tr><td><code style="color:var(--primary-text);font-size:11px;font-weight:600">SE</code></td><td class="td-em">Second Officer</td><td>Flight Deck</td><td>142</td><td>150 h</td><td><span class="badge bg">Active</span></td><td><button class="btn btn-sm">Edit</button></td></tr>
+              <tr><td><code style="color:var(--primary-text);font-size:11px;font-weight:600">CAL</code></td><td class="td-em">C/A Lead</td><td>Cabin</td><td>320</td><td>200 h</td><td><span class="badge bg">Active</span></td><td><button class="btn btn-sm">Edit</button></td></tr>
+              <tr><td><code style="color:var(--primary-text);font-size:11px;font-weight:600">CA</code></td><td class="td-em">Cabin Attendant</td><td>Cabin</td><td>772</td><td>100 h</td><td><span class="badge bg">Active</span></td><td><button class="btn btn-sm">Edit</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Crew Mgmt -->
+      <div id="view-crew" class="view">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Crew Management</div>
+            <div class="page-sub">Search and manage crew members</div>
+          </div>
+          <button class="btn btn-p btn-sm">+ New Crew</button>
+        </div>
+        <div class="tbl-card">
+          <table>
+            <thead><tr><th>Crew ID</th><th>Name</th><th>Rank</th><th>Base</th><th>Fleet</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>ZY001</td><td class="td-em">Zhang Yi</td><td>Captain</td><td>PEK</td><td>B737</td><td><span class="badge bg">Active</span></td></tr>
+              <tr><td>LM042</td><td class="td-em">Li Ming</td><td>F/O</td><td>SHA</td><td>A320</td><td><span class="badge bg">Active</span></td></tr>
+              <tr><td>WJ108</td><td class="td-em">Wang Jing</td><td>C/A Lead</td><td>CAN</td><td>—</td><td><span class="badge by">On Leave</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div id="view-system" class="view">
+        <div class="page-header">
+          <div>
+            <div class="page-title">User Management</div>
+            <div class="page-sub">Manage system users, roles and access control</div>
+          </div>
+          <button class="btn btn-p btn-sm">+ New User</button>
+        </div>
+        <div class="tbl-card">
+          <table>
+            <thead><tr><th>User Code</th><th>Name</th><th>Role</th><th>Schema</th><th>Last Login</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>admin</td><td class="td-em">System Admin</td><td><span class="badge br2">Admin</span></td><td>f8</td><td>Apr 13 09:12</td><td><span class="badge bg">Active</span></td></tr>
+              <tr><td>dispatcher01</td><td class="td-em">Wang Fang</td><td><span class="badge bb">Dispatcher</span></td><td>f8</td><td>Apr 13 08:45</td><td><span class="badge bg">Active</span></td></tr>
+              <tr><td>viewer99</td><td class="td-em">Chen Jia</td><td><span class="badge bs">Viewer</span></td><td>tg</td><td>Apr 10 14:30</td><td><span class="badge by">Inactive</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- workspace -->
+</div><!-- shell -->
+
+<!-- ── Config Popover ── -->
+<div id="cfg-popover">
+  <div class="cfg-head">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
+    Layout &amp; Theme
+  </div>
+
+  <div class="cfg-sect">
+    <div class="cfg-sect-lbl">Sidebar</div>
+    <div class="cfg-row" onclick="togShell('sidebar-collapsed')">
+      <div class="tgl" id="tg-sidebar-collapsed"></div> Icon-only mode
+    </div>
+    <div class="cfg-row" onclick="togShell('sidebar-hidden')">
+      <div class="tgl" id="tg-sidebar-hidden"></div> Fully hidden
+    </div>
+  </div>
+
+  <div class="cfg-sect">
+    <div class="cfg-sect-lbl">Top Nav Bar</div>
+    <div class="cfg-row" onclick="togShell('nav-hidden')">
+      <div class="tgl" id="tg-nav-hidden"></div> Hidden (max space)
+    </div>
+  </div>
+
+  <div class="cfg-sect">
+    <div class="cfg-sect-lbl">Theme Color</div>
+    <div class="swatches">
+      <div class="sw sel" style="background:#2563eb" onclick="setTheme('',this)" title="Ocean Blue"></div>
+      <div class="sw" style="background:#059669" onclick="setTheme('emerald',this)" title="Emerald Green"></div>
+      <div class="sw" style="background:#ea580c" onclick="setTheme('orange',this)" title="Sunset Orange"></div>
+      <div class="sw" style="background:#7c3aed" onclick="setTheme('purple',this)" title="Royal Purple"></div>
+      <div class="sw" style="background:#475569" onclick="setTheme('slate',this)" title="Slate Gray"></div>
+    </div>
+  </div>
+
+  <div class="cfg-sect">
+    <div class="cfg-sect-lbl">Mode</div>
+    <div class="cfg-row" onclick="toggleDark()">
+      <div class="tgl" id="tg-dark"></div> Dark mode
+    </div>
+  </div>
+</div>
+
+<script>
+const shell = document.getElementById('shell');
+const cfgPop = document.getElementById('cfg-popover');
+const MODS = ['dashboard','live','rule','data','system'];
+
+/* ── Single shell class toggle with all side-effects ── */
+function togShell(cls) {
+  const on = shell.classList.toggle(cls);
+  const indicator = document.getElementById('tg-' + cls);
+  if (indicator) indicator.classList.toggle('on', on);
+
+  // Keep tab bar button icon in sync
+  const tabsHidden = shell.classList.contains('tabs-hidden');
+  const btnTabs = document.getElementById('btn-tabs');
+  if (btnTabs) {
+    const ic = btnTabs.querySelector('svg');
+    if (ic) {
+      // Show "panel with no tabs bar" when hidden, normal panel when visible
+      ic.style.opacity = tabsHidden ? '.4' : '1';
+    }
+  }
+}
+
+/* ── Config popover ── */
+function toggleCfg(e) {
+  e.stopPropagation();
+  const isOpen = cfgPop.classList.toggle('open');
+  document.getElementById('btn-cfg').classList.toggle('active-state', isOpen);
+}
+document.addEventListener('click', function(e) {
+  if (!cfgPop.contains(e.target) && e.target.id !== 'btn-cfg' && !e.target.closest('#btn-cfg')) {
+    cfgPop.classList.remove('open');
+    document.getElementById('btn-cfg').classList.remove('active-state');
+  }
+});
+
+/* ── Module switching ── */
+const sbLabels = {
+  dashboard: 'Dashboard',
+  live: 'Live',
+  rule: 'Rule',
+  data: 'Data',
+  system: 'System'
+};
+function setMod(mod) {
+  MODS.forEach(function(m) {
+    document.getElementById('ni-' + m)?.classList.toggle('active', m === mod);
+    var sb = document.getElementById('sb-' + m);
+    if (sb) sb.style.display = m === mod ? 'block' : 'none';
+  });
+  document.getElementById('sb-label').textContent = sbLabels[mod] || mod;
+}
+setMod('dashboard');
+
+/* ── Tab switching — display toggle only, never unmount ── */
+function setTab(tabEl, viewId) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  tabEl.classList.add('active');
+  document.querySelectorAll('.view').forEach(function(v) {
+    v.style.display = 'none';
+    v.classList.remove('active');
+  });
+  var v = document.getElementById(viewId);
+  if (v) {
+    v.style.display = viewId === 'view-live' ? 'flex' : 'block';
+    v.classList.add('active');
+  }
+}
+// Init: hide all views, then show dashboard
+document.querySelectorAll('.view').forEach(function(v) { v.style.display = 'none'; });
+document.getElementById('view-dashboard').style.display = 'block';
+
+/* ── Sidebar item active ── */
+function sbAct(el) {
+  var body = el.closest('.sb-body');
+  if (body) body.querySelectorAll('.sb-item').forEach(function(i) { i.classList.remove('active'); });
+  el.classList.add('active');
+}
+
+/* ── Dark mode ── */
+function toggleDark() {
+  var dark = document.documentElement.dataset.dark !== 'true';
+  document.documentElement.dataset.dark = dark;
+  document.getElementById('tg-dark').classList.toggle('on', dark);
+}
+
+/* ── Theme color ── */
+function setTheme(key, sw) {
+  document.documentElement.dataset.theme = key;
+  document.querySelectorAll('.sw').forEach(function(s) { s.classList.remove('sel'); });
+  sw.classList.add('sel');
+}
+</script>
+</body>
+</html>

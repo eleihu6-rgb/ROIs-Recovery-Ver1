@@ -1,0 +1,205 @@
+{
+ "section": "Scenario",
+ "cases": [
+  {
+   "id": "T2-SC-001",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Overview",
+   "title": "Scenario status lifecycle icons render for each state",
+   "preconditions": "Signed into Altair; Scenario tab accessible with at least one scenario in each of Draft, Running/Done, and Published states.",
+   "steps": "1. Open the Scenario tab.\n2. Inspect the status icon on scenario rows in the left list.\n3. Confirm the icon-to-status mapping matches the documented lifecycle.",
+   "expected": "Each status renders its documented icon: Pencil = Draft, spinning LoaderCircle = Running, CheckCircle2 = Done, AlertCircle = Failed, UploadCloud = Published. A sandbox scenario shows no effect on the live schedule until published.",
+   "severity": "Medium"
+  },
+  {
+   "id": "T2-SC-002",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Browsing and searching scenarios",
+   "title": "Search and Type/Status dropdowns filter the scenario list",
+   "preconditions": "Scenario tab open with multiple scenarios of mixed type (PO/RO) and status.",
+   "steps": "1. Open the Scenario tab; confirm the left panel lists scenarios.\n2. In the search bar (placeholder 'Search scenarios…'), type a known scenario ID or name and confirm the list narrows as you type.\n3. Set the Type dropdown to 'RO' and confirm only RO scenarios remain.\n4. Set the Status dropdown to 'Done' and confirm only Done scenarios remain.\n5. Click a remaining row.",
+   "expected": "The list live-filters by the typed text (ID/name/user); Type=RO shows only RO rows; Status=Done shows only Done rows; clicking a row opens that scenario's detail panel on the right.",
+   "severity": "Medium"
+  },
+  {
+   "id": "T2-SC-003",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Creating a new scenario",
+   "title": "Create a new Draft scenario from a sidebar section",
+   "preconditions": "Scenario tab open; user in the Roster (RO) sidebar section.",
+   "steps": "1. In the Scenario sidebar select the Roster section (for an RO scenario).\n2. Click the + (Create new scenario) button at the top of the scenario list.\n3. Confirm a new scenario is created immediately with Draft status and its detail panel opens on the right.\n4. Verify the new scenario inherited the RO type of the section.",
+   "expected": "A new scenario appears with Draft status (Pencil icon) and its editable detail panel opens on the right; the scenario type is RO, matching the Roster section it was created from.",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-004",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Creating a new scenario",
+   "title": "Set RP Date and required fields, then Save a Draft scenario",
+   "preconditions": "A newly created Draft RO scenario is open in the detail panel.",
+   "steps": "1. Edit the Name field at the top of the detail panel to a descriptive value.\n2. In Basic Info, choose a roster period with the RP Date selector.\n3. Confirm the Start and End date inputs auto-fill from the selected period and are read-only.\n4. Set Division, Rule Set, and Pairing Sc. (e.g. 0 - Live).\n5. Click the Save icon (floppy disk) in the toolbar.",
+   "expected": "Start/End populate read-only from the RP Date; after Save the icon shows a spinner then a success notification, and the scenario remains in Draft status. With no further edits the Save icon greys out with a 'Saved' tooltip.",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-005",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Duplicating a scenario",
+   "title": "Duplicate a scenario into a Draft copy retaining configuration",
+   "preconditions": "Scenario tab open with at least one configured RO scenario that has scope filters set.",
+   "steps": "1. Hover the source scenario row and click the ⋯ menu button on the right.\n2. Click Duplicate in the menu.\n3. Confirm a new Draft named 'Copy of [original name]' is created and auto-selected with its detail panel open.\n4. With the name field highlighted, type a new name and press Save (disk icon).",
+   "expected": "A new Draft copy is created carrying the original type, date range, and type-specific config (Model, Rule Set, Pairing Scenario, Crew/Pairing scope filters) but no optimisation results or KPIs; the name field is auto-focused and the rename is saved.",
+   "severity": "Medium"
+  },
+  {
+   "id": "T2-SC-006",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Setting scope filters",
+   "title": "Set PO Flight Filters scope on a PO scenario",
+   "preconditions": "A PO scenario is open in the detail panel.",
+   "steps": "1. Open the scenario's Scope Filters section and expand the Flight Filters group.\n2. Add a flight number chip in Flight Nos (type a value, press Enter).\n3. Add Dep Airports and/or Arr Airports and Fleets chips.\n4. Set the Flight Status dropdown (Scheduled / Actual / All).\n5. Click Save.",
+   "expected": "Entered values appear as chips; the number badge on the Flight Filters header reflects the count of active filters; the Flight Status selection is applied; changes are saved. Empty fields mean 'include everything'.",
+   "severity": "Medium"
+  },
+  {
+   "id": "T2-SC-007",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Setting scope filters",
+   "title": "Set RO Crew and Pairing scope filters with live FILTER summaries",
+   "preconditions": "An RO scenario is open in the detail panel.",
+   "steps": "1. Open Scope Filters and expand the Crew Filters group.\n2. Select Bases, Ranks, Fleets from their dropdowns and set a Seniority Min/Max range.\n3. Expand the Pairing Filters group and select Bases, Ranks, Fleets, Type and a Duration (days) Min/Max range.\n4. Observe the grey FILTER summary line under each group.\n5. Click Save.",
+   "expected": "Each group's number badge counts active filters; the FILTER line summarises Crew as bases/ranks/fleets/seniority/birthday and Pairing as bases/ranks/fleets/types/duration, with an asterisk (*) meaning no restriction; selections come from reference-table dropdowns and are saved.",
+   "severity": "Medium"
+  },
+  {
+   "id": "T2-SC-008",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Running an optimisation",
+   "title": "Pre-run check blocks an optimisation with missing required fields",
+   "preconditions": "A Draft RO scenario is open that is missing at least one required field (e.g. Rule Set or Pairing Scenario).",
+   "steps": "1. Open the scenario with an incomplete required field.\n2. Click the Play icon (Kick off run) in the scenario toolbar.\n3. Review the Pre-run Check dialog.",
+   "expected": "A Pre-run Check dialog opens listing the missing item(s) under 'Must fix before running' in red; the optimisation does not start. With warnings only (no blockers) a 'Proceed Anyway' button is offered instead.",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-009",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Running an optimisation",
+   "title": "Save and run an optimisation to completion",
+   "preconditions": "A Draft RO scenario with Start/End, Rule Set, and Pairing Scenario set and unsaved edits pending.",
+   "steps": "1. Click the Play icon (Kick off run).\n2. In the Unsaved changes dialog, choose Save & Run.\n3. Confirm the 'Optimization started successfully' notification and that the toolbar button switches to the amber Stop icon.\n4. Confirm the list status icon becomes a spinning Running icon and the detail badge reads Running.\n5. Wait for the engine to finish.",
+   "expected": "The run starts only after saving; while running the button shows the amber Stop icon and status is Running; on completion a success/failure notification appears and the status badge changes to Done (green CheckCircle2, results appear) or Failed (red AlertCircle).",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-010",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Reading your optimisation results",
+   "title": "KPI, Credit Hours, and Uncovered result tabs show optimisation output",
+   "preconditions": "A scenario has reached Done status with an optimisation result loaded.",
+   "steps": "1. Open the Done scenario's detail panel and confirm the six-tab rail: KPI, Credit Hours, Uncovered, Distribution, Versions, Notes.\n2. On the KPI tab, confirm one card per key metric (name, optimised value, description).\n3. Open Credit Hours and confirm the per-crew table lists Crew Id, Base, Rank, Credited Hours, Credit Min/Max and related columns; use the search box and CSV export.\n4. Open Uncovered and confirm the 'Uncovered Pairings & Reserves' table with row count.",
+   "expected": "KPI shows one card per metric; Credit Hours lists per-crew credited hours with filter and CSV export; Uncovered lists unassigned pairing-complement rows (Pairing then Reserve) with a header row count, and is empty when everything is covered.",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-011",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Reading your optimisation results",
+   "title": "Distribution charts/table and Versions/Notes tabs behave correctly",
+   "preconditions": "A Done scenario with a report-shaped result loaded.",
+   "steps": "1. Open the Distribution tab; toggle the Both / Pairing / Reserve type filter and the Chart / Table view.\n2. Confirm the summary tiles (Assigned slots, Uncovered slots, Peak day load, Crew utilization) and the two linked charts.\n3. Switch to Table view and confirm the Daily Distribution rows and Σ slot-days totals row.\n4. Open the Versions tab and confirm archived versions with a Current badge and Open Gantt / Differences / delete actions.\n5. Open Notes and post a question; confirm the Q label, byline, and 'unanswered' marker.",
+   "expected": "Distribution filters/toggles apply and tiles/charts/table render (weekend bands, legend colours, totals row); Versions lists archived runs with a Current badge and working Open Gantt / Differences / Delete actions; a posted Note shows a Q label, date-time byline and 'unanswered', and the open-questions badge counts it.",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-012",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Checking roster quality (Quality Analyzer)",
+   "title": "Open the Quality Analyzer and review QLTY findings per crew",
+   "preconditions": "A Scenario that has finished optimising is open with its roster loaded in the Roster pane.",
+   "steps": "1. In the Scenario Roster pane toolbar, click the Gauge icon (Quality Analyzer).\n2. Confirm the Roster Quality Analyzer opens in a master–detail layout grouped by quality rule with 'Issues only' ticked by default.\n3. Select each QLTY rule in the left nav (Qlty-1001 Standalone RES, Qlty-1002 Working >6d, Qlty-1003 Day-off only, Qlty-1004 Max working days) and review its crew table.\n4. Confirm each crew row shows Crew ID, Base/Rank, and Awarded credit (Before opt / After opt).",
+   "expected": "The Gauge button is present only in the Scenario roster pane (not Live); the analyzer opens grouped by QLTY rule with affected-crew counts; each rule's table shows Crew ID, Base/Rank, Awarded credit (Before/After opt) and the finding detail; 'Issues only' limits the nav to rules with open findings.",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-013",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Checking roster quality (Quality Analyzer)",
+   "title": "Adjust Quality Analyzer parameters and jump to a crew",
+   "preconditions": "The Roster Quality Analyzer is open on a scenario with an optimisation result.",
+   "steps": "1. Click a Crew ID link in a rule's crew table and confirm that crew is brought to the top of the roster while the dialog stays open.\n2. Click Parameters to open the Parameter Configuration tab.\n3. Adjust Min consecutive RES days, Max consecutive working days, Max working days in period, Non-working assignment codes, and Applicable divisions.\n4. Click Save & Re-analyze.",
+   "expected": "Clicking a Crew ID scrolls that crew to the top row with the dialog still open; Save & Re-analyze applies the session-only thresholds and re-runs the analysis, returning to the Quality Analyzer tab with updated findings; Cancel returns without changes.",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-014",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Importing a roster to Live",
+   "title": "Open the Import to Live dialog and select assignments",
+   "preconditions": "An RO (live-pairing) scenario is in Done status with optimisation results.",
+   "steps": "1. Click the UploadCloud icon (tooltip 'Import to Live Roster') in the scenario toolbar.\n2. In the 'Import Optimized Roster to Live' dialog confirm the assignment table loads with columns Crew ID, Kind, Pairing ID, Pairing Label, Source, Base, Div, Asgmt Group, Assignment, Start (UTC), End (UTC), Status.\n3. Enter a Base and/or Crew ID filter and click Search; confirm the row count shows filtered / total.\n4. Click Select Unpublished (or the header checkbox) to select all visible pending rows.",
+   "expected": "The UploadCloud icon is enabled only in Done/Published status; the dialog loads the virtualized assignment table with all listed columns; Search applies filters and updates the filtered/total count without changing selection; Select Unpublished selects all visible importable rows while Imported (greyed) rows stay unselectable.",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-015",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Importing a roster to Live",
+   "title": "Import selected assignments and transition scenario to Published",
+   "preconditions": "The Import Optimized Roster to Live dialog is open with pending rows selected.",
+   "steps": "1. Click Import N Selected.\n2. Watch the progress bar step from 'Preparing selected rows' to 'Writing to Live roster' with elapsed time.\n3. Confirm the completion state 'Imported: N' with elapsed time.\n4. Close the dialog and inspect the scenario status.",
+   "expected": "Only the explicitly selected rows are written to the Live roster; on completion the dialog shows 'Imported: N'; the scenario status changes to Published (amber UploadCloud in the list, amber Published badge in the detail panel); reopening the dialog shows those rows greyed out/disabled while any un-imported rows remain selectable.",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-016",
+   "feature_area": "Scenario",
+   "help_ref": "Scenario › Deleting a scenario",
+   "title": "Delete a scenario with confirmation",
+   "preconditions": "Scenario tab open with a disposable scenario present.",
+   "steps": "1. Hover the target scenario row and click the ⋯ menu button.\n2. Click Delete (trash icon) in the menu.\n3. In the confirmation dialog, click Delete again to confirm.",
+   "expected": "A confirmation dialog appears; after confirming, the scenario is permanently removed from the list along with all its settings, filters, and KPI results (the action cannot be undone).",
+   "severity": "High"
+  },
+  {
+   "id": "T2-SC-017",
+   "feature_area": "Settings",
+   "help_ref": "Settings & Personalization › Changing the theme",
+   "title": "Switch colour theme from the palette dropdown",
+   "preconditions": "Signed into Altair on any screen.",
+   "steps": "1. Click the palette icon in the top-right corner of the navigation bar.\n2. Confirm the dropdown lists the themes (Ocean Blue, Dark Pro, Emerald Green, Sunset Orange, Slate Gray) and shows the running version line (Ver:B…/F…/R…) at the top.\n3. Click a theme other than the current one.",
+   "expected": "The app colour scheme updates instantly without a page reload; a checkmark marks the newly selected theme; the version line at the top is informational only and does not change the applied theme.",
+   "severity": "Low"
+  },
+  {
+   "id": "T2-SC-018",
+   "feature_area": "Settings",
+   "help_ref": "Settings & Personalization › Switching dark / light mode",
+   "title": "Toggle dark/light mode independently of theme",
+   "preconditions": "Signed into Altair using a theme other than Dark Pro.",
+   "steps": "1. Click the palette icon in the top-right corner to open the theme dropdown.\n2. Click the Dark Mode / Light Mode toggle at the bottom of the dropdown.\n3. Observe the app rendering and the toggle label.\n4. Switch to the Dark Pro theme and observe the toggle behaviour.",
+   "expected": "The app switches between dark and light rendering immediately and the label flips between Dark Mode/Light Mode; the choice is saved automatically; when Dark Pro is selected it always renders dark and the toggle has no effect.",
+   "severity": "Low"
+  },
+  {
+   "id": "T2-SC-019",
+   "feature_area": "Settings",
+   "help_ref": "Settings & Personalization › Signing out",
+   "title": "Sign out returns to the login screen",
+   "preconditions": "Signed into Altair with no unsaved Live changes (or changes already saved with Ctrl+S).",
+   "steps": "1. Hover the sign-out (door) icon in the top-right corner and confirm the 'Sign Out' tooltip.\n2. Click the sign-out icon.",
+   "expected": "The session ends immediately and the app redirects to the login screen; any unsaved Live changes would be lost (documented behaviour). Separately, after 60 minutes of inactivity a Session Timeout dialog with a 3-minute countdown appears and signs the user out if ignored.",
+   "severity": "Low"
+  },
+  {
+   "id": "T2-SC-020",
+   "feature_area": "Regression",
+   "help_ref": "Regression Playground › Overview & how to use",
+   "title": "Create, generate, and run a plain-English regression test",
+   "preconditions": "Regression tab available (AI backend deployed in this environment).",
+   "steps": "1. Open the Regression tab; if the backend is unavailable confirm the 'Regression backend not available in this environment' message instead.\n2. Click Add Test, enter a plain-English story, pick a category and priority, and save.\n3. Click the wand button on the test row to generate Playwright code; if red issue chips appear, click Regenerate with fixes until gone, then Apply.\n4. Click the category Run button (or Run All) and watch the bottom status bar progress.\n5. Expand the row chevron to review Test story, Pass conditions, run outcome, and the evidence snapshot; on a failed round click Diagnose.",
+   "expected": "The test is added and appears in the catalog; the wand generates Playwright code and blocks Apply until issue chips are cleared; running updates the status bar and records the result with a stability badge (Nx stable or N% fail) and an evidence snapshot; Diagnose returns an AI root-cause classification (code bug, data gap, environment issue, or test bug).",
+   "severity": "Medium"
+  }
+ ]
+}

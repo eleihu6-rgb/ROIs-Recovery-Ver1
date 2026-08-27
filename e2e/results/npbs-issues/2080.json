@@ -1,0 +1,45 @@
+{
+  "employeeId": "2080",
+  "category": "YVR-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 7,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 106,
+      "name": "Departing On"
+    },
+    {
+      "tier": "T3",
+      "code": 106,
+      "name": "Departing On"
+    },
+    {
+      "tier": "T4",
+      "code": 106,
+      "name": "Departing On"
+    },
+    {
+      "tier": "T5",
+      "code": 106,
+      "name": "Departing On"
+    },
+    {
+      "tier": "T6",
+      "code": 106,
+      "name": "Departing On"
+    },
+    {
+      "tier": "T7",
+      "code": 106,
+      "name": "Departing On"
+    }
+  ],
+  "issues": []
+}

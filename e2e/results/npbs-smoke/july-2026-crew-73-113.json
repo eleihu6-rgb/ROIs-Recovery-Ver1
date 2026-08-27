@@ -1,0 +1,229 @@
+{
+  "period": "202607",
+  "periodStart": "2026-07-01",
+  "periodEnd": "2026-07-31",
+  "source": "CLASS-BidsReport_July2026.txt",
+  "sourceSha256": "523a4a345372931504b4bb89531712f1a63fefaf523cbf77f880b03371bf7375",
+  "dateMode": "no-shift",
+  "runId": "npbs-july-smoke-20260722-134658",
+  "buckets": [
+    "YYZ-FO",
+    "YVR-CA"
+  ],
+  "generatedFrom": "e2e/utils/npbs/generate-fixture.mjs",
+  "crew": [
+    {
+      "employeeId": "73",
+      "category": "YYZ-737-FO",
+      "base": "YYZ",
+      "rank": "FO",
+      "seniority": 1,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jul 11, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jul 11, 2026"
+            ],
+            "raw": "Jul 11, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Avoid Pairings If Any Landing In FLL, GDL, KIN, MEX, YEG, YHU, YHZ, YKF, YQM, YQT, YQY, YSJ, YUL, YWG, YXX, YYC, YYG",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "FLL",
+              "GDL",
+              "KIN",
+              "MEX",
+              "YEG",
+              "YHU",
+              "YHZ",
+              "YKF",
+              "YQM",
+              "YQT",
+              "YQY",
+              "YSJ",
+              "YUL",
+              "YWG",
+              "YXX",
+              "YYC",
+              "YYG"
+            ],
+            "values": [
+              "FLL",
+              "GDL",
+              "KIN",
+              "MEX",
+              "YEG",
+              "YHU",
+              "YHZ",
+              "YKF",
+              "YQM",
+              "YQT",
+              "YQY",
+              "YSJ",
+              "YUL",
+              "YWG",
+              "YXX",
+              "YYC",
+              "YYG"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Avoid Pairings If Pairing Length > 1 days",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 112,
+          "name": "Pairing Length",
+          "bid": {
+            "type": "pairing-length-preference",
+            "minDays": 2,
+            "maxDays": null,
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Pairing Number T4117, T4136, TB8132, TB8141",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4117",
+              "T4136",
+              "TB8132",
+              "TB8141"
+            ],
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "113",
+      "category": "YVR-737-CA",
+      "base": "YVR",
+      "rank": "CA",
+      "seniority": 2,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jul 4, 2026, Jul 5, 2026, Jul 3, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jul 4, 2026",
+              "Jul 5, 2026",
+              "Jul 3, 2026"
+            ],
+            "raw": "Jul 4, 2026, Jul 5, 2026, Jul 3, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Avoid Pairings If Pairing Number V4101, V4102, V4103, V4104, V4107, V4111, V4113, V4114, V4115, V4117, V4118, V4119, V4120, V4124, V4125, V4127, V4130, V4131, V4133, V4134, V4136, V4138, V4139, V4141, V4143, V4145, V4146, V4148, V4150, V4151, V4152",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4101",
+              "V4102",
+              "V4103",
+              "V4104",
+              "V4107",
+              "V4111",
+              "V4113",
+              "V4114",
+              "V4115",
+              "V4117",
+              "V4118",
+              "V4119",
+              "V4120",
+              "V4124",
+              "V4125",
+              "V4127",
+              "V4130",
+              "V4131",
+              "V4133",
+              "V4134",
+              "V4136",
+              "V4138",
+              "V4139",
+              "V4141",
+              "V4143",
+              "V4145",
+              "V4146",
+              "V4148",
+              "V4150",
+              "V4151",
+              "V4152"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Pairing Number V4110",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4110"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Pairing Number V4105 Limit 1",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4105"
+            ],
+            "dateScope": null
+          }
+        }
+      ]
+    }
+  ]
+}

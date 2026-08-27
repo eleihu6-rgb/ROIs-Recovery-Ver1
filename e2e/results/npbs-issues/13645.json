@@ -1,0 +1,20 @@
+{
+  "employeeId": "13645",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 3,
+  "placed": 2,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T2",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": []
+}

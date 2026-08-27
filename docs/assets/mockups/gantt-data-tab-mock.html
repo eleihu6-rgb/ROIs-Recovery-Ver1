@@ -1,0 +1,1405 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ROIS Data Tab Mock</title>
+  <script type="application/json" id="ai-coding-contract">
+    {
+      "moduleId": "data",
+      "activePageId": "crew.master",
+      "roots": ["basic", "crew"],
+      "excludedOperationalDomains": ["flight", "pairing", "roster", "scenario", "rule-authoring", "security"],
+      "basicPages": [
+        "basic.org-base",
+        "basic.rank",
+        "basic.fleet-aircraft",
+        "basic.location-route",
+        "basic.assignment",
+        "basic.qualification",
+        "basic.composition",
+        "basic.roster-period",
+        "basic.config-dictionary",
+        "basic.query",
+        "basic.holiday"
+      ],
+      "crewMasterSections": [
+        "crew",
+        "crew_base",
+        "crew_rank",
+        "crew_fleet",
+        "crew_qualification",
+        "crew_team",
+        "crew_status",
+        "crew_certificate",
+        "crew_license",
+        "crew_lic_instructor",
+        "crew_language",
+        "crew_entitlement",
+        "crew_memo",
+        "crew_profile",
+        "crew_seniority",
+        "crew_kpi_adjust"
+      ],
+      "testIds": {
+        "tree": "data-tree",
+        "toolbar": "data-toolbar",
+        "save": "data-save",
+        "validationPanel": "data-validation-panel",
+        "expiryMode": "data-filter-expiry-mode"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-2: #fbfcfd;
+      --line: #d8dde5;
+      --line-strong: #b8c0cc;
+      --text: #18202b;
+      --muted: #657283;
+      --soft: #eef2f6;
+      --blue: #1f6feb;
+      --blue-soft: #e8f1ff;
+      --teal: #0f8b8d;
+      --amber: #b7791f;
+      --amber-soft: #fff5df;
+      --red: #c0392b;
+      --red-soft: #fff0ee;
+      --green: #277a46;
+      --green-soft: #eaf7ef;
+      --shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: 42px 1fr;
+      height: 100vh;
+      min-width: 1180px;
+    }
+
+    .top-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      padding: 0 10px;
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 132px;
+      height: 100%;
+      margin-right: 8px;
+      border-right: 1px solid var(--line);
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .logo {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      background: #111827;
+      color: #fff;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+
+    .nav-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      border: 0;
+      border-radius: 3px;
+      background: transparent;
+      color: var(--muted);
+      padding: 0 10px;
+      cursor: pointer;
+    }
+
+    .nav-icon,
+    .title-icon,
+    .action-icon {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .title-icon {
+      width: 18px;
+      height: 18px;
+      color: var(--blue);
+    }
+
+    .chip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.72;
+    }
+
+    .nav-tab.active {
+      background: var(--blue-soft);
+      color: #174ea6;
+      font-weight: 700;
+    }
+
+    .nav-spacer {
+      flex: 1;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 238px 1fr;
+      min-height: 0;
+    }
+
+    .tree {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      border-right: 1px solid var(--line);
+      background: #f9fafc;
+    }
+
+    .tree-head {
+      display: flex;
+      align-items: center;
+      height: 38px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .tree-body {
+      overflow: auto;
+      padding: 8px 0;
+    }
+
+    .tree-note {
+      margin: 8px 10px 0;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--muted);
+      padding: 7px 8px;
+      font-size: 10.5px;
+      line-height: 1.35;
+    }
+
+    .tree-section {
+      margin-bottom: 10px;
+    }
+
+    .tree-root,
+    .tree-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      height: 27px;
+      padding: 0 12px;
+      white-space: nowrap;
+    }
+
+    .tree-root {
+      color: #303846;
+      font-weight: 800;
+    }
+
+    .tree-item {
+      border-left: 2px solid transparent;
+      color: #4a5564;
+      padding-left: 30px;
+      cursor: pointer;
+    }
+
+    .tree-item.active {
+      border-left-color: var(--blue);
+      background: var(--blue-soft);
+      color: #174ea6;
+      font-weight: 700;
+    }
+
+    .tree-item:hover {
+      background: #eef2f7;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 16px;
+      margin-left: auto;
+      border-radius: 3px;
+      background: var(--soft);
+      color: var(--muted);
+      padding: 0 4px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: 42px 46px 1fr 31px;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .page-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      padding: 0 12px;
+    }
+
+    .title-block {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      align-items: center;
+      column-gap: 7px;
+      min-width: 230px;
+    }
+
+    .title {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      grid-column: 2;
+      color: var(--muted);
+      font-size: 10.5px;
+    }
+
+    .state-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 24px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel-2);
+      color: var(--muted);
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .state-chip.error {
+      border-color: #f0b4ad;
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .state-chip.warn {
+      border-color: #e8c07b;
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .state-chip.ok {
+      border-color: #acd8ba;
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .icon-btn,
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      color: #334155;
+      padding: 0 9px;
+      cursor: pointer;
+    }
+
+    .icon-btn {
+      width: 30px;
+      padding: 0;
+      font-size: 15px;
+    }
+
+    .icon-btn:disabled,
+    .action-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .action-btn.primary {
+      border-color: #175cd3;
+      background: var(--blue);
+      color: #fff;
+      font-weight: 750;
+    }
+
+    .action-btn.danger {
+      border-color: #efb5af;
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .filter-bar {
+      display: grid;
+      grid-template-columns: 104px 132px 96px 96px 124px 104px 120px 128px 78px auto;
+      gap: 8px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+      padding: 8px 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .control {
+      width: 100%;
+      height: 25px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--text);
+      padding: 0 8px;
+      outline: none;
+    }
+
+    .control:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.12);
+    }
+
+    .chip-row {
+      display: flex;
+      align-self: end;
+      gap: 5px;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      border-radius: 4px;
+      background: var(--soft);
+      color: #334155;
+      padding: 0 7px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(640px, 1fr) 320px;
+      min-height: 0;
+      min-width: 0;
+    }
+
+    .grid-wrap {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .section-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      border-bottom: 1px solid var(--line);
+      padding: 0 8px;
+      background: #f8fafc;
+    }
+
+    .section-link {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #fff;
+      color: var(--muted);
+      padding: 0 8px;
+      cursor: pointer;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+
+    .section-link.active {
+      border-color: #aac8f5;
+      background: var(--blue-soft);
+      color: #174ea6;
+    }
+
+    .grid-scroll {
+      overflow: auto;
+      min-height: 0;
+      padding: 10px;
+    }
+
+    .data-section {
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 31px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+      padding: 0 9px;
+    }
+
+    .section-title {
+      font-weight: 850;
+    }
+
+    .section-meta {
+      color: var(--muted);
+      font-size: 10.5px;
+    }
+
+    .section-tools {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
+    }
+
+    .small-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 22px;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #fff;
+      color: #334155;
+      padding: 0 7px;
+      cursor: pointer;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+
+    .section-table {
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      height: 30px;
+      border-bottom: 1px solid var(--line-strong);
+      background: #eef3f8;
+      color: #405064;
+      padding: 0 8px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    td {
+      height: 32px;
+      border-bottom: 1px solid #edf0f4;
+      padding: 0 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: #f8fbff;
+    }
+
+    tr.dirty td {
+      background: #fffaf0;
+    }
+
+    tr.blocked td {
+      background: var(--red-soft);
+    }
+
+    .pin {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: inherit;
+      box-shadow: 1px 0 0 var(--line);
+    }
+
+    th.pin {
+      z-index: 3;
+      background: #e8eef6;
+    }
+
+    .cell-input,
+    .cell-select {
+      width: 100%;
+      height: 24px;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      background: transparent;
+      color: inherit;
+      padding: 0 5px;
+    }
+
+    .cell-input:focus,
+    .cell-select:focus {
+      border-color: var(--blue);
+      background: #fff;
+      outline: 0;
+      box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.12);
+    }
+
+    .cell-error {
+      border-color: #df6b61;
+      background: #fff !important;
+      color: var(--red);
+    }
+
+    .mini-status {
+      display: inline-flex;
+      align-items: center;
+      height: 19px;
+      border-radius: 3px;
+      padding: 0 6px;
+      font-size: 10.5px;
+      font-weight: 750;
+    }
+
+    .mini-status.current {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .mini-status.expired {
+      background: var(--soft);
+      color: var(--muted);
+    }
+
+    .mini-status.error {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .inspector {
+      display: grid;
+      grid-template-rows: 35px auto 1fr;
+      min-height: 0;
+      background: #fbfcfe;
+    }
+
+    .inspector-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+      padding: 0 12px;
+      font-weight: 800;
+    }
+
+    .inspector-section {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 94px 1fr;
+      gap: 5px 8px;
+      margin-top: 8px;
+    }
+
+    .kv div:nth-child(odd) {
+      color: var(--muted);
+    }
+
+    .validation-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    .validation-item {
+      border: 1px solid var(--line);
+      border-left-width: 3px;
+      border-radius: 4px;
+      background: var(--panel);
+      padding: 7px 8px;
+      line-height: 1.35;
+    }
+
+    .validation-item.error {
+      border-left-color: var(--red);
+    }
+
+    .validation-item.warn {
+      border-left-color: var(--amber);
+    }
+
+    .validation-item.ok {
+      border-left-color: var(--green);
+    }
+
+    .changes {
+      overflow: auto;
+      padding: 10px 12px;
+    }
+
+    .change-row {
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      gap: 7px;
+      align-items: start;
+      padding: 7px 0;
+      border-bottom: 1px solid #edf0f4;
+    }
+
+    .step-num {
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      background: var(--soft);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .change-title {
+      font-weight: 750;
+    }
+
+    .change-subtitle {
+      color: var(--muted);
+      font-size: 10.5px;
+      margin-top: 2px;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-top: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      padding: 0 12px;
+      font-size: 11px;
+    }
+
+    .status-bar strong {
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div class="app" data-testid="data-view" data-module-id="data" data-active-page-id="crew.master">
+    <header class="top-nav">
+      <div class="brand">
+        <span class="logo">F8</span>
+        <span>ROIS-AI</span>
+      </div>
+      <button class="nav-tab">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+        Dashboard
+      </button>
+      <button class="nav-tab">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path></svg>
+        Live
+      </button>
+      <button class="nav-tab">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2v7L4 20a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L14 9V2"></path><path d="M8 2h8"></path><path d="M7 16h10"></path></svg>
+        Scenario
+      </button>
+      <button class="nav-tab">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h5"></path></svg>
+        Rule
+      </button>
+      <button class="nav-tab active">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path></svg>
+        Data
+      </button>
+      <button class="nav-tab">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z"></path><path d="M19.4 15a1.8 1.8 0 0 0 .4 2l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.8 1.8 0 0 0-2-.4 1.8 1.8 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.8 1.8 0 0 0-1-1.6 1.8 1.8 0 0 0-2 .4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.8 1.8 0 0 0 .4-2 1.8 1.8 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.8 1.8 0 0 0 1.6-1 1.8 1.8 0 0 0-.4-2l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.8 1.8 0 0 0 2 .4A1.8 1.8 0 0 0 10 3V3a2 2 0 0 1 4 0v.1a1.8 1.8 0 0 0 1 1.6 1.8 1.8 0 0 0 2-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.8 1.8 0 0 0-.4 2 1.8 1.8 0 0 0 1.6 1h.1a2 2 0 0 1 0 4h-.1a1.8 1.8 0 0 0-1.6 1z"></path></svg>
+        System
+      </button>
+      <button class="nav-tab">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Regression
+      </button>
+      <div class="nav-spacer"></div>
+      <span class="state-chip"><span class="chip-dot"></span>admin · F8</span>
+      <span class="state-chip ok"><span class="chip-dot"></span>Connected</span>
+    </header>
+
+    <div class="shell">
+      <aside class="tree" data-testid="data-tree">
+        <div class="tree-head">Data Maintenance</div>
+        <div class="tree-body">
+          <section class="tree-section">
+            <div class="tree-root" data-testid="data-tree-root-basic">▾ Basic</div>
+            <div class="tree-item" data-testid="data-tree-item-basic.org-base" data-page-id="basic.org-base">Org & Base <span class="badge">6</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.rank" data-page-id="basic.rank">Rank <span class="badge">3</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.fleet-aircraft" data-page-id="basic.fleet-aircraft">Fleet & Aircraft <span class="badge">2</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.location-route" data-page-id="basic.location-route">Location & Route <span class="badge">4</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.assignment" data-page-id="basic.assignment">Assignment <span class="badge">3</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.qualification" data-page-id="basic.qualification">Qualification <span class="badge">5</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.composition" data-page-id="basic.composition">Composition <span class="badge">3</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.roster-period" data-page-id="basic.roster-period">Roster Period <span class="badge">2</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.config-dictionary" data-page-id="basic.config-dictionary">Config Dictionary <span class="badge">5</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.query" data-page-id="basic.query">Query <span class="badge">4</span></div>
+            <div class="tree-item" data-testid="data-tree-item-basic.holiday" data-page-id="basic.holiday">Holiday Calendar <span class="badge">1</span></div>
+          </section>
+          <section class="tree-section">
+            <div class="tree-root" data-testid="data-tree-root-crew">▾ Crew</div>
+            <div class="tree-item active" data-testid="data-tree-item-crew.master" data-page-id="crew.master">Crew Master <span class="badge">14</span></div>
+            <div class="tree-item" data-testid="data-tree-item-crew.workload-summary" data-page-id="crew.workload-summary">Crew Workload Summary <span class="badge">view</span></div>
+          </section>
+          <div class="tree-note">
+            Flight, pairing and roster operational data stay in the Gantt panes.
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="page-bar">
+          <div class="title-block">
+            <svg class="title-icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path></svg>
+            <div class="title">Crew Master</div>
+            <div class="subtitle">Crew basic, base, rank, fleet, qualification and team data</div>
+          </div>
+          <span class="state-chip"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg>38 expiring records</span>
+          <span class="state-chip warn"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>4 unsaved changes</span>
+          <span class="state-chip error"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>1 blocking issue</span>
+          <div class="tools" data-testid="data-toolbar">
+            <button class="icon-btn" title="Undo">↶</button>
+            <button class="icon-btn" title="Redo">↷</button>
+            <button class="action-btn" data-testid="data-validate"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Validate</button>
+            <button class="action-btn danger"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>Discard</button>
+            <button class="action-btn primary" data-testid="data-save" disabled><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg>Save</button>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="field">
+            <label class="label">Crew ID</label>
+            <input class="control" data-testid="data-filter-crew-id" value="F80">
+          </div>
+          <div class="field">
+            <label class="label">Name</label>
+            <input class="control" data-testid="data-filter-name" placeholder="First / last / preferred">
+          </div>
+          <div class="field">
+            <label class="label">Rank</label>
+            <select class="control" data-testid="data-filter-rank">
+              <option>CA, FO</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Base</label>
+            <select class="control" data-testid="data-filter-base">
+              <option>YVR</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Qualification</label>
+            <select class="control" data-testid="data-filter-qualification">
+              <option>ETOPS, CAT3</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Team</label>
+            <select class="control" data-testid="data-filter-team">
+              <option>Line A</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Expiry Scope</label>
+            <select class="control" data-testid="data-filter-expiry-scope">
+              <option>All crew sections</option>
+              <option>Crew Base</option>
+              <option>Crew Rank</option>
+              <option>Crew Fleet</option>
+              <option>Crew Qual</option>
+              <option>Crew Team</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Expiry Mode</label>
+            <select class="control" data-testid="data-filter-expiry-mode">
+              <option>Expiring in</option>
+              <option>Current / active</option>
+              <option>Expired</option>
+              <option>Date range</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Days</label>
+            <input class="control" data-testid="data-filter-expiry-days" value="60">
+          </div>
+          <div class="chip-row">
+            <span class="filter-chip">Rank: CA + FO</span>
+            <span class="filter-chip">Base: YVR</span>
+            <span class="filter-chip">Qual: ETOPS</span>
+            <span class="filter-chip">Expiry: next 60d</span>
+          </div>
+        </div>
+
+        <section class="workspace">
+          <div class="grid-wrap">
+            <div class="section-nav">
+              <button class="section-link active">Crew Basic</button>
+              <button class="section-link">Crew Base</button>
+              <button class="section-link">Crew Rank</button>
+              <button class="section-link">Crew Fleet</button>
+              <button class="section-link">Crew Qual</button>
+              <button class="section-link">Crew Team</button>
+            </div>
+            <div class="grid-scroll">
+              <section class="data-section">
+                <div class="section-head">
+                  <span class="section-title">Crew Basic</span>
+                  <span class="section-meta">Identity and HR profile fields</span>
+                  <div class="section-tools">
+                    <button class="small-btn">Add Crew</button>
+                    <button class="small-btn">Collapse</button>
+                  </div>
+                </div>
+                <div class="section-table">
+                  <table>
+                    <colgroup>
+                      <col style="width: 88px">
+                      <col style="width: 132px">
+                      <col style="width: 70px">
+                      <col style="width: 74px">
+                      <col style="width: 104px">
+                      <col style="width: 102px">
+                      <col style="width: 102px">
+                      <col style="width: 120px">
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th class="pin">Crew ID</th>
+                        <th>Name</th>
+                        <th>Division</th>
+                        <th>Gender</th>
+                        <th>Employee Date</th>
+                        <th>Seniority</th>
+                        <th>Status</th>
+                        <th>Email</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="pin"><strong>F8001</strong></td>
+                        <td>Chen Wei</td>
+                        <td>P</td>
+                        <td>M</td>
+                        <td>2018-04-01</td>
+                        <td>102.00</td>
+                        <td><span class="mini-status current">Active</span></td>
+                        <td>chen.wei@example</td>
+                      </tr>
+                      <tr class="dirty">
+                        <td class="pin"><strong>F8002</strong></td>
+                        <td><input class="cell-input" value="M. Anderson"></td>
+                        <td>P</td>
+                        <td>F</td>
+                        <td>2020-08-15</td>
+                        <td>188.00</td>
+                        <td><span class="mini-status current">Edited</span></td>
+                        <td>manderson@example</td>
+                      </tr>
+                      <tr>
+                        <td class="pin"><strong>F8003</strong></td>
+                        <td>Priya Rao</td>
+                        <td>P</td>
+                        <td>F</td>
+                        <td>2021-02-01</td>
+                        <td>214.00</td>
+                        <td><span class="mini-status current">Active</span></td>
+                        <td>priya.rao@example</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="data-section">
+                <div class="section-head">
+                  <span class="section-title">Crew Base</span>
+                  <span class="section-meta">Reference-backed by Basic > Base</span>
+                  <div class="section-tools">
+                    <button class="small-btn">Add Base Row</button>
+                    <button class="small-btn">Collapse</button>
+                  </div>
+                </div>
+                <div class="section-table">
+                  <table>
+                    <colgroup>
+                      <col style="width: 88px">
+                      <col style="width: 90px">
+                      <col style="width: 110px">
+                      <col style="width: 110px">
+                      <col style="width: 92px">
+                      <col style="width: 126px">
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th class="pin">Crew ID</th>
+                        <th>Base</th>
+                        <th>Effective</th>
+                        <th>Expires</th>
+                        <th>Prime</th>
+                        <th>Validation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="pin"><strong>F8001</strong></td>
+                        <td>YVR</td>
+                        <td>2026-01-01</td>
+                        <td></td>
+                        <td>Yes</td>
+                        <td><span class="mini-status current">Current</span></td>
+                      </tr>
+                      <tr class="dirty">
+                        <td class="pin"><strong>F8002</strong></td>
+                        <td>
+                          <select class="cell-select">
+                            <option>YVR</option>
+                            <option>YYZ</option>
+                            <option>YEG</option>
+                          </select>
+                        </td>
+                        <td>2025-11-01</td>
+                        <td></td>
+                        <td>Yes</td>
+                        <td><span class="mini-status current">Edited</span></td>
+                      </tr>
+                      <tr class="blocked">
+                        <td class="pin"><strong>F8003</strong></td>
+                        <td><input class="cell-input cell-error" value="BKK"></td>
+                        <td>2026-02-01</td>
+                        <td></td>
+                        <td>Yes</td>
+                        <td><span class="mini-status error">Missing parent</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="data-section">
+                <div class="section-head">
+                  <span class="section-title">Crew Rank</span>
+                  <span class="section-meta">Reference-backed by Basic > Rank</span>
+                  <div class="section-tools">
+                    <button class="small-btn">Add Rank Row</button>
+                    <button class="small-btn">Collapse</button>
+                  </div>
+                </div>
+                <div class="section-table">
+                  <table>
+                    <colgroup>
+                      <col style="width: 88px">
+                      <col style="width: 84px">
+                      <col style="width: 84px">
+                      <col style="width: 104px">
+                      <col style="width: 110px">
+                      <col style="width: 110px">
+                      <col style="width: 126px">
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th class="pin">Crew ID</th>
+                        <th>Rank</th>
+                        <th>Position</th>
+                        <th>Fleet Group</th>
+                        <th>Effective</th>
+                        <th>Expires</th>
+                        <th>Validation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="pin"><strong>F8001</strong></td>
+                        <td>CA</td>
+                        <td>1</td>
+                        <td>WB</td>
+                        <td>2024-01-01</td>
+                        <td></td>
+                        <td><span class="mini-status current">Current</span></td>
+                      </tr>
+                      <tr class="dirty">
+                        <td class="pin"><strong>F8002</strong></td>
+                        <td>
+                          <select class="cell-select">
+                            <option>FO</option>
+                            <option>CA</option>
+                          </select>
+                        </td>
+                        <td>1</td>
+                        <td>NB</td>
+                        <td>2025-11-01</td>
+                        <td></td>
+                        <td><span class="mini-status current">Edited</span></td>
+                      </tr>
+                      <tr>
+                        <td class="pin"><strong>F8003</strong></td>
+                        <td>FO</td>
+                        <td>1</td>
+                        <td>WB</td>
+                        <td>2025-03-01</td>
+                        <td></td>
+                        <td><span class="mini-status current">Current</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="data-section">
+                <div class="section-head">
+                  <span class="section-title">Crew Fleet</span>
+                  <span class="section-meta">Reference-backed by Basic > Fleet</span>
+                  <div class="section-tools">
+                    <button class="small-btn">Add Fleet Row</button>
+                    <button class="small-btn">Collapse</button>
+                  </div>
+                </div>
+                <div class="section-table">
+                  <table>
+                    <colgroup>
+                      <col style="width: 88px">
+                      <col style="width: 94px">
+                      <col style="width: 92px">
+                      <col style="width: 104px">
+                      <col style="width: 110px">
+                      <col style="width: 110px">
+                      <col style="width: 126px">
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th class="pin">Crew ID</th>
+                        <th>Fleet</th>
+                        <th>AC Type</th>
+                        <th>Fleet Group</th>
+                        <th>Effective</th>
+                        <th>Expires</th>
+                        <th>Validation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="pin"><strong>F8001</strong></td>
+                        <td>787</td>
+                        <td>789</td>
+                        <td>WB</td>
+                        <td>2024-01-01</td>
+                        <td></td>
+                        <td><span class="mini-status current">Current</span></td>
+                      </tr>
+                      <tr>
+                        <td class="pin"><strong>F8002</strong></td>
+                        <td>737</td>
+                        <td>738</td>
+                        <td>NB</td>
+                        <td>2025-11-01</td>
+                        <td></td>
+                        <td><span class="mini-status current">Current</span></td>
+                      </tr>
+                      <tr class="dirty">
+                        <td class="pin"><strong>F8020</strong></td>
+                        <td>737</td>
+                        <td>738</td>
+                        <td>NB</td>
+                        <td>2025-04-01</td>
+                        <td><input class="cell-input" value="2026-07-01"></td>
+                        <td><span class="mini-status current">Expiring</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="data-section">
+                <div class="section-head">
+                  <span class="section-title">Crew Qual</span>
+                  <span class="section-meta">Reference-backed by Basic > Qualification</span>
+                  <div class="section-tools">
+                    <button class="small-btn">Add Qual Row</button>
+                    <button class="small-btn">Collapse</button>
+                  </div>
+                </div>
+                <div class="section-table">
+                  <table>
+                    <colgroup>
+                      <col style="width: 88px">
+                      <col style="width: 118px">
+                      <col style="width: 92px">
+                      <col style="width: 84px">
+                      <col style="width: 110px">
+                      <col style="width: 110px">
+                      <col style="width: 126px">
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th class="pin">Crew ID</th>
+                        <th>Qualification</th>
+                        <th>Fleet</th>
+                        <th>Rank</th>
+                        <th>Effective</th>
+                        <th>Expires</th>
+                        <th>Validation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="pin"><strong>F8001</strong></td>
+                        <td>ETOPS</td>
+                        <td>787</td>
+                        <td>CA</td>
+                        <td>2025-01-01</td>
+                        <td>2027-01-01</td>
+                        <td><span class="mini-status current">Valid</span></td>
+                      </tr>
+                      <tr>
+                        <td class="pin"><strong>F8001</strong></td>
+                        <td>CAT3</td>
+                        <td>787</td>
+                        <td>CA</td>
+                        <td>2025-03-01</td>
+                        <td>2027-03-01</td>
+                        <td><span class="mini-status current">Valid</span></td>
+                      </tr>
+                      <tr>
+                        <td class="pin"><strong>F8003</strong></td>
+                        <td>ETOPS</td>
+                        <td>787</td>
+                        <td>FO</td>
+                        <td>2025-08-01</td>
+                        <td>2027-08-01</td>
+                        <td><span class="mini-status current">Valid</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="data-section">
+                <div class="section-head">
+                  <span class="section-title">Crew Team</span>
+                  <span class="section-meta">Reference-backed by Basic > Team</span>
+                  <div class="section-tools">
+                    <button class="small-btn">Add Team Row</button>
+                    <button class="small-btn">Collapse</button>
+                  </div>
+                </div>
+                <div class="section-table">
+                  <table>
+                    <colgroup>
+                      <col style="width: 88px">
+                      <col style="width: 118px">
+                      <col style="width: 110px">
+                      <col style="width: 110px">
+                      <col style="width: 92px">
+                      <col style="width: 126px">
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th class="pin">Crew ID</th>
+                        <th>Team</th>
+                        <th>Effective</th>
+                        <th>Expires</th>
+                        <th>Valid</th>
+                        <th>Validation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="pin"><strong>F8001</strong></td>
+                        <td>Line A</td>
+                        <td>2026-01-01</td>
+                        <td></td>
+                        <td>Yes</td>
+                        <td><span class="mini-status current">Current</span></td>
+                      </tr>
+                      <tr>
+                        <td class="pin"><strong>F8002</strong></td>
+                        <td>Line B</td>
+                        <td>2025-11-01</td>
+                        <td></td>
+                        <td>Yes</td>
+                        <td><span class="mini-status current">Current</span></td>
+                      </tr>
+                      <tr>
+                        <td class="pin"><strong>F8003</strong></td>
+                        <td>Line C</td>
+                        <td>2026-02-01</td>
+                        <td></td>
+                        <td>Yes</td>
+                        <td><span class="mini-status current">Current</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <aside class="inspector">
+            <div class="inspector-head">Validation & Change Review</div>
+            <div class="inspector-section">
+              <div><strong>Selected row:</strong> F8003 · Crew Base</div>
+              <div class="kv">
+                <div>Parent key</div><div><strong>base.base</strong></div>
+                <div>Value</div><div>BKK</div>
+                <div>Scope</div><div>filiale F8</div>
+                <div>Save state</div><div><span class="mini-status error">Blocked</span></div>
+              </div>
+              <div class="validation-list">
+                <div class="validation-item error">
+                  <strong>Missing parent base</strong><br>
+                  `crew_base.base = BKK` is not available in Basic > Base for F8. Save is disabled.
+                </div>
+                <div class="validation-item warn">
+                  <strong>Effective date review</strong><br>
+                  New base starts 2026-02-01. Current YVR base should expire before this date.
+                </div>
+                <div class="validation-item ok">
+                  <strong>Crew exists</strong><br>
+                  `crew_id = F8003` exists in Crew Basic.
+                </div>
+              </div>
+            </div>
+            <div class="changes">
+              <div class="change-row">
+                <span class="step-num">1</span>
+                <div>
+                  <div class="change-title">Crew Basic edited</div>
+                  <div class="change-subtitle">F8002 preferred name changed</div>
+                </div>
+                <span class="mini-status current">dirty</span>
+              </div>
+              <div class="change-row">
+                <span class="step-num">2</span>
+                <div>
+                  <div class="change-title">Crew Base edited</div>
+                  <div class="change-subtitle">F8003 base YVR → BKK</div>
+                </div>
+                <span class="mini-status error">error</span>
+              </div>
+              <div class="change-row">
+                <span class="step-num">3</span>
+                <div>
+                  <div class="change-title">Crew Rank edited</div>
+                  <div class="change-subtitle">F8002 rank FO effective date adjusted</div>
+                </div>
+                <span class="mini-status current">dirty</span>
+              </div>
+              <div class="change-row">
+                <span class="step-num">4</span>
+                <div>
+                  <div class="change-title">Crew Fleet expiring</div>
+                  <div class="change-subtitle">F8020 737 qualification expires 2026-07-01</div>
+                </div>
+                <span class="mini-status current">dirty</span>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <footer class="status-bar">
+          <span><strong>Reference source:</strong> live-server / F8 schema</span>
+          <span><strong>Expiry query:</strong> all crew sections expiring in 60 days</span>
+          <span><strong>Validation:</strong> client precheck + server transaction check</span>
+          <span><strong>Undo stack:</strong> 4 changes, 0 redo</span>
+          <span><strong>Last loaded:</strong> 2026-06-07 09:18</span>
+        </footer>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

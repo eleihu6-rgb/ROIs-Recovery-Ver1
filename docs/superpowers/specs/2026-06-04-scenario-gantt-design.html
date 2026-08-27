@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scenario Gantt — Design Spec 2026-06-04</title>
+<style>
+  :root {
+    --bg:          #0f1117;
+    --bg-panel:    #161b22;
+    --bg-card:     #1c2230;
+    --bg-hover:    #1e2838;
+    --border:      #2d3748;
+    --border-soft: #222c3c;
+    --fg:          #e2e8f0;
+    --fg-dim:      #8896aa;
+    --fg-muted:    #4a5568;
+    --accent:      #3b82f6;
+    --accent-dim:  rgba(59,130,246,0.15);
+    --green:       #22c55e;
+    --green-dim:   rgba(34,197,94,0.15);
+    --amber:       #f59e0b;
+    --amber-dim:   rgba(245,158,11,0.12);
+    --purple:      #a855f7;
+    --purple-dim:  rgba(168,85,247,0.15);
+    --red:         #ef4444;
+    --red-dim:     rgba(239,68,68,0.12);
+    --teal:        #14b8a6;
+    --teal-dim:    rgba(20,184,166,0.12);
+    --radius:      8px;
+    --radius-sm:   4px;
+    --font:        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono:        "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0d12;
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 32px 24px 100px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ─── Typography ────────────────────────────────────────────── */
+  .page-title  { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .page-sub    { font-size: 12px; color: var(--fg-dim); margin-bottom: 8px; }
+  .page-desc   { font-size: 13px; color: var(--fg-dim); max-width: 720px; margin-bottom: 40px; line-height: 1.6; }
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--fg-muted);
+    margin-bottom: 12px; margin-top: 48px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border-soft);
+  }
+  .section-desc { font-size: 12px; color: var(--fg-dim); margin-bottom: 16px; max-width: 700px; line-height: 1.6; }
+
+  /* ─── Cards ────────────────────────────────────────────────── */
+  .card {
+    background: var(--bg-panel); border: 1px solid var(--border-soft);
+    border-radius: var(--radius); padding: 16px 20px; margin-bottom: 12px;
+  }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--fg); margin-bottom: 8px; }
+  .card-body  { font-size: 12px; color: var(--fg-dim); line-height: 1.6; }
+
+  /* ─── Decision Box ──────────────────────────────────────────── */
+  .decision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .decision-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .option {
+    background: var(--bg-card); border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 16px; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .option:hover { border-color: var(--accent); background: var(--bg-hover); }
+  .option.recommended { border-color: var(--accent); background: var(--accent-dim); }
+  .option-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--fg-muted); margin-bottom: 6px;
+  }
+  .option.recommended .option-label { color: var(--accent); }
+  .option-title { font-size: 13px; font-weight: 600; color: var(--fg); margin-bottom: 6px; }
+  .option-body  { font-size: 11px; color: var(--fg-dim); line-height: 1.5; }
+  .option-tag {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 2px 6px; border-radius: 3px; margin-top: 8px;
+    background: var(--accent-dim); color: var(--accent);
+  }
+  .option-tag.amber { background: var(--amber-dim); color: var(--amber); }
+  .option-tag.green { background: var(--green-dim); color: var(--green); }
+  .option-tag.red   { background: var(--red-dim); color: var(--red); }
+
+  /* ─── Mockup Shell ──────────────────────────────────────────── */
+  .shell {
+    background: #0d1117; border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    font-size: 11px; font-family: var(--font);
+  }
+  .shell-topnav {
+    background: #161b22; border-bottom: 1px solid var(--border);
+    padding: 0 12px; height: 44px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .shell-topnav .logo {
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    margin-right: 12px; letter-spacing: -.02em;
+  }
+  .nav-tab {
+    padding: 6px 12px; border-radius: 5px;
+    font-size: 11px; font-weight: 500; color: var(--fg-dim);
+    cursor: pointer; white-space: nowrap;
+  }
+  .nav-tab.active { background: var(--accent-dim); color: var(--accent); }
+  .nav-tab.scenario-tab {
+    background: var(--teal-dim); color: var(--teal);
+    border: 1px solid rgba(20,184,166,.25);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .nav-tab.scenario-tab .close-x {
+    font-size: 10px; color: var(--fg-muted); margin-left: 2px; cursor: pointer;
+  }
+  .nav-tab.scenario-tab .close-x:hover { color: var(--red); }
+  .nav-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+  .shell-body { display: flex; height: 420px; }
+  .shell-sidebar {
+    width: 48px; background: #161b22; border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px;
+  }
+  .sb-icon {
+    width: 32px; height: 32px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--fg-muted); cursor: pointer;
+  }
+  .sb-icon.active { background: var(--accent-dim); color: var(--accent); }
+  .shell-content { flex: 1; overflow: hidden; position: relative; }
+
+  /* ─── Scenario Gantt Content ────────────────────────────────── */
+  .sg-toolbar {
+    background: #1a2030; border-bottom: 1px solid var(--border);
+    height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  }
+  .sg-toolbar-tag {
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px;
+    background: var(--teal-dim); color: var(--teal); letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .sg-toolbar-name { font-size: 12px; font-weight: 600; color: var(--fg); }
+  .sg-toolbar-date { font-size: 11px; color: var(--fg-dim); }
+  .sg-toolbar-sep  { width: 1px; height: 16px; background: var(--border); }
+  .sg-toolbar-btn {
+    font-size: 10px; padding: 3px 8px; border-radius: 3px; cursor: pointer;
+    border: 1px solid var(--border); color: var(--fg-dim); background: transparent;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .sg-toolbar-btn.edit-btn   { color: var(--amber); border-color: rgba(245,158,11,.3); background: var(--amber-dim); }
+  .sg-toolbar-btn.save-btn   { color: var(--green); border-color: rgba(34,197,94,.3);  background: var(--green-dim); }
+  .sg-toolbar-spacer { flex: 1; }
+  .sg-lock-badge {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px;
+    background: var(--red-dim); color: var(--red);
+    border: 1px solid rgba(239,68,68,.25);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .sg-lock-badge.viewing { background: var(--green-dim); color: var(--green); border-color: rgba(34,197,94,.25); }
+
+  /* ─── Gantt Canvas Area ─────────────────────────────────────── */
+  .gantt-area { display: flex; height: calc(100% - 36px); }
+  .gantt-crew-list {
+    width: 140px; background: #161b22; border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .crew-header {
+    height: 32px; padding: 0 10px;
+    display: flex; align-items: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--fg-muted);
+  }
+  .crew-row {
+    height: 28px; padding: 0 10px;
+    display: flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .crew-dot  { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .crew-id   { font-size: 11px; font-weight: 600; color: var(--fg); font-family: var(--mono); }
+  .crew-base { font-size: 10px; color: var(--fg-muted); }
+  .crew-row.highlight { background: rgba(20,184,166,.06); }
+  .crew-row.highlight .crew-dot { background: var(--teal); }
+
+  .gantt-canvas { flex: 1; position: relative; overflow: hidden; }
+  .gantt-timeline {
+    height: 32px; background: #161b22; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0;
+  }
+  .tl-day {
+    flex: 1; border-right: 1px solid var(--border-soft);
+    text-align: center; font-size: 9px; color: var(--fg-muted);
+    text-transform: uppercase; padding-top: 4px;
+  }
+  .tl-day.today { color: var(--accent); }
+  .gantt-rows { position: relative; }
+  .gantt-row {
+    height: 28px; border-bottom: 1px solid var(--border-soft);
+    position: relative; display: flex;
+  }
+  .gantt-row-bg { position: absolute; inset: 0; display: flex; }
+  .gantt-day-cell {
+    flex: 1; border-right: 1px solid rgba(45,55,72,.4);
+    height: 100%;
+  }
+  .gantt-bar {
+    position: absolute; top: 4px; height: 20px; border-radius: 3px;
+    display: flex; align-items: center; padding: 0 6px;
+    font-size: 9px; font-weight: 600; white-space: nowrap; overflow: hidden;
+    cursor: grab; user-select: none;
+  }
+  .gantt-bar.opt  { background: rgba(59,130,246,.3); border: 1px solid rgba(59,130,246,.5); color: #93c5fd; }
+  .gantt-bar.live { background: rgba(34,197,94,.2);  border: 1px solid rgba(34,197,94,.4);  color: #86efac; }
+  .gantt-bar.mod  { background: rgba(245,158,11,.2); border: 1px solid rgba(245,158,11,.4); color: #fcd34d; }
+  .gantt-bar.new  { background: rgba(168,85,247,.2); border: 1px solid rgba(168,85,247,.4); color: #d8b4fe;
+                    border-style: dashed; }
+
+  /* ─── Legend ───────────────────────────────────────────────── */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--fg-dim); }
+  .legend-dot  { width: 12px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ─── Flow Diagram ──────────────────────────────────────────── */
+  .flow { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding: 12px 0; }
+  .flow-node {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px; min-width: 130px;
+    text-align: center; flex-shrink: 0;
+  }
+  .flow-node.accent  { border-color: var(--accent); background: var(--accent-dim); }
+  .flow-node.green   { border-color: var(--green);  background: var(--green-dim); }
+  .flow-node.amber   { border-color: var(--amber);  background: var(--amber-dim); }
+  .flow-node.teal    { border-color: var(--teal);   background: var(--teal-dim); }
+  .flow-node.muted   { border-color: var(--fg-muted); opacity: .7; }
+  .flow-node .fn-icon  { font-size: 18px; margin-bottom: 4px; }
+  .flow-node .fn-title { font-size: 11px; font-weight: 600; color: var(--fg); }
+  .flow-node .fn-desc  { font-size: 10px; color: var(--fg-dim); margin-top: 3px; line-height: 1.4; }
+  .flow-arrow {
+    display: flex; align-items: center; padding: 0 4px; color: var(--fg-muted);
+    font-size: 16px; margin-top: 28px; flex-shrink: 0;
+  }
+
+  /* ─── Table ─────────────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left; padding: 8px 12px; background: var(--bg-panel);
+    border-bottom: 1px solid var(--border); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .07em; color: var(--fg-muted);
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border-soft); color: var(--fg-dim); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td code {
+    font-family: var(--mono); font-size: 10px; background: var(--bg-card);
+    padding: 1px 5px; border-radius: 3px; color: var(--accent);
+  }
+
+  /* ─── Pill / Tag ────────────────────────────────────────────── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px;
+  }
+  .tag.blue   { background: var(--accent-dim); color: var(--accent); }
+  .tag.green  { background: var(--green-dim);  color: var(--green); }
+  .tag.amber  { background: var(--amber-dim);  color: var(--amber); }
+  .tag.red    { background: var(--red-dim);    color: var(--red); }
+  .tag.teal   { background: var(--teal-dim);   color: var(--teal); }
+  .tag.purple { background: var(--purple-dim); color: var(--purple); }
+
+  /* ─── Note Box ──────────────────────────────────────────────── */
+  .note {
+    border-left: 3px solid var(--accent); background: var(--accent-dim);
+    padding: 10px 14px; border-radius: 0 5px 5px 0;
+    font-size: 12px; color: var(--fg-dim); line-height: 1.6;
+    margin: 16px 0;
+  }
+  .note.amber { border-color: var(--amber); background: var(--amber-dim); }
+  .note.green { border-color: var(--green); background: var(--green-dim); }
+  .note.red   { border-color: var(--red);   background: var(--red-dim); }
+
+  /* ─── Inline chips ──────────────────────────────────────────── */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .chip {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 9px;
+    font-size: 11px; color: var(--fg-dim);
+  }
+  .chip.yes { border-color: rgba(34,197,94,.4); color: var(--green); background: var(--green-dim); }
+  .chip.no  { border-color: rgba(239,68,68,.3); color: var(--red); background: var(--red-dim); opacity: .7; }
+
+  /* ─── Two-col layout ────────────────────────────────────────── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* ─── Scrollbar ─────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Scenario Gantt — Design Spec</div>
+<div class="page-sub">2026-06-04 · rois-ai · gantt + live-server + engine-server</div>
+<div class="page-desc">
+  "Open scenario" 按钮目前将优化结果加载到 Live Gantt 中查看。
+  本设计将其改造为独立的 <strong>Scenario Gantt</strong>：从 input.gz / output.gz 渲染场景数据，
+  支持多个场景并行打开、微调后回写 output.gz，并通过独占锁防止并发文件冲突。<br><br>
+  <span class="tag green">Q1 已确认</span>&nbsp;独立渲染器（非复用 Live Canvas，全量加载）&nbsp;&nbsp;
+  <span class="tag green">Q2 已确认</span>&nbsp;Redis TTL 悲观锁&nbsp;&nbsp;
+  <span class="tag green">Q3 已确认</span>&nbsp;LeadIn Live flag 决定数据源策略
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     §1  OVERVIEW
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">1 · Feature Overview</div>
+<div class="section-desc">Scenario Gantt 的核心差异点 vs. Live Gantt。</div>
+
+<div class="three-col">
+  <div class="card">
+    <div class="card-title">📦 数据来源</div>
+    <div class="card-body">
+      从 <code>input.gz</code>（机组/配对/航班基础数据）和 <code>output.gz</code>（优化分配结果）加载，
+      不查询 Live 数据库，不受其他用户 Live 操作影响。
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🗂 多标签并行</div>
+    <div class="card-body">
+      可同时打开多个不同场景的 Gantt（如场景 A / 场景 B 对比），
+      每个场景是独立的顶部导航标签，不相互影响。
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">✏️ 微调 + 独占编辑</div>
+    <div class="card-body">
+      允许用户做少量分配调整（拖动重分配、增删配对），保存写回 <code>output.gz</code>。
+      同一时间只允许一个用户持有编辑锁，其他人只读查看。
+    </div>
+  </div>
+</div>
+
+<div class="chips">
+  <div class="chip yes">✓ 无实时同步</div>
+  <div class="chip yes">✓ 可开多个</div>
+  <div class="chip yes">✓ 与 Live 完全隔离</div>
+  <div class="chip yes">✓ 保存 → output.gz（非数据库）</div>
+  <div class="chip no">✗ 不影响 Live 排班数据</div>
+  <div class="chip no">✗ 不允许并发写入</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     §2  SHELL MULTI-TAB DESIGN
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">2 · Shell 多标签方案</div>
+<div class="section-desc">
+  当前 shell-store 支持 <code>ActiveModule</code> + <code>openTabs</code>。需决定 Scenario Gantt 如何扩展这套机制。
+</div>
+
+<div class="decision-grid three">
+  <div class="option recommended">
+    <div class="option-label">Option A · 推荐</div>
+    <div class="option-title">扩展 ActiveModule 为动态类型</div>
+    <div class="option-body">
+      将 <code>ActiveModule</code> 从 union 字面量改为：<br>
+      <code>"live" | "scenario" | "scenario-gantt:42" | "scenario-gantt:43" | …</code><br><br>
+      每个场景独占一个顶部标签，可关闭。点击 Open Scenario 添加新标签。
+      Shell ContentArea 遇到 <code>scenario-gantt:*</code> 前缀即渲染 ScenarioGanttView，
+      从 ID 中提取 scenarioId。
+    </div>
+    <div class="option-tag">顶部标签独立</div>
+  </div>
+  <div class="option">
+    <div class="option-label">Option B</div>
+    <div class="option-title">Scenario 模块内部子标签</div>
+    <div class="option-body">
+      在 Scenario 模块的顶部加一行子标签栏，
+      每打开一个场景 Gantt 就在 Scenario 页内添加一个子 tab。
+      不扩展 shell-store ActiveModule。
+    </div>
+    <div class="option-tag amber">嵌套布局复杂</div>
+  </div>
+  <div class="option">
+    <div class="option-label">Option C</div>
+    <div class="option-title">浮动窗口</div>
+    <div class="option-body">
+      每个场景 Gantt 作为可拖动的浮动覆盖层，类似于 AppDialog 但更大。
+      不修改 shell-store。
+    </div>
+    <div class="option-tag red">与现有布局冲突大</div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>推荐 Option A：</strong>shell-store 已有完整的 openTabs / closeTab 机制，
+  顶部导航已支持多标签 keep-alive（visibility:hidden 隐藏非活跃标签）。
+  只需将 <code>ActiveModule</code> 从 string literal union 改为 <code>string</code>（或保留 union + 加 <code>string & {}</code>），
+  ContentArea 用前缀匹配渲染 ScenarioGanttView。改动最小，体验最直观。
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     §3  MOCKUP: TOP NAV WITH SCENARIO GANTT TABS
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">3 · 顶部导航 Mockup</div>
+<div class="section-desc">Scenario Gantt 标签如何在顶部导航中呈现（方案 A）。</div>
+
+<div class="shell">
+  <div class="shell-topnav">
+    <div class="logo">ROIS</div>
+    <div class="nav-tab">Dashboard</div>
+    <div class="nav-tab">Live</div>
+    <div class="nav-tab">Scenario</div>
+    <div class="nav-sep"></div>
+    <!-- Scenario Gantt tabs: teal color, closeable -->
+    <div class="nav-tab scenario-tab active">
+      📊 RO-2026-05 <span class="close-x">✕</span>
+    </div>
+    <div class="nav-tab scenario-tab">
+      📊 RO-June-Alt <span class="close-x">✕</span>
+    </div>
+    <div class="nav-sep"></div>
+    <div class="nav-tab">Rule</div>
+    <div style="flex:1"></div>
+    <div style="font-size:10px; color: var(--fg-muted); margin-right: 8px;">▼ F8</div>
+  </div>
+  <div class="shell-body">
+    <div class="shell-sidebar">
+      <div class="sb-icon">⊞</div>
+      <div class="sb-icon">📋</div>
+      <div class="sb-icon active">📊</div>
+      <div class="sb-icon">⚖</div>
+      <div class="sb-icon">🤖</div>
+    </div>
+    <div class="shell-content">
+      <!-- Scenario Gantt Toolbar -->
+      <div class="sg-toolbar">
+        <div class="sg-toolbar-tag">Scenario</div>
+        <div class="sg-toolbar-name">RO-2026-05</div>
+        <div class="sg-toolbar-sep"></div>
+        <div class="sg-toolbar-date">2026-05-01 → 2026-05-31</div>
+        <div class="sg-toolbar-sep"></div>
+        <div class="sg-toolbar-btn">⊕ RO</div>
+        <div class="sg-toolbar-btn">🔍 Filter</div>
+        <div class="sg-toolbar-sep"></div>
+        <div class="sg-toolbar-btn edit-btn">🔒 Acquire Edit Lock</div>
+        <div class="sg-toolbar-spacer"></div>
+        <div class="sg-lock-badge viewing">● Viewing (Read-only)</div>
+        <div style="margin-left: 8px; font-size: 10px; color: var(--fg-muted);">
+          Edited by: zhang.san · 3 min ago
+        </div>
+      </div>
+      <!-- Gantt Canvas Mockup -->
+      <div class="gantt-area">
+        <div class="gantt-crew-list">
+          <div class="crew-header">Crew</div>
+          <div class="crew-row"><div class="crew-dot"></div><div class="crew-id">F80001</div><div class="crew-base">PVG·CA</div></div>
+          <div class="crew-row highlight"><div class="crew-dot"></div><div class="crew-id">F80042</div><div class="crew-base">PVG·FO</div></div>
+          <div class="crew-row"><div class="crew-dot"></div><div class="crew-id">F80078</div><div class="crew-base">CAN·CA</div></div>
+          <div class="crew-row highlight"><div class="crew-dot"></div><div class="crew-id">F80091</div><div class="crew-base">CAN·FO</div></div>
+          <div class="crew-row"><div class="crew-dot"></div><div class="crew-id">F80103</div><div class="crew-base">PVG·CA</div></div>
+          <div class="crew-row"><div class="crew-dot"></div><div class="crew-id">F80115</div><div class="crew-base">CTU·FO</div></div>
+          <div class="crew-row"><div class="crew-dot"></div><div class="crew-id">F80129</div><div class="crew-base">CTU·CA</div></div>
+          <div class="crew-row"><div class="crew-dot"></div><div class="crew-id">F80144</div><div class="crew-base">PVG·FO</div></div>
+          <div class="crew-row"><div class="crew-dot"></div><div class="crew-id">F80156</div><div class="crew-base">CAN·CA</div></div>
+          <div class="crew-row"><div class="crew-dot"></div><div class="crew-id">F80167</div><div class="crew-base">PVG·CA</div></div>
+        </div>
+        <div class="gantt-canvas">
+          <div class="gantt-timeline">
+            <div class="tl-day">5/1<br>Thu</div><div class="tl-day">5/2<br>Fri</div>
+            <div class="tl-day today">5/3<br>Sat</div><div class="tl-day">5/4<br>Sun</div>
+            <div class="tl-day">5/5<br>Mon</div><div class="tl-day">5/6<br>Tue</div>
+            <div class="tl-day">5/7<br>Wed</div><div class="tl-day">5/8<br>Thu</div>
+            <div class="tl-day">5/9<br>Fri</div><div class="tl-day">5/10<br>Sat</div>
+            <div class="tl-day">5/11<br>Sun</div><div class="tl-day">5/12<br>Mon</div>
+          </div>
+          <div class="gantt-rows">
+            <!-- Row 1 -->
+            <div class="gantt-row" style="position:relative">
+              <div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div>
+              <div class="gantt-bar opt" style="left:2%;width:18%">P2045</div>
+              <div class="gantt-bar opt" style="left:25%;width:22%">P2061</div>
+              <div class="gantt-bar opt" style="left:55%;width:15%">P2078</div>
+            </div>
+            <!-- Row 2 (modified) -->
+            <div class="gantt-row" style="position:relative">
+              <div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div>
+              <div class="gantt-bar mod" style="left:5%;width:16%">P2033 ✎</div>
+              <div class="gantt-bar opt" style="left:28%;width:25%">P2055</div>
+            </div>
+            <!-- Row 3 -->
+            <div class="gantt-row" style="position:relative">
+              <div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div>
+              <div class="gantt-bar live" style="left:0%;width:12%">P2010</div>
+              <div class="gantt-bar opt"  style="left:17%;width:20%">P2041</div>
+              <div class="gantt-bar opt"  style="left:43%;width:18%">P2067</div>
+            </div>
+            <!-- Row 4 (modified - moved from another crew) -->
+            <div class="gantt-row" style="position:relative">
+              <div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div>
+              <div class="gantt-bar new" style="left:10%;width:20%">P2088 +</div>
+              <div class="gantt-bar opt" style="left:38%;width:22%">P2072</div>
+            </div>
+            <!-- Rows 5-10 -->
+            <div class="gantt-row" style="position:relative">
+              <div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div>
+              <div class="gantt-bar opt" style="left:3%;width:24%">P2039</div>
+              <div class="gantt-bar opt" style="left:32%;width:14%">P2059</div>
+            </div>
+            <div class="gantt-row" style="position:relative">
+              <div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div>
+              <div class="gantt-bar opt" style="left:8%;width:19%">P2047</div>
+              <div class="gantt-bar opt" style="left:35%;width:23%">P2063</div>
+            </div>
+            <div class="gantt-row" style="position:relative">
+              <div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div>
+              <div class="gantt-bar live" style="left:0%;width:15%">P2018</div>
+              <div class="gantt-bar opt"  style="left:22%;width:20%">P2052</div>
+            </div>
+            <div class="gantt-row" style="position:relative"><div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div><div class="gantt-bar opt" style="left:5%;width:26%">P2044</div></div>
+            <div class="gantt-row" style="position:relative"><div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div><div class="gantt-bar opt" style="left:12%;width:18%">P2036</div><div class="gantt-bar opt" style="left:38%;width:21%">P2071</div></div>
+            <div class="gantt-row" style="position:relative"><div class="gantt-row-bg"><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div><div class="gantt-day-cell"></div></div><div class="gantt-bar opt" style="left:6%;width:15%">P2029</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend" style="margin-top:12px">
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(59,130,246,.5)"></div>Optimizer result (from output.gz)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(34,197,94,.5)"></div>Carried from live (lead-in)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(245,158,11,.5)"></div>Manually modified (unsaved)</div>
+  <div class="legend-item"><div class="legend-dot" style="border: 1px dashed rgba(168,85,247,.7); background:rgba(168,85,247,.2)"></div>Newly added (unsaved)</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     §4  EDIT LOCK DESIGN
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">4 · 编辑锁方案</div>
+<div class="section-desc">
+  多用户同时查看同一场景 Gantt 时，编辑冲突防护方案。
+</div>
+
+<div class="decision-grid">
+  <div class="option recommended">
+    <div class="option-label">Option A · 推荐 — 显式悲观锁</div>
+    <div class="option-title">点击"获取编辑锁" → 独占写入权限</div>
+    <div class="option-body">
+      用户需主动点击 <strong>"Acquire Edit Lock"</strong> 按钮，
+      Live Server 将 <code>editor_user</code> + <code>locked_at</code> 写入 scenario 表（或内存/Redis）。
+      锁有 <strong>15 分钟不活跃超时</strong>（每次操作重置）。
+      其他用户看到 <em>"Locked by zhang.san"</em> 提示，只能只读查看。
+      锁持有者可手动释放或关闭标签时自动释放。
+    </div>
+    <div class="option-tag green">用户意图明确</div>
+    <div class="option-tag">超时自动释放</div>
+  </div>
+  <div class="option">
+    <div class="option-label">Option B — 首次写入锁</div>
+    <div class="option-title">开始拖动/编辑时自动获锁</div>
+    <div class="option-body">
+      用户无需手动操作，第一次做出修改（拖动、增删）时服务器自动尝试获锁。
+      若获锁失败（他人已持有）则弹出 toast 提示"场景当前被 zhang.san 锁定"，
+      操作回滚。只读用户无任何编辑入口。
+    </div>
+    <div class="option-tag amber">操作后才知道被锁，体验差</div>
+  </div>
+</div>
+
+<div class="note amber">
+  <strong>锁存储方案：</strong>
+  可在 scenario 表添加 <code>editor_user varchar</code> + <code>editor_locked_at timestamp</code> 两列（migration），
+  或者用 Redis key <code>scenario-lock:{id}</code>（TTL=15min）。
+  推荐 Redis：不需要数据库 migration，TTL 自动处理超时，清理简单。
+</div>
+
+<div class="section-desc" style="margin-top: 16px;">编辑锁的 3 种 UI 状态：</div>
+<div class="three-col">
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px">
+      <span style="color:var(--fg-dim)">👁</span> 只读模式（无锁）
+    </div>
+    <div class="card-body">
+      工具栏显示 <span class="tag blue">Viewing · Read-only</span>，
+      "Acquire Edit Lock" 按钮可用。
+      所有拖拽/修改操作均被禁用（canvas 无 pointer-events）。
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px">
+      <span style="color:var(--amber)">✏️</span> 编辑模式（持有锁）
+    </div>
+    <div class="card-body">
+      显示 <span class="tag amber">✎ Editing · You hold the lock</span>，
+      "Release Lock" 按钮 + 倒计时（距自动超时剩余时间）。
+      "Save" 按钮出现，有未保存改动时高亮。
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px">
+      <span style="color:var(--red)">🔒</span> 只读（他人锁定）
+    </div>
+    <div class="card-body">
+      显示 <span class="tag red">🔒 Locked by zhang.san</span> + 锁定时长。
+      "Request Lock" 无法点击（或提示对方释放）。
+      所有编辑操作禁用。
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     §5  MICRO-ADJUSTMENT SCOPE
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">5 · 微调操作范围</div>
+<div class="section-desc">允许在 Scenario Gantt 中做哪些调整？以下为推荐的最小有效范围。</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>操作</th>
+      <th>触发方式</th>
+      <th>写回 output.gz</th>
+      <th>包含在 V1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>将配对从 A 机组重分配给 B 机组</strong></td>
+      <td>拖动 Gantt 条到另一行（与 Live Gantt 相同交互）</td>
+      <td>ASSIGNMENTS 段中更新 crew_id</td>
+      <td><span class="tag green">✓ 是</span></td>
+    </tr>
+    <tr>
+      <td><strong>移除机组的某个配对分配</strong></td>
+      <td>右键菜单 → Remove / Delete 键</td>
+      <td>ASSIGNMENTS 段中删除对应行</td>
+      <td><span class="tag green">✓ 是</span></td>
+    </tr>
+    <tr>
+      <td><strong>给机组手动添加配对</strong></td>
+      <td>右键机组行 → Add Pairing（选择 pairing ID）</td>
+      <td>ASSIGNMENTS 段中插入新行</td>
+      <td><span class="tag green">✓ 是</span></td>
+    </tr>
+    <tr>
+      <td>修改配对的时间范围</td>
+      <td>暂不支持（配对本身由 input.gz 决定）</td>
+      <td>-</td>
+      <td><span class="tag amber">V2</span></td>
+    </tr>
+    <tr>
+      <td>修改配对航段构成</td>
+      <td>配对编辑（属于独立功能）</td>
+      <td>-</td>
+      <td><span class="tag red">超范围</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note" style="margin-top:16px">
+  <strong>V1 只写 ASSIGNMENTS 段</strong>：output.gz 的其他 section（KPI、统计等）在微调后会
+  与实际分配不再完全一致。保存时在文件头部写入 <code>## MODIFIED_AT</code> 时间戳标记，
+  区分原始优化输出和手动调整版本。KPI 数据在 V1 阶段不重算，属 V2 迭代。
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     §6  DATA FLOW & ARCHITECTURE
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">6 · 数据流架构</div>
+<div class="section-desc">
+  打开 Scenario Gantt 的数据加载策略由 scenario 的 <strong>LeadIn Live</strong> 标志（<code>leadinLive</code>）决定，
+  分为两条不同的加载链路。保存微调的回写链路与此无关，两条路径共用。
+</div>
+
+<!-- ── 6A: leadinLive = 1 ─────────────── -->
+<div style="font-size:11px; color: var(--amber); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;">
+  路径 A — LeadIn Live = ON（每次打开实时读取数据库重建 input.gz）
+</div>
+<div class="note amber" style="margin-bottom:14px">
+  勾选了 LeadIn Live 的场景，打开 Gantt 时需要获取当前 Live 数据库最新状态（机组、配对、航班），
+  以便在优化结果之上叠加显示最新的 live 数据。因此每次打开都调用"类似跑优化前的 export 接口"重新产生 input.gz，
+  再与已有 output.gz 合并渲染。<strong>input.gz 仅作为当次渲染用的临时数据，不落盘覆盖原始优化 input。</strong>
+</div>
+<div class="flow">
+  <div class="flow-node accent">
+    <div class="fn-icon">🖱️</div>
+    <div class="fn-title">Open Scenario</div>
+    <div class="fn-desc">leadinLive = 1</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node amber">
+    <div class="fn-icon">🔄</div>
+    <div class="fn-title">重建 input 快照</div>
+    <div class="fn-desc"><code>POST /api/scenario/{id}/refresh-input</code><br>复用 scenario-export-service<br>实时读 DB → 临时 input</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node teal">
+    <div class="fn-icon">📤</div>
+    <div class="fn-title">加载 output.gz</div>
+    <div class="fn-desc">engine-server 拉取<br>已有优化结果</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node">
+    <div class="fn-icon">🔀</div>
+    <div class="fn-title">合并渲染数据</div>
+    <div class="fn-desc">live-server 将临时 input<br>+ output ASSIGNMENTS 合并，<br>返回结构化 JSON</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node green">
+    <div class="fn-icon">🎨</div>
+    <div class="fn-title">Scenario Gantt 渲染</div>
+    <div class="fn-desc">独立渲染器，<br>全量数据一次性加载</div>
+  </div>
+</div>
+
+<!-- ── 6B: leadinLive = 0 ─────────────── -->
+<div style="font-size:11px; color: var(--teal); margin: 24px 0 10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;">
+  路径 B — LeadIn Live = OFF（直接读 input.gz，与 Live 数据库无关）
+</div>
+<div class="note" style="margin-bottom:14px">
+  未勾选 LeadIn Live 的场景，优化完成后 input.gz 即为一个完整的静态快照。
+  打开 Gantt 时直接从 engine-server 读取 input.gz + output.gz，不访问 Live 数据库。
+  渲染数据与优化时的数据库状态完全一致，不受后续 Live 变更影响。
+</div>
+<div class="flow">
+  <div class="flow-node accent">
+    <div class="fn-icon">🖱️</div>
+    <div class="fn-title">Open Scenario</div>
+    <div class="fn-desc">leadinLive = 0</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node teal">
+    <div class="fn-icon">📥</div>
+    <div class="fn-title">加载 input.gz</div>
+    <div class="fn-desc">engine-server 直接读<br>complete/{airline}/{id}/input.gz</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node teal">
+    <div class="fn-icon">📤</div>
+    <div class="fn-title">加载 output.gz</div>
+    <div class="fn-desc">engine-server 直接读<br>complete/{airline}/{id}/output.gz</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node">
+    <div class="fn-icon">🔀</div>
+    <div class="fn-title">合并渲染数据</div>
+    <div class="fn-desc">live-server 解析两份文件<br>返回结构化 JSON<br>（无 DB 访问）</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node green">
+    <div class="fn-icon">🎨</div>
+    <div class="fn-title">Scenario Gantt 渲染</div>
+    <div class="fn-desc">独立渲染器，<br>全量数据一次性加载</div>
+  </div>
+</div>
+
+<!-- ── 统一入口 API ─────────────────────── -->
+<div class="note green" style="margin-top:16px">
+  <strong>统一入口：</strong>前端只调用 <code>GET /api/scenario/:id/gantt-data</code>，
+  live-server 内部根据 <code>leadinLive</code> 字段自动走路径 A 或路径 B，前端无需感知差异。
+  路径 A 会在响应头中附加 <code>X-Data-Source: live-refresh</code>，供前端显示
+  <span class="tag amber">Live Context</span> 标记；路径 B 附加 <code>X-Data-Source: snapshot</code>，显示
+  <span class="tag blue">Snapshot</span> 标记。
+</div>
+
+<!-- ── gantt-data 响应结构 ──────────────── -->
+<div style="font-size:11px; color: var(--fg-muted); margin: 20px 0 10px; font-weight:600; text-transform:uppercase; letter-spacing:.06em;">gantt-data 响应结构（供 Scenario 渲染器使用）</div>
+<div class="two-col">
+  <div class="card">
+    <div class="card-title">Crew 列表</div>
+    <div class="card-body">
+      <code>crewId</code>, <code>base</code>, <code>division</code>, <code>rank</code>, <code>status</code><br>
+      来源：路径 A → 实时 DB；路径 B → input.gz CREW 段<br>
+      用途：Gantt 左侧机组列表渲染
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">配对时间段（Pairing Bars）</div>
+    <div class="card-body">
+      <code>pairingId</code>, <code>pairingLabel</code>, <code>schStrDtUtc</code>, <code>schEndDtUtc</code>, <code>base</code><br>
+      来源：路径 A → 实时 DB；路径 B → input.gz PAIRINGS 段<br>
+      用途：Gantt 条的时间位置计算
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">分配关系（Assignments）</div>
+    <div class="card-body">
+      <code>crewId</code> → <code>pairingId</code> → 配对时间段（join）<br>
+      来源：output.gz ASSIGNMENTS 段（始终来自 output.gz）<br>
+      用途：渲染哪个机组行显示哪些 Gantt 条
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Lead-in live 分配（路径 A 专有）</div>
+    <div class="card-body">
+      已在 Live 排班中的分配（<code>source = SCENARIO</code> 的 roster_flight 行）<br>
+      来源：DB live 查询<br>
+      用途：在 Gantt 中以绿色"carried from live"样式渲染
+    </div>
+  </div>
+</div>
+
+<!-- ── 保存链路 ─────────────────────────── -->
+<div style="font-size:11px; color: var(--fg-muted); margin: 24px 0 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;">保存链路（两条路径共用：Save Adjustments →）</div>
+<div class="flow">
+  <div class="flow-node amber">
+    <div class="fn-icon">💾</div>
+    <div class="fn-title">用户点击 Save</div>
+    <div class="fn-desc">持有编辑锁时有效</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node">
+    <div class="fn-icon">🔧</div>
+    <div class="fn-title">前端生成 Patch</div>
+    <div class="fn-desc">ASSIGNMENTS 增删改 delta<br>以 JSON 发送至 live-server</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node teal">
+    <div class="fn-icon">⚙️</div>
+    <div class="fn-title">live-server 重建文件</div>
+    <div class="fn-desc"><code>POST /api/scenario/{id}/patch-output</code><br>读旧 output.gz → 应用 patch<br>→ 写新 output.gz</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node">
+    <div class="fn-icon">📝</div>
+    <div class="fn-title">回写 Engine Server</div>
+    <div class="fn-desc"><code>PUT /optimize/result/{taskId}/output</code><br>engine-server 落盘新文件</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node green">
+    <div class="fn-icon">✅</div>
+    <div class="fn-title">刷新 Gantt</div>
+    <div class="fn-desc">重新调用 gantt-data<br>验证一致性</div>
+  </div>
+</div>
+
+<div class="note amber" style="margin-top:16px">
+  <strong>关键约束：</strong>output.gz 文件写入必须在持有编辑锁的前提下执行。
+  live-server 在 patch-output API 中校验调用方是否为当前 Redis 锁持有者（通过 JWT userCode），
+  否则返回 409 Conflict。两条路径（A/B）的保存链路完全相同：只写 output.gz，不修改 input.gz。
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     §7  API CHANGES SUMMARY
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">7 · 新增 / 改动 API 汇总</div>
+
+<table>
+  <thead>
+    <tr><th>端点</th><th>服务</th><th>说明</th><th>新增 / 改动</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>GET /api/scenario/:id/gantt-data</code></td>
+      <td>live-server</td>
+      <td>统一入口：内部根据 <code>leadinLive</code> 自动走路径 A（实时刷新）或路径 B（读快照）。返回 crew列表 + pairing时段 + ASSIGNMENTS + lead-in分配</td>
+      <td><span class="tag green">新增</span></td>
+    </tr>
+    <tr>
+      <td><code>POST /api/scenario/:id/refresh-input</code></td>
+      <td>live-server</td>
+      <td>【路径 A 专用】复用 scenario-export-service，实时读 DB 产生临时 input 快照（不落盘 engine-server），仅供 gantt-data 内部使用</td>
+      <td><span class="tag green">新增（内部）</span></td>
+    </tr>
+    <tr>
+      <td><code>POST /api/scenario/:id/acquire-lock</code></td>
+      <td>live-server</td>
+      <td>尝试获取场景编辑锁，成功返回锁token；已有他人持锁则返回 409</td>
+      <td><span class="tag green">新增</span></td>
+    </tr>
+    <tr>
+      <td><code>POST /api/scenario/:id/release-lock</code></td>
+      <td>live-server</td>
+      <td>释放编辑锁（仅锁持有者可调用）</td>
+      <td><span class="tag green">新增</span></td>
+    </tr>
+    <tr>
+      <td><code>GET /api/scenario/:id/lock-status</code></td>
+      <td>live-server</td>
+      <td>查询当前锁状态（查看者轮询，30s 间隔）</td>
+      <td><span class="tag green">新增</span></td>
+    </tr>
+    <tr>
+      <td><code>POST /api/scenario/:id/patch-output</code></td>
+      <td>live-server</td>
+      <td>接收 ASSIGNMENTS patch（增删改），重建 output.gz 并上传 engine-server</td>
+      <td><span class="tag green">新增</span></td>
+    </tr>
+    <tr>
+      <td><code>PUT /optimize/result/:taskId/output</code></td>
+      <td>engine-server</td>
+      <td>接收新 output.gz 文件，覆盖 complete/ 目录中对应场景文件</td>
+      <td><span class="tag green">新增</span></td>
+    </tr>
+    <tr>
+      <td><code>GET /api/scenario/:id/roster</code></td>
+      <td>live-server</td>
+      <td>现有接口，只读复用。新 gantt-data 接口返回更完整的渲染数据</td>
+      <td><span class="tag blue">复用</span></td>
+    </tr>
+    <tr>
+      <td><code>GET /optimize/result/:taskId</code></td>
+      <td>engine-server</td>
+      <td>现有接口，返回 output.gz，无需改动</td>
+      <td><span class="tag blue">复用</span></td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- ════════════════════════════════════════════════════
+     §8  FRONTEND ARCHITECTURE
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">8 · 前端架构</div>
+
+<div class="two-col">
+  <div>
+    <div style="font-size:11px; color: var(--fg-muted); font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px">新增模块</div>
+    <div class="card" style="margin-bottom:8px">
+      <div class="card-title"><code>stores/scenario-gantt-store.ts</code></div>
+      <div class="card-body">
+        每个 ScenarioGanttView 实例对应独立 store（按 scenarioId 隔离，用 Zustand 的 create 工厂函数）。
+        状态：crewList, assignments, pendingChanges, lockStatus, saving。
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:8px">
+      <div class="card-title"><code>components/shell/scenario-gantt-view.tsx</code></div>
+      <div class="card-body">
+        顶级容器，组合 ScenarioGanttToolbar + ScenarioGanttCanvas。
+        接收 <code>scenarioId</code> prop（从 tab key 解析）。
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:8px">
+      <div class="card-title"><code>components/scenario-gantt/</code> 目录</div>
+      <div class="card-body">
+        <code>scenario-gantt-toolbar.tsx</code>：场景信息（名称/日期/leadin标记）+ 编辑锁控件 + Save 按钮<br>
+        <code>scenario-gantt-renderer.tsx</code>：<strong>全新独立渲染器</strong>（非 Live Canvas）。
+        全量数据一次性加载，不分段分页。React + absolute-positioned bars + CSS virtualization（仅渲染可视行）<br>
+        <code>scenario-gantt-lock-badge.tsx</code>：锁状态徽章（Viewing / Editing / Locked by X）<br>
+        <code>scenario-gantt-bar.tsx</code>：单个配对条（opt / live / modified / new 四种样式）
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><code>services/scenario-gantt-api.ts</code></div>
+      <div class="card-body">
+        封装 gantt-data / acquire-lock / release-lock / lock-status / patch-output 调用。
+      </div>
+    </div>
+  </div>
+  <div>
+    <div style="font-size:11px; color: var(--fg-muted); font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px">改动现有模块</div>
+    <div class="card" style="margin-bottom:8px">
+      <div class="card-title"><code>stores/shell-store.ts</code></div>
+      <div class="card-body">
+        <code>ActiveModule</code> 类型改为 <code>string</code>（保留 union 做文档），
+        <code>ContentArea</code> 用 <code>startsWith('scenario-gantt:')</code> 匹配渲染 ScenarioGanttView。
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:8px">
+      <div class="card-title"><code>stores/scenario-store.ts</code></div>
+      <div class="card-body">
+        <code>openScenarioRoster</code> 不再切换到 live 模块。
+        改为调用 <code>shellStore.setModule('scenario-gantt:{id}')</code>，
+        数据加载移到 ScenarioGanttView 内部。
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:8px">
+      <div class="card-title"><code>components/scenario/scenario-toolbar.tsx</code></div>
+      <div class="card-body">
+        <code>handleOpen</code> 逻辑修改：不再加载 roster 到全局 store，
+        直接调用 <code>setModule('scenario-gantt:{detail.id}')</code>。
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><code>components/shell/app-shell.tsx</code> — ContentArea</div>
+      <div class="card-body">
+        在 <code>ModuleView</code> 中加入前缀匹配分支：
+        <code>if (module.startsWith('scenario-gantt:')) return &lt;ScenarioGanttView id={...} /&gt;</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     §9  CONFIRMED DECISIONS
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">9 · 已确认的设计决策</div>
+<div class="section-desc">三个关键决策均已确认，无遗留问题，可进入实施计划。</div>
+
+<div class="card" style="border-color: var(--green); background: var(--green-dim)">
+  <div class="card-title" style="color: var(--green)">✅ Q1 · 独立渲染器（非复用 Live Canvas）</div>
+  <div class="card-body">
+    <strong>决策：</strong>不复用 Live Gantt Canvas。<br>
+    <strong>原因：</strong>Live Canvas 是分段/分页增量加载（按视口滚动按需请求数据），
+    Scenario Gantt 的数据是优化结束后的完整静态集合，应一次全量加载。
+    两者数据加载模型根本不同，强行适配会引入复杂的 store 隔离和数据格式转换层。<br>
+    <strong>方案：</strong>新建 <code>scenario-gantt-renderer.tsx</code>，
+    React + absolute-positioned div bars + CSS row virtualization（仅渲染可视行窗口，非 Canvas 绘制）。
+    简单、可 debug、无 Canvas 绘制复杂度，交互（拖拽）用 pointer events 实现。
+  </div>
+</div>
+
+<div class="card" style="border-color: var(--green); background: var(--green-dim); margin-top:10px">
+  <div class="card-title" style="color: var(--green)">✅ Q2 · Redis TTL 悲观锁</div>
+  <div class="card-body">
+    <strong>决策：</strong>用 Redis key <code>scenario:edit-lock:{scenarioId}</code>，value = <code>userCode</code>，TTL = 15 min。<br>
+    每次用户在编辑模式下执行操作时重置 TTL（heartbeat 机制，前端每 5min 调一次 keepalive API）。<br>
+    不需要 DB migration，关闭标签/session 过期时 Redis TTL 自然到期，无需客户端主动清理。
+  </div>
+</div>
+
+<div class="card" style="border-color: var(--green); background: var(--green-dim); margin-top:10px">
+  <div class="card-title" style="color: var(--green)">✅ Q3 · LeadIn Live flag 决定数据源</div>
+  <div class="card-body">
+    <strong>决策：</strong>gantt-data 接口内部分两条路径（见 §6）：<br>
+    <ul style="margin-top:6px; padding-left:16px; line-height:2">
+      <li><strong>leadinLive = 1：</strong>每次打开时调用 scenario-export-service 实时读 DB 重建临时 input 快照（不落盘），
+        与 output.gz ASSIGNMENTS 合并后返回，前端显示 <span class="tag amber">Live Context</span> 标记</li>
+      <li><strong>leadinLive = 0：</strong>直接读 engine-server 上的 input.gz + output.gz，
+        不访问 Live DB，前端显示 <span class="tag blue">Snapshot</span> 标记</li>
+    </ul>
+    两条路径对前端透明，均由 <code>GET /api/scenario/:id/gantt-data</code> 统一返回，
+    格式完全一致。
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     §10  SCOPE & PHASES
+     ════════════════════════════════════════════════════ -->
+<div class="section-label">10 · 实施分阶段建议</div>
+
+<div class="three-col">
+  <div class="card" style="border-color: var(--accent)">
+    <div class="card-title" style="color: var(--accent)">Phase 1 — Read-only Scenario Gantt</div>
+    <div class="card-body">
+      多标签打开场景 → gantt-data API（路径 A/B）→ 独立 React 渲染器只读展示。<br><br>
+      <span class="tag green">低风险</span> <span class="tag blue">3-4 天</span>
+      <ul style="margin-top:8px; padding-left:14px; line-height:1.8; font-size:11px">
+        <li>shell-store 扩展（动态 scenario-gantt:{id} tab）</li>
+        <li>ScenarioGanttView + 独立渲染器</li>
+        <li>gantt-data API（路径 A + B，只读）</li>
+        <li>LeadIn Live / Snapshot 标记显示</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card" style="border-color: var(--amber)">
+    <div class="card-title" style="color: var(--amber)">Phase 2 — 编辑锁 + 微调</div>
+    <div class="card-body">
+      加入编辑锁机制 → 拖拽重分配 → 保存回写 output.gz。<br><br>
+      <span class="tag amber">中风险</span> <span class="tag blue">3-4 天</span>
+      <ul style="margin-top:8px; padding-left:14px; line-height:1.8; font-size:11px">
+        <li>Redis 锁 API</li>
+        <li>patch-output API</li>
+        <li>engine-server 文件写入接口</li>
+        <li>前端拖拽 delta 计算</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card" style="border-color: var(--fg-muted)">
+    <div class="card-title" style="color: var(--fg-dim)">Phase 3 — KPI 重算 + 法规检查</div>
+    <div class="card-body">
+      微调后触发法规重检 → KPI 重新计算 → 显示微调前后对比。<br><br>
+      <span class="tag amber">高复杂度</span> <span class="tag blue">1 周+</span>
+      <ul style="margin-top:8px; padding-left:14px; line-height:1.8; font-size:11px">
+        <li>接入 rule-engine 法规检查</li>
+        <li>KPI delta 显示</li>
+        <li>场景对比视图</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 11px; color: var(--fg-muted)">
+  设计文档 · ROIS-AI Scenario Gantt · 2026-06-04 · 所有决策已确认，请审阅后转入实施计划
+</div>
+
+</body>
+</html>

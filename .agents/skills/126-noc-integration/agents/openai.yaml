@@ -1,0 +1,6 @@
+interface:
+  display_name: "126 noc integration"
+  short_description: "Project skill 126-noc-integration"
+  default_prompt: "Use $126-noc-integration for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

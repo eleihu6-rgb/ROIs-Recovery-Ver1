@@ -1,0 +1,6 @@
+interface:
+  display_name: "142 flight schedule seed generator"
+  short_description: "Project skill 142-flight-schedule-seed-generator"
+  default_prompt: "Use $142-flight-schedule-seed-generator for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

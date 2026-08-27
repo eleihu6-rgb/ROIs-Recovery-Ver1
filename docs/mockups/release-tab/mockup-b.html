@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Release tab — Mockup B · Changelog timeline</title>
+<style>
+  :root{
+    --primary:#2563eb;--primary-fg:#fff;--bg:#fff;--muted:#f8fafc;--muted2:#f1f5f9;
+    --border:#e2e8f0;--fg:#0f172a;--mfg:#64748b;
+    --enh:#2563eb;--enh-bg:#eff6ff;--fix:#e11d48;--fix-bg:#fff1f2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--fg);background:var(--muted);font-size:13px}
+  .topnav{display:flex;align-items:center;gap:2px;height:40px;padding:0 12px;background:var(--bg);border-bottom:1px solid var(--border)}
+  .brand{font-weight:700;font-size:13px;margin-right:14px;color:var(--primary)}
+  .topnav a{padding:6px 10px;color:var(--mfg);text-decoration:none;border-radius:6px;font-size:12px}
+  .topnav a.active{color:var(--primary);font-weight:600;background:var(--enh-bg)}
+  .topnav .spacer{flex:1}
+  .ver{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;color:var(--mfg)}
+  .shell{display:flex;height:calc(100vh - 40px)}
+  .nav{width:256px;flex-shrink:0;border-right:1px solid var(--border);background:var(--muted);overflow-y:auto}
+  .nav-head{display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px}
+  .relbtn{display:block;width:100%;text-align:left;border:0;background:transparent;cursor:pointer;padding:10px 16px;border-bottom:1px solid var(--border)}
+  .relbtn:hover{background:var(--muted2)}
+  .relbtn.active{background:var(--enh-bg);border-right:2px solid var(--primary)}
+  .relbtn .t{font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px}
+  .relbtn .badge{font-size:10px;font-weight:700;color:var(--primary-fg);background:var(--primary);border-radius:4px;padding:1px 6px}
+  .relbtn .d{font-size:11px;color:var(--mfg);margin-top:3px}
+  .relbtn.active .d{color:var(--primary)}
+  .content{flex:1;overflow-y:auto;background:var(--bg)}
+  .wrap{max-width:740px;margin:0 auto;padding:26px 32px 64px}
+  .relhead{margin-bottom:20px}
+  .relhead h1{font-size:21px;margin:0 0 4px}
+  .relhead .sub{color:var(--mfg);font-size:13px;margin:0 0 10px}
+  .pills{display:flex;gap:8px;flex-wrap:wrap}
+  .pill{font-size:11px;font-weight:600;border-radius:999px;padding:3px 10px;border:1px solid var(--border);color:var(--mfg);background:var(--muted)}
+  .pill b{color:var(--fg)}
+  /* timeline */
+  .feed{position:relative;margin-left:10px;padding-left:26px;border-left:2px solid var(--border)}
+  .node{position:relative;margin-bottom:20px}
+  .node::before{content:"";position:absolute;left:-34px;top:4px;width:13px;height:13px;border-radius:50%;border:3px solid var(--bg);box-shadow:0 0 0 1px var(--border)}
+  .node.enh::before{background:var(--enh)} .node.fix::before{background:var(--fix)}
+  .card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .card .head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-left:3px solid transparent}
+  .node.enh .head{border-left-color:var(--enh)} .node.fix .head{border-left-color:var(--fix)}
+  .chip{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-radius:5px;padding:2px 7px}
+  .chip.enh{color:var(--enh);background:var(--enh-bg)} .chip.fix{color:var(--fix);background:var(--fix-bg)}
+  .area{font-size:11px;font-weight:600;color:var(--mfg);background:var(--muted2);border-radius:5px;padding:2px 7px}
+  .card h3{margin:0;font-size:14px;font-weight:600;flex:1}
+  .card .body{padding:0 14px 12px}
+  .card p{margin:0;color:#334155;line-height:1.5;font-size:13px}
+  .thumb{margin-top:10px;display:flex;gap:12px;align-items:flex-start}
+  .thumb img{width:220px;max-width:46%;border:1px solid var(--border);border-radius:8px;cursor:zoom-in;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+  .thumb .cap{font-size:11px;color:var(--mfg);font-style:italic;align-self:center}
+  .noshot{margin-top:10px;border:1px dashed #cbd5e1;border-radius:8px;color:var(--mfg);font-size:11px;padding:8px 10px;background:var(--muted)}
+  .tag{position:fixed;left:10px;bottom:10px;background:#0f172a;color:#fff;font-size:11px;padding:5px 10px;border-radius:6px;opacity:.85}
+  /* lightbox */
+  .lb{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:30px;z-index:50}
+  .lb.open{display:flex} .lb img{max-width:90%;max-height:90%;border-radius:8px}
+</style>
+</head>
+<body>
+  <div class="topnav">
+    <span class="brand">ROIS · Gantt</span>
+    <a>Dashboard</a><a>Live</a><a>Scenario</a><a>Rule</a><a>Data</a><a>System</a><a>Regression</a><a>Help</a><a class="active">Release</a>
+    <span class="spacer"></span>
+    <span class="ver">Ver:B80/F168/R18</span>
+  </div>
+  <div class="shell">
+    <aside class="nav">
+      <div class="nav-head">📣&nbsp; Release Notes</div>
+      <div id="tree"></div>
+    </aside>
+    <main class="content"><div class="wrap" id="wrap"></div></main>
+  </div>
+  <div class="tag">Mockup B — Changelog timeline feed</div>
+  <div class="lb" id="lb" onclick="this.classList.remove('open')"><img id="lbimg" src="" alt=""></div>
+
+<script src="_data.js"></script>
+<script>
+  let active = 0;
+  function renderTree(){
+    document.getElementById('tree').innerHTML = RELEASES.map((r,i)=>`
+      <button class="relbtn ${i===active?'active':''}" onclick="select(${i})">
+        <div class="t"><span class="badge">Rel ${r.n}</span> ${r.date}</div>
+        <div class="d">${r.items.length} changes · ${r.version}</div>
+      </button>`).join('');
+  }
+  function zoom(src){const lb=document.getElementById('lb');document.getElementById('lbimg').src=src;lb.classList.add('open');}
+  function media(it){
+    if(it.shot) return `<div class="thumb"><img src="${SHOT_BASE}${it.shot}" onclick="zoom('${SHOT_BASE}${it.shot}')" alt=""><span class="cap">${it.cap} · click to enlarge</span></div>`;
+    return `<div class="noshot">📸 Snapshot to be captured</div>`;
+  }
+  function node(it){
+    return `<div class="node ${it.type}">
+      <div class="card">
+        <div class="head"><span class="chip ${it.type}">${it.type==='enh'?'Enhancement':'Bug fix'}</span>
+          <span class="area">${it.area}</span><h3>${it.title}</h3></div>
+        <div class="body"><p>${it.body}</p>${media(it)}</div>
+      </div></div>`;
+  }
+  function select(i){active=i;renderTree();renderWrap();document.querySelector('.content').scrollTo(0,0);}
+  function renderWrap(){
+    const r=RELEASES[active];
+    const enh=r.items.filter(x=>x.type==='enh').length, fix=r.items.filter(x=>x.type==='fix').length;
+    document.getElementById('wrap').innerHTML = `
+      <div class="relhead">
+        <h1>Rel ${r.n} — ${r.date}</h1>
+        <p class="sub">${r.summary}</p>
+        <div class="pills">
+          <span class="pill"><b>${enh}</b> enhancements</span>
+          <span class="pill"><b>${fix}</b> bug fixes</span>
+          <span class="pill">${r.version}</span>
+        </div>
+      </div>
+      <div class="feed">${r.items.map(node).join('')}</div>`;
+  }
+  renderTree();renderWrap();
+</script>
+</body>
+</html>

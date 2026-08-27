@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROIS-AI Pane Layout - Drag & Drop Grid</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --pane-roster: #3b82f6;
+      --pane-pairing: #22c55e;
+      --pane-flight: #a855f7;
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border-color: #475569;
+      --accent: #f59e0b;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    /* Main Layout: 2x2 Grid */
+    .layout-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 4px;
+      height: calc(100vh - 48px - 28px);
+      padding: 4px;
+    }
+
+    .grid-cell {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .grid-cell.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-style: dashed;
+    }
+
+    .grid-cell.empty:hover {
+      border-color: var(--accent);
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    /* When single pane in a row, span full width */
+    .grid-cell.span-full {
+      grid-column: span 2;
+    }
+
+    /* Drop indicator */
+    .grid-cell.drop-target {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+    }
+
+    .drop-indicator {
+      position: absolute;
+      background: var(--accent);
+      opacity: 0.6;
+      transition: all 0.15s;
+      z-index: 10;
+    }
+
+    .drop-indicator.top {
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+
+    .drop-indicator.bottom {
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+
+    .drop-indicator.left {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 4px;
+    }
+
+    .drop-indicator.right {
+      top: 0;
+      bottom: 0;
+      right: 0;
+      width: 4px;
+    }
+
+    /* Pane inside grid cell */
+    .pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .pane-header {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+      cursor: grab;
+    }
+
+    .pane-header:active {
+      cursor: grabbing;
+    }
+
+    .pane-header.draggable {
+      cursor: grab;
+    }
+
+    .pane-header.draggable:hover {
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    .pane-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    .pane-title {
+      font-size: 13px;
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .pane-drag-handle {
+      color: var(--text-secondary);
+      font-size: 14px;
+      padding: 4px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+
+    .pane-drag-handle:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .pane-close-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 16px;
+      transition: all 0.15s;
+    }
+
+    .pane-close-btn:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    /* Timeline */
+    .timeline {
+      height: 32px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .timeline-content {
+      flex: 1;
+      position: relative;
+    }
+
+    .time-label {
+      position: absolute;
+      font-size: 11px;
+      color: var(--text-secondary);
+      top: 8px;
+    }
+
+    /* Scrollbar */
+    .scrollbar-row {
+      height: 8px;
+      padding: 2px 4px;
+      background: var(--bg-tertiary);
+    }
+
+    .scrollbar-track {
+      height: 4px;
+      background: var(--bg-primary);
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .scrollbar-thumb {
+      height: 100%;
+      background: var(--text-secondary);
+      border-radius: 2px;
+      position: absolute;
+      transition: background 0.15s;
+    }
+
+    .scrollbar-thumb:hover {
+      background: var(--accent);
+    }
+
+    /* Pane content */
+    .pane-content {
+      flex: 1;
+      background: var(--bg-primary);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 4px 8px;
+    }
+
+    .task-row {
+      height: 26px;
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    .row-label {
+      width: 70px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .task-bar {
+      position: absolute;
+      left: 78px;
+      height: 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 500;
+      color: white;
+      cursor: pointer;
+    }
+
+    .task-bar:hover {
+      filter: brightness(1.15);
+    }
+
+    .task-bar.selected {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    /* Add pane button */
+    .add-pane-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+    }
+
+    .add-pane-btn:hover {
+      color: var(--accent);
+    }
+
+    /* Add pane menu */
+    .add-menu {
+      position: fixed;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: none;
+    }
+
+    .add-menu.show {
+      display: block;
+    }
+
+    .add-menu-option {
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .add-menu-option:hover {
+      background: var(--bg-tertiary);
+    }
+
+    /* Dragging overlay */
+    .drag-overlay {
+      position: fixed;
+      background: var(--bg-secondary);
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+      z-index: 9999;
+      opacity: 0.9;
+      display: none;
+      pointer-events: none;
+    }
+
+    .drag-overlay.show {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Info panel */
+    .info-panel {
+      position: fixed;
+      right: 16px;
+      top: 56px;
+      width: 200px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 11px;
+      z-index: 50;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      color: var(--text-secondary);
+    }
+
+    .info-row strong {
+      color: var(--text-primary);
+    }
+
+    .info-rule {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    /* Toolbar */
+    .toolbar-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .toolbar-btn:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn-roster { background: var(--pane-roster); color: white; }
+    .btn-pairing { background: var(--pane-pairing); color: white; }
+    .btn-flight { background: var(--pane-flight); color: white; }
+    .btn-reset { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+    /* Status bar */
+    .status-bar {
+      height: 28px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col">
+  <!-- Toolbar -->
+  <div class="h-12 flex items-center justify-between px-4 border-b" style="background: var(--bg-secondary); border-color: var(--border-color)">
+    <div class="flex items-center gap-4">
+      <h1 class="text-lg font-bold">Pane Layout Demo</h1>
+      <span class="text-xs" style="color: var(--text-secondary)">Max 4 Panes | Drag to rearrange | Single pane spans full row</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button class="toolbar-btn btn-roster" onclick="addPane('roster')">+ Roster</button>
+      <button class="toolbar-btn btn-pairing" onclick="addPane('pairing')">+ Pairing</button>
+      <button class="toolbar-btn btn-flight" onclick="addPane('flight')">+ Flight</button>
+      <button class="toolbar-btn btn-reset" onclick="resetLayout()">Reset</button>
+    </div>
+  </div>
+
+  <!-- Main Layout Grid -->
+  <div class="layout-grid" id="layout-grid">
+    <!-- Grid cells rendered dynamically -->
+  </div>
+
+  <!-- Drag Overlay -->
+  <div class="drag-overlay" id="drag-overlay">
+    <div class="pane-header" id="drag-header">
+      <div class="pane-indicator" id="drag-indicator"></div>
+      <span class="pane-title" id="drag-title"></span>
+    </div>
+    <div style="padding: 8px; font-size: 11px; color: var(--text-secondary)">
+      Drop on target cell to move
+    </div>
+  </div>
+
+  <!-- Add Pane Menu -->
+  <div class="add-menu" id="add-menu">
+    <div class="add-menu-option" onclick="addPaneToTarget('roster')">
+      <div class="pane-indicator" style="background: var(--pane-roster)"></div>
+      <span>Roster Pane</span>
+    </div>
+    <div class="add-menu-option" onclick="addPaneToTarget('pairing')">
+      <div class="pane-indicator" style="background: var(--pane-pairing)"></div>
+      <span>Pairing Pane</span>
+    </div>
+    <div class="add-menu-option" onclick="addPaneToTarget('flight')">
+      <div class="pane-indicator" style="background: var(--pane-flight)"></div>
+      <span>Flight Pane</span>
+    </div>
+  </div>
+
+  <!-- Info Panel -->
+  <div class="info-panel">
+    <div class="info-row">
+      <span>Total Panes:</span>
+      <strong id="total-panes">2</strong>
+    </div>
+    <div class="info-row">
+      <span>Row 1:</span>
+      <strong id="row1-status">Full (Roster)</strong>
+    </div>
+    <div class="info-row">
+      <span>Row 2:</span>
+      <strong id="row2-status">Full (Pairing)</strong>
+    </div>
+    <div class="info-rule">
+      <div>• Max 4 panes total</div>
+      <div>• Single pane → spans full row</div>
+      <div>• 2 panes → 50/50 split</div>
+      <div>• Drag header to rearrange</div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="flex items-center gap-4">
+      <span class="legend-item">
+        <div class="legend-dot" style="background: var(--pane-roster)"></div>
+        Roster
+      </span>
+      <span class="legend-item">
+        <div class="legend-dot" style="background: var(--pane-pairing)"></div>
+        Pairing
+      </span>
+      <span class="legend-item">
+        <div class="legend-dot" style="background: var(--pane-flight)"></div>
+        Flight
+      </span>
+    </div>
+    <div id="drag-hint">Click empty cell to add pane | Drag pane header to rearrange</div>
+  </div>
+
+  <script>
+    // Layout State: 2x2 grid (row, col)
+    // Each cell can have a pane or be empty
+    // When row has only 1 pane, it spans full width
+    let gridState = [
+      [null, null], // Row 0: 2 columns
+      [null, null]  // Row 1: 2 columns
+    ];
+
+    let paneIdCounter = { roster: 1, pairing: 1, flight: 1 };
+    let totalPanes = 0;
+    const MAX_PANES = 4;
+
+    let dragState = null;
+    let addMenuTarget = null;
+
+    const paneColors = {
+      roster: 'var(--pane-roster)',
+      pairing: 'var(--pane-pairing)',
+      flight: 'var(--pane-flight)'
+    };
+
+    // Initialize default layout: Roster (row 0) + Pairing (row 1)
+    function initLayout() {
+      gridState = [
+        [{ type: 'roster', id: 'roster-1', title: 'Roster #1', scrollX: 10, selectedTasks: [], tasks: [
+          { id: 'r1-1', label: 'CA-101', start: 2, duration: 4 },
+          { id: 'r1-2', label: 'FO-102', start: 8, duration: 3 },
+          { id: 'r1-3', label: 'FA-103', start: 14, duration: 5 }
+        ]}, null],
+        [{ type: 'pairing', id: 'pairing-1', title: 'Pairing #1', scrollX: 20, selectedTasks: [], tasks: [
+          { id: 'p1-1', label: 'P-201', start: 6, duration: 6 },
+          { id: 'p1-2', label: 'P-202', start: 16, duration: 4 }
+        ]}, null]
+      ];
+      paneIdCounter = { roster: 2, pairing: 2, flight: 1 };
+      totalPanes = 2;
+      renderGrid();
+    }
+
+    function resetLayout() {
+      initLayout();
+    }
+
+    // Count panes in a row
+    function countPanesInRow(row) {
+      return gridState[row].filter(p => p !== null).length;
+    }
+
+    // Render grid
+    function renderGrid() {
+      const grid = document.getElementById('layout-grid');
+      grid.innerHTML = '';
+
+      for (let row = 0; row < 2; row++) {
+        const panesInRow = countPanesInRow(row);
+        const rowStartCol = panesInRow === 1 ? 0 : null;
+
+        for (let col = 0; col < 2; col++) {
+          const pane = gridState[row][col];
+
+          // Skip if single pane spans full (only render at col 0)
+          if (panesInRow === 1 && col === 1) continue;
+
+          const cell = document.createElement('div');
+          cell.className = 'grid-cell';
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+
+          // Span full width for single pane
+          if (panesInRow === 1) {
+            cell.classList.add('span-full');
+          }
+
+          if (pane) {
+            cell.appendChild(createPaneElement(pane, row, col, panesInRow));
+          } else if (panesInRow === 0) {
+            // Empty cell - can add pane
+            cell.classList.add('empty');
+            cell.innerHTML = `
+              <div class="add-pane-btn" onclick="showAddMenu(event, ${row}, ${col})">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span style="font-size: 12px">Add Pane</span>
+              </div>
+            `;
+          }
+
+          // Drop target events
+          cell.addEventListener('dragover', handleDragOver);
+          cell.addEventListener('dragleave', handleDragLeave);
+          cell.addEventListener('drop', handleDrop);
+
+          grid.appendChild(cell);
+        }
+      }
+
+      updateInfoPanel();
+    }
+
+    // Create pane element
+    function createPaneElement(pane, row, col, panesInRow) {
+      const el = document.createElement('div');
+      el.className = 'pane';
+      el.dataset.paneId = pane.id;
+
+      // Drag handle only if > 1 pane total
+      const canDrag = totalPanes > 1;
+
+      // Header
+      const header = document.createElement('div');
+      header.className = `pane-header ${canDrag ? 'draggable' : ''}`;
+      header.draggable = canDrag;
+
+      header.innerHTML = `
+        <div class="pane-indicator" style="background: ${paneColors[pane.type]}"></div>
+        <span class="pane-title">${pane.title}</span>
+        ${canDrag ? '<div class="pane-drag-handle" title="Drag to move">⠿</div>' : ''}
+        <div class="pane-close-btn" onclick="closePane('${pane.id}')">×</div>
+      `;
+
+      if (canDrag) {
+        header.addEventListener('dragstart', (e) => startDrag(e, pane, row, col));
+        header.addEventListener('dragend', endDrag);
+      }
+
+      el.appendChild(header);
+
+      // Timeline (shared when single pane, mini when split)
+      const timeline = document.createElement('div');
+      timeline.className = 'timeline';
+      timeline.innerHTML = `
+        <div class="timeline-content" id="timeline-${pane.id}">
+          ${renderTimelineLabels(pane.scrollX)}
+        </div>
+      `;
+      el.appendChild(timeline);
+
+      // Scrollbar (shared for row when single pane)
+      const scrollbar = document.createElement('div');
+      scrollbar.className = 'scrollbar-row';
+      scrollbar.innerHTML = `
+        <div class="scrollbar-track" onclick="handleScrollClick(event, '${pane.id}')">
+          <div class="scrollbar-thumb" style="width: 30%; left: ${pane.scrollX}%"></div>
+        </div>
+      `;
+      el.appendChild(scrollbar);
+
+      // Content
+      const content = document.createElement('div');
+      content.className = 'pane-content';
+      content.id = `content-${pane.id}`;
+      content.appendChild(renderTasks(pane));
+      el.appendChild(content);
+
+      return el;
+    }
+
+    // Render timeline labels
+    function renderTimelineLabels(scrollX) {
+      let html = '';
+      for (let h = 0; h <= 24; h += 4) {
+        const x = (h / 24) * 100 - scrollX * 0.3;
+        if (x >= -10 && x <= 110) {
+          html += `<span class="time-label" style="left: ${Math.max(4, Math.min(96, x))}%">${h.toString().padStart(2, '0')}:00</span>`;
+        }
+      }
+      return html;
+    }
+
+    // Render tasks
+    function renderTasks(pane) {
+      const container = document.createElement('div');
+      container.style.position = 'relative';
+
+      pane.tasks.forEach(task => {
+        const row = document.createElement('div');
+        row.className = 'task-row';
+
+        const label = document.createElement('span');
+        label.className = 'row-label';
+        label.textContent = task.label;
+        row.appendChild(label);
+
+        // Task bar
+        const hourWidth = 10; // px per hour (scaled)
+        const left = 78 + task.start * hourWidth - pane.scrollX * 2;
+        const width = task.duration * hourWidth;
+
+        const bar = document.createElement('div');
+        bar.className = `task-bar ${pane.selectedTasks.includes(task.id) ? 'selected' : ''}`;
+        bar.style.left = `${Math.max(78, left)}px`;
+        bar.style.width = `${Math.max(40, width)}px`;
+        bar.style.background = paneColors[pane.type];
+        bar.textContent = task.label;
+        bar.onclick = () => selectTask(pane.id, task.id);
+
+        row.appendChild(bar);
+        container.appendChild(row);
+      });
+
+      return container;
+    }
+
+    // Select task
+    function selectTask(paneId, taskId) {
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 2; col++) {
+          const pane = gridState[row][col];
+          if (pane && pane.id === paneId) {
+            const idx = pane.selectedTasks.indexOf(taskId);
+            if (idx >= 0) {
+              pane.selectedTasks.splice(idx, 1);
+            } else {
+              pane.selectedTasks.push(taskId);
+            }
+            renderGrid();
+            return;
+          }
+        }
+      }
+    }
+
+    // Handle scroll click
+    function handleScrollClick(e, paneId) {
+      const track = e.currentTarget;
+      const rect = track.getBoundingClientRect();
+      const percent = Math.round((e.clientX - rect.left) / rect.width * 100);
+      const clamped = Math.max(0, Math.min(70, percent));
+
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 2; col++) {
+          const pane = gridState[row][col];
+          if (pane && pane.id === paneId) {
+            pane.scrollX = clamped;
+            renderGrid();
+            return;
+          }
+        }
+      }
+    }
+
+    // Add pane
+    function addPane(type) {
+      if (totalPanes >= MAX_PANES) {
+        alert('Maximum 4 panes allowed');
+        return;
+      }
+
+      // Find first empty cell
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 2; col++) {
+          if (gridState[row][col] === null) {
+            addPaneAt(row, col, type);
+            return;
+          }
+        }
+      }
+    }
+
+    function showAddMenu(e, row, col) {
+      e.stopPropagation();
+      if (totalPanes >= MAX_PANES) {
+        alert('Maximum 4 panes allowed');
+        return;
+      }
+
+      const menu = document.getElementById('add-menu');
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
+      menu.classList.add('show');
+      addMenuTarget = { row, col };
+    }
+
+    function addPaneToTarget(type) {
+      if (!addMenuTarget) return;
+      addPaneAt(addMenuTarget.row, addMenuTarget.col, type);
+      document.getElementById('add-menu').classList.remove('show');
+      addMenuTarget = null;
+    }
+
+    function addPaneAt(row, col, type) {
+      const num = paneIdCounter[type];
+      paneIdCounter[type]++;
+
+      const newPane = {
+        type,
+        id: `${type}-${num}`,
+        title: `${type.charAt(0).toUpperCase() + type.slice(1)} #${num}`,
+        scrollX: 0,
+        selectedTasks: [],
+        tasks: generateTasks(type, num)
+      };
+
+      gridState[row][col] = newPane;
+      totalPanes++;
+      renderGrid();
+    }
+
+    function generateTasks(type, num) {
+      const prefix = type === 'roster' ? 'R' : type === 'pairing' ? 'P' : 'F';
+      return [
+        { id: `${prefix}${num}-1`, label: `${prefix}-${num}01`, start: Math.random() * 10, duration: 3 + Math.random() * 3 },
+        { id: `${prefix}${num}-2`, label: `${prefix}-${num}02`, start: 10 + Math.random() * 8, duration: 2 + Math.random() * 2 }
+      ];
+    }
+
+    // Close pane
+    function closePane(paneId) {
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 2; col++) {
+          if (gridState[row][col]?.id === paneId) {
+            gridState[row][col] = null;
+            totalPanes--;
+            // Consolidate row: move remaining pane to col 0 if needed
+            if (countPanesInRow(row) === 1 && gridState[row][1] !== null) {
+              gridState[row][0] = gridState[row][1];
+              gridState[row][1] = null;
+            }
+            renderGrid();
+            return;
+          }
+        }
+      }
+    }
+
+    // Drag and drop
+    function startDrag(e, pane, fromRow, fromCol) {
+      if (totalPanes <= 1) return;
+
+      e.dataTransfer.setData('text/plain', pane.id);
+      e.dataTransfer.effectAllowed = 'move';
+
+      dragState = {
+        paneId: pane.id,
+        fromRow,
+        fromCol,
+        pane: pane
+      };
+
+      // Show drag overlay
+      const overlay = document.getElementById('drag-overlay');
+      document.getElementById('drag-indicator').style.background = paneColors[pane.type];
+      document.getElementById('drag-title').textContent = pane.title;
+      overlay.classList.add('show');
+
+      // Position overlay at cursor
+      updateDragOverlay(e);
+
+      document.addEventListener('drag', updateDragOverlay);
+    }
+
+    function updateDragOverlay(e) {
+      const overlay = document.getElementById('drag-overlay');
+      if (e.clientX && e.clientY) {
+        overlay.style.left = `${e.clientX - 100}px`;
+        overlay.style.top = `${e.clientY - 30}px`;
+        overlay.style.width = '200px';
+        overlay.style.height = '80px';
+      }
+    }
+
+    function endDrag(e) {
+      document.getElementById('drag-overlay').classList.remove('show');
+      document.removeEventListener('drag', updateDragOverlay);
+      dragState = null;
+
+      // Remove all drop indicators
+      document.querySelectorAll('.grid-cell').forEach(cell => {
+        cell.classList.remove('drop-target');
+        const indicators = cell.querySelectorAll('.drop-indicator');
+        indicators.forEach(ind => ind.remove());
+      });
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+
+      const cell = e.currentTarget;
+      const targetRow = parseInt(cell.dataset.row);
+      const targetCol = parseInt(cell.dataset.col);
+
+      if (!dragState) return;
+
+      // Clear previous indicators
+      cell.querySelectorAll('.drop-indicator').forEach(ind => ind.remove());
+
+      // Determine drop position based on mouse position in cell
+      const rect = cell.getBoundingClientRect();
+      const relX = e.clientX - rect.left;
+      const relY = e.clientY - rect.top;
+      const cellWidth = rect.width;
+      const cellHeight = rect.height;
+
+      // Check if target cell has a pane
+      const targetPane = gridState[targetRow][targetCol];
+      const sourceRowPanes = countPanesInRow(dragState.fromRow);
+      const targetRowPanes = countPanesInRow(targetRow);
+
+      // Calculate valid drop positions
+      let dropPosition = null;
+
+      if (!targetPane) {
+        // Empty cell - can drop directly
+        cell.classList.add('drop-target');
+      } else if (targetPane.id === dragState.paneId) {
+        // Same pane - no drop
+        return;
+      } else {
+        // Has pane - check position
+        cell.classList.add('drop-target');
+
+        // For 2-pane rows: can swap (left/right)
+        if (sourceRowPanes === 2 && targetRowPanes === 2 && dragState.fromRow === targetRow) {
+          // Same row with 2 panes - can swap
+          if (relX < cellWidth / 2) {
+            dropPosition = 'left';
+          } else {
+            dropPosition = 'right';
+          }
+        } else if (targetRowPanes === 2) {
+          // Target row has 2 panes - can only drop above/below
+          if (relY < cellHeight / 2) {
+            dropPosition = 'top';
+          } else {
+            dropPosition = 'bottom';
+          }
+        } else if (targetRowPanes === 1) {
+          // Target row has 1 pane - can split (left/right) or move to other row (top/bottom)
+          if (relY < cellHeight * 0.3) {
+            dropPosition = 'top';
+          } else if (relY > cellHeight * 0.7) {
+            dropPosition = 'bottom';
+          } else if (relX < cellWidth / 2) {
+            dropPosition = 'left';
+          } else {
+            dropPosition = 'right';
+          }
+        }
+
+        // Show drop indicator
+        if (dropPosition) {
+          const indicator = document.createElement('div');
+          indicator.className = `drop-indicator ${dropPosition}`;
+          cell.appendChild(indicator);
+        }
+      }
+    }
+
+    function handleDragLeave(e) {
+      const cell = e.currentTarget;
+      cell.classList.remove('drop-target');
+      cell.querySelectorAll('.drop-indicator').forEach(ind => ind.remove());
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      if (!dragState) return;
+
+      const cell = e.currentTarget;
+      const targetRow = parseInt(cell.dataset.row);
+      const targetCol = parseInt(cell.dataset.col);
+
+      cell.classList.remove('drop-target');
+      cell.querySelectorAll('.drop-indicator').forEach(ind => ind.remove());
+
+      // Find indicator position
+      const indicator = cell.querySelector('.drop-indicator');
+      let dropPosition = indicator ? indicator.className.split(' ')[1] : 'center';
+
+      // Execute move
+      movePane(dragState.fromRow, dragState.fromCol, targetRow, targetCol, dropPosition);
+    }
+
+    // Move pane logic
+    function movePane(fromRow, fromCol, toRow, toCol, position) {
+      const sourcePane = gridState[fromRow][fromCol];
+      if (!sourcePane) return;
+
+      const targetPane = gridState[toRow][toCol];
+      const sourceRowPanes = countPanesInRow(fromRow);
+      const targetRowPanes = countPanesInRow(toRow);
+
+      // Different scenarios
+      if (!targetPane) {
+        // Move to empty cell
+        gridState[toRow][toCol] = sourcePane;
+        gridState[fromRow][fromCol] = null;
+
+        // Consolidate rows
+        consolidateRow(fromRow);
+        consolidateRow(toRow);
+      } else if (targetPane.id === sourcePane.id) {
+        // Same pane - no move
+        return;
+      } else {
+        // Has target pane - handle based on position
+        if (position === 'left' || position === 'right') {
+          // Split or swap
+          if (targetRowPanes === 1) {
+            // Split: place source next to target
+            const newCol = position === 'left' ? 0 : 1;
+            const otherCol = position === 'left' ? 1 : 0;
+            gridState[toRow][newCol] = sourcePane;
+            gridState[toRow][otherCol] = targetPane;
+          } else if (targetRowPanes === 2 && fromRow === toRow) {
+            // Swap within same row
+            gridState[fromRow][fromCol] = targetPane;
+            gridState[toRow][toCol] = sourcePane;
+          } else {
+            // Move source to target row (swap)
+            gridState[fromRow][fromCol] = targetPane;
+            gridState[toRow][toCol] = sourcePane;
+            consolidateRow(fromRow);
+          }
+        } else if (position === 'top' || position === 'bottom') {
+          // Move to different row
+          const destRow = position === 'top' ? Math.max(0, toRow - 1) : Math.min(1, toRow + 1);
+
+          if (destRow === fromRow) {
+            // Same row - no move
+            return;
+          }
+
+          // Check if dest row is empty or has space
+          const destRowPanes = countPanesInRow(destRow);
+
+          if (destRowPanes === 0) {
+            // Move to empty row
+            gridState[destRow][0] = sourcePane;
+            gridState[fromRow][fromCol] = null;
+            consolidateRow(fromRow);
+          } else if (destRowPanes === 1) {
+            // Split dest row
+            gridState[destRow][1] = sourcePane;
+            gridState[fromRow][fromCol] = null;
+            consolidateRow(fromRow);
+          } else {
+            // Dest row full - swap with target
+            // Find which col to swap
+            const swapCol = position === 'top' ? 0 : 0; // Just swap with first
+            const targetInDest = gridState[destRow][swapCol];
+            gridState[destRow][swapCol] = sourcePane;
+            gridState[fromRow][fromCol] = targetInDest;
+            consolidateRow(fromRow);
+          }
+        }
+      }
+
+      renderGrid();
+    }
+
+    // Consolidate row: move single pane to col 0
+    function consolidateRow(row) {
+      const count = countPanesInRow(row);
+      if (count === 1) {
+        if (gridState[row][1] !== null) {
+          gridState[row][0] = gridState[row][1];
+          gridState[row][1] = null;
+        }
+      }
+    }
+
+    // Update info panel
+    function updateInfoPanel() {
+      document.getElementById('total-panes').textContent = totalPanes;
+
+      const row1Status = countPanesInRow(0) === 0 ? 'Empty' :
+                        countPanesInRow(0) === 1 ? `Full (${gridState[0][0]?.title})` :
+                        `Split (${gridState[0][0]?.title} | ${gridState[0][1]?.title})`;
+      const row2Status = countPanesInRow(1) === 0 ? 'Empty' :
+                        countPanesInRow(1) === 1 ? `Full (${gridState[1][0]?.title})` :
+                        `Split (${gridState[1][0]?.title} | ${gridState[1][1]?.title})`;
+
+      document.getElementById('row1-status').textContent = row1Status;
+      document.getElementById('row2-status').textContent = row2Status;
+
+      // Update drag hint
+      const hint = totalPanes <= 1 ? 'Add more panes to enable drag' : 'Drag ⠿ handle to rearrange';
+      document.getElementById('drag-hint').textContent = hint;
+    }
+
+    // Hide menu on click outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.add-pane-btn') && !e.target.closest('.add-menu')) {
+        document.getElementById('add-menu').classList.remove('show');
+      }
+    });
+
+    // Initialize
+    initLayout();
+  </script>
+</body>
+</html>

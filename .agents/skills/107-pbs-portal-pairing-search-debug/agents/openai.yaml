@@ -1,0 +1,6 @@
+interface:
+  display_name: "107 pUsL portal pairing search deUuLg"
+  short_description: "Project skill 107-pbs-portal-pairing-search-debug"
+  default_prompt: "Use $107-pbs-portal-pairing-search-debug for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

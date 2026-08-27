@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ground Task Dialog — ROIS-AI Design Mockup</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   THEME TOKENS
+═══════════════════════════════════════════════════════ */
+:root {
+  --font: 'Inter','Segoe UI',system-ui,sans-serif;
+  --mono: 'JetBrains Mono','Fira Code','Consolas',monospace;
+  --r: 6px; --rs: 4px; --r2: 3px;
+  --clr-gnd: #a855f7;
+  --clr-trn: #22c55e;
+  --clr-sby: #f97316;
+  --clr-lve: #9ca3af;
+  --clr-adm: #ec4899;
+}
+[data-theme="dark"] {
+  --bg:        #0b0e18;
+  --app-bg:    #0f1420;
+  --card:      #151b2c;
+  --card2:     #1a2035;
+  --border:    #2a3350;
+  --border2:   #364060;
+  --fg:        #e2e8f0;
+  --fg-dim:    #8896b3;
+  --fg-muted:  #4a5a7a;
+  --accent:    #3b82f6;
+  --accent-h:  #2563eb;
+  --input-bg:  #1a2035;
+  --hover:     rgba(59,130,246,.08);
+  --tag-bg:    #1e2d4a;
+  --tag-border:#2a4470;
+  --danger:    #ef4444;
+  --warn:      #f59e0b;
+  --success:   #22c55e;
+  --purple:    #a855f7;
+  --green:     #22c55e;
+  --orange:    #f97316;
+  --pink:      #ec4899;
+  --gray:      #6b7280;
+  --sep:       #2a3350;
+}
+[data-theme="light"] {
+  --bg:        #f1f5f9;
+  --app-bg:    #f8fafc;
+  --card:      #ffffff;
+  --card2:     #f8fafc;
+  --border:    #e2e8f0;
+  --border2:   #cbd5e1;
+  --fg:        #0f172a;
+  --fg-dim:    #64748b;
+  --fg-muted:  #94a3b8;
+  --accent:    #2563eb;
+  --accent-h:  #1d4ed8;
+  --input-bg:  #f8fafc;
+  --hover:     rgba(37,99,235,.06);
+  --tag-bg:    #eff6ff;
+  --tag-border:#bfdbfe;
+  --danger:    #dc2626;
+  --warn:      #d97706;
+  --success:   #16a34a;
+  --purple:    #9333ea;
+  --green:     #16a34a;
+  --orange:    #ea580c;
+  --pink:      #db2777;
+  --gray:      #6b7280;
+  --sep:       #e2e8f0;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px 80px;
+}
+
+/* ── TOOLBAR ── */
+.toolbar {
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.toolbar h1 { font-size: 15px; font-weight: 600; color: var(--fg); flex: 1; }
+.toolbar .subtitle { font-size: 12px; color: var(--fg-dim); }
+.btn-icon {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: var(--rs);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--fg-dim); transition: all .15s;
+}
+.btn-icon:hover { color: var(--fg); border-color: var(--border2); }
+.btn-icon.active { color: var(--accent); border-color: var(--accent); }
+
+/* ── SECTION LABEL ── */
+.section {
+  width: 100%; max-width: 960px;
+  margin-bottom: 40px;
+}
+.section-header {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--fg-muted);
+  margin-bottom: 16px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--sep);
+}
+
+/* ── MODE TABS ── */
+.mode-tabs {
+  display: flex; gap: 0; margin-bottom: 20px;
+  border: 1px solid var(--border); border-radius: var(--r);
+  overflow: hidden; width: fit-content;
+}
+.mode-tab {
+  padding: 6px 20px; font-size: 12px; font-weight: 500;
+  cursor: pointer; background: var(--card);
+  color: var(--fg-dim); border: none;
+  transition: all .15s;
+}
+.mode-tab:not(:last-child) { border-right: 1px solid var(--border); }
+.mode-tab.active { background: var(--accent); color: #fff; }
+.mode-tab:hover:not(.active) { background: var(--hover); color: var(--fg); }
+
+/* ── DIALOG SHELL ── */
+.dialog-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  width: 540px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  overflow: hidden;
+}
+.dialog-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--sep);
+}
+.dialog-icon {
+  width: 32px; height: 32px; border-radius: var(--rs);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.dialog-icon.create { background: rgba(168,85,247,.15); }
+.dialog-icon.edit   { background: rgba(59,130,246,.15); }
+.dialog-title { font-size: 14px; font-weight: 600; flex: 1; }
+.dialog-badge {
+  font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 20px; text-transform: uppercase; letter-spacing: .05em;
+}
+.dialog-badge.create { background: rgba(168,85,247,.2); color: var(--purple); }
+.dialog-badge.edit   { background: rgba(59,130,246,.2); color: var(--accent); }
+.dialog-close {
+  width: 24px; height: 24px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--fg-muted); font-size: 16px;
+  border: none; background: transparent;
+}
+.dialog-close:hover { background: var(--hover); color: var(--fg); }
+
+/* ── FORM BODY ── */
+.dialog-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+.field-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: start;
+  gap: 8px;
+}
+.field-label {
+  font-size: 12px; color: var(--fg-dim);
+  padding-top: 7px; line-height: 1.3;
+}
+.field-label .req { color: var(--danger); margin-left: 1px; }
+.field-label .hint {
+  display: block; font-size: 10px; color: var(--fg-muted); margin-top: 2px;
+}
+
+/* ── CREW MULTI-SELECT ── */
+.crew-select-box {
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  background: var(--input-bg);
+  padding: 6px 8px;
+  cursor: text;
+  transition: border-color .15s;
+  min-height: 36px;
+}
+.crew-select-box:focus-within { border-color: var(--accent); }
+.crew-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0; }
+.crew-tag {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--tag-bg); border: 1px solid var(--tag-border);
+  color: var(--accent); border-radius: 4px;
+  padding: 1px 6px 1px 7px; font-size: 11px; font-weight: 500;
+  font-family: var(--mono);
+}
+.crew-tag .tag-rm {
+  cursor: pointer; color: var(--fg-muted); font-size: 13px;
+  line-height: 1; border: none; background: none;
+  padding: 0; margin-left: 2px;
+}
+.crew-tag .tag-rm:hover { color: var(--danger); }
+.crew-input {
+  border: none; background: transparent; outline: none;
+  color: var(--fg); font-size: 12px; font-family: var(--mono);
+  width: 100px; min-width: 60px; padding: 2px 2px;
+}
+.crew-input::placeholder { color: var(--fg-muted); font-family: var(--font); }
+.crew-dropdown {
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  background: var(--card2);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+}
+.crew-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; cursor: pointer;
+  transition: background .1s;
+  font-size: 12px;
+}
+.crew-option:hover { background: var(--hover); }
+.crew-option .opt-id {
+  font-family: var(--mono); font-weight: 600; color: var(--accent);
+  min-width: 60px;
+}
+.crew-option .opt-name { color: var(--fg-dim); }
+.crew-option .opt-rank {
+  margin-left: auto; font-size: 10px; font-weight: 700;
+  padding: 1px 5px; border-radius: 3px;
+}
+.opt-rank.ca { background: rgba(59,130,246,.2); color: #60a5fa; }
+.opt-rank.fo { background: rgba(168,85,247,.2); color: #c084fc; }
+.opt-rank.fa { background: rgba(249,115,22,.2); color: #fb923c; }
+
+/* ── STANDARD INPUT ── */
+.field-input {
+  height: 34px; width: 100%;
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: var(--rs); color: var(--fg);
+  font-size: 12px; font-family: var(--font);
+  padding: 0 10px; outline: none;
+  transition: border-color .15s;
+}
+.field-input:focus { border-color: var(--accent); }
+.field-input::placeholder { color: var(--fg-muted); }
+.field-input:read-only { color: var(--fg-dim); cursor: default; }
+.field-input.auto-fill {
+  background: var(--hover);
+  border-color: var(--border2);
+  color: var(--fg-dim);
+}
+
+/* ── ASSIGNMENT SELECT ── */
+.assign-select-wrap { position: relative; }
+.assign-select {
+  height: 34px; width: 100%;
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: var(--rs); color: var(--fg);
+  font-size: 12px; padding: 0 28px 0 10px;
+  outline: none; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  transition: border-color .15s;
+}
+.assign-select:focus { border-color: var(--accent); }
+.assign-select-chevron {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; color: var(--fg-muted); font-size: 10px;
+}
+.assign-preview {
+  margin-top: 6px; padding: 7px 10px;
+  background: var(--card2); border: 1px solid var(--border);
+  border-radius: var(--rs); display: flex; gap: 12px; align-items: center;
+}
+.assign-preview.hidden { display: none; }
+.assign-badge {
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-weight: 700; font-family: var(--mono);
+}
+.assign-desc { font-size: 11px; color: var(--fg-dim); }
+.assign-group-chip {
+  margin-left: auto; font-size: 10px; color: var(--fg-muted);
+  background: var(--card); border: 1px solid var(--border);
+  padding: 1px 6px; border-radius: 3px;
+}
+
+/* ── DATE-TIME ROW ── */
+.dt-row { display: flex; gap: 6px; align-items: center; }
+.dt-date {
+  flex: 1.4;
+  height: 34px; background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: var(--rs); color: var(--fg); font-size: 12px;
+  padding: 0 10px; outline: none; transition: border-color .15s;
+}
+.dt-date:focus { border-color: var(--accent); }
+.dt-sep { color: var(--fg-muted); font-size: 10px; flex-shrink: 0; }
+.dt-time {
+  width: 90px;
+  height: 34px; background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: var(--rs); color: var(--fg); font-size: 12px;
+  font-family: var(--mono); padding: 0 10px; outline: none;
+  transition: border-color .15s; text-align: center;
+}
+.dt-time:focus { border-color: var(--accent); }
+.dt-utc { font-size: 10px; color: var(--fg-muted); flex-shrink: 0; }
+
+/* ── DURATION HINT ── */
+.dur-hint {
+  margin-top: 6px; font-size: 11px; color: var(--success);
+  display: flex; align-items: center; gap: 4px;
+}
+.dur-hint.warn { color: var(--warn); }
+.dur-hint.hidden { display: none; }
+
+/* ── REMARK TEXTAREA ── */
+.field-textarea {
+  width: 100%; min-height: 56px;
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: var(--rs); color: var(--fg); font-size: 12px;
+  font-family: var(--font); padding: 8px 10px; outline: none;
+  resize: vertical; line-height: 1.5;
+  transition: border-color .15s;
+}
+.field-textarea:focus { border-color: var(--accent); }
+.field-textarea::placeholder { color: var(--fg-muted); }
+
+/* ── GROUP AUTO-FILL ROW ── */
+.auto-row {
+  display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: center;
+}
+.auto-val {
+  display: flex; align-items: center; gap: 8px;
+  height: 34px; padding: 0 10px;
+  background: rgba(59,130,246,.06); border: 1px dashed var(--border2);
+  border-radius: var(--rs); font-size: 12px; color: var(--fg-dim);
+}
+.auto-val .group-chip {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  padding: 1px 8px; border-radius: 4px;
+}
+.auto-val .auto-label { font-size: 10px; color: var(--fg-muted); margin-left: auto; }
+
+/* ── DIVIDER ── */
+.form-div {
+  height: 1px; background: var(--sep); margin: 2px 0;
+}
+
+/* ── FOOTER ── */
+.dialog-footer {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--sep);
+}
+.footer-info {
+  flex: 1; font-size: 11px; color: var(--fg-muted);
+  display: flex; align-items: center; gap: 5px;
+}
+.crew-count-badge {
+  background: var(--tag-bg); border: 1px solid var(--tag-border);
+  color: var(--accent); font-weight: 700;
+  padding: 1px 6px; border-radius: 10px; font-size: 10px;
+}
+
+.btn {
+  display: flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 14px; border-radius: var(--rs);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: all .15s; border: 1px solid transparent;
+}
+.btn-ghost {
+  background: transparent; border-color: var(--border); color: var(--fg-dim);
+}
+.btn-ghost:hover { color: var(--fg); border-color: var(--border2); }
+.btn-primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-h); }
+.btn-primary:disabled { opacity: .5; cursor: default; }
+.btn-danger {
+  background: transparent; border-color: var(--danger); color: var(--danger);
+}
+.btn-danger:hover { background: rgba(239,68,68,.1); }
+
+/* ── VALIDATION BANNER ── */
+.val-banner {
+  margin: 0 20px 14px;
+  padding: 8px 12px; border-radius: var(--rs);
+  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3);
+  color: #f87171; font-size: 11px;
+  display: flex; align-items: flex-start; gap: 6px;
+}
+.val-banner.hidden { display: none; }
+.val-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.val-list li::before { content: "• "; }
+
+/* ── RIGHT SIDE: ANNOTATION ── */
+.demo-grid {
+  display: grid;
+  grid-template-columns: 540px 1fr;
+  gap: 32px;
+  width: 100%;
+  max-width: 960px;
+  align-items: start;
+}
+.annotations { display: flex; flex-direction: column; gap: 14px; padding-top: 8px; }
+.ann-item {
+  background: var(--card2); border: 1px solid var(--border);
+  border-radius: var(--rs); padding: 11px 13px;
+}
+.ann-title { font-size: 11px; font-weight: 700; color: var(--fg); margin-bottom: 4px; }
+.ann-body { font-size: 11px; color: var(--fg-dim); line-height: 1.6; }
+.ann-badge {
+  display: inline; padding: 0 5px; border-radius: 3px;
+  font-size: 10px; font-weight: 700; font-family: var(--mono);
+}
+.ann-badge.blue { background: rgba(59,130,246,.2); color: #60a5fa; }
+.ann-badge.purple { background: rgba(168,85,247,.2); color: #c084fc; }
+.ann-badge.green { background: rgba(34,197,94,.2); color: #4ade80; }
+.ann-badge.gray { background: rgba(107,114,128,.2); color: #9ca3af; }
+
+/* ── ASSIGNMENT COLOR PILLS ── */
+.gnd  { background: rgba(168,85,247,.2);  color: #c084fc; }
+.trn  { background: rgba(34,197,94,.2);   color: #4ade80; }
+.sby  { background: rgba(249,115,22,.2);  color: #fb923c; }
+.lve  { background: rgba(156,163,175,.2); color: #9ca3af; }
+.adm  { background: rgba(236,72,153,.2);  color: #f472b6; }
+
+/* ── HOVER TOOLTIP (for context menu trigger) ── */
+.trigger-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: var(--rs);
+  border: 1px dashed var(--border2); background: var(--card2);
+  color: var(--fg-muted); font-size: 11px; cursor: pointer;
+  transition: all .15s; margin-bottom: 12px;
+}
+.trigger-label:hover { color: var(--fg); border-color: var(--accent); }
+
+/* ── EDIT READONLY CREW ── */
+.crew-readonly {
+  height: 34px; display: flex; align-items: center; gap: 8px;
+  padding: 0 10px;
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: var(--rs); color: var(--fg-dim);
+}
+.crew-readonly .cr-id {
+  font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--fg);
+}
+.crew-readonly .cr-name { font-size: 11px; color: var(--fg-dim); }
+.crew-readonly .cr-lock { margin-left: auto; font-size: 12px; color: var(--fg-muted); }
+
+/* ── DELETE CONFIRMATION ── */
+.del-section {
+  border-top: 1px solid var(--sep);
+  padding: 14px 20px 0;
+}
+.del-section-title {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--fg-muted); margin-bottom: 8px;
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>Ground Task Dialog — Design Mockup</h1>
+  <span class="subtitle">ROIS-AI Gantt · docs/modules/gantt</span>
+  <button class="btn-icon" onclick="toggleTheme()" id="themeBtn">☀ Light</button>
+</div>
+
+<!-- ═══════════════════ SECTION 1: CREATE ═══════════════════ -->
+<div class="section">
+  <div class="section-header">① Create Ground Task — Multi-Crew Support</div>
+
+  <div class="trigger-label" onclick="alert('Context menu: Right-click on empty space in a crew row → \"Create Ground Task\"')">
+    ⟶ Triggered by: right-click on empty space in crew row → context menu → "Create Ground Task"
+  </div>
+
+  <div class="demo-grid">
+    <!-- DIALOG -->
+    <div>
+      <div class="dialog-wrap" id="createDialog">
+
+        <!-- Header -->
+        <div class="dialog-header">
+          <div class="dialog-icon create">🟣</div>
+          <div class="dialog-title">Create Ground Task</div>
+          <span class="dialog-badge create">New</span>
+          <button class="dialog-close">✕</button>
+        </div>
+
+        <!-- Validation banner (hidden by default) -->
+        <div class="val-banner hidden" id="createValBanner">
+          <span>⚠</span>
+          <ul class="val-list" id="createValList"></ul>
+        </div>
+
+        <!-- Body -->
+        <div class="dialog-body">
+
+          <!-- Crew multi-select -->
+          <div class="field-row" style="align-items:start">
+            <label class="field-label">
+              Crew IDs<span class="req">*</span>
+              <span class="hint">Select one or more crew members</span>
+            </label>
+            <div>
+              <div class="crew-select-box" id="crewBox" onclick="focusCrewInput()">
+                <div class="crew-tags" id="crewTags">
+                  <span class="crew-tag" data-id="F8001">
+                    F8001
+                    <button class="tag-rm" onclick="removeTag('F8001')">×</button>
+                  </span>
+                  <span class="crew-tag" data-id="F8002">
+                    F8002
+                    <button class="tag-rm" onclick="removeTag('F8002')">×</button>
+                  </span>
+                  <input class="crew-input" id="crewInput" placeholder="Type crew ID…"
+                    oninput="filterCrewOptions(this.value)"
+                    onkeydown="handleCrewKey(event)" />
+                </div>
+              </div>
+              <!-- Dropdown -->
+              <div class="crew-dropdown" id="crewDropdown" style="display:none">
+                <div class="crew-option" onclick="addTag('F8003','Zhang Wei','CA')">
+                  <span class="opt-id">F8003</span>
+                  <span class="opt-name">Zhang Wei</span>
+                  <span class="opt-rank ca">CA</span>
+                </div>
+                <div class="crew-option" onclick="addTag('F8004','Li Na','FO')">
+                  <span class="opt-id">F8004</span>
+                  <span class="opt-name">Li Na</span>
+                  <span class="opt-rank fo">FO</span>
+                </div>
+                <div class="crew-option" onclick="addTag('F8005','Wang Fang','FA')">
+                  <span class="opt-id">F8005</span>
+                  <span class="opt-name">Wang Fang</span>
+                  <span class="opt-rank fa">FA</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-div"></div>
+
+          <!-- Assignment -->
+          <div class="field-row">
+            <label class="field-label">
+              Assignment<span class="req">*</span>
+              <span class="hint">Ground task type</span>
+            </label>
+            <div class="assign-select-wrap">
+              <select class="assign-select" id="assignSelect" onchange="onAssignChange(this.value)">
+                <option value="">— Select assignment —</option>
+                <optgroup label="Ground Duty (GND)">
+                  <option value="GRD_SIM" data-group="GND" data-color="gnd">SIM — Simulator Check</option>
+                  <option value="GRD_CHK" data-group="GND" data-color="gnd">CHK — Route Check</option>
+                  <option value="GRD_VFY" data-group="GND" data-color="gnd">VFY — Verify Flight</option>
+                </optgroup>
+                <optgroup label="Standby (SBY)">
+                  <option value="SBY_APT" data-group="SBY" data-color="sby">APT — Airport Standby</option>
+                  <option value="SBY_HOM" data-group="SBY" data-color="sby">HOM — Home Standby</option>
+                </optgroup>
+                <optgroup label="Training (TRN)">
+                  <option value="TRN_CLS" data-group="TRN" data-color="trn">CLS — Ground School</option>
+                  <option value="TRN_SIM" data-group="TRN" data-color="trn">SIMTR — Sim Training</option>
+                </optgroup>
+                <optgroup label="Leave (LVE)">
+                  <option value="LVE_ANL" data-group="LVE" data-color="lve">AL — Annual Leave</option>
+                  <option value="LVE_SIC" data-group="LVE" data-color="lve">SL — Sick Leave</option>
+                </optgroup>
+                <optgroup label="Admin (ADM)">
+                  <option value="ADM_OFC" data-group="ADM" data-color="adm">OFC — Office Duty</option>
+                </optgroup>
+              </select>
+              <span class="assign-select-chevron">▼</span>
+
+              <!-- Preview card (shown after selection) -->
+              <div class="assign-preview hidden" id="assignPreview">
+                <span class="assign-badge" id="assignBadge">—</span>
+                <span class="assign-desc" id="assignDesc">—</span>
+                <span class="assign-group-chip" id="assignGroupChip">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assignment Group (auto-filled) -->
+          <div class="auto-row">
+            <label class="field-label">
+              Group
+              <span class="hint">Auto from assignment</span>
+            </label>
+            <div class="auto-val" id="autoGroupVal">
+              <span class="group-chip" id="autoGroupChip" style="opacity:.4">—</span>
+              <span class="auto-label">auto-filled</span>
+            </div>
+          </div>
+
+          <div class="form-div"></div>
+
+          <!-- Start date + time -->
+          <div class="field-row" style="align-items:start">
+            <label class="field-label">
+              Start<span class="req">*</span>
+              <span class="hint">Date · Time (UTC)</span>
+            </label>
+            <div>
+              <div class="dt-row">
+                <input type="date" class="dt-date" id="startDate"
+                  value="2026-05-08" onchange="updateDuration()" />
+                <span class="dt-sep">at</span>
+                <input type="time" class="dt-time" id="startTime"
+                  value="08:00" onchange="updateDuration()" />
+                <span class="dt-utc">UTC</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- End date + time -->
+          <div class="field-row" style="align-items:start">
+            <label class="field-label">
+              End<span class="req">*</span>
+              <span class="hint">Date · Time (UTC)</span>
+            </label>
+            <div>
+              <div class="dt-row">
+                <input type="date" class="dt-date" id="endDate"
+                  value="2026-05-08" onchange="updateDuration()" />
+                <span class="dt-sep">at</span>
+                <input type="time" class="dt-time" id="endTime"
+                  value="14:00" onchange="updateDuration()" />
+                <span class="dt-utc">UTC</span>
+              </div>
+              <div class="dur-hint" id="durHint">
+                ✓ Duration: 6h 00m
+              </div>
+            </div>
+          </div>
+
+          <div class="form-div"></div>
+
+          <!-- Remark -->
+          <div class="field-row" style="align-items:start">
+            <label class="field-label">
+              Remark
+              <span class="hint">Optional notes</span>
+            </label>
+            <textarea class="field-textarea" placeholder="e.g. Annual check, line training, special notes…" rows="2"></textarea>
+          </div>
+
+        </div><!-- /body -->
+
+        <!-- Footer -->
+        <div class="dialog-footer">
+          <div class="footer-info">
+            Will create <span class="crew-count-badge" id="crewCount">2</span> roster entries
+          </div>
+          <button class="btn btn-ghost">Cancel</button>
+          <button class="btn btn-primary" onclick="simulateCreate()">Create</button>
+        </div>
+
+      </div><!-- /dialog -->
+    </div>
+
+    <!-- ANNOTATIONS -->
+    <div class="annotations">
+      <div class="ann-item">
+        <div class="ann-title">Multi-Crew Batch Create</div>
+        <div class="ann-body">
+          One dialog creates <strong>N roster_flight rows</strong> — one per selected crew.
+          All rows share the same assignment, time range, and remark.
+          Useful for assigning training or standby to an entire crew group at once.
+        </div>
+      </div>
+      <div class="ann-item">
+        <div class="ann-title">Assignment → Group Auto-Fill</div>
+        <div class="ann-body">
+          When an assignment is selected, <span class="ann-badge purple">assignment_group</span> is
+          automatically resolved from <span class="ann-badge gray">assignment.default_assignment_group</span>.
+          The field is read-only — planners never need to set it manually.
+        </div>
+      </div>
+      <div class="ann-item">
+        <div class="ann-title">Separate Date + Time Inputs</div>
+        <div class="ann-body">
+          Date and time are separate inputs to avoid datetime-local browser inconsistencies.
+          Both are UTC. Duration is computed live and shown below the end-time row.
+          End before start shows a warning.
+        </div>
+      </div>
+      <div class="ann-item">
+        <div class="ann-title">pairing_id = NULL</div>
+        <div class="ann-body">
+          Ground tasks are created with <span class="ann-badge blue">pairing_id = NULL</span>,
+          distinguishing them from flight-linked roster entries.
+          The Gantt renderer already handles this — ground tasks render as a solid bar without pairing decorations.
+        </div>
+      </div>
+      <div class="ann-item">
+        <div class="ann-title">Draft Mode Integration</div>
+        <div class="ann-body">
+          On submit, the dialog calls <span class="ann-badge blue">roster-store.addTask()</span>
+          which adds an <span class="ann-badge gray">op type: 'add'</span> to the draft.
+          Multi-crew: N ops, one per crew. Undo removes all N at once
+          (they share the same batch ID).
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SECTION 2: EDIT ═══════════════════ -->
+<div class="section">
+  <div class="section-header">② Edit Ground Task — Single Task</div>
+
+  <div class="trigger-label" onclick="alert('Right-click on a ground task bar in the Gantt → context menu → \"Edit Ground Task\"\nOR double-click the task bar')">
+    ⟶ Triggered by: right-click on ground task → "Edit" OR double-click task bar
+  </div>
+
+  <div class="demo-grid">
+    <div>
+      <div class="dialog-wrap">
+
+        <!-- Header -->
+        <div class="dialog-header">
+          <div class="dialog-icon edit">✏️</div>
+          <div class="dialog-title">Edit Ground Task</div>
+          <span class="dialog-badge edit">#8421</span>
+          <button class="dialog-close">✕</button>
+        </div>
+
+        <!-- Body -->
+        <div class="dialog-body">
+
+          <!-- Crew (read-only in edit mode) -->
+          <div class="field-row">
+            <label class="field-label">
+              Crew ID
+              <span class="hint">Cannot change</span>
+            </label>
+            <div class="crew-readonly">
+              <span class="cr-id">F8001</span>
+              <span class="cr-name">Zhang San</span>
+              <span class="cr-lock">🔒</span>
+            </div>
+          </div>
+
+          <div class="form-div"></div>
+
+          <!-- Assignment -->
+          <div class="field-row">
+            <label class="field-label">
+              Assignment<span class="req">*</span>
+            </label>
+            <div class="assign-select-wrap">
+              <select class="assign-select">
+                <option value="APT" selected>APT — Airport Standby</option>
+                <option value="HOM">HOM — Home Standby</option>
+                <option value="SIM">SIM — Simulator Check</option>
+                <option value="AL">AL — Annual Leave</option>
+              </select>
+              <span class="assign-select-chevron">▼</span>
+              <div class="assign-preview">
+                <span class="assign-badge sby">APT</span>
+                <span class="assign-desc">Airport Standby</span>
+                <span class="assign-group-chip">SBY</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Group (auto) -->
+          <div class="auto-row">
+            <label class="field-label">Group</label>
+            <div class="auto-val">
+              <span class="group-chip sby" style="padding:1px 8px;border-radius:4px;font-size:11px;font-weight:700;font-family:monospace">SBY</span>
+              <span class="auto-label">auto-filled</span>
+            </div>
+          </div>
+
+          <div class="form-div"></div>
+
+          <!-- Start -->
+          <div class="field-row" style="align-items:start">
+            <label class="field-label">
+              Start<span class="req">*</span>
+              <span class="hint">Date · Time (UTC)</span>
+            </label>
+            <div>
+              <div class="dt-row">
+                <input type="date" class="dt-date" value="2026-05-10" />
+                <span class="dt-sep">at</span>
+                <input type="time" class="dt-time" value="06:30" />
+                <span class="dt-utc">UTC</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- End -->
+          <div class="field-row" style="align-items:start">
+            <label class="field-label">
+              End<span class="req">*</span>
+              <span class="hint">Date · Time (UTC)</span>
+            </label>
+            <div>
+              <div class="dt-row">
+                <input type="date" class="dt-date" value="2026-05-10" />
+                <span class="dt-sep">at</span>
+                <input type="time" class="dt-time" value="14:30" />
+                <span class="dt-utc">UTC</span>
+              </div>
+              <div class="dur-hint">✓ Duration: 8h 00m</div>
+            </div>
+          </div>
+
+          <div class="form-div"></div>
+
+          <!-- Remark -->
+          <div class="field-row" style="align-items:start">
+            <label class="field-label">Remark</label>
+            <textarea class="field-textarea" rows="2">Roster adjustment — crew request approved by ops.</textarea>
+          </div>
+
+        </div><!-- /body -->
+
+        <!-- Delete section -->
+        <div class="del-section">
+          <div class="del-section-title">Danger Zone</div>
+          <button class="btn btn-danger" style="margin-bottom:14px">🗑 Delete This Task</button>
+        </div>
+
+        <!-- Footer -->
+        <div class="dialog-footer">
+          <div class="footer-info">Last updated 2026-05-06 09:12 UTC by ops_admin</div>
+          <button class="btn btn-ghost">Cancel</button>
+          <button class="btn btn-primary">Save Changes</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="annotations">
+      <div class="ann-item">
+        <div class="ann-title">Crew is Read-Only in Edit Mode</div>
+        <div class="ann-body">
+          The crew field is locked — editing crew identity requires delete + create.
+          This prevents accidental reassignment and keeps the audit trail clean.
+        </div>
+      </div>
+      <div class="ann-item">
+        <div class="ann-title">Fields Updated via PUT /api/roster/:id</div>
+        <div class="ann-body">
+          On save, calls <span class="ann-badge blue">roster-store.updateTask()</span>
+          which emits <span class="ann-badge gray">op type: 'update'</span> in draft mode.
+          Fields sent: <span class="ann-badge purple">assignment</span>,
+          <span class="ann-badge purple">assignmentGroup</span>,
+          <span class="ann-badge purple">schStrDtUtc</span>,
+          <span class="ann-badge purple">schEndDtUtc</span>,
+          <span class="ann-badge purple">comments</span>.
+        </div>
+      </div>
+      <div class="ann-item">
+        <div class="ann-title">Delete Ground Task</div>
+        <div class="ann-body">
+          The "Danger Zone" delete button triggers a confirmation prompt,
+          then calls <span class="ann-badge gray">op type: 'remove'</span> in draft mode.
+          Ground tasks only — flight tasks use the pairing delete flow.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SECTION 3: FLOW SUMMARY ═══════════════════ -->
+<div class="section">
+  <div class="section-header">③ Data Flow Overview</div>
+  <div style="width:100%;max-width:960px;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;font-size:12px;color:var(--fg-dim);line-height:1.9;">
+      <div style="display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr 40px 1fr;align-items:center;gap:0;text-align:center;">
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 8px;">
+          <div style="font-size:18px;margin-bottom:4px;">🖱</div>
+          <div style="font-weight:600;color:var(--fg);font-size:11px;">Context Menu</div>
+          <div style="font-size:10px;margin-top:2px;">Right-click canvas</div>
+        </div>
+        <div style="color:var(--fg-muted);font-size:18px;">→</div>
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 8px;">
+          <div style="font-size:18px;margin-bottom:4px;">📋</div>
+          <div style="font-weight:600;color:var(--fg);font-size:11px;">Ground Task Dialog</div>
+          <div style="font-size:10px;margin-top:2px;">Fill form + submit</div>
+        </div>
+        <div style="color:var(--fg-muted);font-size:18px;">→</div>
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 8px;">
+          <div style="font-size:18px;margin-bottom:4px;">🗂</div>
+          <div style="font-weight:600;color:var(--fg);font-size:11px;">Draft Store</div>
+          <div style="font-size:10px;margin-top:2px;">addOp type: 'add'</div>
+        </div>
+        <div style="color:var(--fg-muted);font-size:18px;">→</div>
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 8px;">
+          <div style="font-size:18px;margin-bottom:4px;">💾</div>
+          <div style="font-weight:600;color:var(--fg);font-size:11px;">Save / Commit</div>
+          <div style="font-size:10px;margin-top:2px;">POST /api/roster</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:10px 12px;background:var(--card2);border-radius:var(--rs);border:1px solid var(--border);">
+        <strong style="color:var(--fg)">Key invariant:</strong>
+        Ground task rows always have <code style="background:var(--card);padding:1px 5px;border-radius:3px;font-family:monospace">pairing_id = NULL</code>.
+        The <code style="background:var(--card);padding:1px 5px;border-radius:3px;font-family:monospace">assignment_group</code> is derived server-side or pre-filled from
+        <code style="background:var(--card);padding:1px 5px;border-radius:3px;font-family:monospace">assignment.default_assignment_group</code> on selection.
+        Multi-crew create sends N separate API calls (one per crew ID) to maintain individual roster rows.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Theme toggle ── */
+function toggleTheme() {
+  const html = document.documentElement
+  const isDark = html.getAttribute('data-theme') === 'dark'
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark')
+  document.getElementById('themeBtn').textContent = isDark ? '🌙 Dark' : '☀ Light'
+}
+
+/* ── Crew multi-select ── */
+const selectedCrews = new Set(['F8001','F8002'])
+
+function focusCrewInput() {
+  document.getElementById('crewInput').focus()
+}
+
+function addTag(id, name, rank) {
+  if (selectedCrews.has(id)) return
+  selectedCrews.add(id)
+  const tags = document.getElementById('crewTags')
+  const input = document.getElementById('crewInput')
+  const tag = document.createElement('span')
+  tag.className = 'crew-tag'
+  tag.dataset.id = id
+  tag.innerHTML = `${id}<button class="tag-rm" onclick="removeTag('${id}')">×</button>`
+  tags.insertBefore(tag, input)
+  input.value = ''
+  document.getElementById('crewDropdown').style.display = 'none'
+  updateCrewCount()
+}
+
+function removeTag(id) {
+  selectedCrews.delete(id)
+  const tag = document.querySelector(`.crew-tag[data-id="${id}"]`)
+  if (tag) tag.remove()
+  updateCrewCount()
+}
+
+function updateCrewCount() {
+  document.getElementById('crewCount').textContent = selectedCrews.size
+}
+
+function filterCrewOptions(val) {
+  const dd = document.getElementById('crewDropdown')
+  dd.style.display = val.length > 0 ? 'block' : 'none'
+}
+
+function handleCrewKey(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('crewDropdown').style.display = 'none'
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (!document.getElementById('crewBox').contains(e.target)) {
+    document.getElementById('crewDropdown').style.display = 'none'
+  }
+})
+
+/* ── Assignment select ── */
+const ASSIGN_DATA = {
+  'GRD_SIM': { code: 'SIM', desc: 'Simulator Check', group: 'GND', cls: 'gnd' },
+  'GRD_CHK': { code: 'CHK', desc: 'Route Check', group: 'GND', cls: 'gnd' },
+  'GRD_VFY': { code: 'VFY', desc: 'Verify Flight', group: 'GND', cls: 'gnd' },
+  'SBY_APT': { code: 'APT', desc: 'Airport Standby', group: 'SBY', cls: 'sby' },
+  'SBY_HOM': { code: 'HOM', desc: 'Home Standby', group: 'SBY', cls: 'sby' },
+  'TRN_CLS': { code: 'CLS', desc: 'Ground School', group: 'TRN', cls: 'trn' },
+  'TRN_SIM': { code: 'SIMTR', desc: 'Sim Training', group: 'TRN', cls: 'trn' },
+  'LVE_ANL': { code: 'AL', desc: 'Annual Leave', group: 'LVE', cls: 'lve' },
+  'LVE_SIC': { code: 'SL', desc: 'Sick Leave', group: 'LVE', cls: 'lve' },
+  'ADM_OFC': { code: 'OFC', desc: 'Office Duty', group: 'ADM', cls: 'adm' },
+}
+
+function onAssignChange(val) {
+  const preview = document.getElementById('assignPreview')
+  const badge = document.getElementById('assignBadge')
+  const desc = document.getElementById('assignDesc')
+  const chip = document.getElementById('assignGroupChip')
+  const autoChip = document.getElementById('autoGroupChip')
+
+  if (!val || !ASSIGN_DATA[val]) {
+    preview.classList.add('hidden')
+    autoChip.style.opacity = '.4'
+    autoChip.textContent = '—'
+    autoChip.className = 'group-chip'
+    return
+  }
+  const d = ASSIGN_DATA[val]
+  preview.classList.remove('hidden')
+  badge.textContent = d.code
+  badge.className = `assign-badge ${d.cls}`
+  desc.textContent = d.desc
+  chip.textContent = d.group
+  autoChip.style.opacity = '1'
+  autoChip.textContent = d.group
+  autoChip.className = `group-chip ${d.cls}`
+  autoChip.style.padding = '1px 8px'
+  autoChip.style.borderRadius = '4px'
+  autoChip.style.fontSize = '11px'
+  autoChip.style.fontWeight = '700'
+  autoChip.style.fontFamily = 'monospace'
+}
+
+/* ── Duration ── */
+function updateDuration() {
+  const sd = document.getElementById('startDate').value
+  const st = document.getElementById('startTime').value
+  const ed = document.getElementById('endDate').value
+  const et = document.getElementById('endTime').value
+  const hint = document.getElementById('durHint')
+  if (!sd || !st || !ed || !et) { hint.classList.add('hidden'); return }
+  const start = new Date(`${sd}T${st}:00Z`)
+  const end = new Date(`${ed}T${et}:00Z`)
+  const diff = end - start
+  hint.classList.remove('hidden')
+  if (diff <= 0) {
+    hint.textContent = '⚠ End must be after start'
+    hint.className = 'dur-hint warn'
+  } else {
+    const h = Math.floor(diff / 3600000)
+    const m = Math.round((diff % 3600000) / 60000)
+    hint.textContent = `✓ Duration: ${h}h ${m.toString().padStart(2,'0')}m`
+    hint.className = 'dur-hint'
+  }
+}
+
+/* ── Simulate create ── */
+function simulateCreate() {
+  const errs = []
+  if (selectedCrews.size === 0) errs.push('At least one Crew ID is required')
+  if (!document.getElementById('assignSelect').value) errs.push('Assignment is required')
+  const banner = document.getElementById('createValBanner')
+  const list = document.getElementById('createValList')
+  if (errs.length) {
+    list.innerHTML = errs.map(e => `<li>${e}</li>`).join('')
+    banner.classList.remove('hidden')
+  } else {
+    banner.classList.add('hidden')
+    alert(`✓ Ground task created for ${selectedCrews.size} crew member(s).\n\nIn real app: ${selectedCrews.size} roster_flight rows inserted with pairing_id = NULL.`)
+  }
+}
+</script>
+</body>
+</html>

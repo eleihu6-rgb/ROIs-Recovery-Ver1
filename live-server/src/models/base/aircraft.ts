@@ -1,0 +1,32 @@
+import { pgTable, bigint, varchar, integer, numeric, smallint, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+
+export const aircraft = pgTable('aircraft', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  createdBy: varchar('created_by', { length: 30 }).notNull().default('system'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 30 }).notNull().default('system'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  filiale: varchar('filiale', { length: 6 }).notNull(),
+  acReg: varchar('ac_reg', { length: 20 }).notNull(),
+  fleet: varchar('fleet', { length: 12 }).notNull(),
+  fleetGrp: varchar('fleet_grp', { length: 12 }),
+  acType: varchar('ac_type', { length: 12 }),
+  dow: integer('dow').notNull().default(0),
+  dowL: integer('dow_l').notNull().default(0),
+  doi: numeric('doi', { precision: 5, scale: 2 }).notNull().default('0'),
+  doiL: numeric('doi_l', { precision: 5, scale: 2 }).notNull().default('0'),
+  flyDevice: varchar('fly_device', { length: 12 }),
+  maxDepartWeight: integer('max_depart_weight').notNull().default(0),
+  maxLandfallWeight: integer('max_landfall_weight').notNull().default(0),
+  maxNoOilWeight: integer('max_no_oil_weight').notNull().default(0),
+  startDate: timestamp('start_date'),
+  endDate: timestamp('end_date'),
+  seats: smallint('seats').notNull().default(0),
+  isCat2: smallint('is_cat2').notNull().default(0),
+  restfacility: smallint('restfacility').notNull().default(0),
+  maxSlideWeight: bigint('max_slide_weight', { mode: 'number' }),
+  longAcType: varchar('long_ac_type', { length: 20 }),
+  subFleet: varchar('sub_fleet', { length: 12 }),
+}, (table) => [
+  uniqueIndex('uq_aircraft_ac_reg').on(table.acReg),
+])

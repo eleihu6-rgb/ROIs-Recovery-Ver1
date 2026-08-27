@@ -1,0 +1,584 @@
+{
+  "crew": {
+    "top_level": {
+      "expected": [
+        "bases",
+        "birthday",
+        "certificates",
+        "cityOfResidence",
+        "countryOfResidence",
+        "crewId",
+        "firstName",
+        "fleets",
+        "gender",
+        "homeAddress",
+        "lastName",
+        "middleName",
+        "nickName",
+        "owner",
+        "postalCode",
+        "qualifications",
+        "ranks",
+        "seniorityNum",
+        "stateOfResidence",
+        "telephone",
+        "workEmail"
+      ],
+      "actual": [
+        "bases",
+        "birthday",
+        "certificates",
+        "cityOfResidence",
+        "contractType",
+        "countryOfResidence",
+        "crewId",
+        "firstName",
+        "fleets",
+        "gender",
+        "homeAddress",
+        "joinDate",
+        "lastModifiedDt",
+        "lastName",
+        "middleName",
+        "nickName",
+        "owner",
+        "postalCode",
+        "qualifications",
+        "ranks",
+        "seniorityNum",
+        "stateOfResidence",
+        "telephone",
+        "workEmail"
+      ],
+      "missing_from_api": [],
+      "new_in_api": [
+        "contractType",
+        "joinDate",
+        "lastModifiedDt"
+      ]
+    },
+    "bases[]": {
+      "expected": [
+        "base",
+        "crewId",
+        "effDt",
+        "expDt",
+        "isPrimary"
+      ],
+      "actual": [
+        "base",
+        "crewId",
+        "effDt",
+        "expDt",
+        "isPrimary",
+        "lastModifiedDt",
+        "owner"
+      ],
+      "missing_from_api": [],
+      "new_in_api": [
+        "lastModifiedDt",
+        "owner"
+      ]
+    },
+    "ranks[]": {
+      "expected": [
+        "effDt",
+        "expDt",
+        "rank"
+      ],
+      "actual": [
+        "crewId",
+        "effDt",
+        "expDt",
+        "lastModifiedDt",
+        "owner",
+        "rank"
+      ],
+      "missing_from_api": [],
+      "new_in_api": [
+        "crewId",
+        "lastModifiedDt",
+        "owner"
+      ]
+    },
+    "fleets[]": {
+      "expected": [
+        "effDt",
+        "expDt",
+        "fleet"
+      ],
+      "actual": [
+        "crewId",
+        "effDt",
+        "expDt",
+        "fleet",
+        "lastModifiedDt",
+        "owner"
+      ],
+      "missing_from_api": [],
+      "new_in_api": [
+        "crewId",
+        "lastModifiedDt",
+        "owner"
+      ]
+    },
+    "certificates[]": {
+      "expected": [
+        "certificate",
+        "effDt",
+        "expDt",
+        "isValid"
+      ],
+      "actual": [
+        "certCountry",
+        "certificate",
+        "crewId",
+        "expDt",
+        "firstName",
+        "isValid",
+        "issueAgency",
+        "issueCountry",
+        "lastModifiedDt",
+        "lastName",
+        "middleName",
+        "owner"
+      ],
+      "missing_from_api": [
+        "effDt"
+      ],
+      "new_in_api": [
+        "certCountry",
+        "crewId",
+        "firstName",
+        "issueAgency",
+        "issueCountry",
+        "lastModifiedDt",
+        "lastName",
+        "middleName",
+        "owner"
+      ]
+    },
+    "qualifications[]": {
+      "expected": [
+        "effDt",
+        "expDt",
+        "isValid",
+        "qualification"
+      ],
+      "actual": [
+        "crewId",
+        "effDt",
+        "expDt",
+        "fleet",
+        "isValid",
+        "lastModifiedDt",
+        "owner",
+        "qualification"
+      ],
+      "missing_from_api": [],
+      "new_in_api": [
+        "crewId",
+        "fleet",
+        "lastModifiedDt",
+        "owner"
+      ]
+    }
+  },
+  "flight": {
+    "top_level": {
+      "expected": [
+        "acGrp",
+        "acReg",
+        "arrStn",
+        "ata",
+        "atd",
+        "datOp",
+        "depStn",
+        "fltId",
+        "fltNum",
+        "legNo",
+        "owner",
+        "sta",
+        "status",
+        "std"
+      ],
+      "actual": [
+        "acGrp",
+        "acReg",
+        "arrStn",
+        "ata",
+        "atd",
+        "datOp",
+        "depStn",
+        "divCode",
+        "eta",
+        "etd",
+        "fltId",
+        "fltNum",
+        "legNo",
+        "owner",
+        "sta",
+        "status",
+        "stc",
+        "std",
+        "tdwn",
+        "toff"
+      ],
+      "missing_from_api": [],
+      "new_in_api": [
+        "divCode",
+        "eta",
+        "etd",
+        "stc",
+        "tdwn",
+        "toff"
+      ]
+    }
+  },
+  "pairing": {
+    "top_level": {
+      "expected": [
+        "base",
+        "durationDays",
+        "duties",
+        "fleet",
+        "label",
+        "pairingCompositions",
+        "pairingDt",
+        "pairingDuties",
+        "pairingDutyList",
+        "pairingId"
+      ],
+      "actual": [
+        "actEndDtUtc",
+        "actStrDtUtc",
+        "assignment",
+        "assignmentGroup",
+        "base",
+        "changeLabel",
+        "comments",
+        "division",
+        "durationDays",
+        "filiale",
+        "fleet",
+        "fmLhPerDiemMins",
+        "label",
+        "pairingCompositions",
+        "pairingDt",
+        "pairingDutyList",
+        "pairingId",
+        "perDiemMins",
+        "perDiemMinsAdjustment",
+        "schEndDtUtc",
+        "schStrDtUtc",
+        "tafb",
+        "wpMins",
+        "wpMinsAdjustment"
+      ],
+      "missing_from_api": [
+        "duties",
+        "pairingDuties"
+      ],
+      "new_in_api": [
+        "actEndDtUtc",
+        "actStrDtUtc",
+        "assignment",
+        "assignmentGroup",
+        "changeLabel",
+        "comments",
+        "division",
+        "filiale",
+        "fmLhPerDiemMins",
+        "perDiemMins",
+        "perDiemMinsAdjustment",
+        "schEndDtUtc",
+        "schStrDtUtc",
+        "tafb",
+        "wpMins",
+        "wpMinsAdjustment"
+      ]
+    },
+    "duty_list_key": "pairingDutyList",
+    "pairingCompositions[]": {
+      "expected": [
+        "actingRank",
+        "division",
+        "planValue"
+      ],
+      "actual": [
+        "actingRank",
+        "division",
+        "planValue"
+      ],
+      "missing_from_api": [],
+      "new_in_api": []
+    },
+    "duties[]": {
+      "expected": [
+        "actEndDtUtc",
+        "actStrDtUtc",
+        "arrArp",
+        "assignment",
+        "comments",
+        "creditMin",
+        "creditedMinutes",
+        "dutyId",
+        "dutySeq",
+        "endArp",
+        "nodes",
+        "pairingDutyNodes",
+        "pairingDutySegments",
+        "segments",
+        "strArp"
+      ],
+      "actual": [
+        "actEndDtUtc",
+        "actFdpMin",
+        "actFlightMin",
+        "actRestMin",
+        "actStrDtUtc",
+        "actualDutyMinutes",
+        "assignment",
+        "briefMin",
+        "comments",
+        "creditedMinutes",
+        "debriefMin",
+        "dutySeq",
+        "endArp",
+        "fdpDiscretionMin",
+        "layoverNits",
+        "maxFdpMin",
+        "minRestMin",
+        "pairingDutyNodes",
+        "pairingDutySegments",
+        "planFdpMin",
+        "planFlightMin",
+        "strArp"
+      ],
+      "missing_from_api": [
+        "arrArp",
+        "creditMin",
+        "dutyId",
+        "nodes",
+        "segments"
+      ],
+      "new_in_api": [
+        "actFdpMin",
+        "actFlightMin",
+        "actRestMin",
+        "actualDutyMinutes",
+        "briefMin",
+        "debriefMin",
+        "fdpDiscretionMin",
+        "layoverNits",
+        "maxFdpMin",
+        "minRestMin",
+        "planFdpMin",
+        "planFlightMin"
+      ]
+    },
+    "duty.nodes[]": {
+      "expected": [
+        "airport",
+        "arp",
+        "endUtc",
+        "node",
+        "sequence",
+        "startUtc"
+      ],
+      "actual": [
+        "airport",
+        "endUtc",
+        "node",
+        "sequence",
+        "startUtc"
+      ],
+      "missing_from_api": [
+        "arp"
+      ],
+      "new_in_api": []
+    },
+    "duty.segments[]": {
+      "expected": [
+        "actEndDtUtc",
+        "actStrDtUtc",
+        "airline",
+        "arrArp",
+        "arvArp",
+        "assignment",
+        "depArp",
+        "dutySeq",
+        "fleet",
+        "fltDt",
+        "fltId",
+        "fltNum",
+        "segSeq"
+      ],
+      "actual": [
+        "actEndDtUtc",
+        "actStrDtUtc",
+        "airline",
+        "arvArp",
+        "assignment",
+        "depArp",
+        "dutySeq",
+        "fleet",
+        "fltDt",
+        "fltId",
+        "fltNum",
+        "isLongTransit",
+        "segSeq"
+      ],
+      "missing_from_api": [
+        "arrArp"
+      ],
+      "new_in_api": [
+        "isLongTransit"
+      ]
+    }
+  },
+  "rosterFlight": {
+    "top_level": {
+      "expected": [
+        "arrArp",
+        "crew",
+        "depArp",
+        "dutyStrUtc",
+        "fltId",
+        "fltType",
+        "pairingId",
+        "pairingStrUtc",
+        "rosterFlightId",
+        "rosterId"
+      ],
+      "actual": [
+        "actArrArp",
+        "actDepArp",
+        "airline",
+        "arrArp",
+        "assignmentGroup",
+        "ataUtc",
+        "atdUtc",
+        "complements",
+        "crew",
+        "depArp",
+        "dutyEndUtc",
+        "dutyId",
+        "dutySeq",
+        "dutyStrUtc",
+        "etaUtc",
+        "etdUtc",
+        "fleet",
+        "flightNum",
+        "fltDtUtc",
+        "fltId",
+        "fltType",
+        "lastModifiedDt",
+        "pairingId",
+        "pairingStrUtc",
+        "regNo",
+        "rosterFlightId",
+        "rosterId",
+        "segSeq",
+        "staUtc",
+        "status",
+        "stdUtc",
+        "suffix",
+        "trainings"
+      ],
+      "missing_from_api": [],
+      "new_in_api": [
+        "actArrArp",
+        "actDepArp",
+        "airline",
+        "assignmentGroup",
+        "ataUtc",
+        "atdUtc",
+        "complements",
+        "dutyEndUtc",
+        "dutyId",
+        "dutySeq",
+        "etaUtc",
+        "etdUtc",
+        "fleet",
+        "flightNum",
+        "fltDtUtc",
+        "lastModifiedDt",
+        "regNo",
+        "segSeq",
+        "staUtc",
+        "status",
+        "stdUtc",
+        "suffix",
+        "trainings"
+      ]
+    },
+    "crew": {
+      "expected": [
+        "actingRank",
+        "activeRank",
+        "assignmentGroup",
+        "crewId",
+        "crewName",
+        "division",
+        "seqOrder"
+      ],
+      "actual": [
+        "actingRank",
+        "activeRank",
+        "assignment",
+        "crewFirstName",
+        "crewId",
+        "crewLastName",
+        "crewMiddleName",
+        "crewName",
+        "division",
+        "gender",
+        "nationality",
+        "owner",
+        "seqOrder",
+        "telephone"
+      ],
+      "missing_from_api": [
+        "assignmentGroup"
+      ],
+      "new_in_api": [
+        "assignment",
+        "crewFirstName",
+        "crewLastName",
+        "crewMiddleName",
+        "gender",
+        "nationality",
+        "owner",
+        "telephone"
+      ]
+    }
+  },
+  "manday": {
+    "top_level": {
+      "expected": [
+        "blh",
+        "credit",
+        "crewBaseDt",
+        "crewId",
+        "dp",
+        "fdp"
+      ],
+      "actual": [
+        "blh",
+        "credit",
+        "crewBaseDt",
+        "crewId",
+        "dp",
+        "dt",
+        "fdp",
+        "owner"
+      ],
+      "missing_from_api": [],
+      "new_in_api": [
+        "dt",
+        "owner"
+      ]
+    }
+  }
+}

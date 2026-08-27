@@ -1,0 +1,20 @@
+{
+  "employeeId": "13633",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 2,
+  "placed": 2,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    }
+  ],
+  "issues": []
+}

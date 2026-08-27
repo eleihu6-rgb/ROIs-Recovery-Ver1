@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROIS-AI · Rule Module Mockup</title>
+<style>
+/* ─────────────────────────────────────
+   Design tokens — match the app theme
+───────────────────────────────────── */
+:root {
+  --bg:           #0f1117;
+  --card:         #161b22;
+  --card-hover:   #1c2230;
+  --border:       #21272f;
+  --border-light: #1a2030;
+  --muted:        #94a3b8;
+  --muted-dim:    #4b5563;
+  --fg:           #e2e8f0;
+  --fg-dim:       #cbd5e1;
+  --primary:      #3b82f6;
+  --primary-dim:  #1d4ed8;
+  --primary-bg:   #0f1e3d;
+  --success:      #22c55e;
+  --warn:         #f59e0b;
+  --err:          #ef4444;
+  --err-bg:       #2d1010;
+  --warn-bg:      #2d1f00;
+  --info:         #06b6d4;
+  --radius:       6px;
+  --font:         -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--fg); font-size: 13px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ─── App shell ─── */
+.top-nav {
+  height: 44px; background: var(--card); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25); flex-shrink: 0; gap: 0;
+}
+.logo {
+  font-size: 13px; font-weight: 800; color: var(--primary);
+  letter-spacing: -0.02em; padding: 0 12px 0 4px; border-right: 1px solid var(--border);
+  margin-right: 8px; white-space: nowrap; user-select: none;
+}
+.logo span { color: var(--fg-dim); font-weight: 400; }
+.nav-item {
+  display: flex; align-items: center; gap: 6px; height: 100%;
+  padding: 0 14px; font-size: 12px; font-weight: 500; color: var(--muted);
+  border-bottom: 2px solid transparent; cursor: pointer; transition: color 0.1s;
+  white-space: nowrap;
+}
+.nav-item:hover { color: var(--fg); background: rgba(255,255,255,0.03); }
+.nav-item.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.nav-item svg { width: 14px; height: 14px; }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.nav-user { font-size: 11px; color: var(--muted-dim); padding: 0 8px; }
+
+.tab-bar {
+  height: 34px; background: var(--bg); border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-end; padding: 0 12px; gap: 2px; flex-shrink: 0;
+}
+.tab {
+  display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 12px;
+  border-radius: 6px 6px 0 0; font-size: 11px; font-weight: 500; cursor: pointer;
+  color: var(--muted-dim); background: var(--card); border: 1px solid var(--border);
+  border-bottom: none;
+}
+.tab.active { color: var(--fg); background: var(--card); }
+.tab-close { margin-left: 4px; width: 14px; height: 14px; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: var(--muted-dim); font-size: 10px; }
+.tab-close:hover { background: rgba(255,255,255,0.08); }
+
+/* ─── Rule module layout ─── */
+.module-body { display: flex; flex: 1; min-height: 0; }
+
+/* Left panel */
+.left-panel {
+  width: 264px; flex-shrink: 0; background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.left-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px 10px; border-bottom: 1px solid var(--border);
+}
+.left-title { font-size: 12px; font-weight: 700; color: var(--fg); letter-spacing: 0.01em; }
+.btn-new {
+  display: flex; align-items: center; gap: 4px;
+  height: 26px; padding: 0 10px; border-radius: var(--radius);
+  background: var(--primary-dim); color: #bfdbfe;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  border: none; transition: background 0.1s;
+}
+.btn-new:hover { background: var(--primary); }
+
+.group-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.group-card {
+  border-radius: 8px; padding: 10px 12px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg);
+  transition: border-color 0.1s, background 0.1s;
+}
+.group-card:hover { background: var(--card-hover); border-color: #2a3545; }
+.group-card.active { background: var(--primary-bg); border-color: var(--primary-dim); }
+
+.gc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.gc-name { font-size: 12px; font-weight: 600; color: var(--fg); }
+.group-card.active .gc-name { color: #93c5fd; }
+.gc-default {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 700; color: var(--success);
+  background: #0a2e0a; border: 1px solid #166534; border-radius: 3px; padding: 1px 5px;
+}
+
+.gc-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 6px; border-radius: 3px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.04em;
+}
+.badge-gantt { background: #1a2b40; color: #7dd3fc; }
+.badge-all   { background: #1a3040; color: #5eead4; }
+.badge-div   { background: #1e1e3f; color: #a5b4fc; }
+.badge-count { background: #1e293b; color: var(--muted); }
+
+/* Right panel */
+.right-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.group-header {
+  padding: 14px 20px 12px; border-bottom: 1px solid var(--border);
+  background: var(--card); flex-shrink: 0;
+}
+.gh-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.gh-name { font-size: 16px; font-weight: 700; color: var(--fg); }
+.gh-code { font-size: 11px; color: var(--muted-dim); font-family: 'SF Mono', 'Cascadia Code', monospace; }
+.gh-badges { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.gh-actions { margin-left: auto; display: flex; gap: 6px; }
+.btn-ghost {
+  display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px;
+  border-radius: var(--radius); background: transparent; color: var(--muted);
+  font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid var(--border);
+  transition: background 0.1s, color 0.1s;
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.05); color: var(--fg); }
+.btn-danger { border-color: #3d1515; color: #f87171; }
+.btn-danger:hover { background: #2d1010; }
+
+.gh-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.gh-stats { display: flex; gap: 16px; margin-top: 8px; }
+.gh-stat { font-size: 11px; color: var(--muted-dim); }
+.gh-stat strong { color: var(--fg-dim); font-weight: 600; }
+
+/* Rules table toolbar */
+.rules-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-bottom: 1px solid var(--border);
+  background: var(--bg); flex-shrink: 0;
+}
+.search-box {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0 10px; height: 28px; flex: 1; max-width: 260px;
+}
+.search-box input {
+  background: none; border: none; outline: none; color: var(--fg);
+  font-size: 12px; width: 100%; font-family: var(--font);
+}
+.search-box input::placeholder { color: var(--muted-dim); }
+.filter-chip {
+  display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px;
+  border-radius: 13px; border: 1px solid var(--border); background: var(--card);
+  font-size: 11px; font-weight: 500; color: var(--muted); cursor: pointer;
+}
+.filter-chip.on { border-color: var(--primary-dim); background: var(--primary-bg); color: #93c5fd; }
+.rt-meta { margin-left: auto; font-size: 11px; color: var(--muted-dim); }
+
+/* Rules table */
+.rules-wrap { flex: 1; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  position: sticky; top: 0; background: var(--card); z-index: 2;
+  padding: 8px 12px; text-align: left;
+  font-size: 10px; font-weight: 700; color: var(--muted-dim);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+thead th:first-child { padding-left: 20px; }
+thead th:last-child { padding-right: 20px; }
+
+tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.08s; }
+tbody tr:hover { background: rgba(255,255,255,0.02); }
+tbody tr.expanded { background: #0a0f1a; }
+tbody tr.row-override { background: rgba(29,78,216,0.04); }
+
+td { padding: 0 12px; height: 44px; vertical-align: middle; }
+td:first-child { padding-left: 20px; }
+td:last-child { padding-right: 20px; }
+
+.rule-name { font-size: 12px; font-weight: 600; color: var(--fg); white-space: nowrap; }
+.rule-ref  { font-size: 10px; color: var(--muted-dim); font-family: 'SF Mono', 'Cascadia Code', monospace; margin-top: 2px; }
+.cat-chip {
+  display: inline-flex; align-items: center; height: 18px; padding: 0 7px;
+  border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap;
+}
+.cat-fdp    { background: #1a1a3f; color: #a5b4fc; }
+.cat-ft     { background: #0f2a1a; color: #6ee7b7; }
+.cat-rest   { background: #1a0a2e; color: #d8b4fe; }
+.cat-duty   { background: #1a2a0a; color: #a3e635; }
+.cat-fatigue{ background: #2a1a0a; color: #fcd34d; }
+.cat-qual   { background: #0a1a2a; color: #7dd3fc; }
+.cat-comp   { background: #1a0a1a; color: #f0abfc; }
+.cat-calc   { background: #1e293b; color: #94a3b8; }
+
+.sev-badge {
+  display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px;
+  border-radius: 3px; font-size: 10px; font-weight: 700; white-space: nowrap;
+}
+.sev-error   { background: var(--err-bg);  color: #fca5a5; border: 1px solid #3d1515; }
+.sev-warning { background: var(--warn-bg); color: #fcd34d; border: 1px solid #3d2a00; }
+.sev-info    { background: #0a2030;        color: #7dd3fc; border: 1px solid #0e3a55; }
+
+.override-pill {
+  display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 6px;
+  border-radius: 3px; font-size: 9px; font-weight: 600; cursor: pointer;
+  background: var(--primary-bg); color: #93c5fd; border: 1px solid #1d4ed8;
+}
+.override-pill:hover { background: #1d3d80; }
+.no-override { font-size: 10px; color: var(--muted-dim); cursor: pointer; }
+.no-override:hover { color: var(--primary); }
+
+/* Toggle switch */
+.toggle-wrap { display: flex; align-items: center; }
+.toggle-btn {
+  width: 36px; height: 20px; border-radius: 10px; background: #1e293b;
+  border: none; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0;
+}
+.toggle-btn.on { background: var(--primary-dim); }
+.toggle-btn::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #475569; transition: left 0.2s, background 0.2s;
+}
+.toggle-btn.on::after { left: 19px; background: #fff; }
+
+/* Inline param override editor */
+.param-expand {
+  background: #080e1a; border-top: 1px solid var(--border-light);
+}
+.param-expand td { padding: 0; height: auto; }
+.param-inner { padding: 14px 20px 16px 48px; display: flex; flex-direction: column; gap: 12px; }
+.param-header { display: flex; align-items: center; gap: 8px; }
+.param-header h4 { font-size: 11px; font-weight: 700; color: #60a5fa; }
+.param-header p { font-size: 10px; color: var(--muted-dim); }
+
+.param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.param-field { display: flex; flex-direction: column; gap: 4px; }
+.param-label { font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+.param-label span { color: var(--muted-dim); font-weight: 400; }
+.param-input-wrap { display: flex; align-items: center; gap: 6px; }
+.param-input {
+  flex: 1; height: 30px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--fg); font-size: 12px; padding: 0 10px;
+  font-family: var(--font); outline: none; transition: border-color 0.1s;
+}
+.param-input:focus { border-color: var(--primary-dim); }
+.param-input.modified { border-color: var(--primary-dim); background: var(--primary-bg); color: #bfdbfe; }
+.param-unit { font-size: 10px; color: var(--muted-dim); white-space: nowrap; }
+.param-default { font-size: 9px; color: var(--muted-dim); }
+
+.param-actions { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+.btn-save {
+  height: 28px; padding: 0 14px; border-radius: var(--radius);
+  background: var(--primary-dim); color: #bfdbfe; font-size: 11px; font-weight: 600;
+  border: none; cursor: pointer; transition: background 0.1s;
+}
+.btn-save:hover { background: var(--primary); }
+.btn-cancel {
+  height: 28px; padding: 0 12px; border-radius: var(--radius);
+  background: var(--card); color: var(--muted); font-size: 11px; font-weight: 500;
+  border: 1px solid var(--border); cursor: pointer;
+}
+.btn-reset { font-size: 10px; color: var(--err); cursor: pointer; margin-left: auto; }
+.btn-reset:hover { text-decoration: underline; }
+
+/* CALC row style (dimmed) */
+.calc-row td { opacity: 0.6; }
+.calc-row:hover td { opacity: 1; }
+
+/* Divider label between sections */
+.section-sep td {
+  background: var(--bg); padding: 6px 20px; height: 28px;
+  font-size: 9px; font-weight: 700; color: var(--muted-dim);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+
+/* Empty state */
+.empty-panel {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 10px; color: var(--muted-dim);
+}
+.empty-icon { font-size: 40px; opacity: 0.3; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a3545; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3a4d60; }
+
+/* Icon SVG helpers */
+svg { display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<!-- ─── Top Nav ─── -->
+<nav class="top-nav">
+  <div class="logo">ROIS<span>-AI</span></div>
+
+  <div class="nav-item" onclick="setModule('dashboard')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+    Dashboard
+  </div>
+  <div class="nav-item" onclick="setModule('live')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M1 6h14"/><path d="M5 1v2M11 1v2"/></svg>
+    Live
+  </div>
+  <div class="nav-item" onclick="setModule('scenario')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a5 5 0 100 10A5 5 0 008 2z"/><path d="M8 6v2l1.5 1.5"/></svg>
+    Scenario
+  </div>
+  <div class="nav-item active" id="nav-rule" onclick="setModule('rule')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+    Rule
+  </div>
+  <div class="nav-item" onclick="setModule('data')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="8" cy="4" rx="6" ry="2.5"/><path d="M2 4v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V4"/><path d="M2 8v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V8"/></svg>
+    Data
+  </div>
+  <div class="nav-item" onclick="setModule('system')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.2 3.2l1.3 1.3M11.5 11.5l1.3 1.3M3.2 12.8l1.3-1.3M11.5 4.5l1.3-1.3"/></svg>
+    System
+  </div>
+
+  <div class="nav-right">
+    <span class="nav-user">zhangy · F8</span>
+    <div style="width:28px;height:28px;border-radius:6px;background:#1e293b;display:flex;align-items:center;justify-content:center;cursor:pointer">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14 12l-4-4 4-4M8 4H2v8h6"/></svg>
+    </div>
+  </div>
+</nav>
+
+<!-- ─── Tab Bar ─── -->
+<div class="tab-bar">
+  <div class="tab">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+    Dashboard
+    <span class="tab-close">✕</span>
+  </div>
+  <div class="tab">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M1 6h14"/></svg>
+    Live
+    <span class="tab-close">✕</span>
+  </div>
+  <div class="tab active">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+    Rule
+    <span class="tab-close">✕</span>
+  </div>
+</div>
+
+<!-- ─── Module body ─── -->
+<div class="module-body">
+
+  <!-- ── Left Panel: Rule Group List ── -->
+  <aside class="left-panel">
+    <div class="left-header">
+      <span class="left-title">Rule Sets</span>
+      <button class="btn-new" onclick="showNewGroupDialog()">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 1v10M1 6h10"/></svg>
+        New Set
+      </button>
+    </div>
+
+    <div class="group-list">
+
+      <!-- Group 1 — active -->
+      <div class="group-card active" onclick="selectGroup(0)">
+        <div class="gc-top">
+          <span class="gc-name">CCAR-121 Full</span>
+          <span class="gc-default">★ Default</span>
+        </div>
+        <div class="gc-meta">
+          <span class="badge badge-gantt">GANTT</span>
+          <span class="badge badge-div">Pilot</span>
+          <span class="badge badge-count">12 rules</span>
+        </div>
+      </div>
+
+      <!-- Group 2 -->
+      <div class="group-card" onclick="selectGroup(1)">
+        <div class="gc-top">
+          <span class="gc-name">CCAR-121 Lite</span>
+        </div>
+        <div class="gc-meta">
+          <span class="badge badge-gantt">GANTT</span>
+          <span class="badge badge-div">Pilot</span>
+          <span class="badge badge-count">8 rules</span>
+        </div>
+      </div>
+
+      <!-- Group 3 -->
+      <div class="group-card" onclick="selectGroup(2)">
+        <div class="gc-top">
+          <span class="gc-name">Training Ops</span>
+        </div>
+        <div class="gc-meta">
+          <span class="badge badge-all">ALL</span>
+          <span class="badge badge-div">Pilot</span>
+          <span class="badge badge-count">6 rules</span>
+        </div>
+      </div>
+
+      <!-- Group 4 -->
+      <div class="group-card" onclick="selectGroup(3)">
+        <div class="gc-top">
+          <span class="gc-name">Cabin Crew Standard</span>
+        </div>
+        <div class="gc-meta">
+          <span class="badge badge-gantt">GANTT</span>
+          <span class="badge badge-div" style="background:#1a2a10;color:#86efac">Cabin</span>
+          <span class="badge badge-count">9 rules</span>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ── Right Panel: Group Detail ── -->
+  <section class="right-panel">
+
+    <!-- Group header -->
+    <div class="group-header">
+      <div class="gh-top">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="gh-name">CCAR-121 Full Standard</span>
+            <span class="gc-default">★ Default</span>
+          </div>
+          <span class="gh-code">ccar121_full_p</span>
+          <div class="gh-badges" style="margin-top:6px">
+            <span class="badge badge-gantt" style="font-size:10px">GANTT</span>
+            <span class="badge badge-div" style="font-size:10px">Pilot (P)</span>
+          </div>
+        </div>
+        <div class="gh-actions">
+          <button class="btn-ghost">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8a6 6 0 1012 0A6 6 0 002 8z"/><path d="M8 5v3l2 2"/></svg>
+            Set as Default
+          </button>
+          <button class="btn-ghost">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2H5a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V4a2 2 0 00-2-2z"/><path d="M9 2v4H7V2"/></svg>
+            Duplicate
+          </button>
+          <button class="btn-ghost btn-danger">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4h10M5 4V2h6v2M6 7v5M10 7v5M4 4l1 9h6l1-9"/></svg>
+            Delete
+          </button>
+        </div>
+      </div>
+      <div class="gh-desc">Full CCAR-121-R5 rule set for mainline pilots — covers FDP, flight time, rest, duty, fatigue, qualification, and crew composition checks. Used by the Gantt scheduler for live compliance validation.</div>
+      <div class="gh-stats">
+        <span class="gh-stat"><strong>12</strong> rules total</span>
+        <span class="gh-stat"><strong>10</strong> enabled</span>
+        <span class="gh-stat"><strong>2</strong> with overrides</span>
+        <span class="gh-stat"><strong>F8</strong> airline</span>
+      </div>
+    </div>
+
+    <!-- Rules toolbar -->
+    <div class="rules-toolbar">
+      <div class="search-box">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#4b5563" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
+        <input type="text" placeholder="Search rules…" />
+      </div>
+      <button class="filter-chip on" onclick="toggleFilter(this)">
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="4"/></svg>
+        Enabled only
+      </button>
+      <button class="filter-chip" onclick="toggleFilter(this)">Overrides only</button>
+      <span class="rt-meta">12 rules · 10 enabled</span>
+    </div>
+
+    <!-- Rules table -->
+    <div class="rules-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36%">Rule</th>
+            <th style="width:10%">Category</th>
+            <th style="width:9%">Severity</th>
+            <th style="width:14%">Param Override</th>
+            <th style="width:8%">Enabled</th>
+            <th style="width:8%"></th>
+          </tr>
+        </thead>
+        <tbody id="rulesTbody">
+
+          <!-- SECTION: FDP -->
+          <tr class="section-sep"><td colspan="6">FDP — Flight Duty Period</td></tr>
+
+          <!-- Calc row -->
+          <tr class="calc-row" title="Calculator — provides computed values for checker rules">
+            <td>
+              <div class="rule-name">FDP Calculator</div>
+              <div class="rule-ref">fdp_calc_std · CCAR-121-R5-121.489</div>
+            </td>
+            <td><span class="cat-chip cat-calc">CALC</span></td>
+            <td><span class="sev-badge sev-info">INFO</span></td>
+            <td><span class="no-override" style="cursor:default;color:#2a3545">—</span></td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td></td>
+          </tr>
+
+          <!-- Max FDP — expanded with param editor -->
+          <tr class="row-override expanded" id="row-maxfdp">
+            <td>
+              <div class="rule-name">Max FDP (Standard)</div>
+              <div class="rule-ref">max_fdp_std · CCAR-121-R5-121.489</div>
+            </td>
+            <td><span class="cat-chip cat-fdp">FDP</span></td>
+            <td><span class="sev-badge sev-error">ERROR</span></td>
+            <td>
+              <span class="override-pill" onclick="toggleExpand('maxfdp-params')">
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 1v8M2 4l3-3 3 3"/></svg>
+                2 overrides
+              </span>
+            </td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td>
+              <button class="btn-ghost" style="height:24px;font-size:10px" onclick="toggleExpand('maxfdp-params')">Edit</button>
+            </td>
+          </tr>
+
+          <!-- Param override editor — inline expansion -->
+          <tr class="param-expand" id="maxfdp-params">
+            <td colspan="6">
+              <div class="param-inner">
+                <div class="param-header">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#60a5fa" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 2"/></svg>
+                  <div>
+                    <h4>Override params for this group — Max FDP (Standard)</h4>
+                    <p>These values override the instance defaults only within the <strong style="color:#93c5fd">CCAR-121 Full</strong> rule set. Leave blank to use instance default.</p>
+                  </div>
+                </div>
+                <div class="param-grid">
+                  <div class="param-field">
+                    <label class="param-label">base_limit_minutes <span>· FDP base limit</span></label>
+                    <div class="param-input-wrap">
+                      <input class="param-input modified" type="number" value="750" placeholder="780">
+                      <span class="param-unit">min</span>
+                    </div>
+                    <span class="param-default">Default: 780</span>
+                  </div>
+                  <div class="param-field">
+                    <label class="param-label">extension_limit_minutes <span>· Commander extension</span></label>
+                    <div class="param-input-wrap">
+                      <input class="param-input modified" type="number" value="90" placeholder="120">
+                      <span class="param-unit">min</span>
+                    </div>
+                    <span class="param-default">Default: 120</span>
+                  </div>
+                  <div class="param-field">
+                    <label class="param-label">severity <span>· Override level</span></label>
+                    <select class="param-input" style="cursor:pointer">
+                      <option value="">Use instance default (ERROR)</option>
+                      <option value="WARNING">WARNING</option>
+                      <option value="ERROR" selected>ERROR</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="param-actions">
+                  <button class="btn-save">Save overrides</button>
+                  <button class="btn-cancel" onclick="toggleExpand('maxfdp-params')">Cancel</button>
+                  <button class="btn-reset">Reset to defaults</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="rule-name">Split Duty FDP</div>
+              <div class="rule-ref">max_fdp_split_std · CCAR-121-R5-121.491</div>
+            </td>
+            <td><span class="cat-chip cat-fdp">FDP</span></td>
+            <td><span class="sev-badge sev-error">ERROR</span></td>
+            <td><span class="no-override" onclick="openOverride(this)">+ Add override</span></td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td><button class="btn-ghost" style="height:24px;font-size:10px">Edit</button></td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="rule-name">Commander FDP Extension</div>
+              <div class="rule-ref">max_fdp_ext_std · CCAR-121-R5-121.493</div>
+            </td>
+            <td><span class="cat-chip cat-fdp">FDP</span></td>
+            <td><span class="sev-badge sev-warning">WARNING</span></td>
+            <td><span class="no-override" onclick="openOverride(this)">+ Add override</span></td>
+            <td><button class="toggle-btn" onclick="toggle(this)"></button></td>
+            <td><button class="btn-ghost" style="height:24px;font-size:10px">Edit</button></td>
+          </tr>
+
+          <!-- SECTION: Flight Time -->
+          <tr class="section-sep"><td colspan="6">FLIGHT_TIME — Cumulative Flight Time</td></tr>
+
+          <tr class="calc-row">
+            <td>
+              <div class="rule-name">Flight Hour Calculator</div>
+              <div class="rule-ref">ft_calc_std · CCAR-121-R5-121.487</div>
+            </td>
+            <td><span class="cat-chip cat-calc">CALC</span></td>
+            <td><span class="sev-badge sev-info">INFO</span></td>
+            <td><span class="no-override" style="cursor:default;color:#2a3545">—</span></td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td></td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="rule-name">Max Flight Time 24h</div>
+              <div class="rule-ref">max_ft_24h_std · CCAR-121-R5-121.487</div>
+            </td>
+            <td><span class="cat-chip cat-ft">FT</span></td>
+            <td><span class="sev-badge sev-error">ERROR</span></td>
+            <td><span class="no-override" onclick="openOverride(this)">+ Add override</span></td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td><button class="btn-ghost" style="height:24px;font-size:10px">Edit</button></td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="rule-name">Max Flight Time 7 days</div>
+              <div class="rule-ref">max_ft_7d_std · CCAR-121-R5-121.487</div>
+            </td>
+            <td><span class="cat-chip cat-ft">FT</span></td>
+            <td><span class="sev-badge sev-error">ERROR</span></td>
+            <td>
+              <span class="override-pill">
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 1v8M2 4l3-3 3 3"/></svg>
+                1 override
+              </span>
+            </td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td><button class="btn-ghost" style="height:24px;font-size:10px">Edit</button></td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="rule-name">Max Flight Time 28 days</div>
+              <div class="rule-ref">max_ft_28d_std · CCAR-121-R5-121.487</div>
+            </td>
+            <td><span class="cat-chip cat-ft">FT</span></td>
+            <td><span class="sev-badge sev-error">ERROR</span></td>
+            <td><span class="no-override" onclick="openOverride(this)">+ Add override</span></td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td><button class="btn-ghost" style="height:24px;font-size:10px">Edit</button></td>
+          </tr>
+
+          <!-- SECTION: Rest -->
+          <tr class="section-sep"><td colspan="6">REST — Rest Period</td></tr>
+
+          <tr class="calc-row">
+            <td>
+              <div class="rule-name">Rest Calculator</div>
+              <div class="rule-ref">rest_calc_std · CCAR-121-R5-121.495</div>
+            </td>
+            <td><span class="cat-chip cat-calc">CALC</span></td>
+            <td><span class="sev-badge sev-info">INFO</span></td>
+            <td><span class="no-override" style="cursor:default;color:#2a3545">—</span></td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td></td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="rule-name">Minimum Rest Period</div>
+              <div class="rule-ref">min_rest_std · CCAR-121-R5-121.495</div>
+            </td>
+            <td><span class="cat-chip cat-rest">REST</span></td>
+            <td><span class="sev-badge sev-error">ERROR</span></td>
+            <td><span class="no-override" onclick="openOverride(this)">+ Add override</span></td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td><button class="btn-ghost" style="height:24px;font-size:10px">Edit</button></td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="rule-name">Extended Rest (Augmented)</div>
+              <div class="rule-ref">ext_rest_aug_std · CCAR-121-R5-121.497</div>
+            </td>
+            <td><span class="cat-chip cat-rest">REST</span></td>
+            <td><span class="sev-badge sev-warning">WARNING</span></td>
+            <td><span class="no-override" onclick="openOverride(this)">+ Add override</span></td>
+            <td><button class="toggle-btn" onclick="toggle(this)"></button></td>
+            <td><button class="btn-ghost" style="height:24px;font-size:10px">Edit</button></td>
+          </tr>
+
+          <!-- SECTION: Qualification -->
+          <tr class="section-sep"><td colspan="6">QUALIFICATION — Crew Qualification</td></tr>
+
+          <tr>
+            <td>
+              <div class="rule-name">Aircraft Type Rating</div>
+              <div class="rule-ref">aircraft_type_rating_std</div>
+            </td>
+            <td><span class="cat-chip cat-qual">QUAL</span></td>
+            <td><span class="sev-badge sev-error">ERROR</span></td>
+            <td><span class="no-override" onclick="openOverride(this)">+ Add override</span></td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td><button class="btn-ghost" style="height:24px;font-size:10px">Edit</button></td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="rule-name">Recency Check</div>
+              <div class="rule-ref">recency_check_std</div>
+            </td>
+            <td><span class="cat-chip cat-qual">QUAL</span></td>
+            <td><span class="sev-badge sev-error">ERROR</span></td>
+            <td><span class="no-override" onclick="openOverride(this)">+ Add override</span></td>
+            <td><button class="toggle-btn on" onclick="toggle(this)"></button></td>
+            <td><button class="btn-ghost" style="height:24px;font-size:10px">Edit</button></td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+</div>
+
+<script>
+function toggle(btn) {
+  btn.classList.toggle('on')
+}
+
+function toggleExpand(id) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const isHidden = el.style.display === 'none'
+  el.style.display = isHidden ? '' : 'none'
+}
+
+function toggleFilter(chip) {
+  chip.classList.toggle('on')
+}
+
+function openOverride(el) {
+  // For demo: could open the param editor inline
+  const cell = el.closest('tr').cells[3]
+  cell.innerHTML = '<span class="override-pill"><svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 1v8M2 4l3-3 3 3"/></svg> 1 override</span>'
+}
+
+function selectGroup(i) {
+  document.querySelectorAll('.group-card').forEach((el, idx) => {
+    el.classList.toggle('active', idx === i)
+  })
+}
+
+function setModule(m) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'))
+  event.currentTarget.classList.add('active')
+}
+
+function showNewGroupDialog() {
+  alert('New Rule Set dialog — (not implemented in mockup)')
+}
+</script>
+
+</body>
+</html>

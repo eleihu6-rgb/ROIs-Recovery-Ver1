@@ -1,0 +1,35 @@
+{
+  "employeeId": "13204",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T5",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T2",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    }
+  ],
+  "issues": []
+}

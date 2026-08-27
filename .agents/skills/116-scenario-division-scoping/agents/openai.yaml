@@ -1,0 +1,6 @@
+interface:
+  display_name: "116 scenario division scoping"
+  short_description: "Project skill 116-scenario-division-scoping"
+  default_prompt: "Use $116-scenario-division-scoping for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

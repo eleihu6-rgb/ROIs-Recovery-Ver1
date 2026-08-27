@@ -1,0 +1,44 @@
+{
+  "employeeId": "1917",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 114,
+      "name": "Any/Every Enroute Check-In Time"
+    },
+    {
+      "tier": "T7",
+      "code": 108,
+      "name": "Total Legs In Pairing"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T5",
+      "name": "Max Consecutive Days On",
+      "code": 202,
+      "page": "days-off",
+      "predicate": "Set Condition Maximum Days On In A Row 2",
+      "reason": "unsupported-input: stepper for Max Consecutive Days On",
+      "image": "image/pbs/1917_PBS-3305_T5-202_unsupported-input_20260625-054108-497.png"
+    },
+    {
+      "tier": "T6",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition Minimum Days Off In A Row 3",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/1917_PBS-3305_T6-203_unsupported-input_20260625-054109-620.png"
+    }
+  ]
+}

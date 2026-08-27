@@ -1,0 +1,45 @@
+{
+  "employeeId": "13426",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 7,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T2",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T5",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T6",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T7",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": []
+}

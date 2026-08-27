@@ -1,0 +1,30 @@
+{
+  "employeeId": "1706",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 4,
+  "placed": 4,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 110,
+      "name": "Any/Every Duty On Date / Day"
+    },
+    {
+      "tier": "T2",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T5",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": []
+}

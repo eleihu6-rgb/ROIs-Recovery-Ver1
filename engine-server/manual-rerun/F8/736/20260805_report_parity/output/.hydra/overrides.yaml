@@ -1,0 +1,8 @@
+- +experiments=deploy/uat
+- data=/home/yuan.z/rois/rois-ai/engine-server/manual-rerun/F8/736/20260805_report_parity/ro_input.txt
+- pref_dir=/home/yuan.z/rois/rois-ai/engine-server/manual-rerun/F8/736/20260805_report_parity
+- rule_engine.working_directory=/home/yuan.z/rois/rois-ai/engine-server/manual-rerun/F8/736/20260805_report_parity
+- coverage_first=true
+- problem.ranks=[IFD,FA]
+- rule_engine.mode=rust-hybrid
+- solver.assignment_trace_enabled=false

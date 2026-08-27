@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>02 — Summary Cards + Panel</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--primary:#2563eb;--border:#e2e8f0;--muted:#64748b;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:ui-monospace,Consolas,monospace}
+    body{font-family:var(--font);font-size:12px;background:#94a3b8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45)}
+    .dialog{position:relative;width:min(1100px,96vw);max-height:90vh;background:#fff;border-radius:8px;box-shadow:0 24px 48px rgba(15,23,42,.2);display:flex;flex-direction:column;overflow:hidden}
+    .titlebar{background:var(--primary);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:8px}
+    .titlebar h1{font-size:15px;font-weight:600;flex:1}
+    .titlebar .badge{background:#f59e0b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px}
+    .toolbar{padding:8px 16px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);text-transform:uppercase}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px;border-bottom:1px solid var(--border);background:#f8fafc}
+    .card{border:2px solid var(--border);border-radius:8px;padding:14px 16px;background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+    .card:hover{box-shadow:0 4px 12px rgba(15,23,42,.08)}
+    .card.selected{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+    .card .rid{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px}
+    .card .label{font-weight:600;font-size:13px;margin-bottom:8px}
+    .card .num{font-family:var(--mono);font-size:32px;font-weight:700;line-height:1}
+    .card .num.warn{color:#d97706}
+    .card .num.ok{color:#16a34a}
+    .card .sub{font-size:11px;color:var(--muted);margin-top:4px}
+    .panel-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+    .panel-head h2{font-size:14px;font-weight:600}
+    .panel-head p{font-size:11px;color:var(--muted);flex:1}
+    .panel-head .btn{padding:5px 12px;border:1px solid var(--border);border-radius:4px;background:#fff;font-size:11px;cursor:pointer;font-weight:600}
+    .panel-body{flex:1;overflow-y:auto;max-height:42vh}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;color:var(--muted);background:#f8fafc;position:sticky;top:0}
+    td{padding:8px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+    .crew-link{font-family:var(--mono);font-weight:600;color:var(--primary);cursor:pointer}
+    .chip{display:inline-block;margin:2px;padding:2px 8px;border-radius:4px;background:#fffbeb;border:1px solid #fcd34d;font-family:var(--mono);font-size:10px;color:#92400e}
+    .footer{padding:10px 16px;border-top:1px solid var(--border);text-align:right}
+    .footer button{padding:6px 14px;border:1px solid var(--border);border-radius:4px;background:#fff;cursor:pointer}
+    .tag{position:fixed;bottom:12px;right:12px;background:#0f172a;color:#fff;padding:6px 12px;border-radius:4px;font-size:11px;font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="backdrop"></div>
+  <div class="dialog">
+    <div class="titlebar">
+      <h1>SCENARIO Roster Quality Analyzer <span class="badge">67</span></h1>
+    </div>
+    <div class="toolbar">147 crew · 67 with findings</div>
+    <div class="cards" id="cards"></div>
+    <div class="panel-head" id="panelHead"></div>
+    <div class="panel-body"><table><thead><tr>
+      <th>Crew ID</th><th>Base/Rank</th><th>Lead-in</th><th>After opt</th><th>Detail</th>
+    </tr></thead><tbody id="panelBody"></tbody></table></div>
+    <div class="footer"><button>Close</button></div>
+  </div>
+  <div class="tag">02 — Summary Cards</div>
+  <script src="shared-data.js"></script>
+  <script>
+    let selected = 1;
+    const cardsEl = document.getElementById('cards');
+    const headEl = document.getElementById('panelHead');
+    const bodyEl = document.getElementById('panelBody');
+
+    function renderPanel() {
+      const rule = QA_DATA.rules[selected];
+      headEl.innerHTML = `
+        <h2>${rule.id} — ${rule.label}</h2>
+        <p>${rule.description}</p>
+        <button class="btn">Export CSV</button>`;
+      bodyEl.innerHTML = rule.crew.map(c => `
+        <tr>
+          <td><span class="crew-link">${c.id}</span></td>
+          <td style="font-family:var(--mono)">${c.base}/${c.rank}</td>
+          <td style="font-family:var(--mono)">${c.leadIn || '—'}</td>
+          <td style="font-family:var(--mono)">${c.after || '—'}</td>
+          <td>${c.detail.map(d => `<span class="chip">${d}</span>`).join('')}</td>
+        </tr>`).join('') +
+        (rule.crewCount > rule.crew.length ? `<tr><td colspan="5" style="color:var(--muted);font-style:italic">+ ${rule.crewCount - rule.crew.length} more…</td></tr>` : '');
+    }
+
+    QA_DATA.rules.forEach((rule, i) => {
+      const card = document.createElement('div');
+      card.className = 'card' + (i === selected ? ' selected' : '');
+      card.innerHTML = `
+        <div class="rid">${rule.id}</div>
+        <div class="label">${rule.label}</div>
+        <div class="num ${rule.crewCount ? 'warn' : 'ok'}">${rule.crewCount}</div>
+        <div class="sub">crew affected</div>`;
+      card.onclick = () => {
+        selected = i;
+        document.querySelectorAll('.card').forEach((c, j) => c.classList.toggle('selected', j === i));
+        renderPanel();
+      };
+      cardsEl.appendChild(card);
+    });
+    renderPanel();
+  </script>
+</body>
+</html>

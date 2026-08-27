@@ -1,0 +1,77 @@
+# GitNexus ignore file
+# Skip legacy C++ code and non-source directories to keep the index focused
+# on the active TypeScript/Python/Rust modules
+
+# Legacy C++ rule engine (replaced by rule-engine-rs and rule-engine TS)
+crewrule-dev/
+
+# AI server regression test data files (large JSON)
+ai-server/regression_tests*.json
+ai-server/artifacts/
+
+# Non-source directories
+logs/
+monitoring/
+project-operations/
+test-results/
+image/
+pbs-optimization-report/
+rs-patches/
+docs/
+deploy/
+sql/
+e2e/
+data-migration/
+.gitnexus/
+scripts/
+memory/
+
+# Tool / IDE config dirs
+.agents/
+.claire/
+.git/
+.githooks/
+.github/
+.plane/
+.superpowers/
+.vscode/
+.worktrees/
+
+# Claude Code session data
+.claude/
+
+# Inactive / non-core modules
+pbs-app/
+po-engine/
+rule-engine/
+
+# Build artifacts
+**/dist/
+**/build/
+**/.turbo/
+
+# Large lock files
+pnpm-lock.yaml
+package-lock.json
+
+# Dependencies (biggest node count contributors)
+**/node_modules/
+**/.venv/
+**/.venv-*/
+**/venv/
+
+# Claude Code session data
+.claude/
+
+# Python compiled files
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Test snapshots and coverage
+**/__snapshots__/
+**/coverage/
+**/.pytest_cache/
+
+# E2E test results
+e2e/test-results/

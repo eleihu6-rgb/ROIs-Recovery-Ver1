@@ -1,0 +1,69 @@
+{
+  "testId": "PBS-3325",
+  "employeeId": "19",
+  "category": "YYZ-737-IFD",
+  "targetPeriod": "current portal RP (June 2026 in this environment)",
+  "sourcePeriod": "March 2026",
+  "sourceConfirmationAt": "2026-02-12T13:41:53 UTC",
+  "destructiveResetPages": [
+    "line",
+    "days-off",
+    "pairing"
+  ],
+  "totalConditions": 5,
+  "totalSourceConditions": 5,
+  "totalUiProperties": 6,
+  "placed": 5,
+  "acceptedValueGaps": 1,
+  "blockingIssues": 0,
+  "accountingPolicy": "value-not-available records current-period option/value gaps and is non-blocking when the property and tier were added through UI.",
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "page": "line",
+      "propertyCode": 401,
+      "name": "Max Credit Window",
+      "source": "Set Condition Maximum Credit Window"
+    },
+    {
+      "tier": "T2",
+      "page": "days-off",
+      "propertyCode": 201,
+      "name": "Prefer Off",
+      "source": "Prefer Off Friday, Saturday, Sunday"
+    },
+    {
+      "tier": "T3",
+      "page": "pairing",
+      "propertyCode": 103,
+      "name": "Pairing Check-In Time",
+      "source": "Avoid Pairings If Pairing Check-In Time > 15:00"
+    },
+    {
+      "tier": "T5",
+      "page": "pairing",
+      "propertyCode": 106,
+      "name": "Departing On",
+      "source": "Award Pairings If Departing On Monday, Wednesday If Any Landing In YVR"
+    },
+    {
+      "tier": "T5",
+      "page": "pairing",
+      "propertyCode": 101,
+      "name": "Any Landing In Airport",
+      "source": "Award Pairings If Departing On Monday, Wednesday If Any Landing In YVR"
+    }
+  ],
+  "recordedGaps": [],
+  "issues": [
+    {
+      "category": "value-not-available",
+      "image": "image/pbs/19_PBS-3325_T4-101_value-not-available_20260622-150341-513.png",
+      "page": "pairing",
+      "propertyCode": 101,
+      "reason": "Error: Any Landing In Airport existing bid is missing expected value(s): AZA, JFK, LAS, PSP, SFB, YQG, YXE; actual text: Any Landing In Airport Avoid · Any · CUN, FLL, YHZ, YQT, YUL, YWG, YYC, YYG T1 T2 T3 T4 T5 T6 T7",
+      "source": "Avoid Pairings If Any Landing In AZA, CUN, FLL, JFK, LAS, PSP, SFB, YHZ, YQG, YQT, YUL, YWG, YXE, YYC, YYG",
+      "tier": "T4"
+    }
+  ]
+}

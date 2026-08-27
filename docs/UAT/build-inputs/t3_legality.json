@@ -1,0 +1,235 @@
+{
+  "section": "Legality",
+  "cases": [
+    {
+      "id": "T3-LG-001",
+      "feature_area": "Legality — Admin",
+      "help_ref": "Legality › Overview",
+      "title": "View violations against the active rule set in the Alert Center",
+      "preconditions": "Live roster loaded with at least one crew whose assignment breaks a rule in the enabled F8 Full Ruleset (workset 433). Legality has been checked (Last checked shown).",
+      "steps": "1. Open the Live roster gantt with the F8 Full Ruleset enabled.\n2. Confirm a warning bell marks the offending duty on the gantt.\n3. Click the Alert Center bell button at the top-right of the roster pane (shows a violation count badge).\n4. Read the list — one row per crew, rule and message; confirm each message begins with the triggering parameter row (e.g. 'Row 2:').\n5. Type a crew ID / rank / base into the search bar and confirm the group counts and table filter immediately.\n6. Switch the grouping to Rule (then Severity / Base / Rank) and confirm rows regroup.\n7. Click a violation row and confirm that crew is brought to the top of the Roster pane.",
+      "expected": "Alert Center opens listing every violation for the loaded crew set; each row names the crew, the rule (e.g. 8002 Maximum Flight Time) and a message prefixed with the parameter Row number. Severity is colour-coded (red hard / amber overridable / yellow soft). Search and grouping update the list live; clicking a row scrolls that crew to the top.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T3-LG-002",
+      "feature_area": "Legality — Admin",
+      "help_ref": "Legality › Managing Rule Sets",
+      "title": "Create and enable a LIVE rule set and trigger a background recheck",
+      "preconditions": "Signed in as admin. Legality tab open on the Rule Sets view (Rule Instances tree, Rule Sets sidebar, rules table).",
+      "steps": "1. In the Rule Sets header click the + (New) button.\n2. In the New Rule Set dialog enter a Name, choose Division Pilot (P), and toggle at least the LIVE Rule Type on.\n3. Tick 'Enable this rule set' and confirm the warning about clearing old legality alerts / starting a background recheck.\n4. Save and confirm the new card appears in the sidebar with a blue LIVE badge, a P division badge, Enabled state, last-editor and rule count.\n5. Confirm the previously enabled LIVE/P set is now Disabled (dimmed).\n6. Use 'Add Rules' to add one catalog rule and confirm the set's rule count increments.",
+      "expected": "The new set is created with the chosen name/division/type, becomes the active (highlighted) Enabled set for LIVE/P, the prior LIVE/P set is disabled, old legality alerts clear, and the affected roster period is re-checked in the background. Non-admins would see these controls hidden.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T3-LG-003",
+      "feature_area": "Legality — Admin",
+      "help_ref": "Legality › Managing Rule Sets",
+      "title": "Coverage warning flags a division + type with no enabled set",
+      "preconditions": "Signed in as admin on the Rule Sets view. At least one division+type combination (e.g. PBS/C) has no enabled rule set.",
+      "steps": "1. Disable every enabled set for one combination, e.g. all PBS sets for division Cabin (C).\n2. Observe the Rule Sets header.\n3. Hover the amber warning triangle that appears.\n4. Re-enable a PBS/C set and confirm the warning clears.",
+      "expected": "An amber warning triangle appears in the Rule Sets header while a LIVE/PBS division+type combination has no enabled set; hovering it lists the missing combination(s) (e.g. 'PBS/C'). Enabling a set for that combination removes the warning.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T3-LG-004",
+      "feature_area": "Legality — Admin",
+      "help_ref": "Legality › Rule Templates & Instances",
+      "title": "Browse the rule catalog tree and copy a template to a new instance",
+      "preconditions": "Signed in as admin. Legality tab open. A Rule Set is selected in the sidebar.",
+      "steps": "1. Open Rule Templates from the sidebar (or use the Rule Instances tree on the Rule Sets view).\n2. Expand the reference › category › function › instance hierarchy and confirm template instance-001 rows carry an amber star and a Template badge.\n3. Type '8002' into 'Search rules…' and confirm matching branches auto-expand and hits highlight.\n4. Click an instance and confirm its parameter table loads on the right.\n5. Hover a template instance and click 'Copy to new instance'.\n6. Confirm a new editable Copy (instance 001 of the same function) is created and its parameters can be edited independently.\n7. Attempt 'Delete this instance' on a Template and on a rule used by a Rule Set.",
+      "expected": "Catalog tree navigates the four-level hierarchy; search auto-expands/highlights; clicking an instance loads its Params table; Copy to new instance produces an independent editable copy. Delete is refused for Templates and for any rule used by a Rule Set.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T3-LG-005",
+      "feature_area": "Legality — Admin",
+      "help_ref": "Legality › Editing rule parameters (admin)",
+      "title": "Edit a rule parameter row, undo, save all and flag a recheck",
+      "preconditions": "Signed in as admin. Legality tab open on a rule's parameter table (e.g. 8002 Maximum Flight Time).",
+      "steps": "1. Click a rule to expand its parameter table in place (Row column visible as 1,2,3…).\n2. Click the Edit row pencil in the Actions column; the row turns amber and cells validate their own format.\n3. Change a threshold (e.g. lower Max Limits) and click ✓ (enabled only when every cell is valid).\n4. Use Copy row, then Move up / Move down, then Add Row and Delete row (confirm 'Yes, delete').\n5. In the Changes panel confirm each EDIT / COPY / MOVE / ADD / DEL action is logged newest-first; click ⟲ Undo once and confirm the last change reverts.\n6. Click Save All and wait for 'Saving…' → 'Parameters saved'.",
+      "expected": "Row edits validate per-cell and only commit on ✓; Changes panel logs every action with Undo working; nothing persists until Save All. After Save All the parameters are written to the rule set and the affected rosters are flagged for a legality recheck (live check auto re-runs). Without admin rights the Actions column, Add Row and Save All are hidden and the table is read-only.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-006",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 1001 — Assignment Overlap",
+      "title": "1001 Assignment Overlap fires when a Before and After duty overlap in time",
+      "preconditions": "F8 Full Ruleset enabled with 1001 Assignment Overlap. A crew with an existing FLY (or SBY) duty. Default rows: Assignment Rest Before = Y prohibits an overlapping After of type L|O or a DO.",
+      "steps": "1. Assign the crew a FLY duty.\n2. Assign a second activity (a day off DO, or an L|O type) whose time window overlaps the FLY duty end (Rest Before = Y tests against duty end).\n3. Recheck legality and open the Alert Center.\n4. Repeat with the second activity moved so it does NOT overlap the duty window.",
+      "expected": "Overlapping case raises a 1001 Assignment Overlap violation naming the prohibited Before → After combination (e.g. FLY → DO). The non-overlapping rest-only day off / leave stays Allowed with no 1001 violation.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-007",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 2014 — Local Night Definition",
+      "title": "2014 Local Night Definition raises no violation but supplies the local-night window downstream",
+      "preconditions": "F8 Full Ruleset enabled. 2014 is a Definition (compute-only). Demo config 22:00 / 08:00 / 08:00.",
+      "steps": "1. Open rule 2014 and confirm the 'No violations' chip / definition note.\n2. Confirm no Alert Center row is ever attributed to 2014 itself.\n3. As admin change Local Night Start/End and Min Interval Hours, Save All and recheck.\n4. Observe day-off/WOCL rules that consume it (7508 Single Day Free, 7503/7504 WOCL) recompute their single-day/local-night boundaries.",
+      "expected": "Rule 2014 never produces its own violation. Changing its window shifts the local-night boundary used by 7508 and the WOCL run reset in 7503/7504, changing those rules' results — proving 2014 feeds downstream rather than firing itself.",
+      "severity": "High"
+    },
+    {
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 2015 — DO (Day Off) Start Time Definition",
+      "title": "2015 DO Definition raises no violation but supplies the Day-Off start boundary downstream",
+      "preconditions": "F8 Full Ruleset enabled. 2015 is a Definition (compute-only) that sets the DO (Day Off) Start Time as minutes past local midnight; 0 = missing (defaults to local midnight). Demo config: DO Start = 02:00 local.",
+      "steps": "1. Open rule 2015 and confirm the 'No violations' chip / definition note.\n2. Confirm no Alert Center row is ever attributed to 2015 itself.\n3. As admin change the DO Start Time (e.g. from local midnight to 02:00), Save All and recheck.\n4. Observe the days-off rules that consume it (7505 Min GDOs, 7507 Min GDOs by fly/reserve band) recompute which local day a duty paints as occupied vs. free.",
+      "expected": "Rule 2015 never produces its own violation. Changing the DO Start Time shifts which calendar day each duty occupies, changing 7505/7507 day-off counts — proving 2015 feeds downstream rather than firing itself.",
+      "severity": "High",
+      "id": "T3-LG-008"
+    },
+    {
+      "id": "T3-LG-009",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7272 — Calculate DP of the Reserves",
+      "title": "7272 Reserve DP raises no violation but charges reserve/standby duty period downstream",
+      "preconditions": "F8 Full Ruleset enabled. 7272 is a calculator (compute-only). Sample: reserve assignments SBY|PRAM|PRPM, Rate 0.33.",
+      "steps": "1. Open rule 7272 and confirm the 'No violations' chip.\n2. Assign a crew a reserve/standby block (SBY) that carries no flight segments.\n3. Recheck and confirm no Alert Center row is attributed to 7272 itself.\n4. Inspect 8002 Maximum Hours of Work for the same crew and confirm the standby block contributes a charged duty period (≈ Rate 0.33 of the standby window).",
+      "expected": "Rule 7272 produces no violation of its own; it assigns the reserve/standby block a duty-period value that 8002 Maximum Hours of Work counts. Lowering the Rate reduces the duty charged to the cumulative duty-hour rule.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-010",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7500 — Basic definition of Acc State",
+      "title": "7500 Acc State raises no violation but supplies the acclimatized time zone downstream",
+      "preconditions": "F8 Full Ruleset enabled. 7500 is a Definition (compute-only). Live port falls back to the crew's base time zone.",
+      "steps": "1. Open rule 7500 and confirm the 'No violations' chip / definition note.\n2. Recheck legality and confirm no Alert Center row is attributed to 7500 itself.\n3. Give a crew duty in a distant time zone and confirm the WOCL rules 7503/7504 read local time at the acclimatized (base) zone this rule produces.",
+      "expected": "Rule 7500 never fires; it produces each crew's acclimatized reference time zone (base-zone fallback) that the WOCL rules 7503/7504 consume to read 02:00–05:59 local time. No violation is ever labelled 7500.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-011",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7508 — Single Day Free from Duty (F8 calendar-day)",
+      "title": "7508 Single Day Free from Duty (calendar-day) — replaces 7501; fires when too few calendar single days free fall in the window",
+      "preconditions": "F8 Full Ruleset enabled. 7508 is the F8 calendar-day variant of Single Day Free from Duty and REPLACES the retired 7501 (rolling-hours variant) — 7501 should no longer appear in the active F8 ruleset. A single day free is a full local calendar day with no duty (day boundary read from 2015 DO Start / 2014 local night). Duty Report parameter: Y ends rest at the next duty start; N ends rest at the next duty's first flight departure.",
+      "steps": "1. Confirm the active F8 ruleset lists 7508 and NOT 7501.\n2. Build a roster where a crew has fewer than the required calendar single days free from duty inside the rule's window.\n3. Recheck legality and open the Alert Center.\n4. Adjust the roster to add enough calendar single days free and recheck.\n5. Toggle the Duty Report parameter (Y vs N) and confirm the free-day rest boundary shifts accordingly.",
+      "expected": "The under-provisioned roster raises a 7508 Single Day Free from Duty violation (calendar-day basis); no 7501 violation appears anywhere (7501 is retired). Providing enough calendar single days free clears the 7508 violation. Switching Duty Report Y/N changes where the free-day rest boundary is measured.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-012",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7502 — The Calculation of Credit Hours",
+      "title": "7502 Credit Hours raises no violation but feeds the monthly credit-hour band",
+      "preconditions": "F8 Full Ruleset enabled. 7502 is a calculator (compute-only). Credit = greater of Minimum CH floor (4:00), flight hours, or duty-ratio.",
+      "steps": "1. Open rule 7502 and confirm the 'No violations' chip.\n2. Assign a crew a mix of FLY, GND and DO/leave days and recheck.\n3. Confirm no Alert Center row is attributed to 7502 itself.\n4. Inspect the 8002 Maximum Flight Time monthly credit-hour band (Type CH) and confirm it reconciles against the credit values 7502 derives.",
+      "expected": "Rule 7502 never fires; it computes each assignment's credit hours (min-floor / flight hours / duty ratio) that the 8002 monthly credit-hour band (CH 65:00–75:00 demo) reads. No violation is labelled 7502.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-013",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7503 — Limits of Consecutive WOCLs",
+      "title": "7503 Limits of Consecutive WOCLs fires when consecutive WOCL duties exceed the cap",
+      "preconditions": "F8 Full Ruleset enabled with 7503. Demo Max Consecutive WOCLs = 2 (regulatory baseline 3). A WOCL duty overlaps 02:00–05:59 acclimatized time; the run resets across a local night (reads 2014/7500).",
+      "steps": "1. Assign a crew 3 consecutive duties each touching 02:00–05:59 acclimatized, with no local night's rest resetting the run (exceeds the demo cap of 2).\n2. Recheck legality and open the Alert Center.\n3. Reduce to 2 consecutive WOCL duties (or insert a local night's rest to reset the run) and recheck.",
+      "expected": "Exceeding the Max Consecutive WOCLs cap raises a 7503 Limits of Consecutive WOCLs violation. Within the cap (or with a local night's rest breaking the run) no 7503 violation appears.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-014",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7504 — Spacing Rule - WOCL",
+      "title": "7504 Spacing Rule – WOCL fires when two WOCL flight duties are spaced under the minimum",
+      "preconditions": "F8 Full Ruleset enabled with 7504. Demo Min Period = 80 RH (regulatory baseline 55). Applies to flight duty → flight duty where both touch the WOCL.",
+      "steps": "1. Assign a crew two flight duties that each touch the WOCL (02:00–05:59), spaced less than the demo minimum of 80 rolling hours apart.\n2. Recheck legality and open the Alert Center.\n3. Move the second WOCL flight duty so the gap is ≥80 RH and recheck.",
+      "expected": "Spacing below the Min Period raises a 7504 Spacing Rule - WOCL violation between the two WOCL flight duties. When the two WOCL duties are ≥ the minimum spacing apart, no 7504 violation appears (other duties may sit in the gap).",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-015",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7505 — Min # GDOs in a RP",
+      "title": "7505 Min # GDOs in a RP fires when guaranteed days off fall below the sliding minimum",
+      "preconditions": "F8 Full Ruleset enabled with 7505. 12 GDOs in a 30-day month / 13 in a 31-day month; the minimum slides down as vacation days grow. Published unassigned days count as GDOs (Count Blank Day = Y).",
+      "steps": "1. Select a 31-day roster period and a crew with 0 vacation days (row requires 13 Min DO).\n2. Assign enough duty so the crew has fewer than 13 days off (DO group) in the period.\n3. Recheck legality and open the Alert Center.\n4. Free up days so the crew has ≥13 GDOs (or add vacation so the required minimum slides down below the actual count) and recheck.",
+      "expected": "Below the row's Min DO (13 for a 31-day month, 0 vacation) raises a 7505 Min # GDOs in a RP violation. When GDOs meet or exceed the sliding minimum for the matched month-length/vacation band, no 7505 violation appears.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-016",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7506 — One Checkin Per Day",
+      "title": "7506 One Check-in Per Day fires on a second flight report the same calendar day",
+      "preconditions": "F8 Full Ruleset enabled with 7506. Assignments counting as a check-in = FLY.",
+      "steps": "1. Assign a crew two separate FLY duties that each require a report (check-in) on the same calendar day.\n2. Recheck legality and open the Alert Center.\n3. Move the second FLY duty's report to the next calendar day and recheck.",
+      "expected": "Two reports on the same calendar day raise a 7506 One Check-in Per Day violation. When the two reports fall on different calendar days, no 7506 violation appears.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-017",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7507 — Min # GDOs (fly/reserve filters)",
+      "title": "7507 Min # GDOs with fly/reserve filters fires when GDOs fall below the min for the matching band",
+      "preconditions": "F8 Full Ruleset enabled with 7507. Same Min-GDO check as 7505 plus NUM FLY DAY / FLY ASSIGNMENTS and NUM RESERVES / RES ASSIGNMENTS band filters (empty or * disables a filter).",
+      "steps": "1. Build a roster for a crew whose fly-day and reserve-day counts fall inside a specific NUM FLY DAY / NUM RESERVES band row.\n2. Assign duty so days off drop below that row's Min DO.\n3. Recheck legality and open the Alert Center.\n4. Add days off so GDOs meet the row's Min DO (or change fly/reserve counts so a more lenient band row matches) and recheck.",
+      "expected": "When the crew's fly-day/reserve-day counts match a band row and GDOs are below that row's Min DO, a 7507 Min # GDOs violation fires. Meeting the Min DO for the matched fly/reserve band clears it; a crew whose counts match no band (or * filters) is not constrained by that row.",
+      "severity": "High"
+    },
+    {
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 7509 — Avoid Co-pairing (crew not to fly together)",
+      "title": "7509 Avoid Co-pairing — crew-ID pairs entered inline in the rule fire when both crew share a flight inside the date window",
+      "preconditions": "F8 Full Ruleset enabled with rule 7509 'Avoid Co-pairing' (live in the F8 solver ruleset). Unlike the old system where the rule logic and its data lived separately, 7509 takes the restricted crew INLINE: the admin types the crew-member IDs to keep apart directly into the rule's own table — columns Crew A, Crew B, Eff Date, Exp Date — one crew pair per row, each with an effective/expiry date window.",
+      "steps": "1. Open rule 7509 and add a row with a pair of crew-member IDs that must not fly together (Crew A, Crew B) plus an Eff Date / Exp Date window — including crew from DIFFERENT bases and DIFFERENT divisions.\n2. Save All.\n3. Build/adjust a roster so both listed crew are assigned to the same flight on a date inside the window, then recheck legality.\n4. Open the Alert Center and read the 7509 violation.\n5. Separate the crew (remove one from the shared flight) or clear the row from the rule, then recheck.",
+      "expected": "When both crew in a 7509 row are rostered on the same flight within that row's Eff–Exp window, a 7509 'Avoid Co-pairing' violation fires and names both crew — including across different bases/divisions (the match is on the crew IDs only, no base/division filter). The IDs typed into the rule's Crew A / Crew B table are what drive it (no separate data source). Separating the crew, moving the flight outside the date window, or removing the row clears the violation.",
+      "severity": "High",
+      "id": "T3-LG-018"
+    },
+    {
+      "id": "T3-LG-019",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 8002 — Maximum Flight Time",
+      "title": "8002 Maximum Flight Time fires when cumulative block hours exceed the rolling-window cap",
+      "preconditions": "F8 Full Ruleset enabled with 8002 Maximum Flight Time. Demo config: 28-day Max = 40:00, rolling windows 28/100/200 days, monthly credit-hour band CH 65:00–75:00 (baseline 112/300/1000 over 28/90/365).",
+      "steps": "1. Assign a crew flight duties whose cumulative block (flight) hours in the rolling 28-day window exceed the 40:00 demo Max Limit.\n2. Recheck legality and open the Alert Center.\n3. Separately, drive the calendar-month credit hours outside the 65:00–75:00 band.\n4. Reduce block hours below 40:00 in every rolling window and bring credit hours inside 65–75, then recheck.",
+      "expected": "Block hours over a window's Max Limit raise an 8002 Maximum Flight Time violation (message names the offending Row/window, e.g. the 28-day row). Credit hours outside the monthly Min/Max band trigger the standalone credit-hour-utilisation row. Within every window's limit and inside the credit band, no 8002 flight-time violation appears.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-020",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 8002 — Maximum Hours of Work",
+      "title": "8002 Maximum Hours of Work fires when cumulative duty hours exceed the rolling-window cap",
+      "preconditions": "F8 Full Ruleset enabled with 8002 Maximum Hours of Work (instance 009). Limits: 60h/7d, 192h/28d, 2200h/365d (Type DP, includes positioning). Reserve/standby duty counted via 7272.",
+      "steps": "1. Assign a crew duty (flight + positioning + charged reserve) so cumulative duty time in the rolling 7-day window exceeds 60:00.\n2. Recheck legality and open the Alert Center.\n3. Reduce duty so all three windows (7/28/365 days) are under their Max Limits and recheck.",
+      "expected": "Duty time over a window's Max Limit raises an 8002 Maximum Hours of Work violation naming the offending Row/window (e.g. the 7-day 60:00 row). When all rolling windows are within limits, no 8002 hours-of-work violation appears.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-021",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 8004 — Basic Competency-F8",
+      "title": "8004 Basic Competency fires when a crew is not qualified for a flight's base/rank/fleet",
+      "preconditions": "F8 Full Ruleset enabled with 8004. Only the BASE check is enabled by default (RANK / FLEET off); Grace Period 0; applies to FLY assignments.",
+      "steps": "1. Assign a crew a FLY duty at a base for which the crew holds no base qualification.\n2. Recheck legality and open the Alert Center.\n3. Reassign the flight to a base the crew is qualified for (or grant the base qualification) and recheck.\n4. (Optional) Enable the RANK or FLEET dimension and repeat for an unqualified rank/fleet.",
+      "expected": "A flight at an unqualified base raises an 8004 Basic Competency-F8 violation. When the crew holds the required base qualification (within grace), no 8004 violation appears. With RANK/FLEET checks enabled, the same fires for an unqualified rank or fleet.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-022",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 8030 — Age Restriction",
+      "title": "8030 Age Restriction fires when too many over-age crew share a flight",
+      "preconditions": "F8 Full Ruleset enabled with 8030. Division P; Age Define 65; Max Number 1 (baseline). Enforced on the whole pairing complement (pre-assigned + concurrently assigned crew). Crew birthdays from the crew profile.",
+      "steps": "1. Assign a pairing/flight so that its complement contains more crew over the Age Define threshold (65) than Max Number (e.g. two pilots over 65, or a pilot over 65 flying with a pilot over 60).\n2. Recheck legality and open the Alert Center.\n3. Swap one over-age crew for an under-threshold crew so the count is ≤ Max Number and recheck.",
+      "expected": "When the count of over-age crew on the flight complement exceeds Max Number, an 8030 Age Restriction violation fires on the flight (checked across all crew on the trip, not just the edited one). With the over-age count within Max Number, no 8030 violation appears.",
+      "severity": "High"
+    },
+    {
+      "id": "T3-LG-023",
+      "feature_area": "Legality — Rule",
+      "help_ref": "Legality › 8056 — Roster Spacing",
+      "title": "8056 Roster Spacing fires when two qualifying duties are scheduled under the minimum gap",
+      "preconditions": "F8 Full Ruleset enabled with 8056. Demo Space = 24 RH (baseline 13h home-base rest). Directional FLY → FLY|SBY|SIM, measured from end of post-duty rest.",
+      "steps": "1. Assign a crew a flight duty (A) followed by a flight/standby/simulator duty (B) spaced less than the demo minimum of 24 rolling hours apart.\n2. Recheck legality and open the Alert Center.\n3. Increase the gap between A and B to ≥24 RH and recheck.",
+      "expected": "A FLY → FLY|SBY|SIM pair closer than the Space minimum raises an 8056 Roster Spacing violation. When the two qualifying duties are spaced at least the minimum apart, no 8056 violation appears.",
+      "severity": "High"
+    }
+  ]
+}

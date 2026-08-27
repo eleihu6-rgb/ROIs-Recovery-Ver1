@@ -1,0 +1,49 @@
+{
+  "employeeId": "13365",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 6,
+  "placed": 4,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T3",
+      "code": 111,
+      "name": "Pairing Check-Out Time"
+    },
+    {
+      "tier": "T5",
+      "code": 111,
+      "name": "Pairing Check-Out Time"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T4",
+      "name": "Pairing Number",
+      "code": 102,
+      "page": "pairing",
+      "predicate": "Avoid Pairings If Pairing Number T4515, T4516, T4517, T4522, T4526, T4530, T4531, T4537, T4545, T4548, T4554, T4558, T4559, T4564, T4571, T4576, T4577, T4588",
+      "reason": "add-bid-disabled (value not accepted): Pairing Number",
+      "image": "image/pbs/13365_PBS-3311_T4-102_add-bid-disabled_20260625-054444-790.png"
+    },
+    {
+      "tier": "T6",
+      "name": "Pairing Number",
+      "code": 102,
+      "page": "pairing",
+      "predicate": "Award Pairings If Pairing Number T4512, T4513, T4521, T4522, T4535, T4536, T4546, T4550, T4562, T4563, T4566, T4570, T4573, T4582, T4587",
+      "reason": "add-bid-disabled (value not accepted): Pairing Number",
+      "image": "image/pbs/13365_PBS-3311_T6-102_add-bid-disabled_20260625-054648-577.png"
+    }
+  ]
+}

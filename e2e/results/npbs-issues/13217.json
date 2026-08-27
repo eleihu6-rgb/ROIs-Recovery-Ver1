@@ -1,0 +1,40 @@
+{
+  "employeeId": "13217",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 6,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T2",
+      "code": 115,
+      "name": "Any/Every Leg With Employee Number"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T5",
+      "code": 108,
+      "name": "Total Legs In Pairing"
+    },
+    {
+      "tier": "T6",
+      "code": 111,
+      "name": "Pairing Check-Out Time"
+    }
+  ],
+  "issues": []
+}

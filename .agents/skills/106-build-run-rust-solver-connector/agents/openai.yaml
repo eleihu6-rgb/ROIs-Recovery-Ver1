@@ -1,0 +1,6 @@
+interface:
+  display_name: "106 UuLild run rust solver connector"
+  short_description: "Project skill 106-build-run-rust-solver-connector"
+  default_prompt: "Use $106-build-run-rust-solver-connector for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

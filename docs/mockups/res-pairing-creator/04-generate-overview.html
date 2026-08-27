@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RES Pairing Creator — 4. Generate &amp; overview</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 900px){ .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="mock-shell">
+  <div class="mock-banner">
+    <span class="step">4 / 5</span>
+    <b>Review → Generate → Overview</b> — confirm what will be created, generate the pairings, then see the result grouped by date/base/rank/type.
+    <span class="links">
+      <a href="index.html">Index</a>
+      <a href="01-entry-point.html">1 Entry</a>
+      <a href="02-define-calendar.html">2 Define</a>
+      <a href="03-batch-entry.html">3 Batch</a>
+      <a class="active" href="04-generate-overview.html">4 Generate</a>
+      <a href="05-manage.html">5 Manage</a>
+    </span>
+  </div>
+
+  <div class="dialog">
+    <div class="dialog-title">
+      <span class="ico">📅</span><h2>RES Pairing Planner</h2><span class="sub">— review &amp; generate</span>
+      <span class="spacer"></span><span class="badge-live">LIVE</span><span class="x">✕</span>
+    </div>
+    <div class="dialog-body">
+
+      <!-- success banner (post-generate state) -->
+      <div class="banner-ok" style="margin-bottom:12px">
+        ✓ <b>Generated 96 RES pairings</b> across 2 bases · 14 dates · 384 composition slots — written to <span class="mono">pairing</span> + <span class="mono">pairing_segment</span> + <span class="mono">pairing_composition</span>.
+        <a href="01-entry-point.html" style="margin-left:auto; color:#14532d; font-weight:600">View on Pairing pane →</a>
+      </div>
+
+      <!-- post-generation effect: pane refresh + auto-applied PRAM/PRPM filter -->
+      <div class="card" style="margin-bottom:14px; border-color:var(--primary)">
+        <div class="card-h" style="color:var(--primary-600)"><span class="ico">🛡️</span> What happens on the Pairing pane after Generate</div>
+        <div style="padding:11px 13px">
+          <div class="flow" style="margin-bottom:10px">
+            <span class="node">Backend creates rows per your definition</span><span class="arr">→</span>
+            <span class="node">Pairing pane reloads (cache busted)</span><span class="arr">→</span>
+            <span class="node">Type filter <b>PRAM, PRPM</b> auto-applied</span><span class="arr">→</span>
+            <span class="node">New RES pairings surfaced &amp; highlighted</span>
+          </div>
+          <!-- mini pairing-pane preview with the filter applied -->
+          <div style="border:1px solid var(--border); border-radius:6px; overflow:hidden">
+            <div style="display:flex; align-items:center; gap:8px; height:32px; padding:0 8px; background:var(--surface-2); border-bottom:1px solid var(--border)">
+              <span style="font-size:12.5px; font-weight:600">🗂️ Pairings</span>
+              <span class="chip active" style="height:22px; font-size:11px">Type: PRAM ✕</span>
+              <span class="chip active" style="height:22px; font-size:11px">Type: PRPM ✕</span>
+              <span class="hint">96 RES pairings</span>
+              <span style="flex:1"></span>
+              <span class="icon-btn is-new" title="RES Pairing Creator" style="width:20px;height:20px">🛡️</span>
+            </div>
+            <table class="grid">
+              <thead><tr><th>Pairing</th><th>Base</th><th>Date</th><th>Type</th><th>Window</th><th class="num-cell">CA</th><th class="num-cell">FO</th></tr></thead>
+              <tbody>
+                <tr style="background:#eef5ff"><td class="mono">PRAM-1000-2200</td><td>YVR</td><td class="mono">01 Jun</td><td><span class="tag-am">AM</span></td><td class="mono">10:00–22:00</td><td class="num-cell">5</td><td class="num-cell">5</td></tr>
+                <tr style="background:#f5eefe"><td class="mono">PRPM-2000-0559</td><td>YVR</td><td class="mono">01 Jun</td><td><span class="tag-pm">PM</span></td><td class="mono">20:00–05:59</td><td class="num-cell">5</td><td class="num-cell">5</td></tr>
+                <tr style="background:#eef5ff"><td class="mono">PRAM-1000-2200</td><td>YEG</td><td class="mono">01 Jun</td><td><span class="tag-am">AM</span></td><td class="mono">10:00–22:00</td><td class="num-cell">4</td><td class="num-cell">4</td></tr>
+                <tr style="background:#f5eefe"><td class="mono">PRPM-2000-0559</td><td>YEG</td><td class="mono">01 Jun</td><td><span class="tag-pm">PM</span></td><td class="mono">20:00–05:59</td><td class="num-cell">4</td><td class="num-cell">4</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="hint" style="margin-top:8px">The pane uses its existing <b>Type / assignment filter</b> (<span class="mono">PairingFilter.assignments = ['PRAM','PRPM']</span>) — no new filter mechanism. Clearing the filter chips returns the full pairing list.</p>
+        </div>
+      </div>
+
+      <div class="kpi" style="margin-bottom:14px">
+        <div class="box"><div class="v">96</div><div class="l">RES pairings</div></div>
+        <div class="box"><div class="v">48</div><div class="l"><span class="tag-am">AM</span> (PRAM)</div></div>
+        <div class="box"><div class="v">48</div><div class="l"><span class="tag-pm">PM</span> (PRPM)</div></div>
+        <div class="box"><div class="v">384</div><div class="l">crew slots (plan)</div></div>
+        <div class="box"><div class="v">2</div><div class="l">bases</div></div>
+        <div class="box"><div class="v">14</div><div class="l">dates</div></div>
+      </div>
+
+      <div class="two">
+        <!-- pre-generate review table -->
+        <div class="card">
+          <div class="card-h"><span class="ico">📋</span> What will be created (grouped)</div>
+          <div style="max-height:300px; overflow:auto">
+            <table class="grid">
+              <thead><tr><th>Base</th><th>Div</th><th>Rank</th><th>Type</th><th class="center">Days</th><th class="num-cell">Plan/day</th><th class="num-cell">Slots</th></tr></thead>
+              <tbody>
+                <tr><td>YVR</td><td>P</td><td>CA</td><td><span class="tag-am">AM</span></td><td class="center num">14</td><td class="num-cell">5</td><td class="num-cell">70</td></tr>
+                <tr><td>YVR</td><td>P</td><td>CA</td><td><span class="tag-pm">PM</span></td><td class="center num">14</td><td class="num-cell">5</td><td class="num-cell">70</td></tr>
+                <tr><td>YVR</td><td>P</td><td>FO</td><td><span class="tag-am">AM</span></td><td class="center num">14</td><td class="num-cell">5</td><td class="num-cell">70</td></tr>
+                <tr><td>YVR</td><td>P</td><td>FO</td><td><span class="tag-pm">PM</span></td><td class="center num">14</td><td class="num-cell">5</td><td class="num-cell">70</td></tr>
+                <tr><td>YEG</td><td>P</td><td>CA</td><td><span class="tag-am">AM</span></td><td class="center num">7</td><td class="num-cell">4</td><td class="num-cell">28</td></tr>
+                <tr><td>YEG</td><td>P</td><td>CA</td><td><span class="tag-pm">PM</span></td><td class="center num">7</td><td class="num-cell">4</td><td class="num-cell">28</td></tr>
+                <tr><td>YEG</td><td>P</td><td>FO</td><td><span class="tag-am">AM</span></td><td class="center num">7</td><td class="num-cell">4</td><td class="num-cell">24</td></tr>
+                <tr><td>YEG</td><td>P</td><td>FO</td><td><span class="tag-pm">PM</span></td><td class="center num">7</td><td class="num-cell">4</td><td class="num-cell">24</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:8px 12px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:center">
+            <span class="hint">96 pairings · 384 slots total</span>
+          </div>
+        </div>
+
+        <!-- per-date overview -->
+        <div class="card">
+          <div class="card-h"><span class="ico">📆</span> Overview by date</div>
+          <div style="max-height:300px; overflow:auto">
+            <table class="grid">
+              <thead><tr><th>Date</th><th>Base</th><th><span class="tag-am">AM</span></th><th><span class="tag-pm">PM</span></th><th class="num-cell">Pairings</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">01 Jun (Mon)</td><td>YVR</td><td>CA 5 · FO 5</td><td>CA 5 · FO 5</td><td class="num-cell">2</td></tr>
+                <tr><td class="mono">01 Jun (Mon)</td><td>YEG</td><td>CA 4 · FO 4</td><td>CA 4 · FO 4</td><td class="num-cell">2</td></tr>
+                <tr><td class="mono">08 Jun (Mon)</td><td>YVR</td><td>CA 5 · FO 5</td><td>CA 5 · FO 5</td><td class="num-cell">2</td></tr>
+                <tr><td class="mono">08 Jun (Mon)</td><td>YEG</td><td>CA 4 · FO 4</td><td>CA 4 · FO 4</td><td class="num-cell">2</td></tr>
+                <tr><td class="mono">15 Jun (Mon)</td><td>YVR</td><td>CA 5 · FO 5</td><td>CA 5 · FO 5</td><td class="num-cell">2</td></tr>
+                <tr><td class="mono">15 Jun (Mon)</td><td>YEG</td><td>CA 4 · FO 4</td><td>CA 4 · FO 4</td><td class="num-cell">2</td></tr>
+                <tr><td class="mono">22 Jun (Mon)</td><td>YVR</td><td>CA 5 · FO 5</td><td>CA 5 · FO 5</td><td class="num-cell">2</td></tr>
+                <tr><td class="mono">29 Jun (Mon)</td><td>YVR</td><td>CA 5 · FO 5</td><td>CA 5 · FO 5</td><td class="num-cell">2</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:8px 12px; border-top:1px solid var(--border)">
+            <span class="hint">Each AM/PM pairing carries its CA + FO composition (plan value).</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="banner-warn" style="margin-top:12px">
+        ⚠ <div><b>3 dates already have RES pairings</b> for YVR/Pilot (Jun 1, 11, 12). Choose how to handle conflicts before generating.
+          <div style="margin-top:7px; display:flex; gap:6px">
+            <span class="chip active">Skip existing</span>
+            <span class="chip">Overwrite plan values</span>
+            <span class="chip">Add anyway (duplicate)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dialog-footer">
+      <span class="left">Conflict policy: Skip existing · ready to create 96 pairings</span>
+      <button class="btn btn-ghost">← Back to Define</button>
+      <button class="btn btn-primary">⚡ Generate RES Pairings</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

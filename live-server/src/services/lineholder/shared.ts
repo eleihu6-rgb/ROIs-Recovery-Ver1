@@ -1,0 +1,9 @@
+export class LineholderBidServiceError extends Error {
+  statusCode: number
+
+  constructor(statusCode: number, message: string) {
+    super(message)
+    this.name = 'LineholderBidServiceError'
+    this.statusCode = statusCode
+  }
+}

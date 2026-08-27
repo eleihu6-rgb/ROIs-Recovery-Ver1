@@ -1,0 +1,50 @@
+{
+  "employeeId": "1162",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T3",
+      "code": 104,
+      "name": "Any/Every Layover In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T7",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T5",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Avoid Pairings If Departing On Tuesday, Wednesday",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/1162_PBS-3327_T5-106_not-found_20260625-061148-089.png"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "employeeId": "1153",
+  "category": "YVR-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T3",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T5",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T6",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T7",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T1",
+      "name": "Waive No Same Day Duty Starts",
+      "code": 405,
+      "page": "line",
+      "predicate": "Waive No Same Day Duty Starts",
+      "reason": "exception: TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog') to be visible\u001b[22m\n",
+      "image": "image/pbs/1153_PBS-3315_T1-405_exception_20260621-215758-950.png"
+    }
+  ]
+}

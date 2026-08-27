@@ -1,0 +1,6 @@
+interface:
+  display_name: "109 ui kickoff local rust solver"
+  short_description: "Project skill 109-ui-kickoff-local-rust-solver"
+  default_prompt: "Use $109-ui-kickoff-local-rust-solver for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,50 @@
+{
+  "employeeId": "2443",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T3",
+      "code": 104,
+      "name": "Any/Every Layover In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 105,
+      "name": "Pairing Total Credit"
+    },
+    {
+      "tier": "T6",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T7",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T1",
+      "code": 402,
+      "name": "Min Credit Window"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T5",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 2, 2026, Jun 3, 2026, Jun 7, 2026, Jun 8, 2026, Jun 21, 2026, Jun 22, 2026, Jun 28, 2026, Jun 29, 2026, Jun 14, 2026",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/2443_PBS-3310_T5-106_not-found_20260625-054518-841.png"
+    }
+  ]
+}

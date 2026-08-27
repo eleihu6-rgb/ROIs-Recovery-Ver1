@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gantt Pane Design — v2</title>
+<style>
+:root {
+  --bg:          #0f1117;
+  --card:        #161b27;
+  --muted:       #1e2535;
+  --border:      rgba(255,255,255,.08);
+  --border-soft: rgba(255,255,255,.04);
+  --fg:          #e2e8f0;
+  --fg-muted:    #64748b;
+  --fg-dim:      #3d4a5c;
+  --primary:     #3b82f6;
+  --primary-dim: rgba(59,130,246,.13);
+  --accent:      rgba(255,255,255,.06);
+  --accent-h:    rgba(255,255,255,.10);
+  --green:       #22c55e;
+  --green-dim:   rgba(34,197,94,.14);
+  --purple:      #a855f7;
+  --amber:       #f59e0b;
+  --red:         #ef4444;
+  --sky:         #38bdf8;
+  --shadow:      0 4px 16px rgba(0,0,0,.5);
+  --r:           6px; --rs: 4px; --r2: 3px;
+  --font:        'Inter','Segoe UI',system-ui,sans-serif;
+  --mono:        'JetBrains Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#080b11;color:var(--fg);font-family:var(--font);font-size:13px}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--bg)}
+
+/* ── Header ── */
+.hdr{display:flex;align-items:center;height:40px;flex-shrink:0;background:var(--card);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.3);padding:0 8px;gap:0;z-index:20}
+.hgrp{display:flex;align-items:center;gap:2px}
+.hdiv{width:1px;height:16px;background:var(--border);margin:0 6px;flex-shrink:0}
+.hsp{flex:1}
+.ibtn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:var(--rs);background:transparent;border:none;cursor:pointer;color:var(--fg-muted);transition:background .1s,color .1s}
+.ibtn:hover{background:var(--accent-h);color:var(--fg)}
+.ibtn svg{width:14px;height:14px}
+
+/* date pill */
+.dpill{display:flex;align-items:center;gap:4px;height:26px;padding:0 8px;border-radius:var(--rs);border:1px solid var(--border);background:var(--muted);color:var(--fg);font-size:11px;cursor:pointer}
+.dpill:hover{border-color:var(--primary)}
+
+/* zoom */
+.zctr{display:flex;align-items:center;height:26px;border:1px solid var(--border);border-radius:var(--rs);background:var(--muted);padding:0 2px;gap:1px}
+.zbtn{width:20px;height:20px;border:none;background:transparent;color:var(--fg-muted);cursor:pointer;border-radius:3px;font-size:13px}
+.zbtn:hover{background:var(--accent-h);color:var(--fg)}
+.zval{font-size:10px;color:var(--fg-muted);min-width:30px;text-align:center}
+
+/* rule badge */
+.rbdg{display:flex;align-items:center;gap:4px;height:26px;padding:0 8px;border-radius:var(--rs);border:1px solid var(--border);background:var(--muted);font-size:11px;color:var(--fg-muted);cursor:pointer}
+.rdot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+/* ── ★ Timezone switcher ── */
+.tzwr{position:relative;display:inline-flex}
+.tzbtn{display:flex;align-items:center;gap:4px;height:26px;padding:0 8px;border-radius:var(--rs);border:1px solid var(--border);background:var(--muted);color:var(--fg);font-size:11px;cursor:pointer;transition:border-color .15s,background .1s;white-space:nowrap}
+.tzbtn:hover{border-color:var(--primary);background:var(--accent-h)}
+.tzbtn.open{border-color:var(--primary);background:var(--primary-dim)}
+.tz-code{font-weight:700;color:var(--primary);font-size:10px;letter-spacing:.03em}
+.tz-zone{color:var(--fg-muted);font-size:10px}
+.tz-off{color:var(--fg-dim);font-size:10px}
+.tzcaret{color:var(--fg-dim);font-size:8px;transition:transform .15s}
+.tzbtn.open .tzcaret{transform:rotate(180deg)}
+.tzdd{position:absolute;top:calc(100% + 4px);left:0;width:268px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);z-index:100;display:none;overflow:hidden}
+.tzdd.open{display:block}
+.tzdd-hd{padding:8px 10px 5px;border-bottom:1px solid var(--border-soft);font-size:9px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.07em}
+.tzdd-sec{padding:3px 0}
+.tzdd-sl{padding:5px 10px 2px;font-size:9px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.07em}
+.tzopt{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;transition:background .1s}
+.tzopt:hover{background:var(--accent-h)}
+.tzopt.sel{background:var(--primary-dim)}
+.tzopt-ic{font-size:12px;width:16px;text-align:center}
+.tzopt-bd{flex:1;min-width:0}
+.tzopt-row{display:flex;align-items:center;gap:6px}
+.tzopt-code{font-weight:700;font-size:11px;color:var(--fg)}
+.tzopt-name{font-size:10px;color:var(--fg-muted)}
+.tzopt-zone{font-size:9px;color:var(--fg-dim);font-family:var(--mono)}
+.tzopt-off{font-size:10px;color:var(--fg-muted);white-space:nowrap}
+.tzopt-ck{font-size:12px;color:var(--primary);width:14px;text-align:center}
+.tzdd-sep{height:1px;background:var(--border-soft);margin:2px 0}
+
+/* pane segment toggles */
+.pseg{display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--rs);background:rgba(255,255,255,.025);padding:3px;gap:0}
+.sbtn{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:3px;border:none;background:transparent;color:rgba(100,116,139,.7);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s}
+.sbtn.on{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.sbtn svg{width:11px;height:11px}
+
+/* ── Summary bar ── */
+.sumbar{display:flex;align-items:stretch;height:26px;flex-shrink:0;background:var(--card);border-bottom:1px solid var(--border)}
+.sumlbl{display:flex;align-items:center;padding:0 8px;border-right:1px solid var(--border);font-size:9px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.05em;width:202px;flex-shrink:0}
+.sumdays{display:flex;align-items:stretch;flex:1;overflow:hidden}
+.sumday{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;border-right:1px solid var(--border-soft);padding:1px 1px}
+.sdlbl{font-size:8px;color:var(--fg-dim)}
+.sdbar{width:100%;height:4px;background:var(--muted);border-radius:2px;overflow:hidden}
+.sdbar-f{height:100%;border-radius:2px}
+
+/* ── Time axis ── */
+.taxis{display:flex;height:34px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--card)}
+.taxl{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:0 8px;gap:2px;border-right:1px solid var(--border);width:202px;flex-shrink:0}
+.tax-period{font-size:9px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.05em}
+.tax-tzbdg{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:var(--primary);background:var(--primary-dim);border:1px solid rgba(59,130,246,.25);border-radius:3px;padding:1px 5px}
+.taxr{flex:1;display:flex;align-items:stretch;overflow:hidden}
+.taxday{flex:1;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border-soft);font-size:10px;color:var(--fg-muted)}
+.taxday.today{color:var(--primary);font-weight:700;position:relative}
+.taxday.today::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:1px;height:4px;background:var(--primary)}
+
+/* ── Pane container ── */
+.pcc{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.pane{display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0}
+.pspl{height:4px;background:var(--border-soft);cursor:row-resize;flex-shrink:0;transition:background .15s}
+.pspl:hover{background:var(--primary)}
+
+/* ── Pane toolbar ── */
+.ptb{display:flex;align-items:center;justify-content:space-between;height:26px;flex-shrink:0;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);padding:0 8px}
+.ptbl{display:flex;align-items:center;gap:6px}
+.ptb-dot{width:5px;height:14px;border-radius:3px;flex-shrink:0}
+.ptb-title{font-size:11px;font-weight:700;color:var(--fg)}
+.ptb-sub{font-size:10px;color:var(--fg-muted)}
+.ptbr{display:flex;align-items:center;gap:1px}
+.ptbbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:3px;background:transparent;border:none;cursor:pointer;color:var(--fg-muted)}
+.ptbbtn:hover{background:var(--accent-h);color:var(--fg)}
+.ptbbtn svg{width:11px;height:11px}
+
+/* ── Pane body ── */
+.pbody{flex:1;display:flex;overflow:hidden;min-height:0}
+
+/* ── Left panel (sidebar columns) ── */
+.lp{flex-shrink:0;border-right:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.lp-hdr{height:28px;display:flex;align-items:stretch;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);flex-shrink:0}
+.lp-col{display:flex;align-items:center;padding:0 6px;font-size:9px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.05em;cursor:pointer;border-right:1px solid var(--border-soft)}
+.lp-col:last-child{border-right:none}
+.lp-col.srt{color:var(--primary)}
+.lp-rows{flex:1;overflow:hidden}
+.lp-row{display:flex;align-items:center;height:28px;border-bottom:1px solid var(--border-soft);cursor:pointer}
+.lp-row:hover{background:var(--accent)}
+.lp-row.sel{background:var(--primary-dim)}
+.lp-row.frz{background:rgba(59,130,246,.04)}
+.lp-cell{padding:0 6px;font-size:11px;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lp-cell.dim{color:var(--fg-muted);font-size:10px}
+.rnk{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px}
+.rnk-ca{background:rgba(59,130,246,.2);color:#93c5fd}
+.rnk-fo{background:rgba(34,197,94,.2);color:#86efac}
+.rnk-fa{background:rgba(168,85,247,.2);color:#d8b4fe}
+
+/* ── Composition badge (Pairing) ── */
+.comp-wrap{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+.comp-slot{display:inline-flex;align-items:center;gap:2px;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:700}
+.comp-full{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.25)}
+.comp-part{background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.25)}
+.comp-empty{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.22)}
+
+/* ── ★ Pairing row — two-line layout ── */
+/* Top row: Pairing | Tp | Fleet | BLH  (22px)                              */
+/* Bot row: Comp — spans ALL 4 columns full width  (18px)                   */
+.lp-row-pair{
+  display:flex;flex-direction:column;
+  min-height:42px;border-bottom:1px solid var(--border-soft);cursor:pointer;
+  position:relative;
+}
+.lp-row-pair:hover{background:var(--accent)}
+/* Top data line */
+.lp-pr-top{display:flex;align-items:center;height:22px;border-bottom:1px solid var(--border-soft)}
+/* Comp line — full width of the panel */
+.lp-pr-bot{
+  display:flex;align-items:center;
+  padding:3px 8px;min-height:18px;
+  background:rgba(255,255,255,.015);
+}
+/* Status indicator — left border on whole row */
+.lp-row-pair.pair-full {border-left:2px solid rgba(34,197,94,.45)}
+.lp-row-pair.pair-part {border-left:2px solid rgba(245,158,11,.4)}
+.lp-row-pair.pair-empty{border-left:2px solid rgba(239,68,68,.4)}
+
+/* ── Layover / Rest markers in Gantt canvas ── */
+/* ★ Layover: green dashed — crew is away from base (外站过夜) */
+.seg-layover{
+  position:absolute;top:2px;bottom:2px;
+  background:rgba(34,197,94,.05);
+  border-left:1px dashed rgba(34,197,94,.3);
+  border-right:1px dashed rgba(34,197,94,.3);
+}
+.seg-layover-lbl{
+  position:absolute;top:50%;transform:translateY(-50%);
+  font-size:7px;color:rgba(34,197,94,.55);text-transform:uppercase;
+  letter-spacing:.06em;white-space:nowrap;left:3px;
+}
+/* ★ Rest: grey dashed — crew back at base (回base休息) */
+.seg-rest-band{
+  position:absolute;top:2px;bottom:2px;
+  background:rgba(100,116,139,.05);
+  border-left:1px dashed rgba(100,116,139,.28);
+}
+.seg-rest-lbl{
+  position:absolute;top:50%;transform:translateY(-50%);
+  font-size:7px;color:rgba(100,116,139,.5);text-transform:uppercase;
+  letter-spacing:.06em;white-space:nowrap;left:3px;
+}
+
+/* ── Gantt area ── */
+.ga{flex:1;position:relative;overflow:hidden}
+.grow{position:relative;height:28px;border-bottom:1px solid var(--border-soft)}
+
+/* Grid lines */
+.gline{position:absolute;top:0;bottom:0;width:1px;background:var(--border-soft);pointer-events:none}
+.gline-today{background:rgba(59,130,246,.35)}
+
+/* ── ★ FLIGHT PANE PUCK ── */
+/* Full-height flight puck with 3-part layout */
+.fpuck{
+  position:absolute;top:3px;height:22px;
+  border-radius:var(--r2);
+  display:flex;align-items:stretch;
+  overflow:hidden;cursor:pointer;
+  transition:filter .12s,box-shadow .12s;
+  border:1px solid rgba(59,130,246,.45);
+  background:linear-gradient(135deg,#1d3a8a,#1e4ed8);
+}
+.fpuck:hover{filter:brightness(1.15);box-shadow:0 0 0 1px rgba(59,130,246,.6)}
+.fpuck.cancelled{opacity:.4;filter:grayscale(.5)}
+.fpuck.dh{background:linear-gradient(135deg,#2d1b69,#4c1d95);border-color:rgba(168,85,247,.4)}
+
+/* three-col layout inside puck */
+.puck-l,.puck-r{
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  padding:0 4px;min-width:32px;gap:0;
+}
+.puck-r{align-items:flex-end}
+.puck-c{flex:1;display:flex;align-items:center;justify-content:center;min-width:0}
+.puck-arp{font-size:8px;font-weight:700;color:#93c5fd;line-height:1.1;letter-spacing:.03em}
+.puck-time{font-size:8px;color:#7dd3fc;line-height:1.1;font-family:var(--mono)}
+.puck-flt{font-size:9px;font-weight:700;color:white;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── ★ SEGMENT MODE task blocks (Pairing / Roster) ── */
+/* Duty group container — spans the full duty timeline */
+.duty-grp{position:absolute;top:0;bottom:0;display:flex;align-items:center}
+
+/* Normal flight segment block */
+.seg-flt{
+  position:relative;height:20px;
+  border-radius:var(--r2);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;cursor:pointer;
+  font-size:9px;font-weight:700;
+  transition:filter .12s;
+  flex-shrink:0;
+}
+.seg-flt.roster{background:linear-gradient(135deg,#1e40af,#2563eb);color:#bfdbfe;border:1px solid rgba(59,130,246,.45)}
+.seg-flt.pairing{background:linear-gradient(135deg,#14532d,#15803d);color:#86efac;border:1px solid rgba(34,197,94,.4)}
+.seg-flt.dh{background:linear-gradient(135deg,#2d1b69,#4c1d95);color:#d8b4fe;border:1px solid rgba(168,85,247,.35)}
+.seg-flt:hover{filter:brightness(1.15)}
+.seg-flt.vio{box-shadow:0 0 0 2px var(--red)}
+
+/* ★ Thin bars: pickup / dropoff (2px, usually 0-width → invisible) */
+.seg-pickup,.seg-dropoff{
+  height:2px;
+  border-radius:1px;
+  background:#475569;
+  opacity:.7;
+  position:relative;
+  flex-shrink:0;
+  align-self:flex-start; /* top set via inline style from JS */
+}
+/* ★ Thin bars: brief / debrief (2px, 30-90 min → visible thin strips) */
+.seg-brief{
+  height:2px;
+  border-radius:1px;
+  background:var(--amber);
+  opacity:.8;
+  position:relative;
+  flex-shrink:0;
+  align-self:flex-start;
+}
+.seg-debrief{
+  height:2px;
+  border-radius:1px;
+  background:#94a3b8;
+  opacity:.7;
+  position:relative;
+  flex-shrink:0;
+  align-self:flex-start;
+}
+/* Spacer between segments */
+.seg-gap{position:relative;height:2px;background:transparent;flex-shrink:0;align-self:flex-start}
+
+/* Ground / rest blocks */
+.seg-grd{position:relative;height:20px;top:4px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;cursor:pointer;background:rgba(100,116,139,.18);color:#94a3b8;border:1px solid rgba(100,116,139,.3)}
+.seg-rest{position:relative;height:20px;top:4px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;cursor:pointer;background:rgba(34,197,94,.1);color:#86efac;border:1px dashed rgba(34,197,94,.25)}
+.seg-vio-dot{width:4px;height:4px;border-radius:50%;background:var(--red);position:absolute;top:2px;right:2px}
+
+/* ── ★ Flight selection (Pairing Pane segment mode) ── */
+/* Only .seg-flt[data-key] is selectable; thin bars / bands are passive */
+.seg-flt[data-key] { cursor: pointer; }
+.seg-flt[data-key]:hover { filter: brightness(1.12); }
+.seg-brief, .seg-debrief, .seg-pickup, .seg-dropoff { cursor: default; pointer-events: none; }
+.seg-layover, .seg-rest-band { cursor: default; pointer-events: none; }
+
+/* Selected state — blue ring + brightness */
+.seg-flt.sel {
+  box-shadow: 0 0 0 2px rgba(59,130,246,.95), 0 0 7px rgba(59,130,246,.3);
+  filter: brightness(1.22);
+  z-index: 2;
+}
+.seg-flt.sel::after {
+  content: '✓';
+  position: absolute; top: 1px; right: 2px;
+  font-size: 7px; color: rgba(255,255,255,.9); font-weight: 700; line-height: 1;
+}
+
+/* ── ★ Selection action bar ── */
+.sel-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r);
+  margin-bottom: 8px; font-size: 10px; min-height: 38px;
+  transition: border-color .2s;
+}
+.sel-bar.has-sel  { border-color: rgba(59,130,246,.5); background: rgba(59,130,246,.04); }
+.sel-bar.all-sel  { border-color: rgba(239,68,68,.5);  background: rgba(239,68,68,.04); }
+.sel-info { color: var(--fg-dim); flex: 1; min-width: 0; line-height: 1.5; }
+.sel-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 3px; font-size: 9px; font-weight: 700;
+}
+.sel-tag-seg  { background: rgba(59,130,246,.16); color: #93c5fd; border: 1px solid rgba(59,130,246,.35); }
+.sel-tag-pair { background: rgba(239,68,68,.14);  color: #fca5a5; border: 1px solid rgba(239,68,68,.35); }
+.sel-btn {
+  padding: 5px 12px; border-radius: var(--rs); border: none;
+  font-size: 10px; font-weight: 600; cursor: pointer;
+  transition: filter .1s; white-space: nowrap;
+}
+.sel-btn:hover { filter: brightness(1.18); }
+.sel-btn-del-seg  { background: rgba(59,130,246,.22); color: #93c5fd; border: 1px solid rgba(59,130,246,.4); }
+.sel-btn-del-pair { background: rgba(239,68,68,.22);  color: #fca5a5; border: 1px solid rgba(239,68,68,.4); }
+.sel-btn-clr { background: rgba(255,255,255,.05); color: var(--fg-muted); border: 1px solid var(--border); }
+
+/* ── Scrollbars ── */
+.hscbar{height:10px;background:var(--card);border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;padding:0 4px}
+.hsctrk{flex:1;height:4px;background:var(--muted);border-radius:2px}
+.hsctmb{width:28%;height:100%;background:var(--fg-dim);border-radius:2px;margin-left:18%}
+
+/* ── Status bar ── */
+.stbar{height:22px;display:flex;align-items:center;gap:12px;padding:0 10px;background:var(--card);border-top:1px solid var(--border);flex-shrink:0}
+.sbi{font-size:10px;color:var(--fg-dim);display:flex;align-items:center;gap:4px}
+.sbi.on{color:var(--fg-muted)}
+.sbdot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+
+/* ── View tabs ── */
+.vtabs{position:fixed;top:7px;left:50%;transform:translateX(-50%);display:flex;gap:2px;z-index:200}
+.vtab{padding:3px 10px;border-radius:10px;font-size:10px;cursor:pointer;border:1px solid var(--border);background:var(--muted);color:var(--fg-muted)}
+.vtab.on{background:var(--primary);color:white;border-color:var(--primary)}
+
+/* ── Notes panel ── */
+.notes{position:fixed;top:52px;right:14px;background:var(--card);border:1px solid rgba(59,130,246,.3);border-radius:var(--r);padding:11px 13px;font-size:10px;color:var(--fg-muted);box-shadow:var(--shadow);z-index:50;max-width:272px}
+.notes h4{font-size:11px;color:var(--primary);margin-bottom:8px;font-weight:700}
+.ni{margin-bottom:5px;line-height:1.55}
+.ni strong{color:var(--fg)}
+.nb{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--primary);color:white;font-size:8px;font-weight:700;margin-right:3px;flex-shrink:0;vertical-align:middle}
+
+/* ── Legend ── */
+.lgd{position:fixed;bottom:34px;right:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 13px;font-size:10px;color:var(--fg-muted);box-shadow:var(--shadow);z-index:50}
+.lgd h4{font-size:9px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.li{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.lsw{width:22px;height:8px;border-radius:2px;flex-shrink:0}
+.lsw.thin{height:2px;width:22px}
+
+/* pulse new */
+@keyframes pbdr{0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,0)}50%{box-shadow:0 0 0 3px rgba(59,130,246,.4)}}
+.new{animation:pbdr 2s ease 0s 3}
+
+/* ── Data-flow view ── */
+#vdf{display:none;padding:28px;background:var(--bg);min-height:100vh;overflow-y:auto}
+#vdf h2{color:var(--primary);margin-bottom:20px;font-size:17px}
+.df-grid{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:20px}
+.df-card{flex:1;min-width:260px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.df-card h3{font-size:11px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+pre{font-family:var(--mono);font-size:9px;color:#7dd3fc;background:var(--bg);padding:8px;border-radius:4px;overflow:auto;line-height:1.6}
+code{font-family:var(--mono);font-size:9px;color:#86efac}
+</style>
+</head>
+<body>
+
+<!-- View tabs -->
+<div class="vtabs">
+  <div class="vtab on" onclick="sv('main')">Overview</div>
+  <div class="vtab" onclick="sv('tz')">TZ Dropdown</div>
+  <div class="vtab" onclick="sv('flight-puck')">Flight Puck</div>
+  <div class="vtab" onclick="sv('seg-mode')">Segment Mode</div>
+  <div class="vtab" onclick="sv('df')">Data Flow</div>
+</div>
+
+<!-- Design notes -->
+<div class="notes" id="notes">
+  <h4>Design Notes</h4>
+  <div class="ni"><span class="nb">1</span><strong>TZ Switcher</strong> — Rule Group 右侧；格式 <code style="color:#7dd3fc">PEK · Asia/Shanghai (UTC+8)</code></div>
+  <div class="ni"><span class="nb">2</span><strong>Flight Puck</strong> — 左：dep_arp + dep时刻，中：flt_num，右：arv_arp + arv时刻；时刻按选定时区转换</div>
+  <div class="ni"><span class="nb">3</span><strong>Segment Mode</strong> — pickup(2px) + brief(2px黄) + 航班块(20px) + … + debrief(2px灰) + dropoff(2px)；pickup/dropoff通常为0宽不可见</div>
+  <div class="ni"><span class="nb">4</span><strong>Pairing Composition</strong> — 左侧面板新增 Comp 列，显示 CA 2/2 · FO 2/2 配比</div>
+  <div class="ni"><span class="nb">5</span><strong>Roster与Pairing一致</strong> — Roster Pane 同一 pairing 任务组使用相同的 segment 模式渲染</div>
+</div>
+
+<!-- ════════════ MAIN APP VIEW ════════════ -->
+<div class="app" id="vapp">
+
+  <!-- Header -->
+  <header class="hdr">
+    <div class="hgrp">
+      <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+      <div class="dpill">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Apr 1 → Apr 30, 2026
+      </div>
+    </div>
+    <div class="hdiv"></div>
+    <div class="hgrp">
+      <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></button>
+      <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+    </div>
+    <div class="hdiv"></div>
+    <div class="hgrp">
+      <button class="ibtn" style="opacity:.4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg></button>
+      <button class="ibtn" style="opacity:.4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 014-4h12"/></svg></button>
+      <button class="ibtn" style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/></svg></button>
+    </div>
+    <div class="hdiv"></div>
+    <div class="hgrp">
+      <div class="zctr"><button class="zbtn">−</button><span class="zval">Day</span><button class="zbtn">+</button></div>
+    </div>
+    <div class="hdiv"></div>
+    <div class="hgrp">
+      <div class="rbdg"><span class="rdot"></span>CCAR-121 · v2.1<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div>
+    </div>
+    <div class="hdiv"></div>
+    <!-- ★ Timezone switcher -->
+    <div class="hgrp">
+      <div class="tzwr new" id="tzwr">
+        <button class="tzbtn" id="tzbtn" onclick="toggleTz()">
+          <span style="font-size:11px">🕐</span>
+          <span class="tz-code" id="tz-code">PEK</span>
+          <span class="tz-zone" id="tz-zone">Asia/Shanghai</span>
+          <span class="tz-off" id="tz-off">(UTC+8)</span>
+          <svg class="tzcaret" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="tzdd" id="tzdd">
+          <div class="tzdd-hd">Display Timezone</div>
+          <div class="tzdd-sec">
+            <div class="tzdd-sl">★ Airline Bases</div>
+            <div class="tzopt sel" onclick="selTz(this,'PEK','Asia/Shanghai','UTC+8','Beijing Capital')">
+              <span class="tzopt-ic">★</span>
+              <div class="tzopt-bd"><div class="tzopt-row"><span class="tzopt-code">PEK</span><span class="tzopt-name">Beijing Capital</span></div><div class="tzopt-zone">Asia/Shanghai</div></div>
+              <span class="tzopt-off">UTC+8</span><span class="tzopt-ck">✓</span>
+            </div>
+            <div class="tzopt" onclick="selTz(this,'SHA','Asia/Shanghai','UTC+8','Shanghai Hongqiao')">
+              <span class="tzopt-ic">★</span>
+              <div class="tzopt-bd"><div class="tzopt-row"><span class="tzopt-code">SHA</span><span class="tzopt-name">Shanghai Hongqiao</span></div><div class="tzopt-zone">Asia/Shanghai</div></div>
+              <span class="tzopt-off">UTC+8</span><span class="tzopt-ck" style="visibility:hidden">✓</span>
+            </div>
+            <div class="tzopt" onclick="selTz(this,'CAN','Asia/Shanghai','UTC+8','Guangzhou Baiyun')">
+              <span class="tzopt-ic">★</span>
+              <div class="tzopt-bd"><div class="tzopt-row"><span class="tzopt-code">CAN</span><span class="tzopt-name">Guangzhou Baiyun</span></div><div class="tzopt-zone">Asia/Shanghai</div></div>
+              <span class="tzopt-off">UTC+8</span><span class="tzopt-ck" style="visibility:hidden">✓</span>
+            </div>
+          </div>
+          <div class="tzdd-sep"></div>
+          <div class="tzdd-sec">
+            <div class="tzdd-sl">Other Airports</div>
+            <div class="tzopt" onclick="selTz(this,'HKG','Asia/Hong_Kong','UTC+8','Hong Kong Intl')">
+              <span class="tzopt-ic">✈</span>
+              <div class="tzopt-bd"><div class="tzopt-row"><span class="tzopt-code">HKG</span><span class="tzopt-name">Hong Kong Intl</span></div><div class="tzopt-zone">Asia/Hong_Kong</div></div>
+              <span class="tzopt-off">UTC+8</span><span class="tzopt-ck" style="visibility:hidden">✓</span>
+            </div>
+            <div class="tzopt" onclick="selTz(this,'NRT','Asia/Tokyo','UTC+9','Tokyo Narita')">
+              <span class="tzopt-ic">✈</span>
+              <div class="tzopt-bd"><div class="tzopt-row"><span class="tzopt-code">NRT</span><span class="tzopt-name">Tokyo Narita</span></div><div class="tzopt-zone">Asia/Tokyo</div></div>
+              <span class="tzopt-off">UTC+9</span><span class="tzopt-ck" style="visibility:hidden">✓</span>
+            </div>
+          </div>
+          <div class="tzdd-sep"></div>
+          <div class="tzdd-sec">
+            <div class="tzopt" onclick="selTz(this,'UTC','UTC','UTC+0','Coordinated Universal Time')">
+              <span class="tzopt-ic">🌐</span>
+              <div class="tzopt-bd"><div class="tzopt-row"><span class="tzopt-code">UTC</span><span class="tzopt-name">Coordinated Universal Time</span></div><div class="tzopt-zone">UTC</div></div>
+              <span class="tzopt-off">UTC+0</span><span class="tzopt-ck" style="visibility:hidden">✓</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hsp"></div>
+    <!-- Pane toggles -->
+    <div class="pseg">
+      <button class="sbtn on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Main</button>
+      <button class="sbtn on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/></svg>Pair</button>
+      <button class="sbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07"/></svg>Flt</button>
+    </div>
+    <div class="hdiv"></div>
+    <div class="hgrp" style="gap:4px">
+      <button class="ibtn" style="position:relative">
+        <span style="position:absolute;width:8px;height:8px;border-radius:50%;background:var(--primary)"></span>
+      </button>
+      <span style="font-size:11px;color:var(--fg-muted)">ZHYUAN</span>
+      <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    </div>
+  </header>
+
+  <!-- Summary bar -->
+  <div class="sumbar">
+    <div class="sumlbl" style="width:202px">Crew Load</div>
+    <div class="sumdays" id="sdays"></div>
+  </div>
+
+  <!-- Time axis -->
+  <div class="taxis">
+    <div class="taxl" style="width:202px">
+      <span class="tax-period">APR 2026</span>
+      <div class="tax-tzbdg" id="tax-tzbdg">🕐 PEK · UTC+8</div>
+    </div>
+    <div class="taxr" id="taxr"></div>
+  </div>
+
+  <!-- Pane container -->
+  <div class="pcc">
+
+    <!-- PANE 1: Roster Main (segment mode) -->
+    <div class="pane" style="flex:2">
+      <div class="ptb">
+        <div class="ptbl">
+          <span class="ptb-dot" style="background:var(--primary)"></span>
+          <span class="ptb-title">Roster Main</span>
+          <span class="ptb-sub">F8 · PEK Base · 127 crew · <span style="color:var(--amber);font-size:9px">Segment Mode</span></span>
+        </div>
+        <div class="ptbr">
+          <button class="ptbbtn" title="View mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button>
+          <button class="ptbbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41"/></svg></button>
+        </div>
+      </div>
+      <div class="pbody">
+        <div class="lp" style="width:200px">
+          <div class="lp-hdr">
+            <div class="lp-col srt" style="width:44px">Rank</div>
+            <div class="lp-col" style="width:60px">Code</div>
+            <div class="lp-col" style="flex:1">Name</div>
+          </div>
+          <div class="lp-rows" id="roster-lp"></div>
+        </div>
+        <div class="ga" id="roster-ga"></div>
+      </div>
+    </div>
+
+    <div class="pspl"></div>
+
+    <!-- PANE 2: Pairing (segment mode + composition) -->
+    <div class="pane" style="flex:1.2">
+      <div class="ptb">
+        <div class="ptbl">
+          <span class="ptb-dot" style="background:var(--green)"></span>
+          <span class="ptb-title">Pairing</span>
+          <span class="ptb-sub">43 pairings · <span style="color:var(--amber);font-size:9px">Segment Mode</span></span>
+        </div>
+        <div class="ptbr">
+          <button class="ptbbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41"/></svg></button>
+        </div>
+      </div>
+      <div class="pbody">
+        <div class="lp" style="width:210px">
+          <div class="lp-hdr" style="height:42px;flex-direction:column;align-items:stretch;padding:0">
+            <!-- top header: Pairing | Tp | Fleet | BLH -->
+            <div style="display:flex;align-items:center;height:22px;border-bottom:1px solid var(--border-soft)">
+              <div class="lp-col srt" style="width:54px;flex-shrink:0">Pairing</div>
+              <div class="lp-col" style="width:32px;flex-shrink:0">Tp</div>
+              <div class="lp-col" style="flex:1;border-left:1px solid var(--border-soft)">Fleet</div>
+              <div class="lp-col" style="width:52px;flex-shrink:0;border-left:1px solid var(--border-soft)">BLH</div>
+            </div>
+            <!-- ★ Comp header — full width spanning all 4 cols -->
+            <div style="display:flex;align-items:center;height:18px;padding:0 8px;background:rgba(255,255,255,.01)">
+              <span style="font-size:9px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em">Comp</span>
+            </div>
+          </div>
+          <div class="lp-rows" id="pairing-lp"></div>
+        </div>
+        <div class="ga" id="pairing-ga"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="hscbar"><div class="hsctrk"><div class="hsctmb"></div></div></div>
+
+  <div class="stbar">
+    <div class="sbi on"><span class="sbdot"></span>Connected</div>
+    <div class="sbi">Draft: OFF</div>
+    <div class="sbi" id="sb-tz" style="color:var(--primary)">🕐 PEK · Asia/Shanghai · UTC+8</div>
+    <div class="sbi" style="margin-left:auto">Apr 20, 2026 · 2 panes · Segment Mode</div>
+  </div>
+</div>
+
+<!-- ════════════ FLIGHT PUCK DETAIL VIEW ════════════ -->
+<div id="vfp" style="display:none;padding:28px;background:var(--bg);min-height:100vh;overflow-y:auto">
+  <h2 style="color:var(--primary);margin-bottom:6px;font-size:17px">Flight Pane — Puck Display Format</h2>
+  <p style="color:var(--fg-muted);font-size:11px;margin-bottom:24px">每个航班块（puck）内部三栏布局，时刻根据选定时区显示</p>
+
+  <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:32px">
+
+    <!-- Normal width puck -->
+    <div style="flex:1;min-width:280px">
+      <div style="font-size:10px;color:var(--fg-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Normal width (≥80px)</div>
+      <div style="background:var(--card);border-radius:var(--r);padding:14px;border:1px solid var(--border)">
+        <div style="background:rgba(0,0,0,.2);height:28px;border-radius:4px;padding:0 4px;display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <!-- Puck mockup inline -->
+          <div class="fpuck" style="position:static;top:auto;width:140px;height:22px">
+            <div class="puck-l"><span class="puck-arp">PEK</span><span class="puck-time">09:30</span></div>
+            <div class="puck-c"><span class="puck-flt">CA1201</span></div>
+            <div class="puck-r"><span class="puck-arp">SHA</span><span class="puck-time">12:05</span></div>
+          </div>
+          <div class="fpuck dh" style="position:static;top:auto;width:120px;height:22px">
+            <div class="puck-l"><span class="puck-arp">SHA</span><span class="puck-time">14:30</span></div>
+            <div class="puck-c"><span class="puck-flt" style="color:#d8b4fe">DH883</span></div>
+            <div class="puck-r"><span class="puck-arp">PEK</span><span class="puck-time">16:55</span></div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:10px">
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 0;color:var(--fg-dim);width:90px">Left top</td>
+            <td style="color:var(--sky)">dep_arp <span style="color:var(--fg-muted)">— 出发机场三字码</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 0;color:var(--fg-dim)">Left bottom</td>
+            <td style="color:var(--sky)">sch_dep_dt (TZ) <span style="color:var(--fg-muted)">— 起飞时刻，按选定时区转换</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 0;color:var(--fg-dim)">Center</td>
+            <td style="color:var(--sky)">flt_num <span style="color:var(--fg-muted)">— 航班号（DH=调机显示紫色）</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 0;color:var(--fg-dim)">Right top</td>
+            <td style="color:var(--sky)">arv_arp <span style="color:var(--fg-muted)">— 到达机场三字码</span></td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:var(--fg-dim)">Right bottom</td>
+            <td style="color:var(--sky)">sch_arv_dt (TZ) <span style="color:var(--fg-muted)">— 落地时刻，按选定时区转换</span></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Narrow puck -->
+    <div style="flex:1;min-width:260px">
+      <div style="font-size:10px;color:var(--fg-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Narrow width (30–79px) — degrade gracefully</div>
+      <div style="background:var(--card);border-radius:var(--r);padding:14px;border:1px solid var(--border)">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+          <!-- narrow: just flt_num + dep_arp -->
+          <div class="fpuck" style="position:static;top:auto;width:72px;height:22px">
+            <div class="puck-l" style="min-width:22px"><span class="puck-arp">PEK</span></div>
+            <div class="puck-c"><span class="puck-flt" style="font-size:8px">CA1201</span></div>
+          </div>
+          <!-- very narrow: flt_num only -->
+          <div class="fpuck" style="position:static;top:auto;width:44px;height:22px">
+            <div class="puck-c"><span class="puck-flt" style="font-size:8px">1201</span></div>
+          </div>
+          <!-- tiny: dot only -->
+          <div class="fpuck" style="position:static;top:auto;width:16px;height:22px;border-radius:2px">
+            <div class="puck-c"><span style="width:5px;height:5px;border-radius:50%;background:#93c5fd;display:block"></span></div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--fg-muted);line-height:1.7">
+          <b style="color:var(--fg)">≥80px:</b> 三栏全显（dep_arp + 时刻 + flt_num + arv_arp + 时刻）<br>
+          <b style="color:var(--fg)">30–79px:</b> dep_arp + flt_num（省略时刻和 arv_arp）<br>
+          <b style="color:var(--fg)">16–29px:</b> flt_num 后4位<br>
+          <b style="color:var(--fg)">&lt;16px:</b> 仅显示颜色圆点
+        </div>
+      </div>
+    </div>
+
+    <!-- Timezone conversion note -->
+    <div style="flex:1;min-width:260px">
+      <div style="font-size:10px;color:var(--fg-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">时区转换逻辑</div>
+      <div style="background:var(--card);border-radius:var(--r);padding:14px;border:1px solid var(--border)">
+        <div style="margin-bottom:8px;padding:8px;background:var(--muted);border-radius:4px">
+          <div style="font-size:9px;color:var(--fg-dim);margin-bottom:4px">示例：UTC 时刻 → PEK (Asia/Shanghai, UTC+8)</div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--sky)">schDepDtUtc: "2026-04-20T01:30:00Z"</div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--green)">→ Intl(Asia/Shanghai): "09:30"</div>
+        </div>
+        <div style="margin-bottom:8px;padding:8px;background:var(--muted);border-radius:4px">
+          <div style="font-size:9px;color:var(--fg-dim);margin-bottom:4px">跨日时加 +1 标记</div>
+          <div style="font-size:10px;color:var(--fg-muted)">落地时刻若跨过当地午夜，在时刻右上角显示 <span style="color:var(--amber);font-size:9px">+1</span></div>
+        </div>
+        <pre style="margin:0">
+// render util
+function fmtTz(utcStr: string, zoneId: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: zoneId,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(utcStr))
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full flight pane row simulation -->
+  <div style="font-size:11px;color:var(--fg-muted);margin-bottom:8px">Flight Pane 行模拟（PEK 时区，选定：Asia/Shanghai UTC+8）</div>
+  <div style="background:var(--card);border-radius:var(--r);border:1px solid var(--border);overflow:hidden">
+    <!-- Header row -->
+    <div style="display:flex;align-items:stretch;height:28px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border)">
+      <div style="width:80px;padding:0 8px;display:flex;align-items:center;font-size:9px;color:var(--fg-dim)">Reg</div>
+      <div style="width:70px;padding:0 8px;display:flex;align-items:center;font-size:9px;color:var(--fg-dim)">Fleet</div>
+      <div style="flex:1;padding:0 8px;display:flex;align-items:center;font-size:9px;color:var(--fg-dim)">Flights</div>
+    </div>
+    <!-- Rows with pucks -->
+    <div id="fp-rows"></div>
+  </div>
+</div>
+
+<!-- ════════════ SEGMENT MODE DETAIL VIEW ════════════ -->
+<div id="vsm" style="display:none;padding:28px;background:var(--bg);min-height:100vh;overflow-y:auto">
+  <h2 style="color:var(--primary);margin-bottom:6px;font-size:17px">Segment Mode — Pairing / Roster Pane</h2>
+  <p style="color:var(--fg-muted);font-size:11px;margin-bottom:20px">一组 Duty 的完整时间线：pickup → brief → [flights] → debrief → dropoff</p>
+
+  <!-- Anatomy diagram: single duty -->
+  <div style="background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px;margin-bottom:12px">
+    <div style="font-size:10px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">单 Duty 时间线（放大视图）</div>
+    <div style="display:flex;align-items:center;gap:0;height:44px;background:rgba(0,0,0,.2);border-radius:6px;padding:0 8px;overflow:hidden;position:relative">
+      <div style="position:absolute;top:0;bottom:0;width:1px;background:var(--border-soft);left:12%"></div>
+      <div style="position:absolute;top:0;bottom:0;width:1px;background:var(--border-soft);left:50%"></div>
+      <div style="position:absolute;top:0;bottom:0;width:1px;background:var(--border-soft);left:88%"></div>
+      <!-- pickup 0 -->
+      <div style="width:1%;height:2px;background:#475569;border-radius:1px;flex-shrink:0;opacity:.5"></div>
+      <!-- brief amber -->
+      <div style="width:8%;height:2px;background:#f59e0b;border-radius:1px;flex-shrink:0"></div>
+      <!-- flt 1 -->
+      <div style="width:28%;height:34px;background:linear-gradient(135deg,#1e40af,#2563eb);border-radius:4px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;flex-shrink:0;border:1px solid rgba(59,130,246,.5)">
+        <div style="display:flex;flex-direction:column"><span style="font-size:9px;font-weight:700;color:#93c5fd">PEK</span><span style="font-size:9px;color:#7dd3fc;font-family:var(--mono)">09:30</span></div>
+        <span style="font-size:10px;font-weight:700;color:white">CA1201</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end"><span style="font-size:9px;font-weight:700;color:#93c5fd">SHA</span><span style="font-size:9px;color:#7dd3fc;font-family:var(--mono)">12:05</span></div>
+      </div>
+      <div style="width:2%;height:2px;background:transparent"></div>
+      <!-- flt 2 -->
+      <div style="width:28%;height:34px;background:linear-gradient(135deg,#1e40af,#2563eb);border-radius:4px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;flex-shrink:0;border:1px solid rgba(59,130,246,.5)">
+        <div style="display:flex;flex-direction:column"><span style="font-size:9px;font-weight:700;color:#93c5fd">SHA</span><span style="font-size:9px;color:#7dd3fc;font-family:var(--mono)">14:20</span></div>
+        <span style="font-size:10px;font-weight:700;color:white">CA1356</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end"><span style="font-size:9px;font-weight:700;color:#93c5fd">CAN</span><span style="font-size:9px;color:#7dd3fc;font-family:var(--mono)">16:55</span></div>
+      </div>
+      <!-- debrief slate -->
+      <div style="width:6%;height:2px;background:#94a3b8;border-radius:1px;flex-shrink:0"></div>
+      <!-- dropoff 0 -->
+      <div style="width:1%;height:2px;background:#475569;border-radius:1px;opacity:.4;flex-shrink:0"></div>
+      <!-- ★ rest grey dashed band -->
+      <div style="flex:1;height:38px;background:rgba(100,116,139,.06);border-left:1px dashed rgba(100,116,139,.3);display:flex;align-items:center;padding-left:4px">
+        <span style="font-size:7px;color:rgba(100,116,139,.6);text-transform:uppercase;letter-spacing:.06em">Rest</span>
+      </div>
+    </div>
+    <div style="display:flex;margin-top:4px;font-size:8px;color:var(--fg-dim)">
+      <div style="width:1%;text-align:center;opacity:.5">PU</div>
+      <div style="width:8%;text-align:center;color:#f59e0b">Brief 60m</div>
+      <div style="width:28%;text-align:center">CA1201 PEK→SHA</div>
+      <div style="width:2%"></div>
+      <div style="width:28%;text-align:center">CA1356 SHA→CAN</div>
+      <div style="width:6%;text-align:center;color:#94a3b8">Debrief 45m</div>
+      <div style="width:1%;text-align:center;opacity:.4">DO</div>
+      <div style="flex:1;text-align:left;padding-left:4px;color:rgba(100,116,139,.6)">Rest (grey)</div>
+    </div>
+  </div>
+
+  <!-- Anatomy diagram: multi-duty with layover -->
+  <div style="background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px;margin-bottom:20px">
+    <div style="font-size:10px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">★ 多 Duty 时间线 — Layover（绿）+ Rest（灰）</div>
+    <div style="position:relative;height:44px;background:rgba(0,0,0,.2);border-radius:6px;overflow:hidden">
+      <!-- grid lines -->
+      <div style="position:absolute;top:0;bottom:0;width:1px;background:var(--border-soft);left:20%"></div>
+      <div style="position:absolute;top:0;bottom:0;width:1px;background:var(--border-soft);left:45%"></div>
+      <div style="position:absolute;top:0;bottom:0;width:1px;background:var(--border-soft);left:65%"></div>
+      <div style="position:absolute;top:0;bottom:0;width:1px;background:var(--border-soft);left:87%"></div>
+      <!-- ★ Layover: green dashed band (duty1 end → duty2 start) -->
+      <div style="position:absolute;top:3px;bottom:3px;left:37%;width:16%;background:rgba(34,197,94,.07);border-left:1px dashed rgba(34,197,94,.4);border-right:1px dashed rgba(34,197,94,.4);display:flex;align-items:center;justify-content:center">
+        <span style="font-size:7px;color:rgba(34,197,94,.6);text-transform:uppercase;letter-spacing:.05em">Layover</span>
+      </div>
+      <!-- ★ Rest: grey dashed band (last duty end → end) -->
+      <div style="position:absolute;top:3px;bottom:3px;left:84%;width:14%;background:rgba(100,116,139,.06);border-left:1px dashed rgba(100,116,139,.3);display:flex;align-items:center;padding-left:3px">
+        <span style="font-size:7px;color:rgba(100,116,139,.55);text-transform:uppercase;letter-spacing:.05em">Rest</span>
+      </div>
+      <!-- Duty 1 group -->
+      <div style="position:absolute;left:3%;display:flex;align-items:center;top:5px;bottom:5px">
+        <div style="width:3px;height:2px;background:#475569;border-radius:1px;opacity:.5"></div>
+        <div style="width:28px;height:2px;background:#f59e0b;border-radius:1px"></div>
+        <div style="width:110px;height:34px;background:linear-gradient(135deg,#1e40af,#2563eb);border-radius:4px;display:flex;align-items:center;justify-content:space-between;padding:0 6px;border:1px solid rgba(59,130,246,.5)">
+          <div><div style="font-size:8px;font-weight:700;color:#93c5fd">PEK</div><div style="font-size:8px;color:#7dd3fc;font-family:var(--mono)">09:30</div></div>
+          <div style="font-size:9px;font-weight:700;color:white">CA1201</div>
+          <div style="text-align:right"><div style="font-size:8px;font-weight:700;color:#93c5fd">SHA</div><div style="font-size:8px;color:#7dd3fc;font-family:var(--mono)">12:05</div></div>
+        </div>
+        <div style="width:22px;height:2px;background:#94a3b8;border-radius:1px"></div>
+        <div style="width:3px;height:2px;background:#475569;border-radius:1px;opacity:.4"></div>
+      </div>
+      <!-- Duty 2 group -->
+      <div style="position:absolute;left:55%;display:flex;align-items:center;top:5px;bottom:5px">
+        <div style="width:3px;height:2px;background:#475569;border-radius:1px;opacity:.5"></div>
+        <div style="width:20px;height:2px;background:#f59e0b;border-radius:1px"></div>
+        <div style="width:100px;height:34px;background:linear-gradient(135deg,#1e40af,#2563eb);border-radius:4px;display:flex;align-items:center;justify-content:space-between;padding:0 6px;border:1px solid rgba(59,130,246,.5)">
+          <div><div style="font-size:8px;font-weight:700;color:#93c5fd">SHA</div><div style="font-size:8px;color:#7dd3fc;font-family:var(--mono)">08:40</div></div>
+          <div style="font-size:9px;font-weight:700;color:white">CA1480</div>
+          <div style="text-align:right"><div style="font-size:8px;font-weight:700;color:#93c5fd">PEK</div><div style="font-size:8px;color:#7dd3fc;font-family:var(--mono)">11:20</div></div>
+        </div>
+        <div style="width:18px;height:2px;background:#94a3b8;border-radius:1px"></div>
+        <div style="width:3px;height:2px;background:#475569;border-radius:1px;opacity:.4"></div>
+      </div>
+    </div>
+    <div style="display:flex;margin-top:5px;font-size:8px;gap:16px;flex-wrap:wrap;color:var(--fg-dim)">
+      <span>← Duty 1：pickup + brief + CA1201 + debrief + dropoff</span>
+      <span style="color:rgba(34,197,94,.7)">▒ Layover（绿色虚线底）：外站过夜</span>
+      <span>Duty 2：pickup + brief + CA1480 + debrief + dropoff →</span>
+      <span style="color:rgba(100,116,139,.6)">▒ Rest（灰色虚线底）：回基地休息</span>
+    </div>
+    <!-- ★ Connectivity proof — segment boundaries connect exactly -->
+    <div style="margin-top:8px;padding:7px 10px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.18);border-radius:4px;font-size:9px;display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <span style="color:var(--fg-dim);font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:8px">Time Boundary Proof (P0412)</span>
+      <span style="color:var(--fg-muted)"><span style="color:#94a3b8">Duty[0].dropoff.end</span>&nbsp;=&nbsp;<span style="color:var(--green)">Layover.start</span>&nbsp;= <span style="color:var(--amber);font-family:var(--mono)">710 min</span> <span style="color:var(--green)">✓</span></span>
+      <span style="color:var(--fg-muted)"><span style="color:var(--green)">Layover.end</span>&nbsp;=&nbsp;<span style="color:#94a3b8">Duty[1].pickup.start</span>&nbsp;= <span style="color:var(--amber);font-family:var(--mono)">940 min</span> <span style="color:var(--green)">✓</span></span>
+      <span style="color:var(--fg-muted)"><span style="color:#94a3b8">Duty[1].dropoff.end</span>&nbsp;=&nbsp;<span style="color:var(--fg-muted)">Rest.start</span>&nbsp;= <span style="color:var(--amber);font-family:var(--mono)">1220 min</span> <span style="color:var(--green)">✓</span></span>
+    </div>
+  </div>
+
+  <!-- Rules table -->
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+
+    <!-- Height rules -->
+    <div style="flex:1;min-width:220px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px">
+      <h3 style="font-size:11px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">高度规则</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;color:var(--fg-dim);width:120px">Pickup / Dropoff</td><td style="color:var(--fg)">2px — 通常宽度=0，不可见</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;color:var(--fg-dim)">Brief / Debrief</td><td style="color:var(--fg)">2px — 30/60/90 min 可见</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;color:var(--fg-dim)">Flight / Ground</td><td style="color:var(--fg)">20px（行高 28px，上下 4px）</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;color:var(--fg-dim)">★ Layover</td><td style="color:var(--green)">background band — 绿色虚线底</td></tr>
+        <tr><td style="padding:5px 0;color:var(--fg-dim)">★ Rest</td><td style="color:var(--fg-muted)">background band — 灰色虚线底</td></tr>
+      </table>
+    </div>
+
+    <!-- ★ Color resolution -->
+    <div style="flex:2;min-width:300px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px">
+      <h3 style="font-size:11px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">★ Puck 颜色优先级（可自定义）</h3>
+      <!-- Priority chain -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="padding:4px 8px;border-radius:4px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);font-size:10px;color:#93c5fd">
+          <div style="font-size:8px;color:var(--fg-dim);margin-bottom:2px">① 优先</div>
+          assignment.color_hex
+        </div>
+        <div style="color:var(--fg-dim);font-size:12px">→</div>
+        <div style="padding:4px 8px;border-radius:4px;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);font-size:10px;color:#d8b4fe">
+          <div style="font-size:8px;color:var(--fg-dim);margin-bottom:2px">② 回退</div>
+          dictionary(GANTT_TASK_COLORS).code_value
+        </div>
+        <div style="color:var(--fg-dim);font-size:12px">→</div>
+        <div style="padding:4px 8px;border-radius:4px;background:rgba(100,116,139,.1);border:1px solid rgba(100,116,139,.2);font-size:10px;color:var(--fg-muted)">
+          <div style="font-size:8px;color:var(--fg-dim);margin-bottom:2px">③ 默认</div>
+          hardcoded fallback
+        </div>
+      </div>
+      <!-- Example assignments with swatches -->
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <tr style="border-bottom:1px solid var(--border-soft)">
+          <td style="padding:4px 0;color:var(--fg-dim);width:48px">Code</td>
+          <td style="color:var(--fg-dim);width:160px">颜色来源</td>
+          <td style="color:var(--fg-dim)">示例</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border-soft)">
+          <td style="padding:4px 0;color:var(--fg)">FLT</td>
+          <td style="color:var(--fg-muted)">assignment.color_hex = <code>1d4ed8</code></td>
+          <td><div style="width:36px;height:12px;border-radius:2px;background:#1d4ed8;display:inline-block"></div></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border-soft)">
+          <td style="padding:4px 0;color:var(--fg)">DH</td>
+          <td style="color:var(--fg-muted)">assignment.color_hex = <code>6d28d9</code></td>
+          <td><div style="width:36px;height:12px;border-radius:2px;background:#6d28d9;display:inline-block"></div></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border-soft)">
+          <td style="padding:4px 0;color:var(--fg)">SBY</td>
+          <td style="color:var(--fg-muted)">assignment.color_hex = <code>374151</code></td>
+          <td><div style="width:36px;height:12px;border-radius:2px;background:#374151;display:inline-block"></div></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border-soft)">
+          <td style="padding:4px 0;color:var(--fg)">AL</td>
+          <td style="color:var(--fg-muted)">assignment.color_hex = <code>d97706</code></td>
+          <td><div style="width:36px;height:12px;border-radius:2px;background:#d97706;display:inline-block"></div></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border-soft)">
+          <td style="padding:4px 0;color:var(--fg)">BRIEF</td>
+          <td style="color:var(--purple);font-style:italic">dictionary(GANTT_TASK_COLORS) — 不在 assignment 表中</td>
+          <td><div style="width:36px;height:2px;margin-top:5px;border-radius:1px;background:#f59e0b;display:inline-block"></div></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:var(--fg)">LAYOVER</td>
+          <td style="color:var(--purple);font-style:italic">dictionary(GANTT_TASK_COLORS)</td>
+          <td><div style="width:36px;height:12px;border-radius:2px;background:rgba(34,197,94,.15);border:1px dashed rgba(34,197,94,.4);display:inline-block"></div></td>
+        </tr>
+      </table>
+      <div style="margin-top:8px;padding:6px 8px;background:var(--muted);border-radius:4px;font-size:9px;color:var(--fg-muted);line-height:1.6">
+        <b style="color:var(--fg)">dictionary 配置示例：</b>
+        <code style="color:var(--sky)">parent_code='GANTT_TASK_COLORS', code='BRIEF', code_value='f59e0b'</code><br>
+        前端读取：<code style="color:var(--sky)">useTaskColor(assignmentCode)</code> → 返回 <code>#hex</code>
+      </div>
+    </div>
+
+    <!-- Field mapping -->
+    <div style="flex:1;min-width:220px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px">
+      <h3 style="font-size:11px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">数据字段映射</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:4px 0;color:var(--fg-dim);width:70px">pickup</td><td style="color:var(--sky);font-family:var(--mono)">pickup_N_start/end_utc</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:4px 0;color:var(--fg-dim)">brief</td><td style="color:var(--sky);font-family:var(--mono)">brief_N_start/end_utc</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:4px 0;color:var(--fg-dim)">flight</td><td style="color:var(--sky);font-family:var(--mono)">sch_dep/arv_dt_utc</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:4px 0;color:var(--fg-dim)">debrief</td><td style="color:var(--sky);font-family:var(--mono)">debrief_N_start/end_utc</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:4px 0;color:var(--fg-dim)">dropoff</td><td style="color:var(--sky);font-family:var(--mono)">dropoff_N_start/end_utc</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:4px 0;color:var(--green)">layover</td><td style="color:var(--fg-muted)">duty_N 结束 → duty_N+1 开始</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:4px 0;color:var(--fg-muted)">rest</td><td style="color:var(--fg-muted)">最后 duty 结束 → pairing 结束</td></tr>
+      </table>
+      <!-- Position formula -->
+      <div style="margin-top:10px;padding:7px 8px;background:var(--muted);border-radius:4px;font-size:9px;line-height:1.7">
+        <div style="color:var(--fg-dim);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;font-size:8px">Canvas 位置公式</div>
+        <code style="color:var(--amber)">offsetMin = (utcTs - windowStart) / 60000</code><br>
+        <code style="color:var(--sky)">left%  = offsetMin / TOTAL × 100</code><br>
+        <code style="color:var(--sky)">width% = (end − start) / TOTAL × 100</code><br>
+        <div style="margin-top:4px;color:var(--fg-dim)">TOTAL = <code style="color:var(--green)">1440</code> min (24h viewport window)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ Selection rules card -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px">
+    <h3 style="font-size:11px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">★ Selection Rules — Pairing Pane (Segment Mode)</h3>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+
+      <!-- Selectable vs non-selectable -->
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Selectable (click)</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:44px;height:14px;background:linear-gradient(135deg,#14532d,#15803d);border-radius:3px;border:2px solid rgba(59,130,246,.9);box-shadow:0 0 6px rgba(59,130,246,.3);flex-shrink:0"></div>
+            <span style="font-size:10px;color:var(--fg)">Flight segment <span style="color:var(--green);font-size:9px">✓ only</span></span>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:9px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Not Selectable (passive)</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:10px;color:var(--fg-muted)">
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:24px;height:2px;background:var(--amber);border-radius:1px;flex-shrink:0"></div>Brief bar (2px)</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:24px;height:2px;background:#94a3b8;border-radius:1px;flex-shrink:0"></div>Debrief bar (2px)</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:24px;height:2px;background:#475569;border-radius:1px;opacity:.6;flex-shrink:0"></div>Pickup / Dropoff (2px)</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:24px;height:8px;background:rgba(34,197,94,.08);border:1px dashed rgba(34,197,94,.35);border-radius:2px;flex-shrink:0"></div>Layover band</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:24px;height:8px;background:rgba(100,116,139,.07);border:1px dashed rgba(100,116,139,.3);border-radius:2px;flex-shrink:0"></div>Rest band</div>
+        </div>
+      </div>
+
+      <!-- Delete behavior -->
+      <div style="flex:2;min-width:320px">
+        <div style="font-size:9px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Delete Behavior</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+
+          <!-- Partial -->
+          <div style="padding:10px 12px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.25);border-radius:var(--rs)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+              <span style="padding:2px 8px;background:rgba(59,130,246,.2);color:#93c5fd;border:1px solid rgba(59,130,246,.4);border-radius:3px;font-size:9px;font-weight:700">Partial</span>
+              <span style="font-size:10px;color:var(--fg)">Only some flights of a pairing selected</span>
+            </div>
+            <div style="font-size:10px;color:var(--fg-muted);line-height:1.6">
+              → Action: <b style="color:#93c5fd">Delete Segments</b><br>
+              → DELETE <code>pairing_segment</code> rows for selected flights only<br>
+              → Pairing header record is <span style="color:var(--green)">preserved</span>
+            </div>
+          </div>
+
+          <!-- All -->
+          <div style="padding:10px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:var(--rs)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+              <span style="padding:2px 8px;background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:3px;font-size:9px;font-weight:700">All</span>
+              <span style="font-size:10px;color:var(--fg)">Every flight in the pairing selected</span>
+            </div>
+            <div style="font-size:10px;color:var(--fg-muted);line-height:1.6">
+              → Action: <b style="color:#fca5a5">Delete Pairing</b><br>
+              → DELETE entire <code>pairing</code> record + all <code>pairing_segment</code> rows<br>
+              → Cascades to any <code>roster_flight</code> assignments
+            </div>
+          </div>
+
+          <!-- Note -->
+          <div style="padding:7px 10px;background:var(--muted);border-radius:var(--rs);font-size:9px;color:var(--fg-dim);line-height:1.6">
+            <b style="color:var(--fg)">Cross-pairing selection:</b> each pairing is evaluated independently —
+            e.g. selecting all flights of P0412 + some of P0413 triggers
+            <span style="color:#fca5a5">Delete Pairing</span> for P0412 and
+            <span style="color:#93c5fd">Delete Segments</span> for P0413 in one operation.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ Selection action bar (populated by JS) -->
+  <div class="sel-bar" id="sel-bar">
+    <span class="sel-info" style="color:var(--fg-dim)">Click a flight segment below to select — only flight blocks (20px) are selectable</span>
+  </div>
+
+  <!-- Simulated segment rows -->
+  <div style="font-size:11px;color:var(--fg-muted);margin-bottom:8px">Pairing Pane 行模拟（交互式 — 点击航段选中）</div>
+  <div style="background:var(--card);border-radius:var(--r);border:1px solid var(--border);overflow:hidden" id="seg-sim"></div>
+</div>
+
+<!-- ════════════ DATA FLOW VIEW ════════════ -->
+<div id="vdf" style="display:none;padding:28px;background:var(--bg);min-height:100vh;overflow-y:auto">
+  <h2 style="color:var(--primary);margin-bottom:20px;font-size:17px">Data Flow — Timezone & Segment Mode</h2>
+  <div class="df-grid">
+    <div class="df-card">
+      <h3>Timezone API</h3>
+      <div style="font-size:10px;color:var(--green);margin-bottom:6px">GET /api/base/timezone-options</div>
+      <pre>[
+  {
+    "airport": "PEK",
+    "airportName": "Beijing Capital",
+    "zoneId": "Asia/Shanghai",
+    "utcOffset": "+08:00",
+    "isBase": true
+  },
+  { "airport": "SHA", "zoneId": "Asia/Shanghai",
+    "utcOffset": "+08:00", "isBase": true },
+  { "airport": "UTC", "zoneId": "UTC",
+    "utcOffset": "+00:00", "isBase": false }
+]</pre>
+      <div style="font-size:9px;color:var(--fg-dim);margin-top:8px;line-height:1.6">
+        1. 读 dictionary(SYS_PARAM/DEFAULT_TIMEZONE).code_value → split('|')<br>
+        2. JOIN airport ON airport.airport IN (codes) → zone_id, utcOffset<br>
+        3. LEFT JOIN base → isBase flag<br>
+        4. isBase=true 排在前面; UTC 固定追加
+      </div>
+    </div>
+    <div class="df-card">
+      <h3>Store Changes</h3>
+      <pre style="color:#c084fc">
+// gantt-view-store.ts
+interface GanttViewStore {
+  // ★ NEW
+  timezone: string       // IANA zone_id
+  timezoneAirport: string // display code "PEK"
+  timezoneOptions: TzOption[]
+
+  setTimezone(airport: string,
+    zoneId: string): void
+  fetchTimezoneOptions(): Promise&lt;void&gt;
+}
+
+// TzOption type
+interface TzOption {
+  airport: string
+  airportName: string
+  zoneId: string
+  utcOffset: string
+  isBase: boolean
+}</pre>
+    </div>
+    <div class="df-card">
+      <h3>Pairing Segment API</h3>
+      <div style="font-size:10px;color:var(--green);margin-bottom:6px">GET /api/pairing/:id/segments</div>
+      <pre style="color:#7dd3fc">{
+  "pairingId": "P0412",
+  "windowStart": "2026-04-20T00:00:00Z",
+  "duties": [
+    {
+      "dutySeq": 1,
+      "pickup":  { "start":"...", "end":"..." },
+      "brief":   { "start":"...", "end":"..." },
+      "flights": [
+        { "fltNum":"CA1201",
+          "depArp":"PEK", "arvArp":"SHA",
+          "schDepDtUtc":"...",
+          "schArvDtUtc":"..." }
+      ],
+      "debrief": { "start":"...", "end":"..." },
+      "dropoff": { "start":"...", "end":"..." }
+    },
+    { "dutySeq": 2, <span style="color:#86efac">/* same shape */</span> }
+  ],
+  "layovers": [
+    { "start": "dropoff[0].end",
+      "end":   "pickup[1].start" }
+  ],
+  "rest": {
+    "start": "dropoff[last].end",
+    "end":   "pairingEndUtc"
+  }
+}</pre>
+      <div style="font-size:9px;color:var(--fg-dim);margin-top:6px;line-height:1.6;background:var(--bg);padding:6px 8px;border-radius:4px">
+        <span style="color:var(--green)">Connectivity guarantee</span> enforced server-side:<br>
+        <code>dropoff[N].end === layover[N].start</code><br>
+        <code>layover[N].end === pickup[N+1].start</code><br>
+        <code>dropoff[last].end === rest.start</code>
+      </div>
+    </div>
+    <div class="df-card">
+      <h3>Composition (Pairing Pane)</h3>
+      <pre style="color:#86efac">
+// From Pairing.composition[]
+// CompositionSlot {
+//   rank: string  // "CA" | "FO"
+//   plan: number  // required
+//   fill: number  // assigned
+// }
+
+// Display in left panel:
+// CA 2/2 ← full (green)
+// FO 1/2 ← partial (amber)
+// FA 0/1 ← empty (red)
+
+// isFull = all plan===fill
+// Show on each pairing row</pre>
+    </div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="lgd" id="lgd">
+  <h4>Legend</h4>
+  <div class="li"><div class="lsw" style="background:linear-gradient(90deg,#1e40af,#2563eb)"></div>Roster flight</div>
+  <div class="li"><div class="lsw" style="background:linear-gradient(90deg,#14532d,#15803d)"></div>Pairing flight</div>
+  <div class="li"><div class="lsw" style="background:linear-gradient(90deg,#2d1b69,#4c1d95)"></div>DH Deadhead</div>
+  <div class="li"><div class="lsw thin" style="background:#f59e0b"></div>Brief (amber 2px)</div>
+  <div class="li"><div class="lsw thin" style="background:#94a3b8"></div>Debrief (slate 2px)</div>
+  <div class="li"><div class="lsw thin" style="background:#475569;opacity:.5"></div>Pickup/Dropoff (2px, ~0)</div>
+  <div class="li"><div class="lsw" style="background:rgba(34,197,94,.12);border:1px dashed rgba(34,197,94,.4)"></div>★ Layover (green dashed)</div>
+  <div class="li"><div class="lsw" style="background:rgba(100,116,139,.08);border:1px dashed rgba(100,116,139,.3)"></div>★ Rest (grey dashed)</div>
+  <div class="li" style="margin-top:4px;border-top:1px solid var(--border-soft);padding-top:4px"><div class="lsw" style="background:rgba(100,116,139,.2)"></div>SBY/Ground duty</div>
+</div>
+
+<script>
+// ──────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────
+let tzOpen = false
+let currentTz = { code:'PEK', zone:'Asia/Shanghai', off:'UTC+8' }
+
+function toggleTz() {
+  tzOpen = !tzOpen
+  document.getElementById('tzbtn').classList.toggle('open', tzOpen)
+  document.getElementById('tzdd').classList.toggle('open', tzOpen)
+}
+
+function selTz(el, code, zone, off, name) {
+  document.querySelectorAll('.tzopt .tzopt-ck').forEach(c=>c.style.visibility='hidden')
+  document.querySelectorAll('.tzopt').forEach(o=>o.classList.remove('sel'))
+  el.classList.add('sel')
+  el.querySelector('.tzopt-ck').style.visibility='visible'
+  document.getElementById('tz-code').textContent = code
+  document.getElementById('tz-zone').textContent = zone
+  document.getElementById('tz-off').textContent = '('+off+')'
+  document.getElementById('tax-tzbdg').textContent = '🕐 '+code+' · '+off
+  document.getElementById('sb-tz').textContent = '🕐 '+code+' · '+zone+' · '+off
+  currentTz = { code, zone, off }
+  tzOpen = false
+  document.getElementById('tzbtn').classList.remove('open')
+  document.getElementById('tzdd').classList.remove('open')
+}
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('#tzwr') && tzOpen) {
+    tzOpen=false
+    document.getElementById('tzbtn').classList.remove('open')
+    document.getElementById('tzdd').classList.remove('open')
+  }
+})
+
+// ──────────────────────────────────────────
+// Summary bar
+// ──────────────────────────────────────────
+const sdays = document.getElementById('sdays')
+for(let i=1;i<=30;i++){
+  const f = 35+Math.random()*55
+  const cls = f>85?'background:var(--red)':f>72?'background:var(--amber)':'background:var(--primary)'
+  sdays.innerHTML += `<div class="sumday"><span class="sdlbl">${i}</span><div class="sdbar"><div class="sdbar-f" style="${cls};width:${f}%"></div></div></div>`
+}
+
+// ──────────────────────────────────────────
+// Time axis
+// ──────────────────────────────────────────
+const taxr = document.getElementById('taxr')
+;[1,5,10,15,20,25,30].forEach(d=>{
+  const el = document.createElement('div')
+  el.className = 'taxday'+(d===20?' today':'')
+  el.textContent = `Apr ${d}`
+  taxr.appendChild(el)
+})
+
+// ──────────────────────────────────────────
+// Roster left panel + gantt rows (segment mode)
+// ──────────────────────────────────────────
+const crewData = [
+  {rank:'CA',code:'F8001',name:'Zhang Wei',frozen:true},
+  {rank:'CA',code:'F8002',name:'Li Ming',frozen:true},
+  {rank:'FO',code:'F8103',name:'Wang Fang',frozen:false},
+  {rank:'FO',code:'F8104',name:'Chen Jing',frozen:false},
+  {rank:'CA',code:'F8005',name:'Liu Yang',frozen:false},
+  {rank:'FO',code:'F8206',name:'Sun Lei',frozen:false},
+]
+
+function makeRosterRow(c) {
+  const frz = c.frozen ? ' frz' : ''
+  return `<div class="lp-row${frz}">
+    <div class="lp-cell" style="width:44px"><span class="rnk rnk-${c.rank.toLowerCase()}">${c.rank}</span></div>
+    <div class="lp-cell dim" style="width:60px">${c.code}</div>
+    <div class="lp-cell dim" style="flex:1">${c.name}</div>
+  </div>`
+}
+
+// ──────────────────────────────────────────
+// Time-based rendering helpers
+// TOTAL = 1440 min (24-hour viewport window)
+// All positions derived from minute offsets so
+// segment boundaries connect exactly:
+//   duty[N].dropoff.end  === layover[N].start
+//   layover[N].end       === duty[N+1].pickup.start
+//   pickup.end           === brief.start
+//   brief.end            === segs[0].dep
+//   segs[last].arv       === debrief.start
+//   debrief.end          === dropoff.start
+//   last dropoff.end     === rest.start
+// ──────────────────────────────────────────
+const TOTAL = 1440
+const toP = m => (m / TOTAL * 100).toFixed(2) + '%'
+const toW = (s, e) => Math.max(0, (e - s) / TOTAL * 100).toFixed(2) + '%'
+
+// makeSegmentRow: renders one Gantt row with absolute positioning
+// variant:      'pairing' | 'roster'
+// rowH:         row height in px
+// duties:       array of { pickup, brief, segs:[{label,dep,arv}], debrief, dropoff }
+// layovers:     array of {start,end}
+// rest:         {start,end} | null
+// pairingId:    optional — when provided, flight segments get data-key + onclick for selection
+// totalFlights: total flight count across all duties in this pairing (for all-sel check)
+function makeSegmentRow(variant, rowH, duties, layovers, rest, pairingId, totalFlights) {
+  rowH = rowH || 28
+  const fltCls = variant === 'pairing' ? 'pairing' : 'roster'
+  let html = ''
+
+  // Grid lines
+  for(const pct of [14,28,42,56,70,84]) {
+    html += `<div class="gline" style="left:${pct}%"></div>`
+  }
+  html += `<div class="gline gline-today" style="left:60%"></div>`
+
+  // Layover bands (behind duties, not selectable)
+  if(layovers) {
+    layovers.forEach(lo => {
+      html += `<div class="seg-layover" style="left:${toP(lo.start)};width:${toW(lo.start,lo.end)}">
+        <span class="seg-layover-lbl">Layover</span></div>`
+    })
+  }
+
+  // Rest band (not selectable)
+  if(rest) {
+    html += `<div class="seg-rest-band" style="left:${toP(rest.start)};width:${toW(rest.start,rest.end)}">
+      <span class="seg-rest-lbl">Rest</span></div>`
+  }
+
+  // Default single-duty for roster rows
+  if(!duties) {
+    duties = [{
+      pickup:  {start:115, end:115},
+      brief:   {start:115, end:155},
+      segs:    [{label:'CA1201', dep:155, arv:345}, {label:'CA1356', dep:345, arv:534}],
+      debrief: {start:534, end:594},
+      dropoff: {start:594, end:594}
+    }]
+    const grdTop = Math.round((rowH - 20) / 2)
+    html += `<div class="seg-grd" style="position:absolute;left:${toP(864)};width:${toW(864,952)};top:${grdTop}px;height:20px;font-size:9px">SBY</div>`
+  }
+
+  const fltMargin = Math.round((rowH - 20) / 2)
+  const thinTop   = Math.round(rowH / 2) - 1
+
+  duties.forEach((duty, di) => {
+    // pickup — 2px thin bar, usually 0-width → invisible at base (NOT selectable)
+    html += `<div class="seg-pickup" style="position:absolute;left:${toP(duty.pickup.start)};width:${toW(duty.pickup.start,duty.pickup.end)};min-width:2px;top:${thinTop}px"></div>`
+    // brief — 2px amber bar, 30-90 min → visible thin strip (NOT selectable)
+    html += `<div class="seg-brief" style="position:absolute;left:${toP(duty.brief.start)};width:${toW(duty.brief.start,duty.brief.end)};min-width:3px;top:${thinTop}px"></div>`
+
+    // ★ Flight segments — selectable when pairingId is provided
+    duty.segs.forEach((s, si) => {
+      const key = pairingId ? `${pairingId}:d${di}:f${si}` : null
+      const selAttrs = key
+        ? `data-key="${key}" data-pid="${pairingId}" data-total="${totalFlights}" onclick="toggleFlightSel(this)"`
+        : ''
+      html += `<div class="seg-flt ${fltCls}" ${selAttrs} style="position:absolute;left:${toP(s.dep)};width:${toW(s.dep,s.arv)};top:${fltMargin}px;height:20px">${s.label}</div>`
+    })
+
+    // debrief — 2px slate bar (NOT selectable)
+    html += `<div class="seg-debrief" style="position:absolute;left:${toP(duty.debrief.start)};width:${toW(duty.debrief.start,duty.debrief.end)};min-width:3px;top:${thinTop}px"></div>`
+    // dropoff — 2px thin bar, usually 0-width → invisible at base (NOT selectable)
+    html += `<div class="seg-dropoff" style="position:absolute;left:${toP(duty.dropoff.start)};width:${toW(duty.dropoff.start,duty.dropoff.end)};min-width:2px;top:${thinTop}px"></div>`
+  })
+
+  return html
+}
+
+const rosterLp = document.getElementById('roster-lp')
+const rosterGa = document.getElementById('roster-ga')
+crewData.forEach(c => {
+  rosterLp.innerHTML += makeRosterRow(c)
+  rosterGa.innerHTML += `<div class="grow">${makeSegmentRow('roster')}</div>`
+})
+
+// ──────────────────────────────────────────
+// Pairing data — time-connected segments
+// All times are minute offsets (0 = window start, 1440 = window end = 24h)
+//
+// Connectivity proof for each pairing:
+//   brief.start   = pickup.end
+//   segs[0].dep   = brief.end
+//   segs[n].dep   = segs[n-1].arv  (back-to-back flights)
+//   debrief.start = segs[last].arv
+//   dropoff.start = debrief.end
+//   layover.start = duty[N].dropoff.end   ← exact match
+//   layover.end   = duty[N+1].pickup.start ← exact match
+//   rest.start    = last duty.dropoff.end
+// ──────────────────────────────────────────
+const pairingData = [
+  // P0410 — DOM, single duty, full comp
+  // pickup(0) → brief(30m) → CA1201(3h) → CA1356(3h10m) → debrief(60m) → dropoff(0) → rest
+  {
+    id:'P0410', type:'DOM', fleet:'737-800', blh:'8h30m',
+    comp:[{rank:'CA',plan:2,fill:2},{rank:'FO',plan:2,fill:2}],
+    duties:[{
+      pickup:  {start:240, end:240},
+      brief:   {start:240, end:270},   // 30 min sign-in
+      segs:    [{label:'CA1201', dep:270, arv:450},   // 3h
+                {label:'CA1356', dep:450, arv:640}],  // 3h10m
+      debrief: {start:640, end:700},   // 60 min sign-out
+      dropoff: {start:700, end:700}
+    }],
+    layovers:[], rest:{start:700, end:880}
+  },
+  // P0411 — DOM, single duty, partial comp (FO 1/2)
+  // pickup(0) → brief(30m) → CA1805(3h50m) → debrief(60m) → dropoff(0) → rest
+  {
+    id:'P0411', type:'DOM', fleet:'737-800', blh:'7h45m',
+    comp:[{rank:'CA',plan:2,fill:2},{rank:'FO',plan:2,fill:1}],
+    duties:[{
+      pickup:  {start:300, end:300},
+      brief:   {start:300, end:330},   // 30 min
+      segs:    [{label:'CA1805', dep:330, arv:560}],  // 3h50m
+      debrief: {start:560, end:620},   // 60 min
+      dropoff: {start:620, end:620}
+    }],
+    layovers:[], rest:{start:620, end:800}
+  },
+  // P0412 — INT, two duties with layover, CA comp empty
+  // Duty1: pickup(0)→brief(60m)→CA1201(3.5h)→CA1356(3.3h)→debrief(60m)→dropoff(0)
+  //   Layover: 710→940  (dropoff[0].end===layover.start, layover.end===pickup[1].start)
+  // Duty2: pickup(0)→brief(50m)→CA1480(2h50m)→debrief(60m)→dropoff(0)
+  //   Rest: 1220→1440  (dropoff[1].end===rest.start)
+  {
+    id:'P0412', type:'INT', fleet:'737-MAX8', blh:'14h20m',
+    comp:[{rank:'CA',plan:2,fill:0},{rank:'FO',plan:2,fill:2},{rank:'FA',plan:4,fill:4}],
+    duties:[
+      {
+        pickup:  {start:180, end:180},
+        brief:   {start:180, end:240},  // 60 min
+        segs:    [{label:'CA1201', dep:240, arv:450},   // 3h30m
+                  {label:'CA1356', dep:450, arv:650}],  // 3h20m
+        debrief: {start:650, end:710},  // 60 min
+        dropoff: {start:710, end:710}   // dropoff.end = 710 = layover.start ✓
+      },
+      {
+        pickup:  {start:940, end:940},  // pickup.start = 940 = layover.end ✓
+        brief:   {start:940, end:990},  // 50 min
+        segs:    [{label:'CA1480', dep:990, arv:1160}], // 2h50m
+        debrief: {start:1160, end:1220}, // 60 min
+        dropoff: {start:1220, end:1220}  // dropoff.end = 1220 = rest.start ✓
+      }
+    ],
+    layovers:[{start:710, end:940}],    // start=duty[0].dropoff.end, end=duty[1].pickup.start
+    rest:{start:1220, end:1440}         // start=duty[1].dropoff.end
+  },
+  // P0413 — INT, two duties with layover, FA partial comp
+  // Duty1: pickup(0)→brief(60m)→CA8801(5h)→debrief(60m)→dropoff(0)
+  //   Layover: 540→690  (2.5h)
+  // Duty2: pickup(0)→brief(60m)→CA8802(4h)→CA8803(2.5h)→debrief(60m)→dropoff(0)
+  //   Rest: 1200→1440
+  {
+    id:'P0413', type:'INT', fleet:'787-9', blh:'18h05m',
+    comp:[{rank:'CA',plan:2,fill:2},{rank:'FO',plan:2,fill:2},{rank:'FA',plan:4,fill:3}],
+    duties:[
+      {
+        pickup:  {start:120, end:120},
+        brief:   {start:120, end:180},  // 60 min
+        segs:    [{label:'CA8801', dep:180, arv:480}],  // 5h
+        debrief: {start:480, end:540},  // 60 min
+        dropoff: {start:540, end:540}   // dropoff.end = 540 = layover.start ✓
+      },
+      {
+        pickup:  {start:690, end:690},  // pickup.start = 690 = layover.end ✓
+        brief:   {start:690, end:750},  // 60 min
+        segs:    [{label:'CA8802', dep:750, arv:990},   // 4h
+                  {label:'CA8803', dep:990, arv:1140}], // 2.5h
+        debrief: {start:1140, end:1200}, // 60 min
+        dropoff: {start:1200, end:1200}  // dropoff.end = 1200 = rest.start ✓
+      }
+    ],
+    layovers:[{start:540, end:690}],    // start=duty[0].dropoff.end, end=duty[1].pickup.start
+    rest:{start:1200, end:1440}
+  },
+  // P0414 — DOM, single duty, full comp
+  // pickup(0) → brief(30m) → CA2301(4h10m) → debrief(60m) → dropoff(0) → rest
+  {
+    id:'P0414', type:'DOM', fleet:'737-800', blh:'5h10m',
+    comp:[{rank:'CA',plan:1,fill:1},{rank:'FO',plan:1,fill:1}],
+    duties:[{
+      pickup:  {start:500, end:500},
+      brief:   {start:500, end:530},   // 30 min
+      segs:    [{label:'CA2301', dep:530, arv:780}],  // 4h10m
+      debrief: {start:780, end:840},   // 60 min
+      dropoff: {start:840, end:840}
+    }],
+    layovers:[], rest:{start:840, end:1010}
+  },
+]
+
+function compBadge(slot) {
+  const cls = slot.fill === slot.plan ? 'comp-full' : slot.fill === 0 ? 'comp-empty' : 'comp-part'
+  return `<span class="comp-slot ${cls}">${slot.rank} ${slot.fill}/${slot.plan}</span>`
+}
+
+function rowStatusCls(comp) {
+  if(comp.every(s=>s.fill===s.plan)) return 'pair-full'
+  if(comp.some(s=>s.fill===0)) return 'pair-empty'
+  return 'pair-part'
+}
+
+const pairingLp = document.getElementById('pairing-lp')
+const pairingGa = document.getElementById('pairing-ga')
+pairingData.forEach(p => {
+  const compHtml = p.comp.map(compBadge).join('')
+  const stCls = rowStatusCls(p.comp)
+  // Two-line row: top = all 4 cols; bottom = Comp spanning full width
+  pairingLp.innerHTML += `<div class="lp-row-pair ${stCls}">
+    <div class="lp-pr-top">
+      <div class="lp-cell" style="width:54px;font-size:11px;flex-shrink:0">${p.id}</div>
+      <div class="lp-cell dim" style="width:32px;flex-shrink:0">${p.type}</div>
+      <div class="lp-cell" style="flex:1;font-size:10px;border-left:1px solid var(--border-soft)">${p.fleet}</div>
+      <div class="lp-cell dim" style="width:52px;font-size:10px;font-family:var(--mono);border-left:1px solid var(--border-soft);flex-shrink:0">${p.blh}</div>
+    </div>
+    <div class="lp-pr-bot"><div class="comp-wrap">${compHtml}</div></div>
+  </div>`
+  // Gantt row — 42px
+  pairingGa.innerHTML += `<div class="grow" style="height:42px">${makeSegmentRow('pairing',42,p.duties,p.layovers,p.rest)}</div>`
+})
+
+// ──────────────────────────────────────────
+// Flight pane puck rows
+// ──────────────────────────────────────────
+const flightRows = [
+  {reg:'B-6575',fleet:'737-800',flights:[
+    {flt:'CA1201',dep:'PEK',arv:'SHA',dT:'09:30',aT:'12:05',left:'5%',w:'16%'},
+    {flt:'CA1356',dep:'SHA',arv:'CAN',dT:'14:20',aT:'16:55',left:'26%',w:'15%'},
+    {flt:'CA1480',dep:'CAN',arv:'PEK',dT:'19:10',aT:'21:45',left:'56%',w:'16%'},
+  ]},
+  {reg:'B-6712',fleet:'737-800',flights:[
+    {flt:'DH883', dep:'PEK',arv:'CTU',dT:'07:15',aT:'10:30',left:'3%',w:'18%',dh:true},
+    {flt:'CA2240',dep:'CTU',arv:'SHA',dT:'13:00',aT:'15:30',left:'34%',w:'14%'},
+  ]},
+  {reg:'B-8821',fleet:'737-MAX8',flights:[
+    {flt:'CA1805',dep:'SHA',arv:'NRT',dT:'10:45',aT:'14:50',left:'8%',w:'22%'},
+  ]},
+]
+
+const fpRows = document.getElementById('fp-rows')
+flightRows.forEach(row => {
+  let pucks = ''
+  row.flights.forEach(f => {
+    const cls = f.dh ? 'fpuck dh' : 'fpuck'
+    pucks += `<div class="${cls}" style="position:absolute;left:${f.left};width:${f.w};top:3px;height:22px">
+      <div class="puck-l"><span class="puck-arp">${f.dep}</span><span class="puck-time">${f.dT}</span></div>
+      <div class="puck-c"><span class="puck-flt">${f.flt}</span></div>
+      <div class="puck-r"><span class="puck-arp">${f.arv}</span><span class="puck-time">${f.aT}</span></div>
+    </div>`
+  })
+  fpRows.innerHTML += `<div style="display:flex;align-items:stretch;border-bottom:1px solid var(--border-soft)">
+    <div style="width:80px;padding:0 8px;display:flex;align-items:center;font-size:11px;color:var(--fg)">${row.reg}</div>
+    <div style="width:70px;padding:0 8px;display:flex;align-items:center;font-size:10px;color:var(--fg-muted)">${row.fleet}</div>
+    <div style="flex:1;position:relative;height:28px">${pucks}</div>
+  </div>`
+})
+
+// ──────────────────────────────────────────
+// Segment mode simulation rows
+// ──────────────────────────────────────────
+const segSim = document.getElementById('seg-sim')
+if(segSim){
+  // Two-line header — Comp spans all 4 cols + time axis
+  // Time axis: 0-1440 min (00:00-24:00), markers at 6h intervals (25% each)
+  const axisMarks = [
+    {pct:'0%',   lbl:'00:00'},
+    {pct:'25%',  lbl:'06:00'},
+    {pct:'50%',  lbl:'12:00'},
+    {pct:'75%',  lbl:'18:00'},
+    {pct:'100%', lbl:'24:00'},
+  ]
+  const axisHtml = axisMarks.map(m =>
+    `<div style="position:absolute;left:${m.pct};transform:translateX(${m.pct==='100%'?'-100%':m.pct==='0%'?'0':'-50%'});font-size:7px;color:var(--fg-dim);font-family:var(--mono);white-space:nowrap">${m.lbl}</div>`
+  ).join('')
+  const axisTicks = axisMarks.map(m =>
+    `<div style="position:absolute;left:${m.pct};top:0;bottom:0;width:1px;background:var(--border-soft)"></div>`
+  ).join('')
+
+  segSim.innerHTML = `<div style="background:rgba(255,255,255,.015);border-bottom:1px solid var(--border)">
+    <!-- Column header row -->
+    <div style="display:flex;height:22px;align-items:stretch;border-bottom:1px solid var(--border-soft)">
+      <div style="display:flex;align-items:center;width:210px;flex-shrink:0;border-bottom:none">
+        <div style="width:54px;padding:0 8px;font-size:9px;color:var(--fg-dim);text-transform:uppercase">Pairing</div>
+        <div style="width:32px;padding:0 6px;font-size:9px;color:var(--fg-dim)">Tp</div>
+        <div style="flex:1;padding:0 6px;font-size:9px;color:var(--fg-dim);border-left:1px solid var(--border-soft)">Fleet</div>
+        <div style="width:52px;padding:0 6px;font-size:9px;color:var(--fg-dim);border-left:1px solid var(--border-soft)">BLH</div>
+      </div>
+      <!-- Time axis -->
+      <div style="flex:1;position:relative;border-left:1px solid var(--border);overflow:hidden">
+        ${axisTicks}
+        <div style="position:relative;height:100%;display:flex;align-items:center">${axisHtml}</div>
+      </div>
+    </div>
+    <!-- Comp label row -->
+    <div style="display:flex;height:16px;align-items:center">
+      <div style="width:210px;flex-shrink:0;padding:0 8px;font-size:8px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.06em">Comp</div>
+      <div style="flex:1;border-left:1px solid var(--border);padding:0 8px;font-size:8px;color:var(--fg-dim);font-family:var(--mono)">← positions = minute_offset / 1440 × 100% — dropoff[N].end = layover[N].start = pickup[N+1].start ✓</div>
+    </div>
+  </div>`
+
+  // Re-use the same two-line LP row + multi-duty gantt row
+  // ★ Pass pairingId + totalFlights so flight segments are interactive
+  pairingData.forEach(p => {
+    const totalFlights = p.duties.reduce((acc, d) => acc + d.segs.length, 0)
+    const compHtml = p.comp.map(compBadge).join('')
+    const stCls = rowStatusCls(p.comp)
+    const borderCss = stCls==='pair-full'?'border-left:2px solid rgba(34,197,94,.45)':
+                      stCls==='pair-empty'?'border-left:2px solid rgba(239,68,68,.4)':
+                      'border-left:2px solid rgba(245,158,11,.4)'
+    segSim.innerHTML += `
+    <div data-pairing-row="${p.id}" style="display:flex;align-items:stretch;border-bottom:1px solid var(--border-soft);min-height:42px;${borderCss};transition:opacity .2s">
+      <!-- Left panel two-line cell -->
+      <div style="display:flex;flex-direction:column;width:210px;flex-shrink:0">
+        <div style="display:flex;align-items:center;height:22px;border-bottom:1px solid var(--border-soft)">
+          <div style="width:54px;padding:0 8px;font-size:11px;color:var(--fg)">${p.id}</div>
+          <div style="width:32px;padding:0 6px;font-size:10px;color:var(--fg-muted)">${p.type}</div>
+          <div style="flex:1;padding:0 6px;font-size:10px;color:var(--fg);border-left:1px solid var(--border-soft)">${p.fleet}</div>
+          <div style="width:52px;padding:0 6px;font-size:10px;color:var(--fg-muted);font-family:var(--mono);border-left:1px solid var(--border-soft)">${p.blh}</div>
+        </div>
+        <div style="padding:3px 8px;min-height:18px;display:flex;align-items:center;background:rgba(255,255,255,.015)">
+          <div class="comp-wrap">${compHtml}</div>
+        </div>
+      </div>
+      <!-- ★ Gantt timeline — flights are selectable -->
+      <div style="flex:1;position:relative;height:42px;border-left:1px solid var(--border)">${makeSegmentRow('pairing',42,p.duties,p.layovers,p.rest,p.id,totalFlights)}</div>
+    </div>`
+  })
+}
+
+// ──────────────────────────────────────────
+// ★ Flight selection — Pairing Pane (Segment Mode)
+// Only seg-flt[data-key] elements are selectable.
+// Delete behavior:
+//   Partial (some flights of a pairing) → Delete pairing_segment rows only
+//   All flights of a pairing            → Delete pairing + all pairing_segment rows
+// Cross-pairing: each pairing evaluated independently in one operation.
+// ──────────────────────────────────────────
+const selFlights = new Set()  // keys: "P0412:d0:f0"
+
+function toggleFlightSel(el) {
+  const key = el.dataset.key
+  if(!key) return
+  if(selFlights.has(key)) {
+    selFlights.delete(key)
+    el.classList.remove('sel')
+  } else {
+    selFlights.add(key)
+    el.classList.add('sel')
+  }
+  updateSelBar()
+}
+
+function clearSelection() {
+  selFlights.clear()
+  document.querySelectorAll('.seg-flt.sel').forEach(el => el.classList.remove('sel'))
+  // restore any faded rows
+  document.querySelectorAll('[data-pairing-row]').forEach(r => r.style.opacity = '')
+  document.querySelectorAll('[data-key]').forEach(el => el.style.opacity = '')
+  updateSelBar()
+}
+
+function updateSelBar() {
+  const bar = document.getElementById('sel-bar')
+  if(!bar) return
+
+  const count = selFlights.size
+  if(count === 0) {
+    bar.className = 'sel-bar'
+    bar.innerHTML = `<span class="sel-info" style="color:var(--fg-dim)">Click a flight segment to select — only flight blocks (20px) are selectable; 2px bars and Layover/Rest bands are passive</span>`
+    return
+  }
+
+  // Build per-pairing counts: how many flights exist vs how many are selected
+  const pCounts = {}    // {pid: {total, sel}}
+  document.querySelectorAll('#seg-sim [data-key]').forEach(el => {
+    const pid = el.dataset.pid
+    if(!pCounts[pid]) pCounts[pid] = {total: parseInt(el.dataset.total), sel: 0}
+    if(selFlights.has(el.dataset.key)) pCounts[pid].sel++
+  })
+
+  // Classify each pairing with at least one selection
+  const fullPids = []   // all flights of this pairing selected → Delete Pairing
+  const partPids = []   // some flights selected → Delete Segments
+
+  Object.entries(pCounts).forEach(([pid, v]) => {
+    if(v.sel === 0) return
+    if(v.sel === v.total) fullPids.push({pid, count: v.sel})
+    else                  partPids.push({pid, sel: v.sel, total: v.total})
+  })
+
+  const isAllFull = partPids.length === 0 && fullPids.length > 0
+  const hasMixed  = fullPids.length > 0 && partPids.length > 0
+
+  let infoHtml = ''
+  if(fullPids.length > 0) {
+    infoHtml += `<span class="sel-tag sel-tag-pair">All flights</span> `
+    infoHtml += fullPids.map(x=>`<b style="color:var(--fg)">${x.pid}</b> (${x.count})`).join(', ')
+    infoHtml += ` — will <b style="color:#fca5a5">Delete Pairing</b>&nbsp;&nbsp;`
+  }
+  if(partPids.length > 0) {
+    infoHtml += `<span class="sel-tag sel-tag-seg">Partial</span> `
+    infoHtml += partPids.map(x=>`<b style="color:var(--fg)">${x.pid}</b> ${x.sel}/${x.total}`).join(', ')
+    infoHtml += ` — will <b style="color:#93c5fd">Delete Segments</b>`
+  }
+
+  // Primary action button: if any full pairing → show Delete Pairing; else Delete Segments
+  let btnHtml = ''
+  if(fullPids.length > 0) {
+    btnHtml += `<button class="sel-btn sel-btn-del-pair" onclick="mockDeletePairing()">Delete Pairing${fullPids.length>1?' ('+fullPids.length+')':''}</button>`
+  }
+  if(partPids.length > 0) {
+    btnHtml += `<button class="sel-btn sel-btn-del-seg" onclick="mockDeleteSegments()">Delete Segments</button>`
+  }
+  btnHtml += `<button class="sel-btn sel-btn-clr" onclick="clearSelection()">Clear</button>`
+
+  bar.className = isAllFull ? 'sel-bar all-sel' : 'sel-bar has-sel'
+  bar.innerHTML = `<span class="sel-info">${infoHtml}</span>${btnHtml}`
+}
+
+// Simulate delete pairing — fade the entire pairing row
+function mockDeletePairing() {
+  const affected = [...selFlights]
+  const pids = new Set(affected.map(k => k.split(':')[0]))
+
+  // Only fade rows where ALL flights are selected (delete pairing)
+  pids.forEach(pid => {
+    const row = document.querySelector(`[data-pairing-row="${pid}"]`)
+    if(row) row.style.opacity = '.25'
+  })
+  // Deselect
+  selFlights.forEach(key => {
+    const pid = key.split(':')[0]
+    if(pids.has(pid)) {
+      selFlights.delete(key)
+      const el = document.querySelector(`[data-key="${key}"]`)
+      if(el) el.classList.remove('sel')
+    }
+  })
+
+  const bar = document.getElementById('sel-bar')
+  const pidList = [...pids].join(', ')
+  if(bar) bar.innerHTML = `
+    <span class="sel-info">
+      <span class="sel-tag sel-tag-pair">Deleted Pairing</span>
+      &nbsp;Would DELETE <b style="color:var(--fg)">${pidList}</b> —
+      <code>pairing</code> record + all <code>pairing_segment</code> rows removed
+    </span>
+    <button class="sel-btn sel-btn-clr" onclick="clearSelection()">Restore (demo)</button>`
+  bar.className = 'sel-bar all-sel'
+  updateSelBar()
+}
+
+// Simulate delete segments — fade only the selected flight blocks
+function mockDeleteSegments() {
+  const affected = [...selFlights]
+
+  affected.forEach(key => {
+    const el = document.querySelector(`[data-key="${key}"]`)
+    if(el) { el.style.opacity = '.2'; el.classList.remove('sel') }
+    selFlights.delete(key)
+  })
+
+  const bar = document.getElementById('sel-bar')
+  if(bar) bar.innerHTML = `
+    <span class="sel-info">
+      <span class="sel-tag sel-tag-seg">Deleted Segments</span>
+      &nbsp;Would DELETE <b style="color:var(--fg)">${affected.length}</b> <code>pairing_segment</code> row(s) —
+      pairing header record preserved
+    </span>
+    <button class="sel-btn sel-btn-clr" onclick="clearSelection()">Restore (demo)</button>`
+  bar.className = 'sel-bar has-sel'
+}
+
+// ──────────────────────────────────────────
+// View switching
+// ──────────────────────────────────────────
+function sv(view) {
+  const views = { main:'vapp', 'tz':'vapp', 'flight-puck':'vfp', 'seg-mode':'vsm', df:'vdf' }
+  document.getElementById('vapp').style.display = 'none'
+  document.getElementById('vfp').style.display = 'none'
+  document.getElementById('vsm').style.display = 'none'
+  document.getElementById('vdf').style.display = 'none'
+  document.getElementById('lgd').style.display = 'none'
+  document.getElementById('notes').style.display = 'none'
+
+  const tabs = document.querySelectorAll('.vtab')
+  tabs.forEach(t=>t.classList.remove('on'))
+  const idx = ['main','tz','flight-puck','seg-mode','df'].indexOf(view)
+  if(idx>=0) tabs[idx].classList.add('on')
+
+  if(view==='main'){
+    document.getElementById('vapp').style.display='flex'
+    document.getElementById('lgd').style.display='block'
+    document.getElementById('notes').style.display='block'
+  } else if(view==='tz'){
+    document.getElementById('vapp').style.display='flex'
+    document.getElementById('lgd').style.display='block'
+    document.getElementById('notes').style.display='block'
+    if(!tzOpen) toggleTz()
+  } else if(view==='flight-puck'){
+    document.getElementById('vfp').style.display='block'
+  } else if(view==='seg-mode'){
+    document.getElementById('vsm').style.display='block'
+  } else if(view==='df'){
+    document.getElementById('vdf').style.display='block'
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scenario Panel — 5 Layout Options</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#ffffff; --border:#e5e7eb; --border-strong:#d1d5db;
+    --fg:#111827; --muted:#6b7280; --muted2:#9ca3af; --mutedbg:#f3f4f6; --mutedbg2:#f9fafb;
+    --primary:#2563eb; --primary-15:rgba(37,99,235,.10); --primary-soft:#eff6ff;
+    --emerald:#059669; --emerald-15:rgba(16,185,129,.13);
+    --radius:6px;
+    --f-3xs:9px; --f-2xs:10px; --f-xs:12px; --f-sm:14px; --f-base:16px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#eceef1;color:var(--fg);-webkit-font-smoothing:antialiased;}
+  .page{max-width:1320px;margin:0 auto;padding:24px 20px 60px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .sub{font-size:13px;color:#5b6470;margin:0 0 18px;}
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+  .tab{font-size:12px;font-weight:600;padding:7px 13px;border-radius:8px;border:1px solid #d6dae0;
+       background:#fff;color:#374151;cursor:pointer;transition:.12s;}
+  .tab:hover{border-color:#a9b2bd;}
+  .tab.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .stage{display:none;}
+  .stage.active{display:block;}
+  .stage-head{font-size:13px;color:#475467;margin:0 0 14px;max-width:760px;line-height:1.5;}
+  .stage-head b{color:#111827;}
+  /* device frame to prove "no scroll" */
+  .frame{width:452px;height:720px;background:var(--panel);border:1px solid var(--border);
+         border-radius:12px;box-shadow:0 6px 24px rgba(16,24,40,.10);overflow:hidden;
+         display:flex;flex-direction:column;}
+  .frame .scrollnote{font-size:11px;color:#16a34a;padding:6px 14px;border-top:1px dashed #d6dae0;
+         background:#f7fdf9;display:flex;align-items:center;gap:6px;margin-top:auto;}
+  .frame .scrollnote.bad{color:#dc2626;background:#fef6f6;}
+
+  /* shared panel atoms */
+  .phead{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .pname{font-size:var(--f-sm);font-weight:600;flex:1;min-width:0;}
+  .badge{font-size:var(--f-2xs);font-weight:700;padding:2px 7px;border-radius:5px;}
+  .badge.ro{background:var(--emerald-15);color:var(--emerald);}
+  .badge.done{background:rgba(16,185,129,.13);color:var(--emerald);}
+  .tools{display:flex;gap:4px;color:var(--muted2);}
+  .tools span{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:5px;font-size:13px;cursor:pointer;}
+  .tools span:hover{background:var(--mutedbg);color:var(--fg);}
+  .sectitle{font-size:var(--f-2xs);font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted2);}
+  .lbl{font-size:var(--f-2xs);color:var(--muted);}
+  .ctrl{height:26px;border:1px solid var(--border-strong);border-radius:5px;background:#fff;font-size:var(--f-xs);
+        padding:0 8px;display:flex;align-items:center;color:var(--fg);width:100%;}
+  .ctrl.sel{justify-content:space-between;cursor:pointer;}
+  .ctrl.sel::after{content:"⌄";color:var(--muted2);font-size:13px;margin-left:6px;line-height:1;margin-top:-6px;}
+  .ctrl.auto{width:auto;}
+  .chip{display:inline-flex;align-items:center;gap:4px;font-size:var(--f-2xs);font-weight:600;
+        padding:2px 7px;border-radius:5px;background:var(--mutedbg);color:#374151;}
+  .chip .x{color:var(--muted2);cursor:pointer;}
+  .addchip{font-size:var(--f-2xs);color:var(--muted);border:1px dashed var(--border-strong);
+        border-radius:5px;padding:2px 7px;cursor:pointer;}
+  .srcpill{font-size:var(--f-2xs);font-weight:600;padding:2px 8px;border-radius:5px;border:1px solid var(--border-strong);color:var(--muted);cursor:pointer;}
+  .srcpill.on{border-color:var(--primary);background:var(--primary-15);color:var(--primary);}
+  .filterline{font-size:var(--f-2xs);background:var(--mutedbg2);border:1px solid var(--border);border-radius:5px;padding:3px 8px;
+        font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#475467;}
+  .filterline b{color:var(--muted2);font-family:inherit;font-weight:700;margin-right:5px;}
+  .kpi{border:1px solid var(--border);border-radius:8px;background:#fff;text-align:center;padding:9px 6px;}
+  .kpi .k{font-size:var(--f-2xs);font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2);}
+  .kpi .v{font-size:18px;font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums;}
+  .divsec{border-bottom:1px solid var(--border);}
+  .caret{font-size:11px;color:var(--muted2);}
+
+  /* ---------- OPTION 1: Dense paired grid ---------- */
+  .o1 .body{padding:12px 14px;overflow:auto;}
+  .o1 .grp+.grp{margin-top:14px;}
+  .o1 .grphd{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+  .o1 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;}
+  .o1 .field{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .o1 .inline{display:flex;align-items:center;gap:7px;}
+  .o1 .daterow{display:flex;align-items:center;gap:6px;}
+  .o1 .daterow .ctrl{flex:1;}
+  .o1 .gcount{margin-left:auto;font-size:var(--f-2xs);font-weight:700;color:var(--primary);
+        background:var(--primary-15);border-radius:9px;padding:1px 7px;}
+
+  /* ---------- OPTION 2: Two-column master ---------- */
+  .o2 .body{display:flex;flex-direction:column;overflow:auto;}
+  .o2 .cols{display:grid;grid-template-columns:1fr 1fr;}
+  .o2 .col{padding:12px 12px;}
+  .o2 .col+.col{border-left:1px solid var(--border);}
+  .o2 .field{display:flex;flex-direction:column;gap:3px;margin-top:9px;}
+  .o2 .field:first-of-type{margin-top:9px;}
+  .o2 .daterow{display:flex;gap:5px;}
+  .o2 .daterow .ctrl{padding:0 5px;font-size:11px;}
+  .o2 .kpibar{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border-top:1px solid var(--border);}
+  .o2 .subhd{font-size:var(--f-2xs);font-weight:700;color:#475467;margin:13px 0 4px;display:flex;align-items:center;gap:6px;}
+  .o2 .subhd .gcount{margin-left:auto;font-size:9px;font-weight:700;color:var(--primary);background:var(--primary-15);border-radius:9px;padding:0 6px;}
+
+  /* ---------- OPTION 3: Inline pill bar ---------- */
+  .o3 .body{padding:12px 14px;overflow:auto;}
+  .o3 .pillgrp+.pillgrp{margin-top:13px;}
+  .o3 .pillgrp .sectitle{margin-bottom:8px;display:block;}
+  .o3 .pills{display:flex;flex-wrap:wrap;gap:7px;}
+  .o3 .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:7px;
+        background:var(--mutedbg2);padding:4px 9px;font-size:var(--f-xs);cursor:pointer;}
+  .o3 .pill .pk{color:var(--muted);font-size:var(--f-2xs);font-weight:600;}
+  .o3 .pill .pv{color:var(--fg);font-weight:600;}
+  .o3 .pill .pv.acc{color:var(--primary);}
+  .o3 .pill::after{content:"⌄";color:var(--muted2);font-size:12px;margin-top:-3px;}
+  .o3 .pill.notrig::after{content:"";}
+  .o3 .kpibar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px;}
+
+  /* ---------- OPTION 4: Tabbed sections ---------- */
+  .o4 .summary{display:flex;flex-wrap:wrap;gap:6px 14px;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--mutedbg2);}
+  .o4 .summary .si{font-size:var(--f-2xs);color:var(--muted);}
+  .o4 .summary .si b{color:var(--fg);font-weight:600;margin-left:4px;}
+  .o4 .segtabs{display:flex;gap:0;padding:8px 14px 0;border-bottom:1px solid var(--border);}
+  .o4 .seg{font-size:var(--f-xs);font-weight:600;color:var(--muted);padding:6px 12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .o4 .seg.active{color:var(--primary);border-bottom-color:var(--primary);}
+  .o4 .seg .n{font-size:9px;background:var(--primary-15);color:var(--primary);border-radius:8px;padding:0 5px;margin-left:5px;font-weight:700;}
+  .o4 .body{padding:13px 14px;overflow:auto;}
+  .o4 .field{display:flex;flex-direction:column;gap:3px;margin-bottom:11px;}
+  .o4 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;}
+  .o4 .daterow{display:flex;align-items:center;gap:6px;}
+  .o4 .daterow .ctrl{flex:1;}
+  .o4 .kpibar{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+  /* ---------- OPTION 5: KPI-up dashboard ---------- */
+  .o5 .kpistrip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:11px 14px;border-bottom:1px solid var(--border);background:linear-gradient(#fafbfc,#fff);}
+  .o5 .kpistrip .kpi{padding:7px 4px;}
+  .o5 .kpistrip .kpi .v{font-size:16px;}
+  .o5 .body{padding:12px 14px;overflow:auto;}
+  .o5 .grp{border:1px solid var(--border);border-radius:8px;padding:10px 11px;}
+  .o5 .grp+.grp{margin-top:10px;}
+  .o5 .grphd{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+  .o5 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px 11px;}
+  .o5 .field{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .o5 .inline{display:flex;align-items:center;gap:7px;}
+  .o5 .daterow{display:flex;align-items:center;gap:6px;}
+  .o5 .daterow .ctrl{flex:1;padding:0 6px;font-size:11px;}
+  .o5 .gcount{margin-left:auto;font-size:var(--f-2xs);font-weight:700;color:var(--primary);background:var(--primary-15);border-radius:9px;padding:1px 7px;}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Scenario Detail Panel — 5 Layout Options</h1>
+  <p class="sub">Goal: fit the whole RO config without vertical scroll &amp; stop the Date / Model / Rule dropdowns from running full-width. Each frame is a fixed 452 × 720&nbsp;px panel — the green footer note confirms it fits.</p>
+
+  <div class="tabs">
+    <button class="tab active" data-o="1">1 · Dense Grid</button>
+    <button class="tab" data-o="2">2 · Two Columns</button>
+    <button class="tab" data-o="3">3 · Inline Pills</button>
+    <button class="tab" data-o="4">4 · Tabbed Sections</button>
+    <button class="tab" data-o="5">5 · KPI-Up Dashboard</button>
+  </div>
+
+  <!-- ================= OPTION 1 ================= -->
+  <section class="stage active" data-stage="1">
+    <p class="stage-head"><b>Dense Grid.</b> Smallest change. Same single scroll column, but fields are packed into a 2-up grid and controls shrink to their content (Model "211" is narrow, dates share one row). ~40% shorter than today. Lowest risk, keeps every field visible inline.</p>
+    <div class="frame o1">
+      <div class="phead">
+        <div class="pname">Jen's Test Run</div>
+        <span class="badge done">Done</span>
+        <div class="tools"><span>💾</span><span>▶</span><span>⤤</span></div>
+      </div>
+      <div class="body">
+        <div class="grp">
+          <div class="grphd"><span class="sectitle">Basic Info</span><span class="badge ro" style="margin-left:auto">RO</span></div>
+          <div class="row2">
+            <div class="field"><span class="lbl">Source</span><label class="inline" style="font-size:12px;"><input type="checkbox" checked> Lead-in live</label></div>
+            <div class="field"><span class="lbl">Model</span><div class="ctrl">211</div></div>
+            <div class="field" style="grid-column:1 / -1;"><span class="lbl">Date range</span>
+              <div class="daterow"><div class="ctrl">2026-06-01</div><span class="lbl">→</span><div class="ctrl">2026-06-30</div></div>
+            </div>
+            <div class="field"><span class="lbl">Rule</span><div class="ctrl sel">ccar121_ro</div></div>
+            <div class="field"><span class="lbl">Pairing Sc.</span><div class="ctrl sel">0 - Live</div></div>
+            <div class="field" style="grid-column:1 / -1;"><span class="lbl">Comment</span><div class="ctrl" style="height:auto;padding:5px 8px;color:var(--muted2);">Optional notes…</div></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grphd"><span class="caret">▾</span><span class="sectitle">Crew Filters</span><span class="gcount">2</span></div>
+          <div class="row2">
+            <div class="field"><span class="lbl">Division</span><div class="ctrl sel">Pilots</div></div>
+            <div class="field"><span class="lbl">Status</span><div class="ctrl sel">Active</div></div>
+            <div class="field"><span class="lbl">Bases</span><div style="display:flex;gap:5px;"><span class="chip">YEG <span class="x">×</span></span><span class="addchip">+ Add</span></div></div>
+            <div class="field"><span class="lbl">Fleet Quals</span><div><span class="addchip">+ Add</span></div></div>
+          </div>
+          <div class="filterline" style="margin-top:9px;"><b>FILTER</b>P / YEG / ∗ / ACTIVE</div>
+        </div>
+
+        <div class="grp">
+          <div class="grphd"><span class="caret">▾</span><span class="sectitle">Pairing Filters</span><span class="gcount">1</span></div>
+          <div class="row2">
+            <div class="field"><span class="lbl">Bases</span><div style="display:flex;gap:5px;"><span class="chip">YEG <span class="x">×</span></span><span class="addchip">+ Add</span></div></div>
+            <div class="field"><span class="lbl">Fleets</span><div><span class="addchip">+ Add</span></div></div>
+            <div class="field" style="grid-column:1 / -1;"><span class="lbl">Pairing Source</span>
+              <div style="display:flex;gap:6px;"><span class="srcpill on">Manual</span><span class="srcpill on">Optimized</span><span class="srcpill on">Imported</span></div>
+            </div>
+          </div>
+          <div class="filterline" style="margin-top:9px;"><b>FILTER</b>∗ / YEG / ∗</div>
+        </div>
+
+        <div class="grp">
+          <div class="grphd"><span class="sectitle">KPI Results</span></div>
+          <div class="row2"><div class="kpi"><div class="k">Coverage</div><div class="v">1.0</div></div><div class="kpi"><div class="k">Assigned</div><div class="v">200</div></div></div>
+        </div>
+      </div>
+      <div class="scrollnote">✓ Everything fits — no scroll</div>
+    </div>
+  </section>
+
+  <!-- ================= OPTION 2 ================= -->
+  <section class="stage" data-stage="2">
+    <p class="stage-head"><b>Two Columns.</b> Splits config side-by-side — Basic Info on the left, Scope Filters on the right — so the panel is roughly half as tall. KPI sits as a strip across the bottom. Best raw space win; needs ≥430px panel width.</p>
+    <div class="frame o2">
+      <div class="phead">
+        <div class="pname">Jen's Test Run</div>
+        <span class="badge done">Done</span>
+        <div class="tools"><span>💾</span><span>▶</span><span>⤤</span></div>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div class="col">
+            <span class="sectitle">Basic Info</span>
+            <div class="field"><span class="lbl">Type / Source</span><div style="display:flex;align-items:center;gap:8px;"><span class="badge ro">RO</span><label style="font-size:11px;display:flex;gap:4px;align-items:center;"><input type="checkbox" checked>Lead-in</label></div></div>
+            <div class="field"><span class="lbl">Date range</span><div class="daterow"><div class="ctrl">2026-06-01</div><div class="ctrl">2026-06-30</div></div></div>
+            <div class="field"><span class="lbl">Model</span><div class="ctrl">211</div></div>
+            <div class="field"><span class="lbl">Rule</span><div class="ctrl sel">ccar121_ro</div></div>
+            <div class="field"><span class="lbl">Pairing Sc.</span><div class="ctrl sel">0 - Live</div></div>
+            <div class="field"><span class="lbl">Comment</span><div class="ctrl" style="height:46px;align-items:flex-start;padding-top:5px;color:var(--muted2);">Optional notes…</div></div>
+          </div>
+          <div class="col">
+            <span class="sectitle">Scope Filters</span>
+            <div class="subhd">Crew Filters<span class="gcount">2</span></div>
+            <div class="field" style="margin-top:4px;"><span class="lbl">Division</span><div class="ctrl sel">Pilots</div></div>
+            <div class="field"><span class="lbl">Status</span><div class="ctrl sel">Active</div></div>
+            <div class="field"><span class="lbl">Bases · Fleet Quals</span><div style="display:flex;gap:5px;"><span class="chip">YEG</span><span class="addchip">+</span></div></div>
+            <div class="subhd">Pairing Filters<span class="gcount">1</span></div>
+            <div class="field" style="margin-top:4px;"><span class="lbl">Bases</span><div style="display:flex;gap:5px;"><span class="chip">YEG</span><span class="addchip">+</span></div></div>
+            <div class="field"><span class="lbl">Source</span><div style="display:flex;gap:4px;flex-wrap:wrap;"><span class="srcpill on">M</span><span class="srcpill on">O</span><span class="srcpill on">I</span></div></div>
+          </div>
+        </div>
+        <div class="kpibar">
+          <div class="kpi"><div class="k">Coverage</div><div class="v">1.0</div></div>
+          <div class="kpi"><div class="k">Assigned</div><div class="v">200</div></div>
+        </div>
+      </div>
+      <div class="scrollnote">✓ Everything fits — no scroll</div>
+    </div>
+  </section>
+
+  <!-- ================= OPTION 3 ================= -->
+  <section class="stage" data-stage="3">
+    <p class="stage-head"><b>Inline Pills.</b> Every setting becomes a compact "label: value" pill that wraps in a flowing bar; click a pill to edit it in a small popover. Most space-efficient and reads like a config summary, but editing is one click deeper.</p>
+    <div class="frame o3">
+      <div class="phead">
+        <div class="pname">Jen's Test Run</div>
+        <span class="badge done">Done</span>
+        <div class="tools"><span>💾</span><span>▶</span><span>⤤</span></div>
+      </div>
+      <div class="body">
+        <div class="pillgrp">
+          <span class="sectitle">Basic Info <span class="badge ro" style="margin-left:6px;">RO</span></span>
+          <div class="pills">
+            <span class="pill"><span class="pk">Date</span><span class="pv">Jun 1 – Jun 30</span></span>
+            <span class="pill"><span class="pk">Model</span><span class="pv">211</span></span>
+            <span class="pill"><span class="pk">Rule</span><span class="pv acc">ccar121_ro</span></span>
+            <span class="pill"><span class="pk">Pairing</span><span class="pv">0 · Live</span></span>
+            <span class="pill"><span class="pk">Source</span><span class="pv">Lead-in live</span></span>
+          </div>
+        </div>
+        <div class="pillgrp">
+          <span class="sectitle">Crew Filters <span class="gcount" style="margin-left:4px;">2</span></span>
+          <div class="pills">
+            <span class="pill"><span class="pk">Division</span><span class="pv">Pilots</span></span>
+            <span class="pill"><span class="pk">Status</span><span class="pv">Active</span></span>
+            <span class="pill"><span class="pk">Bases</span><span class="pv acc">YEG</span></span>
+            <span class="pill"><span class="pk">Fleet</span><span class="pv" style="color:var(--muted2)">Any</span></span>
+          </div>
+        </div>
+        <div class="pillgrp">
+          <span class="sectitle">Pairing Filters <span class="gcount" style="margin-left:4px;">1</span></span>
+          <div class="pills">
+            <span class="pill"><span class="pk">Bases</span><span class="pv acc">YEG</span></span>
+            <span class="pill"><span class="pk">Fleets</span><span class="pv" style="color:var(--muted2)">Any</span></span>
+            <span class="pill notrig"><span class="pk">Source</span><span class="srcpill on">M</span><span class="srcpill on">O</span><span class="srcpill on">I</span></span>
+          </div>
+        </div>
+        <div class="kpibar">
+          <div class="kpi"><div class="k">Coverage</div><div class="v">1.0</div></div>
+          <div class="kpi"><div class="k">Assigned</div><div class="v">200</div></div>
+        </div>
+      </div>
+      <div class="scrollnote">✓ Everything fits — no scroll (lots of headroom)</div>
+    </div>
+  </section>
+
+  <!-- ================= OPTION 4 ================= -->
+  <section class="stage" data-stage="4">
+    <p class="stage-head"><b>Tabbed Sections.</b> A one-line summary always shows the key config; Basic / Filters / KPI become segmented tabs so only one body renders at a time. Guarantees no-scroll regardless of how many fields a section grows to — but you see one section at a time.</p>
+    <div class="frame o4">
+      <div class="phead">
+        <div class="pname">Jen's Test Run</div>
+        <span class="badge done">Done</span>
+        <div class="tools"><span>💾</span><span>▶</span><span>⤤</span></div>
+      </div>
+      <div class="summary">
+        <span class="si">Type<b>RO</b></span><span class="si">Date<b>Jun 1–30</b></span><span class="si">Model<b>211</b></span><span class="si">Rule<b>ccar121_ro</b></span>
+      </div>
+      <div class="segtabs">
+        <span class="seg active">Basic</span><span class="seg">Filters<span class="n">3</span></span><span class="seg">KPI</span>
+      </div>
+      <div class="body">
+        <div class="row2">
+          <div class="field"><span class="lbl">Type</span><span class="badge ro" style="width:fit-content;">RO</span></div>
+          <div class="field"><span class="lbl">Source</span><label style="font-size:12px;display:flex;gap:5px;align-items:center;"><input type="checkbox" checked>Lead-in live</label></div>
+        </div>
+        <div class="field"><span class="lbl">Date range</span><div class="daterow"><div class="ctrl">2026-06-01</div><span class="lbl">→</span><div class="ctrl">2026-06-30</div></div></div>
+        <div class="row2">
+          <div class="field"><span class="lbl">Model</span><div class="ctrl">211</div></div>
+          <div class="field"><span class="lbl">Rule</span><div class="ctrl sel">ccar121_ro</div></div>
+        </div>
+        <div class="field"><span class="lbl">Pairing Sc.</span><div class="ctrl sel">0 - Live</div></div>
+        <div class="field"><span class="lbl">Comment</span><div class="ctrl" style="height:54px;align-items:flex-start;padding-top:6px;color:var(--muted2);">Optional notes…</div></div>
+      </div>
+      <div class="scrollnote">✓ Active tab always fits — no scroll</div>
+    </div>
+  </section>
+
+  <!-- ================= OPTION 5 ================= -->
+  <section class="stage" data-stage="5">
+    <p class="stage-head"><b>KPI-Up Dashboard.</b> Promotes the KPI cards to a prominent strip at the top (most-glanced result first), then a compact two-up config below grouped in soft cards. Density of Option 1 with results that don't get pushed off-screen.</p>
+    <div class="frame o5">
+      <div class="phead">
+        <div class="pname">Jen's Test Run</div>
+        <span class="badge done">Done</span>
+        <div class="tools"><span>💾</span><span>▶</span><span>⤤</span></div>
+      </div>
+      <div class="kpistrip">
+        <div class="kpi"><div class="k">Coverage</div><div class="v">1.0</div></div>
+        <div class="kpi"><div class="k">Assigned</div><div class="v">200</div></div>
+        <div class="kpi"><div class="k">Status</div><div class="v" style="font-size:13px;color:var(--emerald);">Done</div></div>
+      </div>
+      <div class="body">
+        <div class="grp">
+          <div class="grphd"><span class="sectitle">Basic Info</span><span class="badge ro" style="margin-left:auto;">RO</span></div>
+          <div class="row2">
+            <div class="field" style="grid-column:1/-1;"><span class="lbl">Date range</span><div class="daterow"><div class="ctrl">2026-06-01</div><span class="lbl">→</span><div class="ctrl">2026-06-30</div></div></div>
+            <div class="field"><span class="lbl">Model</span><div class="ctrl">211</div></div>
+            <div class="field"><span class="lbl">Rule</span><div class="ctrl sel">ccar121_ro</div></div>
+            <div class="field"><span class="lbl">Pairing Sc.</span><div class="ctrl sel">0 - Live</div></div>
+            <div class="field"><span class="lbl">Source</span><label class="inline" style="font-size:12px;"><input type="checkbox" checked> Lead-in</label></div>
+          </div>
+        </div>
+        <div class="grp">
+          <div class="grphd"><span class="caret">▾</span><span class="sectitle">Crew Filters</span><span class="gcount">2</span></div>
+          <div class="row2">
+            <div class="field"><span class="lbl">Division</span><div class="ctrl sel">Pilots</div></div>
+            <div class="field"><span class="lbl">Status</span><div class="ctrl sel">Active</div></div>
+            <div class="field"><span class="lbl">Bases</span><div style="display:flex;gap:5px;"><span class="chip">YEG</span><span class="addchip">+</span></div></div>
+            <div class="field"><span class="lbl">Fleet Quals</span><div><span class="addchip">+ Add</span></div></div>
+          </div>
+          <div class="filterline" style="margin-top:9px;"><b>FILTER</b>P / YEG / ∗ / ACTIVE</div>
+        </div>
+        <div class="grp">
+          <div class="grphd"><span class="caret">▾</span><span class="sectitle">Pairing Filters</span><span class="gcount">1</span></div>
+          <div class="row2">
+            <div class="field"><span class="lbl">Bases</span><div style="display:flex;gap:5px;"><span class="chip">YEG</span><span class="addchip">+</span></div></div>
+            <div class="field" style="grid-column:1/-1;"><span class="lbl">Pairing Source</span><div style="display:flex;gap:6px;"><span class="srcpill on">Manual</span><span class="srcpill on">Optimized</span><span class="srcpill on">Imported</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="scrollnote">✓ Everything fits — no scroll</div>
+    </div>
+  </section>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const stages = document.querySelectorAll('.stage');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    stages.forEach(s => s.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelector(`.stage[data-stage="${t.dataset.o}"]`).classList.add('active');
+  }));
+  // tab switch inside option 4
+  document.querySelectorAll('.o4 .seg').forEach(seg=>{
+    seg.addEventListener('click',()=>{seg.parentElement.querySelectorAll('.seg').forEach(s=>s.classList.remove('active'));seg.classList.add('active');});
+  });
+</script>
+</body>
+</html>

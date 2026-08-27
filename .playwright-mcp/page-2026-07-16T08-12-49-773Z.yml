@@ -1,0 +1,93 @@
+- generic [ref=e2]:
+  - generic [ref=e34]:
+    - banner [ref=e35]:
+      - generic:
+        - img "Flair Airlines"
+        - generic:
+          - navigation "Portal sections":
+            - link "Dashboard" [ref=e36] [cursor=pointer]:
+              - /url: /pbs/dashboard
+            - link "Days Off" [ref=e39] [cursor=pointer]:
+              - /url: /pbs/days-off
+            - link "Pairing" [ref=e41] [cursor=pointer]:
+              - /url: /pbs/pairing
+            - link "Line" [ref=e43] [cursor=pointer]:
+              - /url: /pbs/line
+            - link "Reserve" [ref=e45] [cursor=pointer]:
+              - /url: /pbs/reserve
+            - link "Tier" [ref=e47] [cursor=pointer]:
+              - /url: /pbs/tier
+            - link "Award" [ref=e49] [cursor=pointer]:
+              - /url: /pbs/award
+          - button "More navigation" [ref=e52] [cursor=pointer]
+      - generic [ref=e55]:
+        - generic [ref=e56]: DEV
+        - generic [ref=e57]: Ver:B42/F86
+        - button "Toggle UI Inspector" [ref=e58] [cursor=pointer]
+        - button "Log out" [ref=e61] [cursor=pointer]
+        - generic [ref=e64]: James Ritchie
+    - main [ref=e65]:
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - generic [ref=e72]:
+            - heading "James Ritchie" [level=1] [ref=e73]
+            - paragraph [ref=e74]: "-"
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - generic [ref=e77]: BID INFORMATION-LOCAL TIME
+              - generic [ref=e81]:
+                - generic [ref=e82]:
+                  - generic [ref=e83]: BID START
+                  - generic [ref=e84]: "-"
+                - generic [ref=e85]:
+                  - generic [ref=e86]: BID END
+                  - generic [ref=e87]: "-"
+                - generic [ref=e88]:
+                  - generic [ref=e89]: REMAINING
+                  - generic [ref=e90]: "-"
+              - generic [ref=e92]:
+                - generic [ref=e93]:
+                  - generic [ref=e94]: TARGETED LINE
+                  - generic [ref=e95]: TOTAL BIDDER
+                  - generic [ref=e96]: TARGETED RESERVE
+                - generic [ref=e97]:
+                  - generic [ref=e98]: "-"
+                  - generic [ref=e99]: "-"
+                  - generic [ref=e100]: "-"
+            - generic [ref=e101]:
+              - generic [ref=e102]: USER INFORMATION
+              - generic [ref=e106]:
+                - generic [ref=e107]:
+                  - generic [ref=e108]: BASE
+                  - generic [ref=e109]: FLEET
+                  - generic [ref=e110]: POSITION
+                - generic [ref=e111]:
+                  - generic [ref=e112]: "-"
+                  - generic [ref=e113]: "-"
+                  - generic [ref=e114]: "-"
+                - generic [ref=e115]:
+                  - generic [ref=e116]: SENIORITY
+                  - generic [ref=e117]: LANGUAGE
+                  - generic [ref=e118]: EXISTING CREDIT
+                - generic [ref=e119]:
+                  - generic [ref=e120]: "-"
+                  - generic [ref=e121]: "-"
+                  - generic [ref=e122]: "-"
+                - generic [ref=e123]:
+                  - generic [ref=e124]: TRAINING MONTH
+                  - generic [ref=e125]: LAST LOGIN
+                - generic [ref=e127]:
+                  - generic [ref=e128]: "-"
+                  - generic [ref=e129]: "-"
+        - generic [ref=e131]:
+          - status "Loading bidding calendar..." [ref=e132]
+          - generic [ref=e133]:
+            - generic [ref=e134]: BIDDING CALENDAR
+            - paragraph [ref=e137]: Loading bidding calendar...
+        - complementary [ref=e276]:
+          - generic [ref=e277]: MESSAGE CENTER
+          - paragraph [ref=e280]: "BASE LINE AVERAGE: -"
+          - generic [ref=e281]:
+            - generic [ref=e282]: FLEET
+            - generic [ref=e283]: SUB-FLEET
+  - region "Notifications alt+T"

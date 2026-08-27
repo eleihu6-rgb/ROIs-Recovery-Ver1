@@ -1,0 +1,29 @@
+Rule 7502 credit-hours report — live F8 June 2026 (generated from check-7502-credit.mjs)
+(live June data: 158 FLY segments with block + 15889 ground/off rows)
+─────────────────────────────────────────────────────────────
+ Rule 7502 (CALCULATION OF CREDIT HOURS) — Rust engine [CALC rule]
+ params: FLY×1.00 (FT), GND×0.50 (DP), DO|LO|LEA|SBY = 240min floor; default floor 240
+─────────────────────────────────────────────────────────────
+ activities   : 16047
+ crew credited : 808
+ calc time     : 3.794 ms  (4.7 µs/crew)
+ total credit  : 64272.3 h  (avg 79.5 h/crew)
+─────────────────────────────────────────────────────────────
+ Top 15 crew by credit hours:
+   crew             credit       fly    ground   acts
+   2229             236.0h      0.0h    236.0h   59
+   996              184.2h      8.2h    176.0h   46
+   2697             176.2h      8.2h    168.0h   44
+   813              168.2h      8.2h    160.0h   42
+   572              168.0h      0.0h    168.0h   42
+   2696             140.2h      8.2h    132.0h   35
+   13030            124.0h      0.0h    124.0h   31
+   2548             120.3h     12.3h    108.0h   30
+   1331             120.2h      8.2h    112.0h   30
+   1020             120.0h      0.0h    120.0h   30
+   1227             120.0h      0.0h    120.0h   30
+   1283             120.0h      0.0h    120.0h   30
+   13008            120.0h      0.0h    120.0h   30
+   13009            120.0h      0.0h    120.0h   30
+   13066            120.0h      0.0h    120.0h   30
+─────────────────────────────────────────────────────────────

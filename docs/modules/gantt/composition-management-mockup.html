@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROIS-AI · Composition Management Mockup</title>
+<style>
+:root {
+  --bg:           #0f1117;
+  --card:         #161b22;
+  --card-alt:     #1a2030;
+  --card-hover:   #1c2230;
+  --border:       #21272f;
+  --border-light: #1a2030;
+  --muted:        #94a3b8;
+  --muted-dim:    #4b5563;
+  --fg:           #e2e8f0;
+  --fg-dim:       #cbd5e1;
+  --primary:      #3b82f6;
+  --primary-dim:  #1d4ed8;
+  --primary-bg:   rgba(59,130,246,0.12);
+  --success:      #22c55e;
+  --warn:         #f59e0b;
+  --err:          #ef4444;
+  --sidebar-bg:   #131820;
+  --sidebar-border:#1e2530;
+  --sidebar-accent:#1e2d45;
+  --radius:       5px;
+  --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--fg); font-size: 12px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ─── Top Nav ─── */
+.top-nav {
+  height: 44px; background: var(--card); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3); flex-shrink: 0;
+}
+.logo { font-size: 13px; font-weight: 800; color: var(--primary); letter-spacing: -0.02em; padding: 0 14px 0 4px; border-right: 1px solid var(--border); margin-right: 8px; user-select: none; }
+.logo span { color: var(--muted); font-weight: 400; }
+.nav-item { display: flex; align-items: center; gap: 5px; height: 100%; padding: 0 14px; font-size: 12px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.1s; }
+.nav-item:hover { color: var(--fg); }
+.nav-item.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--primary-bg); border: 1px solid var(--primary); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--primary); }
+
+/* ─── Tab Bar ─── */
+.tab-bar { height: 34px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 6px; gap: 2px; flex-shrink: 0; }
+.tab { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border-radius: var(--radius); font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.1s; }
+.tab.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
+.tab:hover:not(.active) { background: rgba(255,255,255,0.04); color: var(--fg); }
+.tab-x { margin-left: 4px; opacity: 0.5; font-size: 11px; line-height: 1; }
+.tab-x:hover { opacity: 1; }
+
+/* ─── Workspace ─── */
+.workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+/* ─── Sidebar ─── */
+.sidebar { width: 192px; flex-shrink: 0; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-header { height: 36px; display: flex; align-items: center; padding: 0 10px; border-bottom: 1px solid var(--sidebar-border); flex-shrink: 0; }
+.sidebar-title { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--primary); flex: 1; }
+.sidebar-btn { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--muted-dim); cursor: pointer; }
+.sidebar-btn:hover { background: rgba(255,255,255,0.06); color: var(--muted); }
+.sidebar-section { padding: 8px 10px 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted-dim); }
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 4px 0; }
+.nav-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 12px; color: rgba(148,163,184,0.8); cursor: pointer; border-left: 2px solid transparent; transition: all 0.1s; }
+.nav-row:hover { background: rgba(255,255,255,0.04); color: var(--fg); }
+.nav-row.active { background: var(--sidebar-accent); color: var(--primary); font-weight: 600; border-left-color: var(--primary); }
+.nav-icon { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.7; }
+.nav-row.active .nav-icon { opacity: 1; }
+
+/* ─── Main content ─── */
+.main { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ─── Views ─── */
+.view { display: none; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+.view.active { display: flex; }
+
+/* ─── Rule Manager View (existing) ─── */
+.rule-view { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+.rule-list-panel { width: 240px; flex-shrink: 0; border-right: 1px solid var(--border); background: var(--card); display: flex; flex-direction: column; }
+.rule-list-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.rule-list-head span { font-size: 11px; font-weight: 700; }
+.btn-xs { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 4px; }
+.btn-primary { background: var(--primary-bg); color: var(--primary); }
+.btn-primary:hover { background: rgba(59,130,246,0.2); }
+.rule-card { margin: 6px 8px; padding: 8px 10px; background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
+.rule-card.active { border-color: var(--primary); background: var(--primary-bg); }
+.rule-card-name { font-size: 11px; font-weight: 600; }
+.rule-card-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.rule-card .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 700; background: rgba(34,197,94,0.15); color: var(--success); margin-top: 4px; }
+
+/* ─── Composition Load View ─── */
+.cl-view { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.filter-bar { background: var(--card); border-bottom: 1px solid var(--border); padding: 10px 16px; flex-shrink: 0; }
+.filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filter-row + .filter-row { margin-top: 6px; }
+.filter-label { font-size: 10px; color: var(--muted); white-space: nowrap; min-width: 80px; text-align: right; }
+.filter-input { height: 28px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 8px; color: var(--fg); font-size: 11px; min-width: 140px; flex: 1; max-width: 180px; }
+.filter-input:focus { outline: none; border-color: var(--primary); }
+.filter-select { height: 28px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 8px; color: var(--fg); font-size: 11px; min-width: 140px; }
+.filter-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.btn-sm { height: 28px; padding: 0 12px; border-radius: var(--radius); font-size: 11px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.btn-outline { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn-outline:hover { border-color: var(--muted); color: var(--fg); }
+.btn-blue { background: var(--primary); color: #fff; }
+.btn-blue:hover { background: var(--primary-dim); }
+.btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn-ghost:hover { background: rgba(255,255,255,0.05); color: var(--fg); }
+.btn-green { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
+.btn-green:hover { background: rgba(34,197,94,0.22); }
+
+.table-area { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.table-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.table-toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.table-wrap { flex: 1; overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+thead th { position: sticky; top: 0; background: var(--card); border-bottom: 1px solid var(--border); padding: 7px 10px; text-align: left; font-size: 10px; font-weight: 700; color: var(--muted); white-space: nowrap; z-index: 10; }
+thead th:first-child { padding-left: 16px; }
+tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.08s; }
+tbody tr:hover { background: var(--card-hover); }
+tbody td { padding: 6px 10px; color: var(--fg-dim); white-space: nowrap; }
+tbody td:first-child { padding-left: 16px; }
+.cell-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 700; }
+.cell-badge.a { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.cell-badge.fly { background: rgba(34,197,94,0.12); color: #4ade80; }
+.cell-badge.sby { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.action-link { color: var(--primary); cursor: pointer; font-size: 10px; font-weight: 600; }
+.action-link:hover { text-decoration: underline; }
+.action-del { color: var(--err); cursor: pointer; font-size: 10px; font-weight: 600; }
+.action-del:hover { text-decoration: underline; }
+.pagination { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.pagination span { font-size: 10px; color: var(--muted); }
+.page-btn { height: 24px; min-width: 24px; padding: 0 6px; border-radius: 4px; background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 11px; cursor: pointer; }
+.page-btn.active { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+.page-per { height: 24px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0 6px; color: var(--muted); font-size: 11px; margin-left: auto; }
+
+/* ─── Composition (Scheme) View ─── */
+.comp-view { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+/* Left tree panel */
+.comp-tree { width: 220px; flex-shrink: 0; border-right: 1px solid var(--border); background: var(--card); display: flex; flex-direction: column; }
+.comp-tree-head { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.search-box { flex: 1; height: 26px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 8px; color: var(--fg); font-size: 11px; }
+.search-box:focus { outline: none; border-color: var(--primary); }
+.tree-add-btn { width: 26px; height: 26px; border-radius: var(--radius); background: var(--primary-bg); border: 1px solid rgba(59,130,246,0.3); color: var(--primary); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; font-weight: 300; line-height: 1; flex-shrink: 0; }
+.tree-add-btn:hover { background: rgba(59,130,246,0.2); }
+.tree-body { flex: 1; overflow-y: auto; padding: 4px 0; }
+.tree-root { padding: 6px 12px 2px; font-size: 10px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px; }
+.tree-root::before { content: '▾'; font-size: 9px; }
+.tree-division { padding: 4px 12px 2px 20px; font-size: 10px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.tree-division::before { content: '▾'; font-size: 9px; }
+.tree-item { padding: 5px 12px 5px 32px; font-size: 11px; color: rgba(203,213,225,0.75); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.1s; }
+.tree-item:hover { background: rgba(255,255,255,0.04); color: var(--fg); }
+.tree-item.active { background: var(--sidebar-accent); color: var(--primary); font-weight: 600; }
+.tree-item-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; opacity: 0.6; }
+.tree-item .badge-sby { font-size: 9px; margin-left: auto; padding: 1px 5px; border-radius: 3px; background: rgba(245,158,11,0.15); color: #fbbf24; font-weight: 700; }
+
+/* Right detail panel */
+.comp-detail { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.comp-detail-header { padding: 12px 16px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.comp-detail-title { font-size: 13px; font-weight: 700; color: var(--fg); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.comp-detail-title .badge-hier { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(139,92,246,0.15); color: #a78bfa; }
+.info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 1px solid var(--border); border-left: 1px solid var(--border); margin-bottom: 0; }
+.info-cell { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); display: flex; align-items: stretch; }
+.info-cell-label { padding: 6px 10px; font-size: 10px; font-weight: 600; color: var(--muted); background: rgba(255,255,255,0.02); border-right: 1px solid var(--border); min-width: 80px; display: flex; align-items: center; }
+.info-cell-value { padding: 6px 10px; font-size: 11px; color: var(--fg); flex: 1; display: flex; align-items: center; }
+.info-cell-value.editable { cursor: text; }
+.info-cell-value.editable:hover { background: rgba(59,130,246,0.06); }
+.info-cell.span2 { grid-column: span 2; }
+.info-cell.span4 { grid-column: span 4; }
+
+/* Rank-Option grid */
+.rank-grid-area { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.rank-grid-toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.rank-grid-toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.btn-danger { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+.btn-danger:hover { background: rgba(239,68,68,0.2); }
+.rank-grid-wrap { flex: 1; overflow: auto; }
+.rank-table { border-collapse: collapse; min-width: 100%; }
+.rank-table th { position: sticky; top: 0; background: var(--card); border: 1px solid var(--border); padding: 7px 12px; text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); white-space: nowrap; z-index: 10; }
+.rank-table th.col-option { background: var(--card-alt); color: var(--muted-dim); font-size: 10px; text-align: left; padding-left: 16px; width: 80px; }
+.rank-table th.col-rank { color: var(--primary); min-width: 80px; }
+.rank-table td { border: 1px solid var(--border-light); padding: 0; text-align: center; }
+.rank-table td.td-option { background: var(--card-alt); padding: 8px 16px; font-size: 11px; font-weight: 600; color: var(--muted); text-align: left; white-space: nowrap; }
+.rank-cell { display: flex; align-items: center; justify-content: center; padding: 8px 12px; gap: 4px; }
+.rank-val { font-size: 14px; font-weight: 700; color: var(--fg); }
+.rank-extra { font-size: 10px; color: var(--muted); }
+.rank-cell:hover { background: rgba(59,130,246,0.06); cursor: pointer; }
+.rank-table tr.selected td { background: rgba(59,130,246,0.08); }
+.rank-table tr.selected td.td-option { background: rgba(59,130,246,0.12); color: var(--primary); }
+.checkbox { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); background: transparent; cursor: pointer; accent-color: var(--primary); }
+
+/* ─── Empty/placeholder ─── */
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); }
+.empty-state svg { opacity: 0.3; }
+.empty-state p { font-size: 12px; }
+
+/* ─── Nav icon SVGs ─── */
+.icon { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* ─── Divider ─── */
+.vr { width: 1px; background: var(--border); align-self: stretch; margin: 6px 0; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     TOP NAV
+══════════════════════════════════ -->
+<header class="top-nav">
+  <div class="logo">ROIS<span>·AI</span></div>
+  <div class="nav-item" onclick="switchModule('dashboard')">
+    <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+    Home
+  </div>
+  <div class="nav-item" onclick="switchModule('live')">
+    <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    Live
+  </div>
+  <div class="nav-item" onclick="switchModule('scenario')">
+    <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+    Scenario
+  </div>
+  <div class="nav-item active" id="nav-rule" onclick="switchModule('rule')">
+    <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    Rule
+  </div>
+  <div class="nav-item" onclick="switchModule('data')">
+    <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+    Data
+  </div>
+  <div class="nav-item" onclick="switchModule('system')">
+    <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+    System
+  </div>
+  <div class="nav-right">
+    <span style="font-size:10px;color:var(--muted-dim)">F8 · Admin</span>
+    <div class="avatar">YZ</div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════
+     TAB BAR
+══════════════════════════════════ -->
+<div class="tab-bar">
+  <div class="tab">
+    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+    Home
+  </div>
+  <div class="tab active">
+    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    Rule
+    <span class="tab-x">✕</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     WORKSPACE
+══════════════════════════════════ -->
+<div class="workspace">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Rule</span>
+      <div class="sidebar-btn" title="Collapse">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </div>
+    </div>
+    <div class="sidebar-section">Configuration</div>
+    <nav class="sidebar-nav">
+      <div class="nav-row" id="nav-rule-manager" onclick="switchView('rule-manager')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        Rule Manager
+      </div>
+      <div class="nav-row" id="nav-comp-load" onclick="switchView('comp-load')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+        Composition Load
+      </div>
+      <div class="nav-row active" id="nav-comp" onclick="switchView('comp')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0114 0"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/></svg>
+        Composition
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ── Main Content ── -->
+  <main class="main">
+
+    <!-- ════ VIEW: Rule Manager ════ -->
+    <div class="view" id="view-rule-manager">
+      <div class="rule-view">
+        <!-- Left: rule set list -->
+        <div class="rule-list-panel">
+          <div class="rule-list-head">
+            <span>Rule Sets</span>
+            <button class="btn-xs btn-primary">+ New Set</button>
+          </div>
+          <div style="padding:6px 0;">
+            <div class="rule-card active">
+              <div class="rule-card-name">F8 Standard</div>
+              <div class="rule-card-meta">47 rules · Modified 2026-04-12</div>
+              <span class="badge">Default</span>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-name">F8 Long-haul</div>
+              <div class="rule-card-meta">52 rules · Modified 2026-03-28</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-name">F8 Simulator</div>
+              <div class="rule-card-meta">31 rules · Modified 2026-02-15</div>
+            </div>
+          </div>
+        </div>
+        <!-- Right: placeholder -->
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;">
+          Rule set configuration panel (unchanged)
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ VIEW: Composition Load ════ -->
+    <div class="view" id="view-comp-load">
+      <div class="cl-view">
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="filter-row">
+            <span class="filter-label">Division</span>
+            <select class="filter-select" style="max-width:140px;">
+              <option>Please Select</option>
+              <option selected>P (Pilot)</option>
+              <option>C (Cabin)</option>
+            </select>
+            <span class="filter-label">Priority</span>
+            <input class="filter-input" placeholder="Enter priority…" style="max-width:120px;">
+            <span class="filter-label">Fleet</span>
+            <select class="filter-select" style="max-width:140px;">
+              <option>Please Select</option>
+              <option>A330</option>
+              <option>A321</option>
+              <option>B737</option>
+            </select>
+            <span class="filter-label">Flight No.</span>
+            <input class="filter-input" placeholder="e.g. FU1234" style="max-width:130px;">
+            <div class="filter-actions">
+              <button class="btn-sm btn-ghost">More ▾</button>
+              <button class="btn-sm btn-ghost">Reset</button>
+              <button class="btn-sm btn-blue">Search</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label">Sub Fleet</span>
+            <select class="filter-select" style="max-width:140px;"><option>Please Select</option></select>
+            <span class="filter-label">Flight Flag</span>
+            <select class="filter-select" style="max-width:140px;"><option>Please Select</option><option selected>A</option></select>
+            <span class="filter-label">Flight Assign.</span>
+            <select class="filter-select" style="max-width:140px;"><option>Please Select</option></select>
+          </div>
+        </div>
+
+        <!-- Table area -->
+        <div class="table-area">
+          <div class="table-toolbar">
+            <span style="font-size:11px;color:var(--muted)">Total <strong style="color:var(--fg)">39</strong> records</span>
+            <div class="table-toolbar-right">
+              <button class="btn-sm btn-ghost">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Refresh Log
+              </button>
+              <button class="btn-sm btn-ghost">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Refresh Comp
+              </button>
+              <div class="vr"></div>
+              <button class="btn-sm btn-green">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Add
+              </button>
+              <button class="btn-sm btn-ghost" title="Column config">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+              </button>
+              <button class="btn-sm btn-ghost" title="Export">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Filiale</th>
+                  <th>Division</th>
+                  <th>Priority</th>
+                  <th>Fleet</th>
+                  <th>Flight No.</th>
+                  <th>Sub Fleet</th>
+                  <th>Flt Flag</th>
+                  <th>Flt Assign.</th>
+                  <th>Svc Type</th>
+                  <th>Seg Type</th>
+                  <th>Load Factor%</th>
+                  <th>Pax Num</th>
+                  <th>Route</th>
+                  <th>Rest Facility</th>
+                  <th>DEP Time</th>
+                  <th>ARR Time</th>
+                  <th>Effective Date</th>
+                  <th>Expiry Date</th>
+                  <th>Day of Week</th>
+                  <th>Description</th>
+                  <th>BLH</th>
+                  <th>Composition</th>
+                  <th>Option</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>F8</td><td>P</td><td>1</td><td>*</td><td>*</td><td>*</td>
+                  <td><span class="cell-badge a">A</span></td>
+                  <td><span class="cell-badge fly">FLY</span></td>
+                  <td>*</td><td>*</td><td>*</td><td>*</td><td>—</td><td>—</td>
+                  <td>00:00–23:59</td><td>00:00–23:59</td>
+                  <td>2000-01-01</td><td>—</td><td>1234567</td>
+                  <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;">ULR</td>
+                  <td>16:00–99:00</td>
+                  <td style="color:var(--primary)">Double</td>
+                  <td>5 2FCN-1SFO-1FFO</td>
+                  <td><span class="action-link">Edit</span>&nbsp;<span class="action-del">Del</span></td>
+                </tr>
+                <tr>
+                  <td>F8</td><td>P</td><td>2</td><td>*</td><td>*</td><td>*</td>
+                  <td><span class="cell-badge a">A</span></td>
+                  <td><span class="cell-badge fly">FLY</span></td>
+                  <td>*</td><td>*</td><td>*</td><td>*</td>
+                  <td style="font-size:10px;max-width:120px;">2 FCN Flight Double / 2 FCN Flight Double</td>
+                  <td>—</td>
+                  <td>00:00–23:59</td><td>00:00–23:59</td>
+                  <td>2000-01-01</td><td>—</td><td>1234567</td>
+                  <td style="max-width:120px;">double crew / 2 FCN</td>
+                  <td>0:00–99:00</td>
+                  <td style="color:var(--primary)">Double</td>
+                  <td>5 2FCN-1SFO-1FFO</td>
+                  <td><span class="action-link">Edit</span>&nbsp;<span class="action-del">Del</span></td>
+                </tr>
+                <tr>
+                  <td>F8</td><td>P</td><td>2</td><td>*</td><td>*</td><td>*</td>
+                  <td><span class="cell-badge a">A</span></td>
+                  <td><span class="cell-badge fly">FLY</span></td>
+                  <td>*</td><td>*</td><td>*</td><td>*</td>
+                  <td style="font-size:10px;">Fixed 1/2/1</td>
+                  <td>—</td>
+                  <td>00:00–23:59</td><td>00:00–23:59</td>
+                  <td>2000-01-01</td><td>—</td><td>1234567</td>
+                  <td>77X YYZ double crew</td>
+                  <td>0:00–99:00</td>
+                  <td style="color:var(--primary)">Double</td>
+                  <td>1 1FCN-2SFO-1FFO</td>
+                  <td><span class="action-link">Edit</span>&nbsp;<span class="action-del">Del</span></td>
+                </tr>
+                <tr>
+                  <td>F8</td><td>P</td><td>3</td><td>*</td><td>*</td><td>*</td>
+                  <td><span class="cell-badge a">A</span></td>
+                  <td><span class="cell-badge fly">FLY</span></td>
+                  <td>*</td><td>*</td><td>*</td><td>*</td>
+                  <td>.CKG, CKG</td><td>—</td>
+                  <td>00:00–23:59</td><td>00:00–23:59</td>
+                  <td>2000-01-01</td><td>—</td><td>1234567</td>
+                  <td>CKG REDEYE</td>
+                  <td>0:00–99:00</td>
+                  <td style="color:var(--primary)">Double</td>
+                  <td>2 1FCN-2SFO-2FFO</td>
+                  <td><span class="action-link">Edit</span>&nbsp;<span class="action-del">Del</span></td>
+                </tr>
+                <tr>
+                  <td>F8</td><td>P</td><td>4</td><td>A332|A333</td><td>0121|0122</td><td>*</td>
+                  <td><span class="cell-badge a">A</span></td>
+                  <td><span class="cell-badge fly">FLY</span></td>
+                  <td>*</td><td>*</td><td>*</td><td>*</td>
+                  <td>—</td><td>—</td>
+                  <td>00:00–23:59</td><td>00:00–23:59</td>
+                  <td>2020-04-01</td><td>—</td><td>1234567</td>
+                  <td>—</td>
+                  <td>0:00–99:00</td>
+                  <td style="color:var(--primary)">Multiple</td>
+                  <td>1 1FCN-2SFO-1FFO</td>
+                  <td><span class="action-link">Edit</span>&nbsp;<span class="action-del">Del</span></td>
+                </tr>
+                <tr>
+                  <td>F8</td><td>P</td><td>5</td><td>*</td><td>*</td><td>*</td>
+                  <td><span class="cell-badge a">A</span></td>
+                  <td><span class="cell-badge fly">FLY</span></td>
+                  <td>*</td><td>*</td><td>*</td><td>*</td>
+                  <td>—</td><td>—</td>
+                  <td>00:00–23:59</td><td>00:00–23:59</td>
+                  <td>2000-01-01</td><td>—</td><td>1234567</td>
+                  <td>Standard</td>
+                  <td>0:00–99:00</td>
+                  <td style="color:var(--primary)">Single</td>
+                  <td>1 1FCN-1SFO-1FFO</td>
+                  <td><span class="action-link">Edit</span>&nbsp;<span class="action-del">Del</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <span>Total 39 records</span>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">›</button>
+            <select class="page-per">
+              <option>20 / page</option>
+              <option>50 / page</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ VIEW: Composition ════ -->
+    <div class="view active" id="view-comp">
+      <div class="comp-view">
+
+        <!-- Left: tree panel -->
+        <div class="comp-tree">
+          <div class="comp-tree-head">
+            <input class="search-box" placeholder="Search…">
+            <div class="tree-add-btn" title="New Composition">+</div>
+          </div>
+          <div class="tree-body">
+            <!-- Airline root -->
+            <div class="tree-root">F8 · FUNJET</div>
+
+            <!-- Pilot division -->
+            <div class="tree-division">P (Pilot)</div>
+            <div class="tree-item" onclick="selectComp(this, 'Single')">
+              <div class="tree-item-dot"></div>Single
+            </div>
+            <div class="tree-item" onclick="selectComp(this, 'Multiple')">
+              <div class="tree-item-dot"></div>Multiple
+            </div>
+            <div class="tree-item" onclick="selectComp(this, 'Double')">
+              <div class="tree-item-dot"></div>Double
+            </div>
+            <div class="tree-item active" onclick="selectComp(this, 'SBY')">
+              <div class="tree-item-dot"></div>SBY
+              <span class="badge-sby">SBY</span>
+            </div>
+            <div class="tree-item" onclick="selectComp(this, 'OVER')">
+              <div class="tree-item-dot"></div>OVER
+            </div>
+
+            <!-- Cabin division -->
+            <div class="tree-division">C (Cabin)</div>
+            <div class="tree-item" onclick="selectComp(this, 'Cabin-Std')">
+              <div class="tree-item-dot"></div>Standard
+            </div>
+            <div class="tree-item" onclick="selectComp(this, 'Cabin-SBY')">
+              <div class="tree-item-dot"></div>SBY
+              <span class="badge-sby">SBY</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: detail panel -->
+        <div class="comp-detail">
+
+          <!-- Header info grid -->
+          <div class="comp-detail-header">
+            <div class="comp-detail-title">
+              SBY
+              <span class="badge-hier">Standard (L1)</span>
+              <div style="margin-left:auto;display:flex;gap:6px;">
+                <button class="btn-sm btn-outline" style="font-size:10px;">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Edit
+                </button>
+                <button class="btn-sm btn-danger" style="font-size:10px;">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            <div class="info-grid">
+              <div class="info-cell">
+                <div class="info-cell-label">Name</div>
+                <div class="info-cell-value editable">SBY</div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Division</div>
+                <div class="info-cell-value">P (Pilot)</div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Priority</div>
+                <div class="info-cell-value editable">4</div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Display Order</div>
+                <div class="info-cell-value editable">4</div>
+              </div>
+              <div class="info-cell span2">
+                <div class="info-cell-label">Description</div>
+                <div class="info-cell-value editable">SBY composition</div>
+              </div>
+              <div class="info-cell span2">
+                <div class="info-cell-label">SBY Composition</div>
+                <div class="info-cell-value" style="color:var(--primary)">Linked</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rank-Option grid -->
+          <div class="rank-grid-area">
+            <div class="rank-grid-toolbar">
+              <span style="font-size:11px;color:var(--muted)">Rank × Option Matrix — <strong style="color:var(--fg)">5 options</strong> · <strong style="color:var(--fg)">4 ranks</strong></span>
+              <div class="rank-grid-toolbar-right">
+                <button class="btn-sm btn-danger">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                  Del Rank
+                </button>
+                <button class="btn-sm btn-danger">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                  Del Option
+                </button>
+                <div class="vr"></div>
+                <button class="btn-sm btn-green">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                  Add Rank
+                </button>
+                <button class="btn-sm btn-green">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                  Add Option
+                </button>
+              </div>
+            </div>
+
+            <div class="rank-grid-wrap">
+              <table class="rank-table" id="rankTable">
+                <thead>
+                  <tr id="rankHeaderRow">
+                    <th class="col-option" style="width:28px;"><input type="checkbox" class="checkbox" id="checkAll" onchange="toggleAll(this)"></th>
+                    <th class="col-option">Option</th>
+                    <!-- dynamic rank columns injected by JS -->
+                  </tr>
+                </thead>
+                <tbody id="rankBody">
+                  <!-- dynamic rows injected by JS -->
+                </tbody>
+              </table>
+            </div>
+            <!-- Empty-cell legend -->
+            <div style="padding:6px 16px;font-size:10px;color:var(--muted-dim);border-top:1px solid var(--border);flex-shrink:0;">
+              <span style="display:inline-block;width:8px;height:8px;border:1px dashed var(--muted-dim);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>
+              Empty cell = rank not included in this option's plan
+            </div>
+          </div><!-- /rank-grid-area -->
+
+        </div><!-- /comp-detail -->
+      </div><!-- /comp-view -->
+    </div><!-- /view-comp -->
+
+  </main>
+</div><!-- /workspace -->
+
+<script>
+// ─── View switching ───────────────────────────────────────────
+function switchView(view) {
+  const idMap = { 'rule-manager': 'nav-rule-manager', 'comp-load': 'nav-comp-load', 'comp': 'nav-comp' }
+  document.querySelectorAll('.nav-row').forEach(el => el.classList.remove('active'))
+  document.getElementById(idMap[view])?.classList.add('active')
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'))
+  document.getElementById('view-' + view)?.classList.add('active')
+}
+
+function selectComp(el, name) {
+  document.querySelectorAll('.tree-item').forEach(e => e.classList.remove('active'))
+  el.classList.add('active')
+  document.querySelector('.comp-detail-title').childNodes[0].textContent = name + ' '
+}
+
+// ─── Rank × Option dynamic matrix ────────────────────────────
+// Each rank: { code: string }
+// Each option: { id: number, cells: { [rankCode]: number|null } }
+let ranks = [
+  { code: 'CA' },
+  { code: 'FO' },
+  { code: 'PU' },
+  { code: 'FA' },
+]
+let options = [
+  { id: 1, cells: { CA: 2, FO: 1, PU: null, FA: 4 } },
+  { id: 2, cells: { CA: 2, FO: 2, PU: 1,    FA: 4 } },
+  { id: 3, cells: { CA: 2, FO: 1, PU: 1,    FA: 6 } },
+  { id: 4, cells: { CA: 2, FO: 1, PU: null, FA: 5 } },
+  { id: 5, cells: { CA: 1, FO: 1, PU: null, FA: 3 } },
+]
+let editingCell = null  // { optionId, rankCode, td }
+
+function renderMatrix() {
+  // Header
+  const headerRow = document.getElementById('rankHeaderRow')
+  // Keep first two th (checkbox + Option), rebuild rank cols
+  while (headerRow.children.length > 2) headerRow.removeChild(headerRow.lastChild)
+  ranks.forEach(r => {
+    const th = document.createElement('th')
+    th.className = 'col-rank'
+    th.style.cssText = 'min-width:80px;cursor:pointer;position:relative;'
+    th.innerHTML = `<span>${r.code}</span><span class="rank-del-btn" title="Delete rank" onclick="delRank('${r.code}',event)"style="position:absolute;top:2px;right:4px;font-size:9px;color:var(--err);opacity:0;cursor:pointer;">✕</span>`
+    th.addEventListener('mouseenter', () => th.querySelector('.rank-del-btn').style.opacity = '1')
+    th.addEventListener('mouseleave', () => th.querySelector('.rank-del-btn').style.opacity = '0')
+    headerRow.appendChild(th)
+  })
+
+  // Body
+  const body = document.getElementById('rankBody')
+  body.innerHTML = ''
+  options.forEach((opt, oi) => {
+    const tr = document.createElement('tr')
+    tr.dataset.optionId = opt.id
+
+    // Checkbox
+    const tdCb = document.createElement('td')
+    tdCb.className = 'td-option'
+    tdCb.style.padding = '6px 8px'
+    tdCb.innerHTML = `<input type="checkbox" class="checkbox row-check">`
+    tdCb.querySelector('input').addEventListener('change', syncCheckAll)
+    tr.appendChild(tdCb)
+
+    // Option label
+    const tdLabel = document.createElement('td')
+    tdLabel.className = 'td-option'
+    tdLabel.style.cssText = 'position:relative;'
+    tdLabel.innerHTML = `<span>Option ${oi + 1}</span><span class="rank-del-btn" title="Delete option" onclick="delOption(${opt.id},event)"style="position:absolute;top:50%;right:8px;transform:translateY(-50%);font-size:9px;color:var(--err);opacity:0;cursor:pointer;">✕</span>`
+    tdLabel.addEventListener('mouseenter', () => tdLabel.querySelector('.rank-del-btn').style.opacity = '1')
+    tdLabel.addEventListener('mouseleave', () => tdLabel.querySelector('.rank-del-btn').style.opacity = '0')
+    tr.appendChild(tdLabel)
+
+    // Rank cells
+    ranks.forEach(r => {
+      const td = document.createElement('td')
+      const val = opt.cells[r.code]
+      renderCell(td, opt.id, r.code, val)
+      tr.appendChild(td)
+    })
+
+    body.appendChild(tr)
+  })
+
+  // Update counter
+  document.querySelector('.rank-grid-toolbar span strong:last-child').textContent = ranks.length + ' ranks'
+  document.querySelector('.rank-grid-toolbar span strong:first-child').textContent = options.length + ' options'
+}
+
+function renderCell(td, optionId, rankCode, val) {
+  td.style.cssText = 'cursor:pointer;'
+  td.onclick = () => startEdit(td, optionId, rankCode)
+
+  if (val === null || val === undefined) {
+    td.innerHTML = `<div class="rank-cell empty-cell" style="justify-content:center;padding:8px 12px;min-height:36px;">
+      <span style="display:inline-block;width:14px;height:14px;border:1px dashed var(--muted-dim);border-radius:3px;opacity:0.4;"></span>
+    </div>`
+  } else {
+    td.innerHTML = `<div class="rank-cell" style="justify-content:center;padding:8px 12px;">
+      <span class="rank-val" style="font-size:15px;font-weight:700;">${val}</span>
+    </div>`
+  }
+  td.title = val === null ? 'Click to set value (empty = rank excluded)' : `${rankCode}: ${val} — click to edit`
+}
+
+function startEdit(td, optionId, rankCode) {
+  // Cancel any existing edit
+  if (editingCell) cancelEdit()
+  editingCell = { optionId, rankCode, td }
+
+  const opt = options.find(o => o.id === optionId)
+  const current = opt.cells[rankCode]
+
+  td.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;padding:4px 6px;">
+    <input id="cellInput" type="number" min="0" max="99" value="${current ?? ''}"
+      placeholder="—"
+      style="width:52px;height:28px;text-align:center;background:var(--bg);border:1px solid var(--primary);border-radius:4px;color:var(--fg);font-size:14px;font-weight:700;outline:none;">
+  </div>`
+
+  const input = td.querySelector('#cellInput')
+  input.focus()
+  input.select()
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commitEdit(input.value)
+    else if (e.key === 'Escape') cancelEdit()
+    else if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (input.value === '') commitEdit(null)  // set to null on empty
+    }
+    e.stopPropagation()
+  })
+  input.addEventListener('blur', () => setTimeout(() => commitEdit(input.value), 120))
+}
+
+function commitEdit(rawVal) {
+  if (!editingCell) return
+  const { optionId, rankCode, td } = editingCell
+  editingCell = null
+
+  const opt = options.find(o => o.id === optionId)
+  const parsed = rawVal === '' || rawVal === null ? null : parseInt(rawVal, 10)
+  opt.cells[rankCode] = (isNaN(parsed) || parsed === null) ? null : parsed
+  renderCell(td, optionId, rankCode, opt.cells[rankCode])
+}
+
+function cancelEdit() {
+  if (!editingCell) return
+  const { optionId, rankCode, td } = editingCell
+  editingCell = null
+  const opt = options.find(o => o.id === optionId)
+  renderCell(td, optionId, rankCode, opt.cells[rankCode])
+}
+
+function addRank() {
+  const code = prompt('Rank code (e.g. CA, FO, FA):')
+  if (!code || !code.trim()) return
+  const c = code.trim().toUpperCase()
+  if (ranks.find(r => r.code === c)) { alert('Rank already exists'); return }
+  ranks.push({ code: c })
+  options.forEach(o => o.cells[c] = null)
+  renderMatrix()
+}
+
+function delRank(code, e) {
+  e.stopPropagation()
+  if (!confirm(`Delete rank "${code}"? All values for this rank will be removed.`)) return
+  ranks = ranks.filter(r => r.code !== code)
+  options.forEach(o => delete o.cells[code])
+  renderMatrix()
+}
+
+function addOption() {
+  const nextId = options.length ? Math.max(...options.map(o => o.id)) + 1 : 1
+  const cells = {}
+  ranks.forEach(r => cells[r.code] = null)
+  options.push({ id: nextId, cells })
+  renderMatrix()
+}
+
+function delOption(id, e) {
+  e.stopPropagation()
+  options = options.filter(o => o.id !== id)
+  renderMatrix()
+}
+
+function delSelectedRanks() {
+  // Delete checked columns — use selected header checkboxes (not row checkboxes)
+  // For simplicity: prompt which rank
+  const code = prompt('Enter rank code to delete:')
+  if (!code) return
+  delRank(code.trim().toUpperCase(), { stopPropagation: () => {} })
+}
+
+function delSelectedOptions() {
+  const checked = [...document.querySelectorAll('.row-check:checked')]
+  if (!checked.length) { alert('Select at least one option row first'); return }
+  const ids = checked.map(cb => parseInt(cb.closest('tr').dataset.optionId))
+  if (!confirm(`Delete ${ids.length} option(s)?`)) return
+  options = options.filter(o => !ids.includes(o.id))
+  renderMatrix()
+}
+
+function toggleAll(cb) {
+  document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked)
+}
+function syncCheckAll() {
+  const all = document.querySelectorAll('.row-check')
+  const checked = document.querySelectorAll('.row-check:checked')
+  document.getElementById('checkAll').checked = all.length === checked.length
+  document.getElementById('checkAll').indeterminate = checked.length > 0 && checked.length < all.length
+}
+
+// Wire up toolbar buttons
+document.addEventListener('DOMContentLoaded', () => {
+  switchView('comp')
+  renderMatrix()
+
+  // Toolbar
+  const btns = document.querySelectorAll('.rank-grid-toolbar .btn-sm')
+  // Del Rank, Del Option, Add Rank, Add Option
+  btns[0].onclick = delSelectedRanks
+  btns[1].onclick = delSelectedOptions
+  btns[2].onclick = addRank
+  btns[3].onclick = addOption
+})
+</script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+// SIA_SUITE_SUMMARY_START
+// SuiteId: 6.11
+// Name: CC Layover Rest (Asia, DXB & AU Welfare)
+// SourceCsvRow: 93
+// Status: IMPLEMENTED
+// ImplementedCases:
+//   - SoftAlertFor0LocalNightsRest: Checks that a layover of ~15h with 0 LNs triggers a soft violation.
+//   - CompliantFor1LocalNightRest: Checks that a layover of ~35h with 1 LN is compliant.
+// Results:
+//   - TODO
+// SIA_SUITE_SUMMARY_END
+
+#include <gtest/gtest.h>
+
+#include "RuleEngine/rule/rule7421/AcopSlipPatternRule.h"
+#include "RuleEngine/rule/rule7421/AcopSlipPatternRuleParam.h"
+#include "RuleEngine/rule/framework/RuleInput.h"
+#include "RuleSystemDefine.h"
+#include "db/CrewDB.h"
+#include "orUtil/UtilFunc.h"
+#include "SIA_CommonTestConfig.h"
+
+#include <cstring>
+#include <memory>
+#include <string>
+#include <vector>
+
+// Forward declarations from rule7421_gtest.cpp
+namespace {
+DBRule makeAcopTableBRow(long long ruleId, int rowNum, const std::string& clause, const std::string& pattern,
+                         const std::string& slipStation, int priority, const std::string& dutyBefore,
+                         const std::string& dutyAfter, const std::string& reportTimeWindow,
+                         const std::string& prevSlipLocalNights, const std::string& prevSlipHadStandby,
+                         const std::string& minSlipHours, const std::string& minSlipLocalNights,
+                         const std::string& dutyAfterHours, const std::string& dutyAfterLocalNights,
+                         const std::string& dutyAfterLocalTime, const std::string& maxStandbyPeriods,
+                         const std::string& maxStandbyHours, const std::string& allowedDutyWithinSlip,
+                         const std::string& doAfterDuty, const std::string& extraCondition,
+                         const std::string& slipDepartDutyReportTime = "*", const std::string& group = "DEFAULT");
+}
+
+class SIA_6_11_LayoverRestAsiaDxbAuTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        _guard = std::make_unique<SIATest::SiaRuleParamGuard>();
+        RuleParams::GetInstancePtr()->setApplication(PAIRING_EDITOR);
+        _ctx = makeContext();
+        // From user spec: 1h report, 30m debrief, 1h transport (dropoff).
+        _pickupMin = 60;
+        _dropoffMin = 30 + 60;
+    }
+
+    void TearDown() override {
+        for (auto& kv : _ctx->airportCodeMap) {
+            delete kv.second;
+        }
+        _ctx->airportCodeMap.clear();
+        for (auto* v : _violations) {
+            delete v;
+        }
+    }
+
+    std::shared_ptr<CrewDataContext> makeContext() {
+        auto ctx = std::make_shared<CrewDataContext>(CREW_APP_TYPE_OR, false);
+        addAirport(ctx, "SIN", "SG", "SEA", 8 * 60);
+        addAirport(ctx, "PER", "AU", "AUS", 8 * 60);
+        ctx->airportZoneIdMap["SIN"] = "Asia/Singapore";
+        ctx->airportZoneIdMap["PER"] = "Australia/Perth";
+        ctx->airportUtcOffsetMap["SIN"] = 8 * 60;
+        ctx->airportUtcOffsetMap["PER"] = 8 * 60;
+        return ctx;
+    }
+
+    void addAirport(std::shared_ptr<CrewDataContext>& ctx, const char* code, const char* country, const char* category, int tzOffsetMinutes) {
+        auto* a = new DBAirport();
+        std::strncpy(a->airport, code, 3);
+        a->airport[3] = '\0';
+        std::strncpy(a->country, country, 2);
+        a->country[2] = '\0';
+        a->category = category;
+        a->utcOffsetMinutes = tzOffsetMinutes;
+        ctx->airportCodeMap[code] = a;
+    }
+
+    std::unique_ptr<Segment> makeFlight(const std::string& dep, const std::string& arr,
+                                        const std::string& depLocStr, const std::string& arrLocStr) {
+        auto seg = std::make_unique<Segment>();
+        seg->setDepStation(dep);
+        seg->setArrStation(arr);
+        seg->setIsOperating(true);
+
+        time_t depUtc = localStrToUtc(const_cast<char*>(depLocStr.c_str()), _ctx->airportCodeMap[dep]->utcOffsetMinutes);
+        time_t arrUtc = localStrToUtc(const_cast<char*>(arrLocStr.c_str()), _ctx->airportCodeMap[arr]->utcOffsetMinutes);
+        time_t depLoc = utcStrToUtc(const_cast<char*>(depLocStr.c_str()));
+        time_t arrLoc = utcStrToUtc(const_cast<char*>(arrLocStr.c_str()));
+
+        seg->setStartTimeUtcSch(depUtc);
+        seg->setEndTimeUtcSch(arrUtc);
+        seg->setStartTimeUtcAct(depUtc);
+        seg->setEndTimeUtcAct(arrUtc);
+        seg->setStartTimeLocSch(depLoc);
+        seg->setEndTimeLocSch(arrLoc);
+        seg->setStartTimeLocAct(depLoc);
+        seg->setEndTimeLocAct(arrLoc);
+        return seg;
+    }
+
+    std::unique_ptr<Duty> makeDuty(const std::vector<Segment*>& segments) {
+        auto duty = std::make_unique<Duty>(segments);
+        duty->setDepartureStation(segments.front()->getDepStation());
+        duty->setArrivalStation(segments.back()->getArrStation());
+        duty->setStartTimeUtcSch(segments.front()->getStartTimeUtcSch());
+        duty->setEndTimeUtcSch(segments.back()->getEndTimeUtcSch());
+        duty->setStartTimeLocSch(segments.front()->getStartTimeLocSch());
+        duty->setEndTimeLocSch(segments.back()->getEndTimeLocSch());
+        duty->setStartTimeUtcAct(segments.front()->getStartTimeUtcAct());
+        duty->setEndTimeUtcAct(segments.back()->getEndTimeUtcAct());
+        duty->setStartTimeLocAct(segments.front()->getStartTimeLocAct());
+        duty->setEndTimeLocAct(segments.back()->getEndTimeLocAct());
+        duty->setAssignment("FLY");
+        return duty;
+    }
+
+    void attachPairingNodes(Pairing& pairing) {
+        for (std::size_t i = 0; i < pairing.getNumDuties(); ++i) {
+            Duty* duty = pairing.getDuty(i);
+            if (!duty) {
+                continue;
+            }
+            createPairingNodeOfDuty(duty, _ctx.get(), &pairing);
+        }
+    }
+
+    void runRule(Pairing& pairing, const RuleInput& input) {
+        AcopSlipPatternRule rule(nullptr, input);
+        rule.setApplication(BATCH_LEGALITY);
+        rule.setDataContext(_ctx);
+        rule.setRuleViolation(&_violations);
+        rule.setViolations(&_violationMsgs);
+        rule.CheckRule(&pairing);
+    }
+
+    std::shared_ptr<CrewDataContext> _ctx;
+    std::vector<RULE_VIOLATION*> _violations;
+    std::vector<std::string> _violationMsgs;
+    int _pickupMin = 0;
+    int _dropoffMin = 0;
+    std::unique_ptr<SIATest::SiaRuleParamGuard> _guard;
+};
+
+TEST_F(SIA_6_11_LayoverRestAsiaDxbAuTest, SoftAlertFor0LocalNightsRest) {
+    RuleInput input;
+    // Soft rule: min 1 LN
+    input.dbRules.push_back(makeAcopTableBRow(7421006, 6, "AU_Welfare", "*", "PER", 1, "*", "*", "*", "*", "*", "35:00", "1", "*", "*", "*", "*", "*", "*", "0", "*"));
+    input.dbRules.back().overridebility = "S";
+    // Hard rule: min 0 LN
+    input.dbRules.push_back(makeAcopTableBRow(7421005, 5, "AU_ANR", "*", "PER", 2, "*", "*", "*", "*", "*", "14:00", "0", "*", "*", "*", "*", "*", "*", "0", "*"));
+    input.dbRules.back().overridebility = "H";
+    DBRule controlRow{};
+    controlRow.idRule = 7421005;
+    controlRow.function = 7421;
+    controlRow.tableNum = 2;
+    controlRow.rowNum = 1;
+    controlRow.params["Sby Reduces Rest and LN"] = "N";
+    controlRow.params["Rest Starts After"] = "TRANSPORT";
+    input.dbRules.push_back(controlRow);
+
+    std::vector<std::unique_ptr<Segment>> segStorage;
+    segStorage.push_back(makeFlight("SIN", "PER", "2025-12-12 10:45:00", "2025-12-12 15:55:00"));
+    auto duty1 = makeDuty({segStorage.back().get()});
+    duty1->setActualDropoffMin(_dropoffMin);
+
+    segStorage.push_back(makeFlight("PER", "SIN", "2025-12-13 09:10:00", "2025-12-13 14:35:00"));
+    auto duty2 = makeDuty({segStorage.back().get()});
+    duty2->setActualPickupMin(_pickupMin);
+
+    Pairing pairing({duty1.get(), duty2.get()});
+    pairing.setBase("SIN");
+    attachPairingNodes(pairing);
+
+    runRule(pairing, input);
+
+    ASSERT_EQ(_violations.size(), 1);
+    if (_violations.size() == 1) {
+        EXPECT_EQ(_violations[0]->ruleParamId, 742100000 + 6); // Soft violation
+    }
+}
+
+TEST_F(SIA_6_11_LayoverRestAsiaDxbAuTest, CompliantFor1LocalNightRest) {
+    RuleInput input;
+    // Soft rule: min 1 LN
+    input.dbRules.push_back(makeAcopTableBRow(7421006, 6, "AU_Welfare", "*", "PER", 1, "*", "*", "*", "*", "*", "35:00", "1", "*", "*", "*", "*", "*", "*", "0", "*"));
+    input.dbRules.back().overridebility = "S";
+    // Hard rule: min 0 LN
+    input.dbRules.push_back(makeAcopTableBRow(7421005, 5, "AU_ANR", "*", "PER", 2, "*", "*", "*", "*", "*", "14:00", "0", "*", "*", "*", "*", "*", "*", "0", "*"));
+    input.dbRules.back().overridebility = "H";
+    DBRule controlRow{};
+    controlRow.idRule = 7421005;
+    controlRow.function = 7421;
+    controlRow.tableNum = 2;
+    controlRow.rowNum = 1;
+    controlRow.params["Sby Reduces Rest and LN"] = "N";
+    controlRow.params["Rest Starts After"] = "TRANSPORT";
+    input.dbRules.push_back(controlRow);
+
+    std::vector<std::unique_ptr<Segment>> segStorage;
+    segStorage.push_back(makeFlight("SIN", "PER", "2025-12-12 10:45:00", "2025-12-12 15:55:00"));
+    auto duty1 = makeDuty({segStorage.back().get()});
+    duty1->setActualDropoffMin(_dropoffMin);
+
+    segStorage.push_back(makeFlight("PER", "SIN", "2025-12-14 05:45:00", "2025-12-14 11:10:00"));
+    auto duty2 = makeDuty({segStorage.back().get()});
+    duty2->setActualPickupMin(_pickupMin);
+
+    Pairing pairing({duty1.get(), duty2.get()});
+    pairing.setBase("SIN");
+    attachPairingNodes(pairing);
+
+    runRule(pairing, input);
+    
+    EXPECT_TRUE(_violations.empty());
+}
+
+
+// Minimal copy of makeAcopTableBRow from rule7421_gtest.cpp to make this file self-contained.
+namespace {
+DBRule makeAcopTableBRow(long long ruleId, int rowNum, const std::string& clause, const std::string& pattern,
+                         const std::string& slipStation, int priority, const std::string& dutyBefore,
+                         const std::string& dutyAfter, const std::string& reportTimeWindow,
+                         const std::string& prevSlipLocalNights, const std::string& prevSlipHadStandby,
+                         const std::string& minSlipHours, const std::string& minSlipLocalNights,
+                         const std::string& dutyAfterHours, const std::string& dutyAfterLocalNights,
+                         const std::string& dutyAfterLocalTime, const std::string& maxStandbyPeriods,
+                         const std::string& maxStandbyHours, const std::string& allowedDutyWithinSlip,
+                         const std::string& doAfterDuty, const std::string& extraCondition,
+                         const std::string& slipDepartDutyReportTime, const std::string& group) {
+    auto deriveSlipIsOperating = [](const std::string& dutyAssignmentFilter) -> std::string {
+        const std::string trimmedUpper = strToUpper(trim(dutyAssignmentFilter));
+        if (trimmedUpper.empty() || trimmedUpper == "*") { return "*"; }
+        std::vector<std::string> tokens;
+        split(trimmedUpper.c_str(), '|', tokens);
+        for (const auto& t : tokens) {
+            const std::string token = strToUpper(trim(t));
+            if (token == "FLY" || token == "MVO") { return "Y"; }
+        }
+        if (std::find_if(tokens.begin(), tokens.end(), [](const std::string& t){ return strToUpper(trim(t)) == "MVP"; }) != tokens.end()) {
+            return "N";
+        }
+        return "*";
+    };
+
+    DBRule rule{};
+    rule.idRule = ruleId;
+    rule.function = 7421;
+    rule.tableNum = 1;
+    rule.rowNum = rowNum;
+    rule.idRuleParam = 742100000 + rowNum;
+    rule.overridebility = "H";
+    rule.severity = 2;
+    rule.reference = "SQ";
+    rule.params["Clause"] = clause;
+    rule.params["Pattern"] = pattern;
+    rule.params["Slip station"] = slipStation;
+    rule.params["Group"] = group;
+    rule.params["Priority"] = std::to_string(priority);
+    rule.params["Slip Arr Is Operating"] = deriveSlipIsOperating(dutyBefore);
+    rule.params["Slip Dep Is Operating"] = deriveSlipIsOperating(dutyAfter);
+    rule.params["Duty Assignment before slip"] = "*";
+    rule.params["Duty Assignment after slip"] = "*";
+    rule.params["Reporting time at base"] = reportTimeWindow;
+    rule.params["Previous Slip Local Nights"] = prevSlipLocalNights;
+    rule.params["Previous Slip had standby"] = prevSlipHadStandby;
+    rule.params["Min slip hours"] = minSlipHours;
+    rule.params["Min slip local nights"] = minSlipLocalNights;
+    rule.params["Min Slip Dep Time after LN"] = slipDepartDutyReportTime;
+    rule.params["Duty After Hours"] = dutyAfterHours;
+    rule.params["Duty After Local Nights"] = dutyAfterLocalNights;
+    rule.params["Duty Time After LN"] = dutyAfterLocalTime;
+    rule.params["Max Standby periods"] = maxStandbyPeriods;
+    rule.params["Max standby hours"] = maxStandbyHours;
+    rule.params["Allowed duty within slip"] = allowedDutyWithinSlip;
+    rule.params["DO after duty"] = doAfterDuty;
+    rule.params["Extra Condition"] = extraCondition;
+    return rule;
+}
+}

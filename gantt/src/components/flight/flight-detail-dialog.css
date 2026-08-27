@@ -1,0 +1,379 @@
+/* ═══════════════════════════════════════════════════════
+   Flight Detail Dialog
+   - Layout / typography mirrors docs/modules/gantt/flight-detail-modal.html
+   - All surface / text / primary tokens derive from packages/ui/src/styles/globals.css
+     (Ocean Blue / Dark Pro / Emerald Green / Sunset Orange / Slate Gray)
+   - Dialog-internal tokens use --fdd- prefix to avoid shadowing system tokens
+     (`--card: hsl(var(--card))` is a self-reference and renders as invalid/transparent).
+═══════════════════════════════════════════════════════ */
+
+.flight-detail-dialog-root {
+  --fdd-font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --fdd-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --fdd-r: 6px; --fdd-rs: 4px; --fdd-r2: 3px;
+
+  /* Categorical rank colors — fixed across all themes */
+  --fdd-clr-ca: #3b82f6;
+  --fdd-clr-fo: #a855f7;
+  --fdd-clr-ifd: #06b6d4;
+  --fdd-clr-fa: #f97316;
+
+  /* Surface / text / primary — derived from system HSL tokens */
+  --fdd-card:         hsl(var(--card));
+  --fdd-card-hi:      hsl(var(--accent));
+  --fdd-panel:        hsl(var(--secondary));
+  --fdd-muted:        hsl(var(--muted));
+  --fdd-border:       hsl(var(--border));
+  --fdd-border-soft:  hsl(var(--border) / 0.5);
+  --fdd-sep:          hsl(var(--border) / 0.7);
+  --fdd-fg:           hsl(var(--foreground));
+  --fdd-fg-sec:       hsl(var(--muted-foreground));
+  --fdd-fg-dim:       hsl(var(--muted-foreground) / 0.65);
+  --fdd-label:        hsl(var(--muted-foreground) / 0.85);
+  --fdd-primary:      hsl(var(--primary));
+  --fdd-primary-fg:   hsl(var(--primary-foreground));
+  --fdd-primary-dim:  hsl(var(--primary) / 0.12);
+  --fdd-primary-glow: hsl(var(--primary) / 0.25);
+  --fdd-primary-bdr:  hsl(var(--primary) / 0.30);
+  --fdd-row-hover:    hsl(var(--foreground) / 0.04);
+  --fdd-row-stripe:   hsl(var(--foreground) / 0.02);
+  --fdd-thead-bg:     hsl(var(--muted));
+
+  /* Status semantics — light theme defaults */
+  --fdd-green:      #16a34a;
+  --fdd-green-dim:  rgba(22, 163, 74, 0.10);
+  --fdd-green-bdr:  rgba(22, 163, 74, 0.25);
+  --fdd-amber:      #d97706;
+  --fdd-amber-dim:  rgba(217, 119, 6, 0.10);
+  --fdd-amber-bdr:  rgba(217, 119, 6, 0.25);
+  --fdd-red:        #dc2626;
+  --fdd-red-dim:    rgba(220, 38, 38, 0.10);
+  --fdd-red-bdr:    rgba(220, 38, 38, 0.25);
+  --fdd-sky:        #0284c7;
+  --fdd-sky-dim:    rgba(2, 132, 199, 0.10);
+  --fdd-sky-bdr:    rgba(2, 132, 199, 0.20);
+
+  /* Surface accents */
+  --fdd-overlay:    hsl(220 30% 8% / 0.55);
+  --fdd-shadow:     0 20px 60px rgba(0, 0, 0, 0.18), 0 4px 20px rgba(0, 0, 0, 0.10);
+  --fdd-shadow-sm:  0 2px 8px rgba(0, 0, 0, 0.08);
+
+  font-family: var(--fdd-font);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fdd-fg);
+}
+
+/* Dark mode: brighter status colors, deeper overlay/shadow */
+.dark .flight-detail-dialog-root {
+  --fdd-green:      #22c55e;
+  --fdd-green-dim:  rgba(34, 197, 94, 0.12);
+  --fdd-green-bdr:  rgba(34, 197, 94, 0.25);
+  --fdd-amber:      #f59e0b;
+  --fdd-amber-dim:  rgba(245, 158, 11, 0.12);
+  --fdd-amber-bdr:  rgba(245, 158, 11, 0.25);
+  --fdd-red:        #ef4444;
+  --fdd-red-dim:    rgba(239, 68, 68, 0.12);
+  --fdd-red-bdr:    rgba(239, 68, 68, 0.25);
+  --fdd-sky:        #38bdf8;
+  --fdd-sky-dim:    rgba(56, 189, 248, 0.12);
+  --fdd-sky-bdr:    rgba(56, 189, 248, 0.20);
+
+  --fdd-overlay:    rgba(0, 0, 0, 0.65);
+  --fdd-shadow:     0 20px 60px rgba(0, 0, 0, 0.7), 0 4px 20px rgba(0, 0, 0, 0.5);
+  --fdd-shadow-sm:  0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* SVG defaults */
+.flight-detail-dialog-root svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Badges (duration row + composition) */
+.flight-detail-dialog-root .badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 7px; border-radius: 99px;
+  font-size: 10px; font-weight: 600; letter-spacing: .03em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.flight-detail-dialog-root .badge-full    { background: var(--fdd-green-dim); color: var(--fdd-green); border: 1px solid var(--fdd-green-bdr) }
+.flight-detail-dialog-root .badge-partial { background: var(--fdd-amber-dim); color: var(--fdd-amber); border: 1px solid var(--fdd-amber-bdr) }
+.flight-detail-dialog-root .badge-cancel  { background: var(--fdd-red-dim);   color: var(--fdd-red);   border: 1px solid var(--fdd-red-bdr) }
+.flight-detail-dialog-root .badge-type    { background: var(--fdd-sky-dim);   color: var(--fdd-sky);   border: 1px solid var(--fdd-sky-bdr) }
+.flight-detail-dialog-root .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor }
+
+/* ═══ BODY (scrolls inside AppDialog body) ═══ */
+.flight-detail-dialog-root .mbody {
+  display: flex; flex-direction: column;
+}
+
+/* Section labels */
+.flight-detail-dialog-root .sec-label {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 16px 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--fdd-fg-dim);
+}
+.flight-detail-dialog-root .sec-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--fdd-sep);
+}
+
+/* Flight info */
+.flight-detail-dialog-root .flt-info { padding: 0 16px 4px }
+
+.flight-detail-dialog-root .route-banner {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 10px;
+  background: var(--fdd-card-hi);
+  border: 1px solid var(--fdd-border);
+  border-radius: var(--fdd-r);
+  padding: 5px 16px;
+  position: relative; overflow: hidden;
+}
+.flight-detail-dialog-root .route-banner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--fdd-primary-dim) 0%, transparent 60%);
+  pointer-events: none;
+}
+.flight-detail-dialog-root .route-arp { display: flex; flex-direction: column; align-items: center; gap: 2px; z-index: 1 }
+.flight-detail-dialog-root .route-arp.end { align-items: flex-end }
+.flight-detail-dialog-root .route-arp-code {
+  font-family: var(--fdd-mono); font-size: 22px; font-weight: 700;
+  color: var(--fdd-fg); letter-spacing: .05em; line-height: 1;
+}
+.flight-detail-dialog-root .route-arp-name { font-size: 10px; color: var(--fdd-fg-sec) }
+
+.flight-detail-dialog-root .route-arrow {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; z-index: 1; padding: 0 16px;
+}
+.flight-detail-dialog-root .route-line {
+  width: 100%; display: flex; align-items: center; gap: 0;
+  color: var(--fdd-fg-dim);
+}
+.flight-detail-dialog-root .route-line-bar { flex: 1; height: 1px; background: currentColor; opacity: .4 }
+.flight-detail-dialog-root .route-line svg { width: 16px; height: 16px; opacity: .7 }
+.flight-detail-dialog-root .route-flt {
+  font-family: var(--fdd-mono); font-size: 13px; font-weight: 700; color: var(--fdd-primary);
+  letter-spacing: .06em;
+}
+.flight-detail-dialog-root .route-sub { font-size: 10px; color: var(--fdd-fg-dim); text-align: center }
+
+/* Times grid */
+.flight-detail-dialog-root .times-grid { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 0 }
+.flight-detail-dialog-root .times-sep { background: var(--fdd-sep) }
+.flight-detail-dialog-root .times-col { padding: 0 4px }
+.flight-detail-dialog-root .times-col:first-child { padding-left: 0 }
+.flight-detail-dialog-root .times-col:last-child  { padding-right: 0; padding-left: 12px }
+.flight-detail-dialog-root .times-col-hdr {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--fdd-fg-dim);
+}
+.flight-detail-dialog-root .times-col-hdr-dot { width: 6px; height: 6px; border-radius: 50% }
+.flight-detail-dialog-root .dep-dot { background: var(--fdd-primary) }
+.flight-detail-dialog-root .arv-dot { background: var(--fdd-green) }
+.flight-detail-dialog-root .time-row {
+  display: flex; align-items: center;
+  height: 22px; padding: 0 6px;
+  border-radius: var(--fdd-r2);
+  gap: 8px;
+}
+.flight-detail-dialog-root .time-row:hover { background: var(--fdd-row-hover) }
+.flight-detail-dialog-root .time-lbl {
+  font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--fdd-label); width: 32px; flex-shrink: 0;
+}
+.flight-detail-dialog-root .time-val {
+  font-family: var(--fdd-mono); font-size: 12px; font-weight: 500; color: var(--fdd-fg);
+  flex: 1;
+}
+.flight-detail-dialog-root .time-val.actual { color: var(--fdd-green) }
+.flight-detail-dialog-root .time-val.estimated { color: var(--fdd-amber) }
+.flight-detail-dialog-root .time-val.delayed { color: var(--fdd-red) }
+.flight-detail-dialog-root .time-val.muted { color: var(--fdd-fg-dim) }
+.flight-detail-dialog-root .time-delta {
+  font-family: var(--fdd-mono); font-size: 10px;
+  padding: 0 4px; border-radius: 3px;
+}
+.flight-detail-dialog-root .time-delta.late  { color: var(--fdd-red);   background: var(--fdd-red-dim) }
+.flight-detail-dialog-root .time-delta.early { color: var(--fdd-green); background: var(--fdd-green-dim) }
+
+/* Duration row — tight vertical rhythm (minimize empty band above/below values) */
+.flight-detail-dialog-root .dur-row {
+  display: flex; align-items: center; gap: 0;
+  margin-top: 6px; padding-top: 4px;
+  border-top: 1px solid var(--fdd-sep);
+}
+.flight-detail-dialog-root .dur-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 1px 0 0;
+}
+.flight-detail-dialog-root .dur-item + .dur-item { border-left: 1px solid var(--fdd-sep) }
+.flight-detail-dialog-root .dur-lbl { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fdd-fg-dim); line-height: 1.2 }
+.flight-detail-dialog-root .dur-val { font-family: var(--fdd-mono); font-size: 16px; font-weight: 700; color: var(--fdd-fg); line-height: 1.15 }
+.flight-detail-dialog-root .dur-unit { font-size: 9px; color: var(--fdd-fg-sec); line-height: 1.2; min-height: 0 }
+.flight-detail-dialog-root .dur-unit:empty { display: none }
+
+/* Composition */
+.flight-detail-dialog-root .comp-section { padding: 0 16px 8px }
+.flight-detail-dialog-root .comp-grid { display: flex; gap: 8px; flex-wrap: wrap }
+.flight-detail-dialog-root .comp-card {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 4px 14px;
+  background: var(--fdd-card-hi); border: 1px solid var(--fdd-border);
+  border-radius: var(--fdd-rs); min-width: 80px;
+}
+.flight-detail-dialog-root .comp-card.full { background: var(--fdd-green-dim) }
+.flight-detail-dialog-root .comp-card.partial { background: var(--fdd-amber-dim) }
+.flight-detail-dialog-root .comp-card.empty { background: var(--fdd-red-dim) }
+.flight-detail-dialog-root .comp-rank {
+  font-family: var(--fdd-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: .08em; color: var(--fdd-fg-sec); line-height: 1.2;
+}
+.flight-detail-dialog-root .comp-rank.ca { color: var(--fdd-clr-ca) }
+.flight-detail-dialog-root .comp-rank.fo { color: var(--fdd-clr-fo) }
+.flight-detail-dialog-root .comp-rank.ifd { color: var(--fdd-clr-ifd) }
+.flight-detail-dialog-root .comp-rank.fa { color: var(--fdd-clr-fa) }
+.flight-detail-dialog-root .comp-nums {
+  display: flex; align-items: center; gap: 4px;
+  font-family: var(--fdd-mono); font-size: 11px; line-height: 1.2;
+}
+.flight-detail-dialog-root .comp-act { font-weight: 700; color: var(--fdd-fg) }
+.flight-detail-dialog-root .comp-act.over  { color: var(--fdd-amber) }
+.flight-detail-dialog-root .comp-act.under { color: var(--fdd-red) }
+.flight-detail-dialog-root .comp-frac { color: var(--fdd-fg-dim); font-size: 10px }
+
+/* Crew table — no internal scroll, defers to .mbody */
+.flight-detail-dialog-root .crew-section {
+  border-top: 1px solid var(--fdd-sep);
+  display: flex; flex-direction: column;
+}
+.flight-detail-dialog-root .crew-table-wrap {
+  /* No max-height / overflow on purpose: outer .mbody scrolls. */
+}
+.flight-detail-dialog-root .crew-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px;
+}
+.flight-detail-dialog-root .crew-table thead {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--fdd-panel);
+}
+.flight-detail-dialog-root .crew-table thead tr {
+  border-bottom: 1px solid var(--fdd-border);
+}
+.flight-detail-dialog-root .crew-table th {
+  padding: 7px 10px;
+  font-size: 9px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--fdd-fg-dim);
+  text-align: left; white-space: nowrap;
+  background: var(--fdd-thead-bg);
+}
+.flight-detail-dialog-root .crew-table th:first-child { padding-left: 16px }
+.flight-detail-dialog-root .crew-table th:last-child  { padding-right: 16px }
+.flight-detail-dialog-root .crew-table td {
+  padding: 8px 10px; border-bottom: 1px solid var(--fdd-border-soft);
+  vertical-align: middle; white-space: nowrap;
+}
+.flight-detail-dialog-root .crew-table td:first-child { padding-left: 16px }
+.flight-detail-dialog-root .crew-table td:last-child  { padding-right: 16px }
+.flight-detail-dialog-root .crew-table tbody tr:nth-child(even) { background: var(--fdd-row-stripe) }
+.flight-detail-dialog-root .crew-table tbody tr:hover { background: var(--fdd-row-hover) }
+.flight-detail-dialog-root .crew-table tbody tr:last-child td { border-bottom: none }
+
+.flight-detail-dialog-root .col-id     { width: 90px }
+.flight-detail-dialog-root .col-name   { min-width: 110px }
+.flight-detail-dialog-root .col-base   { width: 56px }
+.flight-detail-dialog-root .col-rank   { width: 96px }
+.flight-detail-dialog-root .col-acting { width: 96px }
+.flight-detail-dialog-root .col-source { width: 72px }
+
+.flight-detail-dialog-root .crew-id-val {
+  font-family: var(--fdd-mono); font-size: 11px; font-weight: 600;
+  color: var(--fdd-primary);
+  background: none; border: none; padding: 0; margin: 0;
+  cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.flight-detail-dialog-root .crew-id-val:hover {
+  color: var(--fdd-fg);
+}
+.flight-detail-dialog-root .crew-name-val { font-weight: 500; color: var(--fdd-fg) }
+.flight-detail-dialog-root .crew-base-val {
+  font-family: var(--fdd-mono); font-size: 11px; font-weight: 600;
+  color: var(--fdd-fg-sec); letter-spacing: .02em;
+}
+
+/* Rank pills — categorical colors, fixed across themes */
+.flight-detail-dialog-root .rank-pill {
+  display: inline-flex; align-items: center;
+  padding: 1px 7px; border-radius: 99px;
+  font-family: var(--fdd-mono); font-size: 10px; font-weight: 700; letter-spacing: .04em;
+}
+.flight-detail-dialog-root .rank-ca { background: rgba(59,130,246,.15);  color: var(--fdd-clr-ca); border: 1px solid rgba(59,130,246,.25) }
+.flight-detail-dialog-root .rank-fo { background: rgba(168,85,247,.15);  color: var(--fdd-clr-fo); border: 1px solid rgba(168,85,247,.25) }
+.flight-detail-dialog-root .rank-ifd { background: rgba(6,182,212,.15);  color: var(--fdd-clr-ifd); border: 1px solid rgba(6,182,212,.25) }
+.flight-detail-dialog-root .rank-fa { background: rgba(249,115,22,.15);  color: var(--fdd-clr-fa); border: 1px solid rgba(249,115,22,.25) }
+.flight-detail-dialog-root .rank-default { background: var(--fdd-muted); color: var(--fdd-fg-sec); border: 1px solid var(--fdd-border) }
+
+.flight-detail-dialog-root .source-chip {
+  display: inline-flex; align-items: center;
+  padding: 1px 6px; border-radius: var(--fdd-r2);
+  font-size: 10px; font-weight: 600; letter-spacing: .04em;
+  background: var(--fdd-muted); color: var(--fdd-fg-dim); border: 1px solid var(--fdd-border);
+}
+.flight-detail-dialog-root .source-chip.manual { color: var(--fdd-amber); background: var(--fdd-amber-dim); border-color: var(--fdd-amber-bdr) }
+.flight-detail-dialog-root .source-chip.system { color: var(--fdd-sky);   background: var(--fdd-sky-dim);   border-color: var(--fdd-sky-bdr)   }
+.flight-detail-dialog-root .source-chip.import { color: var(--fdd-green); background: var(--fdd-green-dim); border-color: var(--fdd-green-bdr) }
+
+.flight-detail-dialog-root .mono-val {
+  font-family: var(--fdd-mono); font-size: 11px; font-weight: 500; color: var(--fdd-fg-sec);
+}
+.flight-detail-dialog-root .mono-val.hi { color: var(--fdd-amber) }
+
+.flight-detail-dialog-root .unfilled-row td {
+  color: var(--fdd-fg-dim); font-style: italic;
+}
+.flight-detail-dialog-root .unfilled-warn {
+  font-size: 11px; color: var(--fdd-red); opacity: .8; font-style: normal;
+}
+
+/* Footer actions (rendered inside AppDialog footer via .flight-detail-dialog-root wrapper) */
+.flight-detail-dialog-root .mfooter-left { display: flex; align-items: center; gap: 8px; color: var(--fdd-fg-dim); font-size: 10px }
+.flight-detail-dialog-root .mfooter-left svg { width: 12px; height: 12px }
+.flight-detail-dialog-root .mfooter-right { display: flex; align-items: center; gap: 6px }
+
+.flight-detail-dialog-root .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  padding: 0 10px; height: 24px; border-radius: var(--fdd-rs);
+  font-size: 12px; font-weight: 500; line-height: 1; cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .12s, color .12s, border-color .12s, filter .12s, transform .12s;
+  white-space: nowrap; font-family: inherit;
+}
+.flight-detail-dialog-root .btn:disabled { opacity: .5; cursor: not-allowed }
+.flight-detail-dialog-root .btn:not(:disabled):active { transform: translateY(1px) }
+.flight-detail-dialog-root .btn-ghost {
+  background: transparent; color: var(--fdd-fg-sec); border-color: var(--fdd-border);
+}
+.flight-detail-dialog-root .btn-ghost:not(:disabled):hover { background: var(--fdd-row-hover); color: var(--fdd-fg) }
+.flight-detail-dialog-root .btn:focus-visible {
+  outline: 2px solid var(--fdd-primary); outline-offset: 2px;
+}
+.flight-detail-dialog-root .btn svg { width: 12px; height: 12px }
+
+/* Loading / error placeholder */
+.flight-detail-dialog-root .modal-status {
+  padding: 56px 16px;
+  text-align: center;
+  color: var(--fdd-fg-dim);
+  font-size: 13px;
+}
+.flight-detail-dialog-root .modal-status.error { color: var(--fdd-red) }

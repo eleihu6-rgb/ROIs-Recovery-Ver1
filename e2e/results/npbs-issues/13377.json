@@ -1,0 +1,66 @@
+{
+  "employeeId": "13377",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 2,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T1",
+      "code": 405,
+      "name": "Waive No Same Day Duty Starts"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T3",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 15 Consecutive Days Off In A Row",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13377_PBS-3324_T3-203_unsupported-input_20260625-055032-848.png"
+    },
+    {
+      "tier": "T4",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 14 Consecutive Days Off In A Row",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13377_PBS-3324_T4-203_unsupported-input_20260625-055033-971.png"
+    },
+    {
+      "tier": "T5",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 13 Consecutive Days Off In A Row",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13377_PBS-3324_T5-203_unsupported-input_20260625-055035-108.png"
+    },
+    {
+      "tier": "T6",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 12 Consecutive Days Off In A Row",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13377_PBS-3324_T6-203_unsupported-input_20260625-055036-214.png"
+    },
+    {
+      "tier": "T7",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 11 Consecutive Days Off In A Row",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13377_PBS-3324_T7-203_unsupported-input_20260625-055037-327.png"
+    }
+  ]
+}

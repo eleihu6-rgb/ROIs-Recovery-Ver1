@@ -1,0 +1,50 @@
+{
+  "employeeId": "379",
+  "category": "YVR-737-CA",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T5",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T7",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T1",
+      "name": "Waive No Same Day Duty Starts",
+      "code": 405,
+      "page": "line",
+      "predicate": "Waive No Same Day Duty Starts",
+      "reason": "exception: TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog') to be visible\u001b[22m\n",
+      "image": "image/pbs/379_PBS-3304_T1-405_exception_20260621-215528-149.png"
+    }
+  ]
+}

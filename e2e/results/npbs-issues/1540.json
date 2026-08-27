@@ -1,0 +1,54 @@
+{
+  "employeeId": "1540",
+  "category": "YYZ-737-IFD",
+  "context": "Default",
+  "totalProperties": 7,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T5",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T7",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T1",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition Minimum Days Off In A Row 3",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/1540_PBS-3311_T1-203_unsupported-input_20260625-061938-846.png"
+    },
+    {
+      "tier": "T3",
+      "name": "Max Consecutive Days On",
+      "code": 202,
+      "page": "days-off",
+      "predicate": "Set Condition Maximum Days On In A Row 2",
+      "reason": "unsupported-input: stepper for Max Consecutive Days On",
+      "image": "image/pbs/1540_PBS-3311_T3-202_unsupported-input_20260625-061941-649.png"
+    }
+  ]
+}

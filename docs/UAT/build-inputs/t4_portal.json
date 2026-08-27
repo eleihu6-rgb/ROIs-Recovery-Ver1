@@ -1,0 +1,655 @@
+{
+  "section": "Crew Portal",
+  "cases": [
+    {
+      "id": "T4-CP-001",
+      "feature_area": "Quick Start",
+      "help_ref": "Quick Start › PBS Portal overview",
+      "title": "Portal top navigation exposes all bidding pages",
+      "preconditions": "Crew is logged into PBS Portal for an active bid period.",
+      "steps": "1. Log in to PBS Portal.\n2. Read the top navigation.\n3. Open each page in turn: Dashboard, Bid, Reserve, Standing Bid, Award, Help.",
+      "expected": "All six pages are reachable from navigation: Dashboard shows bid period/profile/calendar, Bid holds Days Off/Pairing/Roster conditions, Reserve holds Reserve Preference, Standing Bid holds reusable conditions, Award shows published results, and Help returns to the manual.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-002",
+      "feature_area": "Quick Start",
+      "help_ref": "Quick Start › Before you begin",
+      "title": "Confirm bid-period context before adding a condition",
+      "preconditions": "Crew is logged in; an active bid window is open.",
+      "steps": "1. Open Dashboard and confirm the crew name and employee information for the active session.\n2. Read BID INFORMATION-LOCAL TIME and note bid start, bid end, and remaining time.\n3. Confirm the month shown in BIDDING CALENDAR.\n4. Decide whether the condition belongs to Current Bid or should be a reusable Standing Bid.",
+      "expected": "Identity, BID START/BID END/REMAINING, and calendar month are all displayed; crew can distinguish Current Bid from Standing Bid before proceeding to Bid, Reserve, or Standing Bid.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-003",
+      "feature_area": "Quick Start",
+      "help_ref": "Quick Start › Complete a Bid",
+      "title": "Complete the basic bidding flow and save a Current Bid condition",
+      "preconditions": "Bid window is open for the active period.",
+      "steps": "1. Open Dashboard and confirm the active bid period and calendar month.\n2. Open Bid; under ADD BID PROPERTIES select DAYS OFF.\n3. Select a property, complete its required fields, and choose one or more T1-T7 buttons.\n4. Select ADD BID and keep the dialog open while the button shows the pending state.\n5. Confirm the new condition appears under EXISTING BID PROPERTIES.",
+      "expected": "A saved row appears in EXISTING BID PROPERTIES with its category badge, condition summary, and Tier tags, confirming the condition is part of the Current Bid.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-004",
+      "feature_area": "Quick Start",
+      "help_ref": "Quick Start › Complete a Bid",
+      "title": "View the published Award at the end of the bidding flow",
+      "preconditions": "Results for the bid period have been published; crew previously saved bid conditions.",
+      "steps": "1. Open Award after results are published.\n2. Review the awarded roster and the duty blocks on the calendar.\n3. Select a duty to review its details.",
+      "expected": "Award shows the published roster and duty details for the period; the crew understands an Award is a result view produced only after publication, not immediately when a bid is saved.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-005",
+      "feature_area": "Dashboard",
+      "help_ref": "Dashboard › Overview",
+      "title": "Dashboard shows active bid-period context",
+      "preconditions": "Crew is logged in with a loaded bid period.",
+      "steps": "1. Open Dashboard.\n2. Confirm identity/contact in the left panel.\n3. Read BID INFORMATION-LOCAL TIME (BID START, BID END, REMAINING).\n4. Confirm the month in BIDDING CALENDAR and review MESSAGE CENTER pre-assigned duties.",
+      "expected": "Dashboard displays profile, bid window with start/end/remaining, current calendar month, and the MESSAGE CENTER pre-assigned duties panel; no fleet or sub-fleet pool counts are shown.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-006",
+      "feature_area": "Dashboard",
+      "help_ref": "Dashboard › User and bid information",
+      "title": "Verify crew identity and USER INFORMATION fields",
+      "preconditions": "Crew is logged in.",
+      "steps": "1. Open Dashboard and read the avatar, name, and email at the top of the left panel.\n2. In BID INFORMATION-LOCAL TIME confirm the bid window; in REMAINING confirm the coarse time left.\n3. In USER INFORMATION read BASE, FLEET, POSITION, SENIORITY, LANGUAGE, EXISTING CREDIT, TRAINING MONTH, and LAST LOGIN.",
+      "expected": "The active user is confirmed as the expected crew member; USER INFORMATION shows all profile fields (a dash where no value returned); the panel is read-only and REMAINING shows days/hours only, or Closed for a closed window.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-007",
+      "feature_area": "Dashboard",
+      "help_ref": "Dashboard › Read the bidding calendar",
+      "title": "Read BIDDING CALENDAR tiers, activity colors, and Days Off capacity badge",
+      "preconditions": "Crew has saved some Current Bid activity for the displayed month.",
+      "steps": "1. Confirm the month label and weekday headings above the grid.\n2. Read the T1-T7 rows and identify the highlighted active Tier.\n3. Review colored entries in date cells (green Days Off/Prefer Off, blue Pairing, yellow warning).\n4. Read the Days Off capacity badge at the bottom of a date cell, such as 23/33.",
+      "expected": "The calendar shows the active-Tier highlight, color-coded saved activity, and a requested/max capacity badge that is green when requested is below max, yellow when equal, and red when above max.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-008",
+      "feature_area": "Dashboard",
+      "help_ref": "Dashboard › Pre-assigned duties",
+      "title": "Read MESSAGE CENTER pre-assigned duty counts and details",
+      "preconditions": "Roster data with pre-assigned duties is loaded for the period.",
+      "steps": "1. Open Dashboard and find MESSAGE CENTER on the right.\n2. Read Pre-assigned Duties totals and Covered days.\n3. Read the type rows (Pairing, Days Off, Reserve, Training, Deadhead, Unavailable, Other).\n4. Scroll Duty Details and read a duty's label, date range, type tag, and time.",
+      "expected": "MESSAGE CENTER shows total duties, covered days, per-type counts with matching calendar colors, and a scrollable Duty Details list; the panel is read-only and is shown independently of whether an Award has been published.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-009",
+      "feature_area": "Bid",
+      "help_ref": "Bid › Overview",
+      "title": "Bid workspace holds Days Off, Pairing, and Roster in one Existing list",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Open Bid.\n2. Review EXISTING BID PROPERTIES and the Pairing toolbar (REFRESH, VIEW RULES, SEARCH PAIRINGS).\n3. Open ADD BID PROPERTIES and confirm FAVORITED PROPERTIES, DAYS OFF, PAIRING, and ROSTER are available.\n4. Type into Search Bid Properties.",
+      "expected": "Bid shows one shared EXISTING BID PROPERTIES list for the active Tier, the Pairing toolbar actions, and the ADD BID PROPERTIES categories; Search Bid Properties filters the property list within the selected category.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-010",
+      "feature_area": "Bid",
+      "help_ref": "Bid › Use the bidding calendar",
+      "title": "Select a Tier and read Days Off capacity in BIDDING CALENDAR",
+      "preconditions": "Bid window is open; calendar loaded.",
+      "steps": "1. In BIDDING CALENDAR read the Current period status (open + time remaining) and Month.\n2. Select a T1-T7 tier to set the active Current Bid Tier.\n3. Read a date cell Days Off capacity badge such as 23/33.\n4. Note the badge color relative to the max.",
+      "expected": "The selected tier becomes the active Current Bid context, the heatmap summarizes activity for that tier, and the capacity badge shows requested/max with green below max, yellow equal, red above max (guidance only, not an Award guarantee).",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-011",
+      "feature_area": "Bid",
+      "help_ref": "Bid › Use the bidding calendar",
+      "title": "Request Days Off by weekday and collapse the calendar",
+      "preconditions": "Bid window is open; a Tier is selected.",
+      "steps": "1. Select a T1-T7 tier.\n2. Select a weekday heading to request Days Off on the matching dates in the displayed month.\n3. Confirm the saved activity appears on those dates.\n4. Use the left arrow to collapse the calendar, then the calendar button to expand it again.",
+      "expected": "The weekday action creates Days Off requests on the matching dates and the calendar plus related Current Bid view refresh with the saved change; the collapse/expand choice is remembered in the browser.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-012",
+      "feature_area": "Bid",
+      "help_ref": "Bid › Add Bid properties",
+      "title": "Add a Days Off Current Bid condition from ADD BID PROPERTIES",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Open Bid and review EXISTING BID PROPERTIES for similar conditions.\n2. Under ADD BID PROPERTIES select DAYS OFF.\n3. Optionally filter with Search Bid Properties, then select the add button on a property row.\n4. Complete every REQUIRED section and select one or more T1-T7 buttons.\n5. Select ADD BID and wait for the save to finish.",
+      "expected": "After the server confirms, a new Days Off row appears under EXISTING BID PROPERTIES with its category, summary, and Tier tags; if ADD BID stays unavailable, required fields or a missing Tier are the cause.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-013",
+      "feature_area": "Bid",
+      "help_ref": "Bid › Add Bid properties",
+      "title": "Add a Roster (Mixed Line Bid) condition",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Under ADD BID PROPERTIES select ROSTER.\n2. Select Mixed Line Bid and open its Configure dialog.\n3. Choose Reserve Only or Pairing Only (Mixed Line is the default and saves no 427 bid).\n4. Select at least one T1-T7 and select ADD BID.",
+      "expected": "A Reserve Only or Pairing Only roster condition is saved under EXISTING BID PROPERTIES; choosing the default Mixed Line saves no 427 bid.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-014",
+      "feature_area": "Bid",
+      "help_ref": "Bid › Configure Pairing Preference",
+      "title": "Configure Pairing Preference by searching and selecting pairing rows",
+      "preconditions": "Bid window is open; pairing pool loaded.",
+      "steps": "1. From ADD PAIRING PROPERTIES select Pairing Preference to open Configure Pairing Bid.\n2. Select the active TIERS (at least one).\n3. Choose MODE (Award or Avoid) and QUANTIFIER (Any or Every) when shown.\n4. Use the search box to narrow the pairing list by pairing number, base, route, or rank text.\n5. Select one or more pairing rows and confirm the selected count/chips.\n6. Select ADD BID.",
+      "expected": "ADD BID stays disabled until at least one pairing row is selected; after saving, a Pairing Preference row appears in EXISTING PAIRING PROPERTIES reflecting the selected pairings, mode, and tiers.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-015",
+      "feature_area": "Bid",
+      "help_ref": "Bid › Configure Pairing Preference",
+      "title": "Narrow the pairing list with Pairing Filters before saving",
+      "preconditions": "Configure Pairing Bid is open for Pairing Preference.",
+      "steps": "1. In the pairing list click Filters to open Pairing Filters.\n2. Set conditions such as Pairing start dates, Check-in/Check-out, Length, Route station, Credit, or Redeye/DHD.\n3. Click Apply Filters.\n4. Select the matching pairing rows, then click ADD BID.",
+      "expected": "Pairing Filters narrow the selectable list only (they do not save a bid); the saved bid comes from the selected rows, and Clear All resets filter fields without saving.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-016",
+      "feature_area": "Bid",
+      "help_ref": "Bid › Review, edit, and delete",
+      "title": "Preview, edit, and delete a saved Current Bid condition",
+      "preconditions": "At least one saved condition exists in the current Tier view.",
+      "steps": "1. Set the active Tier in BIDDING CALENDAR to match the condition.\n2. Read the category badge, summary, and Tier tags in EXISTING BID PROPERTIES.\n3. Select PREVIEW on a supported Pairing row to see matching evidence.\n4. Select EDIT, change required fields or Tier selection, and select UPDATE BID.\n5. Use the delete button and confirm the row no longer appears.",
+      "expected": "The Existing list and summary refresh after a successful update or delete; a condition assigned only to another Tier is absent from the current Tier view (change the active Tier before deciding it is missing).",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-017",
+      "feature_area": "Bid",
+      "help_ref": "Bid › Favorites and Search Pairings",
+      "title": "Reuse a Favorite and search matching pairings",
+      "preconditions": "At least one Favorite template exists; pairing rules are configured.",
+      "steps": "1. Open FAVORITED PROPERTIES under ADD BID PROPERTIES.\n2. Select a Favorite, review its condition, and choose one or more SELECT TX buttons.\n3. Select ADD TO BID and confirm the new row under EXISTING BID PROPERTIES.\n4. Select VIEW RULES to review active rules, or SEARCH PAIRINGS to search with current rules (ALL PAIRINGS to browse unfiltered).",
+      "expected": "Adding a Favorite creates a new Existing Bid row with the chosen tiers; SEARCH PAIRINGS returns pairings matching the active rules; updating a Favorite changes only the template, not previously created Existing rows.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-018",
+      "feature_area": "Reserve",
+      "help_ref": "Reserve › Overview",
+      "title": "Reserve page combines Reserve Preference with the coverage calendar",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Open Reserve.\n2. Locate ADD RESERVE PREFERENCE, RESERVE COVERAGE, and EXISTING RESERVE PROPERTIES.\n3. Read the Need and Off values on a coverage date.",
+      "expected": "Reserve shows RESERVE PREFERENCE as the only Current Reserve condition, the coverage calendar with per-date Need/Off, and the EXISTING RESERVE PROPERTIES list with tier assignments; reusable reserve conditions are maintained separately in Standing Bid.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-019",
+      "feature_area": "Reserve",
+      "help_ref": "Reserve › Add and manage Reserve Preference",
+      "title": "Add a Reserve Preference with short-call type, date scope, and tiers",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Open Reserve and review RESERVE COVERAGE.\n2. Select ADD RESERVE PREFERENCE.\n3. In Configure Reserve Preference choose SHORT-CALL TYPE (e.g. PRAM).\n4. Choose DATE SCOPE and complete any required date fields.\n5. Select one or more T1-T7 under APPLY TO TIERS and select ADD BID.",
+      "expected": "A saved row appears under EXISTING RESERVE PROPERTIES with the selected short-call type, date scope, and tier assignment; if ADD BID is unavailable, SHORT-CALL TYPE, DATE SCOPE, or APPLY TO TIERS is incomplete.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-020",
+      "feature_area": "Reserve",
+      "help_ref": "Reserve › Add and manage Reserve Preference",
+      "title": "Edit and delete an existing Reserve Preference row",
+      "preconditions": "At least one Reserve Preference row exists.",
+      "steps": "1. In EXISTING RESERVE PROPERTIES locate the row.\n2. Use its edit action, change the short-call type, date scope, or tiers, and confirm.\n3. Use the delete action on a row and wait for the save to finish.",
+      "expected": "The edited row reflects the updated short-call type/date scope/tiers, and the deleted row is removed from EXISTING RESERVE PROPERTIES after the draft updates.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-021",
+      "feature_area": "Reserve",
+      "help_ref": "Reserve › Add Reserve Preference (duplicate guard)",
+      "title": "Duplicate Reserve Preference combination is warned, not duplicated",
+      "preconditions": "A Reserve Preference already exists for a given call type, date scope, and tier.",
+      "steps": "1. Select ADD RESERVE PREFERENCE.\n2. Choose the same SHORT-CALL TYPE, DATE SCOPE, and APPLY TO TIERS as an existing row.\n3. Select ADD BID.",
+      "expected": "The Portal shows a duplicate warning instead of creating a second identical row; EXISTING RESERVE PROPERTIES still contains only the original row.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-022",
+      "feature_area": "Reserve",
+      "help_ref": "Reserve › Reserve coverage calendar",
+      "title": "Open Configure Reserve Preference from a coverage date",
+      "preconditions": "Reserve page loaded with RESERVE COVERAGE visible.",
+      "steps": "1. Review RESERVE COVERAGE and read a date's Need and Off counts.\n2. Click a date cell to open Configure Reserve Preference with that date prefilled under Specific Dates.\n3. Select T1-T7 under APPLY TO TIERS, review SHORT-CALL TYPE, and click ADD BID.",
+      "expected": "The clicked date opens Reserve Preference (not Reserve Day On or Prefer Off) with the date under Specific Dates; the bid saves only after tiers are chosen and ADD BID confirmed, then appears in existing reserve properties.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-023",
+      "feature_area": "Reserve",
+      "help_ref": "Reserve › Current Reserve workflow",
+      "title": "Current Reserve exposes only Reserve Preference, no mode switch",
+      "preconditions": "Reserve page loaded.",
+      "steps": "1. Open the Reserve page.\n2. Confirm there is no Reserve mode switch (Legacy Reserve / AA Prefer Off are not shown).\n3. Use ADD RESERVE PREFERENCE or click a coverage date, then configure short-call type, tiers, and date scope.",
+      "expected": "Current Reserve always saves Reserve Preference rows with no employee-facing mode selector; reserve avoidance is handled from Line via Reserve Avoidance, not this page.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-024",
+      "feature_area": "Reserve",
+      "help_ref": "Reserve › Configure short-call type and date scope",
+      "title": "Configure Reserve Preference date-scope options",
+      "preconditions": "Configure Reserve Preference dialog open.",
+      "steps": "1. Click ADD RESERVE PREFERENCE and choose SHORT-CALL TYPE.\n2. Under APPLY TO TIERS select one or more T1-T7 checkboxes.\n3. Under DATE SCOPE choose Whole Month, First Half, Second Half, Date Range, or Specific Dates.\n4. For Date Range set from/to dates (end same or later than start); for Specific Dates use the date input and ADD DATE.\n5. Click ADD BID.",
+      "expected": "The Reserve Preference row is added with the chosen date scope attached to the short-call type; Current Reserve allows exact ranges/specific dates while Standing Reserve allows only Whole Month/First Half/Second Half.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-025",
+      "feature_area": "Days Off",
+      "help_ref": "Days Off › Overview",
+      "title": "Days Off page shows existing and addable properties",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Open Days Off from the top navigation.\n2. Review EXISTING DAYS OFF PROPERTIES (PROPERTY, BID, TIERS columns).\n3. Open ADD DAYS OFF PROPERTIES and confirm ALL PROPERTIES, FAVORITED PROPERTIES, and Search Properties.",
+      "expected": "Days Off shows the existing saved rows with PROPERTY/BID/TIERS columns and the ADD DAYS OFF PROPERTIES catalog with tabs and search; add/update/delete actions call the Days Off draft service and refresh the calendar and Bid review.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-026",
+      "feature_area": "Days Off",
+      "help_ref": "Days Off › Add Days Off properties",
+      "title": "Add a specific-date Days Off bid from the right panel",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Open Days Off and keep ALL PROPERTIES selected in ADD DAYS OFF PROPERTIES.\n2. Optionally type into Search Properties to filter by property name.\n3. Click the add action beside a date-based property to open Configure Days Off Bid.\n4. Select at least one tier under TIERS, add a date via DATES/ADD DATE, then click ADD BID.",
+      "expected": "The new row appears in EXISTING DAYS OFF PROPERTIES immediately after the draft service saves it; the related calendar and Bid review data refresh.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-027",
+      "feature_area": "Days Off",
+      "help_ref": "Days Off › Add Days Off properties",
+      "title": "Add a Days Off bid using DAYS OF WEEK or DATE RANGE",
+      "preconditions": "Configure Days Off Bid dialog available.",
+      "steps": "1. Open Configure Days Off Bid for a property.\n2. Select at least one tier under TIERS.\n3. Choose DAYS OF WEEK for recurring weekday preferences, or DATE RANGE for a continuous range (end date same or later than start).\n4. Click ADD BID.",
+      "expected": "ADD BID saves only with a valid tier and a valid date/weekday/date range; an invalid range (end before start) is rejected, and the saved recurring or range bid appears in EXISTING DAYS OFF PROPERTIES.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-028",
+      "feature_area": "Days Off",
+      "help_ref": "Days Off › Calendar and tier context",
+      "title": "Verify tier context and capacity before adding a Days Off bid",
+      "preconditions": "Shared calendar and Days Off page loaded.",
+      "steps": "1. Select the T1-T7 tier context to work with.\n2. Use the Dashboard or shared calendar to review existing days-off and pairing activity.\n3. Read the requested/max capacity badge such as 23/33 for a target date.\n4. Save a Days Off action, then verify EXISTING DAYS OFF PROPERTIES shows the expected TIERS.",
+      "expected": "The saved row carries the active tier; the capacity badge (green below max, yellow equal, red above max) reflects crew request counts (same crew counted once per date across tiers) and is a planning signal, not an Award guarantee.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-029",
+      "feature_area": "Days Off",
+      "help_ref": "Days Off › Review, edit, and delete",
+      "title": "Edit and delete an existing Days Off row",
+      "preconditions": "At least one Days Off row exists.",
+      "steps": "1. Find the row in EXISTING DAYS OFF PROPERTIES and read PROPERTY, BID, and TIERS.\n2. Click the edit action to reopen Configure Days Off Bid with saved values.\n3. Change dates, days, time window, modifiers, or tiers and click UPDATE BID.\n4. On another row click the delete action and wait for the save to finish.",
+      "expected": "The edited row updates in place and the deleted row disappears from EXISTING DAYS OFF PROPERTIES; the bidding calendar and Bid review refresh, and any save conflict prompts a draft reload.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-030",
+      "feature_area": "Days Off",
+      "help_ref": "Days Off › Favorites",
+      "title": "Save and reuse a Days Off favorite template",
+      "preconditions": "A configured Days Off dialog with reusable values.",
+      "steps": "1. Add/edit a Days Off property until the dialog has the dates, days, time window, modifiers, and tiers to reuse.\n2. Click SAVE FAVORITE.\n3. Open FAVORITED PROPERTIES in ADD DAYS OFF PROPERTIES.\n4. Click the add action on the favorite row.",
+      "expected": "The favorite is stored as a reusable template and adding it copies the configuration into the current draft as a new Existing row; removing a favorite deletes only the template, not an already-saved draft row.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-031",
+      "feature_area": "Pairing",
+      "help_ref": "Pairing › Overview",
+      "title": "Pairing workspace shows rows, counts, rules, and Search Pairings",
+      "preconditions": "Bid window is open; pairing data loaded.",
+      "steps": "1. Open Pairing.\n2. Review EXISTING PAIRING PROPERTIES (PROPERTY, BID, TIERS, COUNT).\n3. Read the pool-count toolbar (current tier, rule count, pairing result count, REFRESH, VIEW RULES/VIEW PROPERTIES, SEARCH PAIRINGS).\n4. Open ADD PAIRING PROPERTIES.",
+      "expected": "Pairing shows the existing rows with a COUNT column, the pool-count toolbar with refresh/rules/search actions, and the add catalog; changes save to the current draft and may leave pool counts stale until refreshed.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-032",
+      "feature_area": "Pairing",
+      "help_ref": "Pairing › Add from the catalog",
+      "title": "Add a pairing property from ADD PAIRING PROPERTIES",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Open Pairing and select ALL PROPERTIES in ADD PAIRING PROPERTIES.\n2. Type into Search Properties to filter by name.\n3. Read the row columns (PROPERTY, BID, TIERS).\n4. Click the add action to open Configure Pairing Bid, complete fields, and save.\n5. Use footer pagination when more than 10 rows match.",
+      "expected": "After a successful add the property appears under EXISTING PAIRING PROPERTIES, pool counts are marked stale or refreshed, and a conflicting/single-use duplicate in the same tier is rejected with an error message.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-033",
+      "feature_area": "Pairing",
+      "help_ref": "Pairing › Favorites",
+      "title": "Create and reuse a pairing favorite template",
+      "preconditions": "Configure Pairing Bid available.",
+      "steps": "1. Open Configure Pairing Bid for a property and complete TIERS, MODE, QUANTIFIER, and BID.\n2. Click SAVE FAVORITE.\n3. Open FAVORITED PROPERTIES and click add to copy the template into the draft.\n4. Optionally use Preview to open Search Pairings for the favorite, or Delete favorite then Confirm Remove.",
+      "expected": "The favorite appears as a saved template with read-only tier buttons; adding it creates a new EXISTING PAIRING PROPERTIES row; Confirm Remove deletes only the template, leaving already-saved draft rows intact.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-034",
+      "feature_area": "Pairing",
+      "help_ref": "Pairing › Pool counts",
+      "title": "Read and refresh pairing pool counts",
+      "preconditions": "Pairing page with saved rows.",
+      "steps": "1. Read the pool-count summary above EXISTING PAIRING PROPERTIES (current tier, rules label, pairing result label).\n2. Edit a property row or tier selection so the summary becomes stale.\n3. Click REFRESH.\n4. Click VIEW RULES then VIEW PROPERTIES to toggle views.",
+      "expected": "After an edit the summary shows a stale state; REFRESH recalculates counts for the current tier without changing draft rows; VIEW RULES/VIEW PROPERTIES toggle between the rule-expression view and the editable row list; per-row COUNT shows matching totals or a skeleton while loading.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-035",
+      "feature_area": "Pairing",
+      "help_ref": "Pairing › Search and preview",
+      "title": "Preview matching pairings via SEARCH PAIRINGS",
+      "preconditions": "At least one tier has active pairing rules.",
+      "steps": "1. From a pairing row click the preview action to inspect that single property, or from the toolbar click SEARCH PAIRINGS for the current active rules.\n2. On the Search Pairings page review SEARCH CRITERIA and SEARCH RESULTS.\n3. Optionally use ADD MORE SEARCH CRITERIA or BID THESE PROPERTIES (choosing a tier in Choose Tier).\n4. Use Back to return to the Pairing workbench.",
+      "expected": "Search Pairings lists matching pairings with number, base, report time, block/credit, legs, and active dates; previewing does not change the draft (only add/update/delete or BID THESE PROPERTIES does), and with no active pairing rules the Portal asks to add a pairing property first.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-036",
+      "feature_area": "Line",
+      "help_ref": "Line › Overview",
+      "title": "Line page uses the shared Rule Bid panel",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Open Line from the top navigation.\n2. Review EXISTING LINE PROPERTIES (PROPERTY, BID, TIERS).\n3. Open ADD LINE PROPERTIES and confirm ALL PROPERTIES, FAVORITED PROPERTIES, and Search Properties.",
+      "expected": "Line shows saved line rows and the addable catalog with the same shared Rule Bid pattern; simple properties add directly with T1-T7 while configurable ones (Mixed Line Bid, Min Base Layover, Commuter Pattern, Efficient Flying First, Reserve/Flying Date Pattern) open Configure Line Bid.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-037",
+      "feature_area": "Line",
+      "help_ref": "Line › Add line properties",
+      "title": "Add a configurable Line property via Configure Line Bid",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Open Line and use ALL PROPERTIES in ADD LINE PROPERTIES.\n2. For a configurable row (e.g. Commuter Pattern) click add to open Configure Line Bid.\n3. Set PREFERENCE and BID fields, then select APPLY TO TIERS (T1-T7).\n4. Click ADD BID.",
+      "expected": "The saved Line bid appears in EXISTING LINE PROPERTIES with a readable BID summary (e.g. Work 4-5 days, then 4 days off); configurable rows keep inline tier controls hidden until the dialog opens to prevent incomplete bids.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-038",
+      "feature_area": "Line",
+      "help_ref": "Line › Edit configured rows",
+      "title": "Edit and delete a configured Line row with validation",
+      "preconditions": "At least one configured Line row exists.",
+      "steps": "1. Find the property under EXISTING LINE PROPERTIES and check the BID summary.\n2. Click edit for a configurable property (e.g. Commuter Pattern) to open Configure Line Bid.\n3. Update fields or APPLY TO TIERS and click UPDATE BID.\n4. On another row click delete and wait for the save to finish.",
+      "expected": "The BID summary and Bid review update after a valid edit (e.g. Commuter Pattern days >=1 and max days on >= min days on); invalid values are rejected, and the deleted row is removed from EXISTING LINE PROPERTIES.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-039",
+      "feature_area": "Line",
+      "help_ref": "Line › Favorites and tiers",
+      "title": "Apply Line bids to tiers and reuse a favorite",
+      "preconditions": "Line page loaded.",
+      "steps": "1. Use the T1-T7 / APPLY TO TX controls to choose where a line property applies.\n2. Confirm at least one tier stays active (clicking the last remaining tier does not remove it).\n3. Use SAVE FAVORITE to store a reusable configuration.\n4. Reuse it from FAVORITED PROPERTIES.",
+      "expected": "A line bid always keeps at least one active tier; reusing a favorite adds a new Line bid to the current draft with the template's read-only tiers, and removing a favorite deletes only the template, not existing draft rows.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-040",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Days Off Conditions (Prefer Off)",
+      "title": "Configure a Prefer Off days-off condition",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> DAYS OFF (or click a date in the left BIDDING CALENDAR).\n2. Add Prefer Off (property 201) and open its dialog.\n3. Choose T1-T7 tiers and the target dates, weekdays, or date range.\n4. Save with ADD BID.",
+      "expected": "A Prefer Off row is saved for the chosen tiers and dates and shown in the Existing list; the left-calendar date entry point prefills the clicked date and search/filter fields alone do not save the bid.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-041",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Days Off Conditions (Long Stretch Off / Compressed Flying)",
+      "title": "Configure a Long Stretch Off / Compressed Flying condition",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> DAYS OFF.\n2. Add Long Stretch Off / Compressed Flying (property 204) and open its dialog.\n3. Choose T1-T7 tiers and complete the required stretch fields.\n4. Save with ADD BID.",
+      "expected": "The Long Stretch Off / Compressed Flying condition is saved to the selected tiers and appears in the Existing list with its summary.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-042",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Check-In / Check-Out Time)",
+      "title": "Configure Pairing Check-In / Check-Out Time",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Pairing Check-In / Check-Out Time (property 103).\n2. In Configure Pairing Bid select TIERS, MODE (Award/Avoid), and QUANTIFIER when shown.\n3. Set the check-in or check-out time window in the BID control.\n4. Save with ADD BID.",
+      "expected": "A Check-In / Check-Out Time condition is saved with the chosen time window, mode, and tiers, using the Event Date scope; the row appears in EXISTING PAIRING PROPERTIES.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-043",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Flight Legs per Duty)",
+      "title": "Configure Flight Legs per Duty",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Flight Legs per Duty (property 107).\n2. Select TIERS and MODE (Award/Avoid).\n3. Enter the number of legs per duty in the BID control.\n4. Save with ADD BID.",
+      "expected": "The Flight Legs per Duty condition saves with the entered leg count, mode, and tiers and is shown in the Existing list.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-044",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Work Day Preference)",
+      "title": "Configure Work Day Preference",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Work Day Preference (property 110).\n2. Select TIERS and MODE as prompted.\n3. Complete the work-day BID fields.\n4. Save with ADD BID.",
+      "expected": "The Work Day Preference condition is saved to the chosen tiers and appears in EXISTING PAIRING PROPERTIES with its summary.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-045",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Pairing Length)",
+      "title": "Configure Pairing Length",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Pairing Length (property 112).\n2. Select TIERS and MODE (Award/Avoid).\n3. Enter the pairing length in days in the BID control.\n4. Save with ADD BID.",
+      "expected": "The Pairing Length condition saves with the entered day count, mode, and tiers using the Pairing Start Date scope and is shown in the Existing list.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-046",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Flight Number Preference)",
+      "title": "Configure Flight Number Preference",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Flight Number Preference (property 116).\n2. Select TIERS and MODE.\n3. In the BID control type at least one character in Search Flight Number and select a flight number (changing Type alone does not select one).\n4. Save with ADD BID.",
+      "expected": "The Flight Number Preference saves with the selected flight number, mode, and tiers using the Flight Date scope; the row appears in EXISTING PAIRING PROPERTIES.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-047",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Redeye Preference)",
+      "title": "Configure Redeye Preference",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Redeye Preference (property 117).\n2. Select TIERS and choose MODE (Award or Avoid).\n3. Save with ADD BID.",
+      "expected": "The Redeye Preference condition saves with the chosen Award/Avoid mode and tiers using the Flight Date scope and appears in the Existing list.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-048",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Deadhead Flying)",
+      "title": "Configure Deadhead Flying",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Deadhead Flying (property 122).\n2. Select TIERS and MODE (Award/Avoid).\n3. Complete the BID fields.\n4. Save with ADD BID.",
+      "expected": "The Deadhead Flying condition saves with the chosen mode and tiers using the Flight Date scope and is shown in EXISTING PAIRING PROPERTIES.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-049",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Time Between Flights)",
+      "title": "Configure Time Between Flights",
+      "preconditions": "Bid window is open; configured duration bounds load.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Time Between Flights (property 129).\n2. Wait for the duration bounds to load (the editor is disabled until they do).\n3. Select TIERS and set the duration in the BID control.\n4. Save with ADD BID.",
+      "expected": "With bounds loaded, the Time Between Flights condition saves for the chosen tiers; if the limits fail to load, the dialog shows Unable to load the Time Between Flights limits and a Retry control instead of allowing an invalid save.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-050",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Month-End Carryover)",
+      "title": "Configure Month-End Carryover",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Month-End Carryover (property 163).\n2. Select TIERS and MODE as prompted.\n3. Complete the carryover BID fields.\n4. Save with ADD BID.",
+      "expected": "The Month-End Carryover condition is saved for the chosen tiers and appears in the Existing list with its summary.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-051",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Airport Preference)",
+      "title": "Configure Airport Preference",
+      "preconditions": "Bid window is open; airport option data available.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Airport Preference (property 168).\n2. Select TIERS and MODE (Award/Avoid).\n3. In the BID control type an airport or city code and select a matching option.\n4. Save with ADD BID.",
+      "expected": "The Airport Preference saves with the selected airport/city, mode, and tiers using the Event Date scope; when no option matches, the selector shows No airports or cities match instead of saving an empty value.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-052",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Pairing Conditions (Efficient Flying First)",
+      "title": "Configure Efficient Flying First",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> PAIRING and add Efficient Flying First (property 428).\n2. Select TIERS and choose Award or Avoid.\n3. Save with ADD BID.",
+      "expected": "Efficient Flying First saves with the chosen preference (Award prioritizes highest average daily credit first, Avoid prioritizes lowest) and appears in the Existing list; it cannot save without Award/Avoid selected.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-053",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Roster / Line Conditions (Minimum Base Layover)",
+      "title": "Configure Minimum Base Layover",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> ROSTER (Line) and add Minimum Base Layover (property 407).\n2. In Configure Line Bid set the minimum base layover BID value.\n3. Select APPLY TO TIERS (T1-T7).\n4. Click ADD BID.",
+      "expected": "The Minimum Base Layover condition saves with the entered value and tiers and appears in EXISTING LINE PROPERTIES with a readable summary.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-054",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Roster / Line Conditions (Commuter Pattern)",
+      "title": "Configure Commuter Pattern",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> ROSTER (Line) and add Commuter Pattern (property 408).\n2. In Configure Line Bid set minimum days off plus min/max days on.\n3. Select APPLY TO TIERS.\n4. Click ADD BID.",
+      "expected": "The Commuter Pattern saves only when pattern days are at least 1 and max days on is greater than or equal to min days on; the saved row shows the work/off pattern summary in EXISTING LINE PROPERTIES.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-055",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Roster / Line Conditions (Mixed Line Bid)",
+      "title": "Configure Mixed Line Bid (Reserve Only / Pairing Only)",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> ROSTER (Line) and add Mixed Line Bid (property 427).\n2. In Configure Line Bid choose Reserve Only or Pairing Only.\n3. Select at least one Tier.\n4. Click ADD BID.",
+      "expected": "Reserve Only saves a reserve-only 427 bid and Pairing Only saves a pairing-only 427 bid; leaving it as the default Mixed Line saves no 427 bid, and editing an existing row back to Mixed Line removes the 427 bid.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-056",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Roster / Line Conditions (Credit Window Preference)",
+      "title": "Configure Credit Window Preference",
+      "preconditions": "Bid window is open.",
+      "steps": "1. Use ADD BID PROPERTIES -> ROSTER (Line) and add Credit Window Preference (property 429).\n2. In Configure Line Bid set the credit window BID values.\n3. Select APPLY TO TIERS.\n4. Click ADD BID.",
+      "expected": "The Credit Window Preference saves with the configured credit window and tiers and appears in EXISTING LINE PROPERTIES with its summary.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-057",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Reserve Conditions (Reserve Preference)",
+      "title": "Configure a Reserve Preference across the whole month",
+      "preconditions": "Reserve page open in the current period.",
+      "steps": "1. Open Reserve and click ADD RESERVE PREFERENCE.\n2. Choose a SHORT-CALL TYPE (property 301).\n3. Under DATE SCOPE choose Whole Month.\n4. Select APPLY TO TIERS and click ADD BID.",
+      "expected": "The Reserve Preference saves with Whole Month scope, the chosen short-call type, and tiers, and appears in EXISTING RESERVE PROPERTIES; Reserve Date Scope is saved with the bid, not applied as a visual filter.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-058",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Reserve Conditions (Reserve Preference)",
+      "title": "Configure a Reserve Preference for specific dates",
+      "preconditions": "Reserve page open in the current period.",
+      "steps": "1. Click ADD RESERVE PREFERENCE and choose a SHORT-CALL TYPE.\n2. Under DATE SCOPE choose Specific Dates.\n3. Use the date input and ADD DATE to build the selected date list.\n4. Select APPLY TO TIERS and click ADD BID.",
+      "expected": "The Reserve Preference saves with the exact specific dates and tiers (only available in Current Reserve, not Standing); a fully duplicate call type/date scope/tier combination triggers a duplicate warning instead of a second row.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-059",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Standing Bid Conditions (reusable pattern)",
+      "title": "Save a reusable Standing Bid condition",
+      "preconditions": "Standing Bid page open.",
+      "steps": "1. Open Standing Bid and select a category under ADD STANDING BID (e.g. Days Off -> Prefer Off, or Pairing -> Pairing Length).\n2. Complete the reusable pattern in Configure Standing Bid (no exact current-period date).\n3. Select T1-T7 and click ADD BID.",
+      "expected": "The reusable pattern condition is saved into EXISTING STANDING BID with its tiers and persists across periods; Standing Pairing dialogs hide the Limit to Event Date control because exact event dates are Current Bid data only.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-060",
+      "feature_area": "Bid Conditions",
+      "help_ref": "Bid Conditions › Standing Bid Conditions (Current-only exception)",
+      "title": "Confirm Pairing Preference is Current-only in Standing Bid",
+      "preconditions": "Standing Bid page open.",
+      "steps": "1. Open Standing Bid and select the PAIRING category under ADD STANDING BID.\n2. Review the visible pairing conditions.\n3. Look for Pairing Preference.",
+      "expected": "Pairing Preference (property 102) is not offered as a Standing Bid condition because it saves selected current-period pairing rows; the crew must add Pairing Preference from Current Bid instead.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-061",
+      "feature_area": "Standing Bid",
+      "help_ref": "Standing Bid › Overview",
+      "title": "Standing Bid stores reusable conditions without the left calendar",
+      "preconditions": "Standing Bid page open.",
+      "steps": "1. Open Standing Bid.\n2. Review EXISTING STANDING BID rows with summaries and Tier tags.\n3. Use ALL / T1-T7 to filter the Existing list.\n4. Open ADD STANDING BID and confirm DAYS OFF, PAIRING, ROSTER, and RESERVE categories.",
+      "expected": "Standing Bid shows reusable saved conditions with tier tags, an ALL/T1-T7 filter that does not change saved conditions, and no left BIDDING CALENDAR; saved Current Bid business conditions are used first and Standing Bid is the fallback.",
+      "severity": "Low"
+    },
+    {
+      "id": "T4-CP-062",
+      "feature_area": "Standing Bid",
+      "help_ref": "Standing Bid › Add and manage Standing Bid",
+      "title": "Add a Standing Bid condition with tiers",
+      "preconditions": "Standing Bid page open.",
+      "steps": "1. Open Standing Bid and review EXISTING STANDING BID.\n2. Under ADD STANDING BID select DAYS OFF, PAIRING, ROSTER, or RESERVE.\n3. Select a visible property and complete Configure Standing Bid.\n4. Select one or more T1-T7 and click ADD BID.",
+      "expected": "The saved Standing condition appears in EXISTING STANDING BID and remains until updated or deleted; conditions tied to an exact date, date range, or a specific pairing occurrence are not shown as Standing options.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-063",
+      "feature_area": "Standing Bid",
+      "help_ref": "Standing Bid › Add and manage Standing Bid",
+      "title": "Filter, edit, and delete Standing Bid conditions",
+      "preconditions": "At least one Standing condition exists.",
+      "steps": "1. Use ALL or a T1-T7 filter to find the saved condition.\n2. Select EDIT, change the fields, and click UPDATE BID.\n3. Use the delete button on a condition and confirm it is removed.",
+      "expected": "The filter narrows the Existing list without changing saved data, an edited condition reflects the new values, and a deleted condition is removed from EXISTING STANDING BID.",
+      "severity": "High"
+    },
+    {
+      "id": "T4-CP-064",
+      "feature_area": "Award",
+      "help_ref": "Award › View a published Award",
+      "title": "Review a published Award roster and duty details",
+      "preconditions": "Results for the bid period are published.",
+      "steps": "1. Open Award after the result is published.\n2. Use Award period to switch between readable published periods when it appears.\n3. Review the month calendar and duty/activity blocks.\n4. Select a duty to review Roster Details and Selected Duty.\n5. Open Reason Report Preview / Award Explanation when available.",
+      "expected": "Award shows the published roster with summary fields (Period, Duties, Days Off, Pairings, Credit Hours, Block Hours) and per-duty details; status labels (Published, Final, Mis-award Closed, Awaiting publication, Scheduled) are shown correctly, -- means unavailable data, and the Reason Report button is disabled when no explanations exist.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T4-CP-065",
+      "feature_area": "Common Questions",
+      "help_ref": "Common Questions › Common questions and recovery steps",
+      "title": "Recover from an unavailable ADD BID or a missing saved condition",
+      "preconditions": "Crew is on a Bid/Reserve/Standing Bid page.",
+      "steps": "1. When ADD BID is unavailable, complete every REQUIRED field and select at least one T1-T7 value.\n2. After saving, wait for the pending button state to finish and confirm the row in the matching Existing list.\n3. If a saved bid is not visible, change the active Tier to the tier the condition was assigned to.\n4. Use the row action in EXISTING BID/RESERVE/STANDING properties to edit or delete.",
+      "expected": "ADD BID becomes available once required fields and a tier are set; a saved condition appears with its summary/Tier tags after the pending state clears; a condition assigned to another Tier reappears when that Tier is selected, confirming it was not lost.",
+      "severity": "Low"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "110 rule param recheck alert center count"
+  short_description: "Project skill 110-rule-param-recheck-alert-center-count"
+  default_prompt: "Use $110-rule-param-recheck-alert-center-count for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

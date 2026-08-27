@@ -1,0 +1,25 @@
+{
+  "employeeId": "13192",
+  "category": "YYZ-737-FA",
+  "context": "Default",
+  "totalProperties": 3,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 104,
+      "name": "Any/Every Layover In Airport"
+    },
+    {
+      "tier": "T3",
+      "code": 105,
+      "name": "Pairing Total Credit"
+    },
+    {
+      "tier": "T1",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    }
+  ],
+  "issues": []
+}

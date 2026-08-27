@@ -1,0 +1,60 @@
+# monitoring/prometheus/prometheus.yml
+# Add/remove targets as you deploy services to more servers.
+# Node Exporter port: 9100, prom-client services expose /metrics on their own port.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: rois-ai
+
+scrape_configs:
+  # ── System metrics (all app servers) ──────────────────────────
+  - job_name: "node"
+    static_configs:
+      - targets:
+          - "10.15.12.3:9100"   # Replace with real IPs
+          - "10.15.12.3:9100"
+        labels:
+          env: production
+
+  # ── PostgreSQL ────────────────────────────────────────────────
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["10.15.12.3:9187"]
+
+  # ── Redis (live-server) ────────────────────────────────────────
+  - job_name: "redis-live"
+    static_configs:
+      - targets: ["10.15.12.3:9121"]
+
+  # ── Redis (pbs-server) ────────────────────────────────────────
+  - job_name: "redis-pbs"
+    static_configs:
+      - targets: ["10.15.12.3:9122"]
+
+  # ── Application services ───────────────────────────────────────
+  - job_name: "live-server"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["10.15.12.3:3000"]
+
+  - job_name: "pbs-server"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["10.15.12.3:3002"]
+
+  - job_name: "rule-engine"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["10.15.12.3:3001"]
+
+  - job_name: "connector-server"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["10.15.12.3:3004"]
+
+  - job_name: "engine-server"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["10.15.12.3:3003"]

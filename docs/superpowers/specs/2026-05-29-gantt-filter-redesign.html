@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gantt Filter System Redesign — Design Spec 2026-05-29</title>
+<style>
+  /* ─── Design Tokens ─────────────────────────────────────────────── */
+  :root {
+    --bg:          #0f1117;
+    --bg-panel:    #161b22;
+    --bg-card:     #1c2230;
+    --bg-hover:    #1e2838;
+    --border:      #2d3748;
+    --border-soft: #222c3c;
+    --fg:          #e2e8f0;
+    --fg-dim:      #8896aa;
+    --fg-muted:    #4a5568;
+    --accent:      #3b82f6;
+    --accent-dim:  rgba(59,130,246,0.15);
+    --green:       #22c55e;
+    --green-dim:   rgba(34,197,94,0.15);
+    --amber:       #f59e0b;
+    --amber-dim:   rgba(245,158,11,0.12);
+    --purple:      #a855f7;
+    --purple-dim:  rgba(168,85,247,0.15);
+    --red:         #ef4444;
+    --red-dim:     rgba(239,68,68,0.12);
+    --sep:         #2d3748;
+    --radius:      8px;
+    --radius-sm:   5px;
+    --font:        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0d12;
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 32px 24px 80px;
+  }
+
+  /* ─── Page Layout ─────────────────────────────────────────────── */
+  .page-title {
+    font-size: 18px; font-weight: 700; color: var(--fg);
+    margin-bottom: 4px;
+  }
+  .page-sub {
+    font-size: 12px; color: var(--fg-dim); margin-bottom: 36px;
+  }
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--fg-muted);
+    margin-bottom: 12px; margin-top: 40px;
+  }
+  .section-desc {
+    font-size: 12px; color: var(--fg-dim); margin-bottom: 16px; max-width: 680px;
+  }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* ─── Annotation ──────────────────────────────────────────────── */
+  .annot {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; color: var(--accent);
+    background: var(--accent-dim); border-radius: 4px;
+    padding: 2px 7px; margin-left: 8px; vertical-align: middle;
+  }
+
+  /* ─── Filter Dialog (Global) ─────────────────────────────────── */
+  .modal-wrap {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 540px;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .mhdr {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px 13px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+  .mhdr-icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: var(--accent-dim);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-size: 14px; flex-shrink: 0;
+  }
+  .mhdr-title { font-size: 13px; font-weight: 600; color: var(--fg); flex: 1; }
+  .mhdr-sub   { font-size: 11px; color: var(--fg-dim); }
+  .mhdr-close {
+    width: 26px; height: 26px; border-radius: 5px;
+    background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--fg-muted); font-size: 16px;
+    transition: background .12s, color .12s;
+  }
+  .mhdr-close:hover { background: var(--bg-hover); color: var(--fg); }
+
+  /* Tier tabs */
+  .tier-tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+    padding: 0 16px;
+  }
+  .tier-tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 14px 8px;
+    font-size: 11px; font-weight: 600;
+    color: var(--fg-dim);
+    border-bottom: 2px solid transparent;
+    cursor: pointer; user-select: none;
+    transition: color .12s;
+    margin-bottom: -1px;
+  }
+  .tier-tab.active { color: var(--fg); border-bottom-color: var(--accent); }
+  .tier-tab .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--fg-muted); flex-shrink: 0;
+  }
+  .tier-tab.active .dot { background: var(--accent); }
+  .tier-tab .cnt {
+    font-size: 9px; font-weight: 700;
+    background: var(--accent-dim); color: var(--accent);
+    border-radius: 3px; padding: 1px 4px;
+    min-width: 16px; text-align: center;
+  }
+  .tier-tab.t-pairing .dot { background: var(--green); }
+  .tier-tab.t-pairing.active { color: var(--green); border-bottom-color: var(--green); }
+  .tier-tab.t-pairing .cnt { background: var(--green-dim); color: var(--green); }
+  .tier-tab.t-flight .dot { background: var(--purple); }
+  .tier-tab.t-flight.active { color: var(--purple); border-bottom-color: var(--purple); }
+  .tier-tab.t-flight .cnt { background: var(--purple-dim); color: var(--purple); }
+
+  /* Tab body */
+  .tab-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .tab-body.hidden { display: none; }
+
+  /* Filter rows */
+  .frow { display: flex; align-items: flex-start; gap: 10px; min-height: 30px; }
+  .frow-label {
+    width: 72px; flex-shrink: 0;
+    font-size: 11px; color: var(--fg-dim);
+    padding-top: 7px;
+  }
+  .frow-control { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+
+  /* Division chips */
+  .chip-group { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+    border: 1px solid var(--border);
+    color: var(--fg-dim); background: var(--bg-card);
+    cursor: pointer; user-select: none;
+    transition: all .12s;
+  }
+  .chip:hover { border-color: var(--fg-muted); color: var(--fg); }
+  .chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .chip.active.green { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .chip.active.amber { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+  .chip.active.purple { background: var(--purple-dim); border-color: var(--purple); color: var(--purple); }
+
+  /* Multi-select dropdown */
+  .msel {
+    display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+    min-height: 30px; padding: 4px 8px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); cursor: pointer;
+    transition: border-color .12s;
+  }
+  .msel:hover { border-color: var(--fg-muted); }
+  .msel-placeholder { font-size: 11px; color: var(--fg-muted); }
+  .msel-tag {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 6px 2px 7px;
+    background: var(--accent-dim); border-radius: 3px;
+    font-size: 10px; font-weight: 600; color: var(--accent);
+  }
+  .msel-tag.green { background: var(--green-dim); color: var(--green); }
+  .msel-tag.amber { background: var(--amber-dim); color: var(--amber); }
+  .msel-tag.purple { background: var(--purple-dim); color: var(--purple); }
+  .msel-tag .rm {
+    font-size: 11px; cursor: pointer; opacity: .7;
+    line-height: 1; margin-left: 1px;
+  }
+  .msel-tag .rm:hover { opacity: 1; }
+  .msel-arrow { margin-left: auto; color: var(--fg-muted); font-size: 10px; }
+
+  /* Text input */
+  .finput {
+    width: 100%; padding: 6px 10px; border-radius: var(--radius-sm);
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--fg); font-size: 11px; font-family: var(--font);
+    outline: none; transition: border-color .12s;
+  }
+  .finput:focus { border-color: var(--accent); }
+  .finput::placeholder { color: var(--fg-muted); }
+
+  /* Toggle */
+  .ftoggle { display: flex; align-items: center; gap: 8px; }
+  .toggle-track {
+    width: 32px; height: 18px; border-radius: 9px;
+    background: var(--bg); border: 1px solid var(--border);
+    cursor: pointer; position: relative; transition: background .15s;
+  }
+  .toggle-track.on { background: var(--green); border-color: var(--green); }
+  .toggle-thumb {
+    position: absolute; top: 2px; left: 2px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--fg-muted); transition: transform .15s, background .15s;
+  }
+  .toggle-track.on .toggle-thumb { transform: translateX(14px); background: #fff; }
+  .toggle-label { font-size: 11px; color: var(--fg-dim); }
+
+  /* Active filter summary */
+  .filter-summary {
+    margin: 0 16px 0;
+    padding: 8px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    min-height: 36px;
+  }
+  .fs-label { font-size: 10px; color: var(--fg-muted); margin-right: 2px; flex-shrink: 0; }
+  .fs-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; padding: 2px 6px;
+    background: var(--bg-card); border-radius: 3px;
+    color: var(--fg-dim);
+  }
+  .fs-chip .key { color: var(--fg-muted); }
+  .fs-chip .val { color: var(--fg); font-weight: 600; }
+  .fs-chip .rm { color: var(--fg-muted); cursor: pointer; font-size: 11px; margin-left: 2px; }
+  .fs-chip .rm:hover { color: var(--red); }
+  .fs-clear {
+    margin-left: auto; font-size: 10px; color: var(--fg-muted);
+    cursor: pointer; flex-shrink: 0;
+  }
+  .fs-clear:hover { color: var(--fg); }
+  .fs-empty { font-size: 10px; color: var(--fg-muted); }
+
+  /* Modal footer */
+  .mfooter {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 16px 13px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-card);
+    gap: 8px;
+  }
+  .mfooter-left { font-size: 10px; color: var(--fg-muted); }
+  .mfooter-right { display: flex; gap: 7px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 14px; border-radius: 5px;
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    border: none; font-family: var(--font);
+    transition: all .12s;
+  }
+  .btn-ghost {
+    background: none; color: var(--fg-dim);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--fg); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+  .btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+  /* ─── Pane Toolbar (per-pane) ─────────────────────────────────── */
+  .pane-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    width: 700px;
+  }
+  .pane-toolbar {
+    display: flex; align-items: center;
+    height: 32px; padding: 0 8px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    gap: 5px;
+  }
+  .pt-color { width: 6px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+  .pt-title { font-size: 11px; font-weight: 600; color: var(--fg); flex-shrink: 0; }
+  .pt-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; padding: 1px 5px; border-radius: 3px;
+    color: var(--fg-dim);
+  }
+  .pt-badge.amber { background: var(--amber-dim); color: var(--amber); }
+  .pt-badge.blue  { background: var(--accent-dim); color: var(--accent); }
+  .pt-spacer { flex: 1; }
+  .pt-btn {
+    width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; border: none; background: none;
+    color: var(--fg-muted); cursor: pointer; font-size: 12px;
+    transition: background .1s, color .1s;
+  }
+  .pt-btn:hover { background: var(--bg-hover); color: var(--fg); }
+  .pt-btn.active { background: var(--accent-dim); color: var(--accent); }
+
+  /* ─── GanttSubToolbar full-width mockup ──────────────────────── */
+  .sub-toolbar {
+    display: flex; align-items: center; gap: 0;
+    height: 36px; padding: 0 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 900px; max-width: 100%;
+  }
+  .tb-divider { width: 1px; height: 16px; background: var(--border); margin: 0 6px; flex-shrink: 0; }
+  .tb-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 28px; min-width: 28px; padding: 0 6px;
+    border-radius: 6px; border: none; background: none;
+    color: var(--fg-muted); font-size: 11px; cursor: pointer; gap: 4px;
+    font-family: var(--font); white-space: nowrap; flex-shrink: 0;
+    transition: background .1s, color .1s;
+  }
+  .tb-btn:hover { background: var(--bg-hover); color: var(--fg); }
+  .tb-btn.active { background: var(--accent-dim); color: var(--accent); }
+  .tb-btn.active-amber { background: var(--amber-dim); color: var(--amber); }
+  .tb-badge-count {
+    font-size: 9px; font-weight: 700; padding: 0 4px; min-width: 14px; height: 14px;
+    border-radius: 3px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--amber); color: #000; line-height: 1;
+  }
+  .tb-date {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 0 8px; height: 28px; border-radius: 6px;
+    font-size: 11px; color: var(--fg-dim);
+    border: 1px solid var(--border); background: var(--bg);
+    cursor: pointer; flex-shrink: 0;
+  }
+  .tb-date:hover { border-color: var(--fg-muted); color: var(--fg); }
+  .tb-pane-group {
+    display: flex; align-items: center; gap: 0;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: rgba(30,40,56,0.4); padding: 3px; flex-shrink: 0;
+  }
+  .tb-pane-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 4px;
+    font-size: 10px; cursor: pointer; border: none; background: none;
+    color: var(--fg-dim); font-family: var(--font); white-space: nowrap;
+    transition: background .1s;
+  }
+  .tb-pane-btn:hover { background: var(--bg-hover); color: var(--fg); }
+  .tb-pane-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .tb-pane-reset {
+    padding: 2px 6px; font-size: 10px; color: var(--fg-muted); cursor: pointer;
+    background: none; border: none; font-family: var(--font);
+    border-left: 1px solid var(--border); margin-left: 2px; padding-left: 6px;
+  }
+  .tb-spacer { flex: 1; }
+  .tb-match-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 4px; font-size: 10px; flex-shrink: 0;
+  }
+  .tb-match-pill .lbl { color: var(--fg-muted); }
+  .tb-match-pill .val { font-weight: 600; }
+
+  /* Pane quick-filter popup */
+  .pane-qf-panel {
+    border: 1px solid var(--border);
+    border-top: none;
+    background: var(--bg-panel);
+    padding: 12px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .qf-title { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-muted); }
+  .qf-row { display: flex; align-items: center; gap: 8px; }
+  .qf-lbl { width: 68px; font-size: 11px; color: var(--fg-dim); flex-shrink: 0; }
+  .qf-hint { font-size: 10px; color: var(--fg-muted); padding-top: 2px; }
+
+  /* Pane canvas placeholder */
+  .pane-canvas {
+    height: 140px;
+    background: repeating-linear-gradient(
+      0deg,
+      var(--bg) 0px, var(--bg) 42px,
+      var(--bg-card) 42px, var(--bg-card) 43px
+    );
+    position: relative; overflow: hidden;
+  }
+  .row-item {
+    position: absolute; left: 0; right: 0; height: 43px;
+    display: flex; align-items: center; padding: 0 8px; gap: 8px;
+  }
+  .row-crew { width: 120px; flex-shrink: 0; }
+  .crew-id { font-size: 11px; font-weight: 600; color: var(--fg); }
+  .crew-name { font-size: 10px; color: var(--fg-dim); }
+  .task-bar {
+    height: 28px; border-radius: 4px;
+    display: flex; align-items: center; padding: 0 8px;
+    font-size: 10px; font-weight: 600; color: #fff;
+    position: absolute;
+  }
+
+  /* ─── Architecture Diagram ────────────────────────────────────── */
+  .arch-box {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    background: var(--bg-panel);
+    width: 700px;
+    font-size: 11px;
+  }
+  .arch-row { display: flex; gap: 0; align-items: stretch; }
+  .arch-tier {
+    flex: 1;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 0 4px;
+    position: relative;
+  }
+  .arch-tier.crew-t    { background: var(--accent-dim); border: 1px solid rgba(59,130,246,0.25); }
+  .arch-tier.pairing-t { background: var(--green-dim);  border: 1px solid rgba(34,197,94,0.25); }
+  .arch-tier.flight-t  { background: var(--purple-dim); border: 1px solid rgba(168,85,247,0.25); }
+  .arch-tier-title {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .crew-t .arch-tier-title    { color: var(--accent); }
+  .pairing-t .arch-tier-title { color: var(--green); }
+  .flight-t .arch-tier-title  { color: var(--purple); }
+  .arch-field {
+    font-size: 10px; color: var(--fg-dim); padding: 2px 0;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .arch-field::before { content: '·'; color: var(--fg-muted); }
+  .arch-arrow {
+    display: flex; align-items: center; color: var(--fg-muted);
+    font-size: 16px; padding: 0 2px;
+  }
+  .arch-store {
+    margin-top: 14px; padding: 10px 14px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .arch-store-title { font-size: 10px; font-weight: 700; color: var(--fg-muted); margin-bottom: 6px; }
+  .arch-api-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .api-badge {
+    font-size: 10px; padding: 3px 8px; border-radius: 3px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--fg-dim); font-family: monospace;
+  }
+
+  /* ─── Inline quick-filter chips in PaneToolbar Row 1 ────────── */
+  .pt-qchips { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .pt-qchip {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 1px 5px 1px 6px; border-radius: 3px;
+    font-size: 10px; font-weight: 500;
+    background: rgba(245,158,11,0.12); color: #f59e0b;
+    flex-shrink: 0;
+  }
+  .pt-qchip .qk { color: rgba(245,158,11,0.6); margin-right: 1px; }
+  .pt-qchip .qx {
+    margin-left: 2px; font-size: 11px; line-height: 1; cursor: pointer; opacity: .7;
+  }
+  .pt-qchip .qx:hover { opacity: 1; }
+
+  /* ─── Spec notes ─────────────────────────────────────────────── */
+  .spec-note {
+    font-size: 11px; color: var(--fg-dim);
+    background: var(--bg-panel); border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px; padding: 10px 14px;
+    max-width: 700px; line-height: 1.7;
+  }
+  .spec-note.green { border-left-color: var(--green); }
+  .spec-note.amber { border-left-color: var(--amber); }
+  code {
+    font-size: 10px; font-family: monospace;
+    background: var(--bg-card); padding: 1px 5px; border-radius: 3px;
+    color: var(--amber);
+  }
+
+  /* ─── Tab switching ─────────────────────────────────────────── */
+  .tab-content { display: none; }
+  .tab-content.active { display: flex; flex-direction: column; gap: 12px; }
+
+  /* dropdown open mock */
+  .dropdown-open {
+    position: absolute; z-index: 10;
+    width: 200px; top: 100%; left: 0;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 4px 0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    margin-top: 2px;
+  }
+  .dd-item {
+    padding: 6px 12px; font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    color: var(--fg-dim); transition: background .1s;
+  }
+  .dd-item:hover { background: var(--bg-hover); color: var(--fg); }
+  .dd-item.checked { color: var(--accent); }
+  .dd-item .chk { width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+  .dd-item.checked .chk { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .dd-sep { height: 1px; background: var(--border-soft); margin: 4px 0; }
+  .dd-search { padding: 6px 8px; border-bottom: 1px solid var(--border-soft); }
+  .dd-search input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 8px; color: var(--fg); font-size: 11px;
+    outline: none; font-family: var(--font);
+  }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Gantt Filter System — Design Spec</div>
+<div class="page-sub">2026-05-29 · Three-tier filter dialog + per-pane quick filter</div>
+
+<!-- ─── Architecture Overview ─────────────────────────────────── -->
+<div class="section-label">Architecture Overview</div>
+<div class="section-desc">
+  Filters are divided into two scopes. <strong>Global filters</strong> (in GanttSubToolbar) control which data rows are loaded from the API — crew rows in Roster, pairings in Pairing pane, flights in Flight pane.
+  <strong>Per-pane filters</strong> are additional quick filters local to each pane (sort, text search, status chips) that do not trigger a refetch.
+</div>
+
+<div class="arch-box">
+  <div class="arch-row">
+    <div class="arch-tier crew-t">
+      <div class="arch-tier-title">Crew Tier</div>
+      <div class="arch-field">Division (P / C)</div>
+      <div class="arch-field">Base (multi-select)</div>
+      <div class="arch-field">Rank (multi-select)</div>
+      <div class="arch-field">Fleet (multi-select)</div>
+      <div class="arch-field" style="margin-top:6px;color:var(--accent);font-size:9px">→ Roster pane rows</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-tier pairing-t">
+      <div class="arch-tier-title">Pairing Tier</div>
+      <div class="arch-field">Base (multi-select)</div>
+      <div class="arch-field">Fleet (multi-select)</div>
+      <div class="arch-field">Division (P / C)</div>
+      <div class="arch-field">Origin Airport (depArp)</div>
+      <div class="arch-field">Fully Crewed (toggle)</div>
+      <div class="arch-field" style="margin-top:6px;color:var(--green);font-size:9px">→ Pairing pane rows</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-tier flight-t">
+      <div class="arch-tier-title">Flight Tier</div>
+      <div class="arch-field">Dep Airport</div>
+      <div class="arch-field">Arr Airport</div>
+      <div class="arch-field">Flight Number</div>
+      <div class="arch-field">Fleet (multi-select)</div>
+      <div class="arch-field">Status (Full/Partial/Cancelled)</div>
+      <div class="arch-field" style="margin-top:6px;color:var(--purple);font-size:9px">→ Flight pane rows</div>
+    </div>
+  </div>
+
+  <div class="arch-store">
+    <div class="arch-store-title">FilterStore (Zustand) — persisted to localStorage</div>
+    <div style="font-size:10px;color:var(--fg-dim);line-height:1.8">
+      <code>dateRange</code> · <code>crew.divisions</code> · <code>crew.bases</code> · <code>crew.ranks</code> · <code>crew.fleets</code>
+      · <code>pairing.bases</code> · <code>pairing.fleets</code> · <code>pairing.divisions</code> · <code>pairing.depArps</code> · <code>pairing.isFull</code>
+      · <code>flight.depArps</code> · <code>flight.arvArps</code> · <code>flight.fltNums</code> · <code>flight.fleets</code> · <code>flight.statuses</code>
+    </div>
+  </div>
+
+  <div class="arch-api-row">
+    <div class="api-badge">GET /api/base → Base options</div>
+    <div class="api-badge">GET /api/rank → Rank options</div>
+    <div class="api-badge">GET /api/fleet → Fleet options</div>
+    <div class="api-badge">GET /api/crew?base=&rank=&fleet=&division=</div>
+    <div class="api-badge">GET /api/pairing?base=&fleet=&division=&depArp=&isFull=</div>
+    <div class="api-badge">GET /api/flight?depArp=&arvArp=&fltNum=&fleet=&status=</div>
+  </div>
+</div>
+
+<hr />
+
+<!-- ─── Global Filter Dialog ─────────────────────────────────── -->
+<div class="section-label">Global Filter Dialog — Three-tier Design</div>
+<div class="section-desc">
+  Triggered from GanttSubToolbar Filter button. Visual language matches FlightDetailDialog (dark panel, badge chips, section structure). Active filter count badge shows on the toolbar button.
+</div>
+
+<div class="row">
+
+<!-- State A: Crew tab (some filters active) -->
+<div>
+  <div style="font-size:10px;color:var(--fg-muted);margin-bottom:6px">State A — Crew tab, some filters active</div>
+  <div class="modal-wrap">
+    <!-- Header -->
+    <div class="mhdr">
+      <div class="mhdr-icon">▼</div>
+      <div>
+        <div class="mhdr-title">Filters <span class="annot">3 active</span></div>
+        <div class="mhdr-sub">Global · affects all panes</div>
+      </div>
+      <button class="mhdr-close">✕</button>
+    </div>
+
+    <!-- Tier tabs -->
+    <div class="tier-tabs">
+      <div class="tier-tab active">
+        <span class="dot"></span> Crew <span class="cnt">2</span>
+      </div>
+      <div class="tier-tab t-pairing">
+        <span class="dot"></span> Pairing <span class="cnt" style="background:var(--green-dim);color:var(--green)">1</span>
+      </div>
+      <div class="tier-tab t-flight">
+        <span class="dot"></span> Flight
+      </div>
+    </div>
+
+    <!-- Crew tab body -->
+    <div class="tab-body">
+      <div class="frow">
+        <div class="frow-label">Division</div>
+        <div class="frow-control">
+          <div class="chip-group">
+            <div class="chip active">✓ P — Pilot</div>
+            <div class="chip">C — Cabin</div>
+          </div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="frow-label">Base</div>
+        <div class="frow-control">
+          <div class="msel">
+            <div class="msel-tag">SHA <span class="rm">✕</span></div>
+            <div class="msel-tag">PEK <span class="rm">✕</span></div>
+            <span class="msel-placeholder">Add base…</span>
+            <span class="msel-arrow">▾</span>
+          </div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="frow-label">Rank</div>
+        <div class="frow-control">
+          <div class="msel">
+            <span class="msel-placeholder">All ranks</span>
+            <span class="msel-arrow">▾</span>
+          </div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="frow-label">Fleet</div>
+        <div class="frow-control">
+          <div class="msel">
+            <span class="msel-placeholder">All fleets</span>
+            <span class="msel-arrow">▾</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active filter summary -->
+    <div class="filter-summary">
+      <span class="fs-label">Active:</span>
+      <div class="fs-chip"><span class="key">crew:division</span> <span style="color:var(--fg-muted);margin:0 2px">=</span><span class="val">P</span> <span class="rm">✕</span></div>
+      <div class="fs-chip"><span class="key">crew:base</span> <span style="color:var(--fg-muted);margin:0 2px">=</span><span class="val">SHA, PEK</span> <span class="rm">✕</span></div>
+      <div class="fs-chip" style="background:var(--green-dim);color:var(--green)"><span class="key" style="color:rgba(34,197,94,0.6)">pairing:isFull</span> <span style="margin:0 2px">=</span><span class="val">true</span> <span class="rm">✕</span></div>
+      <span class="fs-clear">Clear all</span>
+    </div>
+
+    <div style="height:8px"></div>
+
+    <!-- Footer -->
+    <div class="mfooter">
+      <div class="mfooter-left">Crew: ~142 matched · Pairing: 38 matched</div>
+      <div class="mfooter-right">
+        <button class="btn btn-ghost">Reset</button>
+        <button class="btn btn-primary">Apply Filters</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- State B: Pairing tab with dropdown open -->
+<div>
+  <div style="font-size:10px;color:var(--fg-muted);margin-bottom:6px">State B — Pairing tab, Fleet dropdown open</div>
+  <div class="modal-wrap">
+    <div class="mhdr">
+      <div class="mhdr-icon">▼</div>
+      <div>
+        <div class="mhdr-title">Filters <span class="annot">1 active</span></div>
+        <div class="mhdr-sub">Global · affects all panes</div>
+      </div>
+      <button class="mhdr-close">✕</button>
+    </div>
+    <div class="tier-tabs">
+      <div class="tier-tab t-crew" style="color:var(--fg-dim);border-bottom:2px solid transparent">
+        <span class="dot"></span> Crew
+      </div>
+      <div class="tier-tab t-pairing active" style="color:var(--green);border-bottom-color:var(--green)">
+        <span class="dot" style="background:var(--green)"></span> Pairing <span class="cnt" style="background:var(--green-dim);color:var(--green)">1</span>
+      </div>
+      <div class="tier-tab t-flight" style="color:var(--fg-dim);border-bottom:2px solid transparent">
+        <span class="dot" style="background:var(--fg-muted)"></span> Flight
+      </div>
+    </div>
+    <div class="tab-body">
+      <div class="frow">
+        <div class="frow-label">Division</div>
+        <div class="frow-control">
+          <div class="chip-group">
+            <div class="chip active green">✓ P — Pilot</div>
+            <div class="chip">C — Cabin</div>
+          </div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="frow-label">Base</div>
+        <div class="frow-control">
+          <div class="msel"><span class="msel-placeholder">All bases</span><span class="msel-arrow">▾</span></div>
+        </div>
+      </div>
+      <div class="frow" style="position:relative">
+        <div class="frow-label">Fleet</div>
+        <div class="frow-control">
+          <div class="msel" style="border-color:var(--green)">
+            <span class="msel-placeholder">Search fleet…</span>
+            <span class="msel-arrow" style="color:var(--green)">▴</span>
+          </div>
+          <div class="dropdown-open" style="width:180px">
+            <div class="dd-search"><input placeholder="Search fleet..." /></div>
+            <div class="dd-item checked"><div class="chk">✓</div> B737</div>
+            <div class="dd-item checked"><div class="chk">✓</div> A320</div>
+            <div class="dd-item"><div class="chk"></div> A330</div>
+            <div class="dd-item"><div class="chk"></div> B777</div>
+            <div class="dd-sep"></div>
+            <div class="dd-item" style="color:var(--fg-muted);font-size:10px;padding:4px 12px">Select all · Clear</div>
+          </div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="frow-label">Origin Arpt</div>
+        <div class="frow-control">
+          <input class="finput" placeholder="e.g. SHA, PEK" />
+          <div class="qf-hint">Comma-separated IATA codes</div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="frow-label">Fully Crewed</div>
+        <div class="frow-control">
+          <div class="ftoggle">
+            <div class="toggle-track on"><div class="toggle-thumb"></div></div>
+            <span class="toggle-label">Show only fully crewed pairings</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-summary">
+      <span class="fs-label">Active:</span>
+      <div class="fs-chip" style="background:var(--green-dim);color:var(--green)"><span class="key" style="color:rgba(34,197,94,0.6)">pairing:isFull</span><span style="margin:0 2px">=</span><span class="val">true</span><span class="rm">✕</span></div>
+      <span class="fs-clear">Clear all</span>
+    </div>
+    <div style="height:8px"></div>
+    <div class="mfooter">
+      <div class="mfooter-left">Pairing: 38 matched of 215 total</div>
+      <div class="mfooter-right">
+        <button class="btn btn-ghost">Reset</button>
+        <button class="btn btn-primary">Apply Filters</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- .row -->
+
+<div style="height:24px"></div>
+
+<!-- State C: Flight tab -->
+<div style="font-size:10px;color:var(--fg-muted);margin-bottom:6px">State C — Flight tab</div>
+<div class="modal-wrap" style="width:480px">
+  <div class="mhdr">
+    <div class="mhdr-icon">✈</div>
+    <div>
+      <div class="mhdr-title">Filters</div>
+      <div class="mhdr-sub">Global · affects all panes</div>
+    </div>
+    <button class="mhdr-close">✕</button>
+  </div>
+  <div class="tier-tabs">
+    <div class="tier-tab" style="color:var(--fg-dim);border-bottom:2px solid transparent"><span class="dot"></span> Crew</div>
+    <div class="tier-tab t-pairing" style="color:var(--fg-dim);border-bottom:2px solid transparent"><span class="dot" style="background:var(--fg-muted)"></span> Pairing</div>
+    <div class="tier-tab t-flight active"><span class="dot" style="background:var(--purple)"></span> Flight</div>
+  </div>
+  <div class="tab-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <div class="frow-label" style="width:auto;margin-bottom:4px">Dep Airport</div>
+        <input class="finput" placeholder="e.g. SHA" />
+      </div>
+      <div>
+        <div class="frow-label" style="width:auto;margin-bottom:4px">Arr Airport</div>
+        <input class="finput" placeholder="e.g. PEK" />
+      </div>
+    </div>
+    <div class="frow">
+      <div class="frow-label">Flight No.</div>
+      <div class="frow-control"><input class="finput" placeholder="e.g. F8 101" /></div>
+    </div>
+    <div class="frow">
+      <div class="frow-label">Fleet</div>
+      <div class="frow-control">
+        <div class="msel"><span class="msel-placeholder">All fleets</span><span class="msel-arrow">▾</span></div>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="frow-label">Status</div>
+      <div class="frow-control">
+        <div class="chip-group">
+          <div class="chip active">All</div>
+          <div class="chip" style="color:#22c55e">Full</div>
+          <div class="chip" style="color:var(--amber)">Partial</div>
+          <div class="chip" style="color:var(--red)">Cancelled</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="filter-summary">
+    <span class="fs-empty">No active flight filters</span>
+  </div>
+  <div style="height:8px"></div>
+  <div class="mfooter">
+    <div class="mfooter-left">Flights: 1,240 in date range</div>
+    <div class="mfooter-right">
+      <button class="btn btn-ghost">Reset</button>
+      <button class="btn btn-primary">Apply Filters</button>
+    </div>
+  </div>
+</div>
+
+<hr />
+
+<!-- ─── Per-Pane Quick Filter ─────────────────────────────────── -->
+<div class="section-label">Per-Pane Filter — Inline Quick Filter</div>
+<div class="section-desc">
+  Each pane's toolbar has a Filter button that expands a compact quick-filter panel below.
+  Active filter chips appear <strong>inline in Row 1</strong>, to the right of the loaded-count badge, each with an × to dismiss.
+  Per-pane filters are client-side only (no API refetch) and are pane-local (not shared with other panes). No sort controls.
+</div>
+
+<div class="row" style="align-items:flex-start">
+
+<!-- Roster Pane State 1: no filter active -->
+<div>
+  <div style="font-size:10px;color:var(--fg-muted);margin-bottom:6px">
+    Roster — <strong style="color:var(--fg)">no filter</strong> (panel closed, no chips)
+  </div>
+  <div class="pane-wrap">
+    <div class="pane-toolbar">
+      <span style="color:var(--fg-muted);font-size:11px;margin-right:2px">⠿</span>
+      <div class="pt-color" style="background:#3b82f6"></div>
+      <span class="pt-title">Roster Main</span>
+      <div class="pt-badge">≡ 248</div>
+      <div class="pt-badge blue">↓ 248</div>
+      <!-- No chips — space collapses to nothing -->
+      <div class="pt-spacer"></div>
+      <button class="pt-btn" title="Quick Filter">⊞</button>
+      <button class="pt-btn" title="Column config">⚙</button>
+      <button class="pt-btn" style="color:var(--red)" title="Close">✕</button>
+    </div>
+    <div class="pane-canvas" style="height:86px">
+      <div class="row-item" style="top:0">
+        <div class="row-crew"><div class="crew-id">F8001</div><div class="crew-name">Zhang Wei · CA · SHA</div></div>
+        <div class="task-bar" style="background:#1e40af;left:180px;width:140px;top:8px">F81001 SHA→PEK</div>
+      </div>
+      <div class="row-item" style="top:43px">
+        <div class="row-crew"><div class="crew-id">F8002</div><div class="crew-name">Zhang Fang · FO · SHA</div></div>
+        <div class="task-bar" style="background:#1e3a5f;left:280px;width:100px;top:51px">F81002</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Roster Pane State 2: filter active + panel open -->
+<div>
+  <div style="font-size:10px;color:var(--fg-muted);margin-bottom:6px">
+    Roster — <strong style="color:var(--amber)">filter active</strong> (chips inline, panel open)
+  </div>
+  <div class="pane-wrap">
+    <!-- Row 1: chips appear inline after ↓ badge -->
+    <div class="pane-toolbar">
+      <span style="color:var(--fg-muted);font-size:11px;margin-right:2px">⠿</span>
+      <div class="pt-color" style="background:#3b82f6"></div>
+      <span class="pt-title">Roster Main</span>
+      <div class="pt-badge">≡ 248</div>
+      <div class="pt-badge amber">⌕ 31</div>
+      <div class="pt-badge blue">↓ 31</div>
+      <!-- Inline chips — right of ↓ badge -->
+      <div class="pt-qchips">
+        <div class="pt-qchip"><span class="qk">search:</span>Zhang<span class="qx">✕</span></div>
+      </div>
+      <div class="pt-spacer"></div>
+      <button class="pt-btn active" title="Quick Filter (active)">⊞</button>
+      <button class="pt-btn" title="Column config">⚙</button>
+      <button class="pt-btn" style="color:var(--red)" title="Close">✕</button>
+    </div>
+    <!-- Quick filter panel (no sort) — shown while ⊞ is toggled on -->
+    <div class="pane-qf-panel">
+      <div class="qf-title">Roster Quick Filter</div>
+      <div class="qf-row">
+        <div class="qf-lbl">Search</div>
+        <input class="finput" style="height:26px;font-size:11px" placeholder="Crew ID / name…" value="Zhang" />
+      </div>
+      <div class="qf-row">
+        <div class="qf-lbl">Frozen rows</div>
+        <div class="chip-group">
+          <div class="chip" style="padding:3px 8px;font-size:10px">Pinned top</div>
+          <div class="chip active" style="padding:3px 8px;font-size:10px">Mixed</div>
+        </div>
+      </div>
+    </div>
+    <!-- Canvas — only 31 rows shown (filtered) -->
+    <div class="pane-canvas" style="height:86px">
+      <div class="row-item" style="top:0">
+        <div class="row-crew"><div class="crew-id">F8001</div><div class="crew-name">Zhang Wei · CA · SHA</div></div>
+        <div class="task-bar" style="background:#1e40af;left:180px;width:140px;top:8px">F81001 SHA→PEK</div>
+      </div>
+      <div class="row-item" style="top:43px">
+        <div class="row-crew"><div class="crew-id">F8002</div><div class="crew-name">Zhang Fang · FO · SHA</div></div>
+        <div class="task-bar" style="background:#1e3a5f;left:280px;width:100px;top:51px">F81002</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pairing Pane per-pane filter -->
+<div>
+  <div style="font-size:10px;color:var(--fg-muted);margin-bottom:6px">Pairing Pane — inline chips (two active)</div>
+  <div class="pane-wrap" style="width:380px">
+    <div class="pane-toolbar">
+      <span style="color:var(--fg-muted);font-size:11px;margin-right:2px">⠿</span>
+      <div class="pt-color" style="background:#22c55e"></div>
+      <span class="pt-title">Pairing</span>
+      <div class="pt-badge">≡ 215</div>
+      <div class="pt-badge amber">⌕ 12</div>
+      <!-- Inline chips -->
+      <div class="pt-qchips">
+        <div class="pt-qchip" style="background:rgba(34,197,94,0.12);color:#4ade80"><span class="qk" style="color:rgba(74,222,128,0.5)">label:</span>P0<span class="qx">✕</span></div>
+        <div class="pt-qchip" style="background:rgba(34,197,94,0.12);color:#4ade80"><span class="qk" style="color:rgba(74,222,128,0.5)">flt:</span>1001<span class="qx">✕</span></div>
+      </div>
+      <div class="pt-spacer"></div>
+      <button class="pt-btn active" title="Filter">⊞</button>
+      <button class="pt-btn" title="Search">⌕</button>
+      <button class="pt-btn" title="Column config">⚙</button>
+      <button class="pt-btn" style="color:var(--red)" title="Close">✕</button>
+    </div>
+    <div class="pane-qf-panel">
+      <div class="qf-title">Pairing Quick Filter</div>
+      <div class="qf-row">
+        <div class="qf-lbl">Label</div>
+        <input class="finput" style="height:26px;font-size:11px" placeholder="Pairing label…" value="P0" />
+      </div>
+      <div class="qf-row">
+        <div class="qf-lbl">Flt # contains</div>
+        <input class="finput" style="height:26px;font-size:11px" placeholder="e.g. 1001" value="1001" />
+      </div>
+    </div>
+    <div class="pane-canvas" style="height:86px">
+      <div class="row-item" style="top:0">
+        <div class="row-crew" style="width:80px"><div class="crew-id" style="font-size:10px">P0012</div><div class="crew-name">SHA · B737</div></div>
+        <div class="task-bar" style="background:#14532d;left:140px;width:120px;top:8px;font-size:9px">3-day · 4 segs</div>
+      </div>
+      <div class="row-item" style="top:43px">
+        <div class="row-crew" style="width:80px"><div class="crew-id" style="font-size:10px">P0034</div><div class="crew-name">PEK · A320</div></div>
+        <div class="task-bar" style="background:#14532d;left:200px;width:90px;top:51px;font-size:9px">2-day</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- .row -->
+
+<hr />
+
+<!-- ─── GanttSubToolbar Mockup ─────────────────────────────────── -->
+<div class="section-label">GanttSubToolbar — Before / After Filter Applied</div>
+<div class="section-desc">
+  The Filter button (▼) gains an amber count badge when any global filter is active.
+  After Apply, matched/total counts appear as pills to the right of the filter button.
+  All other toolbar components are unchanged.
+</div>
+
+<!-- State 1: No filter active -->
+<div style="font-size:10px;color:var(--fg-muted);margin-bottom:6px">Before — no active filters</div>
+<div class="sub-toolbar">
+  <!-- Date range -->
+  <div class="tb-date">📅 2026-05-01 – 2026-07-31</div>
+  <div class="tb-divider"></div>
+  <!-- Refresh + Filter -->
+  <button class="tb-btn" title="Refresh">↺</button>
+  <button class="tb-btn" title="Filter (no active filters)">▼ Filter</button>
+  <div class="tb-divider"></div>
+  <!-- Draft toolbar -->
+  <button class="tb-btn" title="Undo" style="opacity:.4" disabled>↩ Undo</button>
+  <button class="tb-btn" title="Redo" style="opacity:.4" disabled>↪ Redo</button>
+  <button class="tb-btn" title="Save" style="opacity:.4" disabled>💾 Save</button>
+  <div class="tb-divider"></div>
+  <!-- Zoom -->
+  <button class="tb-btn">−</button>
+  <span style="font-size:10px;color:var(--fg-dim);padding:0 4px;min-width:36px;text-align:center">24h</span>
+  <button class="tb-btn">+</button>
+  <div class="tb-divider"></div>
+  <!-- Rule group -->
+  <button class="tb-btn" style="gap:5px">📋 Default Rules <span style="font-size:9px;color:var(--fg-muted)">▾</span></button>
+  <div class="tb-divider"></div>
+  <!-- Timezone -->
+  <button class="tb-btn">🕐 UTC <span style="font-size:9px;color:var(--fg-muted)">▾</span></button>
+  <div class="tb-spacer"></div>
+  <!-- Pane buttons group -->
+  <div class="tb-pane-group">
+    <button class="tb-pane-btn"><div class="tb-pane-dot" style="background:#3b82f6"></div>Roster</button>
+    <button class="tb-pane-btn"><div class="tb-pane-dot" style="background:#22c55e"></div>Pairing</button>
+    <button class="tb-pane-btn"><div class="tb-pane-dot" style="background:#a855f7"></div>Flight</button>
+    <button class="tb-pane-reset">Reset</button>
+  </div>
+  <div class="tb-divider"></div>
+  <!-- Right actions -->
+  <button class="tb-btn" title="Create Ground Task">⊞</button>
+  <button class="tb-btn" title="Keyboard shortcuts">⌨</button>
+</div>
+
+<div style="height:16px"></div>
+
+<!-- State 2: 3 filters active, matched counts shown -->
+<div style="font-size:10px;color:var(--fg-muted);margin-bottom:6px">
+  After — <strong style="color:var(--amber)">3 active filters</strong>
+  (crew:division=P · crew:base=SHA,PEK · pairing:isFull=true)
+</div>
+<div class="sub-toolbar">
+  <div class="tb-date">📅 2026-05-01 – 2026-07-31</div>
+  <div class="tb-divider"></div>
+  <!-- Refresh + Filter — Filter button highlighted, badge shows count -->
+  <button class="tb-btn" title="Refresh">↺</button>
+  <button class="tb-btn active-amber" title="3 active filters — click to edit" style="position:relative;gap:5px">
+    ▼ Filter
+    <span class="tb-badge-count">3</span>
+  </button>
+  <!-- Matched count pills — appear right after filter button -->
+  <div class="tb-match-pill" style="background:var(--amber-dim)">
+    <span class="lbl">Roster</span>
+    <span class="val" style="color:var(--amber)">31/248</span>
+  </div>
+  <div class="tb-match-pill" style="background:var(--green-dim)">
+    <span class="lbl">Pairing</span>
+    <span class="val" style="color:var(--green)">38/215</span>
+  </div>
+  <div class="tb-divider"></div>
+  <button class="tb-btn" title="Undo" style="opacity:.4" disabled>↩ Undo</button>
+  <button class="tb-btn" title="Redo" style="opacity:.4" disabled>↪ Redo</button>
+  <button class="tb-btn" title="Save" style="opacity:.4" disabled>💾 Save</button>
+  <div class="tb-divider"></div>
+  <button class="tb-btn">−</button>
+  <span style="font-size:10px;color:var(--fg-dim);padding:0 4px;min-width:36px;text-align:center">24h</span>
+  <button class="tb-btn">+</button>
+  <div class="tb-divider"></div>
+  <button class="tb-btn" style="gap:5px">📋 Default Rules <span style="font-size:9px;color:var(--fg-muted)">▾</span></button>
+  <div class="tb-divider"></div>
+  <button class="tb-btn">🕐 UTC <span style="font-size:9px;color:var(--fg-muted)">▾</span></button>
+  <div class="tb-spacer"></div>
+  <div class="tb-pane-group">
+    <button class="tb-pane-btn"><div class="tb-pane-dot" style="background:#3b82f6"></div>Roster</button>
+    <button class="tb-pane-btn"><div class="tb-pane-dot" style="background:#22c55e"></div>Pairing</button>
+    <button class="tb-pane-btn"><div class="tb-pane-dot" style="background:#a855f7"></div>Flight</button>
+    <button class="tb-pane-reset">Reset</button>
+  </div>
+  <div class="tb-divider"></div>
+  <button class="tb-btn" title="Create Ground Task">⊞</button>
+  <button class="tb-btn" title="Keyboard shortcuts">⌨</button>
+</div>
+
+<div style="margin-top:12px" class="spec-note amber">
+  <strong>Filter button changes:</strong> label stays "Filter"; amber background + count badge appear when any filter is active. Matched count pills (Roster N/M, Pairing N/M) are injected immediately after the button — they disappear when filters are cleared.
+</div>
+
+<hr />
+
+<!-- ─── Implementation Notes ──────────────────────────────────── -->
+<div class="section-label">Implementation Notes</div>
+
+<div style="display:flex;flex-direction:column;gap:10px;max-width:700px">
+  <div class="spec-note">
+    <strong>FilterStore restructure</strong> — current flat fields (<code>ranks[]</code>, <code>crewBases[]</code>…) are reorganised into three namespaced objects: <code>crew</code>, <code>pairing</code>, <code>flight</code>. This enables clear API mapping and tab-level reset without touching other tiers.
+  </div>
+  <div class="spec-note green">
+    <strong>Reference data cache</strong> — a new <code>useReferenceStore</code> fetches <code>GET /api/base</code>, <code>GET /api/rank</code>, <code>GET /api/fleet</code> once on app init (or lazy on first filter open) and caches them for all dropdowns. No per-open refetch.
+  </div>
+  <div class="spec-note">
+    <strong>MultiSelectDropdown component</strong> — shared between all three tiers. Props: <code>options: {value, label}[]</code>, <code>value: string[]</code>, <code>onChange</code>, <code>placeholder</code>, <code>color</code>. Renders a searchable checkbox list popover. Built once, used in all filter rows.
+  </div>
+  <div class="spec-note amber">
+    <strong>Per-pane vs global scope</strong> — Global filter triggers <code>gantt-view-store.refreshAllPanes()</code> (API refetch). Per-pane quick filter is pure client-side: filters the already-loaded data array in the pane store, no API call. No sort controls — sorting is handled by the Gantt canvas row ordering. This keeps quick interactions fast.
+  </div>
+  <div class="spec-note">
+    <strong>Inline chip wiring</strong> — Active per-pane filter values are rendered as <code>pt-qchip</code> elements inline in PaneToolbar Row 1, immediately after the loaded-count (↓) badge. Each chip has an × button that clears only that field. When no chips are active, the space collapses to zero width. <strong>No separate Row 2 strip</strong> — the existing <code>filterChips</code> / Row 2 design in PaneToolbar is replaced by this inline approach.
+  </div>
+  <div class="spec-note green">
+    <strong>Existing code reused</strong> — <code>PaneToolbar</code> filterChips props are already wired (not called yet). <code>CrewFilter</code> and layout <code>Sidebar</code> components are deprecated in favour of the new global dialog. The unused <code>sidebar.tsx</code> + <code>crew-filter.tsx</code> can be deleted.
+  </div>
+</div>
+
+<hr />
+
+<div class="section-label">New Files</div>
+<div style="font-size:11px;color:var(--fg-dim);line-height:2;font-family:monospace;background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;max-width:700px">
+  gantt/src/stores/filter-store.ts         <span style="color:var(--amber)">← restructure (crew/pairing/flight namespaces)</span><br/>
+  gantt/src/stores/reference-store.ts      <span style="color:var(--green)">← NEW: base/rank/fleet option cache</span><br/>
+  gantt/src/components/common/multi-select-dropdown.tsx  <span style="color:var(--green)">← NEW: shared multi-select</span><br/>
+  gantt/src/components/layout/filter-dialog.tsx  <span style="color:var(--amber)">← rewrite: three-tier tabbed dialog</span><br/>
+  gantt/src/components/panes/pane-quick-filter.tsx  <span style="color:var(--green)">← NEW: per-pane quick filter panel (no sort)</span><br/>
+  gantt/src/services/reference-api.ts      <span style="color:var(--green)">← NEW: /api/base, /api/rank, /api/fleet</span><br/>
+  gantt/src/components/layout/sidebar.tsx  <span style="color:var(--red)">← DELETE (unused)</span><br/>
+  gantt/src/components/crew/crew-filter.tsx  <span style="color:var(--red)">← DELETE (unused)</span>
+</div>
+
+<div style="margin-top:32px;font-size:10px;color:var(--fg-muted)">
+  Spec: docs/superpowers/specs/2026-05-29-gantt-filter-redesign.html ·
+  Generated 2026-05-29 · ROIS-AI Gantt
+</div>
+
+</body>
+</html>

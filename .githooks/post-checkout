@@ -1,0 +1,17 @@
+#!/bin/sh
+# Auto-rebuild the Rust rule-engine helpers after a branch/worktree checkout that changed
+# them (sibling of post-merge; same rationale — the built binary is git-ignored so a
+# checkout can leave a stale helper that produces wrong legality results).
+# Args: $1 = previous HEAD, $2 = new HEAD, $3 = 1 for a branch checkout (0 = file checkout).
+
+[ "$3" = "1" ] || exit 0
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+if git diff-tree -r --name-only "$1" "$2" 2>/dev/null | grep -q '^rule-engine-rs/'; then
+  echo "[post-checkout] rule-engine-rs changed → cargo build --release"
+  if command -v cargo >/dev/null 2>&1; then
+    ( cd "$root/rule-engine-rs" && cargo build --release ) \
+      || echo "[post-checkout] cargo build FAILED — run it manually in rule-engine-rs before rechecking legality"
+  else
+    echo "[post-checkout] cargo not found — install the Rust toolchain, then: (cd rule-engine-rs && cargo build --release)"
+  fi
+fi

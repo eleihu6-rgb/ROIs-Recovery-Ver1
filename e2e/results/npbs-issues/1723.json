@@ -1,0 +1,40 @@
+{
+  "employeeId": "1723",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 6,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T4",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T5",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T1",
+      "code": 402,
+      "name": "Min Credit Window"
+    }
+  ],
+  "issues": []
+}

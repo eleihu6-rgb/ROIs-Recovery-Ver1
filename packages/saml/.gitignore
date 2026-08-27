@@ -1,0 +1,4 @@
+# packages/saml/dist 是提交进 git 的编译产物（镜像 packages/contracts 模式，
+# 后端通过相对路径 import dist/index.js，生产构建不再重新编译）。
+!dist/
+!dist/**

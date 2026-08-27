@@ -1,0 +1,6 @@
+interface:
+  display_name: "129 UrLing crew to top gesture"
+  short_description: "Project skill 129-bring-crew-to-top-gesture"
+  default_prompt: "Use $129-bring-crew-to-top-gesture for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

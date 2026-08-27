@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Auth state files (contain tokens — do not commit)
+results/.auth/*.json
+
+# Test results
+results/test-results/
+results/html-report/
+results/junit-results.xml
+results/*.png
+results/*.webm
+
+# Environment
+.env

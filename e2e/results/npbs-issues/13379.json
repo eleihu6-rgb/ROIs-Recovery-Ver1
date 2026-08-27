@@ -1,0 +1,45 @@
+{
+  "employeeId": "13379",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T5",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T3",
+      "code": 109,
+      "name": "Average Daily Credit"
+    },
+    {
+      "tier": "T1",
+      "code": 405,
+      "name": "Waive No Same Day Duty Starts"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T7",
+      "name": "Days Off / Days On Pattern",
+      "code": 205,
+      "page": "days-off",
+      "predicate": "Set Condition Pattern Between 3 and 6 Days On, with 3 Days Off (Minimum)",
+      "reason": "unsupported-input: days-off-on-pattern for Days Off / Days On Pattern",
+      "image": "image/pbs/13379_PBS-3301_T7-205_unsupported-input_20260625-055117-756.png"
+    }
+  ]
+}

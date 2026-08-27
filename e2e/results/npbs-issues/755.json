@@ -1,0 +1,54 @@
+{
+  "employeeId": "755",
+  "category": "YYZ-737-CA",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T7",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T5",
+      "name": "Pairing Number",
+      "code": 102,
+      "page": "pairing",
+      "predicate": "Award Pairings If Pairing Number T4109",
+      "reason": "add-bid-disabled (value not accepted): Pairing Number",
+      "image": "image/pbs/755_PBS-3323_T5-102_add-bid-disabled_20260625-045117-157.png"
+    },
+    {
+      "tier": "T6",
+      "name": "Pairing Number",
+      "code": 102,
+      "page": "pairing",
+      "predicate": "Award Pairings If Pairing Number T4107",
+      "reason": "add-bid-disabled (value not accepted): Pairing Number",
+      "image": "image/pbs/755_PBS-3323_T6-102_add-bid-disabled_20260625-045126-645.png"
+    }
+  ]
+}

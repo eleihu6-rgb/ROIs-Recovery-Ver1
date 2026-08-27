@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RES Pairing Creator — 2. Define workspace (interactive)</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .htabs { display: flex; gap: 2px; padding: 0 10px; background: var(--primary-600); }
+  .htabs .ht { color: rgba(255,255,255,.8); font-size: 12px; padding: 6px 12px; border-radius: 5px 5px 0 0; cursor: pointer; }
+  .htabs .ht.active { background: var(--surface); color: var(--primary-600); font-weight: 600; }
+  .work { display: grid; grid-template-columns: 1fr 372px; gap: 14px; align-items: start; }
+  @media (max-width: 1000px){ .work { grid-template-columns: 1fr; } }
+  .cal-all .cal-cell { min-height: 96px; }
+  .cal-cell { user-select: none; }
+  .cal-base { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; font-size: 10px; line-height: 1.2; }
+  .cal-base .bs { width: 26px; font-weight: 700; font-family: var(--mono); color: var(--primary-600); }
+  .cal-base .rkv { white-space: nowrap; color: var(--muted); }
+  .cal-base .rkv b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 700; }
+  .cal-base .rkv .am { color: var(--am); }
+  .cal-base .rkv .pm { color: var(--pm); }
+  .panel { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); position: sticky; top: 8px; }
+  .panel .ph { background: var(--primary); color: #fff; padding: 8px 11px; font-weight: 600; font-size: 12.5px; border-radius: var(--radius) var(--radius) 0 0; display:flex; align-items:center; gap:7px; }
+  .panel .pb { padding: 11px; display: flex; flex-direction: column; gap: 11px; }
+  .dow-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .dow-row .chip { height: 26px; padding: 0 8px; font-size: 11.5px; }
+  .matrix { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .matrix th, .matrix td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: center; }
+  .matrix th { font-size: 10px; color: var(--muted); text-transform: uppercase; background: #fff; }
+  .matrix td.base-c { text-align: left; font-weight: 700; color: var(--primary-600); background: #fff; border-right: 1px solid var(--border); vertical-align: middle; }
+  .matrix td.rk-c { text-align: left; font-weight: 600; }
+  .matrix tr.base-top td { border-top: 2px solid var(--border-strong); }
+  .timegrid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px 8px; align-items: center; }
+  .timegrid .lab { font-size: 11px; font-weight: 700; }
+  .selsum { background: #eef5ff; border: 1px solid #cbe0fb; border-radius: var(--radius); padding: 7px 10px; font-size: 12px; }
+  .chip { user-select: none; }
+  .hintbar { font-size:11px; color:var(--muted); margin-top:4px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #14532d; color:#fff; padding:9px 16px; border-radius: 8px; font-size:12.5px; box-shadow:0 8px 24px rgba(0,0,0,.25); opacity:0; transition:opacity .2s; pointer-events:none; z-index:50; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="mock-shell">
+  <div class="mock-banner">
+    <span class="step">2 / 4 · interactive</span>
+    <b>Define workspace</b> — click a base to filter, toggle division, pick days, edit numbers, press Apply. It really works.
+    <span class="links">
+      <a href="index.html">Index</a>
+      <a href="01-entry-point.html">1 Entry</a>
+      <a class="active" href="02-define-workspace.html">2 Define ★</a>
+      <a href="04-generate-overview.html">3 Generate</a>
+      <a href="05-manage.html">4 Manage</a>
+    </span>
+  </div>
+
+  <div class="dialog">
+    <div class="dialog-title">
+      <span class="ico">📅</span><h2>RES Pairing Planner</h2><span class="sub">— define reserve coverage</span>
+      <span class="spacer"></span><span class="badge-live">LIVE</span><span class="x">✕</span>
+    </div>
+    <div class="htabs">
+      <span class="ht active">① Define</span>
+      <span class="ht">② Review &amp; Generate</span>
+      <span class="ht">Manage existing</span>
+    </div>
+
+    <div class="dialog-body">
+      <!-- scope toolbar -->
+      <div class="toolbar">
+        <div class="field">
+          <label>Base</label>
+          <div id="baseChips" style="display:flex; gap:6px"></div>
+        </div>
+        <div class="sep"></div>
+        <div class="field">
+          <label>Division</label>
+          <div class="seg" id="divSeg"><button data-div="P">Pilot (P)</button><button data-div="C">Cabin (C)</button></div>
+        </div>
+        <div class="sep"></div>
+        <div class="field">
+          <label>Date range</label>
+          <div style="display:flex; gap:6px; align-items:center">
+            <input class="input" style="width:112px" value="01 Jun 2026">
+            <span class="muted">→</span>
+            <input class="input" style="width:112px" value="31 Jul 2026">
+            <span class="hint">(default = gantt 2-month)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="work">
+        <!-- LEFT: calendar -->
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+            <button class="btn btn-sm">‹</button><b style="font-size:13px">June 2026</b><button class="btn btn-sm">›</button>
+            <span class="hint" style="margin-left:6px">Jul 2026 ▾</span>
+            <span class="leg" style="margin-left:auto"><span id="calLegend">per base · per rank — <b class="tag-am">AM</b>/<b class="tag-pm">PM</b></span></span>
+          </div>
+          <div class="cal cal-all">
+            <div class="cal-head"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+            <div class="cal-grid" id="calGrid"></div>
+          </div>
+          <p class="hint" id="calHint" style="margin-top:8px"></p>
+        </div>
+
+        <!-- RIGHT: entry panel -->
+        <div class="panel">
+          <div class="ph">✎ Set RES for selection</div>
+          <div class="pb">
+            <div class="selsum" id="selSum"></div>
+
+            <div class="field">
+              <label>Selection mode</label>
+              <div class="seg" id="modeSeg" style="width:100%">
+                <button data-mode="day" style="flex:1">Day</button>
+                <button data-mode="range" style="flex:1">Range</button>
+                <button data-mode="dow" style="flex:1">Day of week</button>
+              </div>
+              <div id="modeControls"></div>
+            </div>
+
+            <div style="border-top:1px dashed var(--border-strong); padding-top:9px">
+              <div class="section-title" style="margin:0 0 6px">Plan value · <span id="matrixScope">base</span> × rank × timing</div>
+              <table class="matrix">
+                <thead><tr><th style="text-align:left">Base</th><th style="text-align:left">Rk</th><th><span class="pill am">AM</span></th><th><span class="pill pm">PM</span></th></tr></thead>
+                <tbody id="matrixBody"></tbody>
+              </table>
+              <p class="hint" id="rankHint" style="margin-top:5px"></p>
+            </div>
+
+            <div style="border-top:1px dashed var(--border-strong); padding-top:9px">
+              <div class="section-title" style="margin:0 0 6px">AM / PM window (HH:MM)</div>
+              <div class="timegrid">
+                <span class="lab tag-am" id="amLab">AM</span>
+                <input class="input time" id="amStart" value="10:00">
+                <input class="input time" id="amEnd" value="22:00">
+                <span class="lab tag-pm" id="pmLab">PM</span>
+                <input class="input time" id="pmStart" value="20:00">
+                <input class="input time" id="pmEnd" value="05:59">
+              </div>
+              <p class="hint" id="codeHint" style="margin-top:5px"></p>
+            </div>
+
+            <button class="btn btn-primary" id="applyBtn" style="justify-content:center"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dialog-footer">
+      <span class="left" id="footStat"></span>
+      <button class="btn btn-ghost" id="clearBtn">Clear all</button>
+      <button class="btn btn-primary">Next: Review &amp; Generate →</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const ALL_BASES = ['YVR','YEG','YYZ'];
+const RANKS = { P: ['CA','FO'], C: ['IFD','FA'] };
+const CODES = { P: {am:'PRAM', pm:'PRPM'}, C: {am:'CRAM', pm:'CRPM'} };
+const DOW_NAMES = {0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
+const YEAR = 2026, MONTH = 5; // June (0-based)
+
+const pad = n => String(n).padStart(2,'0');
+const dk = d => `${YEAR}-${pad(MONTH+1)}-${pad(d)}`;
+const daysInMonth = () => new Date(YEAR, MONTH+1, 0).getDate();
+const weekday = d => new Date(YEAR, MONTH, d).getDay();
+
+const state = {
+  division: 'P',
+  focusBase: 'ALL',
+  selMode: 'dow',
+  dow: new Set([1]),         // Monday
+  days: new Set(),
+  rangeStart: null, rangeEnd: null,
+  brush: {
+    P: { YVR:{CA:{am:5,pm:5},FO:{am:5,pm:5}}, YEG:{CA:{am:4,pm:4},FO:{am:4,pm:4}}, YYZ:{CA:{am:3,pm:3},FO:{am:3,pm:3}} },
+    C: { YVR:{IFD:{am:2,pm:2},FA:{am:6,pm:6}}, YEG:{IFD:{am:1,pm:1},FA:{am:4,pm:4}}, YYZ:{IFD:{am:1,pm:1},FA:{am:2,pm:2}} },
+  },
+};
+// defined data: data[dateKey][division][base][rank] = {am,pm}
+const data = {};
+function seed(){
+  ['2026-06-01','2026-06-02','2026-06-03','2026-06-08','2026-06-15'].forEach(k=>{
+    data[k] = { P: JSON.parse(JSON.stringify(state.brush.P)) };
+  });
+}
+seed();
+
+const shownBases = () => state.focusBase==='ALL' ? ALL_BASES : [state.focusBase];
+
+function selectedKeys(){
+  const keys=[]; const dim=daysInMonth();
+  for(let d=1; d<=dim; d++){
+    const key=dk(d), wd=weekday(d); let sel=false;
+    if(state.selMode==='dow') sel = state.dow.has(wd);
+    else if(state.selMode==='day') sel = state.days.has(key);
+    else if(state.selMode==='range' && state.rangeStart){
+      const a=state.rangeStart, b=state.rangeEnd||state.rangeStart;
+      const lo=a<b?a:b, hi=a<b?b:a; sel = key>=lo && key<=hi;
+    }
+    if(sel) keys.push(key);
+  }
+  return keys;
+}
+
+/* ---------- renderers ---------- */
+function renderBaseChips(){
+  const el = document.getElementById('baseChips');
+  const chips = [['ALL','All bases'], ...ALL_BASES.map(b=>[b,b])];
+  el.innerHTML = chips.map(([v,l])=>`<span class="chip ${state.focusBase===v?'active':''}" data-base="${v}">${l}</span>`).join('')
+    + `<span class="chip" style="opacity:.5">+ add</span>`;
+  el.querySelectorAll('[data-base]').forEach(c=>c.onclick=()=>{ state.focusBase=c.dataset.base; render(); });
+}
+function renderDivision(){
+  document.querySelectorAll('#divSeg button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.div===state.division);
+    b.onclick=()=>{ state.division=b.dataset.div; render(); };
+  });
+}
+function renderModeSeg(){
+  document.querySelectorAll('#modeSeg button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.mode===state.selMode);
+    b.onclick=()=>{ state.selMode=b.dataset.mode; render(); };
+  });
+  const mc = document.getElementById('modeControls');
+  if(state.selMode==='dow'){
+    mc.innerHTML = `<div class="dow-row" style="margin-top:6px">`+
+      [1,2,3,4,5,6,0].map(wd=>`<span class="chip ${state.dow.has(wd)?'active':''}" data-wd="${wd}">${DOW_NAMES[wd]}</span>`).join('')+
+      `</div><div class="hintbar">Pick weekdays, or click days on the calendar to toggle that weekday.</div>`;
+    mc.querySelectorAll('[data-wd]').forEach(c=>c.onclick=()=>{ const wd=+c.dataset.wd; state.dow.has(wd)?state.dow.delete(wd):state.dow.add(wd); render(); });
+  } else if(state.selMode==='range'){
+    const a=state.rangeStart, b=state.rangeEnd;
+    mc.innerHTML = `<div class="hintbar" style="margin-top:6px">Click a start day then an end day on the calendar.<br>Range: <b>${a?fmt(a):'—'}</b> → <b>${b?fmt(b):'—'}</b></div>`;
+  } else {
+    mc.innerHTML = `<div class="hintbar" style="margin-top:6px">Click individual days on the calendar to toggle them. Selected: <b>${state.days.size}</b></div>`;
+  }
+}
+function fmt(key){ const d=+key.slice(8); return `${pad(d)} Jun`; }
+
+function renderMatrix(){
+  document.getElementById('matrixScope').textContent = state.focusBase==='ALL' ? 'base' : state.focusBase;
+  const body = document.getElementById('matrixBody');
+  const bases = shownBases(), ranks = RANKS[state.division];
+  let html='';
+  bases.forEach(b=>{
+    ranks.forEach((rk,i)=>{
+      html += `<tr class="${i===0?'base-top':''}">`;
+      if(i===0) html += `<td class="base-c" rowspan="${ranks.length}">${b}</td>`;
+      const v = state.brush[state.division][b][rk];
+      html += `<td class="rk-c">${rk}</td>`+
+        `<td><input class="input num-in" data-b="${b}" data-rk="${rk}" data-ap="am" value="${v.am}"></td>`+
+        `<td><input class="input num-in" data-b="${b}" data-rk="${rk}" data-ap="pm" value="${v.pm}"></td></tr>`;
+    });
+  });
+  body.innerHTML = html;
+  body.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{
+    const n = Math.max(0, parseInt(inp.value)||0);
+    state.brush[state.division][inp.dataset.b][inp.dataset.rk][inp.dataset.ap]=n;
+    inp.value=n; renderApply();
+  });
+  document.getElementById('rankHint').innerHTML =
+    `Ranks fixed by division — Pilot → <b>CA, FO</b>; Cabin → <b>IFD, FA</b>.`+
+    (state.focusBase!=='ALL'? ` Editing <b>${state.focusBase}</b> only.`:'');
+}
+
+function renderCalendar(){
+  const grid = document.getElementById('calGrid');
+  const dim = daysInMonth(), first = weekday(1); // leading blanks (Sun=0)
+  const selKeys = new Set(selectedKeys());
+  let html='';
+  for(let i=0;i<first;i++){ const pd=31-first+1+i; html+=`<div class="cal-cell out weekend"><div class="d">${pd}</div></div>`; }
+  for(let d=1; d<=dim; d++){
+    const key=dk(d), wd=weekday(d), isWend=(wd===0||wd===6);
+    const sel=selKeys.has(key), today=(d===11);
+    const dd = data[key] && data[key][state.division];
+    const bs = shownBases().filter(b=> dd && dd[b]);
+    let inner=`<div class="d">${d}</div>`;
+    if(sel) inner=`<div class="d">${d}</div><div class="chk"></div>`;
+    if(bs.length){
+      bs.forEach(b=>{
+        const parts = RANKS[state.division].map(rk=>{
+          const v=dd[b][rk]; return v? `${rk} <b class="am">${v.am}</b>/<b class="pm">${v.pm}</b>`:'';
+        }).filter(Boolean).map(s=>`<span class="rkv">${s}</span>`).join('');
+        inner += `<div class="cal-base"><span class="bs">${b}</span>${parts}</div>`;
+      });
+    } else {
+      inner += `<div class="cal-empty">— not set —</div>`;
+    }
+    html += `<div class="cal-cell ${isWend?'weekend':''} ${sel?'dow':''} ${today?'today':''}" data-day="${d}">${inner}</div>`;
+  }
+  const total = Math.ceil((first+dim)/7)*7;
+  for(let i=first+dim; i<total; i++){ const td=i-(first+dim)+1; html+=`<div class="cal-cell out weekend"><div class="d">${td}</div></div>`; }
+  grid.innerHTML = html;
+  grid.querySelectorAll('[data-day]').forEach(c=>c.onclick=()=>onCellClick(+c.dataset.day));
+
+  document.getElementById('calLegend').innerHTML = state.focusBase==='ALL'
+    ? `all bases · per rank — <b class="tag-am">AM</b>/<b class="tag-pm">PM</b>`
+    : `<b style="color:var(--primary-600)">${state.focusBase}</b> only · per rank — <b class="tag-am">AM</b>/<b class="tag-pm">PM</b>`;
+  document.getElementById('calHint').innerHTML = state.focusBase==='ALL'
+    ? `Showing <b>all bases</b>. Click a base chip (e.g. <b>YVR</b>) to filter the calendar AND the matrix to that base only.`
+    : `Filtered to <b>${state.focusBase}</b> — calendar shows only ${state.focusBase}, and the matrix defines only ${state.focusBase}. Click <b>All bases</b> to see every base again.`;
+}
+function onCellClick(d){
+  const key=dk(d);
+  if(state.selMode==='day'){ state.days.has(key)?state.days.delete(key):state.days.add(key); }
+  else if(state.selMode==='range'){
+    if(!state.rangeStart || state.rangeEnd){ state.rangeStart=key; state.rangeEnd=null; }
+    else state.rangeEnd=key;
+  } else { const wd=weekday(d); state.dow.has(wd)?state.dow.delete(wd):state.dow.add(wd); }
+  render();
+}
+
+function renderTimes(){
+  document.getElementById('amLab').textContent = 'AM';
+  document.getElementById('pmLab').textContent = 'PM';
+  document.getElementById('codeHint').innerHTML =
+    `Codes for ${state.division==='P'?'Pilot':'Cabin'}: AM = <b>${CODES[state.division].am}</b>, PM = <b>${CODES[state.division].pm}</b>. `+
+    `Defaults from the assignment dictionary; edits apply to the days you Apply.`;
+}
+
+function renderSelSum(){
+  const keys=selectedKeys(), bases=shownBases();
+  let mode='';
+  if(state.selMode==='dow'){ const names=[...state.dow].sort().map(w=>DOW_NAMES[w]).join(', '); mode=`Day of week (${names||'none'})`; }
+  else if(state.selMode==='range') mode='Date range';
+  else mode='Individual days';
+  document.getElementById('selSum').innerHTML =
+    `Selection: <b>${mode}</b> · <span class="mono">${keys.length}</span> day(s) · <span class="mono">${bases.length}</span> base(s)`;
+}
+function renderApply(){
+  const keys=selectedKeys(), bases=shownBases();
+  const pairings = keys.length * bases.length * 2;
+  const btn=document.getElementById('applyBtn');
+  btn.disabled = keys.length===0;
+  btn.textContent = `Apply to ${keys.length} day${keys.length===1?'':'s'} · ${bases.length} base${bases.length===1?'':'s'} → ${pairings} pairings`;
+  btn.onclick = apply;
+  // footer stat
+  let defined=0, pp=0;
+  Object.keys(data).forEach(k=>{ const dv=data[k][state.division]; if(dv){ defined++; pp+= Object.keys(dv).length*2; } });
+  document.getElementById('footStat').innerHTML = `${defined} day(s) defined for ${state.division==='P'?'Pilot':'Cabin'} · ${pp} pairings pending`;
+}
+function apply(){
+  const keys=selectedKeys(); if(!keys.length) return;
+  const bases=shownBases();
+  keys.forEach(key=>{
+    data[key]=data[key]||{}; data[key][state.division]=data[key][state.division]||{};
+    bases.forEach(b=>{
+      data[key][state.division][b]={};
+      RANKS[state.division].forEach(rk=>{ const v=state.brush[state.division][b][rk]; data[key][state.division][b][rk]={am:v.am,pm:v.pm}; });
+    });
+  });
+  showToast(`Applied to ${keys.length} day(s) × ${bases.length} base(s) → ${keys.length*bases.length*2} pairings`);
+  render();
+}
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent='✓ '+msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+
+document.getElementById('clearBtn').onclick=()=>{ Object.keys(data).forEach(k=>delete data[k]); showToast('Cleared all defined days'); render(); };
+
+function render(){ renderBaseChips(); renderDivision(); renderModeSeg(); renderMatrix(); renderCalendar(); renderTimes(); renderSelSum(); renderApply(); }
+render();
+</script>
+</body>
+</html>

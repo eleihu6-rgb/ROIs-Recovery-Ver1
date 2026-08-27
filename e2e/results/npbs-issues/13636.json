@@ -1,0 +1,25 @@
+{
+  "employeeId": "13636",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 3,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T2",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    }
+  ],
+  "issues": []
+}

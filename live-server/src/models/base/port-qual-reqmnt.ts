@@ -1,0 +1,26 @@
+import { pgTable, bigint, varchar, smallint, timestamp } from 'drizzle-orm/pg-core'
+
+export const portQualReqmnt = pgTable('port_qual_reqmnt', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  createdBy: varchar('created_by', { length: 30 }).notNull().default('system'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 30 }).notNull().default('system'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  filiale: varchar('filiale', { length: 6 }).notNull(),
+  division: varchar('division', { length: 1 }).notNull(),
+  crewGroup: varchar('crew_group', { length: 16 }),
+  fltNum: varchar('flt_num', { length: 100 }),
+  airport: varchar('airport', { length: 3 }).notNull(),
+  fleet: varchar('fleet', { length: 4 }),
+  rank: varchar('rank', { length: 100 }).notNull(),
+  qual: varchar('qual', { length: 40 }).notNull(),
+  effDt: timestamp('eff_dt').notNull(),
+  startTime: varchar('start_time', { length: 20 }),
+  expDt: timestamp('exp_dt'),
+  endTime: varchar('end_time', { length: 20 }),
+  inOutInd: varchar('in_out_ind', { length: 1 }).notNull(),
+  exceptionCode: varchar('exception_code', { length: 50 }),
+  qualLevel: smallint('qual_level'),
+  segTypes: varchar('seg_types', { length: 6 }),
+  isRestricted: varchar('is_restricted', { length: 1 }).notNull().default('N'),
+})

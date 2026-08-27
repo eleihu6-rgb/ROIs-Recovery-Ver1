@@ -1,0 +1,6 @@
+interface:
+  display_name: "113 scenario roster quality analyzer"
+  short_description: "Project skill 113-scenario-roster-quality-analyzer"
+  default_prompt: "Use $113-scenario-roster-quality-analyzer for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

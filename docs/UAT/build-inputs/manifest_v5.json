@@ -1,0 +1,79 @@
+{
+  "output": "../F8 PBS UAT Test Cases - V5.0.xlsx",
+  "airline": "F8 (Flair)",
+  "round_label": "UAT — 3 Test Rounds",
+  "rounds": 3,
+  "ref_date": "2026-08-25",
+  "summary_title": "F8 (Flair) PBS — UAT Test Cases — Summary",
+  "tabs": [
+    {
+      "name": "T2 Admin UI",
+      "title": "T2 — Admin UI  (Live & Scenario)  —  Admin user",
+      "subtitle": "UAT — 3 Test Rounds   •   F8 (Flair) PBS   •   Reference: online help › Live & Scenario   •   crew-f8-usva-sit.roiscloud.com/altair",
+      "area": "Live & Scenario admin (Altair)",
+      "sources": [
+        "t2_live.json",
+        "t2_scenario_v3.json"
+      ]
+    },
+    {
+      "name": "T3 Legality",
+      "title": "T3 — Legality  (Rule Checks)  —  Admin user",
+      "subtitle": "UAT — 3 Test Rounds   •   F8 (Flair) PBS   •   Reference: online help › Legality   •   crew-f8-usva-sit.roiscloud.com/altair/legality",
+      "area": "Rule-set legality checks (Altair)",
+      "sources": [
+        "t3_legality.json"
+      ]
+    },
+    {
+      "name": "T4 Crew Portal",
+      "title": "T4 — Crew Portal  (Crew Bidding App)  —  Crew user",
+      "subtitle": "UAT — 3 Test Rounds   •   F8 (Flair) PBS   •   Reference: online help   •   crew-f8-usva-sit.roiscloud.com/pbs/help",
+      "area": "Crew bidding portal (PBS)",
+      "sources": [
+        "t4_portal.json"
+      ]
+    },
+    {
+      "name": "T5 Integration",
+      "title": "T5 — Integration  (Inbound / Outbound)  —  Admin / System",
+      "subtitle": "UAT — 3 Test Rounds   •   F8 (Flair) PBS   •   Import PBS material · S3 pairing load · NOC inbound sync · publish optimized roster → F8 NOC",
+      "area": "Inbound/outbound integrations (connector-server, NOC, S3)",
+      "sources": [
+        "t5_integration.json"
+      ]
+    },
+    {
+      "name": "T6 Solver Quality",
+      "title": "T6 — Solver Quality  (Roster Quality Validation)  —  Admin user",
+      "subtitle": "UAT — 3 Test Rounds   •   F8 (Flair) PBS   •   Coverage · Seniority · Bid satisfaction · Credit hours · KPI · Distribution · Versions · Algorithm params · Base × Rank matrix",
+      "area": "Scenario roster quality evaluation (Altair)",
+      "sources": [
+        "t6_quality.json",
+        "t6_matrix.json"
+      ]
+    }
+  ],
+  "changelog": [
+    {
+      "version": "V5.0",
+      "date": "2026-08-26",
+      "current": true,
+      "items": [
+        "Ranks corrected — removed PU rank throughout; cabin crew are IFD / FA only (T6 base × rank matrix no longer emits PU).",
+        "T3 Legality: rule 7501 retired and replaced by 7508 (F8 calendar-day Single Day Free from Duty, with a Duty-Report Y/N parameter).",
+        "T3 Legality: added rule 2015 — DO (Day-Off) Definition, a definition-type rule that feeds the downstream days-off rules (7505 / 7507), analogous to 2014 Local Night Definition.",
+        "T3 Legality: added rule 7509 — Avoid Co-pairing (crew not to fly together); restricted crew-ID pairs are entered INLINE in the rule (Crew A · Crew B · Eff Date · Exp Date), and the match spans different bases and divisions. Shipped 2026-08-23 to the F8 solver ruleset and the Rust legality engine.",
+        "T3 Legality grew from 21 to 23 cases; workbook totals updated accordingly."
+      ]
+    },
+    {
+      "version": "V4.0",
+      "date": "2026-08-25",
+      "items": [
+        "Added T6 Solver Quality tab (44 cases) — validates a finished scenario's roster QUALITY: coverage, seniority respect, bid satisfaction, credit-hour balance, KPI, distribution, versions and algorithm parameters, plus a base × rank scenario matrix. Distinct from the Admin-UI Scenario cases, which cover creating/kicking-off a run.",
+        "Baseline for the change log — earlier revisions (V1–V3) predate this tracker."
+      ]
+    }
+  ]
+}

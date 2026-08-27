@@ -1,0 +1,35 @@
+{
+  "employeeId": "13203",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 104,
+      "name": "Any/Every Layover In Airport"
+    },
+    {
+      "tier": "T5",
+      "code": 104,
+      "name": "Any/Every Layover In Airport"
+    },
+    {
+      "tier": "T1",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    },
+    {
+      "tier": "T2",
+      "code": 401,
+      "name": "Max Credit Window"
+    }
+  ],
+  "issues": []
+}

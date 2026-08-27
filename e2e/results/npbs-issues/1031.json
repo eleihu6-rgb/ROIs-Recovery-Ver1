@@ -1,0 +1,35 @@
+{
+  "employeeId": "1031",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 104,
+      "name": "Any/Every Layover In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 105,
+      "name": "Pairing Total Credit"
+    },
+    {
+      "tier": "T5",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    }
+  ],
+  "issues": []
+}

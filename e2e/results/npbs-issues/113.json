@@ -1,0 +1,35 @@
+{
+  "employeeId": "113",
+  "category": "YVR-737-CA",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T3",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T5",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": []
+}

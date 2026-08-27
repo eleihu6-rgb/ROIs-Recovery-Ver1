@@ -1,0 +1,53 @@
+{
+  "groups": [
+    {
+      "label": "Ethiopia / ADD / B787",
+      "idPrefix": "T",
+      "idStart": 2001,
+      "count": 40,
+      "caCount": 20,
+      "nationality": "ET",
+      "filiale": "F8",
+      "emplBaseDate": "2022-03-01",
+      "base": {
+        "code": "ADD",
+        "name": "Bole International Airport",
+        "icao": "HAAB",
+        "city": "ADD",
+        "dir": "I",
+        "zoneId": "Africa/Addis_Ababa",
+        "utcOffsetMin": 180,
+        "country": "ET"
+      },
+      "fleet": {
+        "code": "B787",
+        "description": "Boeing 787",
+        "fleetGrp": "B787",
+        "acType": "B787",
+        "marketAcType": "Boeing 787 Dreamliner",
+        "restfacility": 1,
+        "body": "W"
+      },
+      "ranks": {
+        "CA": { "code": "CA", "division": "P", "description": "Captain", "position": "PIC" },
+        "FO": { "code": "FO", "division": "P", "description": "First Officer", "position": "SIC" }
+      },
+      "names": {
+        "maleFirst": [
+          "Abel", "Dawit", "Yonas", "Samuel", "Daniel", "Henok", "Kaleb", "Bereket",
+          "Elias", "Mikias", "Robel", "Yared", "Abraham", "Solomon", "Girma", "Fitsum",
+          "Biniam", "Amanuel", "Nahom", "Eyob"
+        ],
+        "femaleFirst": [
+          "Selam", "Hana", "Ruth", "Sara", "Eden", "Helen", "Meron", "Rahel",
+          "Tigist", "Kidist", "Liya", "Sosina", "Bezawit", "Netsanet"
+        ],
+        "last": [
+          "Tesfaye", "Alemu", "Bekele", "Girma", "Haile", "Getachew", "Kebede", "Assefa",
+          "Tadesse", "Desta", "Yohannes", "Abebe", "Fikre", "Negash", "Teshome", "Gebre",
+          "Worku", "Tesema", "Molla", "Hagos"
+        ]
+      }
+    }
+  ]
+}

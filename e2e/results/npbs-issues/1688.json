@@ -1,0 +1,44 @@
+{
+  "employeeId": "1688",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T1",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T2",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T3",
+      "name": "Prefer Off",
+      "code": 201,
+      "page": "days-off",
+      "predicate": "Prefer Off Jun 14, 2026 - Jun 8, 2026",
+      "reason": "add-bid-rejected: Configure Days Off Bid Prefer Off TIERS T1 T2 T3 T4 T5 T6 T7 DATES / DAYS Dates Days of Week Weekends Date Range TIME WI",
+      "image": "image/pbs/1688_PBS-3302_T3-201_rejected_20260625-053953-438.png"
+    },
+    {
+      "tier": "T5",
+      "name": "Prefer Off",
+      "code": 201,
+      "page": "days-off",
+      "predicate": "Prefer Off Jun 3, 2026 - Jun 1, 2026",
+      "reason": "add-bid-rejected: Configure Days Off Bid Prefer Off TIERS T1 T2 T3 T4 T5 T6 T7 DATES / DAYS Dates Days of Week Weekends Date Range TIME WI",
+      "image": "image/pbs/1688_PBS-3302_T5-201_rejected_20260625-054006-977.png"
+    }
+  ]
+}

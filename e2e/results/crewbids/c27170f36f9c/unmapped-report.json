@@ -1,0 +1,40 @@
+{
+  "generatedAt": "see git commit",
+  "totalRecords": 1096,
+  "effectiveCrew": 659,
+  "selectedCrew": 1,
+  "bucketCounts": {
+    "YUL-FO": 1
+  },
+  "droppedReasonCounts": {
+    "secondary-clause-dropped": 443,
+    "beyond-tier-7": 4033,
+    "unmapped-pairing-condition": 52,
+    "unmapped-predicate": 4,
+    "unmapped-set-condition": 1
+  },
+  "selectedCrewDropped": [
+    {
+      "employeeId": "2199",
+      "category": "YUL-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Pairing Number M4106 Check-In Date Jun 9, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number M4117",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Set Condition Short Call Type PRAM",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jun 16, 2026, Jun 8, 2026, Jun 7, 2026, Jun 15, 2026, Jun 17, 2026, Jun 18, 2026, Jun 19, 2026, Jun 20, 2026",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    }
+  ]
+}

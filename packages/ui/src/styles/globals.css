@@ -1,0 +1,690 @@
+@import "tailwindcss";
+
+/*
+ * Scan @rois/ui's own source so utility classes that live ONLY in library
+ * components (e.g. Dialog's `left-[50%] top-[50%] translate-x-[-50%]`
+ * centering) are generated in every consuming app (gantt / pbs-portal).
+ * Without this, Tailwind v4 auto-detection skips the workspace package and
+ * dialogs/popovers fall back to their static position. Path is relative to
+ * this CSS file (packages/ui/src/styles).
+ */
+@source "../";
+
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-sidebar-background: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* ── Font families ──────────────────────────────────────────────────────
+     UI text uses the system sans stack; numeric/code/ID text uses the mono
+     stack (pair with `tabular-nums` for aligned columns of figures). */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* ── Type scale (dense aviation-ops UI) ─────────────────────────────────
+     xs..2xl keep Tailwind's defaults (12 / 14 / 16 / 18 / 20 / 24px) — the
+     named steps already in heavy use. We only ADD the sub-12px steps the
+     dense data labels need, so the WHOLE scale is token-driven and the
+     scattered arbitrary `text-[Npx]` values can be retired.
+     The canonical steps are therefore: 9 · 10 · 12 · 14 · 16 · 18 · 20 · 24.
+     See root CLAUDE.md「样式与排版标准」for the rule + migration mapping. */
+  --text-2xs: 0.625rem;               /* 10px — badges, chips, table micro-meta */
+  --text-2xs--line-height: 0.875rem;  /* 14px */
+  --text-3xs: 0.5625rem;              /* 9px  — uppercase micro labels (tracking-wide) */
+  --text-3xs--line-height: 0.75rem;   /* 12px */
+}
+
+/* =========================================================================
+   Ocean Blue (Default) — Professional business blue, Jeppesen-style
+   ========================================================================= */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 215 25% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 215 25% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 25% 12%;
+  --primary: 213 94% 45%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 214 32% 95%;
+  --secondary-foreground: 213 50% 30%;
+  --muted: 214 32% 95%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 214 32% 91%;
+  --accent-foreground: 213 50% 30%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 20% 90%;
+  --input: 214 20% 88%;
+  --ring: 213 94% 45%;
+  --radius: 0.125rem;
+  --chart-1: 213 94% 45%;
+  --chart-2: 172 66% 40%;
+  --chart-3: 258 60% 55%;
+  --chart-4: 32 95% 52%;
+  --chart-5: 350 80% 55%;
+  --sidebar-background: 214 40% 97%;
+  --sidebar-foreground: 215 25% 25%;
+  --sidebar-primary: 213 94% 45%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 214 32% 92%;
+  --sidebar-accent-foreground: 213 50% 30%;
+  --sidebar-border: 214 20% 90%;
+  --sidebar-ring: 213 94% 45%;
+
+  /* Gantt Canvas */
+  --gantt-bg: #ffffff;
+  --gantt-bg-alt: #eaf4ff;
+  --gantt-bg-header: #f3f4f6;
+  --gantt-bg-panel: #f8fafc;
+  --gantt-bg-panel-header: #eef2f7;
+  --gantt-bg-today: rgba(59, 130, 246, 0.05);
+  --gantt-grid: #e5e7eb;
+  --gantt-grid-major: #d1d5db;
+  --gantt-text: #111827;
+  --gantt-text-secondary: #6b7280;
+  --gantt-text-red: #dc2626;
+  --gantt-text-weekend: #818cf8;
+  --gantt-splitter: #9ca3af;
+  --gantt-task-flight: #3b82f6;
+  --gantt-task-ground-trn: #22c55e;
+  --gantt-task-ground-sby: #f59e0b;
+  --gantt-task-ground-off: #9ca3af;
+  --gantt-task-ground-al: #a78bfa;
+  --gantt-task-ground-sl: #f472b6;
+  /* Magenta selection — clear of blue flights and green CR / pairing coverage */
+  --gantt-selection-border: #c026d3;
+  --gantt-selection-wash: rgba(192, 38, 211, 0.22);
+  --gantt-optimizer-border: #1b9d4b;
+  --gantt-drop-target: rgba(59, 130, 246, 0.15);
+  --gantt-drop-target-border: #3b82f6;
+  --gantt-bg-weekend: rgba(107, 114, 128, 0.04);
+  --gantt-now-line: #ef4444;
+  --gantt-scrollbar: rgba(0, 0, 0, 0.18);
+  --gantt-scrollbar-hover: rgba(0, 0, 0, 0.35);
+  --gantt-row-selected: #dfe1e2;
+  --gantt-row-frozen: rgba(245, 158, 11, 0.08);
+}
+
+/* =========================================================================
+   Dark Pro — Bloomberg Terminal-inspired dark theme
+   ========================================================================= */
+.dark {
+  --background: 220 20% 7%;
+  --foreground: 210 20% 90%;
+  --card: 220 18% 10%;
+  --card-foreground: 210 20% 90%;
+  --popover: 220 18% 10%;
+  --popover-foreground: 210 20% 90%;
+  --primary: 213 94% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 16% 15%;
+  --secondary-foreground: 210 20% 82%;
+  --muted: 220 16% 15%;
+  --muted-foreground: 215 12% 52%;
+  --accent: 220 18% 18%;
+  --accent-foreground: 210 20% 88%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 14% 18%;
+  --input: 220 14% 20%;
+  --ring: 213 94% 55%;
+  --chart-1: 213 94% 60%;
+  --chart-2: 172 66% 50%;
+  --chart-3: 258 60% 65%;
+  --chart-4: 32 95% 58%;
+  --chart-5: 350 80% 60%;
+  --sidebar-background: 220 20% 5%;
+  --sidebar-foreground: 210 20% 78%;
+  --sidebar-primary: 213 94% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 18% 14%;
+  --sidebar-accent-foreground: 210 20% 82%;
+  --sidebar-border: 220 14% 16%;
+  --sidebar-ring: 213 94% 55%;
+
+  /* Gantt Canvas — Dark Pro */
+  --gantt-bg: #0f1318;
+  --gantt-bg-alt: #151a21;
+  --gantt-bg-header: #1a2030;
+  --gantt-bg-panel: #121720;
+  --gantt-bg-panel-header: #1c2333;
+  --gantt-bg-today: rgba(59, 130, 246, 0.08);
+  --gantt-grid: #1e2a3a;
+  --gantt-grid-major: #2a3a4e;
+  --gantt-text: #e2e8f0;
+  --gantt-text-secondary: #8899aa;
+  --gantt-text-red: #f87171;
+  --gantt-text-weekend: #a5b4fc;
+  --gantt-splitter: #3a4a5e;
+  --gantt-task-flight: #60a5fa;
+  --gantt-task-ground-trn: #4ade80;
+  --gantt-task-ground-sby: #fbbf24;
+  --gantt-task-ground-off: #6b7280;
+  --gantt-task-ground-al: #c4b5fd;
+  --gantt-task-ground-sl: #f9a8d4;
+  --gantt-selection-border: #e879f9;
+  --gantt-selection-wash: rgba(232, 121, 249, 0.24);
+  --gantt-optimizer-border: #43b66d;
+  --gantt-drop-target: rgba(96, 165, 250, 0.15);
+  --gantt-drop-target-border: #60a5fa;
+  --gantt-bg-weekend: rgba(148, 163, 184, 0.06);
+  --gantt-now-line: #f87171;
+  --gantt-scrollbar: rgba(255, 255, 255, 0.18);
+  --gantt-scrollbar-hover: rgba(255, 255, 255, 0.35);
+  --gantt-row-selected: rgba(96, 165, 250, 0.12);
+  --gantt-row-frozen: rgba(251, 191, 36, 0.08);
+}
+
+/* =========================================================================
+   Emerald Green — EVA Air green (inspired by old JavaFX system)
+   ========================================================================= */
+.theme-emerald-green {
+  --background: 0 0% 100%;
+  --foreground: 150 20% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 150 20% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 150 20% 10%;
+  --primary: 160 84% 32%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 152 28% 94%;
+  --secondary-foreground: 160 45% 22%;
+  --muted: 152 28% 94%;
+  --muted-foreground: 155 12% 46%;
+  --accent: 152 28% 90%;
+  --accent-foreground: 160 45% 22%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 152 18% 89%;
+  --input: 152 18% 87%;
+  --ring: 160 84% 32%;
+  --chart-1: 160 84% 32%;
+  --chart-2: 210 70% 50%;
+  --chart-3: 280 55% 50%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 350 75% 55%;
+  --sidebar-background: 150 30% 97%;
+  --sidebar-foreground: 150 20% 22%;
+  --sidebar-primary: 160 84% 32%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 152 28% 91%;
+  --sidebar-accent-foreground: 160 45% 22%;
+  --sidebar-border: 152 18% 89%;
+  --sidebar-ring: 160 84% 32%;
+
+  /* Gantt Canvas — Emerald Green */
+  --gantt-bg: #ffffff;
+  --gantt-bg-alt: #f0fdf4;
+  --gantt-bg-header: #dcfce7;
+  --gantt-bg-panel: #f0fdf4;
+  --gantt-bg-panel-header: #d1fae5;
+  --gantt-bg-today: rgba(22, 163, 74, 0.05);
+  --gantt-grid: #d1fae5;
+  --gantt-grid-major: #a7f3d0;
+  --gantt-text: #14532d;
+  --gantt-text-secondary: #4d7c5f;
+  --gantt-text-red: #dc2626;
+  --gantt-text-weekend: #818cf8;
+  --gantt-splitter: #6ee7b7;
+  --gantt-task-flight: #16a34a;
+  --gantt-task-ground-trn: #0d9488;
+  --gantt-task-ground-sby: #f59e0b;
+  --gantt-task-ground-off: #9ca3af;
+  --gantt-task-ground-al: #8b5cf6;
+  --gantt-task-ground-sl: #ec4899;
+  /* Magenta selection — keep clear of CR green and green-theme flight fills */
+  --gantt-selection-border: #c026d3;
+  --gantt-selection-wash: rgba(192, 38, 211, 0.22);
+  --gantt-optimizer-border: #1b9d4b;
+  --gantt-drop-target: rgba(22, 163, 74, 0.12);
+  --gantt-drop-target-border: #16a34a;
+  --gantt-bg-weekend: rgba(107, 114, 128, 0.04);
+  --gantt-now-line: #ef4444;
+  --gantt-scrollbar: rgba(0, 0, 0, 0.18);
+  --gantt-scrollbar-hover: rgba(0, 0, 0, 0.35);
+  --gantt-row-selected: rgba(22, 163, 74, 0.10);
+  --gantt-row-frozen: rgba(245, 158, 11, 0.08);
+}
+
+.theme-emerald-green.dark {
+  --background: 155 25% 8%;
+  --foreground: 150 15% 92%;
+  --card: 155 22% 11%;
+  --card-foreground: 150 15% 92%;
+  --popover: 155 22% 11%;
+  --popover-foreground: 150 15% 92%;
+  --primary: 160 72% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 155 18% 17%;
+  --secondary-foreground: 150 15% 84%;
+  --muted: 155 18% 17%;
+  --muted-foreground: 155 12% 55%;
+  --accent: 155 20% 20%;
+  --accent-foreground: 150 15% 88%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 155 16% 19%;
+  --input: 155 16% 21%;
+  --ring: 160 72% 42%;
+  --chart-1: 160 72% 48%;
+  --chart-2: 210 70% 58%;
+  --chart-3: 280 55% 62%;
+  --chart-4: 38 92% 56%;
+  --chart-5: 350 75% 60%;
+  --sidebar-background: 155 25% 6%;
+  --sidebar-foreground: 150 15% 78%;
+  --sidebar-primary: 160 72% 42%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 155 20% 15%;
+  --sidebar-accent-foreground: 150 15% 84%;
+  --sidebar-border: 155 16% 16%;
+  --sidebar-ring: 160 72% 42%;
+
+  /* Gantt Canvas — Emerald Green Dark */
+  --gantt-bg: #0a1a12;
+  --gantt-bg-alt: #0f2118;
+  --gantt-bg-header: #14301f;
+  --gantt-bg-panel: #0c1e15;
+  --gantt-bg-panel-header: #163827;
+  --gantt-bg-today: rgba(34, 197, 94, 0.08);
+  --gantt-grid: #1a3526;
+  --gantt-grid-major: #22543d;
+  --gantt-text: #d1fae5;
+  --gantt-text-secondary: #6ee7b7;
+  --gantt-text-red: #f87171;
+  --gantt-text-weekend: #a5b4fc;
+  --gantt-splitter: #2d6a4f;
+  --gantt-task-flight: #4ade80;
+  --gantt-task-ground-trn: #2dd4bf;
+  --gantt-task-ground-sby: #fbbf24;
+  --gantt-task-ground-off: #6b7280;
+  --gantt-task-ground-al: #c4b5fd;
+  --gantt-task-ground-sl: #f9a8d4;
+  /* Magenta selection — keep clear of CR green and green-theme flight fills */
+  --gantt-selection-border: #e879f9;
+  --gantt-selection-wash: rgba(232, 121, 249, 0.24);
+  --gantt-optimizer-border: #43b66d;
+  --gantt-drop-target: rgba(74, 222, 128, 0.12);
+  --gantt-drop-target-border: #4ade80;
+  --gantt-bg-weekend: rgba(148, 163, 184, 0.06);
+  --gantt-now-line: #f87171;
+  --gantt-scrollbar: rgba(255, 255, 255, 0.18);
+  --gantt-scrollbar-hover: rgba(255, 255, 255, 0.35);
+  --gantt-row-selected: rgba(74, 222, 128, 0.12);
+  --gantt-row-frozen: rgba(251, 191, 36, 0.08);
+}
+
+/* =========================================================================
+   Sunset Orange — Warm tone
+   ========================================================================= */
+.theme-sunset-orange {
+  --background: 0 0% 100%;
+  --foreground: 20 20% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 20% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 20% 12%;
+  --primary: 24 95% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 28 40% 95%;
+  --secondary-foreground: 24 55% 28%;
+  --muted: 28 40% 95%;
+  --muted-foreground: 20 12% 47%;
+  --accent: 28 40% 91%;
+  --accent-foreground: 24 55% 28%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 28 22% 89%;
+  --input: 28 22% 87%;
+  --ring: 24 95% 50%;
+  --chart-1: 24 95% 50%;
+  --chart-2: 195 70% 45%;
+  --chart-3: 145 60% 40%;
+  --chart-4: 340 75% 52%;
+  --chart-5: 262 60% 55%;
+  --sidebar-background: 28 45% 97%;
+  --sidebar-foreground: 20 20% 22%;
+  --sidebar-primary: 24 95% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 28 40% 92%;
+  --sidebar-accent-foreground: 24 55% 28%;
+  --sidebar-border: 28 22% 89%;
+  --sidebar-ring: 24 95% 50%;
+
+  /* Gantt Canvas — Sunset Orange */
+  --gantt-bg: #ffffff;
+  --gantt-bg-alt: #fff7ed;
+  --gantt-bg-header: #ffedd5;
+  --gantt-bg-panel: #fffbf5;
+  --gantt-bg-panel-header: #fed7aa;
+  --gantt-bg-today: rgba(249, 115, 22, 0.05);
+  --gantt-grid: rgba(0, 0, 0, 0.07);
+  --gantt-grid-major: rgba(0, 0, 0, 0.14);
+  --gantt-text: #431407;
+  --gantt-text-secondary: #9a6d4b;
+  --gantt-text-red: #dc2626;
+  --gantt-text-weekend: #818cf8;
+  --gantt-splitter: #fb923c;
+  --gantt-task-flight: #f97316;
+  --gantt-task-ground-trn: #22c55e;
+  --gantt-task-ground-sby: #eab308;
+  --gantt-task-ground-off: #9ca3af;
+  --gantt-task-ground-al: #a78bfa;
+  --gantt-task-ground-sl: #f472b6;
+  /* Magenta — distinct from orange flight fills in this theme */
+  --gantt-selection-border: #c026d3;
+  --gantt-selection-wash: rgba(192, 38, 211, 0.22);
+  --gantt-optimizer-border: #1b9d4b;
+  --gantt-drop-target: rgba(249, 115, 22, 0.12);
+  --gantt-drop-target-border: #f97316;
+  --gantt-bg-weekend: rgba(107, 114, 128, 0.04);
+  --gantt-now-line: #ef4444;
+  --gantt-scrollbar: rgba(0, 0, 0, 0.18);
+  --gantt-scrollbar-hover: rgba(0, 0, 0, 0.35);
+  --gantt-row-selected: rgba(249, 115, 22, 0.10);
+  --gantt-row-frozen: rgba(234, 179, 8, 0.08);
+}
+
+.theme-sunset-orange.dark {
+  --background: 20 22% 9%;
+  --foreground: 28 18% 92%;
+  --card: 20 20% 12%;
+  --card-foreground: 28 18% 92%;
+  --popover: 20 20% 12%;
+  --popover-foreground: 28 18% 92%;
+  --primary: 24 92% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 20 16% 18%;
+  --secondary-foreground: 28 18% 84%;
+  --muted: 20 16% 18%;
+  --muted-foreground: 20 10% 55%;
+  --accent: 20 18% 22%;
+  --accent-foreground: 28 18% 88%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 20 14% 20%;
+  --input: 20 14% 22%;
+  --ring: 24 92% 55%;
+  --chart-1: 24 92% 58%;
+  --chart-2: 195 70% 55%;
+  --chart-3: 145 60% 48%;
+  --chart-4: 340 75% 58%;
+  --chart-5: 262 60% 62%;
+  --sidebar-background: 20 22% 7%;
+  --sidebar-foreground: 28 18% 78%;
+  --sidebar-primary: 24 92% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 20 18% 16%;
+  --sidebar-accent-foreground: 28 18% 84%;
+  --sidebar-border: 20 14% 17%;
+  --sidebar-ring: 24 92% 55%;
+
+  /* Gantt Canvas — Sunset Orange Dark */
+  --gantt-bg: #1a0f08;
+  --gantt-bg-alt: #201510;
+  --gantt-bg-header: #2d1a0e;
+  --gantt-bg-panel: #1c1109;
+  --gantt-bg-panel-header: #3b2010;
+  --gantt-bg-today: rgba(249, 115, 22, 0.08);
+  --gantt-grid: #3b2010;
+  --gantt-grid-major: #5c3418;
+  --gantt-text: #fed7aa;
+  --gantt-text-secondary: #c2956a;
+  --gantt-text-red: #f87171;
+  --gantt-text-weekend: #a5b4fc;
+  --gantt-splitter: #9a5530;
+  --gantt-task-flight: #fb923c;
+  --gantt-task-ground-trn: #4ade80;
+  --gantt-task-ground-sby: #facc15;
+  --gantt-task-ground-off: #6b7280;
+  --gantt-task-ground-al: #c4b5fd;
+  --gantt-task-ground-sl: #f9a8d4;
+  --gantt-selection-border: #e879f9;
+  --gantt-selection-wash: rgba(232, 121, 249, 0.24);
+  --gantt-optimizer-border: #43b66d;
+  --gantt-drop-target: rgba(251, 146, 60, 0.12);
+  --gantt-drop-target-border: #fb923c;
+  --gantt-bg-weekend: rgba(148, 163, 184, 0.06);
+  --gantt-now-line: #f87171;
+  --gantt-scrollbar: rgba(255, 255, 255, 0.18);
+  --gantt-scrollbar-hover: rgba(255, 255, 255, 0.35);
+  --gantt-row-selected: rgba(251, 146, 60, 0.12);
+  --gantt-row-frozen: rgba(250, 204, 21, 0.08);
+}
+
+/* =========================================================================
+   Slate Gray — Low saturation, eye-friendly
+   ========================================================================= */
+.theme-slate-gray {
+  --background: 0 0% 100%;
+  --foreground: 220 14% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 14% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 14% 10%;
+  --primary: 220 14% 30%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 95%;
+  --secondary-foreground: 220 14% 25%;
+  --muted: 220 14% 95%;
+  --muted-foreground: 220 8% 46%;
+  --accent: 220 14% 91%;
+  --accent-foreground: 220 14% 25%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 12% 89%;
+  --input: 220 12% 87%;
+  --ring: 220 14% 30%;
+  --chart-1: 220 14% 30%;
+  --chart-2: 200 55% 48%;
+  --chart-3: 155 50% 42%;
+  --chart-4: 32 80% 50%;
+  --chart-5: 350 65% 52%;
+  --sidebar-background: 220 16% 97%;
+  --sidebar-foreground: 220 14% 22%;
+  --sidebar-primary: 220 14% 30%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 14% 92%;
+  --sidebar-accent-foreground: 220 14% 25%;
+  --sidebar-border: 220 12% 89%;
+  --sidebar-ring: 220 14% 30%;
+
+  /* Gantt Canvas — Slate Gray */
+  --gantt-bg: #ffffff;
+  --gantt-bg-alt: #f8fafc;
+  --gantt-bg-header: #f1f5f9;
+  --gantt-bg-panel: #f8fafc;
+  --gantt-bg-panel-header: #e2e8f0;
+  --gantt-bg-today: rgba(100, 116, 139, 0.05);
+  --gantt-grid: #e2e8f0;
+  --gantt-grid-major: #cbd5e1;
+  --gantt-text: #1e293b;
+  --gantt-text-secondary: #64748b;
+  --gantt-text-red: #dc2626;
+  --gantt-text-weekend: #818cf8;
+  --gantt-splitter: #94a3b8;
+  --gantt-task-flight: #475569;
+  --gantt-task-ground-trn: #22c55e;
+  --gantt-task-ground-sby: #f59e0b;
+  --gantt-task-ground-off: #94a3b8;
+  --gantt-task-ground-al: #8b5cf6;
+  --gantt-task-ground-sl: #ec4899;
+  --gantt-selection-border: #c026d3;
+  --gantt-selection-wash: rgba(192, 38, 211, 0.22);
+  --gantt-optimizer-border: #1b9d4b;
+  --gantt-drop-target: rgba(100, 116, 139, 0.12);
+  --gantt-drop-target-border: #475569;
+  --gantt-bg-weekend: rgba(107, 114, 128, 0.04);
+  --gantt-now-line: #ef4444;
+  --gantt-scrollbar: rgba(0, 0, 0, 0.18);
+  --gantt-scrollbar-hover: rgba(0, 0, 0, 0.35);
+  --gantt-row-selected: rgba(100, 116, 139, 0.10);
+  --gantt-row-frozen: rgba(245, 158, 11, 0.08);
+}
+
+.theme-slate-gray.dark {
+  --background: 220 16% 8%;
+  --foreground: 220 10% 92%;
+  --card: 220 14% 11%;
+  --card-foreground: 220 10% 92%;
+  --popover: 220 14% 11%;
+  --popover-foreground: 220 10% 92%;
+  --primary: 220 10% 65%;
+  --primary-foreground: 220 16% 8%;
+  --secondary: 220 12% 17%;
+  --secondary-foreground: 220 10% 84%;
+  --muted: 220 12% 17%;
+  --muted-foreground: 220 8% 52%;
+  --accent: 220 14% 20%;
+  --accent-foreground: 220 10% 88%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 12% 19%;
+  --input: 220 12% 21%;
+  --ring: 220 10% 65%;
+  --chart-1: 220 14% 55%;
+  --chart-2: 200 55% 55%;
+  --chart-3: 155 50% 50%;
+  --chart-4: 32 80% 56%;
+  --chart-5: 350 65% 58%;
+  --sidebar-background: 220 16% 6%;
+  --sidebar-foreground: 220 10% 78%;
+  --sidebar-primary: 220 10% 65%;
+  --sidebar-primary-foreground: 220 16% 8%;
+  --sidebar-accent: 220 14% 15%;
+  --sidebar-accent-foreground: 220 10% 84%;
+  --sidebar-border: 220 12% 16%;
+  --sidebar-ring: 220 10% 65%;
+
+  /* Gantt Canvas — Slate Gray Dark */
+  --gantt-bg: #0f1419;
+  --gantt-bg-alt: #141a22;
+  --gantt-bg-header: #1e293b;
+  --gantt-bg-panel: #121822;
+  --gantt-bg-panel-header: #1e293b;
+  --gantt-bg-today: rgba(148, 163, 184, 0.06);
+  --gantt-grid: #1e293b;
+  --gantt-grid-major: #334155;
+  --gantt-text: #e2e8f0;
+  --gantt-text-secondary: #94a3b8;
+  --gantt-text-red: #f87171;
+  --gantt-text-weekend: #a5b4fc;
+  --gantt-splitter: #475569;
+  --gantt-task-flight: #94a3b8;
+  --gantt-task-ground-trn: #4ade80;
+  --gantt-task-ground-sby: #fbbf24;
+  --gantt-task-ground-off: #4b5563;
+  --gantt-task-ground-al: #c4b5fd;
+  --gantt-task-ground-sl: #f9a8d4;
+  --gantt-selection-border: #e879f9;
+  --gantt-selection-wash: rgba(232, 121, 249, 0.24);
+  --gantt-optimizer-border: #43b66d;
+  --gantt-drop-target: rgba(148, 163, 184, 0.12);
+  --gantt-drop-target-border: #94a3b8;
+  --gantt-bg-weekend: rgba(148, 163, 184, 0.06);
+  --gantt-now-line: #f87171;
+  --gantt-scrollbar: rgba(255, 255, 255, 0.18);
+  --gantt-scrollbar-hover: rgba(255, 255, 255, 0.35);
+  --gantt-row-selected: rgba(148, 163, 184, 0.12);
+  --gantt-row-frozen: rgba(251, 191, 36, 0.08);
+}
+
+/* =========================================================================
+   Shared loading animation — used by CardProgress / PaneLoadingBar
+   ========================================================================= */
+@keyframes rois-bar {
+  0%   { left: -40%; width: 40%; }
+  50%  { left: 60%;  width: 40%; }
+  100% { left: 110%; width: 40%; }
+}
+
+/* =========================================================================
+   Attention nudge — draws the eye to a control the user needs to find again
+   (e.g. the "Show Top Nav" toggle after the top nav has been hidden)
+   ========================================================================= */
+@keyframes rois-attention {
+  0%   { box-shadow: 0 0 0 0   hsl(var(--primary) / 0.55); }
+  70%  { box-shadow: 0 0 0 6px hsl(var(--primary) / 0);    }
+  100% { box-shadow: 0 0 0 0   hsl(var(--primary) / 0);    }
+}
+
+.animate-nav-hint {
+  animation: rois-attention 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-nav-hint { animation: none; }
+}
+
+/* =========================================================================
+   Base reset
+   ========================================================================= */
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* =========================================================================
+   Login page animations
+   ========================================================================= */
+@keyframes login-shake {
+  0%,  100% { transform: translateX(0);   }
+  15%        { transform: translateX(-4px); }
+  30%        { transform: translateX(4px);  }
+  45%        { transform: translateX(-4px); }
+  60%        { transform: translateX(4px);  }
+  75%        { transform: translateX(-4px); }
+  90%        { transform: translateX(2px);  }
+}
+
+@keyframes login-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-shake     { animation: none !important; }
+  .login-card-in   { animation: none !important; }
+}

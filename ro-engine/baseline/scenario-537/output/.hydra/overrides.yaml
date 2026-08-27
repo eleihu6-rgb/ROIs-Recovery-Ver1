@@ -1,0 +1,4 @@
+- +experiments=deploy/prod_0604
+- data=/home/yuan.z/rois/rois-ai/engine-server/workspace/F8/LegacyRO_537_20260620_105515_91becc22/ro_input.txt
+- pref_dir=/home/yuan.z/rois/rois-ai/engine-server/workspace/F8/LegacyRO_537_20260620_105515_91becc22
+- rule_engine.working_directory=/home/yuan.z/rois/rois-ai/engine-server/workspace/F8/LegacyRO_537_20260620_105515_91becc22

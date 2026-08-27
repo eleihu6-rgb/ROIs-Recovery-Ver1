@@ -1,0 +1,152 @@
+import type { TierPageData } from "@/features/tier/types";
+
+const createGroup = (tier: string, items: TierPageData["summaryGroups"][number]["items"]) => ({
+  tier,
+  totalItems: items.length,
+  items,
+});
+
+export const tierPageData: TierPageData = {
+  statisticsTitle: "PAIRING POOLS",
+  summaryTitle: "BID SUMMARY",
+  diagnosticsTitle: "BID REVIEW",
+  warningsTitle: "TIER WARNINGS",
+  statisticsRows: [
+    {
+      id: "stat-t1",
+      tier: "T1",
+      totalItems: 3,
+      pairingCount: 1,
+      daysOffCount: 1,
+      lineCount: 1,
+      unsupportedItemCount: 0,
+      segments: [84, 40, 40, 40, 12],
+      highlightIndex: 0,
+    },
+    {
+      id: "stat-t2",
+      tier: "T2",
+      totalItems: 1,
+      pairingCount: 1,
+      daysOffCount: 0,
+      lineCount: 0,
+      unsupportedItemCount: 0,
+      segments: [84, 40, 40, 40, 12],
+      highlightIndex: 1,
+    },
+    ...Array.from({ length: 5 }, (_, index) => ({
+      id: `stat-t${index + 3}`,
+      tier: `T${index + 3}`,
+      totalItems: 0,
+      pairingCount: 0,
+      daysOffCount: 0,
+      lineCount: 0,
+      unsupportedItemCount: 0,
+      segments: [84, 40, 40, 40, 12],
+      highlightIndex: index + 2,
+    })),
+  ],
+  summaryGroups: [
+    createGroup("T1", [
+      {
+        id: "pairing-yvr-t1",
+        groupKey: "pairing-yvr",
+        bidType: "Pairing",
+        action: "Award",
+        displayTier: "T1",
+        label: "Any Landing In Airport",
+        readableText: "Award Any Landing In Airport: YVR",
+        tiers: ["T1", "T2"],
+        editableSource: {
+          module: "Pairing",
+          propertyGroupKey: "pairing-yvr",
+        },
+        isEditable: true,
+        conditions: [
+          {
+            id: "pairing-yvr-condition-1",
+            text: "AND Pairing Check-In Time < 12:00",
+          },
+        ],
+      },
+      {
+        id: "days-off-weekend-t1",
+        groupKey: "days-off-weekend",
+        bidType: "DaysOff",
+        action: "SetCondition",
+        displayTier: "T1",
+        label: "Prefer Off",
+        readableText: "Set Prefer Off: Friday, Saturday, Sunday",
+        tiers: ["T1"],
+        editableSource: {
+          module: "DaysOff",
+          propertyGroupKey: "days-off-weekend",
+        },
+        isEditable: true,
+        conditions: [],
+      },
+      {
+        id: "line-credit-t1",
+        groupKey: "line-credit",
+        bidType: "Line",
+        action: "SetCondition",
+        displayTier: "T1",
+        label: "Max Credit Window",
+        readableText: "Set Max Credit Window: Enabled",
+        tiers: ["T1"],
+        editableSource: {
+          module: "Line",
+          propertyGroupKey: "line-credit",
+        },
+        isEditable: true,
+        conditions: [],
+      },
+    ]),
+    createGroup("T2", [
+      {
+        id: "pairing-yvr-t2",
+        groupKey: "pairing-yvr",
+        bidType: "Pairing",
+        action: "Award",
+        displayTier: "T2",
+        label: "Any Landing In Airport",
+        readableText: "Award Any Landing In Airport: YVR",
+        tiers: ["T1", "T2"],
+        editableSource: {
+          module: "Pairing",
+          propertyGroupKey: "pairing-yvr",
+        },
+        isEditable: true,
+        conditions: [
+          {
+            id: "pairing-yvr-condition-1-t2",
+            text: "AND Pairing Check-In Time < 12:00",
+          },
+        ],
+      },
+    ]),
+    ...Array.from({ length: 5 }, (_, index) => createGroup(`T${index + 3}`, [])),
+  ],
+  legacyItems: [],
+  diagnostics: [
+    {
+      id: "duplicate-across-tier-pairing-yvr",
+      code: "duplicateAcrossTier",
+      severity: "info",
+      message: "This bid appears in T1 and T2. Review whether it should apply to multiple Tx.",
+      tiers: ["T1", "T2"],
+      groupKey: "pairing-yvr",
+      itemIds: ["pairing-yvr"],
+    },
+    {
+      id: "empty-tier-t3",
+      code: "emptyTier",
+      severity: "info",
+      message: "T3 has no saved bids. Review whether this Tx should remain empty.",
+      tier: "T3",
+      tiers: ["T3"],
+      itemIds: [],
+    },
+  ],
+  warnings: [],
+};

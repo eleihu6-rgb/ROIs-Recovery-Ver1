@@ -1,0 +1,145 @@
+# ROIS-AI 开发环境 Docker Compose
+# 用法: docker compose up -d
+# 应用服务在本地 dev 运行，此文件只启动基础设施
+
+services:
+  # ── PostgreSQL 16 ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: rois-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-rois}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/docker-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+      - ./sql/schema:/docker-entrypoint-initdb.d/schema:ro
+      - ./sql/seed:/docker-entrypoint-initdb.d/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rois}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rois-net
+
+  # ── Redis 7（live-server 缓存）──────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: rois-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rois-net
+
+  # ── Redis 7（pbs-server 专用缓存）──────────────────────────────
+  redis-pbs:
+    image: redis:7-alpine
+    container_name: rois-redis-pbs
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PBS_PORT:-6380}:6379"
+    volumes:
+      - redispbsdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rois-net
+
+  # ── 以下为应用服务（本地开发时注释掉，直接 npm run dev）────────
+  # live-server:
+  #   build: ./live-server
+  #   ports:
+  #     - "3000:3000"
+  #   env_file: .env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - rois-net
+
+  # rule-engine:
+  #   build: ./rule-engine
+  #   ports:
+  #     - "3001:3001"
+  #   env_file: .env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - rois-net
+
+  # pbs-server:
+  #   build: ./pbs-server
+  #   ports:
+  #     - "3002:3002"
+  #   env_file: .env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis-pbs:
+  #       condition: service_healthy
+  #   networks:
+  #     - rois-net
+
+  # gantt:
+  #   build: ./gantt
+  #   ports:
+  #     - "5173:5173"
+  #   networks:
+  #     - rois-net
+
+  # pbs-portal:
+  #   build: ./pbs-portal
+  #   ports:
+  #     - "5174:5174"
+  #   networks:
+  #     - rois-net
+
+  # po-engine:
+  #   build: ./po-engine
+  #   ports:
+  #     - "8000:8000"
+  #   env_file: .env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - rois-net
+
+  # ro-engine:
+  #   build: ./ro-engine
+  #   ports:
+  #     - "8001:8001"
+  #   env_file: .env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - rois-net
+
+volumes:
+  pgdata:
+  redisdata:
+  redispbsdata:
+
+networks:
+  rois-net:
+    driver: bridge

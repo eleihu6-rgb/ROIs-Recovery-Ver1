@@ -1,0 +1,6 @@
+interface:
+  display_name: "114 scenario rust solver run report"
+  short_description: "Project skill 114-scenario-rust-solver-run-report"
+  default_prompt: "Use $114-scenario-rust-solver-run-report for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

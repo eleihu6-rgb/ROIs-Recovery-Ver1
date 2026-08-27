@@ -1,0 +1,215 @@
+{
+  "section": "Integration",
+  "cases": [
+    {
+      "id": "T5-IN-001",
+      "feature_area": "Integration — Import PBS Material",
+      "help_ref": "Scenario Import / NOC Integration",
+      "title": "Import all PBS material types for a roster period and verify per-material result counts",
+      "preconditions": "Logged in to the gantt app. connector-server (port 3004) and live-server are running, and the F8 connector is configured and enabled. At least one Roster Period exists and is selectable.",
+      "steps": "1. In the scenario list panel, click the 'Import PBS material' button (Import icon) at the top.\n2. In the 'Import PBS Material' dialog, select a Roster Period from the dropdown; confirm the Start and End dates auto-fill (read-only) from that period.\n3. Under 'Material', tick all five types: Crew, Roster, RosterGround, Pairing, Flight.\n4. Click 'Confirm'.\n5. Watch the overall progress bar (percent + elapsed) and the per-material table showing Fetch / Transform / Write stages.\n6. Wait until the import finishes and the result table appears.",
+      "expected": "The import runs and completes. The result table shows one row per material (Crew, Roster, RosterGround, Pairing, Flight) each with a Status plus non-zero Add/Update/Delete/OK counts and Fetch/Trans/DB/Total timings. A success toast reports the connector count and elapsed time. Counts must come from the live-server inbound workers (authoritative Add/Update/Delete), not inferred from raw imported totals.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-002",
+      "feature_area": "Integration — Import PBS Material",
+      "help_ref": "Scenario Import / NOC Integration",
+      "title": "Import a single material type (Pairing only) is scoped and does not auto-pull dependencies",
+      "preconditions": "Logged in to the gantt app; F8 connector enabled. A Roster Period that already has Flight/Crew previously imported is available.",
+      "steps": "1. Open the 'Import PBS material' dialog.\n2. Select a Roster Period.\n3. Under 'Material', tick ONLY 'Pairing' and leave the others unticked.\n4. Click 'Confirm' and wait for completion.",
+      "expected": "Only the Pairing material is fetched, transformed and written — the result table shows a single Pairing row with its counts. Roster/Flight/Crew are NOT auto-expanded or re-imported (scoped import does not auto-expand dependencies). If the confirm is attempted with zero materials ticked, the dialog shows 'Select at least one material type.' and Confirm is disabled.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-003",
+      "feature_area": "Integration — Import PBS Material",
+      "help_ref": "Scenario Import / NOC Integration",
+      "title": "Import result reports skipped/failed records without blocking the successful ones",
+      "preconditions": "Logged in; F8 connector enabled. Source data for the selected period includes at least some roster rows whose pairingInterfaceId cannot resolve to an existing pairing (e.g. import Roster before its Pairing).",
+      "steps": "1. Open the 'Import PBS material' dialog and select the Roster Period.\n2. Tick 'Roster' (flying) only, without importing its Pairing first.\n3. Click 'Confirm' and wait for the result table.\n4. Expand the Roster row's detail section.",
+      "expected": "The import completes with a 'partial' status on the Roster row. The Skip (and/or Fail) count is greater than zero for unresolved roster_flight rows, while resolvable rows still show under OK/Add/Update. The detail list shows warnings/errors identifying the skipped IDs and reasons. The import is not aborted wholesale — good records are still written.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-004",
+      "feature_area": "Integration — S3 Pairing Load",
+      "help_ref": "Scenario Import / S3 Pairing Import",
+      "title": "Load a PRG pairing file from S3 into an existing PO scenario",
+      "preconditions": "Logged in to the gantt app. At least one PO (pairing optimisation) scenario exists as an import target. A valid .PRG pairing file is available locally.",
+      "steps": "1. In the scenario list panel, click the 'S3 Pairing' button (Download icon) next to 'Import PBS material'.\n2. In the 'S3 Pairing Import' dialog, choose a PRG file (only .PRG/.prg is accepted).\n3. Under 'Target', keep 'Existing PO Scenario' selected and pick a PO scenario from the dropdown.\n4. Leave 'Clear selected PO scenario before import' unchecked.\n5. Click 'Import PO' and wait for the import to finish.\n6. Open the target PO scenario's Gantt.",
+      "expected": "The Import PO button is only enabled once a valid .PRG file and a target scenario are selected. After import, the pairings from the PRG file are loaded into the chosen PO scenario and are visible in that scenario's Pairing pane / Gantt. A non-.PRG file selection is rejected (file not accepted, button stays disabled).",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-005",
+      "feature_area": "Integration — S3 Pairing Load",
+      "help_ref": "Scenario Import / S3 Pairing Import",
+      "title": "Load a PRG pairing file into a brand-new pairing scenario with name, date range, and division",
+      "preconditions": "Logged in. Division options are available in the dialog. A valid .PRG pairing file is available locally.",
+      "steps": "1. Open the 'S3 Pairing Import' dialog (Download icon).\n2. Choose a valid .PRG file.\n3. Under 'Target', select 'New Pairing Scenario'.\n4. Enter a Scenario name (or leave blank to accept the 'S3 Pairing <filename>' default).\n5. Set a valid Date range (start on or before end).\n6. Select a Division.\n7. Click 'Import PO' and wait for completion.\n8. Confirm the new scenario appears in the scenario list and open it.",
+      "expected": "Import PO is enabled only when file + valid date range + division are all set. A new pairing scenario is created with the given name (or default), date range, and division, and the PRG pairings are loaded into it. The new scenario is listed and its Pairing pane shows the loaded pairings.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-006",
+      "feature_area": "Integration — S3 Pairing Load",
+      "help_ref": "Scenario Import / S3 Pairing Import",
+      "title": "Clear-before-import replaces existing pairings in a PO scenario",
+      "preconditions": "Logged in. An existing PO scenario already contains pairings from a previous load. A valid .PRG file is available.",
+      "steps": "1. Open the 'S3 Pairing Import' dialog and choose a valid .PRG file.\n2. Keep 'Existing PO Scenario' and select the pre-populated PO scenario.\n3. Tick 'Clear selected PO scenario before import'.\n4. Click 'Import PO' and wait for completion.\n5. Open the target scenario's Pairing pane.",
+      "expected": "The previously loaded pairings are cleared first, then the PRG file's pairings are loaded, so the scenario contains only the newly imported pairings (no stale/duplicate rows from the prior load). Count of pairings matches the PRG file contents.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-007",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (inbound crew)",
+      "title": "NOC crew data syncs into crew and its child tables via the crew inbound queue",
+      "preconditions": "connector-server + live-server running; F8 connector (f8_import) enabled with valid NOC auth token. Access to the remote DB (via service DATABASE_URL) to verify. A date range with known crew changes on the NOC side.",
+      "steps": "1. Trigger a Crew import for the roster period (via the 'Import PBS material' dialog with only 'Crew' ticked, or an admin f8_import trigger scoped to crew).\n2. Wait for the crew-inbound worker to finish.\n3. Query the remote DB crew table for the imported crew IDs.\n4. Query the child tables crew_base, crew rank, status, certificate, fleet, qualification for the same crew.",
+      "expected": "crew rows are upserted keyed on crew_id / interface_id (idempotent on re-run) and marked created_by='F8_IMPORT', source='F8'. Child tables (crew_base, rank, status, certificate, fleet, qualification) are populated for the imported crew; division is derived from rank (CA/FO→P, IFD/FA→C). Result/log record shows the imported crew count.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-008",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (inbound flight)",
+      "title": "NOC flight data syncs into the flight table keyed on interface_flt_id",
+      "preconditions": "connector-server + live-server running; F8 connector enabled. Remote DB access for verification.",
+      "steps": "1. Trigger a Flight import for a roster period (Import PBS material → Flight only).\n2. Wait for the flight-inbound worker to complete.\n3. Query the flight table for the imported dates.\n4. Re-run the same import and re-check.",
+      "expected": "flight rows are inserted/updated with interface_flt_id as the dedup key, fltDt from datOp, sched times from std/sta, fleet from acGrp, tail from acReg, created_by='F8_IMPORT'. Re-running the import is idempotent (Update path, not duplicate inserts). The result table classifies Add vs Update by existing interface_flt_id.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-009",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (inbound pairing)",
+      "title": "NOC pairing data syncs into pairing + segment + composition, synthesising missing flights",
+      "preconditions": "connector-server + live-server running; F8 connector enabled. Flights for the period already imported (fetch order flight→crew→pairing). Remote DB access.",
+      "steps": "1. Trigger a Pairing import for the roster period (Import PBS material → Pairing).\n2. Wait for the pairing-inbound worker to finish.\n3. Query pairing, pairing_segment, and pairing_composition for the imported interface_ids.\n4. Check duty node types created.",
+      "expected": "pairing rows are upserted on interface_id with source='F8', created_by='F8_IMPORT'; pairing_segment and pairing_composition are populated; duty nodes are materialised as PICKUP/BRIEF/DEBRIEF/DROPOFF; any missing referenced flights are synthesised. duty_act_credited_minutes is populated on segments from the NOC creditedMinutes field.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-010",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (inbound roster — flying)",
+      "title": "NOC flying roster syncs into roster_flight (one row per segment) resolving pairing FK",
+      "preconditions": "connector-server + live-server running; F8 connector enabled. Pairings for the period already imported (rosters must import after pairings). Remote DB access.",
+      "steps": "1. Trigger a Roster import for the roster period (Import PBS material → Roster).\n2. Wait for the roster-inbound worker.\n3. Query roster_flight for the imported crew/pairings (pairing_id IS NOT NULL).\n4. Verify each pairing×crew assignment expands to one row per segment.",
+      "expected": "roster_flight flying rows are written via delete+insert per (pairing_id, crew_id), one row per segment, source='F8', created_by='F8_IMPORT'. pairingInterfaceId is resolved to pairing.id via the interface_id map; rows with pairingId=0 are handled by the ground worker, not here; unresolved pairingInterfaceId rows are skipped with a warning. Transport→DHD and Simulator→SIM flight types are applied.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-011",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (inbound roster — ground)",
+      "title": "NOC ground duties sync into roster_flight with pairing_id NULL and single-legs as synthetic pairings",
+      "preconditions": "connector-server + live-server running; F8 connector enabled. Remote DB access. Source data includes ground/standby duties and single-leg (pairingId=0) flights.",
+      "steps": "1. Trigger a RosterGround import for the roster period (Import PBS material → RosterGround).\n2. Wait for the roster-ground-inbound worker.\n3. Query roster_flight for ground rows (pairing_id IS NULL) for the period.\n4. Query synthetic pairings with interface_id like 'GND-%'.",
+      "expected": "Ground duties are written as roster_flight rows with pairing_id NULL, source='F8', created_by='F8_IMPORT'. Single-leg (pairingId=0) flights are materialised into synthetic GND-{fltKey} pairing chains (created_by may be 'F8_IMPORT_GND'). The result reports import-owned deleted-row counts plus inserted rows for the date range.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-012",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (inbound manday)",
+      "title": "NOC manday credit syncs into crew_manday FD and CC/AM tables",
+      "preconditions": "connector-server + live-server running; F8 connector enabled with a manday-capable admin trigger (manday scope). Remote DB access. Month(s) of manday data available on the NOC side.",
+      "steps": "1. Trigger an F8 import with the 'manday' scope (admin connector trigger for the F8 connector, manday=true).\n2. Wait for the manday-inbound worker to complete (FD and CC/AM are fetched separately, chunked monthly).\n3. Query crew_manday_fd_daily/monthly/yearly and crew_manday_cc_am_daily/monthly/yearly for the imported month.",
+      "expected": "crew_manday_{fd,cc_am}_{daily,monthly,yearly} rows are upserted keyed on (crew_id, crew_base_dt) for daily, updated_by='F8_IMPORT'. FD rows carry the full numeric credit field set; CC/AM rows carry the reduced set. Re-running the same month is idempotent.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-013",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (poll vs push trigger)",
+      "title": "Inbound can be driven both by manual/scheduled poll and by NOC push, but only poll_inbound/f8_import are manually triggerable",
+      "preconditions": "connector-server running. A poll_inbound connector and a push_inbound connector (flight or crew) are configured. Admin credentials with connector:admin scope.",
+      "steps": "1. In the connector admin, manually trigger a poll_inbound connector; confirm it runs and enqueues to the flight/crew inbound queue.\n2. Manually trigger an f8_import connector; confirm it runs the F8 sync orchestrator.\n3. Attempt to manually trigger a push_inbound (or outbound) connector.\n4. Separately, have the NOC side POST to the push-inbound endpoint (POST /flight/:connectorCode or /crew/:connectorCode) with a valid signed body.",
+      "expected": "poll_inbound and f8_import manual triggers succeed and log an execution. Manually triggering any other protocol (push_inbound, push_outbound, query_outbound) is rejected with 'Manual trigger only supports poll_inbound and f8_import protocols'. The NOC push POST is accepted (when signature valid), transformed, and enqueued to the correct inbound queue; the pushed data lands in the DB.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-014",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (connector config + auth)",
+      "title": "Manage connector configuration and enforce inbound auth (HMAC / token)",
+      "preconditions": "connector-server running. Admin with connector:admin scope. Ability to send test HTTP requests to the push-inbound endpoint.",
+      "steps": "1. In connector admin, create an inbound connector (direction inbound, protocol push_inbound, dataDomain flight, authType api_key) with endpoint + auth config, isEnabled=1.\n2. List connectors and open the new one; confirm secrets are masked in the response.\n3. POST to /flight/:connectorCode with correct x-api-key, x-timestamp, x-signature headers and a valid body.\n4. POST again with a tampered/incorrect x-signature.\n5. Disable the connector (isEnabled=0) and POST once more.",
+      "expected": "Step 2: connector is listed with sensitive auth fields masked (maskConnectorConfig). Step 3: request accepted (200), records enqueued. Step 4: rejected with 401 'Invalid HMAC signature'. Step 5: rejected with 403 (connector disabled). A poll_inbound connector saved with a scheduleCron + isEnabled registers a repeatable poll; disabling it unschedules the poll.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T5-IN-015",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (connector logs)",
+      "title": "Browse and filter connector execution logs",
+      "preconditions": "connector-server running with at least a few connector executions recorded (success and fail). Admin with connector:admin scope.",
+      "steps": "1. In connector admin, open the connector logs view (GET /connectors/logs).\n2. Confirm each log entry shows direction, status, records in/out, duration, executed timestamp, and (for F8 import) syncId / filteredCount / rejectionFile.\n3. Filter by a specific connectorId.\n4. Filter by status = 'fail'.\n5. Filter by a from/to date range and page through results.",
+      "expected": "Logs are listed newest-first. Filtering by connectorId shows only that connector's runs; filtering by status='fail' shows only failed runs; date-range and pagination (page/size) work. F8 import logs surface syncId, filteredCount (rejected count) and the rejectionFile path when records were rejected.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T5-IN-016",
+      "feature_area": "Integration — NOC Inbound",
+      "help_ref": "NOC Integration (rejected-record handling)",
+      "title": "Malformed / unresolvable NOC records are rejected to a rejection file, not silently dropped, and good records still import",
+      "preconditions": "connector-server + live-server running; F8 connector enabled. Source period containing some roster/ground records that fail transform validation (e.g. unresolvable crew or paired rows treated as ground).",
+      "steps": "1. Trigger an F8 import (roster and/or rosterGround) for the affected period.\n2. When it finishes, read the returned filteredCount and rejectionFile from the result / connector log.\n3. Open the rejection file on disk and inspect the rejected records.\n4. Verify the non-rejected records were written to the DB.",
+      "expected": "Rejected records are counted in filteredCount and persisted to a rejection file (saveRejectedRecords per data type, e.g. roster_flight / roster_ground) rather than being silently discarded. The import still succeeds for valid records (partial status). A still-capped single-day fetch (>=1000 rows after recursive split) fails loudly rather than truncating silently.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-017",
+      "feature_area": "Integration — NOC Outbound (Publish to NOC)",
+      "help_ref": "NOC Integration (outbound — NOT BUILT)",
+      "title": "Publish an approved/optimised roster back out to the NOC system",
+      "preconditions": "An optimised scenario roster has been produced by the PBS solver and approved/published in the app. An outbound roster connector to NOC would be configured.",
+      "steps": "1. Open the approved/optimised scenario.\n2. Invoke an 'Export/Publish to NOC' action for the roster.\n3. Confirm the publish request.\n4. Wait for the outbound job to run.\n5. Verify on the NOC side (or via connector logs) that the roster was received.",
+      "expected": "Feature not yet implemented (outbound skeleton only per NOC integration design) — expected behaviour once built: a scenario publish/approve enqueues connector.roster.outbound; the roster-outbound worker fetches the solver-placed roster_flight rows for the scenario and POSTs them to NOC. TODAY: scenario publish only writes local roster_flight + enqueues a manday recalc and writes roster_publish; the outbound worker's roster fetch is a stubbed empty array with zero enqueue callers, so nothing is sent to NOC. There is also no 'Export to NOC' UI entry point yet.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-018",
+      "feature_area": "Integration — NOC Outbound (Publish to NOC)",
+      "help_ref": "NOC Integration (outbound — NOT BUILT)",
+      "title": "Outbound payload to NOC is correctly shaped from solver-placed roster rows",
+      "preconditions": "As T5-IN-017. A configured outbound connector endpoint capable of capturing the request body.",
+      "steps": "1. Publish an optimised roster (as in T5-IN-017).\n2. Capture the HTTP POST body sent to NOC.\n3. Compare each exported assignment against the source roster_flight rows (crew, pairing/segment, times, credit).\n4. Include a RES-Pairing-Creator reserve pairing in the roster and check how it is exported.",
+      "expected": "Feature not yet implemented (outbound skeleton only per NOC integration design) — expected behaviour once built: the payload is produced by the transform layer's toStandard() from the scenario's roster_flight rows, one export record per assignment, field-accurate. RES pairings created by the RES Pairing Creator have no NOC interface_id and the design must define how NOC ingests them. TODAY: roster-outbound-worker pushes an empty array (TODO stub), so no payload is generated.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-019",
+      "feature_area": "Integration — NOC Outbound (Publish to NOC)",
+      "help_ref": "NOC Integration (outbound — NOT BUILT)",
+      "title": "Outbound publish success / acknowledgement handling",
+      "preconditions": "As T5-IN-017. NOC endpoint returns a 200 success/ack response.",
+      "steps": "1. Publish an optimised roster to NOC.\n2. Let the outbound worker POST to the NOC endpoint.\n3. Observe the NOC 200/ack response.\n4. Check the connector log and the scenario's publish status.",
+      "expected": "Feature not yet implemented (outbound skeleton only per NOC integration design) — expected behaviour once built: on a NOC 200/ack the outbound job is marked success, a connector_log outbound row records recordsOut and duration, and the publish is flagged as delivered to NOC. TODAY: the push-outbound HTTP POST code path is real (OAuth2/API-key auth) but is never fed — no job is ever enqueued, so no success/ack is ever recorded.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-020",
+      "feature_area": "Integration — NOC Outbound (Publish to NOC)",
+      "help_ref": "NOC Integration (outbound — NOT BUILT)",
+      "title": "Outbound publish failure and retry to NOC",
+      "preconditions": "As T5-IN-017. NOC endpoint configured to return an error / timeout on first attempt.",
+      "steps": "1. Publish an optimised roster to NOC with the NOC endpoint returning 5xx/timeout.\n2. Let the outbound job attempt the POST.\n3. Observe retry behaviour (retryCount/retryDelay from endpoint config).\n4. Check the connector log entry and job status after retries are exhausted.",
+      "expected": "Feature not yet implemented (outbound skeleton only per NOC integration design) — expected behaviour once built: a failed POST is retried per the connector's retryCount/retryDelay, and on final failure the outbound job is marked fail with an error in connector_log, without corrupting the local roster; the publish can be re-triggered. TODAY: no enqueue caller and a stubbed roster fetch mean the retry path is never exercised.",
+      "severity": "High"
+    },
+    {
+      "id": "T5-IN-021",
+      "feature_area": "Integration — NOC Outbound (Publish to NOC)",
+      "help_ref": "NOC Integration (outbound — NOT BUILT)",
+      "title": "Pull-style outbound query API lets NOC fetch published rosters",
+      "preconditions": "connector-server running. A query_outbound / roster connector configured with api_key auth. NOC-side caller able to send signed GET requests.",
+      "steps": "1. As the NOC side, call GET /roster/:connectorCode with from/to date params, page/size, and x-api-key / x-timestamp / x-signature headers.\n2. Inspect the returned records, total, page, size.\n3. Call with an invalid protocol/dataDomain connector and with missing auth headers.",
+      "expected": "Feature not yet implemented (outbound query DB layer stubbed per NOC integration design) — expected behaviour once built: the endpoint returns the published roster records for the date range with correct pagination (records/total/page/size). TODAY: the route, validation, config/auth checks (404 unknown, 403 disabled, 400 wrong protocol/domain, 401 missing auth headers) are real, but queryRosterFromDb() is a TODO stub returning { records: [], total: 0 }, so a well-formed request always yields an empty result set.",
+      "severity": "High"
+    }
+  ]
+}

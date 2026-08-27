@@ -1,0 +1,11 @@
+{
+  "name": "@rois/legality-messages",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/render.mjs",
+    "./messages.json": "./messages.json"
+  },
+  "files": ["src", "messages.json", "README.md"]
+}

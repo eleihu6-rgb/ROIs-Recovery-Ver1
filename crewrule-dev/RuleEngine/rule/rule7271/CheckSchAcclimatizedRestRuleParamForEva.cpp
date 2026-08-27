@@ -1,0 +1,94 @@
+/**
+ * @file CheckSchAcclimatizedRestRuleParamForEva.h
+ * @brief
+ * @author jiaxin.jin
+ * @email jiaxin.jin@pi-solution.com
+ * @version 1.0
+ * @date 2023-11-02
+**/
+
+
+#include <sstream>
+#include <map>
+#include "UtilFunc.h"
+#include "Utility.h"
+#include "spdlog/spdlog.h"
+#include "CheckSchAcclimatizedRestRuleParamForEva.h"
+#include "CrewDB.h"
+#include "../constant/Constants.h"
+#include "../utils/BaseUtils.h"
+#include "../utils/DutyUtils.h"
+#include "../utils/TimeUtils.h"
+#include "../utils/StringUtils.h"
+#include "../utils/SegmentUtils.h"
+
+using namespace std;
+
+void CheckSchAcclimatizedRestRuleParamForEva::ParseParam(const DBRule& dbRule) {
+	RuleParam::ParseParam(dbRule);
+	map<string, string>& parameter = const_cast<DBRule&>(dbRule).params;
+	string header, headeValue;
+	for (map<string, string>::iterator iter = parameter.begin(); iter != parameter.end(); iter++)
+	{
+		header = iter->first;
+		headeValue = iter->second;
+		if (header == "BASES") {
+			if (headeValue != RuleParamConstant::ALL) {
+				split(headeValue, '|', _bases);
+			}
+		}
+		else if (header == "RANKS") {
+			if (headeValue != RuleParamConstant::ALL) {
+				split(headeValue, '|', _ranks);
+			}
+		}
+		else if (header == "FLEETS") {
+			if (headeValue != RuleParamConstant::ALL) {
+				split(headeValue, '|', _fleets);
+			}
+		}
+		else if (header == "TEAMS") {
+			if (headeValue != RuleParamConstant::ALL) {
+				split(headeValue, '|', _teams);
+			}
+		}
+		else if (header == "OUTSTATION ACCLIMATIZED CONDITION") {
+			_outstationAcclimatizedCondition = Utility::GetInstancePtr()->convertToMinutes(headeValue);
+		}
+		else if (header == "MIN TIME ZONE GAP") {
+			_minTimeZoneGap = Utility::GetInstancePtr()->convertToMinutes(headeValue);
+		}
+		else if (header == "MIN REST AT HOME BASE") {
+			_minRestAtHomeBase = Utility::GetInstancePtr()->convertToMinutes(headeValue);
+		}
+		else if (header == "OVERRIDE EXCEPTION ASSIGNMENT GROUPS") {
+			split(headeValue, '|', _overrideExceptionAssignmentGroups);
+		}
+		else if (header == "OVERRIDE EXCEPTION TIME ZONE GAP") {
+			_overrideExceptionTimeZoneGap = Utility::GetInstancePtr()->convertToMinutes(headeValue);
+		}
+		else if (header == "SEVERITY")
+			this->SetSeverity(underlying_to_enum<ViolationSeverity>(atoi(headeValue.c_str())));
+		else
+			Logger::getRuleLogger()->error("Rule Param parsing error at idRule:{}, idRuleParam:{}, not found param: {}", dbRule.idRule, dbRule.idRuleParam, header);
+	}
+}
+
+bool CheckSchAcclimatizedRestRuleParamForEva::MatchCrewQualification(std::shared_ptr<CREW> crew, const time_t& checkedStartTime, const time_t& checkedEndTime) const {
+	std::vector<string> positions;
+	if (Utility::GetInstancePtr()->isCrewQualified(crew, _bases, _ranks, _fleets, _teams, positions, checkedStartTime, checkedEndTime))
+		return true;
+	return false;
+}
+
+
+bool CheckSchAcclimatizedRestRuleParamForEva::MatchParam(const ROSTER& roster) const {
+	return true;
+}
+
+//检查是否满足参数
+int CheckSchAcclimatizedRestRuleParamForEva::CheckParam(const ROSTER& roster) const {
+	int warnCode = (int)WarnCode::NO_WARN;
+
+	return warnCode;
+}

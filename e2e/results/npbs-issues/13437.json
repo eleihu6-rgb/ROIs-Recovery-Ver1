@@ -1,0 +1,40 @@
+{
+  "employeeId": "13437",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T5",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T7",
+      "code": 112,
+      "name": "Pairing Length"
+    },
+    {
+      "tier": "T6",
+      "code": 401,
+      "name": "Max Credit Window"
+    }
+  ],
+  "issues": []
+}

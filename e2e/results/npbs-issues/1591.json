@@ -1,0 +1,58 @@
+{
+  "employeeId": "1591",
+  "category": "YVR-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 4,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 106,
+      "name": "Departing On"
+    },
+    {
+      "tier": "T4",
+      "code": 106,
+      "name": "Departing On"
+    },
+    {
+      "tier": "T5",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T6",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T3",
+      "name": "Any Landing In Airport",
+      "code": 101,
+      "page": "pairing",
+      "predicate": "Award Pairings If Any Landing In PVR",
+      "reason": "unsupported-input: tag-list for Any Landing In Airport",
+      "image": "image/pbs/1591_PBS-3317_T3-101_unsupported-input_20260621-215900-098.png"
+    },
+    {
+      "tier": "T7",
+      "name": "Any Landing In Airport",
+      "code": 101,
+      "page": "pairing",
+      "predicate": "Award Pairings If Any Landing In LAS",
+      "reason": "unsupported-input: tag-list for Any Landing In Airport",
+      "image": "image/pbs/1591_PBS-3317_T7-101_unsupported-input_20260621-215910-725.png"
+    },
+    {
+      "tier": "T1",
+      "name": "Waive No Same Day Duty Starts",
+      "code": 405,
+      "page": "line",
+      "predicate": "Waive No Same Day Duty Starts",
+      "reason": "exception: TimeoutError: locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog') to be visible\u001b[22m\n",
+      "image": "image/pbs/1591_PBS-3317_T1-405_exception_20260621-215925-866.png"
+    }
+  ]
+}

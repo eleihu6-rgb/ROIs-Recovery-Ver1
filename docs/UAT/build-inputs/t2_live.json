@@ -1,0 +1,275 @@
+{
+  "section": "Live",
+  "cases": [
+    {
+      "id": "T2-LV-001",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Overview",
+      "title": "Live opens empty and loads data only after Apply Filters",
+      "preconditions": "Logged in with Live access; no prior session state.",
+      "steps": "1. Open the Live tab.\n2. Observe the Gantt canvas and the toolbar next to the filter icon.\n3. Click the inline 'No data loaded — apply filters to pull data' reminder to open the Filters dialog.\n4. Without setting any filter, click Apply Filters.",
+      "expected": "On open the Gantt is empty with the inline 'No data loaded — apply filters to pull data' reminder shown next to the filter icon. After Apply Filters the canvas populates with crew rows (each row = one crew member, coloured blocks = assignments); applying with no filter loads the complete schedule.",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-002",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Setting date range",
+      "title": "Selecting roster periods sets a merged window and requires Apply Filters",
+      "preconditions": "Live loaded; roster-period selector visible at far left of toolbar.",
+      "steps": "1. Click the roster-period selector (calendar icon reading 'Select RPs').\n2. In the dropdown pick two periods (e.g. 2026RP08 and the next).\n3. Read the trigger label and observe the toolbar reminder.\n4. Click the RP-changed reminder (or the Filter button) and press Apply Filters.",
+      "expected": "The trigger shows the merged window on one line (e.g. 2026-07-25 ~ 2026-09-07); before applying, an 'RP Date changed — apply filters to pull data' reminder is shown; the Gantt window equals [earliest start − 7 days, latest end + 7 days]; data loads only after Apply Filters.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-003",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Setting date range",
+      "title": "Roster-period selection is capped at six consecutive periods",
+      "preconditions": "Live loaded; multiple roster periods available in the selector.",
+      "steps": "1. Open the roster-period selector dropdown.\n2. Select six consecutive periods and read the footer note.\n3. Select a seventh period beyond that span.\n4. Optionally click the Refresh (circular-arrows ↻) button.",
+      "expected": "The footer shows 'Max 6 RPs span (performance)'; adding a period beyond six rebuilds a six-period window containing the newly-selected period (never more than six). Refresh reloads the same window with latest crew data and spins while loading.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-004",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Filtering crew, pairings, flights",
+      "title": "Crew-tab filter reloads canvas and shows filtered/total badge",
+      "preconditions": "Live loaded with a full schedule (e.g. 80 crew).",
+      "steps": "1. Click the Filters button in the toolbar.\n2. On the Crew tab select a Division (P or C), a Base, and a Rank.\n3. Confirm the chosen filters appear as chips in the Active summary bar and the footer shows the active count (e.g. '3 filters active').\n4. Click Apply Filters.",
+      "expected": "The canvas reloads showing only matching crew; the Filters button turns amber with a count (e.g. 'Filters (3 active)'); the Roster pane title bar shows an amber funnel badge with filtered/total counts (e.g. 12/80). Live allows only one division at a time.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-005",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Filtering crew, pairings, flights",
+      "title": "Pairing ID is a hard filter; Crew ID brings rows to top",
+      "preconditions": "Live loaded with crew and pairings.",
+      "steps": "1. Open Filters, go to the Pairing tab, type one or more numeric IDs in Pairing ID (comma/period/space separated), Apply.\n2. Observe the Pairing pane.\n3. Open Filters, go to the Crew tab, type one or more Crew IDs (comma/period separated) in Crew ID, Apply.\n4. Clear both fields and Apply again.",
+      "expected": "Pairing ID is a hard filter — only those exact pairings remain visible in the Pairing pane. Crew ID does not hide others: the named crew move to the top of the Roster pane (added if not loaded) while everyone else stays below. Clearing the fields and re-applying removes the filters.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-006",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Working with panes",
+      "title": "Pane limits enforced and Find Crew by Pairing floats crew to top",
+      "preconditions": "Live loaded; default layout = one Roster + one Pairing pane.",
+      "steps": "1. Click the Roster pane button twice, the Pairing button twice, and the Flight button once, watching for disabled add buttons.\n2. Hover a disabled add button to read its tooltip.\n3. In the Pairing pane right-click a flight block and choose Find Crew by Pairing.\n4. Click Reset next to the pane buttons.",
+      "expected": "At most 2 Roster, 2 Pairing, 1 Flight and 4 panes total are allowed; the blocked add button is disabled with a tooltip such as 'Max 2 Roster panes' / 'Max 4 panes'. Find Crew by Pairing floats all crew assigned to that pairing to the top of the matching Roster pane (selected). Reset restores the default one-Roster/one-Pairing layout.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-007",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Pairing label",
+      "title": "Pairing label appears in pane, puck, and Pairing Info title",
+      "preconditions": "Live loaded with at least one labelled pairing (e.g. label V4538, id 10708).",
+      "steps": "1. Open a Pairing pane and read the first 'Pairing' column.\n2. Click a pairing row to open the Pairing Info dialog and read its title.\n3. Open Filters › Pairing tab, type a label substring in the Label field, Apply.",
+      "expected": "The Pairing column shows the label for each pairing (falling back to P-{id} when unset); the Pairing Info dialog title leads with the label then the internal id (e.g. 'V4538 #10708'); the Label substring filter shows only pairings whose label contains the entered text.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-008",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Navigating with Flight Navi",
+      "title": "Flight Navi PTNs/Roster/COF columns navigate to pairings, crew, detail",
+      "preconditions": "Live loaded; a Flight pane open.",
+      "steps": "1. In the Flight pane condition strip click the Navi (compass) button to open the Flight Navi window.\n2. Use the smart search box to type a flight number (e.g. 924).\n3. Click the PTNs count on a row, then the Roster count, then COF.",
+      "expected": "Flight Navi opens as a non-modal table of flights in the date range (panes stay live behind it). Clicking PTNs brings that flight's pairings to the top of the Pairing pane; Roster brings its crew to the top of the Roster pane; COF opens the flight's detail card. The window stays open after each click.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-009",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Editing assignments",
+      "title": "Reassign a flight duty by dragging to another crew row (draft)",
+      "preconditions": "Live loaded with a non-imported flight duty on a Roster pane.",
+      "steps": "1. In the Roster pane click a task block to select it (toolbar shows 'N sel').\n2. Drag the block straight up/down onto a different crew member's row and release.\n3. Observe the Save button badge.\n4. Press Ctrl+S (⌘S on macOS) to save.",
+      "expected": "The block re-homes to the target crew row; the change is held as a draft and the Save button shows a pending-change count badge; after Ctrl+S the badge clears once saved. Selecting a block shows the 'N sel' count in the toolbar.",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-010",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Editing assignments",
+      "title": "Box-select and Delete removes all pairing segments together",
+      "preconditions": "Live loaded; a crew member has a multi-segment pairing duty.",
+      "steps": "1. Press on empty space and drag a box across several blocks to box-select them.\n2. Right-click one selected block and confirm it reads 'Delete N Tasks'.\n3. Choose Delete N Tasks (or press Del/Backspace).\n4. Delete a single segment that belongs to a pairing.",
+      "expected": "Box-select selects every block the box touches; right-click shows 'Delete N Tasks' and removes the whole selection at once. Deleting a block that belongs to a pairing removes all of that crew member's segments of the pairing together, not just the clicked segment. Changes are drafts until saved.",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-011",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Right-click context menu",
+      "title": "Roster duty vs row-background right-click menus differ",
+      "preconditions": "Live loaded with crew rows and duties.",
+      "steps": "1. Right-click a flight task block on a crew row.\n2. Note the actions offered.\n3. Right-click the empty background of the same crew row (not a block).\n4. Note the actions offered.",
+      "expected": "The flight-duty menu offers Edit Task and Swap Task (ground duty shows Edit Ground Task), plus View pairing detail / Locate Pairing for paired duties, and Schedule Details, Daily Task Calendar, Delete (or Delete N Tasks), Add/Edit Memo. The row-background menu offers Crew Info, Create Ground Task, Add Memo, Schedule Details, Daily Task Calendar, and Manday Info.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-012",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Schedule Details",
+      "title": "Schedule Details groups a pairing's duties into one summed row",
+      "preconditions": "Live loaded; a crew member has at least one multi-segment pairing in a roster period.",
+      "steps": "1. Right-click a crew task block and choose Schedule Details.\n2. Verify the title reads 'Schedule Details — {crew ID}' and the RP Date stepper shows one roster period.\n3. Read the table columns and the pairing row.\n4. Toggle the Timezone control between base timezone and UTC.",
+      "expected": "The dialog lists columns Type, Start, End, Credit, Label, Pairing, Source; the duties of one pairing appear as a single row spanning earliest start to latest end with credit summed across segments; standalone day-off/ground rows are separate. RP Date shows one period at a time; the Timezone toggle switches Start/End between the crew's base-airport timezone and UTC. Row count (e.g. '12 rows') shows top-right.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-013",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Daily Task Calendar",
+      "title": "Daily Task Calendar shows week-at-a-glance grid with Statistics panel",
+      "preconditions": "Live loaded; a crew member with assignments in the month.",
+      "steps": "1. Right-click a crew row background or duty and choose Daily Task Calendar.\n2. Read the Mon–Sun grid and the day chips.\n3. Read the Statistics panel on the right.\n4. Click a task chip.",
+      "expected": "A month grid with Mon–Sun columns shows colour-coded task chips per day (crew base timezone), empty in-range days show 'Open', and days with more than 3 tasks show +N. The Statistics panel lists RpCred, Flight, Reserve, Ground, Day Off, Open, Tasks, Max Work, Max Off/Open, Max Reserve. Clicking a chip selects the roster task on the canvas and rings the chip.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-014",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Manday Info",
+      "title": "Manday Info shows daily Credit/BH/DP for the leftmost visible month",
+      "preconditions": "Live loaded; a crew member with duties visible in the viewport.",
+      "steps": "1. Right-click a crew member's row background (not a task block) and choose Manday Info.\n2. Read the dialog title and header.\n3. Read the table rows.",
+      "expected": "The title reads 'Manday Info — {crew ID} ({YYYY-MM})' for the leftmost calendar month visible in the Gantt, and the header shows the crew's Base. The table has one row per calendar day with Date, Credit, BH, and DP shown as H:MM (e.g. 8:00); days without data show a zero value. No timezone toggle is present.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-015",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Crew Info",
+      "title": "Crew Info shows profile grid plus six record tables newest first",
+      "preconditions": "Live loaded; a crew member with base/rank/fleet records.",
+      "steps": "1. Right-click a crew member's row background and choose Crew Info.\n2. Read the summary grid at the top.\n3. Scroll through the record sections.",
+      "expected": "The dialog title shows the crew member's full name; the summary grid lists profile fields (name, crew ID, base, rank, fleet, other scalars) with blanks shown as a dash. Below are six tables — Crew Base, Crew Rank, Crew Fleet, Crew Qualification, Crew Certification, Crew Team — each sorted by effective date most-recent-first, and any empty section shows 'No records'.",
+      "severity": "Low"
+    },
+    {
+      "id": "T2-LV-016",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Adding crew memo",
+      "title": "Add a crew memo and see the yellow sticky-note icon on the row",
+      "preconditions": "Live loaded; a crew member with a duty on the Roster pane.",
+      "steps": "1. Right-click a duty on a crew row; confirm the menu shows Add Memo (sticky-note icon) when no memo covers that date.\n2. In the 'Add Crew Memo' dialog leave Title blank and enter Memo text (required).\n3. Click Add.\n4. Right-click the same duty, choose Edit Memo, and click Delete.",
+      "expected": "The Add Crew Memo dialog shows the crew as 'Crew <id>' and requires memo text; after Add a small yellow sticky-note icon appears on that crew's row at the memo's dates. Re-opening via Edit Memo and clicking Delete (trash icon, left of the footer) removes the memo and its icon.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-017",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Creating reserve pairings (RES Planner)",
+      "title": "Define reserve slots and Generate RES pairings with a conflict policy",
+      "preconditions": "Live loaded; account has reserve-pairing capability; a Pairing pane open.",
+      "steps": "1. In the Pairing pane condition strip click the RES Pairing Creator (shield-plus) button to open the RES Pairing Planner.\n2. On the Define tab pick a Base chip and Pilot (P) or Cabin (C) division.\n3. Click a calendar date cell, enter AM/PM reserve slot counts per rank in the entry panel, click Apply.\n4. At the bottom of the Define page review the summary table, choose a Conflict policy (Skip/Overwrite/Add), and click Generate.",
+      "expected": "The planned cell shows a coloured indicator after Apply. On Generate the dialog closes, the Pairing pane filters to the newly created reserve pairings (PRAM/PRPM for pilots, CRAM/CRPM for cabin), and a banner confirms how many were created or skipped per the chosen conflict policy.",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-018",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Creating reserve pairings (RES Planner)",
+      "title": "Manage existing RES pairings — Modify and Delete with published blocked",
+      "preconditions": "Live loaded; existing RES pairings present; RES Pairing Planner open.",
+      "steps": "1. Open the Manage existing tab.\n2. Set the filter bar (Base, Division, date range, type PRAM/PRPM/CRAM/CRPM) and click Load.\n3. Select one or more rows via checkbox; in the action bar click Modify, enter new plan values per rank, click Apply.\n4. Select a published pairing plus an unpublished one and click Delete.",
+      "expected": "Load shows a KPI summary (total pairings, per-call-code counts, crew slots, bases and dates covered) and a table with each pairing's date/base/division/label/type/plan values and Open/Full status. Modify updates plan values on the selected rows. Delete confirms the count and removes unpublished pairings, while pairings already published to the live roster cannot be deleted and are reported as blocked.",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-019",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Saving, undoing, and redoing",
+      "title": "Undo/redo drafts then save with pending-change badge",
+      "preconditions": "Live loaded; make at least two edits (e.g. two deletes) without saving.",
+      "steps": "1. Make two draft edits and read the Save button badge.\n2. Press Ctrl+Z (⌘Z) once to undo the last edit.\n3. Press Ctrl+Y (or Ctrl+Shift+Z) to redo it.\n4. Press Ctrl+S (⌘S) to save.",
+      "expected": "The Save button shows a badge with the number of pending changes; each Ctrl+Z undoes one more edit and Ctrl+Y/Ctrl+Shift+Z re-applies it. On Ctrl+S the Save button shows a spinner with a 'Saving...' tooltip, then the badge clears once all changes are saved.",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-020",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Saving, undoing, and redoing",
+      "title": "Save with new violations opens confirmation with severity badges",
+      "preconditions": "Live loaded; a pending edit that introduces new rule violations (mix of hard error and overridable warning).",
+      "steps": "1. Make an edit that would introduce a hard-limit error violation.\n2. Press Ctrl+S; read the confirmation dialog.\n3. Make an edit that introduces only an overridable warning and press Ctrl+S again.\n4. Observe the Age Restriction (8030) grouping if present.",
+      "expected": "Saving opens a confirmation dialog listing violations with Error/Warning/Info badges. Hard-limit errors allow only Cancel; overridable warnings also offer Continue Anyway. Pairing-level Age Restriction (8030) findings are grouped into one card stating the shared flight condition once and listing every affected Crew id with its age.",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-021",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Creating a ground task",
+      "title": "Create a ground task for multiple crew via the dialog",
+      "preconditions": "Live loaded; toolbar timezone set to a known airport.",
+      "steps": "1. Click the Create Ground Task (⊞) button in the toolbar.\n2. In Crew IDs * type three crew IDs, pressing Enter after each (chips appear).\n3. Pick an Assignment * from the dropdown (code — description) and confirm the read-only Group field auto-fills.\n4. Enter Dep Arp * / Arv Arp *, a Credit in minutes, Start * and End *, then click Create.",
+      "expected": "Each crew ID appears as a removable chip; the Group field auto-fills from the chosen Assignment and is not directly editable; the Credit preview shows the equivalent duration (e.g. 2h 30m) and Start/End times use the toolbar timezone (code shown beside each field). The footer shows 'Will create 3 roster entries'; on Create a ground-task block appears on each crew row as a draft (Ctrl+S to save).",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-022",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Creating a ground task",
+      "title": "Ground task dialog excludes FLT-group assignments and validates End>Start",
+      "preconditions": "Live loaded; Create Ground Task dialog open.",
+      "steps": "1. Open the Assignment * dropdown and inspect available options.\n2. Confirm flight-style (FLT-group) types are absent while DHD (deadhead) is present.\n3. Set End earlier than or equal to Start and read the warning.\n4. Right-click an existing ground task and choose Edit Ground Task; open the Danger Zone.",
+      "expected": "The Assignment dropdown excludes FLT-group (flight-style) types but still offers DHD; setting End not after Start shows a warning and the resulting Duration; editing a ground task opens the editor with a 'Delete This Task' action in its Danger Zone.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-023",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Understanding the Source column",
+      "title": "Source column values gate editability in Live",
+      "preconditions": "Live loaded with a mix of imported and manual rows; Bulk Delete Roster Flights dialog reachable from the Roster pane condition strip.",
+      "steps": "1. Right-click an IMP (imported) flying row and inspect Edit Task / Swap Task / drag-move availability.\n2. Open the Bulk Delete Roster Flights dialog and read the Source column.\n3. Use the Source filter to narrow to one value.",
+      "expected": "In Live, IMP imported flying rows are immutable — Edit Task, Swap Task and drag-move are disabled, but Delete is still allowed; MA (manual) and CR (optimiser) rows are editable/deletable. The Bulk Delete dialog Source column shows each row's origin (IMP/MA/CR in Live; PA additionally in Scenario) and the Source filter lists exactly the values present.",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-024",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Switching time zones",
+      "title": "Timezone selector redraws canvas keeping the same calendar days",
+      "preconditions": "Live loaded with data on the canvas.",
+      "steps": "1. Click the timezone selector (clock icon + airport code + timezone ID) in the toolbar.\n2. Confirm the dropdown is headed 'Display Timezone' with UTC first, then ★ Airline Bases, then ✈ Other Airports.\n3. Pick an airport entry and observe the canvas.",
+      "expected": "The dropdown lists UTC pinned at the top, then Airline Bases, then Other Airports, each row showing code, name, timezone ID, and UTC offset (e.g. UTC-240), with the active one ticked. Selecting a zone immediately re-draws every time in that zone while keeping the same calendar days on screen; the selection persists between sessions.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-025",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Choosing rule set",
+      "title": "Switching division rule set narrows filters and re-checks edits",
+      "preconditions": "Live loaded; both Division P and Division C have enabled rule sets.",
+      "steps": "1. Click the rule set selector (shield-check icon + active division/name, e.g. 'P · 103').\n2. Click Division C to switch to its enabled rule set.\n3. Make an edit on the canvas and watch the toolbar.",
+      "expected": "Switching to Division C applies that division's enabled rule set (shown as 'C · name'), narrows the crew and pairing filters to that division, and clears the current violation highlights. Subsequent edits are re-checked against the new rule set, with a transient 'Checking...' indicator on the right of the toolbar during a check.",
+      "severity": "High"
+    },
+    {
+      "id": "T2-LV-026",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Zooming in and out",
+      "title": "Zoom controls and GO TO RPDate axis menu change the view span",
+      "preconditions": "Live loaded with data across at least one roster period.",
+      "steps": "1. Click Zoom In (magnifier-plus) or press Ctrl++.\n2. Click Zoom Out (magnifier-minus) or press Ctrl+−.\n3. Right-click the time axis (date ruler) and pick a period from the GO TO RPDate menu.",
+      "expected": "Zoom In shows fewer days at higher detail; Zoom Out shows more days; buttons disable at min/max zoom. Right-clicking the time axis opens a menu listing currently-loaded roster periods under GO TO RPDate — choosing one zooms so that period fills the view — and also offers Daily Gantt Statistics for the day under the cursor.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T2-LV-027",
+      "feature_area": "Live — Roster",
+      "help_ref": "Live › Keyboard shortcuts",
+      "title": "Keyboard Shortcuts dialog lists the documented shortcuts",
+      "preconditions": "Live loaded.",
+      "steps": "1. Open the Keyboard Shortcuts dialog from the toolbar.\n2. Read the grouped shortcut rows.\n3. Test Ctrl+Q with flights selected.",
+      "expected": "The dialog lists File Ctrl+S (Save all pending changes); Edit Ctrl+Z (Undo), Ctrl+Y (Redo), Del (Delete selected item), Esc (Clear selections / Close menu); Selection Click / Ctrl+Click; Pairing Ctrl+Q (Create Pairing from selected flights); View Ctrl++ / Ctrl+− (Zoom in/out). On macOS ⌘ replaces Ctrl; Redo also accepts Ctrl+Shift+Z and Delete also accepts Backspace.",
+      "severity": "Low"
+    }
+  ]
+}

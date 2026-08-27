@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RES Pairing Creator — 2. Define (calendar)</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .htabs { display: flex; gap: 2px; padding: 0 10px; background: var(--primary-600); }
+  .htabs .ht { color: rgba(255,255,255,.8); font-size: 12px; padding: 6px 12px; border-radius: 5px 5px 0 0; cursor: pointer; }
+  .htabs .ht.active { background: var(--surface); color: var(--primary-600); font-weight: 600; }
+  .ampm-panel { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; padding: 10px 12px; background: var(--accent); border: 1px solid #cfe0f7; border-radius: var(--radius); margin-bottom: 12px; }
+  .ampm-panel .grp { display: flex; gap: 8px; align-items: flex-end; }
+  .leg { display: flex; gap: 14px; align-items: center; font-size: 11.5px; color: var(--muted); }
+  /* All-bases calendar: each cell lists every base */
+  .cal-all .cal-cell { min-height: 100px; }
+  .cal-base { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; font-size: 10px; line-height: 1.15; }
+  .cal-base .bs { width: 26px; font-weight: 700; font-family: var(--mono); color: var(--primary-600); }
+  .cal-base .rkv { white-space: nowrap; color: var(--muted); }
+  .cal-base .rkv b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 700; }
+  .cal-base .rkv .am { color: var(--am); }
+  .cal-base .rkv .pm { color: var(--pm); }
+</style>
+</head>
+<body>
+<div class="mock-shell">
+  <div class="mock-banner">
+    <span class="step">2 / 5</span>
+    <b>Define RES on a calendar</b> — scope by base/division, set AM/PM windows, see plan values per day.
+    <span class="links">
+      <a href="index.html">Index</a>
+      <a href="01-entry-point.html">1 Entry</a>
+      <a class="active" href="02-define-calendar.html">2 Define</a>
+      <a href="03-batch-entry.html">3 Batch</a>
+      <a href="04-generate-overview.html">4 Generate</a>
+      <a href="05-manage.html">5 Manage</a>
+    </span>
+  </div>
+
+  <div class="dialog">
+    <div class="dialog-title">
+      <span class="ico">📅</span>
+      <h2>RES Pairing Planner</h2>
+      <span class="sub">— define reserve coverage</span>
+      <span class="spacer"></span>
+      <span class="badge-live">LIVE</span>
+      <span class="x">✕</span>
+    </div>
+    <div class="htabs">
+      <span class="ht active">① Define</span>
+      <span class="ht">② Review &amp; Generate</span>
+      <span class="ht">Manage existing</span>
+    </div>
+
+    <div class="dialog-body">
+      <!-- scope toolbar -->
+      <div class="toolbar">
+        <div class="field">
+          <label>Base</label>
+          <div style="display:flex; gap:6px">
+            <span class="chip active">All bases</span>
+            <span class="chip active">YVR</span>
+            <span class="chip active">YEG</span>
+            <span class="chip active">YYZ</span>
+            <span class="chip">+ add</span>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="field">
+          <label>Division</label>
+          <div class="seg">
+            <button class="active">Pilot (P)</button>
+            <button>Cabin (C)</button>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="field">
+          <label>Date range</label>
+          <div style="display:flex; gap:6px; align-items:center">
+            <input class="input" style="width:120px" value="01 Jun 2026">
+            <span class="muted">→</span>
+            <input class="input" style="width:120px" value="31 Jul 2026">
+            <span class="hint">(default = gantt 2-month window)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AM/PM window settings -->
+      <div class="ampm-panel">
+        <div class="grp">
+          <span class="pill am" style="height:24px; display:inline-flex; align-items:center">AM · PRAM</span>
+          <div class="field"><label>Start</label><input class="input time" value="10:00"></div>
+          <div class="field"><label>End</label><input class="input time" value="22:00"></div>
+        </div>
+        <div class="grp">
+          <span class="pill pm" style="height:24px; display:inline-flex; align-items:center">PM · PRPM</span>
+          <div class="field"><label>Start</label><input class="input time" value="20:00"></div>
+          <div class="field"><label>End</label><input class="input time" value="05:59 <span>+1</span>"></div>
+        </div>
+        <span class="hint" style="margin-left:auto; max-width:240px">Defaults read from the assignment dictionary (PRAM 10:00–22:00, PRPM 20:00–05:59 next day). Override here to apply to new days.</span>
+      </div>
+
+      <!-- legend + month nav -->
+      <div style="display:flex; align-items:center; margin-bottom:8px">
+        <div style="display:flex; align-items:center; gap:8px">
+          <button class="btn btn-sm">‹</button>
+          <b style="font-size:13px">June 2026</b>
+          <button class="btn btn-sm">›</button>
+          <span class="hint" style="margin-left:8px">Jul 2026 ▾</span>
+        </div>
+        <div class="leg" style="margin-left:auto">
+          <span><span class="pill am">AM</span> = morning reserve plan</span>
+          <span><span class="pill pm">PM</span> = evening reserve plan</span>
+          <span class="muted">All bases → each cell lists every base, broken down by rank (CA / FO) as AM/PM</span>
+        </div>
+      </div>
+
+      <!-- calendar (ALL BASES view: each cell lists every base, AM/PM = CA+FO total) -->
+      <div class="cal cal-all">
+        <div class="cal-head"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+        <div class="cal-grid">
+          <!-- week 1: Jun 2026 starts Monday -->
+          <div class="cal-cell out weekend"><div class="d">31</div></div>
+          <div class="cal-cell"><div class="d">1</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">3</b>/<b class="pm">3</b></span><span class="rkv">FO <b class="am">3</b>/<b class="pm">3</b></span></div>
+          </div>
+          <div class="cal-cell"><div class="d">2</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">3</b>/<b class="pm">3</b></span><span class="rkv">FO <b class="am">3</b>/<b class="pm">3</b></span></div>
+          </div>
+          <div class="cal-cell"><div class="d">3</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">3</b>/<b class="pm">3</b></span><span class="rkv">FO <b class="am">3</b>/<b class="pm">3</b></span></div>
+          </div>
+          <div class="cal-cell"><div class="d">4</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">3</b>/<b class="pm">3</b></span><span class="rkv">FO <b class="am">3</b>/<b class="pm">3</b></span></div>
+          </div>
+          <div class="cal-cell"><div class="d">5</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">6</b>/<b class="pm">6</b></span><span class="rkv">FO <b class="am">6</b>/<b class="pm">6</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">3</b>/<b class="pm">3</b></span><span class="rkv">FO <b class="am">3</b>/<b class="pm">3</b></span></div>
+          </div>
+          <div class="cal-cell weekend"><div class="d">6</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">7</b>/<b class="pm">7</b></span><span class="rkv">FO <b class="am">7</b>/<b class="pm">7</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+          </div>
+          <!-- week 2 -->
+          <div class="cal-cell weekend"><div class="d">7</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">7</b>/<b class="pm">7</b></span><span class="rkv">FO <b class="am">7</b>/<b class="pm">7</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+          </div>
+          <div class="cal-cell sel"><div class="d">8</div><div class="chk"></div>
+            <div class="cal-empty">— not set —</div>
+          </div>
+          <div class="cal-cell sel"><div class="d">9</div><div class="chk"></div>
+            <div class="cal-empty">— not set —</div>
+          </div>
+          <div class="cal-cell sel"><div class="d">10</div><div class="chk"></div>
+            <div class="cal-empty">— not set —</div>
+          </div>
+          <div class="cal-cell today"><div class="d">11</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">3</b>/<b class="pm">3</b></span><span class="rkv">FO <b class="am">3</b>/<b class="pm">3</b></span></div>
+          </div>
+          <div class="cal-cell"><div class="d">12</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">3</b>/<b class="pm">3</b></span><span class="rkv">FO <b class="am">3</b>/<b class="pm">3</b></span></div>
+          </div>
+          <div class="cal-cell weekend"><div class="d">13</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">6</b>/<b class="pm">6</b></span><span class="rkv">FO <b class="am">6</b>/<b class="pm">6</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">3</b>/<b class="pm">3</b></span><span class="rkv">FO <b class="am">3</b>/<b class="pm">3</b></span></div>
+          </div>
+          <!-- week 3 abbreviated -->
+          <div class="cal-cell weekend"><div class="d">14</div><div class="cal-empty">— not set —</div></div>
+          <div class="cal-cell"><div class="d">15</div>
+            <div class="cal-base"><span class="bs">YVR</span><span class="rkv">CA <b class="am">5</b>/<b class="pm">5</b></span><span class="rkv">FO <b class="am">5</b>/<b class="pm">5</b></span></div>
+            <div class="cal-base"><span class="bs">YEG</span><span class="rkv">CA <b class="am">4</b>/<b class="pm">4</b></span><span class="rkv">FO <b class="am">4</b>/<b class="pm">4</b></span></div>
+            <div class="cal-base"><span class="bs">YYZ</span><span class="rkv">CA <b class="am">3</b>/<b class="pm">3</b></span><span class="rkv">FO <b class="am">3</b>/<b class="pm">3</b></span></div>
+          </div>
+          <div class="cal-cell"><div class="d">16</div><div class="cal-empty">— not set —</div></div>
+          <div class="cal-cell"><div class="d">17</div><div class="cal-empty">— not set —</div></div>
+          <div class="cal-cell"><div class="d">18</div><div class="cal-empty">— not set —</div></div>
+          <div class="cal-cell"><div class="d">19</div><div class="cal-empty">— not set —</div></div>
+          <div class="cal-cell weekend"><div class="d">20</div><div class="cal-empty">— not set —</div></div>
+        </div>
+      </div>
+
+      <p class="hint" style="margin-top:8px"><b>All bases</b> selected → every cell lists each base, broken down by rank (CA / FO) shown as AM/PM (e.g. <span class="tag-am">5</span>/<span class="tag-pm">5</span>). Click a day to edit, drag to select a range, or use <b>Batch entry</b> — see mockup 3. Cells reading <i>“not set”</i> generate no pairing.</p>
+    </div>
+
+    <div class="dialog-footer">
+      <span class="left">3 days selected (Jun 8–10) · 14 days defined in range</span>
+      <button class="btn btn-ghost">Clear all</button>
+      <button class="btn">Batch entry…</button>
+      <button class="btn btn-primary">Next: Review &amp; Generate →</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

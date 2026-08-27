@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scenario Page Redesign — 12 Options</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      min-height: 100vh;
+      padding: 40px 24px 80px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; }
+    .lead { font-size: 15px; color: #64748b; line-height: 1.6; margin-bottom: 32px; max-width: 720px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    a.card {
+      display: block;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow .15s, border-color .15s, transform .15s;
+    }
+    a.card:hover {
+      box-shadow: 0 8px 24px rgba(15,23,42,.1);
+      border-color: #94a3b8;
+      transform: translateY(-2px);
+    }
+    .num {
+      font-size: 11px;
+      font-weight: 700;
+      color: #2563eb;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 6px;
+    }
+    .title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+    .desc { font-size: 13px; color: #64748b; line-height: 1.5; }
+    .tag {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .tag.original { background: #dbeafe; color: #1d4ed8; }
+    .tag.enterprise { background: #fef3c7; color: #b45309; }
+    .tag.creative { background: #f3e8ff; color: #7c3aed; }
+    .section { margin-top: 40px; }
+    .section h2 { font-size: 14px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Scenario Page — 12 Light Theme Mockups</h1>
+    <p class="lead">
+      All options preserve full functionality: top navigation, optimization sidebar (PO/RO/TO/Crew Bids),
+      scenario list with search/filters/pagination, detail toolbar, Basic Info, Scope Filters, and KPI Results.
+      Open any card in a new tab to compare.
+    </p>
+
+    <div class="section">
+      <h2>Original batch</h2>
+      <div class="grid">
+        <a class="card" href="01-pro-aviation.html" target="_blank">
+          <div class="num">01</div>
+          <div class="title">Pro Aviation</div>
+          <div class="desc">Navy sidebar, card sections, KPI dashboard — Jeppesen / Bloomberg ops feel.</div>
+          <span class="tag original">Aviation pro</span>
+        </a>
+        <a class="card" href="02-functional-refresh.html" target="_blank">
+          <div class="num">02</div>
+          <div class="title">Functional Refresh</div>
+          <div class="desc">Same 4-column layout as today — lowest migration risk, visual polish only.</div>
+          <span class="tag original">Safe default</span>
+        </a>
+        <a class="card" href="03-outlook-style.html" target="_blank">
+          <div class="num">03</div>
+          <div class="title">Outlook Style</div>
+          <div class="desc">Ribbon toolbar, folder tree, table list, reading pane — familiar enterprise UX.</div>
+          <span class="tag enterprise">Microsoft</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Expanded batch</h2>
+      <div class="grid">
+        <a class="card" href="04-linear-minimal.html" target="_blank">
+          <div class="num">04</div>
+          <div class="title">Linear Minimal</div>
+          <div class="desc">Neutral grays, rounded panels, purple accent — modern dev-tool aesthetic (Linear / Vercel).</div>
+          <span class="tag">SaaS minimal</span>
+        </a>
+        <a class="card" href="05-notion-blocks.html" target="_blank">
+          <div class="num">05</div>
+          <div class="title">Notion Blocks</div>
+          <div class="desc">Document-style detail with large title, property row, collapsible blocks — content-first.</div>
+          <span class="tag creative">Document</span>
+        </a>
+        <a class="card" href="06-salesforce-lightning.html" target="_blank">
+          <div class="num">06</div>
+          <div class="title">Salesforce Lightning</div>
+          <div class="desc">Global header, record home, highlight fields, action bar — classic CRM record page.</div>
+          <span class="tag enterprise">CRM</span>
+        </a>
+        <a class="card" href="07-stripe-saas.html" target="_blank">
+          <div class="num">07</div>
+          <div class="title">Stripe SaaS</div>
+          <div class="desc">Floating cards on soft gray canvas, gradient brand, generous spacing — fintech polish.</div>
+          <span class="tag">SaaS premium</span>
+        </a>
+        <a class="card" href="08-macos-finder.html" target="_blank">
+          <div class="num">08</div>
+          <div class="title">macOS Finder</div>
+          <div class="desc">Traffic lights, path bar, file browser list, inspector panel — native Mac metaphor.</div>
+          <span class="tag creative">Apple HIG</span>
+        </a>
+        <a class="card" href="09-command-center.html" target="_blank">
+          <div class="num">09</div>
+          <div class="title">Command Center</div>
+          <div class="desc">Status strip, KPI summary bar, dense ops queue — NOC / dispatch console density.</div>
+          <span class="tag original">Aviation ops</span>
+        </a>
+        <a class="card" href="10-editorial-split.html" target="_blank">
+          <div class="num">10</div>
+          <div class="title">Editorial Split</div>
+          <div class="desc">Serif headlines, masthead, article index + reading column — magazine / report layout.</div>
+          <span class="tag creative">Typography</span>
+        </a>
+        <a class="card" href="11-material-workspace.html" target="_blank">
+          <div class="num">11</div>
+          <div class="title">Material Workspace</div>
+          <div class="desc">Navigation drawer, elevated cards, assist chips, pill tabs — Google Material 3 light.</div>
+          <span class="tag enterprise">Google</span>
+        </a>
+        <a class="card" href="12-horizontal-workflow.html" target="_blank">
+          <div class="num">12</div>
+          <div class="title">Horizontal Workflow</div>
+          <div class="desc">Stepper bar across top (Select → Basic → Filters → KPI → Run) — guided wizard flow.</div>
+          <span class="tag creative">Workflow</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

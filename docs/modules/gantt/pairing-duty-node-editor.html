@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Pairing Duty Nodes</title>
+<style>
+:root {
+  --bg:            #0d1117;
+  --bg-card:       #161b22;
+  --bg-elevated:   #1c2128;
+  --bg-input:      #0d1117;
+  --border:        rgba(255,255,255,0.08);
+  --border-mid:    rgba(255,255,255,0.12);
+  --border-strong: rgba(255,255,255,0.18);
+  --text:          #e6edf3;
+  --text-muted:    #8b949e;
+  --text-dim:      #4d5761;
+  --primary:       #2f81f7;
+  --primary-bg:    rgba(47,129,247,0.12);
+  --amber:         #d29922;
+  --amber-bg:      rgba(210,153,34,0.12);
+  --success:       #3fb950;
+  --danger:        #f85149;
+  --hotel:         #6e40c9;
+  --hotel-bg:      rgba(110,64,201,0.15);
+  --radius:        8px;
+  --radius-sm:     5px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 16px 48px;
+}
+
+/* ── Dialog ─────────────────────────────────────────────────────── */
+.dialog {
+  width: 100%;
+  max-width: 860px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  overflow: hidden;
+}
+.dialog-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.025);
+}
+.header-left { display: flex; align-items: center; gap: 10px; }
+.dialog-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.chip-row { display: flex; gap: 5px; }
+.chip {
+  font-size: 10px; font-family: 'SF Mono','Cascadia Code',monospace;
+  padding: 1px 7px; border-radius: 20px;
+  border: 1px solid var(--border-mid); color: var(--text-muted);
+  background: rgba(255,255,255,0.04); letter-spacing: 0.03em;
+}
+.chip.primary { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
+.close-btn {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: none;
+  color: var(--text-muted); cursor: pointer;
+  border-radius: var(--radius-sm); transition: all 0.12s;
+}
+.close-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+
+.dialog-body {
+  max-height: calc(100vh - 130px);
+  overflow-y: auto;
+  padding: 14px 18px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.dialog-body::-webkit-scrollbar { width: 5px; }
+.dialog-body::-webkit-scrollbar-track { background: transparent; }
+.dialog-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+/* ── Duty Card ──────────────────────────────────────────────────── */
+.duty-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.duty-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px;
+  background: rgba(255,255,255,0.025);
+  border-bottom: 1px solid var(--border);
+}
+.duty-seq-badge {
+  font-size: 10px; font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border-mid);
+  border-radius: 4px; padding: 1px 6px;
+  font-family: 'SF Mono',monospace;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.duty-route { font-size: 13px; font-weight: 700; color: var(--text); font-family: 'SF Mono',monospace; letter-spacing: 0.04em; }
+.duty-flts  { font-size: 10px; color: var(--text-muted); }
+.duty-time-range { margin-left: auto; font-size: 11px; color: var(--text-muted); font-family: 'SF Mono',monospace; }
+
+/* ── Gantt Puck Area ─────────────────────────────────────────────── */
+.gantt-area {
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.gantt-bar-wrap {
+  position: relative;
+  height: 30px;
+  border-radius: 5px;
+  overflow: visible;          /* allow button to poke out */
+  background: rgba(0,0,0,0.25);
+  display: flex;
+}
+.gantt-inner {
+  display: flex;
+  width: 100%;
+  height: 30px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.gantt-segment {
+  position: relative;
+  height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600;
+  font-family: 'SF Mono',monospace;
+  overflow: hidden; white-space: nowrap;
+  flex-shrink: 0;
+  transition: filter 0.15s;
+  cursor: default;
+}
+.gantt-segment:hover { filter: brightness(1.15); }
+.seg-label { overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+
+.seg-pickup  { background: linear-gradient(135deg,#92400e,#b45309); color: rgba(255,255,255,.88); }
+.seg-brief   { background: linear-gradient(135deg,#1e3a8a,#2563eb); color: rgba(255,255,255,.88); }
+.seg-flight  { background: linear-gradient(135deg,#1f2937,#374151); color: rgba(255,255,255,.65); }
+.seg-transit {
+  background: repeating-linear-gradient(45deg,#1c2128 0,#1c2128 4px,#242d3c 4px,#242d3c 8px);
+}
+.seg-debrief { background: linear-gradient(135deg,#164e63,#0891b2); color: rgba(255,255,255,.88); }
+.seg-dropoff { background: linear-gradient(135deg,#92400e,#b45309); color: rgba(255,255,255,.88); }
+
+/* REST gap in single mode — hatched, with ⊕ overlay */
+.seg-rest {
+  position: relative;
+  background: repeating-linear-gradient(45deg,#1a1040 0,#1a1040 5px,#231651 5px,#231651 10px);
+  border-left: 1px dashed rgba(110,64,201,0.4);
+  border-right: 1px dashed rgba(110,64,201,0.4);
+  overflow: visible;
+  cursor: pointer;
+}
+.seg-rest:hover { filter: brightness(1.3); }
+
+/* HOTEL block in double mode */
+.seg-hotel {
+  background: rgba(110,64,201,0.18);
+  border-left: 1px dashed rgba(110,64,201,0.5);
+  border-right: 1px dashed rgba(110,64,201,0.5);
+  color: #a78bfa;
+  font-size: 10px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+}
+
+/* ⊕ add-double button floating above the REST segment */
+.btn-add-double {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 18px;
+  padding: 0 8px;
+  background: var(--hotel);
+  color: #fff;
+  border: none; border-radius: 9px;
+  font-size: 10px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  display: flex; align-items: center; gap: 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  transition: all 0.12s;
+  z-index: 10;
+}
+.btn-add-double:hover { background: #7c3aed; transform: translateX(-50%) scale(1.05); }
+
+/* Gantt divider */
+.gantt-div { width: 1px; height: 100%; background: rgba(0,0,0,0.4); flex-shrink: 0; }
+
+/* Time axis */
+.gantt-axis { position: relative; height: 20px; margin-top: 3px; }
+.axis-label {
+  position: absolute; transform: translateX(-50%);
+  font-size: 10px; color: var(--text-dim);
+  font-family: 'SF Mono',monospace; white-space: nowrap; user-select: none;
+}
+.axis-label.mark-edit   { color: var(--primary); }
+.axis-label.mark-lock   { color: var(--text-dim); }
+.axis-label.mark-hotel  { color: #a78bfa; }
+
+/* Block label above puck range */
+.gantt-block-label {
+  position: absolute;
+  top: -18px;
+  font-size: 9px;
+  color: var(--text-dim);
+  font-family: 'SF Mono',monospace;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  pointer-events: none;
+}
+
+/* ── Edit Form ───────────────────────────────────────────────────── */
+.edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+}
+.grid-divider { background: var(--border); margin: 12px 0; }
+.edit-col { padding: 12px 14px; }
+.col-title {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 10px;
+}
+.col-title-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.dot-signin  { background: #2563eb; }
+.dot-signout { background: #0891b2; }
+.dot-signin2  { background: #7c3aed; }
+.dot-signout2 { background: #9333ea; }
+.col-title-text { font-size: 11px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.06em; }
+.col-badge {
+  font-size: 9px; padding: 1px 6px; border-radius: 10px;
+  color: var(--primary); border: 1px solid var(--primary);
+  background: var(--primary-bg); font-family: 'SF Mono',monospace; letter-spacing: 0.03em;
+}
+.col-badge.double-badge {
+  color: #a78bfa; border-color: #7c3aed; background: rgba(124,58,237,0.12);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 18px;
+  align-items: center;
+  gap: 6px; margin-bottom: 7px;
+}
+.field-label { font-size: 10px; color: var(--text-muted); }
+.field-label.primary-field { color: var(--text); font-weight: 600; }
+.field-label.amber-field   { color: var(--amber); }
+.field-label.hotel-field   { color: #a78bfa; }
+
+.field-input {
+  height: 26px; padding: 0 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  color: var(--text); font-size: 11px;
+  font-family: 'SF Mono',monospace;
+  outline: none; width: 100%;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+.field-input:focus {
+  border-color: var(--primary);
+  background: rgba(47,129,247,0.06);
+  box-shadow: 0 0 0 2px rgba(47,129,247,0.15);
+}
+.field-input.is-locked {
+  background: rgba(255,255,255,0.025);
+  color: var(--text-dim); cursor: not-allowed;
+  border-color: transparent;
+}
+.field-input.is-amber:focus {
+  border-color: var(--amber);
+  background: var(--amber-bg);
+  box-shadow: 0 0 0 2px rgba(210,153,34,0.15);
+}
+.field-input.is-hotel:focus {
+  border-color: #7c3aed;
+  background: rgba(124,58,237,0.08);
+  box-shadow: 0 0 0 2px rgba(124,58,237,0.15);
+}
+
+@keyframes flash-linked {
+  0%  { background: rgba(47,129,247,0.3); border-color: var(--primary); }
+  100%{ background: var(--bg-input);      border-color: var(--border-mid); }
+}
+.field-input.flash { animation: flash-linked 0.55s ease forwards; }
+
+.status-icon { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+
+.edit-sep { border: none; border-top: 1px dashed var(--border); margin: 8px 0; }
+
+.summary-line {
+  font-size: 10px; color: var(--text-dim);
+  font-family: 'SF Mono',monospace; padding: 3px 0 2px;
+  display: flex; align-items: center; gap: 6px;
+}
+.summary-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── REST Separator (between Block 1 and Block 2 edit forms) ─────── */
+.rest-separator {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: rgba(110,64,201,0.07);
+  border-top: 1px dashed rgba(110,64,201,0.3);
+  border-bottom: 1px dashed rgba(110,64,201,0.3);
+}
+.rest-sep-icon { font-size: 14px; }
+.rest-sep-label {
+  font-size: 11px; font-weight: 600;
+  color: #a78bfa;
+  font-family: 'SF Mono',monospace;
+  letter-spacing: 0.04em;
+}
+.rest-sep-dur { font-size: 10px; color: #7c3aed; }
+.rest-sep-spacer { flex: 1; }
+.btn-remove-double {
+  height: 22px; padding: 0 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(248,81,73,0.4);
+  background: rgba(248,81,73,0.08);
+  color: var(--danger);
+  font-size: 10px; font-weight: 500;
+  cursor: pointer; transition: all 0.12s;
+  display: flex; align-items: center; gap: 4px;
+  font-family: inherit;
+}
+.btn-remove-double:hover { background: rgba(248,81,73,0.15); border-color: var(--danger); }
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+.dialog-footer {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  padding: 11px 18px;
+  border-top: 1px solid var(--border);
+  background: rgba(255,255,255,0.015);
+}
+.footer-hint { flex: 1; font-size: 10px; color: var(--text-dim); }
+.btn {
+  height: 30px; padding: 0 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.12s;
+  border: 1px solid transparent; font-family: inherit;
+}
+.btn-ghost { background: transparent; border-color: var(--border-mid); color: var(--text-muted); }
+.btn-ghost:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: #388bfd; }
+.btn-primary:active { transform: scale(0.97); }
+
+/* ── Legend ─────────────────────────────────────────────────────── */
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted); }
+.legend-dot  { width: 10px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="dialog">
+  <div class="dialog-header">
+    <div class="header-left">
+      <span class="dialog-title">Edit Duty Sign-in / Sign-out Times</span>
+      <div class="chip-row">
+        <span class="chip primary">CA-B738-001</span>
+        <span class="chip">B738</span>
+        <span class="chip">PEK</span>
+        <span class="chip" id="hdr-duties">2 Duties</span>
+      </div>
+    </div>
+    <button class="close-btn" onclick="handleClose()" title="Close">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="dialog-body" id="dialog-body"></div>
+
+  <div class="dialog-footer">
+    <span class="footer-hint" id="footer-hint"></span>
+    <button class="btn btn-ghost" onclick="handleClose()">Cancel</button>
+    <button class="btn btn-primary" onclick="handleSave()">Save Changes</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────────────────────
+function d(s)       { return new Date(s); }
+function addMin(t,m){ return new Date(t.getTime() + m*60000); }
+function diffMin(a,b){ return (b-a)/60000; }
+function parseLocal(s){ return s ? new Date(s + ':00Z') : null; }
+function toInput(d)  { return d ? d.toISOString().slice(0,16) : ''; }
+function hhmm(d)     { return d ? d.toISOString().slice(11,16) : '--:--'; }
+function fmtDur(m)   {
+  m = Math.round(Math.abs(m));
+  const h = Math.floor(m/60), mm = m%60;
+  return h>0 ? `${h}h${mm.toString().padStart(2,'0')}m` : `${mm}m`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────
+/**
+ * restAfterSegIdx: index of the segment AFTER which there is a REST-capable gap.
+ * double: null (single mode) OR { pickupStart, briefStart, briefEnd*, debriefStart*, debriefEnd, dropoffEnd }
+ *   briefEnd    = LOCKED = segments[restAfterSegIdx+1].actStart
+ *   debriefStart= LOCKED = segments[last].actEnd
+ *
+ * In single mode:
+ *   briefEnd     = segments[0].actStart (locked)
+ *   debriefStart = segments[last].actEnd (locked)
+ */
+const duties = [
+  {
+    dutySeq: 1,
+    strArp: 'PEK', endArp: 'CTU',
+    pickupStart:  d('2026-05-15T06:00:00Z'),
+    briefStart:   d('2026-05-15T06:30:00Z'),
+    briefEnd:     d('2026-05-15T07:00:00Z'),   // LOCKED = Seg0.actStart
+    segments: [
+      { fltNum:'CA101', depArp:'PEK', arvArp:'SZX',
+        actStart:d('2026-05-15T07:00:00Z'), actEnd:d('2026-05-15T09:45:00Z') },
+      { fltNum:'CA102', depArp:'SZX', arvArp:'CTU',
+        actStart:d('2026-05-15T14:00:00Z'), actEnd:d('2026-05-15T16:00:00Z') },
+    ],
+    debriefStart: d('2026-05-15T16:00:00Z'),   // LOCKED = Seg_last.actEnd (single)
+    debriefEnd:   d('2026-05-15T16:30:00Z'),
+    dropoffEnd:   d('2026-05-15T17:00:00Z'),
+    restAfterSegIdx: 0,  // REST gap between Seg0 and Seg1
+    double: null,        // not yet activated
+  },
+  {
+    dutySeq: 2,
+    strArp: 'CTU', endArp: 'PEK',
+    pickupStart:  d('2026-05-16T08:00:00Z'),
+    briefStart:   d('2026-05-16T08:30:00Z'),
+    briefEnd:     d('2026-05-16T09:00:00Z'),   // LOCKED = Seg0.actStart
+    segments: [
+      { fltNum:'CA205', depArp:'CTU', arvArp:'SHA',
+        actStart:d('2026-05-16T09:00:00Z'), actEnd:d('2026-05-16T11:30:00Z') },
+      { fltNum:'CA306', depArp:'SHA', arvArp:'PEK',
+        actStart:d('2026-05-16T16:30:00Z'), actEnd:d('2026-05-16T19:00:00Z') },
+    ],
+    // Block 1 (when double active): debriefStart = Seg0.actEnd
+    debriefStart: d('2026-05-16T11:30:00Z'),   // LOCKED = Seg0.actEnd
+    debriefEnd:   d('2026-05-16T12:00:00Z'),
+    dropoffEnd:   d('2026-05-16T12:30:00Z'),
+    restAfterSegIdx: 0,
+    // Block 2 already activated
+    double: {
+      pickupStart:   d('2026-05-16T15:45:00Z'),
+      briefStart:    d('2026-05-16T16:00:00Z'),
+      briefEnd:      d('2026-05-16T16:30:00Z'), // LOCKED = Seg1.actStart
+      debriefStart:  d('2026-05-16T19:00:00Z'), // LOCKED = Seg1.actEnd
+      debriefEnd:    d('2026-05-16T19:30:00Z'),
+      dropoffEnd:    d('2026-05-16T20:00:00Z'),
+    },
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────
+// BLOCK BUILDERS
+// ─────────────────────────────────────────────────────────────────
+function buildBlocks(duty) {
+  const { pickupStart, briefStart, briefEnd, segments,
+          debriefStart, debriefEnd, dropoffEnd, double: dbl, restAfterSegIdx } = duty;
+  const isDouble = dbl !== null;
+  const totalStart = pickupStart;
+  const totalEnd   = isDouble ? dbl.dropoffEnd : dropoffEnd;
+  const totalMs    = totalEnd - totalStart;
+
+  function pct(t)   { return ((t - totalStart) / totalMs * 100).toFixed(3); }
+  function wPct(a,b){ return Math.max(0.3, (b-a)/totalMs*100).toFixed(3); }
+
+  const blocks = [];
+
+  // ── Block 1 ──────────────────────────────────────────
+  blocks.push({ type:'pickup',  label:'Pickup',  start:pickupStart, end:briefStart,
+                l:pct(pickupStart), w:wPct(pickupStart,briefStart) });
+  blocks.push({ type:'brief',   label:'Brief',   start:briefStart,  end:briefEnd,
+                l:pct(briefStart),  w:wPct(briefStart,briefEnd) });
+
+  // Segments of Block 1 (in double mode: up to restAfterSegIdx)
+  const b1Segs = isDouble ? segments.slice(0, restAfterSegIdx+1) : segments;
+  for (let i=0; i<b1Segs.length; i++) {
+    if (i>0) {
+      const gap = b1Segs[i].actStart - b1Segs[i-1].actEnd;
+      if (gap>0) blocks.push({ type:'transit', label:'', start:b1Segs[i-1].actEnd, end:b1Segs[i].actStart,
+        l:pct(b1Segs[i-1].actEnd), w:wPct(b1Segs[i-1].actEnd, b1Segs[i].actStart) });
+    }
+    blocks.push({ type:'flight', label:b1Segs[i].fltNum, start:b1Segs[i].actStart, end:b1Segs[i].actEnd,
+      l:pct(b1Segs[i].actStart), w:wPct(b1Segs[i].actStart,b1Segs[i].actEnd) });
+  }
+
+  if (!isDouble) {
+    // Single mode: show REST gap (with ⊕) then remaining segments
+    if (restAfterSegIdx != null && restAfterSegIdx < segments.length-1) {
+      const gapStart = segments[restAfterSegIdx].actEnd;
+      const gapEnd   = segments[restAfterSegIdx+1].actStart;
+      blocks.push({ type:'rest', label:'', start:gapStart, end:gapEnd,
+        l:pct(gapStart), w:wPct(gapStart,gapEnd), isRestGap:true });
+      for (let i=restAfterSegIdx+1; i<segments.length; i++) {
+        if (i>restAfterSegIdx+1) {
+          const g = segments[i].actStart - segments[i-1].actEnd;
+          if (g>0) blocks.push({ type:'transit', label:'', start:segments[i-1].actEnd, end:segments[i].actStart,
+            l:pct(segments[i-1].actEnd), w:wPct(segments[i-1].actEnd,segments[i].actStart) });
+        }
+        blocks.push({ type:'flight', label:segments[i].fltNum, start:segments[i].actStart, end:segments[i].actEnd,
+          l:pct(segments[i].actStart), w:wPct(segments[i].actStart,segments[i].actEnd) });
+      }
+    }
+    // Debrief / Dropoff (Block 1 only)
+    blocks.push({ type:'debrief', label:'Debrief', start:debriefStart, end:debriefEnd,
+                  l:pct(debriefStart), w:wPct(debriefStart,debriefEnd) });
+    blocks.push({ type:'dropoff', label:'Dropoff', start:debriefEnd, end:dropoffEnd,
+                  l:pct(debriefEnd), w:wPct(debriefEnd,dropoffEnd) });
+  } else {
+    // Double mode: Block 1 debrief/dropoff
+    blocks.push({ type:'debrief', label:'Deb¹', start:debriefStart, end:debriefEnd,
+                  l:pct(debriefStart), w:wPct(debriefStart,debriefEnd) });
+    blocks.push({ type:'dropoff', label:'Drop¹', start:debriefEnd, end:dropoffEnd,
+                  l:pct(debriefEnd), w:wPct(debriefEnd,dropoffEnd) });
+
+    // HOTEL gap
+    blocks.push({ type:'hotel', label:'🏨 REST', start:dropoffEnd, end:dbl.pickupStart,
+                  l:pct(dropoffEnd), w:wPct(dropoffEnd,dbl.pickupStart), isHotel:true,
+                  dur: fmtDur(diffMin(dropoffEnd,dbl.pickupStart)) });
+
+    // Block 2
+    const b2Segs = segments.slice(restAfterSegIdx+1);
+    blocks.push({ type:'pickup',  label:'Pick²', start:dbl.pickupStart, end:dbl.briefStart,
+                  l:pct(dbl.pickupStart), w:wPct(dbl.pickupStart,dbl.briefStart), isDouble:true });
+    blocks.push({ type:'brief',   label:'Brief²', start:dbl.briefStart, end:dbl.briefEnd,
+                  l:pct(dbl.briefStart), w:wPct(dbl.briefStart,dbl.briefEnd), isDouble:true });
+    for (let i=0; i<b2Segs.length; i++) {
+      if (i>0) {
+        const g = b2Segs[i].actStart - b2Segs[i-1].actEnd;
+        if (g>0) blocks.push({ type:'transit', label:'', start:b2Segs[i-1].actEnd, end:b2Segs[i].actStart,
+          l:pct(b2Segs[i-1].actEnd), w:wPct(b2Segs[i-1].actEnd,b2Segs[i].actStart) });
+      }
+      blocks.push({ type:'flight', label:b2Segs[i].fltNum, start:b2Segs[i].actStart, end:b2Segs[i].actEnd,
+        l:pct(b2Segs[i].actStart), w:wPct(b2Segs[i].actStart,b2Segs[i].actEnd) });
+    }
+    blocks.push({ type:'debrief', label:'Deb²', start:dbl.debriefStart, end:dbl.debriefEnd,
+                  l:pct(dbl.debriefStart), w:wPct(dbl.debriefStart,dbl.debriefEnd), isDouble:true });
+    blocks.push({ type:'dropoff', label:'Drop²', start:dbl.debriefEnd, end:dbl.dropoffEnd,
+                  l:pct(dbl.debriefEnd), w:wPct(dbl.debriefEnd,dbl.dropoffEnd), isDouble:true });
+  }
+
+  return { blocks, totalStart, totalEnd };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GANTT BAR RENDER
+// ─────────────────────────────────────────────────────────────────
+function renderGanttBar(duty) {
+  const { blocks, totalStart, totalEnd } = buildBlocks(duty);
+  const isDouble = duty.double !== null;
+  const di = duty.dutySeq;
+
+  // Build puck HTML
+  let segsHtml = '';
+  for (let i=0; i<blocks.length; i++) {
+    const b = blocks[i];
+    const sep = i>0 ? '<div class="gantt-div"></div>' : '';
+    const tipLabel = b.label || 'Transit';
+    const tip = `${tipLabel}: ${hhmm(b.start)} – ${hhmm(b.end)} (${fmtDur(diffMin(b.start,b.end))})`;
+    const narrow = parseFloat(b.w) < 5;
+    const label = narrow ? '' : b.label;
+
+    if (b.type === 'rest') {
+      // REST gap with ⊕ button
+      segsHtml += `${sep}<div class="gantt-segment seg-rest" style="width:${b.w}%" title="${tip}">
+        <button class="btn-add-double" onclick="activateDouble(${di})" title="Add second sign-in/out here">⊕ Add Double</button>
+      </div>`;
+    } else if (b.type === 'hotel') {
+      segsHtml += `${sep}<div class="gantt-segment seg-hotel" style="width:${b.w}%" title="${tip}">
+        <span class="seg-label">${narrow ? '🏨' : `🏨 ${b.dur}`}</span>
+      </div>`;
+    } else {
+      segsHtml += `${sep}<div class="gantt-segment seg-${b.type}" style="width:${b.w}%" title="${tip}">
+        <span class="seg-label">${label}</span>
+      </div>`;
+    }
+  }
+
+  // Axis labels
+  function pct(t) { return ((t-totalStart)/(totalEnd-totalStart)*100).toFixed(2); }
+  const labelPts = isDouble ? [
+    { t: duty.pickupStart,        cls:'mark-edit', lbl: hhmm(duty.pickupStart) },
+    { t: duty.briefStart,         cls:'mark-edit', lbl: hhmm(duty.briefStart) },
+    { t: duty.briefEnd,           cls:'mark-lock', lbl: hhmm(duty.briefEnd) },
+    { t: duty.debriefStart,       cls:'mark-lock', lbl: hhmm(duty.debriefStart) },
+    { t: duty.debriefEnd,         cls:'mark-edit', lbl: hhmm(duty.debriefEnd) },
+    { t: duty.dropoffEnd,         cls:'mark-edit', lbl: hhmm(duty.dropoffEnd) },
+    { t: duty.double.pickupStart, cls:'mark-hotel',lbl: hhmm(duty.double.pickupStart) },
+    { t: duty.double.briefStart,  cls:'mark-edit', lbl: hhmm(duty.double.briefStart) },
+    { t: duty.double.debriefEnd,  cls:'mark-edit', lbl: hhmm(duty.double.debriefEnd) },
+    { t: duty.double.dropoffEnd,  cls:'mark-edit', lbl: hhmm(duty.double.dropoffEnd) },
+  ] : [
+    { t: duty.pickupStart,  cls:'mark-edit', lbl: hhmm(duty.pickupStart) },
+    { t: duty.briefStart,   cls:'mark-edit', lbl: hhmm(duty.briefStart) },
+    { t: duty.briefEnd,     cls:'mark-lock', lbl: hhmm(duty.briefEnd) },
+    { t: duty.debriefStart, cls:'mark-lock', lbl: hhmm(duty.debriefStart) },
+    { t: duty.debriefEnd,   cls:'mark-edit', lbl: hhmm(duty.debriefEnd) },
+    { t: duty.dropoffEnd,   cls:'mark-edit', lbl: hhmm(duty.dropoffEnd) },
+  ];
+
+  // Dedup by proximity (> 3% apart)
+  const shown = [];
+  for (const lp of labelPts) {
+    const p = parseFloat(pct(lp.t));
+    if (!shown.length || p - shown[shown.length-1].p > 4) shown.push({ ...lp, p });
+  }
+  const axisHtml = shown.map(lp =>
+    `<span class="axis-label ${lp.cls}" style="left:${lp.p}%">${lp.lbl}</span>`
+  ).join('');
+
+  // In double mode: small block labels above bar
+  let blockLabels = '';
+  if (isDouble) {
+    const b1Pct = parseFloat(pct(duty.briefStart));
+    const b2Pct = parseFloat(pct(duty.double.briefStart));
+    blockLabels = `
+      <div style="position:relative; height:16px; margin-bottom:2px;">
+        <span class="gantt-block-label" style="left:${b1Pct}%">Block 1</span>
+        <span class="gantt-block-label" style="left:${b2Pct}%; color:#a78bfa;">Block 2</span>
+      </div>`;
+  } else if (duty.restAfterSegIdx != null) {
+    blockLabels = `<div style="height:16px; margin-bottom:2px;"></div>`;
+  }
+
+  return `<div class="gantt-area" id="gantt-area-${di}">
+    ${blockLabels}
+    <div class="gantt-bar-wrap">
+      <div class="gantt-inner">${segsHtml}</div>
+    </div>
+    <div class="gantt-axis">${axisHtml}</div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// EDIT FORM HELPERS
+// ─────────────────────────────────────────────────────────────────
+const LOCK  = `<span class="status-icon" title="Read-only — locked to flight schedule" style="color:var(--text-dim)">🔒</span>`;
+const LINK  = `<span class="status-icon" title="Linked — changing this auto-shifts the other end" style="color:var(--primary)">⟳</span>`;
+const INDEP = `<span class="status-icon" title="Independent — only this field changes" style="color:var(--success)">✎</span>`;
+
+function editBlock(prefix, data, flags, di) {
+  // data:  { pickupStart, briefStart, briefEnd, debriefStart, debriefEnd, dropoffEnd }
+  // flags: { isDouble }
+  const { pickupStart, briefStart, briefEnd, debriefStart, debriefEnd, dropoffEnd } = data;
+  const isDouble = flags.isDouble;
+  const sfx = isDouble ? '2' : '1';
+  const dataAttr = isDouble ? 'data-double="1"' : '';
+
+  const pickupEnd    = briefStart;
+  const dropoffStart = debriefEnd;
+  const pickupDur    = diffMin(pickupStart, pickupEnd);
+  const dropoffDur   = diffMin(dropoffStart, dropoffEnd);
+
+  const dotSI  = isDouble ? 'dot-signin2'  : 'dot-signin';
+  const dotSO  = isDouble ? 'dot-signout2' : 'dot-signout';
+  const badge  = isDouble ? 'col-badge double-badge' : 'col-badge';
+  const badgeTxt = isDouble ? 'Block 2' : 'Block 1';
+  const amberCls = isDouble ? 'is-hotel' : 'is-amber';
+  const amberLbl = isDouble ? 'hotel-field' : 'amber-field';
+
+  return `
+  <div class="edit-grid">
+    <!-- Sign-in -->
+    <div class="edit-col">
+      <div class="col-title">
+        <div class="col-title-dot ${dotSI}"></div>
+        <span class="col-title-text">Sign-in</span>
+        <span class="${badge}">${badgeTxt}</span>
+      </div>
+      <div class="field-row">
+        <label class="field-label primary-field">Brief Start *</label>
+        <input class="field-input" type="datetime-local"
+          id="d${di}-${prefix}briefStart" data-duty="${di}" data-field="${prefix}briefStart" ${dataAttr}
+          value="${toInput(briefStart)}" />
+        ${LINK}
+      </div>
+      <div class="field-row">
+        <label class="field-label">Brief End</label>
+        <input class="field-input is-locked" type="datetime-local"
+          id="d${di}-${prefix}briefEnd" value="${toInput(briefEnd)}" readonly tabindex="-1" />
+        ${LOCK}
+      </div>
+      <hr class="edit-sep">
+      <div class="field-row">
+        <label class="field-label ${amberLbl}">Pickup Start</label>
+        <input class="field-input ${amberCls}" type="datetime-local"
+          id="d${di}-${prefix}pickupStart" data-duty="${di}" data-field="${prefix}pickupStart" ${dataAttr}
+          value="${toInput(pickupStart)}" />
+        ${INDEP}
+      </div>
+      <div class="summary-line">
+        <div class="summary-dot" style="background:${isDouble?'#7c3aed':'#b45309'};"></div>
+        <span>Pickup:</span>
+        <span id="d${di}-${prefix}pickupSummary" style="color:var(--text-muted);">
+          ${hhmm(pickupStart)} → ${hhmm(pickupEnd)}
+          &nbsp;<span style="color:${isDouble?'#a78bfa':'var(--amber)'};">${fmtDur(pickupDur)}</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="grid-divider"></div>
+
+    <!-- Sign-out -->
+    <div class="edit-col">
+      <div class="col-title">
+        <div class="col-title-dot ${dotSO}"></div>
+        <span class="col-title-text">Sign-out</span>
+        <span class="${badge}">${badgeTxt}</span>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Debrief Start</label>
+        <input class="field-input is-locked" type="datetime-local"
+          id="d${di}-${prefix}debriefStart" value="${toInput(debriefStart)}" readonly tabindex="-1" />
+        ${LOCK}
+      </div>
+      <div class="field-row">
+        <label class="field-label primary-field">Debrief End *</label>
+        <input class="field-input" type="datetime-local"
+          id="d${di}-${prefix}debriefEnd" data-duty="${di}" data-field="${prefix}debriefEnd" ${dataAttr}
+          value="${toInput(debriefEnd)}" />
+        ${LINK}
+      </div>
+      <hr class="edit-sep">
+      <div class="field-row">
+        <label class="field-label ${amberLbl}">Dropoff End</label>
+        <input class="field-input ${amberCls}" type="datetime-local"
+          id="d${di}-${prefix}dropoffEnd" data-duty="${di}" data-field="${prefix}dropoffEnd" ${dataAttr}
+          value="${toInput(dropoffEnd)}" />
+        ${INDEP}
+      </div>
+      <div class="summary-line">
+        <div class="summary-dot" style="background:${isDouble?'#7c3aed':'#b45309'};"></div>
+        <span>Dropoff:</span>
+        <span id="d${di}-${prefix}dropoffSummary" style="color:var(--text-muted);">
+          ${hhmm(dropoffStart)} → ${hhmm(dropoffEnd)}
+          &nbsp;<span style="color:${isDouble?'#a78bfa':'var(--amber)'};">${fmtDur(dropoffDur)}</span>
+        </span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderEditForm(duty) {
+  const di = duty.dutySeq;
+  const isDouble = duty.double !== null;
+
+  const b1 = editBlock('b1_', {
+    pickupStart:  duty.pickupStart,
+    briefStart:   duty.briefStart,
+    briefEnd:     duty.briefEnd,
+    debriefStart: duty.debriefStart,
+    debriefEnd:   duty.debriefEnd,
+    dropoffEnd:   duty.dropoffEnd,
+  }, { isDouble: false }, di);
+
+  if (!isDouble) return b1;
+
+  const restDur = fmtDur(diffMin(duty.dropoffEnd, duty.double.pickupStart));
+  const restSep = `
+  <div class="rest-separator">
+    <span class="rest-sep-icon">🏨</span>
+    <span class="rest-sep-label">HOTEL / REST</span>
+    <span class="rest-sep-dur">${hhmm(duty.dropoffEnd)} → ${hhmm(duty.double.pickupStart)} &nbsp;·&nbsp; ${restDur}</span>
+    <span class="rest-sep-spacer"></span>
+    <button class="btn-remove-double" onclick="deactivateDouble(${di})">
+      ✕ &nbsp;Remove Second Sign-in/out
+    </button>
+  </div>`;
+
+  const b2 = editBlock('b2_', {
+    pickupStart:  duty.double.pickupStart,
+    briefStart:   duty.double.briefStart,
+    briefEnd:     duty.double.briefEnd,
+    debriefStart: duty.double.debriefStart,
+    debriefEnd:   duty.double.debriefEnd,
+    dropoffEnd:   duty.double.dropoffEnd,
+  }, { isDouble: true }, di);
+
+  return b1 + restSep + b2;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// DUTY CARD RENDER
+// ─────────────────────────────────────────────────────────────────
+function renderDutyCard(duty) {
+  const di = duty.dutySeq;
+  const isDouble = duty.double !== null;
+  const totalStart = duty.pickupStart;
+  const totalEnd   = isDouble ? duty.double.dropoffEnd : duty.dropoffEnd;
+  const segNames   = duty.segments.map(s=>s.fltNum).join(' / ');
+
+  return `
+  <div class="duty-card" id="duty-card-${di}">
+    <div class="duty-header">
+      <span class="duty-seq-badge">Duty ${di}</span>
+      <span class="duty-route">${duty.strArp} → ${duty.endArp}</span>
+      <span class="duty-flts">${duty.segments.length} flt${duty.segments.length>1?'s':''}: ${segNames}</span>
+      ${isDouble ? `<span style="font-size:10px;color:#a78bfa;margin-left:2px;">● Double</span>` : ''}
+      <span class="duty-time-range" id="d${di}-hdrTime">
+        ${hhmm(totalStart)} – ${hhmm(totalEnd)} &nbsp;·&nbsp; ${fmtDur(diffMin(totalStart,totalEnd))}
+      </span>
+    </div>
+    ${renderGanttBar(duty)}
+    <div id="edit-form-${di}">${renderEditForm(duty)}</div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ACTIVATE / DEACTIVATE DOUBLE
+// ─────────────────────────────────────────────────────────────────
+function activateDouble(dutySeq) {
+  const duty = duties.find(d => d.dutySeq === dutySeq);
+  if (!duty || duty.double) return;
+  const ri = duty.restAfterSegIdx;
+  const b1LastSeg  = duty.segments[ri];
+  const b2FirstSeg = duty.segments[ri+1];
+  const b2LastSeg  = duty.segments[duty.segments.length-1];
+
+  // Adjust Block 1 debriefStart to b1LastSeg.actEnd
+  const oldDebDur = diffMin(duty.debriefStart, duty.debriefEnd);
+  const oldDrpDur = diffMin(duty.debriefEnd,   duty.dropoffEnd);
+  duty.debriefStart = b1LastSeg.actEnd;
+  duty.debriefEnd   = addMin(b1LastSeg.actEnd,  Math.max(30, oldDebDur));
+  duty.dropoffEnd   = addMin(duty.debriefEnd,   Math.max(30, oldDrpDur));
+
+  duty.double = {
+    pickupStart:  addMin(b2FirstSeg.actStart, -60),
+    briefStart:   addMin(b2FirstSeg.actStart, -30),
+    briefEnd:     b2FirstSeg.actStart,  // LOCKED
+    debriefStart: b2LastSeg.actEnd,     // LOCKED
+    debriefEnd:   addMin(b2LastSeg.actEnd, 30),
+    dropoffEnd:   addMin(b2LastSeg.actEnd, 60),
+  };
+
+  redrawDuty(dutySeq);
+  markDirty(dutySeq, 'activateDouble');
+}
+
+function deactivateDouble(dutySeq) {
+  const duty = duties.find(d => d.dutySeq === dutySeq);
+  if (!duty || !duty.double) return;
+  if (!confirm('Remove second sign-in/out? Block 2 times will be cleared.')) return;
+
+  // Restore Block 1 debriefStart to last segment's actEnd
+  const lastSeg = duty.segments[duty.segments.length-1];
+  duty.debriefStart = lastSeg.actEnd;
+  duty.double = null;
+
+  redrawDuty(dutySeq);
+  markDirty(dutySeq, 'deactivateDouble');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// AUTO-LINK HANDLERS — Block 1
+// ─────────────────────────────────────────────────────────────────
+function onBriefStart1Change(duty, val) {
+  const pickupDur = diffMin(duty.pickupStart, duty.briefStart);
+  duty.briefStart  = val;
+  duty.pickupStart = addMin(val, -pickupDur);
+  setFieldVal(`d${duty.dutySeq}-b1_pickupStart`, duty.pickupStart);
+  refreshSummary1(duty);
+  refreshGantt(duty);
+}
+function onPickupStart1Change(duty, val) {
+  duty.pickupStart = val;
+  refreshSummary1(duty);
+  refreshGantt(duty);
+}
+function onDebriefEnd1Change(duty, val) {
+  const dropoffDur = diffMin(duty.debriefEnd, duty.dropoffEnd);
+  duty.debriefEnd  = val;
+  duty.dropoffEnd  = addMin(val, dropoffDur);
+  setFieldVal(`d${duty.dutySeq}-b1_dropoffEnd`, duty.dropoffEnd);
+  refreshSummary1(duty);
+  refreshGantt(duty);
+}
+function onDropoffEnd1Change(duty, val) {
+  duty.dropoffEnd = val;
+  refreshSummary1(duty);
+  refreshGantt(duty);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// AUTO-LINK HANDLERS — Block 2
+// ─────────────────────────────────────────────────────────────────
+function onBriefStart2Change(duty, val) {
+  if (!duty.double) return;
+  const pickupDur = diffMin(duty.double.pickupStart, duty.double.briefStart);
+  duty.double.briefStart  = val;
+  duty.double.pickupStart = addMin(val, -pickupDur);
+  setFieldVal(`d${duty.dutySeq}-b2_pickupStart`, duty.double.pickupStart);
+  refreshSummary2(duty);
+  refreshGantt(duty);
+}
+function onPickupStart2Change(duty, val) {
+  if (!duty.double) return;
+  duty.double.pickupStart = val;
+  refreshSummary2(duty);
+  refreshGantt(duty);
+}
+function onDebriefEnd2Change(duty, val) {
+  if (!duty.double) return;
+  const dropoffDur = diffMin(duty.double.debriefEnd, duty.double.dropoffEnd);
+  duty.double.debriefEnd  = val;
+  duty.double.dropoffEnd  = addMin(val, dropoffDur);
+  setFieldVal(`d${duty.dutySeq}-b2_dropoffEnd`, duty.double.dropoffEnd);
+  refreshSummary2(duty);
+  refreshGantt(duty);
+}
+function onDropoffEnd2Change(duty, val) {
+  if (!duty.double) return;
+  duty.double.dropoffEnd = val;
+  refreshSummary2(duty);
+  refreshGantt(duty);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// DOM UPDATES
+// ─────────────────────────────────────────────────────────────────
+function flash(el) {
+  if (!el) return;
+  el.classList.remove('flash'); void el.offsetWidth;
+  el.classList.add('flash');
+}
+function setFieldVal(id, date) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const v = toInput(date);
+  if (el.value !== v) { el.value = v; flash(el); }
+}
+
+function refreshSummary1(duty) {
+  const di = duty.dutySeq;
+  const pEl = document.getElementById(`d${di}-b1_pickupSummary`);
+  if (pEl) {
+    const dur = diffMin(duty.pickupStart, duty.briefStart);
+    pEl.innerHTML = `${hhmm(duty.pickupStart)} → ${hhmm(duty.briefStart)} &nbsp;<span style="color:var(--amber);">${fmtDur(dur)}</span>`;
+  }
+  const dEl = document.getElementById(`d${di}-b1_dropoffSummary`);
+  if (dEl) {
+    const dur = diffMin(duty.debriefEnd, duty.dropoffEnd);
+    dEl.innerHTML = `${hhmm(duty.debriefEnd)} → ${hhmm(duty.dropoffEnd)} &nbsp;<span style="color:var(--amber);">${fmtDur(dur)}</span>`;
+  }
+  refreshHdrTime(duty);
+}
+function refreshSummary2(duty) {
+  if (!duty.double) return;
+  const di = duty.dutySeq;
+  const pEl = document.getElementById(`d${di}-b2_pickupSummary`);
+  if (pEl) {
+    const dur = diffMin(duty.double.pickupStart, duty.double.briefStart);
+    pEl.innerHTML = `${hhmm(duty.double.pickupStart)} → ${hhmm(duty.double.briefStart)} &nbsp;<span style="color:#a78bfa;">${fmtDur(dur)}</span>`;
+  }
+  const dEl = document.getElementById(`d${di}-b2_dropoffSummary`);
+  if (dEl) {
+    const dur = diffMin(duty.double.debriefEnd, duty.double.dropoffEnd);
+    dEl.innerHTML = `${hhmm(duty.double.debriefEnd)} → ${hhmm(duty.double.dropoffEnd)} &nbsp;<span style="color:#a78bfa;">${fmtDur(dur)}</span>`;
+  }
+  refreshHdrTime(duty);
+}
+
+function refreshHdrTime(duty) {
+  const el = document.getElementById(`d${duty.dutySeq}-hdrTime`);
+  if (!el) return;
+  const isDouble = duty.double !== null;
+  const end = isDouble ? duty.double.dropoffEnd : duty.dropoffEnd;
+  el.textContent = `${hhmm(duty.pickupStart)} – ${hhmm(end)} · ${fmtDur(diffMin(duty.pickupStart,end))}`;
+}
+
+function refreshGantt(duty) {
+  const area = document.getElementById(`gantt-area-${duty.dutySeq}`);
+  if (!area) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderGanttBar(duty);
+  area.replaceWith(tmp.firstElementChild);
+}
+
+/** Full redraw of duty card (used after activate/deactivate double) */
+function redrawDuty(dutySeq) {
+  const card = document.getElementById(`duty-card-${dutySeq}`);
+  if (!card) return;
+  const duty = duties.find(d => d.dutySeq === dutySeq);
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderDutyCard(duty);
+  card.replaceWith(tmp.firstElementChild);
+  attachListeners();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// EVENT LISTENERS
+// ─────────────────────────────────────────────────────────────────
+function attachListeners() {
+  document.querySelectorAll('input[data-field]').forEach(input => {
+    input.addEventListener('change', e => {
+      const di    = parseInt(e.target.dataset.duty);
+      const field = e.target.dataset.field;
+      const val   = parseLocal(e.target.value);
+      if (!val || isNaN(val.getTime())) return;
+      const duty  = duties.find(d => d.dutySeq === di);
+      if (!duty) return;
+
+      if      (field === 'b1_briefStart')  onBriefStart1Change(duty, val);
+      else if (field === 'b1_pickupStart') onPickupStart1Change(duty, val);
+      else if (field === 'b1_debriefEnd')  onDebriefEnd1Change(duty, val);
+      else if (field === 'b1_dropoffEnd')  onDropoffEnd1Change(duty, val);
+      else if (field === 'b2_briefStart')  onBriefStart2Change(duty, val);
+      else if (field === 'b2_pickupStart') onPickupStart2Change(duty, val);
+      else if (field === 'b2_debriefEnd')  onDebriefEnd2Change(duty, val);
+      else if (field === 'b2_dropoffEnd')  onDropoffEnd2Change(duty, val);
+
+      markDirty(di, field);
+    });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// DIRTY TRACKING / SAVE / CLOSE
+// ─────────────────────────────────────────────────────────────────
+const dirtyFields = new Set();
+function markDirty(di, field) {
+  dirtyFields.add(`d${di}.${field}`);
+  const el = document.getElementById('footer-hint');
+  if (el) el.textContent = `${dirtyFields.size} field${dirtyFields.size>1?'s':''} modified`;
+}
+
+function handleSave() {
+  const payload = duties.map(duty => ({
+    dutySeq:      duty.dutySeq,
+    pickupStart:  duty.pickupStart.toISOString(),
+    briefStart:   duty.briefStart.toISOString(),
+    debriefEnd:   duty.debriefEnd.toISOString(),
+    dropoffEnd:   duty.dropoffEnd.toISOString(),
+    double: duty.double ? {
+      pickupStart:  duty.double.pickupStart.toISOString(),
+      briefStart:   duty.double.briefStart.toISOString(),
+      debriefEnd:   duty.double.debriefEnd.toISOString(),
+      dropoffEnd:   duty.double.dropoffEnd.toISOString(),
+    } : null,
+  }));
+  console.log('Save payload:', JSON.stringify(payload, null, 2));
+  alert('Saved — see console for payload.\n\n' + JSON.stringify(payload, null, 2));
+}
+
+function handleClose() {
+  if (dirtyFields.size > 0 && !confirm('Unsaved changes. Discard and close?')) return;
+  alert('Dialog closed');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// INITIAL RENDER
+// ─────────────────────────────────────────────────────────────────
+function render() {
+  document.getElementById('dialog-body').innerHTML =
+    duties.map(renderDutyCard).join('') +
+    `<div style="padding:4px 2px 0; border-top:1px solid var(--border);">
+       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 0;">
+         <span style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;">Legend</span>
+         <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(135deg,#92400e,#b45309)"></div><span>Pickup / Dropoff</span></div>
+         <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(135deg,#1e3a8a,#2563eb)"></div><span>Brief</span></div>
+         <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(135deg,#164e63,#0891b2)"></div><span>Debrief</span></div>
+         <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(135deg,#1f2937,#374151)"></div><span>Flight</span></div>
+         <div class="legend-item"><div class="legend-dot" style="background:rgba(110,64,201,0.18);border:1px dashed #7c3aed;"></div><span>Hotel/REST</span></div>
+         <div class="legend-item" style="gap:3px;"><span style="color:var(--primary)">⟳</span><span>Linked (auto-shifts)</span></div>
+         <div class="legend-item" style="gap:3px;"><span style="color:var(--success)">✎</span><span>Independent</span></div>
+         <div class="legend-item" style="gap:3px;"><span>🔒</span><span>Locked (flight schedule)</span></div>
+       </div>
+     </div>`;
+  attachListeners();
+}
+
+render();
+</script>
+</body>
+</html>

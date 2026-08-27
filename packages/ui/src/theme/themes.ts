@@ -1,0 +1,448 @@
+export interface ThemeColors {
+  background: string;
+  foreground: string;
+  card: string;
+  "card-foreground": string;
+  popover: string;
+  "popover-foreground": string;
+  primary: string;
+  "primary-foreground": string;
+  secondary: string;
+  "secondary-foreground": string;
+  muted: string;
+  "muted-foreground": string;
+  accent: string;
+  "accent-foreground": string;
+  destructive: string;
+  "destructive-foreground": string;
+  border: string;
+  input: string;
+  ring: string;
+  radius: string;
+  "chart-1": string;
+  "chart-2": string;
+  "chart-3": string;
+  "chart-4": string;
+  "chart-5": string;
+  "sidebar-background": string;
+  "sidebar-foreground": string;
+  "sidebar-primary": string;
+  "sidebar-primary-foreground": string;
+  "sidebar-accent": string;
+  "sidebar-accent-foreground": string;
+  "sidebar-border": string;
+  "sidebar-ring": string;
+}
+
+export interface Theme {
+  name: string;
+  label: string;
+  description: string;
+  light: ThemeColors;
+  dark: ThemeColors;
+}
+
+// ---------------------------------------------------------------------------
+// Ocean Blue -- 默认主题，专业稳重
+// ---------------------------------------------------------------------------
+const oceanBlue: Theme = {
+  name: "ocean-blue",
+  label: "Ocean Blue",
+  description: "Ocean Blue — Professional & Steady",
+  light: {
+    background: "0 0% 100%",
+    foreground: "215 25% 12%",
+    card: "0 0% 100%",
+    "card-foreground": "215 25% 12%",
+    popover: "0 0% 100%",
+    "popover-foreground": "215 25% 12%",
+    primary: "213 94% 45%",
+    "primary-foreground": "0 0% 100%",
+    secondary: "214 32% 95%",
+    "secondary-foreground": "213 50% 30%",
+    muted: "214 32% 95%",
+    "muted-foreground": "215 16% 47%",
+    accent: "214 32% 91%",
+    "accent-foreground": "213 50% 30%",
+    destructive: "0 84% 60%",
+    "destructive-foreground": "0 0% 100%",
+    border: "214 20% 90%",
+    input: "214 20% 88%",
+    ring: "213 94% 45%",
+    radius: "0.5rem",
+    "chart-1": "213 94% 45%",
+    "chart-2": "172 66% 40%",
+    "chart-3": "258 60% 55%",
+    "chart-4": "32 95% 52%",
+    "chart-5": "350 80% 55%",
+    "sidebar-background": "214 40% 97%",
+    "sidebar-foreground": "215 25% 25%",
+    "sidebar-primary": "213 94% 45%",
+    "sidebar-primary-foreground": "0 0% 100%",
+    "sidebar-accent": "214 32% 92%",
+    "sidebar-accent-foreground": "213 50% 30%",
+    "sidebar-border": "214 20% 90%",
+    "sidebar-ring": "213 94% 45%",
+  },
+  dark: {
+    background: "215 28% 9%",
+    foreground: "210 20% 93%",
+    card: "215 25% 12%",
+    "card-foreground": "210 20% 93%",
+    popover: "215 25% 12%",
+    "popover-foreground": "210 20% 93%",
+    primary: "213 94% 55%",
+    "primary-foreground": "0 0% 100%",
+    secondary: "215 20% 18%",
+    "secondary-foreground": "210 20% 85%",
+    muted: "215 20% 18%",
+    "muted-foreground": "215 16% 56%",
+    accent: "215 22% 22%",
+    "accent-foreground": "210 20% 90%",
+    destructive: "0 72% 51%",
+    "destructive-foreground": "0 0% 100%",
+    border: "215 18% 20%",
+    input: "215 18% 22%",
+    ring: "213 94% 55%",
+    radius: "0.5rem",
+    "chart-1": "213 94% 60%",
+    "chart-2": "172 66% 50%",
+    "chart-3": "258 60% 65%",
+    "chart-4": "32 95% 58%",
+    "chart-5": "350 80% 60%",
+    "sidebar-background": "215 28% 7%",
+    "sidebar-foreground": "210 20% 80%",
+    "sidebar-primary": "213 94% 55%",
+    "sidebar-primary-foreground": "0 0% 100%",
+    "sidebar-accent": "215 22% 16%",
+    "sidebar-accent-foreground": "210 20% 85%",
+    "sidebar-border": "215 18% 18%",
+    "sidebar-ring": "213 94% 55%",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Emerald Green -- 清新自然
+// ---------------------------------------------------------------------------
+const emeraldGreen: Theme = {
+  name: "emerald-green",
+  label: "Emerald Green",
+  description: "Emerald Green — Fresh & Natural",
+  light: {
+    background: "0 0% 100%",
+    foreground: "150 20% 10%",
+    card: "0 0% 100%",
+    "card-foreground": "150 20% 10%",
+    popover: "0 0% 100%",
+    "popover-foreground": "150 20% 10%",
+    primary: "160 84% 32%",
+    "primary-foreground": "0 0% 100%",
+    secondary: "152 28% 94%",
+    "secondary-foreground": "160 45% 22%",
+    muted: "152 28% 94%",
+    "muted-foreground": "155 12% 46%",
+    accent: "152 28% 90%",
+    "accent-foreground": "160 45% 22%",
+    destructive: "0 84% 60%",
+    "destructive-foreground": "0 0% 100%",
+    border: "152 18% 89%",
+    input: "152 18% 87%",
+    ring: "160 84% 32%",
+    radius: "0.5rem",
+    "chart-1": "160 84% 32%",
+    "chart-2": "210 70% 50%",
+    "chart-3": "280 55% 50%",
+    "chart-4": "38 92% 50%",
+    "chart-5": "350 75% 55%",
+    "sidebar-background": "150 30% 97%",
+    "sidebar-foreground": "150 20% 22%",
+    "sidebar-primary": "160 84% 32%",
+    "sidebar-primary-foreground": "0 0% 100%",
+    "sidebar-accent": "152 28% 91%",
+    "sidebar-accent-foreground": "160 45% 22%",
+    "sidebar-border": "152 18% 89%",
+    "sidebar-ring": "160 84% 32%",
+  },
+  dark: {
+    background: "155 25% 8%",
+    foreground: "150 15% 92%",
+    card: "155 22% 11%",
+    "card-foreground": "150 15% 92%",
+    popover: "155 22% 11%",
+    "popover-foreground": "150 15% 92%",
+    primary: "160 72% 42%",
+    "primary-foreground": "0 0% 100%",
+    secondary: "155 18% 17%",
+    "secondary-foreground": "150 15% 84%",
+    muted: "155 18% 17%",
+    "muted-foreground": "155 12% 55%",
+    accent: "155 20% 20%",
+    "accent-foreground": "150 15% 88%",
+    destructive: "0 72% 51%",
+    "destructive-foreground": "0 0% 100%",
+    border: "155 16% 19%",
+    input: "155 16% 21%",
+    ring: "160 72% 42%",
+    radius: "0.5rem",
+    "chart-1": "160 72% 48%",
+    "chart-2": "210 70% 58%",
+    "chart-3": "280 55% 62%",
+    "chart-4": "38 92% 56%",
+    "chart-5": "350 75% 60%",
+    "sidebar-background": "155 25% 6%",
+    "sidebar-foreground": "150 15% 78%",
+    "sidebar-primary": "160 72% 42%",
+    "sidebar-primary-foreground": "0 0% 100%",
+    "sidebar-accent": "155 20% 15%",
+    "sidebar-accent-foreground": "150 15% 84%",
+    "sidebar-border": "155 16% 16%",
+    "sidebar-ring": "160 72% 42%",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Sunset Orange -- 温暖活力
+// ---------------------------------------------------------------------------
+const sunsetOrange: Theme = {
+  name: "sunset-orange",
+  label: "Sunset Orange",
+  description: "Sunset Orange — Warm & Energetic",
+  light: {
+    background: "0 0% 100%",
+    foreground: "20 20% 12%",
+    card: "0 0% 100%",
+    "card-foreground": "20 20% 12%",
+    popover: "0 0% 100%",
+    "popover-foreground": "20 20% 12%",
+    primary: "24 95% 50%",
+    "primary-foreground": "0 0% 100%",
+    secondary: "28 40% 95%",
+    "secondary-foreground": "24 55% 28%",
+    muted: "28 40% 95%",
+    "muted-foreground": "20 12% 47%",
+    accent: "28 40% 91%",
+    "accent-foreground": "24 55% 28%",
+    destructive: "0 84% 60%",
+    "destructive-foreground": "0 0% 100%",
+    border: "28 22% 89%",
+    input: "28 22% 87%",
+    ring: "24 95% 50%",
+    radius: "0.5rem",
+    "chart-1": "24 95% 50%",
+    "chart-2": "195 70% 45%",
+    "chart-3": "145 60% 40%",
+    "chart-4": "340 75% 52%",
+    "chart-5": "262 60% 55%",
+    "sidebar-background": "28 45% 97%",
+    "sidebar-foreground": "20 20% 22%",
+    "sidebar-primary": "24 95% 50%",
+    "sidebar-primary-foreground": "0 0% 100%",
+    "sidebar-accent": "28 40% 92%",
+    "sidebar-accent-foreground": "24 55% 28%",
+    "sidebar-border": "28 22% 89%",
+    "sidebar-ring": "24 95% 50%",
+  },
+  dark: {
+    background: "20 22% 9%",
+    foreground: "28 18% 92%",
+    card: "20 20% 12%",
+    "card-foreground": "28 18% 92%",
+    popover: "20 20% 12%",
+    "popover-foreground": "28 18% 92%",
+    primary: "24 92% 55%",
+    "primary-foreground": "0 0% 100%",
+    secondary: "20 16% 18%",
+    "secondary-foreground": "28 18% 84%",
+    muted: "20 16% 18%",
+    "muted-foreground": "20 10% 55%",
+    accent: "20 18% 22%",
+    "accent-foreground": "28 18% 88%",
+    destructive: "0 72% 51%",
+    "destructive-foreground": "0 0% 100%",
+    border: "20 14% 20%",
+    input: "20 14% 22%",
+    ring: "24 92% 55%",
+    radius: "0.5rem",
+    "chart-1": "24 92% 58%",
+    "chart-2": "195 70% 55%",
+    "chart-3": "145 60% 48%",
+    "chart-4": "340 75% 58%",
+    "chart-5": "262 60% 62%",
+    "sidebar-background": "20 22% 7%",
+    "sidebar-foreground": "28 18% 78%",
+    "sidebar-primary": "24 92% 55%",
+    "sidebar-primary-foreground": "0 0% 100%",
+    "sidebar-accent": "20 18% 16%",
+    "sidebar-accent-foreground": "28 18% 84%",
+    "sidebar-border": "20 14% 17%",
+    "sidebar-ring": "24 92% 55%",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Royal Purple -- 优雅高贵
+// ---------------------------------------------------------------------------
+const royalPurple: Theme = {
+  name: "royal-purple",
+  label: "Royal Purple",
+  description: "Royal Purple — Elegant & Refined",
+  light: {
+    background: "0 0% 100%",
+    foreground: "270 18% 12%",
+    card: "0 0% 100%",
+    "card-foreground": "270 18% 12%",
+    popover: "0 0% 100%",
+    "popover-foreground": "270 18% 12%",
+    primary: "265 82% 52%",
+    "primary-foreground": "0 0% 100%",
+    secondary: "268 30% 95%",
+    "secondary-foreground": "265 45% 30%",
+    muted: "268 30% 95%",
+    "muted-foreground": "265 12% 47%",
+    accent: "268 30% 91%",
+    "accent-foreground": "265 45% 30%",
+    destructive: "0 84% 60%",
+    "destructive-foreground": "0 0% 100%",
+    border: "268 18% 89%",
+    input: "268 18% 87%",
+    ring: "265 82% 52%",
+    radius: "0.5rem",
+    "chart-1": "265 82% 52%",
+    "chart-2": "200 75% 48%",
+    "chart-3": "340 70% 52%",
+    "chart-4": "45 90% 50%",
+    "chart-5": "160 60% 42%",
+    "sidebar-background": "268 35% 97%",
+    "sidebar-foreground": "270 18% 22%",
+    "sidebar-primary": "265 82% 52%",
+    "sidebar-primary-foreground": "0 0% 100%",
+    "sidebar-accent": "268 30% 92%",
+    "sidebar-accent-foreground": "265 45% 30%",
+    "sidebar-border": "268 18% 89%",
+    "sidebar-ring": "265 82% 52%",
+  },
+  dark: {
+    background: "270 22% 9%",
+    foreground: "268 15% 92%",
+    card: "270 20% 12%",
+    "card-foreground": "268 15% 92%",
+    popover: "270 20% 12%",
+    "popover-foreground": "268 15% 92%",
+    primary: "265 78% 62%",
+    "primary-foreground": "0 0% 100%",
+    secondary: "270 16% 18%",
+    "secondary-foreground": "268 15% 84%",
+    muted: "270 16% 18%",
+    "muted-foreground": "268 10% 55%",
+    accent: "270 18% 22%",
+    "accent-foreground": "268 15% 88%",
+    destructive: "0 72% 51%",
+    "destructive-foreground": "0 0% 100%",
+    border: "270 14% 20%",
+    input: "270 14% 22%",
+    ring: "265 78% 62%",
+    radius: "0.5rem",
+    "chart-1": "265 78% 65%",
+    "chart-2": "200 75% 58%",
+    "chart-3": "340 70% 60%",
+    "chart-4": "45 90% 56%",
+    "chart-5": "160 60% 50%",
+    "sidebar-background": "270 22% 7%",
+    "sidebar-foreground": "268 15% 78%",
+    "sidebar-primary": "265 78% 62%",
+    "sidebar-primary-foreground": "0 0% 100%",
+    "sidebar-accent": "270 18% 16%",
+    "sidebar-accent-foreground": "268 15% 84%",
+    "sidebar-border": "270 14% 17%",
+    "sidebar-ring": "265 78% 62%",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Slate Gray -- 简约中性
+// ---------------------------------------------------------------------------
+const slateGray: Theme = {
+  name: "slate-gray",
+  label: "Slate Gray",
+  description: "Slate Gray — Clean & Neutral",
+  light: {
+    background: "0 0% 100%",
+    foreground: "220 14% 10%",
+    card: "0 0% 100%",
+    "card-foreground": "220 14% 10%",
+    popover: "0 0% 100%",
+    "popover-foreground": "220 14% 10%",
+    primary: "220 14% 30%",
+    "primary-foreground": "0 0% 100%",
+    secondary: "220 14% 95%",
+    "secondary-foreground": "220 14% 25%",
+    muted: "220 14% 95%",
+    "muted-foreground": "220 8% 46%",
+    accent: "220 14% 91%",
+    "accent-foreground": "220 14% 25%",
+    destructive: "0 84% 60%",
+    "destructive-foreground": "0 0% 100%",
+    border: "220 12% 89%",
+    input: "220 12% 87%",
+    ring: "220 14% 30%",
+    radius: "0.5rem",
+    "chart-1": "220 14% 30%",
+    "chart-2": "200 55% 48%",
+    "chart-3": "155 50% 42%",
+    "chart-4": "32 80% 50%",
+    "chart-5": "350 65% 52%",
+    "sidebar-background": "220 16% 97%",
+    "sidebar-foreground": "220 14% 22%",
+    "sidebar-primary": "220 14% 30%",
+    "sidebar-primary-foreground": "0 0% 100%",
+    "sidebar-accent": "220 14% 92%",
+    "sidebar-accent-foreground": "220 14% 25%",
+    "sidebar-border": "220 12% 89%",
+    "sidebar-ring": "220 14% 30%",
+  },
+  dark: {
+    background: "220 16% 8%",
+    foreground: "220 10% 92%",
+    card: "220 14% 11%",
+    "card-foreground": "220 10% 92%",
+    popover: "220 14% 11%",
+    "popover-foreground": "220 10% 92%",
+    primary: "220 10% 65%",
+    "primary-foreground": "220 16% 8%",
+    secondary: "220 12% 17%",
+    "secondary-foreground": "220 10% 84%",
+    muted: "220 12% 17%",
+    "muted-foreground": "220 8% 52%",
+    accent: "220 14% 20%",
+    "accent-foreground": "220 10% 88%",
+    destructive: "0 72% 51%",
+    "destructive-foreground": "0 0% 100%",
+    border: "220 12% 19%",
+    input: "220 12% 21%",
+    ring: "220 10% 65%",
+    radius: "0.5rem",
+    "chart-1": "220 14% 55%",
+    "chart-2": "200 55% 55%",
+    "chart-3": "155 50% 50%",
+    "chart-4": "32 80% 56%",
+    "chart-5": "350 65% 58%",
+    "sidebar-background": "220 16% 6%",
+    "sidebar-foreground": "220 10% 78%",
+    "sidebar-primary": "220 10% 65%",
+    "sidebar-primary-foreground": "220 16% 8%",
+    "sidebar-accent": "220 14% 15%",
+    "sidebar-accent-foreground": "220 10% 84%",
+    "sidebar-border": "220 12% 16%",
+    "sidebar-ring": "220 10% 65%",
+  },
+};
+
+export const themes: Theme[] = [
+  oceanBlue,
+  emeraldGreen,
+  sunsetOrange,
+  royalPurple,
+  slateGray,
+];
+
+export const defaultTheme = oceanBlue;

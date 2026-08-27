@@ -1,0 +1,3 @@
+display_name: Routing Debug
+short_description: Debug ROIS Cloudflare tunnel and local origin routing failures.
+default_prompt: Diagnose the public route failure from Cloudflare URL to local origin, preserving evidence before changing ports or restarting services.

@@ -1,0 +1,64 @@
+## 工程：db
+###	职责
+    读写数据：csv、json
+    维护数据：crewDataContext，addRoster/delPairing...
+##	csv
+    读写csv
+    reader类：解析多表csv总流程
+    csv_impl_xxx类：解析xxx数据类，csv <--> obj
+##	crewDataContext关键接口
+    addRoster, delRoster, updateRoster
+    addPairing,delPairing, updatePairing
+    loadDataCsv, saveDataCsv：以RO场景、live方式读写数据，包括crew、roster、manday
+    loadDataCsvPo, saveDataCsvPo：以PO场景方式读写数据，不包括crew、roster、manday
+## 工程：orUtil
+	工具函数工程
+## 工程：ruleEngine
+	法规工程
+##	rulefunc/目录
+    按每条法规拆分一个代码文件，如 8091.cpp
+##	ruleEngine.cpp
+    法规主流程，封装 checkRules(crew), checkRules(pairing), checkRules(duty)等对外接口
+## 工程：ruleSrv
+	基于mongoose实现的 http restful api server
+	与gantt客户端配合实现法规检查
+###	分层
+    http请求处理：WebSrv.cpp
+    流程控制、输入输出：RuleSrvHandle.cpp
+###	RuleSrvHandle.cpp
+    每个http接口对应一个函数
+    rule_engine_load_by_csv_file：从csv加载场景数据，如gantt启动2020/8/14 下午 5:59
+    rule_engine_check：从json读入pairing集合，调用 ruleEngine->checkRules(pairings)
+    rule_engine_check_crew：从json读入 crew_id集合，调用 ruleEngine->checkRules(crews)
+    rule_engine_update_list：针对 roster/ptn增删改类操作，解析inbox/ json文件，如 addRoster、sync广播
+#	测试
+##		配置文件
+    RuleServiceConfig.txt：
+    RuleEngineDir=.\
+    Port=8000
+##		测试入口：http://localhost:8000/test
+##		目录结构
+    ruleSrv.exe
+    /inbox/roster/
+        loadScenario.data.txt
+        checkPairing.txt
+        checkCrew.txt
+        addRoster/ syncRules/ ...
+## 工程：ruleTool
+	运维工具，使用法规计算、刷新数据，如导入roster后刷新manday
+###	main.cpp
+	流程控制，按命令行参数判断进入不同流程，如 change_flight, manday, ...
+###	RuleToolXXX.cpp
+	具体功能，每一个代码对应main中一个功能流程，如 RuleToolChangeFlight.cpp
+## 工程：testDB
+	开发过程测试用工程，随时在本地修改 main()实现测试目标流程
+
+## 环境安装
+    下载vs2017 community，这个是免费版本，其他版本会收费
+
+## 法规调试debug：
+	- 拉取代码
+	- 设置成dev win32 启动
+	- 设置RuleSrv为启动项
+	- 修改RuleSrv的工作目录
+	- 运行代码

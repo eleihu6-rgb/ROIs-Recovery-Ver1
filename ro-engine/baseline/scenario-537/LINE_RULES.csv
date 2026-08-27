@@ -1,0 +1,7 @@
+Crew_ID,Code_ID,Rule_ID,Rule_Type,Parameters_JSON,T1_Counter,T2_Counter,T3_Counter,T4_Counter,T5_Counter,T6_Counter,T7_Counter,Description
+247,427,427,RESERVE,"{""action"":""avoid"",""scope"":""whole_bid_month""}",1,0,0,0,0,0,0,No Reserve for the whole bid month.
+383,203,408,COMMUTER_PATTERN,"{""maxDaysOff"":7,""maxDaysOn"":30,""minDaysOff"":7,""minDaysOn"":1}",1,0,0,0,0,0,0,DaysOff rule: Min Consecutive Days Off is 7.
+572,301,301,RESERVE_SHORT_CALL_TYPE,"{""action"":""award"",""callType"":""PRAM"",""dateScope"":{""mode"":""whole_month""}}",1,0,0,0,0,0,0,Award Reserve Short Call Type PRAM for whole month.
+2697,301,301,RESERVE_SHORT_CALL_TYPE,"{""action"":""award"",""callType"":""PRAM"",""dateScope"":{""mode"":""whole_month""}}",1,0,0,0,0,0,0,Award Reserve Short Call Type PRAM for whole month.
+13697,427,427,RESERVE,"{""action"":""award"",""scope"":""whole_bid_month""}",1,0,0,0,0,0,0,Award only Reserve for the whole bid month; require the line to be reserve-only.
+8888,427,427,RESERVE,"{""action"":""avoid"",""scope"":""whole_bid_month""}",1,0,0,0,0,0,0,No Reserve for the whole bid month.

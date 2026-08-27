@@ -1,0 +1,258 @@
+# 优化引擎调度工具配置文件
+
+# 服务器配置
+server:
+  host: 0.0.0.0
+  port: 3103
+  debug: true
+  # API 文档端点（Swagger / ReDoc / OpenAPI schema）：null = 禁用，避免未鉴权泄露接口结构。
+  # 仅本地开发需要调试文档时改为 "/docs" "/redoc" "/openapi.json"。
+  docs_url: null
+  redoc_url: null
+  openapi_url: null
+  cors:
+    # 空列表 = 禁止跨域浏览器访问。engine-server 合法浏览器调用全部同源（nginx 反代 /<prefix>/engine），
+    # 服务间调用不走 CORS —— 严禁 "*"。
+    allow_origins: []
+    allow_methods:
+      - "GET"
+      - "POST"
+    allow_headers:
+      - "X-Airline"
+      - "X-API-Key"
+      - "Authorization"
+      - "Content-Type"
+
+# 认证配置
+auth:
+  enabled: false  # 是否启用认证
+  # JWT 认证 (推荐 — 复用 Live Server 签发的 JWT)
+  jwt:
+    enabled: false
+    secret: your_jwt_secret_here  # 与 Live Server 共享的签名密钥
+    algorithm: HS256
+    verify_exp: true
+  # API Key 认证 (面向 Live Server 等服务间调用)
+  api_key:
+    enabled: false
+    key: your_api_key_here
+  # Bearer Token 认证 (向后兼容)
+  bearer_token:
+    enabled: false
+    token: your_bearer_token_here
+  # 请求限流
+  rate_limit:
+    enabled: false
+    rate: "15/minute"  # 每航司每分钟最多请求数
+  # 航司认证配置
+  airline_auth:
+    F8:
+      api_key: f8_api_key_here  # F8航司API Key
+      bearer_token: f8_bearer_token_here  # F8航司Bearer Token
+    BR:
+      api_key: br_api_key_here  # BR航司API Key
+      bearer_token: br_bearer_token_here  # BR航司Bearer Token
+
+# 文件路径配置
+paths:
+  working_dir: ./workspace
+  finished_dir: ./finished
+  archive_dir: ./archive
+  temp_dir: ./temp
+  complete_dir: ./complete
+
+# 航司配置
+airlines:
+  F8:
+    # Live Server 回调地址：engine-server 据此回传/拉取 input.gz、output.gz。
+    # 配置后优先于请求体 url（浏览器 Host 头），多机/反向代理环境下以此为准。
+    live-server:
+      url: http://localhost:3000
+    optimizers:
+      PO:
+        name: Pairing Optimizer
+        server_integration: true  # true: server处理input/output传输; false: 优化器自身处理
+        url:
+          input: /api/orengine/po/comptxt
+          output: /api/orengine/po/solution
+        linux:
+          path: ./F8/po.sh
+        windows:
+          path: ./F8/po.bat
+      RO:
+        name: Roster Optimizer
+        server_integration: true  # true: server处理input/output传输; false: 优化器自身处理
+        url:
+          input: /api/scenario/export
+          output: /api/scenario/result
+        linux:
+          path: ./F8/ro.sh
+        windows:
+          path: ./F8/ro.bat
+      TO:
+        name: Training Optimizer
+        server_integration: true  # true: server处理input/output传输; false: 优化器自身处理
+        url:
+          input: /api/orengine/to/comptxt
+          output: /api/orengine/to/solution
+        linux:
+          path: ./F8/to.sh
+        windows:
+          path: ./F8/to.bat
+      Rule:
+        server_integration: true  # true: server处理input/output传输; false: 优化器自身处理
+        categories:
+          change_flight:
+            name: Change Flight Rule
+            url:
+              input: /api/orengine/byFlight/comptxt
+              output: /api/orengine/byFlight/save/csv
+            linux:
+              path: ./F8/rule_change_flight.sh
+            windows:
+              path: ./F8/rule_change_flight.bat
+          manday:
+            name: Manday Rule
+            url:
+              input: /api/orengine/ro/partial/comptxt
+              output: /api/crewMandayFd/partlySave/csv/comp
+            linux:
+              path: ./F8/rule_manday.sh
+            windows:
+              path: ./F8/rule_manday.bat
+          manday_byCrew:
+            name: Manday by Crew Rule
+            url:
+              input: /api/orengine/byCrew/comptxt
+              output: /api/crewMandayFd/partlySave/csv/comp
+            linux:
+              path: ./F8/rule_manday_byCrew.sh
+            windows:
+              path: ./F8/rule_manday_byCrew.bat
+      # 临时方案：调老 Java server 取老格式 ro_input.gz，运行外部优化器，不回调
+      LegacyRO:
+        name: Legacy Roster Optimizer (Java Server)
+        server_integration: true
+        input_source: "db"   # "db" → 从 PostgreSQL 生成 input.gz（替代 Java server 抓取）；删除/改值则回退 Java
+        db_url: "${LEGACY_RO_DB_URL:}"
+        url:
+          input: /api/orengine/ro/comptxt
+          output: /api/orengine/ro/solution
+        linux:
+          # PBS column-based pipeline: /home/rois/PBS_column_based_algorithm-main/run_pipeline.sh
+          # (conda flair-pbs-env). To revert to Rust-rule pipeline use ./F8/ro_rust.sh.
+          # ⚠️ 法规引擎模式由 engine-server/.env 的 RO_RULE_ENGINE_MODE 决定（勿改回 internal，
+          # 见该变量注释）：项目最新标准 = rust-hybrid，PBS 优化必须调用 RUST 法规。
+          path: ./F8/ro_pipeline.sh
+        windows:
+          path: ./F8/legacy_ro.bat
+        legacy_java:
+          url: http://localhost:8011
+          username: ROIS
+          password: Pier2020
+        bid_package_server:
+          url: ${BID_PACKAGE_SERVER_URL:http://localhost:3000}
+          username: ${BID_PACKAGE_ADMIN_USER}
+          password: ${BID_PACKAGE_ADMIN_PASSWORD}
+          period_code: Jun 2026
+  BR:
+    optimizers:
+      PO:
+        name: Pairing Optimizer
+        server_integration: true  # true: server处理input/output传输; false: 优化器自身处理
+        url:
+          input: /api/orengine/po/comptxt
+          output: /api/orengine/po/solution
+        linux:
+          path: ./BR/po.sh
+        windows:
+          path: ./BR/po.bat
+      RO:
+        name: Roster Optimizer
+        server_integration: true  # true: server处理input/output传输; false: 优化器自身处理
+        url:
+          input: /api/scenario/export
+          output: /api/scenario/result
+        linux:
+          path: ./BR/ro.sh
+        windows:
+          path: ./BR/ro.bat
+      TO:
+        name: Training Optimizer
+        server_integration: true  # true: server处理input/output传输; false: 优化器自身处理
+        url:
+          input: /api/orengine/to/comptxt
+          output: /api/orengine/to/solution
+        linux:
+          path: ./BR/to.sh
+        windows:
+          path: ./BR/to.bat
+      Rule:
+        server_integration: true  # true: server处理input/output传输; false: 优化器自身处理
+        categories:
+          change_flight:
+            name: Change Flight Rule
+            url:
+              input: /api/orengine/byFlight/comptxt
+              output: /api/orengine/byFlight/save/csv
+            linux:
+              path: ./BR/rule_change_flight.sh
+            windows:
+              path: ./BR/rule_change_flight.bat
+          manday:
+            name: Manday Rule
+            url:
+              input: /api/orengine/ro/partial/comptxt
+              output: /api/crewMandayFd/partlySave/csv/comp
+            linux:
+              path: ./BR/rule_manday.sh
+            windows:
+              path: ./BR/rule_manday.bat
+          manday_byCrew:
+            name: Manday by Crew Rule
+            url:
+              input: /api/orengine/byCrew/comptxt
+              output: /api/crewMandayFd/partlySave/csv/comp
+            linux:
+              path: ./BR/rule_manday_byCrew.sh
+            windows:
+              path: ./BR/rule_manday_byCrew.bat
+
+# HTTP客户端配置
+http_client:
+  # Live Server请求超时时间（秒）
+  # 注：input.gz生成可能需要1-3分钟，建议设置20分钟（1200秒）
+  timeout: 1200
+
+  # 兼容老旧测试服 TLS（仅测试环境用，生产保持 false）
+  # true 时把 OpenSSL 安全等级降到 1，允许 1024-bit RSA、SHA1 签名等弱证书。
+  # 现象：报 "EE certificate key too weak" 时启用此项。
+  legacy_ssl: false
+
+  # 是否校验 Live Server 的 SSL 证书（自签名/测试环境可临时关闭，生产保持 true）
+  ssl_verify: true
+
+# 文件管理配置
+file_management:
+  archive_days: 1  # 隔天归档
+  cleanup_days: 30  # 30天后清理
+  complete_compress_days: 1  # complete 目录 1 天后压缩
+  complete_cleanup_days: 5  # complete 目录 5 天后清理
+
+# 任务配置
+tasks:
+  max_concurrent: 10
+  # Optional per-optimizer caps layered on top of max_concurrent.
+  # Tune per environment; use a low LegacyRO cap on small SIT hosts.
+  optimizer_max_concurrent:
+    LegacyRO: 1
+  timeout: 3600  # 任务超时时间（秒）
+
+# Redis配置
+redis:
+  enabled: false  # 是否启用Redis
+  host: localhost  # Redis主机
+  port: 6379  # Redis端口
+  password: null  # Redis密码
+  db: 0  # Redis数据库
+  task_ttl: 3600  # 任务数据过期时间（秒）

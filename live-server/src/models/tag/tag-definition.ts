@@ -1,0 +1,26 @@
+import { pgTable, bigint, varchar, integer, smallint, boolean, text, jsonb, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+
+export const tagDefinition = pgTable('tag_definition', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  createdBy: varchar('created_by', { length: 30 }).notNull().default('system'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 30 }).notNull().default('system'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  code: varchar('code', { length: 50 }).notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  description: text('description'),
+  targetType: varchar('target_type', { length: 20 }).notNull(),
+  tagType: varchar('tag_type', { length: 20 }).notNull().default('STATIC'),
+  category: varchar('category', { length: 30 }),
+  conditions: jsonb('conditions'),
+  priority: integer('priority').notNull().default(0),
+  colorHex: varchar('color_hex', { length: 7 }),
+  icon: varchar('icon', { length: 30 }),
+  isVisible: boolean('is_visible').notNull().default(true),
+  isWarning: boolean('is_warning').notNull().default(false),
+  requestable: boolean('requestable').notNull().default(false),
+  filiale: varchar('filiale', { length: 6 }).notNull(),
+  division: varchar('division', { length: 1 }),
+  owner: varchar('owner', { length: 1 }).notNull().default('S'),
+  isDeleted: smallint('is_deleted').notNull().default(0),
+})

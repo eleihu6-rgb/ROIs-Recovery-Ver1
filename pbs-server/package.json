@@ -1,0 +1,68 @@
+{
+  "name": "pbs-server",
+  "version": "0.1.0",
+  "description": "PBS server with Fastify and Drizzle ORM",
+  "main": "dist/index.js",
+  "scripts": {
+    "predev": "node ../scripts/version-state.mjs bump pbs-server",
+    "dev": "tsx watch src/index.ts",
+    "prebuild": "node ../scripts/version-state.mjs bump pbs-server",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "DATABASE_URL=postgresql://test:test@localhost:5432/rois node --import tsx --test \"src/**/*.test.ts\"",
+    "test:generated-sql-coverage": "DATABASE_URL=postgresql://test:test@localhost:5432/rois node --experimental-test-coverage --test-coverage-branches=69 --test-coverage-lines=95 --test-coverage-functions=100 --test-coverage-include='src/services/pairing-search/pairing-search-core-conditions.ts' --test-coverage-include='src/services/pairing-search/pairing-search-time-conditions.ts' --test-coverage-include='src/services/pairing-search/pairing-search-detail-conditions.ts' --import tsx --test src/services/pairing-search/generated-sql-preflight.test.ts src/services/pairing-search/pairing-search-condition-builder.test.ts",
+    "verify:generated-sql": "node --env-file=.env scripts/verify-generated-pairing-sql.mjs",
+    "business-time": "tsx src/scripts/pbs-business-time.ts",
+    "sync:roster-publish": "tsx src/scripts/sync-roster-publish-from-roster-flight.ts",
+    "sync:pbs-users": "tsx src/scripts/sync-pbs-users.ts",
+    "normalize:pbs-user-effective-dates": "tsx src/scripts/normalize-pbs-user-effective-dates.ts",
+    "perf:pbs": "tsx src/scripts/pbs-performance-baseline.ts",
+    "seed:yeg14-export": "tsx src/scripts/seed-yeg-14-algorithm-export-bids.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "audit:prod": "pnpm audit --prod",
+    "audit:all": "pnpm audit"
+  },
+  "dependencies": {
+    "@fastify/compress": "^9.0.0",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/formbody": "^9.0.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/multipart": "^10.0.0",
+    "@fastify/websocket": "^11.3.0",
+    "@node-saml/node-saml": "^5.1.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "~5.76.2",
+    "dotenv": "^16.4.0",
+    "drizzle-orm": "^0.45.2",
+    "fast-uri": "^4.1.0",
+    "fastify": "^5.2.0",
+    "fastify-plugin": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.13.0",
+    "prom-client": "^15.1.3",
+    "redis": "^4.7.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.0",
+    "typescript": "^5.7.0"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.12"
+    },
+    "shell-quote": "^1.9.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "shell-quote": "^1.9.0"
+    }
+  }
+}

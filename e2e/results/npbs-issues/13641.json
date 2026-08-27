@@ -1,0 +1,15 @@
+{
+  "employeeId": "13641",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 1,
+  "placed": 1,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 116,
+      "name": "Any Flight Number"
+    }
+  ],
+  "issues": []
+}

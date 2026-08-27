@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>04 — Tabbed Rules</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--primary:#2563eb;--border:#e2e8f0;--muted:#64748b;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:ui-monospace,Consolas,monospace}
+    body{font-family:var(--font);font-size:12px;background:#94a3b8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45)}
+    .dialog{position:relative;width:min(1150px,96vw);max-height:90vh;background:#fff;border-radius:8px;box-shadow:0 24px 48px rgba(15,23,42,.2);display:flex;flex-direction:column;overflow:hidden}
+    .titlebar{background:var(--primary);color:#fff;padding:10px 16px;font-size:15px;font-weight:600}
+    .meta-row{display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);gap:16px}
+    .meta-row .total{font-weight:600;color:#0f172a}
+    .tabs{display:flex;border-bottom:1px solid var(--border);padding:0 12px;background:#f8fafc}
+    .tab{padding:10px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:8px}
+    .tab:hover{color:#0f172a}
+    .tab.on{color:var(--primary);border-bottom-color:var(--primary);font-weight:600;background:#fff}
+    .tab .badge{min-width:22px;text-align:center;padding:1px 7px;border-radius:10px;font-family:var(--mono);font-size:11px;font-weight:700}
+    .tab .badge.warn{background:#fef3c7;color:#b45309}
+    .tab .badge.ok{background:#dcfce7;color:#15803d}
+    .tab-desc{padding:10px 16px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);background:#fff;line-height:1.5}
+    .tab-desc strong{color:#0f172a;font-family:var(--mono);font-size:10px;margin-right:6px}
+    .content{flex:1;overflow-y:auto;max-height:50vh}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;padding:8px 14px;font-size:10px;text-transform:uppercase;color:var(--muted);background:#f8fafc;position:sticky;top:0;border-bottom:1px solid var(--border)}
+    td{padding:9px 14px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+    tr:hover td{background:#f8fafc}
+    .crew-link{font-family:var(--mono);font-weight:600;color:var(--primary);cursor:pointer}
+    .chip{display:inline-block;margin:2px;padding:2px 8px;border-radius:4px;background:#fffbeb;border:1px solid #fcd34d;font-family:var(--mono);font-size:10px;color:#92400e}
+    .empty{padding:48px;text-align:center;color:var(--muted)}
+    .footer{padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+    .footer .hint{font-size:11px;color:var(--muted)}
+    .footer button{padding:6px 14px;border:1px solid var(--border);border-radius:4px;background:#fff;cursor:pointer}
+    .tag{position:fixed;bottom:12px;right:12px;background:#0f172a;color:#fff;padding:6px 12px;border-radius:4px;font-size:11px;font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="backdrop"></div>
+  <div class="dialog">
+    <div class="titlebar">SCENARIO Roster Quality Analyzer</div>
+    <div class="meta-row">
+      <span class="total">67 crew with findings</span>
+      <span>of 147 loaded</span>
+      <label style="margin-left:auto;display:flex;align-items:center;gap:6px;color:#0f172a"><input type="checkbox" checked /> Hide passing rules</label>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="tab-desc" id="tabDesc"></div>
+    <div class="content"><table><thead><tr>
+      <th style="width:9%">Crew ID</th>
+      <th style="width:11%">Base/Rank</th>
+      <th style="width:10%">Lead-in CRD</th>
+      <th style="width:12%">After opt</th>
+      <th>Findings detail</th>
+      <th style="width:8%"></th>
+    </tr></thead><tbody id="tbody"></tbody></table></div>
+    <div class="footer">
+      <span class="hint" id="footerHint">Click crew ID to jump to roster row</span>
+      <button>Close</button>
+    </div>
+  </div>
+  <div class="tag">04 — Tabbed Rules</div>
+  <script src="shared-data.js"></script>
+  <script>
+    let active = 1;
+    const tabsEl = document.getElementById('tabs');
+    const descEl = document.getElementById('tabDesc');
+    const tbody = document.getElementById('tbody');
+    const hint = document.getElementById('footerHint');
+
+    function render() {
+      const r = QA_DATA.rules[active];
+      descEl.innerHTML = `<strong>${r.id}</strong> ${r.description}`;
+      hint.textContent = `Showing ${r.crewCount} crew for ${r.id} · Click crew ID to jump to roster row`;
+      if (!r.crewCount) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty">✓ No crew affected by this rule</div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = r.crew.map(c => `
+        <tr>
+          <td><span class="crew-link">${c.id}</span></td>
+          <td style="font-family:var(--mono)">${c.base}/${c.rank}</td>
+          <td style="font-family:var(--mono)">${c.leadIn || '—'}</td>
+          <td style="font-family:var(--mono)">${c.after || '—'}</td>
+          <td>${c.detail.map(d => `<span class="chip">${d}</span>`).join('')}</td>
+          <td><button style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:#fff;cursor:pointer">View</button></td>
+        </tr>`).join('') +
+        (r.crewCount > r.crew.length ? `<tr><td colspan="6" style="color:var(--muted);font-style:italic;padding-left:14px">… and ${r.crewCount - r.crew.length} more</td></tr>` : '');
+    }
+
+    QA_DATA.rules.forEach((r, i) => {
+      const t = document.createElement('div');
+      t.className = 'tab' + (i === active ? ' on' : '');
+      t.innerHTML = `<span>${r.id.replace('Qlty-', '')}</span> ${r.label} <span class="badge ${r.crewCount ? 'warn' : 'ok'}">${r.crewCount}</span>`;
+      t.onclick = () => {
+        active = i;
+        document.querySelectorAll('.tab').forEach((x, j) => x.classList.toggle('on', j === i));
+        render();
+      };
+      tabsEl.appendChild(t);
+    });
+    render();
+  </script>
+</body>
+</html>

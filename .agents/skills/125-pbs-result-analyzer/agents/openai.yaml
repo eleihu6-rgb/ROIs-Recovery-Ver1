@@ -1,0 +1,6 @@
+interface:
+  display_name: "125 pUsL result analyzer"
+  short_description: "Project skill 125-pbs-result-analyzer"
+  default_prompt: "Use $125-pbs-result-analyzer for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

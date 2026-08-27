@@ -1,0 +1,50 @@
+{
+  "employeeId": "2552",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 105,
+      "name": "Pairing Total Credit"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T5",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T7",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T1",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 5 Consecutive Days Off In A Row Between Jun 25, 2026 And Jun 30, 2026",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/2552_PBS-3311_T1-203_unsupported-input_20260625-054544-954.png"
+    }
+  ]
+}

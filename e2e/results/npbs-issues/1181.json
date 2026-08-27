@@ -1,0 +1,40 @@
+{
+  "employeeId": "1181",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 6,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T5",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T7",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": []
+}

@@ -1,0 +1,10 @@
+wing: rois-ai
+rooms:
+  - architecture
+  - auth
+  - ui
+  - pbs-domain
+  - roster
+  - pairing
+  - sql-schema
+  - decisions

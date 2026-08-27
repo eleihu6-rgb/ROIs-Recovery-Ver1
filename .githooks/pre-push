@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# UI Standard Gate — pre-push hook.
+# Blocks a push that introduces hard violations of the CSS/Typography standard
+# (magic font sizes, font-extrabold/black, hardcoded rounded-[Npx], arbitrary font-[...]).
+# See root CLAUDE.md §样式与排版标准 and scripts/check-ui-standard.mjs.
+#
+# Enabled repo-wide via:  git config core.hooksPath .githooks
+# (auto-set by `npm install` at the repo root through the "prepare" script.)
+#
+# Bypass for an emergency push (discouraged):  git push --no-verify
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "⚠️  UI Standard Gate skipped: node not found on PATH." >&2
+  exit 0
+fi
+
+node "$repo_root/scripts/check-ui-standard.mjs" || {
+  echo "" >&2
+  echo "❌ Push blocked by the UI Standard Gate. Fix the hard violations above," >&2
+  echo "   or bypass with 'git push --no-verify' (discouraged — leaves the standard broken)." >&2
+  exit 1
+}

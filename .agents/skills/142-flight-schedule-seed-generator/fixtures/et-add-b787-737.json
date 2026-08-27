@@ -1,0 +1,25 @@
+{
+  "airline": "ET",
+  "base": "ADD",
+  "flightAssignment": "PAX",
+  "dateRange": { "start": "2026-08-01", "end": "2026-09-30" },
+  "fleets": [
+    {
+      "fleet": "B787",
+      "routes": [
+        { "otherAirport": "IAD", "out": { "fltNum": "ET500", "depLocal": "22:35", "blockMin": 870 }, "in": { "fltNum": "ET501", "depLocal": "22:20", "blockMin": 780 } },
+        { "otherAirport": "LHR", "out": { "fltNum": "ET700", "depLocal": "09:15", "blockMin": 480 }, "in": { "fltNum": "ET701", "depLocal": "21:15", "blockMin": 465 } },
+        { "otherAirport": "PVG", "out": { "fltNum": "ET688", "depLocal": "23:45", "blockMin": 660 }, "in": { "fltNum": "ET687", "depLocal": "00:40", "blockMin": 690 } }
+      ]
+    },
+    {
+      "fleet": "737",
+      "routes": [
+        { "otherAirport": "NBO", "out": { "fltNum": "ET306", "depLocal": "07:00", "blockMin": 105 }, "in": { "fltNum": "ET307", "depLocal": "09:30", "blockMin": 105 } },
+        { "otherAirport": "EBB", "out": { "fltNum": "ET806", "depLocal": "06:30", "blockMin": 90 }, "in": { "fltNum": "ET807", "depLocal": "09:00", "blockMin": 90 } },
+        { "otherAirport": "LOS", "out": { "fltNum": "ET900", "depLocal": "10:00", "blockMin": 300 }, "in": { "fltNum": "ET901", "depLocal": "15:30", "blockMin": 300 } },
+        { "otherAirport": "ACC", "out": { "fltNum": "ET922", "depLocal": "11:00", "blockMin": 330 }, "in": { "fltNum": "ET923", "depLocal": "17:00", "blockMin": 330 } }
+      ]
+    }
+  ]
+}

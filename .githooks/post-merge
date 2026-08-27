@@ -1,0 +1,18 @@
+#!/bin/sh
+# Auto-rebuild the Rust rule-engine helpers after a pull/merge that changed them.
+#
+# The check-*/ruletool binaries live in rule-engine-rs/target/ (git-ignored), so a pull
+# updates the SOURCE but not the built binary — leaving a stale helper that silently
+# produces wrong legality results (the 8056 "DO↔DO" flood). This rebuilds when needed.
+# Paired with the runtime staleness guard in live-server/scripts/legality-recheck-core.mjs.
+
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+if git diff-tree -r --name-only ORIG_HEAD HEAD 2>/dev/null | grep -q '^rule-engine-rs/'; then
+  echo "[post-merge] rule-engine-rs changed → cargo build --release"
+  if command -v cargo >/dev/null 2>&1; then
+    ( cd "$root/rule-engine-rs" && cargo build --release ) \
+      || echo "[post-merge] cargo build FAILED — run it manually in rule-engine-rs before rechecking legality"
+  else
+    echo "[post-merge] cargo not found — install the Rust toolchain, then: (cd rule-engine-rs && cargo build --release)"
+  fi
+fi

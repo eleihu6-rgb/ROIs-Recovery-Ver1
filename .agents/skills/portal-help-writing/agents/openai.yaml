@@ -1,0 +1,4 @@
+interface:
+  display_name: "Portal Help Writing"
+  short_description: "Write and maintain PBS Portal Help articles accurately."
+  default_prompt: "Use portal-help-writing to update PBS Portal Help from the current UI and tests."

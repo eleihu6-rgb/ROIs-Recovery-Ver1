@@ -1,0 +1,24 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - img "Flair Airlines" [ref=e5]
+    - main [ref=e6]:
+      - generic [ref=e7]:
+        - heading "Sign in" [level=1] [ref=e8]
+        - generic [ref=e9]:
+          - img "Flair" [ref=e10]
+          - generic [ref=e12]: ROIS CREW
+        - generic [ref=e13]:
+          - generic [ref=e14]:
+            - textbox "User Code" [ref=e16]
+            - paragraph [ref=e17]
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - textbox "Password" [ref=e20]
+              - button [ref=e21]
+            - paragraph [ref=e26]
+          - paragraph [ref=e27]
+          - generic [ref=e28]:
+            - button "Sign In" [ref=e29]
+            - button "SSO Login" [ref=e30]
+  - region "Notifications alt+T"

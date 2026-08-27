@@ -1,0 +1,6 @@
+interface:
+  display_name: "105 compare ruleset params"
+  short_description: "Project skill 105-compare-ruleset-params"
+  default_prompt: "Use $105-compare-ruleset-params for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

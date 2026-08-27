@@ -1,0 +1,98 @@
+data: /home/yuan.z/rois/rois-ai/engine-server/workspace/F8/LegacyRO_537_20260620_105515_91becc22/ro_input.txt
+pref_dir: /home/yuan.z/rois/rois-ai/engine-server/workspace/F8/LegacyRO_537_20260620_105515_91becc22
+coverage_first: false
+debug: false
+problem:
+  crew_type: P
+  bases: []
+  ranks: []
+  qualification: '737'
+solver:
+  solver_iter_num: 1
+  explore_iter_num: 100
+  model_debug: false
+  greedy_trace: false
+  assignment_trace_enabled: true
+  assignment_trace_filename: initial_assignment_trace.json
+  mip_gap: 0.001
+  mip_time_limit: 3600.0
+  seed: null
+  enforce_feasible: false
+  w_coverage_under: 1000000.0
+  w_coverage_over: 1000.0
+  w_fairness: 10.0
+  w_column_cost: 1.0
+  active_costs:
+  - FLY_TIME
+  - FLY_TIME_FAIRNESS
+  - PREFERENCE
+  cost_weights:
+    FLY_TIME: 1.0
+    FLY_TIME_FAIRNESS: 1.0
+    PREFERENCE: 1.0
+  initial_column_method: seniority_greedy_ca_fo_layered
+  column_generation_method: network
+  down_rank_penalty: 500000.0
+  batch_size: 0
+  batch_outer_iter_num: 1
+  network_generation_method: random_enumeration_multi_pass
+  network_k: 5
+  network_num_random_columns: 0
+  network_max_pairings_per_column: 0
+  network_min_pairings_per_column: 0
+  network_temperature: 5000
+  network_normalize_node_cost: false
+  enable_tqdm: true
+  enable_mip_spinner: true
+  seniority_decay_rate: 0.95
+  seniority_top_n: 10
+  seniority_top_weight: 5.0
+  pref_scale: 1000.0
+  weight_award_global: 1.0
+  weight_avoid_global: -1.0
+  weight_by_duration: false
+preference:
+  pairing_match_key: interface_id
+  tier_weights:
+  - 7
+  - 6
+  - 5
+  - 4
+  - 3
+  - 2
+  - 1
+  pref_scale: 1000
+  weight_award_global: 1.0
+  weight_avoid_global: -1.0
+  weight_dayoff_avoid: -1.0
+  weight_by_duration: false
+  higher_credit_tier_weights:
+  - 0.7
+  - 0.6
+  - 0.5
+  - 0.4
+  - 0.3
+  - 0.2
+  - 0.1
+  greedy_harm_weight: 5000.0
+  greedy_harm_mode: max
+  greedy_contestation_tiebreak: false
+  explorers: []
+rule_engine:
+  mode: hybrid
+  cpp_lib_path: /home/piercrew/software/rostering_algorithm/PBS_column_based_algorithm/api_rule_engine_py/tools/ro_input_only/rule_cpp_build/build/libCrewRulePython.so
+  cpp_bridge_dir: /home/piercrew/software/rostering_algorithm/PBS_column_based_algorithm/api_rule_engine_py/tools
+  working_directory: /home/yuan.z/rois/rois-ai/engine-server/workspace/F8/LegacyRO_537_20260620_105515_91becc22
+  scenario_id: 114
+  debug: false
+pattern:
+  max_on_hard_cap: 7
+  top_x: 200
+  boundary_mode: strict
+  extra_off_allowance: 2
+  extra_off_penalty: 100.0
+  extra_off_hard_cap: null
+  density_award_multiplier: 2.0
+  density_neutral_multiplier: 1.0
+  density_avoid_multiplier: 0.1
+  density_penalty_alpha: 0.1

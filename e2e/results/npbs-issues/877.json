@@ -1,0 +1,50 @@
+{
+  "employeeId": "877",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T5",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T6",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T7",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T2",
+      "name": "Prefer Off",
+      "code": 201,
+      "page": "days-off",
+      "predicate": "Prefer Off Monday Through Friday",
+      "reason": "unsupported-input: prefer-off for Prefer Off",
+      "image": "image/pbs/877_PBS-3323_T2-201_unsupported-input_20260625-060835-008.png"
+    }
+  ]
+}

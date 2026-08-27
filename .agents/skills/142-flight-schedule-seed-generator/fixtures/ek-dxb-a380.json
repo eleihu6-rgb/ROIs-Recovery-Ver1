@@ -1,0 +1,15 @@
+{
+  "airline": "EK",
+  "fleet": "A380",
+  "base": "DXB",
+  "flightAssignment": "PAX",
+  "dateRange": { "start": "2026-08-01", "end": "2026-09-30" },
+  "routes": [
+    { "otherAirport": "LHR", "out": { "fltNum": "EK001", "depLocal": "08:35", "blockMin": 450 }, "in": { "fltNum": "EK002", "depLocal": "14:20", "blockMin": 465 } },
+    { "otherAirport": "JFK", "out": { "fltNum": "EK201", "depLocal": "08:40", "blockMin": 870 }, "in": { "fltNum": "EK202", "depLocal": "22:45", "blockMin": 780 } },
+    { "otherAirport": "SYD", "out": { "fltNum": "EK414", "depLocal": "02:00", "blockMin": 840 }, "in": { "fltNum": "EK413", "depLocal": "15:00", "blockMin": 825 } },
+    { "otherAirport": "SIN", "out": { "fltNum": "EK354", "depLocal": "08:20", "blockMin": 435 }, "in": { "fltNum": "EK355", "depLocal": "23:30", "blockMin": 465 } },
+    { "otherAirport": "BKK", "out": { "fltNum": "EK372", "depLocal": "09:35", "blockMin": 375 }, "in": { "fltNum": "EK371", "depLocal": "22:35", "blockMin": 360 } },
+    { "otherAirport": "JNB", "out": { "fltNum": "EK763", "depLocal": "08:15", "blockMin": 495 }, "in": { "fltNum": "EK764", "depLocal": "21:35", "blockMin": 495 } }
+  ]
+}

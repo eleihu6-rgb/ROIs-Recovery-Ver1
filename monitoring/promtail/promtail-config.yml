@@ -1,0 +1,82 @@
+# monitoring/promtail/promtail-config.yml
+# Copy to each app server and set the variables below.
+# LOKI_URL: http://<monitoring-server-ip>:3100
+# SERVER_NAME: server-01 (unique per server)
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: ${LOKI_URL}/loki/api/v1/push
+
+scrape_configs:
+  - job_name: "live-server"
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          job: live-server
+          host: ${SERVER_NAME}
+          __path__: /home/*/rois/rois-ai/logs/live-server/*.log
+
+  - job_name: "pbs-server"
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          job: pbs-server
+          host: ${SERVER_NAME}
+          __path__: /home/*/rois/rois-ai/logs/pbs-server/*.log
+
+  - job_name: "rule-engine"
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          job: rule-engine
+          host: ${SERVER_NAME}
+          __path__: /home/*/rois/rois-ai/logs/rule-engine/*.log
+
+  - job_name: "connector-server"
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          job: connector-server
+          host: ${SERVER_NAME}
+          __path__: /home/*/rois/rois-ai/logs/connector-server/*.log
+
+  - job_name: "engine-server"
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          job: engine-server
+          host: ${SERVER_NAME}
+          __path__: /home/*/rois/rois-ai/engine-server/logs/*.log
+
+  - job_name: "po-engine"
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          job: po-engine
+          host: ${SERVER_NAME}
+          __path__: /home/*/rois/rois-ai/po-engine/logs/*.log
+
+  - job_name: "ro-engine"
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          job: ro-engine
+          host: ${SERVER_NAME}
+          __path__: /home/*/rois/rois-ai/ro-engine/logs/*.log
+
+  # Systemd journal (system-level logs)
+  - job_name: "journal"
+    journal:
+      max_age: 12h
+      labels:
+        job: systemd-journal
+        host: ${SERVER_NAME}
+    relabel_configs:
+      - source_labels: ["__journal__systemd_unit"]
+        target_label: unit

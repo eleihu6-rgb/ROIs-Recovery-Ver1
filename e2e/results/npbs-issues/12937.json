@@ -1,0 +1,44 @@
+{
+  "employeeId": "12937",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T7",
+      "code": 107,
+      "name": "Any/Every Duty Legs"
+    },
+    {
+      "tier": "T1",
+      "code": 402,
+      "name": "Min Credit Window"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T2",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 3 Consecutive Days Off In A Row Between Jun 1, 2026 And Jun 3, 2026",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/12937_PBS-3314_T2-203_unsupported-input_20260625-054714-591.png"
+    },
+    {
+      "tier": "T3",
+      "name": "Days Off / Days On Pattern",
+      "code": 205,
+      "page": "days-off",
+      "predicate": "Set Condition Pattern Between 3 and 6 Days On, with 4 Days Off (Minimum)",
+      "reason": "unsupported-input: days-off-on-pattern for Days Off / Days On Pattern",
+      "image": "image/pbs/12937_PBS-3314_T3-205_unsupported-input_20260625-054715-711.png"
+    }
+  ]
+}

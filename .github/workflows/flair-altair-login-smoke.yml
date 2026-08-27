@@ -1,0 +1,58 @@
+name: Flair Altair Login Smoke
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'gantt/**'
+      - 'live-server/**'
+      - 'e2e/config/flair-altair-smoke.config.ts'
+      - 'e2e/tests/gantt/flair-altair-login-smoke.spec.ts'
+      - 'e2e/package.json'
+      - 'e2e/package-lock.json'
+      - 'package.json'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'gantt/**'
+      - 'live-server/**'
+      - 'e2e/config/flair-altair-smoke.config.ts'
+      - 'e2e/tests/gantt/flair-altair-login-smoke.spec.ts'
+      - 'e2e/package.json'
+      - 'e2e/package-lock.json'
+      - 'package.json'
+  workflow_dispatch:
+
+jobs:
+  flair-altair-login-smoke:
+    name: Public Altair login smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      GANTT_BASE_URL: https://crew-f8-usva-sit.roiscloud.com/
+      GANTT_LIVE_API_BASE: /live
+      GANTT_TEST_USER: Ryan
+      GANTT_TEST_PASS: ${{ secrets.GANTT_TEST_PASS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: npm install --no-package-lock
+
+      - name: Install Chromium
+        working-directory: e2e
+        run: npx playwright install chromium
+
+      - name: Run Flair Altair login smoke
+        run: npm run check:flair-altair-login

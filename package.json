@@ -1,0 +1,25 @@
+{
+  "scripts": {
+    "build:saml": "tsc -p packages/saml/tsconfig.json",
+    "dev:altair:extended": "node scripts/start-extended-altair.mjs",
+    "verify:pbs": "bash ./scripts/verify-pbs.sh",
+    "verify:pbs:e2e": "bash ./scripts/verify-pbs.sh --with-e2e",
+    "check:altair-login": "cd e2e && npm run test:altair-login",
+    "check:flair-altair-login": "cd e2e && npm run test:flair-altair-login",
+    "check:ui": "node scripts/check-ui-standard.mjs",
+    "check:legality-messages": "node scripts/check-legality-message-coverage.mjs",
+    "check:ui:e2e": "cd e2e && npx playwright test --config=config/perf.config.ts -g 'UI Standard' --reporter=list",
+    "audit:prod": "for d in live-server pbs-server connector-server gantt pbs-portal; do echo \"== npm audit --omit=dev: $d ==\"; (cd \"$d\" && npm audit --omit=dev) || true; done",
+    "audit:all": "for d in live-server pbs-server connector-server gantt pbs-portal; do echo \"== npm audit: $d ==\"; (cd \"$d\" && npm audit) || true; done",
+    "prepare": "git config core.hooksPath .githooks || true"
+  },
+  "dependencies": {
+    "@node-saml/node-saml": "^5.1.0",
+    "pdfkit": "^0.19.1",
+    "pg": "^8.22.0",
+    "playwright": "^1.58.2"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

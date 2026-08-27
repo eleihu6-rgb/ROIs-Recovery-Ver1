@@ -1,0 +1,215 @@
+{
+  "section": "Solver Quality",
+  "cases": [
+    {
+      "id": "T6-SM-001",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results (KPI / Uncovered / Distribution)",
+      "title": "Scenario list covers every Base × Rank combination",
+      "preconditions": "A completed optimisation run (or set of runs) whose scope is intended to cover all F8 crew bases.",
+      "steps": "1. Open the Scenario list and note every scenario (and, within a scenario, every base group) that produced a roster.\n2. Tick each base off this list: YVR, YEG, YYZ, YYC, YXX, YWG, YHZ, YKF, YUL, YOW.\n3. For each base, confirm the pilot ranks CA + FO are represented, and — where that base has cabin crew — the cabin ranks IFD + FA.\n4. Note any base that has NO cabin crew based there; cabin rows for that base are expected to be empty (N/A), not a coverage gap.",
+      "expected": "Every base above appears in the roster output. Pilot ranks (CA, FO) are covered at all bases; cabin ranks (IFD, FA) are covered at all bases that have cabin crew based there. A base with no cabin crew shows no IFD/FA rows and this is recorded as N/A, not a failure.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-002",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YVR (Vancouver) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YVR pilot flying.",
+      "steps": "1. Open the roster output for YVR pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YVR pilot pairings/flights.\n3. Seniority: spot-check that at YVR more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YVR pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YVR pilots sit within the target band with no extreme outliers.",
+      "expected": "YVR pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-003",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YVR (Vancouver) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YVR cabin flying. NOTE: if YVR has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YVR is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YVR cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YVR cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YVR cabin bids match requests.\n6. Credit: check YVR cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YVR cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-004",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YEG (Edmonton) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YEG pilot flying.",
+      "steps": "1. Open the roster output for YEG pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YEG pilot pairings/flights.\n3. Seniority: spot-check that at YEG more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YEG pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YEG pilots sit within the target band with no extreme outliers.",
+      "expected": "YEG pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-005",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YEG (Edmonton) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YEG cabin flying. NOTE: if YEG has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YEG is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YEG cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YEG cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YEG cabin bids match requests.\n6. Credit: check YEG cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YEG cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-006",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YYZ (Toronto) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YYZ pilot flying.",
+      "steps": "1. Open the roster output for YYZ pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YYZ pilot pairings/flights.\n3. Seniority: spot-check that at YYZ more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YYZ pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YYZ pilots sit within the target band with no extreme outliers.",
+      "expected": "YYZ pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-007",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YYZ (Toronto) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YYZ cabin flying. NOTE: if YYZ has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YYZ is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YYZ cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YYZ cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YYZ cabin bids match requests.\n6. Credit: check YYZ cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YYZ cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-008",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YYC (Calgary) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YYC pilot flying.",
+      "steps": "1. Open the roster output for YYC pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YYC pilot pairings/flights.\n3. Seniority: spot-check that at YYC more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YYC pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YYC pilots sit within the target band with no extreme outliers.",
+      "expected": "YYC pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-009",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YYC (Calgary) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YYC cabin flying. NOTE: if YYC has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YYC is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YYC cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YYC cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YYC cabin bids match requests.\n6. Credit: check YYC cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YYC cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-010",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YXX (Abbotsford) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YXX pilot flying.",
+      "steps": "1. Open the roster output for YXX pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YXX pilot pairings/flights.\n3. Seniority: spot-check that at YXX more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YXX pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YXX pilots sit within the target band with no extreme outliers.",
+      "expected": "YXX pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-011",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YXX (Abbotsford) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YXX cabin flying. NOTE: if YXX has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YXX is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YXX cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YXX cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YXX cabin bids match requests.\n6. Credit: check YXX cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YXX cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-012",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YWG (Winnipeg) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YWG pilot flying.",
+      "steps": "1. Open the roster output for YWG pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YWG pilot pairings/flights.\n3. Seniority: spot-check that at YWG more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YWG pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YWG pilots sit within the target band with no extreme outliers.",
+      "expected": "YWG pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-013",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YWG (Winnipeg) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YWG cabin flying. NOTE: if YWG has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YWG is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YWG cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YWG cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YWG cabin bids match requests.\n6. Credit: check YWG cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YWG cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-014",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YHZ (Halifax) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YHZ pilot flying.",
+      "steps": "1. Open the roster output for YHZ pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YHZ pilot pairings/flights.\n3. Seniority: spot-check that at YHZ more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YHZ pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YHZ pilots sit within the target band with no extreme outliers.",
+      "expected": "YHZ pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-015",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YHZ (Halifax) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YHZ cabin flying. NOTE: if YHZ has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YHZ is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YHZ cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YHZ cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YHZ cabin bids match requests.\n6. Credit: check YHZ cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YHZ cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-016",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YKF (Kitchener/Waterloo) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YKF pilot flying.",
+      "steps": "1. Open the roster output for YKF pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YKF pilot pairings/flights.\n3. Seniority: spot-check that at YKF more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YKF pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YKF pilots sit within the target band with no extreme outliers.",
+      "expected": "YKF pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-017",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YKF (Kitchener/Waterloo) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YKF cabin flying. NOTE: if YKF has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YKF is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YKF cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YKF cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YKF cabin bids match requests.\n6. Credit: check YKF cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YKF cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-018",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YUL (Montreal) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YUL pilot flying.",
+      "steps": "1. Open the roster output for YUL pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YUL pilot pairings/flights.\n3. Seniority: spot-check that at YUL more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YUL pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YUL pilots sit within the target band with no extreme outliers.",
+      "expected": "YUL pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-019",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YUL (Montreal) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YUL cabin flying. NOTE: if YUL has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YUL is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YUL cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YUL cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YUL cabin bids match requests.\n6. Credit: check YUL cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YUL cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-020",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YOW (Ottawa) — pilot roster quality (CA / FO)",
+      "preconditions": "A completed scenario covering YOW pilot flying.",
+      "steps": "1. Open the roster output for YOW pilots (CA and FO).\n2. Coverage: check the Uncovered tab shows no uncovered YOW pilot pairings/flights.\n3. Seniority: spot-check that at YOW more-senior CA/FO received the more-preferred assignments ahead of junior crew.\n4. Bids: confirm honoured YOW pilot bids (pairing / days-off / reserve) match what the crew requested.\n5. Credit: check the Credit Hours tab — YOW pilots sit within the target band with no extreme outliers.",
+      "expected": "YOW pilot roster is fully covered (0 uncovered), seniority order is respected, honoured bids match requests, and credit hours are balanced within target for both CA and FO.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SM-021",
+      "feature_area": "Scenario Coverage Matrix — Base × Rank",
+      "help_ref": "Scenario › Optimisation results",
+      "title": "YOW (Ottawa) — cabin roster quality (IFD / FA)",
+      "preconditions": "A completed scenario covering YOW cabin flying. NOTE: if YOW has no cabin crew based there, mark this case N/A.",
+      "steps": "1. If YOW is a pilots-only base, mark N/A and stop.\n2. Open the roster output for YOW cabin crew (IFD and FA).\n3. Coverage: check the Uncovered tab shows no uncovered YOW cabin positions.\n4. Seniority: spot-check senior IFD/FA received preferred assignments ahead of junior crew.\n5. Bids: confirm honoured YOW cabin bids match requests.\n6. Credit: check YOW cabin credit hours are balanced within target.",
+      "expected": "For a base with cabin crew: YOW cabin roster is fully covered, seniority respected, honoured bids match requests, and IFD/FA credit hours are balanced. For a pilots-only base: case is marked N/A with no IFD/FA rows expected.",
+      "severity": "High"
+    }
+  ]
+}

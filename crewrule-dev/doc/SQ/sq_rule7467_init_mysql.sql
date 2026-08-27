@@ -1,0 +1,33 @@
+-- 7467
+-- SQ limit rest time before/after/between flights (Rule 7467)
+
+INSERT INTO `rule`(`id`, `function`, `instance`, `class`, `description`, `reference`, `category`, `store_structure`, `source`, `detail`, `overridability`, `severity`, `filiale`, `division`, `owner`, `locked`, `modified_by`, `last_modified`)
+VALUES (7467001, 7467, '001', 'P', 'Limit Rest Time Before/After/Between Flights', 'SQ', 'REST', 'Table', 'Company', 'Limit Rest Time Before/After/Between Flights', 'H', 2, 'SQ', 'P', 'S', NULL, 'ROIS', CURRENT_TIMESTAMP);
+
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, modified_by, last_modified)
+VALUES (200003463, 7467001, 1, 'tableHeader', 'Type,Flight No A,Dep-Arr A,Flight No B,Dep-Arr B,Min Time Limit,Max Time Limit,Penalty,Active(Y/N),Comment', 'ROIS', CURRENT_TIMESTAMP);
+
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003464, 7467001, 1, 'tableRow1', 'BEFORE,*,SHJ-BRU,*,*,*,*,0,N,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003465, 7467001, 1, 'tableRow2', 'AFTER,11,LAX-NRT,*,*,15:00,*,0,N,Rest after LAX-NRT', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003466, 7467001, 1, 'tableRow3', 'AFTER,*,AMS-SHJ,*,*,10:00,*,0,Y,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003467, 7467001, 1, 'tableRow4', 'AFTER,7366,SIN-HKG,*,*,10:00,*,0,Y,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003468, 7467001, 1, 'tableRow5', 'AFTER,243,SIN-PER,*,*,12:00,*,0,Y,Layover in PER', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003469, 7467001, 1, 'tableRow6', 'AFTER,*,SIN-BNE,*,*,15:00,*,0,N,Rest in BNE before SBY', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003470, 7467001, 1, 'tableRow7', 'AFTER,878,*,*,*,12:00,*,0,N,TPE Layover', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003471, 7467001, 1, 'tableRow8', 'AFTER,*,SIN-PVG,*,*,12:00,*,3000,Y,PVG layover', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003472, 7467001, 1, 'tableRow9', 'AFTER,452,*,*,*,12:00,*,0,Y,MLE Layover', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003473, 7467001, 1, 'tableRow10', 'AFTER,422,*,*,*,12:00,*,500,Y,BOM Layover', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003474, 7467001, 1, 'tableRow11', 'BEFORE,*,HKG-ANC,*,*,10:00,*,0,Y,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003475, 7467001, 1, 'tableRow12', 'BEFORE,*,BRU-SHJ,*,*,5:00,*,0,N,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003476, 7467001, 1, 'tableRow13', 'BEFORE,*,SHJ-SIN,*,*,5:00,*,0,Y,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003477, 7467001, 1, 'tableRow14', 'BEFORE,7343,AMS-SIN,*,*,10:00,*,0,N,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003478, 7467001, 1, 'tableRow15', 'CONN,295,*,296,*,*,*,20,Y,SQ295-296 CXN', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003479, 7467001, 1, 'tableRow16', 'CONN,213,*,226,*,12:00,*,500,Y,PER Layover', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003480, 7467001, 1, 'tableRow17', 'CONN,308,*,321,*,*,*,50,N,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003481, 7467001, 1, 'tableRow18', 'CONN,237,*,228,*,*,30:00:00,30,Y,SQ237-228 Pairing wo SBY', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003482, 7467001, 1, 'tableRow19', 'CONN,217,*,218,*,*,*,0,N,To force MEL 217 with 218 instead of 238 ', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003483, 7467001, 1, 'tableRow20', 'CONN,221,*,222,*,*,*,50,Y,221-222 SYD CXN', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003484, 7467001, 1, 'tableRow21', 'AFTER,*,AMS-SHJ,*,*,10:00,*,0,N,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003485, 7467001, 1, 'tableRow22', 'AFTER,*,HKG-ANC,*,*,10:00,*,0,N,', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003486, 7467001, 1, 'tableRow23', 'CONN,227,*,238,*,*,30:00:00,30,Y,SQ227-238 Pairing wo SBY', NULL, 'ROIS', CURRENT_TIMESTAMP);
+INSERT INTO rule_parameter(id, rule_id, phase_id, param_names, param_values, param_extra, modified_by, last_modified) VALUES(200003487, 7467001, 1, 'tableRow24', 'CONN,211,*,242,*,*,*,150,Y,SQ211-242 Pairing wo SBY', NULL, 'ROIS', CURRENT_TIMESTAMP);

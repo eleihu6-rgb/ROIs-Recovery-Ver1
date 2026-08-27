@@ -1,0 +1,252 @@
+[
+  {
+    "slug": "live-overview",
+    "title": "Overview (Live)",
+    "overview": "The Live tab shows your airline's current operational schedule. It opens with an empty Gantt — click the inline \"No data loaded — apply filters to pull data\" reminder (or the filter icon) to open the Filters dialog, choose crew by Base and Rank, then press Apply Filters (applying with no selection loads everyone). The Gantt canvas shows one row per crew member, one coloured block per assignment; you can open Pairings or Flights side panes alongside the Roster. Use Live to view or manually adjust today's schedule (swap a crew member, add a ground task, check a rule violation); use Scenario to plan a future period without touching Live — Scenario changes are not visible in Live until explicitly published."
+  },
+  {
+    "slug": "live-date-range",
+    "title": "Setting a date range",
+    "overview": "The date range controls which days of crew rosters and flights appear on the scheduling canvas. Two date fields sit at the left of the Live toolbar (start date on the left, end date on the right); they default to a two-month window — the 1st of this month through the last day of next month. On the very first load the canvas zooms so only the first calendar month fills the viewport; the second month is loaded but sits off to the right — scroll right or zoom out to reach it. Live always starts empty: nothing appears until you press Apply Filters before that first load. To change the period, click each date field and pick a day with your device's date picker; the canvas reloads automatically and this time zooms to fit the whole new range (not just the first month). The Refresh button (↻), just to the right of the date fields after a thin divider, reloads the same date range with the latest crew data and spins while the reload is in progress. Save with Ctrl+S before changing the date range to avoid losing unsaved edits."
+  },
+  {
+    "slug": "live-filter",
+    "title": "Filtering crew, pairings, and flights",
+    "overview": "Filters are also how you load data in Live: the canvas opens empty, and the first Apply Filters call pulls crew, pairing, and flight data matching your criteria (applying with no filters loads everything). Open the dialog with the toolbar Filters button — it turns amber and shows a count (e.g. 'Filters (2 active)') when active, or via the funnel button at the top right of each pane (opens pre-switched to that pane's tab). Three tabs: Crew (Division, Base, Rank, Fleet, Crew ID), Pairing (Label, Division, Base, Fleet, Type, Origin Arpt, Coverage), Flight (Dep Airport, Arr Airport, Flight No., Fleet, Status). Filters combine across tabs; active ones appear as removable ✕ chips. After Apply Filters, each pane title shows an amber filtered/total badge (e.g. 12/80). Coverage defaults to Open + Partial, hiding fully-crewed and over-staffed pairings. Crew ID (comma- or period-separated) and Pairing Label are bring-to-top fields: matching rows move to the top without hiding others, and unloaded crew are fetched. Reset reverts in-session dialog edits; Clear all removes every active filter."
+  },
+  {
+    "slug": "live-panes",
+    "title": "Working with panes",
+    "overview": "Panes are panels on the Gantt canvas. Add them with the Roster (blue), Pairing (green), or Flight (purple) toolbar buttons; Live opens with one Roster and one Pairing pane by default. Click Reset to restore that layout or the panel header close button to remove a pane. Limits: 2 Roster, 2 Pairing, 1 Flight, 4 total — the add button disables with a tooltip (Max 2 Roster panes / Max 4 panes) when reached. Sort with the ↕ button in each pane's condition strip; an active sort shows as a chip (× to clear). The Pairing pane sorts server-side by Sch Start (default), Pairing, Fleet, Base, TAFB, Segments, or Duration; the Roster pane supports multi-key sort by Crew ID, Rank, Base, Seniority, MCred, MDO. Pairing pane columns: Pairing, Base, Tp, Fleet, Cred — the same panes and columns work in both Live and Scenario. Right-click a flight in the Pairing or Flight pane to use Find Crew by Pairing (all crew on that pairing), Find Crew by Flight (crew on any pairing covering that flight), or Find Pairing by Flight (all pairings using that flight jump to the Pairing pane top); matched crew jump to the top of the appropriate Roster pane, unloaded crew are fetched automatically, and the timeline jumps if a pairing falls outside the current date range. Double-click a pairing block (Pairing or Roster pane) to open Pairing Info: header, all flight segments with times switchable between Local, UTC, and By Departure, and a rostered-crew count. Double-clicking a ground duty in the Roster pane opens its editor instead."
+  },
+  {
+    "slug": "live-pairing-label",
+    "title": "Pairing label",
+    "overview": "A pairing label is the human-readable identifier assigned by your airline's scheduling system (stored as pairing.label), distinct from the internal numeric pairing ID. In the Pairing pane it appears as the first \"Pairing\" column in the table and on each canvas puck; when no label is set the system falls back to P-{id}. The Pairing Info dialog title shows \"Label #id\" (e.g. V4538 #10708) with the label first and the internal ID after the #; a pairing with no label shows just \"Pairing Info\". In the Roster canvas, hovering a ground-task shows the assignment label in the status bar between the assignment code and the time range; pairing assignments use the pairing's own identifier instead. To search by label, open the Filter dialog, go to the Pairing tab, type a substring into the Label field, and apply — matching pairings float to the top of the Pairing pane ordered by scheduled start while others remain below; clear the field and re-apply to remove the grouping."
+  },
+  {
+    "slug": "live-flight-navi",
+    "title": "Navigating flights with Flight Navi",
+    "overview": "To open Flight Navi, click the Navi button (compass icon) on the Flight pane's condition strip. The non-modal window lists every flight in the current date range; the Roster, Pairing, and Flight panes stay live behind it. Drag the blue title bar to reposition it; close with ×. Filters along the top include start/end dates (pre-filled to the Gantt's open period), FLT Reg and Coverage dropdowns, DHD / R C / P C / CNL toggles (deadhead, roster-covered, pairing-covered, cancelled), and DEP / ARR / FLTH boxes. The smart search box (top-right) accepts a flight number, a route, departures from an airport (e.g. YEG-), or arrivals into one (-YEG). Each row has three navigation columns: PTNs (pairing count — click to float that flight's pairings to the top of the Pairing pane), Roster (crew count — click to float crew to the top of the Roster pane), and COF (opens the flight's detail card). The window stays open after each click so you can jump between flights and compare results in the live panes behind it. The same Navi button and window are available in a Scenario's Flight pane, where all data and navigation use that scenario's own flights and crew."
+  },
+  {
+    "slug": "live-edit",
+    "title": "Editing assignments",
+    "overview": "Select, reassign, edit, swap, and delete crew duties on the canvas, work on pairings, and pin rows. Every change is a draft until you save (Ctrl+S); unsaved drafts are lost if you sign out or refresh. Click a block to select it; hold Ctrl (⌘ on Mac) and click to add or remove blocks one at a time. To select many at once, press on empty space and drag a box — every block the box touches is selected on release; hold Ctrl while dragging to add to an existing selection. Box-select works in the Roster, Pairing, and Flight panes. Press Esc to clear the selection; the toolbar shows an \"N sel\" count while anything is selected. In the Roster pane, drag a block up or down to reassign it to a different crew row. Right-click a flight block in the Roster pane and choose Edit Task to open its detail editor, or Swap Task to exchange it with another crew member; for ground tasks the menu shows Edit Ground Task instead. Delete selected blocks with Del or Backspace, or via the right-click Delete option; with multiple blocks selected, right-clicking shows Delete N Tasks to remove all at once. Deleting a pairing block removes all of that crew member's segments of the pairing, not just the one clicked. In the Pairing pane, right-click for Edit Duty Nodes (adjust the pairing's structure) or Delete Pairing (removes the whole pairing on save). Pin rows by selecting them, right-clicking, and choosing Pin Selected Rows to keep them at the top while you scroll or sort; Unpin All releases them. Pinning is a view aid only — it is not a draft edit and nothing needs saving."
+  },
+  {
+    "slug": "live-crew-memo",
+    "title": "Adding a crew memo",
+    "overview": "To add a crew memo, right-click any duty on a crew row in the Roster pane and choose Add Memo (sticky-note icon); if a memo already covers that date the option reads Edit Memo. The dialog shows Crew &lt;id&gt;, an optional Title, and required Memo text; click Add (or Save when editing) to store it. A yellow sticky-note icon then appears on that crew row at the memo dates. To delete a memo, open it with Edit Memo and click the Delete trash icon at the left of the dialog footer. Memos are also how R'Bot's Remove pre-assignment (PA) command marks duties it proposes to de-assign for the PBS solver — review memo icons before anything is changed."
+  },
+  {
+    "slug": "live-res-pairing",
+    "title": "Creating reserve pairings (RES Planner)",
+    "overview": "The RES Pairing Planner is a Live-only dialog (not available in Scenario) opened by clicking the RES button (calendar icon) in the Pairing pane header; the button appears only for accounts with the reserve-pairing capability. On the Define tab, choose a Base chip (or All bases) and Division — Pilot (P) for PRAM/PRPM or Cabin (C) for CRAM/CRPM — then click a date cell to activate the entry panel, enter per-rank AM/PM slot counts, and click Apply; planned cells show a coloured indicator. Clear all (top-right of the scope bar) resets all cells in the current view. Below the calendar a summary table shows base/rank/timing totals (days, slots per day, total slots). Choose a Conflict policy — Skip (default, leave existing unchanged), Overwrite (replace composition), or Add (insert alongside) — then click Generate; the dialog closes, the pairing pane filters to the newly created RES pairings, and a banner reports how many were created or skipped. On the Manage existing tab, filter by Base, Division, date range, and type (PRAM/PRPM/CRAM/CRPM) and click Load to see a KPI summary (total pairings, per-call-code counts, crew slots, bases covered, dates covered) and a table listing each pairing's date, base, division, label, type, per-rank plan values, and Open/Full status. Select rows via checkbox to Modify (enter new per-rank plan values and click Apply) or Delete (pairings already published to the live roster are blocked and reported as errors)."
+  },
+  {
+    "slug": "live-save-undo",
+    "title": "Saving, undoing, and redoing",
+    "overview": "Any edits you make on the canvas are held as a draft until you save. To save all pending changes, press Ctrl+S (⌘S on macOS) or click the Save button in the DraftToolbar (the Delete / Undo / Redo / Save row in the centre of the toolbar); the Save button shows a badge with the pending-change count and clears once saved. To undo the last edit, press Ctrl+Z (⌘Z) or click Undo; press repeatedly to undo multiple edits. To redo an undone edit, press Ctrl+Y or Ctrl+Shift+Z (⌘Y on macOS) or click Redo. You can undo and redo as many times as needed before saving. Warning: signing out or refreshing the page without saving will permanently discard all unsaved edits."
+  },
+  {
+    "slug": "live-ground-task",
+    "title": "Creating a ground task",
+    "overview": "A ground task is a non-flight assignment — such as training, standby, or administrative duty — that you assign to one or more crew members. Open the dialog via the Create Ground Task button (⊞ square-plus icon) on the right side of the toolbar, or right-click an empty spot on a crew row in the Roster pane and choose Create Ground Task (this pre-fills that crew member and the clicked day). In Crew IDs, type an ID and press Enter (comma or space also works); each entry becomes a removable chip and the task is created for every listed crew member. Pick an Assignment from the dropdown (shown as code — description; flight/deadhead types with group FLT or DHD are excluded). The read-only Group field auto-fills from the chosen assignment. Set Start and End date/time in the airport timezone shown on the toolbar (its code appears beside each field); the dialog displays the computed Duration and warns if End is not after Start. Add an optional Remark. Click Create — the ground task appears as a draft block on each crew member's canvas row; press Ctrl+S to save it permanently. Ground tasks are not linked to a pairing and appear in the Roster pane only. To edit or delete one later, double-click it or right-click → Edit Ground Task."
+  },
+  {
+    "slug": "live-timezone",
+    "title": "Switching time zones",
+    "overview": "Click the timezone selector in the toolbar (clock icon + current airport code + IANA timezone ID) to open the Display Timezone dropdown. UTC is pinned at the top, followed by ★ Airline Bases (your airline's home airports), then ✈ Other Airports. Each row shows the airport code, name, timezone ID, and UTC offset (e.g. UTC-240); the active entry is ticked. Picking any zone immediately re-draws every time on the canvas. The date range re-anchors to local midnight in the new zone so no days are silently lost or gained at view edges. Your selection is remembered between sessions."
+  },
+  {
+    "slug": "live-rule-set",
+    "title": "Choosing a rule set",
+    "overview": "A rule set is the collection of compliance rules used to check crew assignments. Click the shield-check icon in the toolbar (the active set's name appears beside it on wide screens; narrow screens show the icon only with a \"Rule Set\" tooltip) to open the group list. The active group has a tick and a coloured shield. Selecting a new group clears the current violation highlights and re-checks subsequent edits against it; a brief \"Checking…\" indicator appears on the right of the toolbar while a check runs. Groups may differ by route, fleet, or regulatory framework; ask your administrator if unsure which to use."
+  },
+  {
+    "slug": "live-zoom",
+    "title": "Zooming in and out",
+    "overview": "Zoom controls how many days fit across the canvas. To zoom in (fewer days, more detail) click the + button in the toolbar or press Ctrl++ (⌘++ on macOS); to zoom out click the − button or press Ctrl+− (⌘+−). Zoom buttons are disabled at the minimum or maximum zoom level. To jump to a specific month, right-click the time axis (the date ruler above the canvas) and choose a month from the Go to Month menu — it shows the month under your cursor plus the two months on either side, and the canvas zooms so the chosen month exactly fills the view. Months marked with a download icon are outside the loaded date range; selecting one automatically widens the range and pulls its data."
+  },
+  {
+    "slug": "live-keyboard",
+    "title": "Keyboard shortcuts",
+    "overview": "Keyboard shortcuts for the Live — Roster screen, organised in five groups. File: Ctrl+S saves all pending changes. Edit: Ctrl+Z undoes the last operation; Ctrl+Y (also Ctrl+Shift+Z) redoes it; Del (also Backspace) deletes the selected item; Esc clears all selections or closes a menu. Selection: Click selects a single task; Ctrl+Click toggles multi-select. Pairing: Ctrl+Q creates a pairing from the selected flights. View: Ctrl++ zooms in; Ctrl+− zooms out. On macOS, substitute ⌘ for Ctrl on every shortcut. The same list is shown in the in-app Keyboard Shortcuts dialog, accessible from the toolbar."
+  },
+  {
+    "slug": "scenario-overview",
+    "title": "Overview (Scenario)",
+    "overview": "A scenario is a sandbox copy of your schedule where you can plan, optimise, and review changes without affecting the live schedule — nothing is visible to crew until you publish. Four types exist: PO (Pairing Optimisation — builds pairings from flights), RO (Roster Optimisation — assigns crew to existing pairings), TO (Training Optimisation — plans training alongside operational duties), and Crew Bids (manage and review crew preference bids). Each scenario moves through a status lifecycle: Draft (being configured, no optimisation run yet), Running (engine working, pulsing dot), Done (optimisation completed, KPI results available and publishable), Failed (engine could not complete — review settings and re-run), and Published (assignments written back to the live roster, solid amber dot). Typical workflow: Create a scenario → set required fields (dates, rule group, pairing scenario) → set scope filters → run the optimisation → review KPI results → adjust and re-run if needed → publish selected assignments to the live roster."
+  },
+  {
+    "slug": "scenario-browse",
+    "title": "Browsing and searching scenarios",
+    "overview": "Open the Scenario tab; the left panel lists all your scenarios, sorted by most recently updated so a scenario you just ran or renamed appears at the top. Type in the search bar to filter by name as you type — any partial match narrows the list instantly. Each row shows the scenario name, a type badge (PO / RO / TO), and a status dot. Click any row to open its detail panel on the right (settings and results). The status dot updates in real time while a run is in progress — you can watch it change from Running (pulsing blue) to Done (green) or Failed (red) without refreshing. Use the Prev / Next pagination arrows below the list when there are more scenarios than fit on one page. All status states: Draft (grey), Running (pulsing blue), Done (green), Failed (red), Published (solid amber)."
+  },
+  {
+    "slug": "scenario-create",
+    "title": "Creating a new scenario",
+    "overview": "To create a scenario, first pick the sidebar section for the type you want — PO, RO, TO, or Crew Bids — because the new scenario inherits that type. Click the + (New scenario) button at the top of the scenario list; the scenario is created immediately with Draft status and opens in the detail panel on the right. Edit the name at the top of the panel, set the Start / End date range, and tick Lead-in live if the scenario should start from the current live roster instead of a blank slate. For RO scenarios the panel also shows Rule Set and Pairing Scenario fields to refine how the engine builds the roster. Click the Save icon (floppy disk) in the toolbar to save; it shows a spinner while saving and a success notification on completion, and is greyed out when there are no unsaved changes. The scenario remains in Draft status until you run it."
+  },
+  {
+    "slug": "scenario-duplicate",
+    "title": "Duplicating a scenario",
+    "overview": "To duplicate a scenario, hover over its row in the scenario list to reveal the ⋯ menu button on the right, then click Duplicate. A Draft named \"Copy of [original name]\" is created with the same type, date range, and type-specific config: PO copies Flight scope filters (flight numbers, airports, fleets, status); RO adds Model, Rule Set, Pairing Scenario, and Crew/Pairing scope filters; TO includes RO config plus Training scope filters. Optimisation results and KPIs are not copied — only setup parameters. The new scenario is auto-selected and its detail panel opens with the name field highlighted, so you can type a new name immediately and press Save (disk icon) to confirm."
+  },
+  {
+    "slug": "scenario-import",
+    "title": "Importing PBS material",
+    "overview": "Partial — waiting for backend service. The Import PBS dialog is built: click the Import PBS button (upload icon) at the top of the scenario list panel to open it, then click Browse or drag and drop a PBS export file from your computer, review the import summary in the dialog, and click Import. Once the backend is connected, this will create a new Draft scenario pre-populated with the imported data. Importing does not yet create a scenario. If unsure which file format your airline's PBS system requires, ask your system administrator."
+  },
+  {
+    "slug": "scenario-filters",
+    "title": "Setting scope filters",
+    "overview": "Scope Filters in the Scenario detail panel control what the engine includes; changes save automatically. PO uses a single Flight Filters group — tag fields for Flight Nos, Dep Airports, Arr Airports, and Fleets (type a value and press Enter), plus a Flight Status dropdown (Scheduled/Actual/All). RO splits into Crew Filters (Division, Status, Bases, Fleet Quals) and Pairing Filters (Bases, Fleets, Pairing Source — Manual/Optimized/Imported); each group is collapsible with an active-filter badge and a live FILTER summary line (∗ = no restriction). TO adds an extra Training group. Bases are always picked from the airline's configured dropdown, not typed by hand. Crew Bids is a review view, not an optimisation: set a Period (required before Search is enabled), press Search, then narrow by Base, Rank, or Context (All/Current/Default). Narrower scope = faster results."
+  },
+  {
+    "slug": "scenario-run",
+    "title": "Running an optimisation",
+    "overview": "To run an optimisation, four required fields must be set: Start date, End date, Rule Set, and Pairing Scenario (choose 'Live 0' to use current live pairings). Crew Filters and Pairing Filters are optional but recommended — omitting them causes the engine to cover all crew and pairings, which is slower. Click the Play icon (Kick off run) in the scenario toolbar; if any required field is missing, a Pre-run Check dialog lists blockers in red that must be fixed before proceeding. Yellow warnings allow you to continue via 'Proceed Anyway', though they indicate a broader scope that may slow the engine. Once accepted, an 'Optimization started successfully' notification appears, the button changes to an amber Stop icon (click to abort the run), and the status turns blue with a pulsing dot (Running). When the engine finishes, the scenario becomes Done (green badge, KPI results appear below) or Failed (red badge — review settings and re-run). To discard a result and reset the scenario to Draft, click the Eraser icon (Remove result); a confirmation dialog appears and all KPI data is permanently deleted and unrecoverable. If the scenario is already Done, the Eraser must be used before Kick off run becomes available again."
+  },
+  {
+    "slug": "scenario-kpi",
+    "title": "Reading your KPI results",
+    "overview": "KPI cards appear automatically when a scenario reaches Done status — one card per key metric from the optimisation result. Each card shows the metric name (card title), the optimised value (a number or percentage), and a short description explaining what a higher or lower number means. KPI cards are read-only; they summarise what the engine produced. If the results do not meet your targets, adjust the scenario configuration (scope filters, rule set, or model) and click Run again."
+  },
+  {
+    "slug": "scenario-quality",
+    "title": "Checking roster quality (Quality Analyzer)",
+    "overview": "The Quality Analyzer is a Scenario-only tool (not shown on Live). Open a Scenario that has finished optimising, then click the Gauge icon in the Roster pane toolbar (tooltip: Quality Analyzer — roster quality per crew) to open the Scenario Roster Quality Analyzer. It uses a master–detail layout: the left panel lists each QLTY criterion with the number of affected crew; click a rule to see its crew table on the right. Three quality checks are available — Qlty-1001 Standalone RES (isolated reserve/standby day with no adjacent reserve; client expects at least 2 consecutive), Qlty-1002 Working >6d (more than 6 consecutive working days), and Qlty-1003 Day-off only (whole roster is days off with no flying or reserve assignment, usually a data issue). Each table row shows Crew ID, Base/Rank, Awarded credit (Before opt = live pre-assignment credit; After opt = newly added CR credit from pairings and credited reserve duties), and the finding detail for that rule. The Issues only toggle (default on) limits the left nav to rules with open findings and the table to affected crew; untick to see all rules and all crew per rule. Use the crew filter to narrow the right-hand table by crew id, base, or rank. Click any Crew ID to bring that crew to the top of the roster — the dialog stays open. If no result is loaded it shows \"No crew loaded — open a scenario with an optimization result\"; with Issues only on and nothing flagged it shows \"No crew with open quality findings.\""
+  },
+  {
+    "slug": "scenario-publish",
+    "title": "Publishing a roster",
+    "overview": "Publishing writes optimised crew-to-pairing assignments back to the live roster; the scenario must be in Done status first — the Send icon (Publish Roster) in the scenario toolbar is disabled while the scenario is in Draft, Running, or Failed status. The Publish Roster dialog lists all optimised assignments with columns: Crew ID, Pairing ID, Base, Div, Asgmt Group, Assignment, Start/End (UTC), and Status (Pending or Published). Use the Crew ID and Base filter inputs at the top to narrow the list; the row count updates as you type. All Pending rows are pre-selected by default; deselect rows individually or use the header checkbox to toggle all visible pending rows. Published rows are greyed out and cannot be re-selected. Click Publish N Selected to write chosen assignments to live; a success notification confirms how many were published. The scenario then moves to Published status — a blue solid dot in the scenario list and a blue Published badge in the detail panel. You can reopen the dialog from a Published scenario to publish any rows skipped in the first pass. To correct a wrong publish, use the Eraser icon to revert to Draft and re-optimise — previously written roster_flight records are not automatically deleted and require an administrator to remove them."
+  },
+  {
+    "slug": "scenario-delete",
+    "title": "Deleting a scenario",
+    "overview": "To delete a scenario, hover over its row in the scenario list — a ⋯ menu button appears on the right side of the row (the same menu used for Duplicate). Click it, then click Delete (trash icon) in the menu. A confirmation dialog appears; click Delete again to confirm. The scenario is permanently removed and all its settings, filters, and KPI results are lost. This cannot be undone."
+  },
+  {
+    "slug": "settings-theme",
+    "title": "Changing the theme",
+    "overview": "To change the theme, click the palette icon in the top-right corner of the navigation bar. A dropdown opens showing five colour themes and a dark/light mode toggle. The five themes are: Ocean Blue (default, clean blue tones), Dark Pro (dark background with blue accents; always uses dark mode), Emerald Green (green accents, light background), Sunset Orange (warm orange accents), and Slate Gray (neutral grey tones). Click any theme to apply it immediately — no page reload is needed. A checkmark indicates your currently active theme."
+  },
+  {
+    "slug": "settings-darkmode",
+    "title": "Switching dark / light mode",
+    "overview": "Dark mode reduces eye strain in low-light environments. To toggle it, click the palette icon in the top-right corner to open the theme dropdown, then click the Dark Mode toggle at the bottom of the dropdown. The label alternates between \"Dark Mode\" and \"Light Mode\" to show which will be applied next, and the app switches modes immediately. Your choice is saved automatically. Exception: the Dark Pro theme always uses dark mode regardless of this toggle — switching to Dark Pro makes the toggle have no effect. All other themes respect the dark/light toggle independently."
+  },
+  {
+    "slug": "settings-signout",
+    "title": "Signing out",
+    "overview": "Click the Sign Out button in the top-right corner of the navigation bar to end your session immediately; you are redirected to the login screen right away. Important: any unsaved changes on the Live screen are lost when you sign out — press Ctrl+S to save before signing out. Sign out when done to keep your session secure, especially on shared computers."
+  },
+  {
+    "slug": "rbot-overview",
+    "title": "What R'Bot can do",
+    "overview": "R'Bot is a built-in AI assistant, always accessible in the bottom-left corner of the screen on any tab. Type a plain-English instruction and it translates it into a canvas action: apply crew, pairing, or flight filters (e.g. \"show only YEG crew\"); sort the roster; change the planning date range (e.g. \"show me next week only\"); clear all active filters; combine multiple actions in one instruction; mark crew duties for PBS solver removal (\"remove pre-assignment for YEG crew\") — it tags each duty with a memo note icon for review and nothing is deleted; launch a crew-bids simulation that adds bids in the crew portal; or answer questions about what is currently shown on the canvas. R'Bot works on the current canvas state and applies all actions as canvas UI actions, not database writes. It cannot make permanent schedule changes (no move, add, or delete of assignments), access external systems or the internet, or modify scenario settings or run optimisations."
+  },
+  {
+    "slug": "rbot-ask",
+    "title": "Asking R'Bot a question",
+    "overview": "To open R'Bot, click the chat bubble icon (💬) in the bottom-left corner of the screen; the R'Bot panel slides open and shows example commands to help you get started. Type a plain-English instruction in the Ask R'Bot… input field (for example: \"show only YVR crew\"), then press Enter or click the Send button. R'Bot shows a Thinking… indicator while it processes your request and the input is disabled during this time. Once done, R'Bot applies the action and a green chip appears confirming exactly what was applied. The chat bubble also closes the panel when clicked again."
+  },
+  {
+    "slug": "rbot-examples",
+    "title": "Example commands",
+    "overview": "R'Bot accepts commands across five areas: crew filtering (filter Crew Base to your base or second airport, filter Division to pilots only, clear all filters), roster sorting (sort roster by crew id ascending or descending), pairing display (show fully crewed pairings only sets the Pairing filter to \"Full only\"), date ranges (explicit window like \"set date range from 2026-07-01 to 2026-07-15\" or relative phrases like \"show me next week only\" resolved against today), and combo commands (filter + sort in one step). Two notable commands: \"remove pre-assignment for [base] [rank] crew\" marks crew duties with memo note icons for PBS solver de-assignment — nothing is deleted; \"create crew bids for [base] from [date] to [date]\" launches a portal simulation. You can also query the canvas (\"how many crew are shown?\"). Commands use your airline's own base and airport values. Exact wording is not required — R'Bot understands natural variations."
+  },
+  {
+    "slug": "regression-overview",
+    "title": "Regression Playground overview",
+    "overview": "The Regression tab lets you build a traceable QA catalog without coding. Click Add Test, describe the expected behavior in plain English with a category and priority, then click the wand button — AI writes Playwright code from your story and pass conditions; if red issue chips appear in the preview, click Regenerate with fixes then Apply. Run a single test via the play button or the full catalog with Run failing first (most-recently-failing tests go first; a live status bar shows progress at the bottom). Stability badges flag tests as flaky (passed only on retry) or N% unstable; the shield button quarantines an unstable test, excluding it from Run All until it passes 5 consecutive runs and is then auto-released. Expand the chevron on any row to view version history and evidence snapshots — screenshots captured at the assertion point; click to open full size or trash to delete. Failed rounds show a Diagnose button: AI classifies the root cause as a code bug, data gap, environment issue, or test bug. Use Pass conditions to define what \"pass\" means in plain English; mentioning a specific value triggers entity disambiguation — choose Condition A (UI must return data) if the value should exist in the app (fails if empty, catching data gaps and AI illusions) or Condition B (UI shows empty state) if the value is intentionally absent (passes only when the UI handles the absence gracefully). Click Import specs once to load the existing automated test catalog; already-imported tests are skipped, so it is safe to repeat."
+  },
+  {
+    "slug": "legality-overview",
+    "title": "Overview (Legality)",
+    "overview": "The Legality tab lists your airline's compliance rule sets, lets you inspect every rule and its parameters, and checks crew assignments against them. The F8 Full Ruleset (workset 433) contains 14 Flight-Deck rules in several families: Definitions & calculators (2014 Local Night, 7500 Acc State, 7502 Credit Hours, 7272 Reserve DP) compute values that other rules read and raise no violations; Cumulative limits (8002 Maximum Flight Time, Maximum Hours of Work); Days off (7501 Single Day Free from Duty, 7505 Min GDOs); Window of Circadian Low (7503 Consecutive WOCLs, 7504 Spacing Rule – WOCL); Roster structure (7506 One Check-in Per Day, 8056 Roster Spacing); and Qualification (8004 Basic Competency, 8030 Age Restriction). Each rule's parameter table has applicability columns — Bases, Ranks, Fleets, Crew Teams (* = all) — plus threshold columns; a rule may have several rows, one per period or condition. Admins can change rule values via the separate Editing rule parameters topic. When an assignment breaks a rule, a warning bell marks the affected duty on the canvas in both Live and Scenario. The Alert Center (bell button at the top-right of the roster pane, showing a violation count) opens a list of every violation, one row per crew, rule, and message; use the search bar to filter by crew ID, rank, or base, and group rows by Severity, Rule, Base, or Rank. Severity is colour-coded: red for hard limits, amber for overridable, yellow for soft. Clicking a row brings that crew to the top of the Roster pane. On a Scenario, violations are computed the first time the scenario is opened and stored so later viewers see the same result. To re-run: on Live the Legality tab header shows a Last checked timestamp and a Recheck now button (saving a rule parameter also auto-triggers a recheck); on a Scenario, click the circular-arrows Recheck button in the roster pane toolbar beside the bell. An amber dot on the button means parameters changed since the last check; while a check runs the icon spins and the status reads Checking legality…"
+  },
+  {
+    "slug": "legality-edit-params",
+    "title": "Editing rule parameters (admin)",
+    "overview": "Admins can edit a rule's parameter table on the Legality tab — click a rule to expand it in place or use the Maximize icon for a full-screen view. Click the Edit row pencil in the Actions column: narrow rules edit inline (the row turns amber and each cell validates its own format — number, date, or applicability list) while very wide rules open an Edit Row dialog instead; click ✓ to confirm (enabled only when every cell is valid) or ✕ to cancel. The Actions column also offers Copy row, Delete row (trash → \"Delete?\" → \"Yes, delete\" to confirm), and Move up / Move down to reorder. Use + Add Row below the table to append a blank row. The Changes panel on the right logs every EDIT, ADD, DEL, COPY, and MOVE action newest first; click ⟲ Undo to revert the last change (disabled when nothing to undo or a save is in flight). Nothing is written until you click Save All, which shows \"Saving…\" then a \"Parameters saved\" confirmation and flags affected rosters for a legality recheck. Non-admins see the table read-only; the Actions column, Add Row, and Save All are not shown to them."
+  },
+  {
+    "slug": "legality-2014",
+    "title": "2014 — Local Night Definition",
+    "overview": "Defines the protected overnight window that counts as a local night's rest — the building block other day-off and WOCL rules read. Raises no violations. A local night requires at least nine continuous hours (Min Interval Hours) falling inside the window from Local Night Start (22:30) to Local Night End (09:30) in the crew member's acclimatized local time; travel time to/from accommodation is excluded. The rules that consume this definition are 7501 Single Day Free from Duty, 7503 Limits of Consecutive WOCLs, and 7504 Spacing Rule - WOCL. The live F8 demo ruleset is configured 22:00 / 08:00 / 08:00 rather than the regulatory baseline 22:30 / 09:30 / 09:00."
+  },
+  {
+    "slug": "legality-7500",
+    "title": "7500 — Basic definition of Acc State",
+    "overview": "Computes each crew member's acclimatized reference time zone — the body-clock location other rules use to read local time. A Definition-category rule that raises no violations. Consumed by WOCL rules 7503 (Limits of Consecutive WOCLs) and 7504 (Spacing Rule - WOCL). Per CAR 700.28(5), crew are assumed acclimatized to their home base unless prior duty moved them elsewhere; the acclimatized clock shifts at 1 hour per 24 hours in a new zone — a TZ difference under 4 hours requires 72 hours to acclimatize, 4 hours or more requires 96 hours. In the current live port the engine falls back to the crew's base time zone when no prior travel applies."
+  },
+  {
+    "slug": "legality-7502",
+    "title": "7502 — The Calculation of Credit Hours",
+    "overview": "Rule 7502 (The Calculation of Credit Hours, category Definition) is a calculator, not a check — it raises no violations. For each assignment it derives a credit-hour value using the CBA \"Credit Hours\" definition: credit equals the greatest of a minimum floor (4.0 CH per worked day for reserve, vacation, statutory holiday, training, union, admin, and reserve-availability days), scheduled or actual flight hours, or one credit hour per two hours of duty time (deadhead-only days excluded). Rule 8002's monthly credit-hour band reads this same definition so the two reconcile. Parameters: Assignment Groups (three rows: DO/LO/LEA/SBY, FLY, GND), Assignments (codes per row), Minimum CH (floor applied to off/leave/standby, sample 04:00), FT Ratio (block-time multiplier for flying, sample 1.0), DP Ratio (duty-period multiplier for ground duty, sample 0.5), and Split Method (SPAN/START — which calendar day a multi-day activity's credit is attributed to)."
+  },
+  {
+    "slug": "legality-7272",
+    "title": "7272 — Calculate DP of the Reserves",
+    "overview": "Computes the duty-period length to charge for reserve / standby blocks so 8002 Maximum Hours of Work can count them. Raises no violations — this is a Definition/calculator, not a check. Reserve and standby blocks carry no flight segments, so this rule derives a duty-period value: a Rate (regulatory baseline 0.33, i.e. one-third) is applied to the standby window after trimming a configurable Standby Offset from the start; an optional SBY Limit caps the result. Applicable assignment codes: SBY, PRAM, PRPM. The Notification Limit parameter records the reserve-notice threshold — 12 h normally, 32 h when any part of the availability period overlaps the crew's WOCL. Flight-deck crew are assigned home reserves only (CAR 700.70)."
+  },
+  {
+    "slug": "legality-8002-flight-time",
+    "title": "8002 — Maximum Flight Time",
+    "overview": "Caps each crew member's cumulative block (flight) hours over three rolling windows — 112 h in 28 days, 300 h in 90 days, and 1,000 h in 365 days (CAR 700.27(1)/700.103(1)) — and flags any window that exceeds its limit. A fourth row is a standalone per-calendar-month credit-hour band with both Min Limits and Max Limits. Parameters include Period, Unit (CD = calendar days; CM = calendar month), Type (BH = block hours; CH = credit hours), and Prorated. The live F8 demo ruleset is tuned for Rust-engine testing: 28-day max shows 40:00, rolling windows are 28/100/200 days, and the monthly band is CH 65:00–75:00; the regulatory baseline is 112/300/1,000 h over 28/90/365 days."
+  },
+  {
+    "slug": "legality-8002-hours",
+    "title": "8002 — Maximum Hours of Work",
+    "overview": "Caps cumulative duty hours (hours of work, including positioning) over three rolling windows: 60 h in any 7 consecutive days, 192 h in any 28 consecutive days, and 2,200 h in any 365 consecutive days (CAR 700.29(1)). The 7-day window applies when the required single days free from duty are provided (see rule 7501). Parameters scope by Bases/Ranks/Fleets/Crew Teams; Type DP (duty period) distinguishes this rule from the block-hours sibling 8002/006."
+  },
+  {
+    "slug": "legality-7501",
+    "title": "7501 — Single Day Free from Duty",
+    "overview": "Rule 7501/004 \"Single Day Free from Duty in Rolling Hours\" (category: Duty) guarantees a minimum number of single days free from duty inside rolling-hour windows. A single day free runs from the start of one local night's rest to the end of the next — it reads the 2014 Local Night Definition. The rule checks two windows: at least 1 single day free in any 168 consecutive hours, and at least 4 in any 672 consecutive hours. Rest and leave days are excluded from work periods. A 30-minute Duty End Buffer is added to each duty end before measuring the gap. Parameters: Bases/Ranks/Fleets/Teams (applicability), Period (168 · 672), Unit (RH = rolling hours), Duty End Buffer (00:30), Min Limits (1 · 4). Regulatory basis: CAR 700.29(1) — the \"60 hours in any 7 consecutive days\" duty option requires these day-free guarantees. Note: the live F8 demo ruleset raises the 168-hour minimum to 3 for testing; the regulatory baseline is 1."
+  },
+  {
+    "slug": "legality-7505",
+    "title": "7505 — Min # GDOs in a RP",
+    "overview": "Guarantees a minimum number of Guaranteed Days Off (GDOs) per roster period, with the required minimum sliding down as vacation days increase. The baseline is 12 GDOs in a 30-day month and 13 GDOs in a 31-day month; no more than 18 working days may be scheduled in a bid period (ALPA CBA §8.13). A lookup table keyed by month length (RP Days Range) and the crew member's vacation-days range determines the applicable Min DO for each row. Unassigned blank days count as GDOs (Count Blank Day = Y); layover days do not (Count Layover = N)."
+  },
+  {
+    "slug": "legality-7503",
+    "title": "7503 — Limits of Consecutive WOCLs",
+    "overview": "Caps the number of consecutive WOCL duties (any duty whose any part overlaps 02:00–05:59 in the crew member's acclimatized time, per rule 7500). The consecutive run resets after a local night's rest (rule 2014). Regulatory baseline: max 3 consecutive WOCL duties (CAR 700.51(1) / CAR 700.50(3)); a local night's rest must follow the third. Parameters: Bases/Ranks/Fleets/Teams scope, WOCL Start (02:00), WOCL End (05:59), Max Consecutive WOCLs (default 3). The live F8 demo ruleset lowers Max Consecutive WOCLs to 2 for testing."
+  },
+  {
+    "slug": "legality-7504",
+    "title": "7504 — Spacing Rule - WOCL",
+    "overview": "Enforces a minimum rest spacing between two WOCL flight duties using the same pairwise-spacing engine as 8056 Roster Spacing, but restricted to FLY→FLY pairs where both duties touch the Window of Circadian Low (02:00–05:59 acclimatized time). The gap between the end of post-duty rest of the first WOCL duty and the start of the next must be at least 55 rolling hours; any duties may be assigned within that gap. Regulated under CAR 700.51 — Limits on Infringing the Window of Circadian Low. Key parameters: Prev/Next Assignment Groups (FLY→FLY), Prev/Next Attributes (WOCL→WOCL), Utilize Post Rest (Y), Level D (duty), Min Period 55 RH. Note: the live F8 demo ruleset sets Min Period to 80 RH for testing; the regulatory baseline is 55."
+  },
+  {
+    "slug": "legality-7506",
+    "title": "7506 — One Checkin Per Day",
+    "overview": "Rule 7506 — One Checkin Per Day (Roster category) flags a violation when a crew member has two or more check-ins (reports) for a flight duty on the same calendar day. Two reports are legal only when they fall on different calendar days. The Assignments parameter configures which activity codes count as a check-in (default: FLY only). The Bases / Ranks / Fleets / Teams parameter scopes which crew the rule applies to (default: * = all crew)."
+  },
+  {
+    "slug": "legality-8004",
+    "title": "8004 — Basic Competency-F8",
+    "overview": "Validates that each crew member holds the required competency for every FLY assignment across up to three independent dimensions: BASE, RANK, and FLEET. Each dimension can be individually enabled or disabled via the Enable Check parameter; by default only the BASE check is active (RANK and FLEET are off). A Grace Period (in calendar days, default 0) can be configured to allow a buffer before an expired qualification triggers a violation."
+  },
+  {
+    "slug": "legality-8030",
+    "title": "8030 — Age Restriction",
+    "overview": "Rule 8030/004 (category: Qual) is an aggregate-per-flight check: it counts every crew member in a flight's complement who exceeds the configured Age Define threshold and flags the flight if that count exceeds Max Number. Regulatory origin (BRD Age Restriction): a pilot over 65 may only fly within Canada, and a pilot over 65 may not fly together with a pilot over 60; crew birthdays are maintained in the crew profile. Parameters: Division (crew division, P = pilots), Airport (scope, * = all), Age Define (age threshold, regulatory baseline 65), Max Number (maximum crew over the threshold allowed on one flight, baseline 1). Note: the live F8 demo ruleset sets Age Define to 35 so the rule fires on real data; the regulatory baseline is 65."
+  },
+  {
+    "slug": "legality-8056",
+    "title": "8056 — Roster Spacing",
+    "overview": "Rule 8056/006 (category: Rest) is a directional pairwise-spacing engine: it flags a flight duty (A) followed by a flight, standby, or simulator duty (B) (FLY→FLY|SBY|SIM) when the gap — measured from the end of post-duty rest — falls below the configured minimum. The regulatory baseline minimum is 13 rolling hours after a home-base duty (CAR — Rest Period / BRD \"Rest Periods\"); the live F8 demo ruleset raises Space to 24 RH for testing. Rule 7504 Spacing Rule – WOCL is a specialization of this same engine restricted to WOCL duties."
+  },
+  {
+    "slug": "glossary",
+    "title": "Glossary",
+    "overview": "Plain-language definitions for 14 terms used throughout the app. Crew Base: the airport a crew member is based at, used in filters and pairing assignments. Draft: an unsaved canvas change held in memory until you press Ctrl+S. Filiale: a two-letter code identifying the airline operating entity (e.g. F8). Gantt canvas: the large scheduling grid on the Live screen where each row is one crew member and each block is an assignment. Ground task: a non-flight assignment (training, standby, admin duty) not linked to a pairing. KPI: Key Performance Indicator — a metric shown after an optimisation run (examples: utilisation rate, violation count, pairing efficiency). Pairing: a sequence of flights and rest periods forming one multi-day trip for a crew member. Pane: a panel on the Gantt canvas; Roster, Pairing, and Flight panes can be open at the same time. PO: Pairing Optimisation — builds the best set of pairings from a group of flights. RO: Roster Optimisation — assigns individual crew members to pairings to build personal rosters. Roster: a crew member's personal schedule showing all their assignments over a period. Rule Group: a named set of compliance rules used to check crew assignments on the Live screen. Scenario: a draft plan you optimise and review without affecting the live schedule. TO: Training Optimisation — plans training assignments alongside operational duties."
+  }
+]

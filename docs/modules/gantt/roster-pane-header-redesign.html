@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roster Pane Header Redesign</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --bg-hover: #2d3f55;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border-color: #334155;
+      --border-light: #475569;
+      --accent-blue: #3b82f6;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+      --accent-red: #ef4444;
+      --accent-teal: #14b8a6;
+      --row-even: #1a2540;
+      --row-odd: #1e293b;
+      --row-selected: #1e3a5f;
+      --row-frozen: #1c2e40;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ── Page Layout ──────────────────────────────── */
+    .page-header {
+      padding: 20px 32px 12px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .page-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .page-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .badge-amber { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+
+    .main { padding: 24px 32px; display: flex; flex-direction: column; gap: 32px; }
+
+    /* ── Section ──────────────────────────────────── */
+    .section { display: flex; flex-direction: column; gap: 12px; }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-color);
+    }
+
+    /* ── Change Summary ───────────────────────────── */
+    .change-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .change-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .change-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .change-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .change-item:last-child { border-bottom: none; }
+    .change-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .dot-red { background: var(--accent-red); }
+    .dot-green { background: var(--accent-green); }
+
+    /* ── Gantt Panel Mockup ───────────────────────── */
+    .gantt-mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .gantt-toolbar {
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .toolbar-pill {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .toolbar-sep { color: var(--border-light); margin: 0 4px; }
+
+    .gantt-body { display: flex; }
+
+    /* ── Panel (left side) ────────────────────────── */
+    .panel {
+      flex-shrink: 0;
+      border-right: 2px solid var(--accent-blue);
+      display: flex;
+      flex-direction: column;
+      font-family: 'Consolas', 'SF Mono', monospace;
+    }
+
+    /* Column header strip */
+    .panel-colheader {
+      background: #1a2a3f;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      height: 20px;
+    }
+    .panel-colheader .col {
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      border-right: 1px solid var(--border-color);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    /* Panel rows (two-line layout) */
+    .panel-row {
+      display: flex;
+      flex-direction: column;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .panel-row:nth-child(odd) { background: var(--row-odd); }
+    .panel-row:nth-child(even) { background: var(--row-even); }
+    .panel-row.selected { background: var(--row-selected); }
+    .panel-row.frozen { background: var(--row-frozen); border-left: 2px solid var(--accent-amber); }
+    .panel-row:hover { background: var(--bg-hover); }
+
+    /* Top strip (row 1 columns) */
+    .row-top {
+      display: flex;
+      height: 22px;
+      border-bottom: 1px solid rgba(71,85,105,0.4);
+    }
+    .row-top .col {
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      border-right: 1px solid var(--border-color);
+      font-size: 11px;
+      font-weight: 600;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .row-top .col:last-child { border-right: none; }
+
+    /* Bottom strip (spanning crew name) */
+    .row-bottom {
+      height: 18px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 9px;
+      color: var(--text-muted);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    /* BEFORE layout: bottom has individual columns */
+    .row-bottom-multi {
+      height: 18px;
+      display: flex;
+      border-top: 1px solid rgba(71,85,105,0.3);
+    }
+    .row-bottom-multi .col {
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      border-right: 1px solid var(--border-color);
+      font-size: 10px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .row-bottom-multi .col:last-child { border-right: none; }
+
+    /* Color accents */
+    .rank-ca { color: #60a5fa; }
+    .rank-fo { color: #4ade80; }
+    .rank-fe { color: #fbbf24; }
+    .rank-fcn { color: #c084fc; }
+    .base-hkg { color: #34d399; }
+    .fleet-a320 { color: #fb923c; }
+    .fleet-a330 { color: #f472b6; }
+    .name-span { color: #e2e8f0; font-style: italic; }
+    .empty-val { color: var(--text-muted); }
+    .stale-rank { color: #f87171; text-decoration: line-through; font-size: 9px; }
+
+    /* date-effective pill */
+    .eff-pill {
+      display: inline-block;
+      font-size: 8px;
+      padding: 0 3px;
+      border-radius: 2px;
+      margin-left: 2px;
+      background: rgba(59,130,246,0.2);
+      color: #60a5fa;
+      vertical-align: middle;
+    }
+
+    /* ── Timeline (right side) ────────────────────── */
+    .timeline {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      min-height: 180px;
+    }
+    .tl-header {
+      background: #1a2a3f;
+      border-bottom: 1px solid var(--border-light);
+      height: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .tl-date-row {
+      height: 20px;
+      display: flex;
+      align-items: center;
+    }
+    .tl-date-cell {
+      border-right: 1px solid var(--border-color);
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .tl-date-cell.today {
+      color: var(--accent-blue);
+    }
+    .tl-hour-row {
+      height: 20px;
+      display: flex;
+      align-items: center;
+    }
+    .tl-hour-cell {
+      border-right: 1px solid var(--border-color);
+      padding: 0 4px;
+      font-size: 9px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* viewport left-edge indicator */
+    .tl-viewport-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(245,158,11,0.6);
+      pointer-events: none;
+      z-index: 10;
+    }
+    .tl-viewport-label {
+      position: absolute;
+      top: 2px;
+      background: rgba(245,158,11,0.9);
+      color: #000;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+
+    /* task bars */
+    .tl-body { position: relative; }
+    .tl-row {
+      height: 40px;
+      border-bottom: 1px solid var(--border-color);
+      position: relative;
+    }
+    .tl-row:nth-child(even) { background: var(--row-even); }
+    .tl-row:nth-child(odd) { background: var(--row-odd); }
+    .task-bar {
+      position: absolute;
+      height: 20px;
+      top: 10px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    /* column width vars */
+    .w-crewid  { width: 70px; min-width: 70px; }
+    .w-rank    { width: 45px; min-width: 45px; }
+    .w-base    { width: 45px; min-width: 45px; }
+    .w-fleet   { width: 50px; min-width: 50px; }
+    .w-ybh     { width: 55px; min-width: 55px; }
+    .w-crewname{ width: 70px; min-width: 70px; }
+    .w-total-before { width: 335px; }
+    .w-total-after  { width: 265px; }
+
+    /* ── Before/After comparison ──────────────────── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .compare-label {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px 4px 0 0;
+      display: inline-block;
+    }
+    .label-before { background: rgba(239,68,68,0.15); color: #f87171; }
+    .label-after  { background: rgba(34,197,94,0.15); color: #4ade80; }
+
+    /* ── Data Source Diagram ──────────────────────── */
+    .data-diagram {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .diagram-title { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+
+    .timeline-axis {
+      position: relative;
+      height: 80px;
+      margin: 8px 0;
+    }
+    .axis-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 2px;
+      background: var(--border-light);
+      transform: translateY(-50%);
+    }
+    .axis-arrow {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-left: 8px solid var(--border-light);
+    }
+    .eff-range {
+      position: absolute;
+      height: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      overflow: hidden;
+    }
+    .eff-range-label {
+      position: absolute;
+      top: calc(50% - 26px);
+      font-size: 9px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+
+    .viewport-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--accent-amber);
+    }
+    .viewport-marker-label {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--accent-amber);
+      white-space: nowrap;
+    }
+
+    .axis-tick {
+      position: absolute;
+      top: 50%;
+      transform: translateX(-50%) translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .tick-line {
+      width: 1px;
+      height: 8px;
+      background: var(--border-light);
+    }
+    .tick-label {
+      font-size: 8px;
+      color: var(--text-muted);
+      margin-top: 12px;
+      white-space: nowrap;
+    }
+
+    .match-yes {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: #4ade80;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .match-no {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .table-small {
+      border-collapse: collapse;
+      font-size: 11px;
+      width: 100%;
+    }
+    .table-small th {
+      background: var(--bg-tertiary);
+      padding: 5px 10px;
+      text-align: left;
+      font-weight: 700;
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid var(--border-color);
+    }
+    .table-small td {
+      padding: 5px 10px;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+    .table-small tr.active-row td {
+      background: rgba(59,130,246,0.08);
+      color: var(--text-primary);
+    }
+    .table-small tr.active-row td:first-child {
+      border-left: 2px solid var(--accent-blue);
+    }
+    .code { font-family: 'Consolas', monospace; font-size: 10px; color: #93c5fd; }
+
+    /* ── Open Questions ───────────────────────────── */
+    .qa-list { display: flex; flex-direction: column; gap: 8px; }
+    .qa-item {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px 16px;
+      display: flex;
+      gap: 12px;
+    }
+    .qa-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(245,158,11,0.2);
+      border: 1px solid rgba(245,158,11,0.4);
+      color: var(--accent-amber);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .qa-body { flex: 1; }
+    .qa-question { font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+    .qa-options { display: flex; flex-direction: column; gap: 4px; }
+    .qa-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .qa-option-key {
+      font-family: monospace;
+      font-size: 10px;
+      background: var(--bg-tertiary);
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: var(--accent-blue);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── Column config table ──────────────────────── */
+    .col-config {
+      display: flex;
+      gap: 16px;
+    }
+    .col-config-half { flex: 1; }
+    .col-config-title {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 4px 4px 0 0;
+    }
+    .col-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      font-size: 11px;
+    }
+    .col-row:last-child { border-bottom: none; }
+    .col-key { font-family: monospace; color: #93c5fd; width: 80px; flex-shrink: 0; }
+    .col-row-badge {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-weight: 700;
+    }
+    .row1-badge { background: rgba(59,130,246,0.2); color: #60a5fa; }
+    .row2-badge { background: rgba(168,85,247,0.2); color: #c084fc; }
+    .span-badge { background: rgba(34,197,94,0.2); color: #4ade80; }
+    .moved-badge { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .col-width { color: var(--text-muted); font-size: 10px; font-family: monospace; width: 35px; }
+    .col-source {
+      font-size: 9px;
+      color: var(--text-muted);
+      flex: 1;
+    }
+    .source-db { color: #34d399; }
+
+    .dot-indicator {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    /* ── scrollable demo ──────────────────────────── */
+    .scroll-demo {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .scroll-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    input[type=range] {
+      accent-color: var(--accent-amber);
+      width: 100%;
+      margin: 8px 0;
+    }
+
+    /* interactive date slider row */
+    .date-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .date-display {
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-amber);
+      min-width: 90px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ Page Header ══════════════════════════════════════ -->
+<div class="page-header">
+  <div>
+    <div class="page-title">Roster Pane — Header Redesign</div>
+    <div class="page-subtitle">Left Panel: date-effective Rank / Base / Fleet + full Crew Name spanning row</div>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:6px">
+    <span class="badge badge-amber">Design Review</span>
+    <span class="badge badge-blue">gantt / roster-pane</span>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ══ 1. Change Summary ════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">What Changes</div>
+  <div class="change-grid">
+    <div class="change-card">
+      <div class="change-card-title" style="color:#f87171">Before — current state</div>
+      <div class="change-item"><span class="change-dot dot-red"></span><span>Rank: taken from <code style="color:#93c5fd">RosterItem.actingRank</code> (first task in the row) — may be stale or wrong for past/future view</span></div>
+      <div class="change-item"><span class="change-dot dot-red"></span><span>Base: taken from <code style="color:#93c5fd">RosterItem.base</code> — same staleness issue</span></div>
+      <div class="change-item"><span class="change-dot dot-red"></span><span>Fleet: always empty <code style="color:#93c5fd">""</code> — not populated</span></div>
+      <div class="change-item"><span class="change-dot dot-red"></span><span>Crew Name: <code style="color:#93c5fd">lastName + " " + firstName</code> (no middle name), shown in a fixed 70px column in the bottom row alongside Fleet, YBH…</span></div>
+    </div>
+    <div class="change-card">
+      <div class="change-card-title" style="color:#4ade80">After — proposed</div>
+      <div class="change-item"><span class="change-dot dot-green"></span><span>Rank: queried from <code style="color:#93c5fd">crew_rank</code> where <code style="color:#93c5fd">eff_dt ≤ viewportLeftDate &lt; exp_dt</code></span></div>
+      <div class="change-item"><span class="change-dot dot-green"></span><span>Base: queried from <code style="color:#93c5fd">crew_base</code> with same date intersection</span></div>
+      <div class="change-item"><span class="change-dot dot-green"></span><span>Fleet: queried from <code style="color:#93c5fd">crew_fleet</code> with same date intersection — now visible</span></div>
+      <div class="change-item"><span class="change-dot dot-green"></span><span>Crew Name: <code style="color:#93c5fd">firstName + " " + middleName + " " + lastName</code>, spans the entire bottom row (like Pairing Pane's Comp column)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 2. Column Layout Comparison ═════════════════════ -->
+<div class="section">
+  <div class="section-title">Column Layout</div>
+  <div class="col-config">
+
+    <!-- BEFORE -->
+    <div class="col-config-half">
+      <div class="col-config-title label-before" style="display:block">Before</div>
+      <div class="col-row" style="border-top:1px solid var(--border-color)">
+        <span class="col-key">crewId</span>
+        <span class="col-row-badge row1-badge">row 1</span>
+        <span class="col-width">70px</span>
+        <span class="col-source">from crew.crewId</span>
+      </div>
+      <div class="col-row">
+        <span class="col-key">rank</span>
+        <span class="col-row-badge row1-badge">row 1</span>
+        <span class="col-width">45px</span>
+        <span class="col-source source-db">RosterItem.actingRank ⚠️</span>
+      </div>
+      <div class="col-row">
+        <span class="col-key">base</span>
+        <span class="col-row-badge row1-badge">row 1</span>
+        <span class="col-width">45px</span>
+        <span class="col-source source-db">RosterItem.base ⚠️</span>
+      </div>
+      <div class="col-row">
+        <span class="col-key">crewName</span>
+        <span class="col-row-badge row2-badge">row 2</span>
+        <span class="col-width">70px</span>
+        <span class="col-source">lastName + firstName (no middle)</span>
+      </div>
+      <div class="col-row">
+        <span class="col-key">fleet</span>
+        <span class="col-row-badge row2-badge">row 2</span>
+        <span class="col-width">50px</span>
+        <span class="col-source" style="color:#f87171">always empty ""</span>
+      </div>
+      <div class="col-row">
+        <span class="col-key">ybh</span>
+        <span class="col-row-badge row2-badge">row 2</span>
+        <span class="col-width">55px</span>
+        <span class="col-source">RosterItem.ybh</span>
+      </div>
+    </div>
+
+    <!-- AFTER -->
+    <div class="col-config-half">
+      <div class="col-config-title label-after" style="display:block">After (Proposed)</div>
+      <div class="col-row" style="border-top:1px solid var(--border-color)">
+        <span class="col-key">crewId</span>
+        <span class="col-row-badge row1-badge">row 1</span>
+        <span class="col-width">70px</span>
+        <span class="col-source">unchanged</span>
+      </div>
+      <div class="col-row">
+        <span class="col-key">rank</span>
+        <span class="col-row-badge row1-badge">row 1</span>
+        <span class="col-width">45px</span>
+        <span class="col-source source-db">crew_rank @ viewportLeftDate ✓</span>
+      </div>
+      <div class="col-row">
+        <span class="col-key">base</span>
+        <span class="col-row-badge row1-badge">row 1</span>
+        <span class="col-width">45px</span>
+        <span class="col-source source-db">crew_base @ viewportLeftDate ✓</span>
+      </div>
+      <div class="col-row" style="background:rgba(245,158,11,0.06)">
+        <span class="col-key">fleet</span>
+        <span class="col-row-badge row1-badge">row 1</span>
+        <span class="col-width" style="color:#fbbf24">50px</span>
+        <span class="col-source source-db">crew_fleet @ viewportLeftDate ✓ <span class="moved-badge col-row-badge">moved</span></span>
+      </div>
+      <div class="col-row">
+        <span class="col-key">ybh</span>
+        <span class="col-row-badge row1-badge">row 1</span>
+        <span class="col-width">55px</span>
+        <span class="col-source">unchanged</span>
+      </div>
+      <div class="col-row" style="background:rgba(34,197,94,0.06)">
+        <span class="col-key">crewName</span>
+        <span class="col-row-badge span-badge">row 2 span</span>
+        <span class="col-width" style="color:#4ade80">full</span>
+        <span class="col-source">firstName + middleName + lastName <span class="span-badge col-row-badge">spans all</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 3. Visual Mockup — Before & After ════════════════ -->
+<div class="section">
+  <div class="section-title">Visual Mockup</div>
+  <div class="compare-grid">
+
+    <!-- BEFORE -->
+    <div>
+      <span class="compare-label label-before">Before</span>
+      <div class="gantt-mockup" style="border-radius:0 8px 8px 8px">
+        <div class="gantt-toolbar">
+          <span>Roster Pane — Main</span>
+          <span class="toolbar-sep">·</span>
+          <span class="toolbar-pill">2025-01-15 → 2025-01-22</span>
+        </div>
+        <div class="gantt-body">
+          <!-- Panel left -->
+          <div class="panel w-total-before">
+            <!-- Column headers -->
+            <div class="panel-colheader">
+              <div class="col w-crewid">CREW ID</div>
+              <div class="col w-rank">RANK</div>
+              <div class="col w-base">BASE</div>
+              <div class="col w-crewname">NAME</div>
+              <div class="col w-fleet">FLEET</div>
+              <div class="col w-ybh">YBH</div>
+            </div>
+            <!-- Row 1 — frozen -->
+            <div class="panel-row frozen">
+              <div class="row-top">
+                <div class="col w-crewid" style="color:#fbbf24">F8001</div>
+                <div class="col w-rank"><span class="rank-ca">CA</span></div>
+                <div class="col w-base"><span class="base-hkg">HKG</span></div>
+              </div>
+              <div class="row-bottom-multi">
+                <div class="col w-crewname" style="font-size:9px">CHAN John</div>
+                <div class="col w-fleet"><span class="empty-val">—</span></div>
+                <div class="col w-ybh" style="color:#34d399">842</div>
+              </div>
+            </div>
+            <!-- Row 2 -->
+            <div class="panel-row">
+              <div class="row-top">
+                <div class="col w-crewid">F8023</div>
+                <div class="col w-rank"><span class="rank-fo">FO</span></div>
+                <div class="col w-base"><span class="base-hkg">HKG</span></div>
+              </div>
+              <div class="row-bottom-multi">
+                <div class="col w-crewname" style="font-size:9px">LEE Michael</div>
+                <div class="col w-fleet"><span class="empty-val">—</span></div>
+                <div class="col w-ybh" style="color:#34d399">612</div>
+              </div>
+            </div>
+            <!-- Row 3 -->
+            <div class="panel-row selected">
+              <div class="row-top">
+                <div class="col w-crewid">F8047</div>
+                <div class="col w-rank"><span class="rank-ca">CA</span> <span class="stale-rank">⚠</span></div>
+                <div class="col w-base"><span class="base-hkg">HKG</span></div>
+              </div>
+              <div class="row-bottom-multi">
+                <div class="col w-crewname" style="font-size:9px">WONG David</div>
+                <div class="col w-fleet"><span class="empty-val">—</span></div>
+                <div class="col w-ybh" style="color:#34d399">455</div>
+              </div>
+            </div>
+            <!-- Row 4 -->
+            <div class="panel-row">
+              <div class="row-top">
+                <div class="col w-crewid">F8089</div>
+                <div class="col w-rank"><span class="rank-fo">FO</span></div>
+                <div class="col w-base" style="color:#fb923c">PVG</div>
+              </div>
+              <div class="row-bottom-multi">
+                <div class="col w-crewname" style="font-size:9px">LI Xiao</div>
+                <div class="col w-fleet"><span class="empty-val">—</span></div>
+                <div class="col w-ybh" style="color:#34d399">389</div>
+              </div>
+            </div>
+          </div>
+          <!-- Timeline placeholder -->
+          <div class="timeline">
+            <div class="tl-header">
+              <div class="tl-date-row">
+                <div class="tl-date-cell" style="width:120px">Jan 15</div>
+                <div class="tl-date-cell" style="width:120px">Jan 16</div>
+                <div class="tl-date-cell" style="width:120px">Jan 17</div>
+              </div>
+              <div class="tl-hour-row">
+                <div class="tl-hour-cell" style="width:60px">00</div>
+                <div class="tl-hour-cell" style="width:60px">12</div>
+                <div class="tl-hour-cell" style="width:60px">00</div>
+                <div class="tl-hour-cell" style="width:60px">12</div>
+                <div class="tl-hour-cell" style="width:60px">00</div>
+                <div class="tl-hour-cell" style="width:60px">12</div>
+              </div>
+            </div>
+            <div class="tl-body">
+              <div class="tl-row"><div class="task-bar" style="left:10px;width:110px;background:linear-gradient(90deg,#1e40af,#2563eb)">F8001 HKG-PVG</div></div>
+              <div class="tl-row"><div class="task-bar" style="left:140px;width:100px;background:linear-gradient(90deg,#1e40af,#2563eb)">F8012 PVG-HKG</div></div>
+              <div class="tl-row"><div class="task-bar" style="left:60px;width:130px;background:linear-gradient(90deg,#1e40af,#2563eb)">F8003 HKG-MFM</div></div>
+              <div class="tl-row"><div class="task-bar" style="left:20px;width:90px;background:linear-gradient(90deg,#1e40af,#2563eb)">F8022 HKG-NGB</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#f87171;margin-top:6px;padding-left:4px">
+        ⚠ Fleet always empty · Rank/Base from task (may be wrong date) · Name column 70px (no middle name)
+      </div>
+    </div>
+
+    <!-- AFTER -->
+    <div>
+      <span class="compare-label label-after">After (Proposed — viewport at Jan 15)</span>
+      <div class="gantt-mockup" style="border-radius:0 8px 8px 8px">
+        <div class="gantt-toolbar">
+          <span>Roster Pane — Main</span>
+          <span class="toolbar-sep">·</span>
+          <span class="toolbar-pill" style="color:#fbbf24;border-color:rgba(245,158,11,0.4)">⊢ Jan 15 (viewport left)</span>
+        </div>
+        <div class="gantt-body">
+          <!-- Panel left -->
+          <div class="panel w-total-after">
+            <!-- Column headers -->
+            <div class="panel-colheader">
+              <div class="col w-crewid">CREW ID</div>
+              <div class="col w-rank">RANK</div>
+              <div class="col w-base">BASE</div>
+              <div class="col w-fleet">FLEET</div>
+              <div class="col w-ybh">YBH</div>
+            </div>
+            <!-- Row 1 — frozen -->
+            <div class="panel-row frozen">
+              <div class="row-top">
+                <div class="col w-crewid" style="color:#fbbf24">F8001</div>
+                <div class="col w-rank"><span class="rank-ca">CA</span></div>
+                <div class="col w-base"><span class="base-hkg">HKG</span></div>
+                <div class="col w-fleet"><span class="fleet-a330">A330</span></div>
+                <div class="col w-ybh" style="color:#34d399">842</div>
+              </div>
+              <div class="row-bottom">
+                <span class="name-span">John M. CHAN</span>
+              </div>
+            </div>
+            <!-- Row 2 -->
+            <div class="panel-row">
+              <div class="row-top">
+                <div class="col w-crewid">F8023</div>
+                <div class="col w-rank"><span class="rank-fo">FO</span></div>
+                <div class="col w-base"><span class="base-hkg">HKG</span></div>
+                <div class="col w-fleet"><span class="fleet-a320">A320</span></div>
+                <div class="col w-ybh" style="color:#34d399">612</div>
+              </div>
+              <div class="row-bottom">
+                <span class="name-span">Michael K. LEE</span>
+              </div>
+            </div>
+            <!-- Row 3 -->
+            <div class="panel-row selected">
+              <div class="row-top">
+                <div class="col w-crewid">F8047</div>
+                <div class="col w-rank"><span class="rank-ca">CA</span></div>
+                <div class="col w-base"><span class="base-hkg">HKG</span></div>
+                <div class="col w-fleet"><span class="fleet-a330">A330</span></div>
+                <div class="col w-ybh" style="color:#34d399">455</div>
+              </div>
+              <div class="row-bottom">
+                <span class="name-span">David T. WONG</span>
+              </div>
+            </div>
+            <!-- Row 4 -->
+            <div class="panel-row">
+              <div class="row-top">
+                <div class="col w-crewid">F8089</div>
+                <div class="col w-rank"><span class="rank-fo">FO</span></div>
+                <div class="col w-base" style="color:#fb923c">PVG</div>
+                <div class="col w-fleet"><span class="fleet-a320">A320</span></div>
+                <div class="col w-ybh" style="color:#34d399">389</div>
+              </div>
+              <div class="row-bottom">
+                <span class="name-span">Xiao B. LI</span>
+              </div>
+            </div>
+          </div>
+          <!-- Timeline placeholder -->
+          <div class="timeline">
+            <div class="tl-header" style="position:relative">
+              <div class="tl-date-row">
+                <div class="tl-date-cell" style="width:120px">Jan 15</div>
+                <div class="tl-date-cell" style="width:120px">Jan 16</div>
+                <div class="tl-date-cell" style="width:120px">Jan 17</div>
+              </div>
+              <div class="tl-hour-row">
+                <div class="tl-hour-cell" style="width:60px">00</div>
+                <div class="tl-hour-cell" style="width:60px">12</div>
+                <div class="tl-hour-cell" style="width:60px">00</div>
+                <div class="tl-hour-cell" style="width:60px">12</div>
+                <div class="tl-hour-cell" style="width:60px">00</div>
+                <div class="tl-hour-cell" style="width:60px">12</div>
+              </div>
+              <div class="tl-viewport-line" style="left:0"></div>
+            </div>
+            <div class="tl-body">
+              <div class="tl-row"><div class="task-bar" style="left:10px;width:110px;background:linear-gradient(90deg,#1e40af,#2563eb)">F8001 HKG-PVG</div></div>
+              <div class="tl-row"><div class="task-bar" style="left:140px;width:100px;background:linear-gradient(90deg,#1e40af,#2563eb)">F8012 PVG-HKG</div></div>
+              <div class="tl-row"><div class="task-bar" style="left:60px;width:130px;background:linear-gradient(90deg,#1e40af,#2563eb)">F8003 HKG-MFM</div></div>
+              <div class="tl-row"><div class="task-bar" style="left:20px;width:90px;background:linear-gradient(90deg,#1e40af,#2563eb)">F8022 HKG-NGB</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#4ade80;margin-top:6px;padding-left:4px">
+        ✓ Fleet populated from crew_fleet · Rank/Base from date-effective tables · Full name spans row 2
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 4. Date-Effective Logic ══════════════════════════ -->
+<div class="section">
+  <div class="section-title">Date-Effective Query Logic</div>
+  <div class="data-diagram">
+    <div class="diagram-title">SQL Condition: <span class="code">eff_dt ≤ viewportLeftDate AND (exp_dt IS NULL OR exp_dt > viewportLeftDate)</span></div>
+
+    <div style="display:flex;gap:32px;align-items:flex-start">
+      <!-- Sample records table -->
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Sample: crew_rank for F8047</div>
+        <table class="table-small">
+          <thead>
+            <tr><th>rank</th><th>eff_dt</th><th>exp_dt</th><th>Viewport = Jan 15</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="code">FO</td>
+              <td class="code">2022-03-01</td>
+              <td class="code">2024-06-30</td>
+              <td><span class="match-no">✗ exp_dt past</span></td>
+            </tr>
+            <tr class="active-row">
+              <td class="code">CA</td>
+              <td class="code">2024-07-01</td>
+              <td class="code">NULL</td>
+              <td><span class="match-yes">✓ active</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:8px">→ Display: <span class="rank-ca" style="font-weight:700;font-family:monospace">CA</span></div>
+      </div>
+
+      <!-- Axis diagram -->
+      <div style="flex:1.5">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Visual timeline for F8047 rank history</div>
+        <div class="timeline-axis">
+          <div class="axis-line"></div>
+          <div class="axis-arrow"></div>
+
+          <!-- FO range -->
+          <div class="eff-range" style="left:4%;width:38%;background:rgba(239,68,68,0.35);border:1px solid rgba(239,68,68,0.5)">FO</div>
+          <div class="eff-range-label" style="left:4%">2022-03-01</div>
+          <div class="eff-range-label" style="left:42%">2024-06-30</div>
+
+          <!-- CA range -->
+          <div class="eff-range" style="left:43%;width:50%;background:rgba(59,130,246,0.35);border:1px solid rgba(59,130,246,0.5)">CA →</div>
+          <div class="eff-range-label" style="left:43%">2024-07-01</div>
+          <div class="eff-range-label" style="left:90%">∞</div>
+
+          <!-- Viewport marker -->
+          <div class="viewport-marker" style="left:70%">
+            <div class="viewport-marker-label">Jan 15, 2025</div>
+          </div>
+
+          <!-- Axis ticks -->
+          <div class="axis-tick" style="left:4%"><div class="tick-line"></div></div>
+          <div class="axis-tick" style="left:43%"><div class="tick-line"></div></div>
+          <div class="axis-tick" style="left:70%"><div class="tick-line"></div><div class="tick-label" style="color:var(--accent-amber)">viewport<br>left edge</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive demo -->
+    <div class="scroll-demo" style="margin-top:8px">
+      <div style="font-weight:600;font-size:12px;margin-bottom:8px">Interactive: drag the viewport date to see how rank/base/fleet resolve</div>
+      <div class="date-slider-row">
+        <span style="font-size:11px;color:var(--text-muted)">Viewport left date:</span>
+        <span class="date-display" id="dateDisplay">2025-01-15</span>
+      </div>
+      <input type="range" id="dateSlider" min="0" max="100" value="80">
+      <div id="resolvedValues" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px"></div>
+      <div class="scroll-note">
+        <span style="color:var(--accent-amber)">★</span>
+        Rows update as you scroll the timeline — values reflect what was effective on that date
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 5. Implementation Approach ══════════════════════ -->
+<div class="section">
+  <div class="section-title">Implementation Approach (Proposed)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+
+    <div class="change-card">
+      <div class="change-card-title" style="color:#60a5fa">① Backend — Crew History API</div>
+      <div style="font-size:11px;color:var(--text-secondary);line-height:1.7">
+        Extend <code class="code">GET /api/crew/:id/detail</code> (or add batch endpoint) to return full <strong>rank / base / fleet history arrays</strong> instead of just <code class="code">currentRank</code>.<br><br>
+        <span class="code">CrewDetail.rankHistory: CrewRankRecord[]</span><br>
+        <span class="code">CrewDetail.baseHistory: CrewBaseRecord[]</span><br>
+        <span class="code">CrewDetail.fleetHistory: CrewFleetRecord[]</span>
+      </div>
+    </div>
+
+    <div class="change-card">
+      <div class="change-card-title" style="color:#4ade80">② Frontend — Derived Values</div>
+      <div style="font-size:11px;color:var(--text-secondary);line-height:1.7">
+        In <code class="code">roster-pane.tsx</code>, compute effective rank/base/fleet from history arrays using <code class="code">viewportLeftDate</code>:<br><br>
+        <code class="code">scrollX → xToTime() → viewportLeftDate</code><br><br>
+        <code class="code">useMemo</code> on <code class="code">[selectedCrewIds, crewDetailMap, viewportLeftDate]</code> — only re-computes when date changes.
+      </div>
+    </div>
+
+    <div class="change-card">
+      <div class="change-card-title" style="color:#c084fc">③ Canvas — Two-Row with Span</div>
+      <div style="font-size:11px;color:var(--text-secondary);line-height:1.7">
+        Roster pane already uses <code class="code">drawTwoLineRow()</code>. Set <code class="code">bottomRowKey = 'crewName'</code> so the full name spans the bottom 18px strip.<br><br>
+        Move <code class="code">fleet</code> column config from <code class="code">row: 2 → row: 1</code>. Move <code class="code">ybh</code> to row 1 as well.<br><br>
+        Crew name value: <code class="code">firstName + (middleName ? " " + middleName : "") + " " + lastName</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 6. Open Questions ════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Open Questions — Need Your Input</div>
+  <div class="qa-list">
+
+    <div class="qa-item">
+      <div class="qa-num">1</div>
+      <div class="qa-body">
+        <div class="qa-question">When viewport date changes (scroll), how should rank/base/fleet update?</div>
+        <div class="qa-options">
+          <div class="qa-option"><span class="qa-option-key">A</span>Live — re-compute on every scroll event (fast, all data on frontend from history arrays)</div>
+          <div class="qa-option"><span class="qa-option-key">B</span>Debounced — re-compute 300ms after scrolling stops (slight lag, reduces churn)</div>
+          <div class="qa-option"><span class="qa-option-key">C</span>Manual — only update when a refresh button is clicked (simplest, but not reactive)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-num">2</div>
+      <div class="qa-body">
+        <div class="qa-question">Where should YBH (and other stat columns) go since crewName now spans the full bottom row?</div>
+        <div class="qa-options">
+          <div class="qa-option"><span class="qa-option-key">A ✓</span>Move YBH (and optionally MBH, YAL… when visible) to row 1 alongside rank/base/fleet — total row 1 width: 70+45+45+50+55 = 265px</div>
+          <div class="qa-option"><span class="qa-option-key">B</span>Keep YBH in a third-row concept (triple-row layout — new design territory)</div>
+          <div class="qa-option"><span class="qa-option-key">C</span>Drop stats from the panel; show on hover only (tooltip)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-num">3</div>
+      <div class="qa-body">
+        <div class="qa-question">What if a crew has multiple effective rank records at the viewport date (e.g., two overlapping records)?</div>
+        <div class="qa-options">
+          <div class="qa-option"><span class="qa-option-key">A</span>Show the most recent (highest eff_dt) — most likely intended behaviour</div>
+          <div class="qa-option"><span class="qa-option-key">B</span>Show all concatenated (e.g., "CA / FCN") — for dual-type ratings</div>
+          <div class="qa-option"><span class="qa-option-key">C</span>Show the one with <code class="code">position = '1'</code> (primary position)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-num">4</div>
+      <div class="qa-body">
+        <div class="qa-question">Name display format in the spanning bottom row — which format?</div>
+        <div class="qa-options">
+          <div class="qa-option"><span class="qa-option-key">A</span><code class="code">firstName + " " + middleName + " " + lastName</code> → "John M. CHAN"</div>
+          <div class="qa-option"><span class="qa-option-key">B</span><code class="code">lastName + ", " + firstName + " " + middleName</code> → "CHAN, John M."</div>
+          <div class="qa-option"><span class="qa-option-key">C</span>Use <code class="code">preferredName</code> when available, fall back to firstName</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+  // ── Interactive date slider ──────────────────────────
+  const crewData = [
+    {
+      id: 'F8001',
+      ranks: [{rank:'FO',eff:'2019-01-01',exp:'2021-06-30'},{rank:'CA',eff:'2021-07-01',exp:null}],
+      bases: [{base:'HKG',eff:'2019-01-01',exp:null}],
+      fleets: [{fleet:'A320',eff:'2019-01-01',exp:'2022-12-31'},{fleet:'A330',eff:'2023-01-01',exp:null}],
+    },
+    {
+      id: 'F8047',
+      ranks: [{rank:'FO',eff:'2022-03-01',exp:'2024-06-30'},{rank:'CA',eff:'2024-07-01',exp:null}],
+      bases: [{base:'HKG',eff:'2022-03-01',exp:null}],
+      fleets: [{fleet:'A320',eff:'2022-03-01',exp:'2023-06-30'},{fleet:'A330',eff:'2023-07-01',exp:null}],
+    },
+  ]
+
+  const MIN_DATE = new Date('2022-01-01')
+  const MAX_DATE = new Date('2026-01-01')
+
+  function sliderToDate(val) {
+    const t = MIN_DATE.getTime() + (val / 100) * (MAX_DATE.getTime() - MIN_DATE.getTime())
+    return new Date(t)
+  }
+
+  function getEffective(records, dateField, valueField, date) {
+    let best = null
+    for (const r of records) {
+      const eff = new Date(r.eff)
+      const exp = r.exp ? new Date(r.exp) : null
+      if (eff <= date && (exp === null || exp > date)) {
+        if (!best || eff > new Date(best.eff)) best = r
+      }
+    }
+    return best ? best[valueField] : '—'
+  }
+
+  const rankColors = {CA:'#60a5fa',FO:'#4ade80',FE:'#fbbf24','—':'#64748b'}
+  const fleetColors = {A320:'#fb923c',A330:'#f472b6','—':'#64748b'}
+
+  function updateSlider() {
+    const val = +document.getElementById('dateSlider').value
+    const date = sliderToDate(val)
+    const dateStr = date.toISOString().slice(0,10)
+    document.getElementById('dateDisplay').textContent = dateStr
+
+    const container = document.getElementById('resolvedValues')
+    container.innerHTML = ''
+
+    for (const crew of crewData) {
+      const rank = getEffective(crew.ranks, 'eff', 'rank', date)
+      const base = getEffective(crew.bases, 'eff', 'base', date)
+      const fleet = getEffective(crew.fleets, 'eff', 'fleet', date)
+      const rColor = rankColors[rank] || '#64748b'
+      const fColor = fleetColors[fleet] || '#64748b'
+
+      const pill = document.createElement('div')
+      pill.style.cssText = `
+        display:flex;align-items:center;gap:6px;padding:5px 10px;
+        background:#1e293b;border:1px solid #334155;border-radius:6px;
+        font-family:monospace;font-size:11px;
+      `
+      pill.innerHTML = `
+        <span style="color:#94a3b8;min-width:42px">${crew.id}</span>
+        <span style="color:${rColor};font-weight:700;min-width:28px">${rank}</span>
+        <span style="color:#34d399;min-width:32px">${base}</span>
+        <span style="color:${fColor};min-width:36px">${fleet}</span>
+      `
+      container.appendChild(pill)
+    }
+  }
+
+  document.getElementById('dateSlider').addEventListener('input', updateSlider)
+  updateSlider()
+</script>
+
+</body>
+</html>

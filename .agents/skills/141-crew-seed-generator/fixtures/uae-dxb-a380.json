@@ -1,0 +1,54 @@
+{
+  "groups": [
+    {
+      "label": "UAE / DXB / A380",
+      "idPrefix": "K",
+      "idStart": 1001,
+      "count": 40,
+      "caCount": 20,
+      "nationality": "AE",
+      "filiale": "F8",
+      "emplBaseDate": "2022-03-01",
+      "base": {
+        "code": "DXB",
+        "name": "Dubai International Airport",
+        "icao": "OMDB",
+        "city": "DXB",
+        "dir": "I",
+        "zoneId": "Asia/Dubai",
+        "utcOffsetMin": 240,
+        "country": "AE"
+      },
+      "fleet": {
+        "code": "A380",
+        "description": "Airbus A380",
+        "fleetGrp": "A380",
+        "acType": "A380",
+        "marketAcType": "Airbus A380-800",
+        "restfacility": 1,
+        "body": "W"
+      },
+      "ranks": {
+        "CA": { "code": "CA", "division": "P", "description": "Captain", "position": "PIC" },
+        "FO": { "code": "FO", "division": "P", "description": "First Officer", "position": "SIC" }
+      },
+      "names": {
+        "maleFirst": [
+          "Ahmed", "Mohammed", "Khalid", "Saeed", "Rashid", "Sultan", "Hamad", "Omar",
+          "Faisal", "Abdulla", "Majid", "Salem", "Tariq", "Nasser", "Yousef", "Hassan",
+          "Marwan", "Khalifa", "Saif", "Waleed"
+        ],
+        "femaleFirst": [
+          "Fatima", "Aisha", "Mariam", "Noura", "Shamma", "Hessa", "Alya", "Latifa",
+          "Amna", "Reem", "Maitha", "Wadha", "Sara", "Salama"
+        ],
+        "last": [
+          "Al Suwaidi", "Al Falasi", "Al Mazrouei", "Al Shamsi", "Al Marri", "Al Kaabi",
+          "Al Blooshi", "Al Zaabi", "Al Hammadi", "Al Nuaimi", "Al Qubaisi", "Al Dhaheri",
+          "Al Ketbi", "Al Rumaithi", "Al Mansoori", "Al Ali", "Al Hosani", "Al Ameri",
+          "Al Junaibi", "Al Muhairi"
+        ]
+      }
+    }
+  ]
+}

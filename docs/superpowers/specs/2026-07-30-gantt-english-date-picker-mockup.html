@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gantt English Date Picker Mockup</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111418;
+      --panel: #181d23;
+      --panel-2: #20262e;
+      --line: #303844;
+      --text: #eef2f6;
+      --muted: #9aa6b2;
+      --accent: #46a3ff;
+      --ok: #42d392;
+      --warn: #f2b84b;
+      --danger: #ff6b6b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      background: #151a20;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+      overflow-x: auto;
+    }
+
+    .tool {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 13px;
+    }
+
+    .tool:hover {
+      border-color: var(--line);
+      color: var(--text);
+      background: var(--panel-2);
+    }
+
+    .divider {
+      width: 1px;
+      height: 18px;
+      background: var(--line);
+      margin: 0 3px;
+      flex: 0 0 auto;
+    }
+
+    .date-shell {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+
+    .date-display {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 28px;
+      min-width: 116px;
+      padding: 0 9px;
+      border: 1px solid #3b4654;
+      border-radius: 6px;
+      background: #1d232a;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .date-display.compact {
+      min-width: 94px;
+    }
+
+    .date-display.range {
+      min-width: 230px;
+      justify-content: flex-start;
+    }
+
+    .date-display:after {
+      content: "⌄";
+      margin-left: 7px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .range-mark {
+      color: var(--muted);
+      padding: 0 2px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .card {
+      min-height: 310px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .card.recommended {
+      border-color: color-mix(in srgb, var(--accent) 72%, var(--line));
+      box-shadow: 0 0 0 1px rgb(70 163 255 / 20%);
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 42px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #151a20;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: rgb(70 163 255 / 16%);
+      color: #8bc5ff;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .card-body {
+      padding: 14px;
+    }
+
+    .preview {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #101419;
+      overflow: hidden;
+    }
+
+    .preview-title {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .preview-body {
+      padding: 12px;
+    }
+
+    .mini-calendar {
+      width: 248px;
+      border: 1px solid #3b4654;
+      border-radius: 8px;
+      background: #1b2128;
+      box-shadow: 0 12px 30px rgb(0 0 0 / 35%);
+    }
+
+    .mini-calendar .month {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 650;
+    }
+
+    .mini-calendar .nav {
+      color: var(--muted);
+    }
+
+    .week,
+    .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      padding: 7px 9px 0;
+    }
+
+    .days {
+      padding-bottom: 10px;
+    }
+
+    .week span,
+    .days span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 26px;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+
+    .week span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .days .off {
+      color: #566170;
+    }
+
+    .days .selected,
+    .days .range {
+      background: rgb(70 163 255 / 18%);
+      color: #d8ecff;
+    }
+
+    .days .selected {
+      outline: 1px solid var(--accent);
+    }
+
+    ul {
+      margin: 14px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .decision {
+      margin-top: 22px;
+      padding: 14px 16px;
+      border: 1px solid color-mix(in srgb, var(--ok) 45%, var(--line));
+      border-radius: 8px;
+      background: rgb(66 211 146 / 8%);
+      line-height: 1.55;
+    }
+
+    .decision strong {
+      color: #9af0c5;
+    }
+
+    @media (max-width: 920px) {
+      .page {
+        padding: 18px;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Gantt English Date Picker Mockup</h1>
+    <p class="subtitle">
+      Goal: replace the browser-native date input with a controlled English picker so the toolbar and popup never depend on operating-system locale.
+      The Gantt planning values still store and parse calendar dates as <strong>YYYY-MM-DD</strong>.
+    </p>
+
+    <section class="toolbar" aria-label="Gantt toolbar preview">
+      <button class="tool" title="Filter">≡</button>
+      <button class="tool" title="Refresh">↻</button>
+      <div class="divider"></div>
+      <div class="date-shell">
+        <button class="date-display" type="button">Jul 1, 2026</button>
+        <span class="range-mark">~</span>
+        <button class="date-display" type="button">Jul 31, 2026</button>
+      </div>
+      <div class="divider"></div>
+      <button class="tool" title="Undo">↶</button>
+      <button class="tool" title="Redo">↷</button>
+      <button class="tool" title="Save">✓</button>
+      <div class="divider"></div>
+      <button class="tool" title="Zoom out">−</button>
+      <button class="tool" title="Zoom in">＋</button>
+      <div class="divider"></div>
+      <button class="tool" title="Roster">R</button>
+      <button class="tool" title="Pairing">P</button>
+      <button class="tool" title="Flight">F</button>
+    </section>
+
+    <section class="layout">
+      <article class="card recommended">
+        <div class="card-head">
+          <h2>A. Two English Date Buttons</h2>
+          <span class="badge">Recommended</span>
+        </div>
+        <div class="card-body">
+          <div class="preview">
+            <div class="preview-title">Toolbar control</div>
+            <div class="preview-body">
+              <div class="date-shell">
+                <button class="date-display" type="button">Jul 1, 2026</button>
+                <span class="range-mark">~</span>
+                <button class="date-display" type="button">Jul 31, 2026</button>
+              </div>
+            </div>
+          </div>
+          <ul>
+            <li>Most similar to the current start/end field layout.</li>
+            <li>Each button opens the same custom English calendar.</li>
+            <li>Keeps keyboard editing possible through a small text field inside the popup.</li>
+            <li>Best fit for a dense operations toolbar.</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>B. One Range Button</h2>
+        </div>
+        <div class="card-body">
+          <div class="preview">
+            <div class="preview-title">Toolbar control</div>
+            <div class="preview-body">
+              <button class="date-display range" type="button">Jul 1 – Jul 31, 2026</button>
+            </div>
+          </div>
+          <ul>
+            <li>Consumes less toolbar width than two full dates.</li>
+            <li>Good if start/end are usually changed together.</li>
+            <li>Less direct when planners only need to change one side.</li>
+            <li>Requires a more complex range-selection popup.</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>C. Compact Month-Day Buttons</h2>
+        </div>
+        <div class="card-body">
+          <div class="preview">
+            <div class="preview-title">Toolbar control</div>
+            <div class="preview-body">
+              <div class="date-shell">
+                <button class="date-display compact" type="button">Jul 1</button>
+                <span class="range-mark">~</span>
+                <button class="date-display compact" type="button">Jul 31</button>
+              </div>
+            </div>
+          </div>
+          <ul>
+            <li>Very compact for narrow screens.</li>
+            <li>Year appears in tooltip and popup header.</li>
+            <li>Can be ambiguous across year boundaries.</li>
+            <li>Better as a responsive fallback than the primary desktop display.</li>
+          </ul>
+        </div>
+      </article>
+    </section>
+
+    <section class="layout" aria-label="Calendar popup preview">
+      <article class="card recommended">
+        <div class="card-head">
+          <h2>Popup Preview</h2>
+          <span class="badge">English only</span>
+        </div>
+        <div class="card-body">
+          <div class="mini-calendar">
+            <div class="month">
+              <span class="nav">‹</span>
+              <span>July 2026</span>
+              <span class="nav">›</span>
+            </div>
+            <div class="week">
+              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="days">
+              <span class="off">28</span><span class="off">29</span><span class="off">30</span><span class="selected">1</span><span class="range">2</span><span class="range">3</span><span class="range">4</span>
+              <span class="range">5</span><span class="range">6</span><span class="range">7</span><span class="range">8</span><span class="range">9</span><span class="range">10</span><span class="range">11</span>
+              <span class="range">12</span><span class="range">13</span><span class="range">14</span><span class="range">15</span><span class="range">16</span><span class="range">17</span><span class="range">18</span>
+              <span class="range">19</span><span class="range">20</span><span class="range">21</span><span class="range">22</span><span class="range">23</span><span class="range">24</span><span class="range">25</span>
+              <span class="range">26</span><span class="range">27</span><span class="range">28</span><span class="range">29</span><span class="range">30</span><span class="selected">31</span><span class="off">1</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Behavior Contract</h2>
+        </div>
+        <div class="card-body">
+          <ul>
+            <li>No native <code>input type="date"</code> UI.</li>
+            <li>Visible labels use English month and weekday names.</li>
+            <li>Parsing still accepts <code>YYYY-MM-DD</code> for precision and automation.</li>
+            <li>Timezone behavior stays identical to the current Gantt date range picker.</li>
+            <li>Existing three-month planning-window constraint remains enforced.</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Testing Notes</h2>
+        </div>
+        <div class="card-body">
+          <ul>
+            <li>Playwright should assert toolbar labels such as <code>Jul 1, 2026</code>.</li>
+            <li>Run the same test with browser locale changed to prove labels stay English.</li>
+            <li>Verify changing start/end reloads panes through the existing auto-apply path.</li>
+            <li>Run <code>npm run check:ui</code> after implementation style changes.</li>
+          </ul>
+        </div>
+      </article>
+    </section>
+
+    <section class="decision">
+      <strong>Recommended direction:</strong> use option A for desktop and keep option C as a responsive fallback below the toolbar's narrow breakpoint.
+      This avoids the browser-native calendar entirely while preserving the current two-field mental model.
+    </section>
+  </main>
+</body>
+</html>

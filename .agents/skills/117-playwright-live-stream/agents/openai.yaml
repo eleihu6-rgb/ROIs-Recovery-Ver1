@@ -1,0 +1,6 @@
+interface:
+  display_name: "117 playwright live stream"
+  short_description: "Project skill 117-playwright-live-stream"
+  default_prompt: "Use $117-playwright-live-stream for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

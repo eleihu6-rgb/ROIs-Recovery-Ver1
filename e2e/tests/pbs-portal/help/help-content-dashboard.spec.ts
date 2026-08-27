@@ -1,0 +1,56 @@
+import { expect, test } from '@playwright/test'
+import { gotoHelp, openHelpTopic } from './help-test-utils'
+
+test.use({ storageState: { cookies: [], origins: [] } })
+
+test.describe('PBS Portal Help dashboard content', () => {
+  test('PBS-3104 — dashboard topics describe only current Dashboard behavior', async ({ page }) => {
+    await gotoHelp(page)
+
+    await openHelpTopic(page, 'dashboard-overview')
+    await expect(page.getByTestId('help-article')).toContainText('BIDDING CALENDAR')
+    await expect(page.getByTestId('help-article')).toContainText('BID INFORMATION-LOCAL TIME')
+    await expect(page.getByTestId('help-article')).toContainText('MESSAGE CENTER')
+    await expect(page.getByTestId('help-article')).toContainText('Pre-assigned Duties')
+    await expect(page.getByTestId('help-article')).toContainText('Covered days')
+    await expect(page.getByTestId('help-article')).toContainText('Duty Details')
+    await expect(page.getByTestId('help-article')).toContainText('EXISTING CREDIT')
+    await expect(page.getByTestId('help-article')).toContainText('not minutes')
+    await expect(page.getByTestId('help-article')).not.toContainText('TOTAL BIDDER')
+    await expect(page.getByTestId('help-article')).not.toContainText('BID PACKAGE')
+
+    await openHelpTopic(page, 'dashboard-profile')
+    await expect(page.getByTestId('help-article')).toContainText('BID START')
+    await expect(page.getByTestId('help-article')).toContainText('BID END')
+    await expect(page.getByTestId('help-article')).toContainText('REMAINING')
+    await expect(page.getByTestId('help-article')).toContainText('do not expect a live second-by-second timer')
+    await expect(page.getByTestId('help-article')).toContainText('EXISTING CREDIT')
+    await expect(page.getByTestId('help-article')).toContainText("current roster period's manday summary")
+    await expect(page.getByTestId('help-article')).toContainText('LAST LOGIN')
+    await expect(page.getByTestId('help-article')).toContainText('falls back to UTC')
+
+    await openHelpTopic(page, 'dashboard-calendar')
+    await expect(page.getByTestId('help-article')).toContainText('BIDDING CALENDAR')
+    await expect(page.getByTestId('help-article')).toContainText('T1-T7')
+    await expect(page.getByTestId('help-article')).toContainText('Colored entries')
+    await expect(page.getByTestId('help-article')).toContainText('23/33')
+    await expect(page.getByTestId('help-article')).toContainText('requested / max')
+    await expect(page.getByTestId('help-article')).toContainText('same crew requests the same date in multiple Tiers')
+    await expect(page.getByTestId('help-article')).toContainText('total active crew minus pairing demand')
+    await expect(page.getByTestId('help-article')).toContainText('Green entries show Days Off')
+    await expect(page.getByTestId('help-article')).toContainText('Blue entries show Pairing')
+    await expect(page.getByTestId('help-article')).not.toContainText('Layer')
+
+    await openHelpTopic(page, 'dashboard-entries')
+    await expect(page.getByTestId('help-article')).toContainText('MESSAGE CENTER')
+    await expect(page.getByTestId('help-article')).toContainText('Pre-assigned Duties')
+    await expect(page.getByTestId('help-article')).toContainText('Duties')
+    await expect(page.getByTestId('help-article')).toContainText('Covered days')
+    await expect(page.getByTestId('help-article')).toContainText('Duty Details')
+    await expect(page.getByTestId('help-article')).toContainText('Full day')
+    await expect(page.getByTestId('help-article')).toContainText('GDO')
+    await expect(page.getByTestId('help-article')).toContainText('VGDO')
+    await expect(page.getByTestId('help-article')).toContainText('18:05-04:55')
+    await expect(page.getByTestId('help-article')).toContainText('do not depend on whether Award has been published')
+  })
+})

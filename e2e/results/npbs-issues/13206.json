@@ -1,0 +1,25 @@
+{
+  "employeeId": "13206",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 3,
+  "placed": 1,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T3",
+      "name": "Max Consecutive Days On",
+      "code": 202,
+      "page": "days-off",
+      "predicate": "Set Condition Maximum Days On In A Row 3",
+      "reason": "unsupported-input: stepper for Max Consecutive Days On",
+      "image": "image/pbs/13206_PBS-3328_T3-202_unsupported-input_20260625-055649-694.png"
+    }
+  ]
+}

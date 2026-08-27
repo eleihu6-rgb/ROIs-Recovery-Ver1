@@ -1,0 +1,40 @@
+{
+  "employeeId": "2072",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 6,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 105,
+      "name": "Pairing Total Credit"
+    },
+    {
+      "tier": "T2",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T3",
+      "code": 105,
+      "name": "Pairing Total Credit"
+    },
+    {
+      "tier": "T5",
+      "code": 105,
+      "name": "Pairing Total Credit"
+    },
+    {
+      "tier": "T6",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T7",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": []
+}

@@ -1,0 +1,56 @@
+import type { DaysOffPageData } from "@/features/days-off/days-off-draft-mappers";
+
+export const daysOffPageData: DaysOffPageData = {
+  preferOffConfig: {
+    weekdays: [
+      { code: "MON", name: "Monday", order: 1, isoDay: 1 },
+      { code: "TUE", name: "Tuesday", order: 2, isoDay: 2 },
+      { code: "WED", name: "Wednesday", order: 3, isoDay: 3 },
+      { code: "THU", name: "Thursday", order: 4, isoDay: 4 },
+      { code: "FRI", name: "Friday", order: 5, isoDay: 5 },
+      { code: "SAT", name: "Saturday", order: 6, isoDay: 6 },
+      { code: "SUN", name: "Sunday", order: 7, isoDay: 7 },
+    ],
+    weekend: {
+      available: true,
+      startDayCode: "SAT",
+      startDayName: "Saturday",
+      startTime: "00:00",
+      endDayCode: "SUN",
+      endDayName: "Sunday",
+      endTime: "24:00",
+    },
+  },
+  rightPanel: {
+    draftMeta: {
+      periodCode: "Apr 2026",
+      draftVersion: 0,
+      bidContext: "Current",
+      remarks: "",
+      currentPeriod: {
+        id: 42,
+        rosterPeriodId: 42,
+        rosterPeriodKey: "2026RP04",
+        periodCode: "Apr 2026",
+        rpStartLocal: "2026-04-01",
+        rpEndLocal: "2026-04-30",
+        filiale: "F8",
+        status: "OPEN",
+        computedStage: "OPEN",
+        bidOpenAt: "2026-03-06T00:00:00.000Z",
+        bidCloseAt: "2026-03-13T23:59:00.000Z",
+        canEditBid: true,
+        readOnlyReason: null,
+      },
+    },
+    existingTitle: "EXISTING DAYS OFF PROPERTIES",
+    addButtonLabel: "ADD MORE PROPERTIES",
+    addSectionTitle: "ADD DAYS OFF PROPERTIES",
+    allPropertiesLabel: "ALL PROPERTIES",
+    favoritedPropertiesLabel: "FAVORITED PROPERTIES",
+    searchPlaceholder: "Search Properties",
+    showModifiers: true,
+    existingProperties: [],
+    availableProperties: [],
+  },
+};

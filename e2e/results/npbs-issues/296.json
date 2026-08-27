@@ -1,0 +1,53 @@
+{
+  "employeeId": "296",
+  "category": "YYZ-737-CA",
+  "context": "Current",
+  "totalProperties": 6,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T1",
+      "code": 402,
+      "name": "Min Credit Window"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T4",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 4, 2026, Jun 16, 2026, Jun 18, 2026, Jun 23, 2026, Jun 25, 2026 If Any Landing In GDL",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/296_PBS-3317_T4-106_not-found_20260625-044959-732.png"
+    },
+    {
+      "tier": "T5",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 8, 2026 If Pairing Number T4144",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/296_PBS-3317_T5-106_not-found_20260625-045000-518.png"
+    },
+    {
+      "tier": "T6",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 1, 2026 If Pairing Number T4105",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/296_PBS-3317_T6-106_not-found_20260625-045001-292.png"
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quality Analyzer Redesign — 5 Options</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      min-height: 100vh;
+      padding: 40px 24px 80px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; }
+    .lead { font-size: 15px; color: #64748b; line-height: 1.6; margin-bottom: 12px; max-width: 760px; }
+    .goal {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 32px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .goal strong { color: #0f172a; }
+    .goal ul { margin: 8px 0 0 20px; color: #475569; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    a.card {
+      display: block;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow .15s, border-color .15s, transform .15s;
+    }
+    a.card:hover {
+      box-shadow: 0 8px 24px rgba(15,23,42,.1);
+      border-color: #94a3b8;
+      transform: translateY(-2px);
+    }
+    .num {
+      font-size: 11px;
+      font-weight: 700;
+      color: #2563eb;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 6px;
+    }
+    .title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+    .desc { font-size: 13px; color: #64748b; line-height: 1.5; }
+    .tag {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .tag.dense { background: #dbeafe; color: #1d4ed8; }
+    .tag.visual { background: #fef3c7; color: #b45309; }
+    .tag.split { background: #dcfce7; color: #15803d; }
+    .current {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .current a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Roster Quality Analyzer — Group by QLTY</h1>
+    <p class="lead">
+      Five mockups that flip the current crew-first table into rule-first grouping.
+      Each shows how many crew are affected per QLTY rule and how to drill into details.
+      Open any card in a new tab — click expand / tabs / cards to try interactions.
+    </p>
+    <div class="goal">
+      <strong>Redesign goals</strong>
+      <ul>
+        <li>Primary grouping = <strong>QLTY rule</strong> (1001 / 1002 / 1003), not crew row</li>
+        <li>Each group shows <strong>total crew count</strong> with that issue</li>
+        <li><strong>View details</strong> — expand or navigate to see affected crew + date ranges</li>
+        <li>Keep: 147 crew summary, Issues-only filter, click crew → jump to Gantt row</li>
+      </ul>
+    </div>
+
+    <div class="grid">
+      <a class="card" href="01-accordion-groups.html" target="_blank">
+        <div class="num">01</div>
+        <div class="title">Accordion Groups</div>
+        <div class="desc">
+          Stacked QLTY sections with large count badges. Click header to expand inline crew table.
+          Best when planners scan one rule at a time.
+        </div>
+        <span class="tag dense">Dense · Familiar</span>
+      </a>
+
+      <a class="card" href="02-summary-cards.html" target="_blank">
+        <div class="num">02</div>
+        <div class="title">Summary Cards + Panel</div>
+        <div class="desc">
+          Three KPI cards across the top (crew count per rule). Selected card drives the detail panel below.
+          Clear at-a-glance totals.
+        </div>
+        <span class="tag visual">Visual · Dashboard</span>
+      </a>
+
+      <a class="card" href="03-master-detail.html" target="_blank">
+        <div class="num">03</div>
+        <div class="title">Master–Detail Split</div>
+        <div class="desc">
+          Left nav lists QLTY rules with counts; right pane shows crew table for the selected rule.
+          Efficient for comparing rules without scrolling past long accordions.
+        </div>
+        <span class="tag split">Split · Power-user</span>
+      </a>
+
+      <a class="card" href="04-tabbed-rules.html" target="_blank">
+        <div class="num">04</div>
+        <div class="title">Tabbed Rules</div>
+        <div class="desc">
+          Horizontal tabs — one per QLTY — with badge counts. Full-width crew detail table per tab.
+          Minimal chrome, maximum table space.
+        </div>
+        <span class="tag dense">Tabs · Table-first</span>
+      </a>
+
+      <a class="card" href="05-compact-matrix.html" target="_blank">
+        <div class="num">05</div>
+        <div class="title">Compact Matrix</div>
+        <div class="desc">
+          Dense group header rows in a single scrollable table; "View N crew" expands nested sub-rows.
+          Closest to current table density, inverted hierarchy.
+        </div>
+        <span class="tag dense">Matrix · Bloomberg-style</span>
+      </a>
+    </div>
+
+    <p class="current">
+      Current implementation: <code>gantt/src/components/panes/quality-analysis-dialog.tsx</code> (crew rows × all rules).
+    </p>
+  </div>
+</body>
+</html>

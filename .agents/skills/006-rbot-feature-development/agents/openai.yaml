@@ -1,0 +1,4 @@
+interface:
+  display_name: "RBot Feature Development"
+  short_description: "Build RBot chat tools and Gantt actions consistently."
+  default_prompt: "Add or modify an RBot chat feature using the existing backend tool, frontend action, store dispatch, and test patterns."

@@ -1,0 +1,33 @@
+import { pgTable, bigint, varchar, smallint, timestamp, index } from 'drizzle-orm/pg-core'
+
+export const crewCertificate = pgTable('crew_certificate', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  createdBy: varchar('created_by', { length: 30 }).notNull().default('system'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedBy: varchar('updated_by', { length: 30 }).notNull().default('system'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  crewId: varchar('crew_id', { length: 30 }).notNull(),
+  certificate: varchar('certificate', { length: 20 }).notNull(),
+  certificateNo: varchar('certificate_no', { length: 100 }),
+  effDt: timestamp('eff_dt').notNull(),
+  invalidDt: timestamp('invalid_dt'),
+  expDt: timestamp('exp_dt'),
+  tmpIssueCountry: varchar('tmp_issue_country', { length: 100 }),
+  tmpIssueAuthority: varchar('tmp_issue_authority', { length: 100 }),
+  referenceNo: varchar('reference_no', { length: 100 }),
+  referenceId: bigint('reference_id', { mode: 'number' }),
+  isValid: smallint('is_valid').notNull().default(0),
+  remarks: varchar('remarks', { length: 70 }),
+  interfaceCrewCertId: varchar('interface_crew_cert_id', { length: 20 }),
+  interfaceCertId: varchar('interface_cert_id', { length: 40 }),
+  firstName: varchar('first_name', { length: 50 }),
+  middleName: varchar('middle_name', { length: 50 }),
+  lastName: varchar('last_name', { length: 50 }),
+  isPrimary: smallint('is_primary'),
+  nationality: varchar('nationality', { length: 20 }),
+  surname: varchar('surname', { length: 40 }),
+  titleName: varchar('title_name', { length: 40 }),
+  givenName: varchar('given_name', { length: 40 }),
+}, (table) => [
+  index('idx_crew_cert_crew_id').on(table.crewId),
+])

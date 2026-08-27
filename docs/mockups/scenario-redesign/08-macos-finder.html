@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Option 8 — macOS Finder</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#ececec;--toolbar:#f5f5f5;--sidebar:#e8e8e8;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1d1d1f;--muted:#6e6e73;--accent:#007aff;--accent-bg:rgba(0,122,255,.12);--green:#34c759;--font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;--mono:ui-monospace,Menlo,monospace;--radius:6px}
+    body{font-family:var(--font);font-size:13px;color:var(--text);background:var(--bg);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+    .titlebar{height:52px;background:var(--toolbar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;-webkit-app-region:drag}
+    .traffic{display:flex;gap:8px;margin-right:16px}
+    .dot{width:12px;height:12px;border-radius:50%}
+    .dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+    .titlebar-title{flex:1;text-align:center;font-size:13px;font-weight:600;color:var(--muted)}
+    .titlebar-right{font-size:12px;color:var(--muted)}
+    .toolbar{height:40px;background:var(--toolbar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px}
+    .tb-group{display:flex;gap:2px;padding-right:12px;border-right:1px solid var(--border);margin-right:4px}
+    .tb-btn{height:28px;padding:0 10px;border:1px solid transparent;border-radius:var(--radius);background:transparent;font-size:12px;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:4px}
+    .tb-btn:hover{background:rgba(0,0,0,.05);border-color:var(--border)}
+    .tb-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .tb-icon{width:28px;padding:0;justify-content:center;font-size:14px}
+    .path{flex:1;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;padding:0 8px}
+    .path span{color:var(--accent);cursor:pointer}
+    .window{display:flex;flex:1;overflow:hidden;margin:0;border-top:none}
+    .sidebar{width:200px;background:var(--sidebar);border-right:1px solid var(--border);padding:8px 0;flex-shrink:0;overflow-y:auto}
+    .sidebar-section{font-size:11px;font-weight:600;color:var(--muted);padding:8px 16px 4px;text-transform:uppercase;letter-spacing:.04em}
+    .sidebar-item{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 24px;font-size:13px;color:var(--text);cursor:pointer;border-radius:4px;margin:1px 8px}
+    .sidebar-item:hover{background:rgba(0,0,0,.05)}
+    .sidebar-item.on{background:var(--accent);color:#fff;font-weight:500}
+    .content{flex:1;display:flex;overflow:hidden;background:var(--surface)}
+    .browser-list{width:280px;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+    .browser-search{padding:8px;border-bottom:1px solid var(--border)}
+    .browser-search input{width:100%;height:28px;border:1px solid var(--border);border-radius:var(--radius);padding:0 8px;font-size:13px;background:var(--toolbar)}
+    .browser-filters{padding:6px 8px;display:flex;gap:4px;border-bottom:1px solid var(--border)}
+    .browser-filters select{flex:1;height:24px;border:1px solid var(--border);border-radius:4px;font-size:11px}
+    .file-list{flex:1;overflow-y:auto}
+    .file-row{display:flex;align-items:center;gap:10px;padding:6px 12px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,.04)}
+    .file-row:hover{background:var(--accent-bg)}
+    .file-row.on{background:var(--accent);color:#fff}
+    .file-row.on .sub{color:rgba(255,255,255,.8)}
+    .file-icon{font-size:20px}
+    .file-info{flex:1;min-width:0}
+    .file-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .file-info .sub{font-size:11px;color:var(--muted);margin-top:1px}
+    .file-status{font-size:11px;font-weight:600;color:var(--green)}
+    .file-row.on .file-status{color:#fff}
+    .browser-footer{padding:6px;text-align:center;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}
+    .inspector{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+    .inspector-toolbar{padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--toolbar)}
+    .inspector-toolbar input{flex:1;border:none;font-size:16px;font-weight:600;outline:none;background:transparent}
+    .badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(52,199,89,.15);color:var(--green)}
+    .inspector-body{flex:1;overflow-y:auto;padding:16px}
+    .group{margin-bottom:20px}
+    .group-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+    .kv{display:grid;grid-template-columns:100px 1fr;gap:6px 12px;align-items:center;margin-bottom:6px}
+    .kv label{font-size:12px;color:var(--muted)}
+    .kv input,.kv select,.kv textarea{width:100%;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;font-family:inherit;background:var(--surface)}
+    .kv textarea{grid-column:2;min-height:48px;resize:vertical}
+    .ro{display:inline-block;background:rgba(52,199,89,.15);color:#248a3d;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px}
+    .subgroup{background:var(--toolbar);border-radius:var(--radius);padding:10px;margin-bottom:8px}
+    .subgroup h5{font-size:12px;font-weight:600;margin-bottom:8px}
+    .chips{display:flex;flex-wrap:wrap;gap:4px}
+    .chip{font-size:11px;padding:2px 8px;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+    .seg{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2px}
+    .seg button{flex:1;padding:4px 8px;border:none;background:transparent;font-size:11px;border-radius:4px;cursor:pointer}
+    .seg button.on{background:var(--accent);color:#fff}
+    .mono{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px}
+    .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .kpi-box{background:var(--toolbar);border-radius:var(--radius);padding:12px;text-align:center}
+    .kpi-box .n{font-size:20px;font-weight:700;font-family:var(--mono)}
+    .kpi-box .l{font-size:10px;color:var(--muted)}
+    .tabs-mini{display:flex;gap:0;margin-bottom:12px;border-bottom:1px solid var(--border)}
+    .tabs-mini button{padding:6px 12px;border:none;background:transparent;font-size:12px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+    .tabs-mini button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+    .tag-f{position:fixed;bottom:12px;right:12px;background:var(--text);color:#fff;padding:6px 14px;border-radius:var(--radius);font-size:11px}
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <div class="traffic"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+    <div class="titlebar-title">ROIS Crew — Scenario</div>
+    <div class="titlebar-right">Ryan · F8</div>
+  </div>
+  <div class="toolbar">
+    <div class="tb-group">
+      <button class="tb-btn">◀</button><button class="tb-btn">▶</button>
+    </div>
+    <div class="tb-group">
+      <button class="tb-btn primary">+ New</button>
+      <button class="tb-btn">Import</button>
+      <button class="tb-btn">▶ Run</button>
+      <button class="tb-btn">Save</button>
+    </div>
+    <div class="tb-group">
+      <button class="tb-btn">Duplicate</button><button class="tb-btn">Share</button>
+      <button class="tb-btn">Rename</button><button class="tb-btn">Delete</button>
+    </div>
+    <div class="path"><span>Scenario</span> › <span>RO</span> › <span>Calgary-CC-Ver1</span></div>
+    <div class="tb-group" style="border:none;margin:0">
+      <button class="tb-btn tb-icon">🔍</button>
+    </div>
+  </div>
+  <div class="window">
+    <aside class="sidebar">
+      <div class="sidebar-section">Favorites</div>
+      <div class="sidebar-item">All Scenarios</div>
+      <div class="sidebar-section">Optimization</div>
+      <div class="sidebar-item">PO</div>
+      <div class="sidebar-item on">RO</div>
+      <div class="sidebar-item">TO</div>
+      <div class="sidebar-item">Crew Bids</div>
+      <div class="sidebar-section">Modules</div>
+      <div class="sidebar-item">Live</div><div class="sidebar-item">Rule</div><div class="sidebar-item">PBS</div>
+    </aside>
+    <div class="content">
+      <section class="browser-list">
+        <div class="browser-search"><input placeholder="Search" /></div>
+        <div class="browser-filters"><select><option>RO</option></select><select><option>All Status</option></select></div>
+        <div class="file-list">
+          <div class="file-row on"><span class="file-icon">📄</span><div class="file-info"><div class="file-name">#543 Calgary-CC-Ver1</div><div class="sub">Jun 1 – Jun 30 · 1 opt</div></div><span class="file-status">Done</span></div>
+          <div class="file-row"><span class="file-icon">📄</span><div class="file-info"><div class="file-name">#542 Calgary-CC-Base</div><div class="sub">Jun 1 – Jun 30 · 2 opt</div></div><span class="file-status">Done</span></div>
+          <div class="file-row"><span class="file-icon">📄</span><div class="file-info"><div class="file-name">#538 YYC Summer RO</div><div class="sub">Jul 1 – Jul 31 · 1 opt</div></div><span class="file-status">Done</span></div>
+        </div>
+        <div class="browser-footer">40 items · Page 1 of 2</div>
+      </section>
+      <main class="inspector">
+        <div class="inspector-toolbar">
+          <input value="Calgary-CC-Ver1" />
+          <span class="badge">Done</span>
+          <button class="tb-btn tb-icon">💾</button><button class="tb-btn tb-icon">⧉</button><button class="tb-btn tb-icon primary" style="color:#fff">▶</button>
+        </div>
+        <div class="inspector-body">
+          <div class="tabs-mini"><button class="on">Info</button><button>Filters</button><button>KPI</button></div>
+          <div class="group"><div class="group-title">Basic Info</div>
+            <div class="kv"><label>Type</label><span class="ro">RO</span></div>
+            <div class="kv"><label>Source</label><label><input type="checkbox" checked /> Lead-in live</label></div>
+            <div class="kv"><label>Date</label><div style="display:flex;gap:6px"><input value="2026-06-01" /><input value="2026-06-30" /></div></div>
+            <div class="kv"><label>Rule Set</label><select><option>pbs_solver_ruleset</option></select></div>
+            <div class="kv"><label>Pairing Sc.</label><select><option>0 – Live</option></select></div>
+            <div class="kv"><label>Comment</label><textarea>April pilot assignment initial draft</textarea></div>
+          </div>
+          <div class="group"><div class="group-title">Scope Filters</div>
+            <div class="subgroup"><h5>Crew Filters</h5>
+              <div class="kv"><label>Division</label><select><option>Cabin</option></select></div>
+              <div class="kv"><label>Bases</label><div class="chips"><span class="chip">YYC ×</span></div></div>
+              <div class="kv"><label>Status</label><select><option>Active</option></select></div>
+              <div class="kv"><label>Fleet Quals</label><div class="chips"><span class="chip">7M8 ×</span><span class="chip">737 ×</span></div></div>
+              <div class="mono">FILTER: C / YYC / 7M8, 737 / ACTIVE</div>
+            </div>
+            <div class="subgroup"><h5>Pairing Filters</h5>
+              <div class="kv"><label>Bases</label><div class="chips"><span class="chip">YYC ×</span></div></div>
+              <div class="kv"><label>Fleets</label><div class="chips"><span class="chip">737 ×</span></div></div>
+              <div class="kv"><label>Source</label><div class="seg"><button class="on">Manual</button><button>Optimized</button><button>Imported</button></div></div>
+              <div class="mono">FILTER: * / YYC / 737</div>
+            </div>
+          </div>
+          <div class="group"><div class="group-title">KPI Results</div>
+            <div class="kpi-row">
+              <div class="kpi-box"><div class="n">1,247</div><div class="l">Pairings</div></div>
+              <div class="kpi-box"><div class="n">94.2%</div><div class="l">Assigned</div></div>
+              <div class="kpi-box"><div class="n">73</div><div class="l">Open</div></div>
+              <div class="kpi-box"><div class="n">12</div><div class="l">Violations</div></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <div class="tag-f">Option 8 — macOS Finder</div>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rule Module — Layout Options</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    padding: 32px 24px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 18px; font-weight: 600; color: #f1f5f9; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #64748b; margin-bottom: 32px; }
+  .options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .option {
+    border: 2px solid #1e293b;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    background: #0d1117;
+  }
+  .option:hover { border-color: #334155; transform: translateY(-2px); }
+  .option.selected { border-color: #3b82f6; }
+  .option-label {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px;
+    background: #161b22;
+    border-bottom: 1px solid #1e293b;
+  }
+  .letter {
+    width: 26px; height: 26px;
+    border-radius: 6px; background: #1e293b;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .option.selected .letter { background: #1d4ed8; color: #bfdbfe; }
+  .option-title { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+  .option-desc { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .preview { padding: 14px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 4px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+  }
+  .badge-rec { background: #14532d; color: #4ade80; }
+  .badge-alt { background: #1e3a5f; color: #93c5fd; }
+
+  /* ── Mini wireframes ── */
+  .wire { border-radius: 8px; overflow: hidden; border: 1px solid #1e293b; background: #161b22; }
+  .wire-toolbar {
+    height: 28px; background: #0d1117;
+    border-bottom: 1px solid #1e293b;
+    display: flex; align-items: center; gap: 6px; padding: 0 10px;
+  }
+  .wire-dot { width: 6px; height: 6px; border-radius: 50%; background: #334155; }
+  .wire-dot.active { background: #3b82f6; }
+  .wire-text { width: 60px; height: 6px; border-radius: 3px; background: #1e293b; }
+  .wire-text.sm { width: 40px; }
+  .wire-text.lg { width: 90px; }
+  .wire-text.accent { background: #1d4ed8; }
+
+  /* Option A: Two-panel */
+  .wire-a { display: flex; height: 180px; }
+  .wire-a-left {
+    width: 120px; flex-shrink: 0;
+    border-right: 1px solid #1e293b;
+    padding: 8px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .wire-a-right { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .group-card {
+    border-radius: 5px; padding: 6px 8px;
+    border: 1px solid #1e293b; background: #0d1117;
+  }
+  .group-card.active { border-color: #3b82f6; background: #0f172a; }
+  .group-card-name { font-size: 9px; font-weight: 600; color: #94a3b8; margin-bottom: 2px; }
+  .group-card.active .group-card-name { color: #60a5fa; }
+  .group-card-tag { font-size: 8px; color: #475569; }
+  .rule-row {
+    display: flex; align-items: center; gap: 6px;
+    height: 22px; border-radius: 4px; padding: 0 6px;
+    background: #0d1117; border: 1px solid #1e293b;
+  }
+  .rule-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .rule-dot.error { background: #ef4444; }
+  .rule-dot.warning { background: #f59e0b; }
+  .toggle {
+    width: 22px; height: 12px; border-radius: 6px; background: #1e293b;
+    margin-left: auto; flex-shrink: 0; position: relative;
+  }
+  .toggle.on { background: #2563eb; }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 8px; height: 8px; border-radius: 50%; background: #475569;
+  }
+  .toggle.on::after { left: calc(100% - 10px); background: #fff; }
+  .section-title { font-size: 9px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* Option B: Tabs */
+  .wire-b { height: 180px; display: flex; flex-direction: column; }
+  .wire-tabs {
+    display: flex; border-bottom: 1px solid #1e293b;
+    padding: 0 10px;
+  }
+  .wire-tab {
+    padding: 6px 10px; font-size: 9px; font-weight: 600;
+    color: #475569; border-bottom: 2px solid transparent;
+    letter-spacing: 0.03em;
+  }
+  .wire-tab.active { color: #60a5fa; border-bottom-color: #3b82f6; }
+  .wire-b-body { display: flex; flex: 1; min-height: 0; }
+  .wire-b-left { width: 110px; flex-shrink: 0; border-right: 1px solid #1e293b; padding: 8px; display: flex; flex-direction: column; gap: 3px; }
+  .wire-b-right { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 5px; }
+  .lib-card {
+    border-radius: 4px; padding: 5px 6px;
+    border: 1px solid #1e293b; background: #0d1117;
+    display: flex; gap: 5px; align-items: center;
+  }
+  .lib-icon { width: 14px; height: 14px; border-radius: 3px; background: #1e293b; flex-shrink: 0; }
+  .lib-text { flex: 1; }
+  .lib-name { font-size: 8px; font-weight: 600; color: #94a3b8; }
+  .lib-cat { font-size: 7px; color: #475569; }
+
+  /* Option C: Split 3-zone */
+  .wire-c { display: flex; height: 180px; }
+  .wire-c-left { width: 100px; flex-shrink: 0; border-right: 1px solid #1e293b; padding: 7px; display: flex; flex-direction: column; gap: 3px; }
+  .wire-c-center { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #1e293b; }
+  .wire-c-right { width: 130px; flex-shrink: 0; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+  .param-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 8px; color: #64748b;
+    border-bottom: 1px solid #0d1117; padding-bottom: 4px;
+  }
+  .param-input {
+    width: 50px; height: 16px; border-radius: 3px;
+    border: 1px solid #334155; background: #0d1117;
+  }
+
+  /* Pros/cons */
+  .pros-cons { display: flex; gap: 8px; margin-top: 10px; }
+  .pros, .cons { flex: 1; }
+  .pros h4 { font-size: 10px; font-weight: 700; color: #4ade80; margin-bottom: 4px; }
+  .cons h4 { font-size: 10px; font-weight: 700; color: #f87171; margin-bottom: 4px; }
+  .pros li, .cons li { font-size: 10px; color: #94a3b8; margin-left: 12px; margin-bottom: 2px; }
+
+  .rec-bar {
+    background: #14532d; border: 1px solid #166534;
+    border-radius: 6px; padding: 8px 12px; margin-top: 24px;
+    font-size: 12px; color: #86efac;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .rec-bar strong { color: #4ade80; }
+</style>
+</head>
+<body>
+
+<h1>Rule Module — Layout Options</h1>
+<p class="subtitle">Choose a layout approach for the Rule configuration page (module: 'rule')</p>
+
+<div class="options">
+
+  <!-- Option A -->
+  <div class="option" id="optA" onclick="select('A')">
+    <div class="option-label">
+      <div class="letter">A</div>
+      <div>
+        <div class="option-title">Two-Panel Master-Detail &nbsp;<span class="badge badge-rec">Recommended</span></div>
+        <div class="option-desc">Left: rule group list · Right: group detail + rules table</div>
+      </div>
+    </div>
+    <div class="preview">
+      <div class="wire">
+        <div class="wire-toolbar">
+          <div class="wire-dot active"></div><div class="wire-dot"></div><div class="wire-dot"></div>
+          <div class="wire-text accent sm" style="margin-left:4px"></div>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <div class="wire-text sm"></div><div class="wire-text sm"></div>
+          </div>
+        </div>
+        <div class="wire-a">
+          <div class="wire-a-left">
+            <div class="section-title" style="margin-bottom:4px">Rule Sets</div>
+            <div class="group-card active">
+              <div class="group-card-name">CCAR-121 Full</div>
+              <div class="group-card-tag">GANTT · 12 rules</div>
+            </div>
+            <div class="group-card">
+              <div class="group-card-name">CCAR-121 Lite</div>
+              <div class="group-card-tag">GANTT · 8 rules</div>
+            </div>
+            <div class="group-card">
+              <div class="group-card-name">Training</div>
+              <div class="group-card-tag">ALL · 6 rules</div>
+            </div>
+            <div style="margin-top:auto;border-radius:4px;background:#1e293b;height:20px;display:flex;align-items:center;justify-content:center">
+              <div class="wire-text sm"></div>
+            </div>
+          </div>
+          <div class="wire-a-right">
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="wire-text lg" style="height:10px;border-radius:4px"></div>
+              <div class="wire-text sm" style="height:10px;border-radius:4px;background:#1e3a5f"></div>
+              <div style="margin-left:auto" class="wire-text sm" style="height:10px"></div>
+            </div>
+            <div class="section-title">Rules in this set</div>
+            <div class="rule-row">
+              <div class="rule-dot error"></div>
+              <div class="wire-text lg"></div>
+              <div class="wire-text sm" style="background:#3f1f1f"></div>
+              <div class="toggle on"></div>
+            </div>
+            <div class="rule-row">
+              <div class="rule-dot warning"></div>
+              <div class="wire-text"></div>
+              <div class="wire-text sm" style="background:#3f2d00"></div>
+              <div class="toggle on"></div>
+            </div>
+            <div class="rule-row">
+              <div class="rule-dot error"></div>
+              <div class="wire-text lg"></div>
+              <div class="wire-text sm" style="background:#3f1f1f"></div>
+              <div class="toggle"></div>
+            </div>
+            <div class="rule-row">
+              <div class="rule-dot error"></div>
+              <div class="wire-text"></div>
+              <div class="wire-text sm" style="background:#3f1f1f"></div>
+              <div class="toggle on"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>✓ Pros</h4><ul>
+          <li>Focused: one group at a time</li>
+          <li>Rules table has full width</li>
+          <li>Natural for config tasks</li>
+        </ul></div>
+        <div class="cons"><h4>✗ Cons</h4><ul>
+          <li>Can't see 2 groups side by side</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="option" id="optB" onclick="select('B')">
+    <div class="option-label">
+      <div class="letter">B</div>
+      <div>
+        <div class="option-title">Tabbed — Sets + Library &nbsp;<span class="badge badge-alt">Extensible</span></div>
+        <div class="option-desc">Tab 1: Rule Sets config · Tab 2: Rule Library (read-only)</div>
+      </div>
+    </div>
+    <div class="preview">
+      <div class="wire">
+        <div class="wire-toolbar">
+          <div class="wire-dot active"></div><div class="wire-dot"></div><div class="wire-dot"></div>
+        </div>
+        <div class="wire-b">
+          <div class="wire-tabs">
+            <div class="wire-tab active">Rule Sets</div>
+            <div class="wire-tab">Rule Library</div>
+            <div class="wire-tab">Templates</div>
+          </div>
+          <div class="wire-b-body">
+            <div class="wire-b-left">
+              <div class="section-title" style="margin-bottom:4px">Groups</div>
+              <div class="group-card active">
+                <div class="group-card-name">CCAR-121 Full</div>
+                <div class="group-card-tag">12 rules</div>
+              </div>
+              <div class="group-card">
+                <div class="group-card-name">CCAR-121 Lite</div>
+                <div class="group-card-tag">8 rules</div>
+              </div>
+              <div class="group-card">
+                <div class="group-card-name">Training</div>
+                <div class="group-card-tag">6 rules</div>
+              </div>
+            </div>
+            <div class="wire-b-right">
+              <div class="section-title">Rules in CCAR-121 Full</div>
+              <div class="rule-row">
+                <div class="rule-dot error"></div>
+                <div class="wire-text lg"></div>
+                <div class="wire-text sm" style="background:#3f1f1f"></div>
+                <div class="toggle on"></div>
+              </div>
+              <div class="rule-row">
+                <div class="rule-dot warning"></div>
+                <div class="wire-text"></div>
+                <div class="wire-text sm" style="background:#3f2d00"></div>
+                <div class="toggle on"></div>
+              </div>
+              <div class="rule-row">
+                <div class="rule-dot error"></div>
+                <div class="wire-text lg"></div>
+                <div class="wire-text sm" style="background:#1e293b"></div>
+                <div class="toggle"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>✓ Pros</h4><ul>
+          <li>Room for Library tab later</li>
+          <li>Organized separation</li>
+        </ul></div>
+        <div class="cons"><h4>✗ Cons</h4><ul>
+          <li>Extra click to reach rules</li>
+          <li>Library tab is out of scope now</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="option" id="optC" onclick="select('C')">
+    <div class="option-label">
+      <div class="letter">C</div>
+      <div>
+        <div class="option-title">Three-Zone — List · Rules · Edit Panel</div>
+        <div class="option-desc">Inline param editor slides in as a 3rd column</div>
+      </div>
+    </div>
+    <div class="preview">
+      <div class="wire">
+        <div class="wire-toolbar">
+          <div class="wire-dot active"></div><div class="wire-dot"></div><div class="wire-dot"></div>
+        </div>
+        <div class="wire-c">
+          <div class="wire-c-left">
+            <div class="section-title" style="margin-bottom:4px">Sets</div>
+            <div class="group-card active">
+              <div class="group-card-name">CCAR-121 Full</div>
+            </div>
+            <div class="group-card">
+              <div class="group-card-name">CCAR-121 Lite</div>
+            </div>
+            <div class="group-card">
+              <div class="group-card-name">Training</div>
+            </div>
+          </div>
+          <div class="wire-c-center">
+            <div class="section-title">Rules</div>
+            <div class="rule-row" style="background:#0f1729;border-color:#1d4ed8">
+              <div class="rule-dot error"></div>
+              <div class="wire-text"></div>
+              <div class="toggle on"></div>
+            </div>
+            <div class="rule-row">
+              <div class="rule-dot warning"></div>
+              <div class="wire-text lg"></div>
+              <div class="toggle on"></div>
+            </div>
+            <div class="rule-row">
+              <div class="rule-dot error"></div>
+              <div class="wire-text"></div>
+              <div class="toggle"></div>
+            </div>
+            <div class="rule-row">
+              <div class="rule-dot error"></div>
+              <div class="wire-text lg"></div>
+              <div class="toggle on"></div>
+            </div>
+          </div>
+          <div class="wire-c-right" style="background:#0a0e1a;border-left:2px solid #1d4ed8">
+            <div class="section-title" style="color:#3b82f6">Edit Override</div>
+            <div style="font-size:8px;color:#475569;margin-bottom:4px">Max FDP (Standard)</div>
+            <div class="param-row">
+              <span>base_limit_min</span>
+              <div class="param-input"></div>
+            </div>
+            <div class="param-row">
+              <span>ext_limit_min</span>
+              <div class="param-input"></div>
+            </div>
+            <div class="param-row">
+              <span>severity</span>
+              <div class="param-input"></div>
+            </div>
+            <div style="display:flex;gap:4px;margin-top:6px">
+              <div style="flex:1;height:18px;border-radius:3px;background:#1e3a5f;display:flex;align-items:center;justify-content:center">
+                <div class="wire-text sm" style="background:#3b82f6"></div>
+              </div>
+              <div style="width:40px;height:18px;border-radius:3px;background:#1e293b"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>✓ Pros</h4><ul>
+          <li>Params visible alongside rules</li>
+          <li>No dialog needed for edit</li>
+        </ul></div>
+        <div class="cons"><h4>✗ Cons</h4><ul>
+          <li>Crowded on narrow screens</li>
+          <li>Rules column loses width</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="rec-bar">
+  ⭐ <strong>Recommendation: Option A</strong> — Two-panel master-detail gives the rules table maximum width for param override editing in a modal/drawer, and is the most familiar pattern for this type of admin configuration.
+</div>
+
+<script>
+  function select(opt) {
+    document.querySelectorAll('.option').forEach(el => el.classList.remove('selected'))
+    document.getElementById('opt' + opt).classList.add('selected')
+  }
+</script>
+
+</body>
+</html>

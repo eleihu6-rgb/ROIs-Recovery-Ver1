@@ -1,0 +1,35 @@
+{
+  "employeeId": "73",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 4,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T2",
+      "code": 112,
+      "name": "Pairing Length"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T3",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Monday, Wednesday If Pairing Number T4122, T4144, T4154, T4208",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/73_PBS-3302_T3-106_not-found_20260625-044751-286.png"
+    }
+  ]
+}

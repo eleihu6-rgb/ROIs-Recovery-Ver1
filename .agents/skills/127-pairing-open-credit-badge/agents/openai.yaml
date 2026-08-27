@@ -1,0 +1,6 @@
+interface:
+  display_name: "127 pairing open credit UaLdge"
+  short_description: "Project skill 127-pairing-open-credit-badge"
+  default_prompt: "Use $127-pairing-open-credit-badge for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

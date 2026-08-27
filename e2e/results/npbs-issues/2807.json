@@ -1,0 +1,46 @@
+{
+  "employeeId": "2807",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 0,
+  "placedDetail": [],
+  "issues": [
+    {
+      "tier": "T2",
+      "name": "Days Off / Days On Pattern",
+      "code": 205,
+      "page": "days-off",
+      "predicate": "Set Condition Pattern Between 3 and 6 Days On, with 2 Days Off (Minimum)",
+      "reason": "unsupported-input: days-off-on-pattern for Days Off / Days On Pattern",
+      "image": "image/pbs/2807_PBS-3309_T2-205_unsupported-input_20260625-062742-952.png"
+    },
+    {
+      "tier": "T3",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition Minimum Days Off In A Row 2",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/2807_PBS-3309_T3-203_unsupported-input_20260625-062744-094.png"
+    },
+    {
+      "tier": "T5",
+      "name": "Days Off / Days On Pattern",
+      "code": 205,
+      "page": "days-off",
+      "predicate": "Set Condition Pattern Between 3 and 6 Days On, with 3 Days Off (Minimum)",
+      "reason": "unsupported-input: days-off-on-pattern for Days Off / Days On Pattern",
+      "image": "image/pbs/2807_PBS-3309_T5-205_unsupported-input_20260625-062745-214.png"
+    },
+    {
+      "tier": "T6",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition Minimum Days Off In A Row 3",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/2807_PBS-3309_T6-203_unsupported-input_20260625-062746-425.png"
+    }
+  ]
+}

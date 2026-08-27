@@ -1,0 +1,6 @@
+interface:
+  display_name: "100 plane ops"
+  short_description: "Project skill 100-plane-ops"
+  default_prompt: "Use $100-plane-ops for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,48 @@
+{
+  "generatedAt": "2026-07-22T05:46:58.147Z",
+  "runId": "npbs-july-smoke-20260722-134658",
+  "source": "CLASS-BidsReport_July2026.txt",
+  "sourceSha256": "523a4a345372931504b4bb89531712f1a63fefaf523cbf77f880b03371bf7375",
+  "period": "202607",
+  "dateMode": "no-shift",
+  "totalRecords": 1105,
+  "effectiveCrew": 663,
+  "mappedProperties": 3014,
+  "droppedProperties": 5034,
+  "selectedCrew": 2,
+  "bucketCounts": {
+    "YYZ-FO": 1,
+    "YVR-CA": 1
+  },
+  "droppedReasonCounts": {
+    "hidden-current-catalog": 416,
+    "unsupported-current-editor": 97,
+    "unmapped-pairing-condition": 77,
+    "beyond-tier-7": 4237,
+    "secondary-clause-dropped": 117,
+    "needs-value": 75,
+    "unmapped-predicate": 10,
+    "unmapped-set-condition": 5
+  },
+  "selectedCrewDropped": [
+    {
+      "employeeId": "73",
+      "category": "YYZ-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Departing On Jul 24, 2026, Jul 27, 2026, Jul 29, 2026, Jul 31, 2026 If Pairing Number T4172",
+          "reason": "hidden-current-catalog: Departing On"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 6, 2026, Jul 10, 2026 If Pairing Number T4116",
+          "reason": "hidden-current-catalog: Departing On"
+        }
+      ]
+    },
+    {
+      "employeeId": "113",
+      "category": "YVR-737-CA",
+      "dropped": []
+    }
+  ]
+}

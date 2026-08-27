@@ -1,0 +1,54 @@
+{
+  "employeeId": "1505",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T3",
+      "code": 109,
+      "name": "Average Daily Credit"
+    },
+    {
+      "tier": "T7",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T4",
+      "name": "Max Consecutive Days On",
+      "code": 202,
+      "page": "days-off",
+      "predicate": "Set Condition Maximum Days On In A Row 3",
+      "reason": "unsupported-input: stepper for Max Consecutive Days On",
+      "image": "image/pbs/1505_PBS-3310_T4-202_unsupported-input_20260625-061903-247.png"
+    },
+    {
+      "tier": "T5",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition Minimum Days Off In A Row 2",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/1505_PBS-3310_T5-203_unsupported-input_20260625-061904-339.png"
+    }
+  ]
+}

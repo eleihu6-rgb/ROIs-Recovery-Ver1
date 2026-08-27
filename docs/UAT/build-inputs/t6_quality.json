@@ -1,0 +1,235 @@
+{
+  "section": "Solver Quality",
+  "cases": [
+    {
+      "id": "T6-SQ-001",
+      "feature_area": "Solver Quality — Coverage",
+      "help_ref": "scenario-kpi.tsx (Uncovered tab); 114-scenario-rust-solver-run-report",
+      "title": "Uncovered tab count reconciles with the KPI coverage figure",
+      "preconditions": "A finished (Done) scenario is loaded in the Altair Scenario module with an optimisation result.",
+      "steps": "1. Open the Done scenario's detail panel and note the total pairing/reserve demand for the run (from the run report or the Distribution tab 'Assigned slots' + 'Uncovered slots' tiles).\n2. Open the KPI tab and read the coverage metric (covered slots and/or coverage %).\n3. Open the Uncovered tab and read the row count shown in the 'Uncovered Pairings & Reserves' table header.\n4. Compute: covered slots + Uncovered-tab row count.",
+      "expected": "covered slots (KPI) + Uncovered-tab row count = total demand slots exactly (no slot lost or double-counted). The Uncovered header count equals the number of listed rows, and coverage % on the KPI tab equals covered / total to within rounding.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-002",
+      "feature_area": "Solver Quality — Coverage",
+      "help_ref": "scenario-kpi.tsx (Uncovered tab)",
+      "title": "Every covered pairing appears on the roster; no phantom coverage",
+      "preconditions": "A Done scenario is loaded; Open the scenario in the Gantt view.",
+      "steps": "1. Open the Uncovered tab and export or note each uncovered row's Pairing Id / Task Id.\n2. Open the scenario Gantt view and use the Pairing Id filter to search for 3 pairings that are NOT in the uncovered list.\n3. Confirm each of those 3 pairings has crew assigned on the roster (at least the required complement).\n4. Search for 2 Pairing Ids that ARE in the uncovered list.",
+      "expected": "Each pairing absent from the Uncovered tab shows an assigned crew complement on the roster; each pairing present in the Uncovered tab shows no assigned crew (an open slot) on the roster. No pairing is both 'covered' on the KPI and listed as uncovered.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-003",
+      "feature_area": "Solver Quality — Coverage",
+      "help_ref": "scenario-kpi.tsx (Uncovered / Distribution tabs); 114 run report",
+      "title": "Open-time / uncovered demand is honest, not a pipeline defect",
+      "preconditions": "A Done scenario where coverage is below 100% (some open demand remains).",
+      "steps": "1. Open the Uncovered tab and confirm rows are grouped Pairing first, then Reserve, each with Base, Rank and Credit shown.\n2. Open the Distribution tab, Table view, and read the 'Unc. pairing' and 'Unc. reserve' columns plus the Σ slot-days totals row.\n3. Compare the Uncovered-tab total against the Distribution Σ of Unc. pairing + Unc. reserve.\n4. Confirm the run status is Done with final_global_rule_pass (per run report), not Failed.",
+      "expected": "Uncovered-tab total row count = Distribution Σ(Unc. pairing) + Σ(Unc. reserve). The uncovered demand is explained by supply/fixed-line limits (demand exceeds bid-able crew, or slots are fixed), and the run is legitimately Done with all global rules passing — not a broken run.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-004",
+      "feature_area": "Solver Quality — Crew Seniority",
+      "help_ref": "125-pbs-result-analyzer (ladder); scenario-kpi.tsx (Credit Hours tab)",
+      "title": "Higher-seniority crew win a contested pairing before junior crew",
+      "preconditions": "A Done scenario. Pick two crew at the SAME base and rank, one senior (lower seniority_num) and one junior (higher seniority_num), who both bid the SAME pairing that has only one open slot for that rank.",
+      "steps": "1. Confirm both crew are in scope and eligible for the pairing (crew_pairing_matrix.csv eligible=true for both).\n2. Confirm both submitted a bid for the pairing (both appear in PAIRING_SCORE.csv for that pairing).\n3. In the Gantt view or result.json assignment, check which crew was awarded the pairing.\n4. Cross-check the two crew's seniority_num order.",
+      "expected": "The senior crew (lower seniority_num) is awarded the contested pairing; the junior crew is not. Seniority order is respected for the single contested slot.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-005",
+      "feature_area": "Solver Quality — Crew Seniority",
+      "help_ref": "125-pbs-result-analyzer; scenario-kpi.tsx (Credit Hours tab)",
+      "title": "Seniority order holds across an entire rank's award list",
+      "preconditions": "A Done scenario with a base/rank group of at least 8 crew who bid on overlapping preferred pairings.",
+      "steps": "1. In the Credit Hours tab, filter to one base + rank group.\n2. List the crew in that group ordered by seniority_num (senior first).\n3. For each preferred/high-weight pairing that was awarded, record which crew got it (result.json / Gantt).\n4. Walk down the seniority list and check that no junior crew was awarded a preferred pairing that a more-senior, eligible, available, same-preference crew was denied.",
+      "expected": "For every preferred pairing, the awarded crew is never junior to a passed-over crew who was equally eligible, available and bid the same pairing. Any senior-over-junior 'inversion' is explainable only by eligibility/availability difference (leave, rule block) via the 125 ladder — not by the solver ignoring seniority.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-006",
+      "feature_area": "Solver Quality — Crew Seniority",
+      "help_ref": "125-pbs-result-analyzer (step 5); scenario-quality.tsx (Quality Analyzer)",
+      "title": "Junior crew absorb reserve / less-preferred work",
+      "preconditions": "A Done scenario with reserve (RES/SBY) demand and a mix of senior and junior crew in the same base/rank.",
+      "steps": "1. In the Gantt view, identify crew assigned to reserve (RES) days and crew assigned to their preferred flying pairings.\n2. In the Credit Hours tab, note the rank/base of the reserve-assigned crew and the preferred-flying crew.\n3. Compare seniority_num of reserve-heavy crew vs preferred-flying crew within the same base/rank.\n4. Spot-check one senior crew placed on reserve via the 125 ladder to confirm it was forced (no eligible preferred pairing / availability).",
+      "expected": "Within a base/rank group, reserve and less-preferred assignments concentrate on junior crew (higher seniority_num); senior crew are on reserve only when the ladder shows a forced reason (all preferred pairings blocked / unavailable). The seniority ordering of reserve absorption holds.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-007",
+      "feature_area": "Solver Quality — Bid Satisfaction",
+      "help_ref": "125-pbs-result-analyzer (step 2 bids); 108-npbs-bids-portal-simulation",
+      "title": "Solver honours pairing bids — awarded pairings match submitted bids",
+      "preconditions": "A Done scenario where a sample of crew submitted pairing bids in the portal (rows exist in PAIRING_SCORE.csv).",
+      "steps": "1. Pick 5 crew with strong (high-weight) pairing bids in PAIRING_SCORE.csv.\n2. For each, list their top-weighted bid pairing.\n3. In the Gantt view / result.json assignment, check whether each crew was awarded that top bid (or a bid within their submitted set).\n4. Record the honoured / not-honoured count.",
+      "expected": "A clear majority of the 5 crew (target ≥ 4/5, and ≥ the run's stated bid-satisfaction target) received a pairing from their submitted bid set; each crew whose top bid was NOT honoured is not left with random flying but with the next-best available legal pairing.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-008",
+      "feature_area": "Solver Quality — Bid Satisfaction",
+      "help_ref": "125-pbs-result-analyzer (RESERVE_SCORE / DAYSOFF); scenario-kpi.tsx (Credit Hours: Actual Dayoff / Dayoff Ok)",
+      "title": "Days-off and reserve bids are reflected in the roster and KPI",
+      "preconditions": "A Done scenario where crew submitted days-off bids (DAYSOFF.csv) and reserve bids (RESERVE_SCORE.csv).",
+      "steps": "1. Pick 3 crew with specific days-off bids in DAYSOFF.csv.\n2. In the Gantt view, confirm each crew's roster shows days off on (or overlapping) the bid dates.\n3. In the Credit Hours tab, read each crew's Required Dayoff, Actual Dayoff and Dayoff Ok columns.\n4. Pick 2 crew with reserve bids and confirm they received reserve (RES/SBY) days.",
+      "expected": "The days-off bids appear as days off on the roster for the bidding crew; Actual Dayoff ≥ Required Dayoff and Dayoff Ok = true/OK for those crew; reserve-bidding crew carry reserve days. The KPI/Credit-Hours figures reconcile with what the Gantt shows.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-009",
+      "feature_area": "Solver Quality — Bid Satisfaction",
+      "help_ref": "125-pbs-result-analyzer (5-step ladder)",
+      "title": "A high-weight bid that was NOT honoured is fully explainable via the 5-step ladder",
+      "preconditions": "A Done scenario containing at least one crew whose highest-weight pairing bid was not awarded.",
+      "steps": "1. Identify a crew whose top-weight PAIRING_SCORE bid does not appear in their assignment.\n2. Run the ladder (e.g. diagnose_crew.py --scenario <id> <crewId> <controlCrewThatFlew>): SCOPE → BIDS → ELIGIBLE → AVAILABLE → ASSIGNED.\n3. Read the verdict (on leave / not eligible / not in scope / covered by senior crew / genuine defect).\n4. Include one control crew that DID get their bid for contrast.",
+      "expected": "The ladder returns a concrete, grounded reason at exactly one layer (e.g. AVAILABLE=on leave, or ELIGIBLE=base/rank/date mismatch, or slot taken by a more-senior bidder). No un-honoured high-weight bid is left as an unexplained 'eligible + available + bid + idle' defect; if it is, it is flagged for escalation.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-010",
+      "feature_area": "Solver Quality — Credit Hours",
+      "help_ref": "scenario-kpi.tsx (Credit Hours tab); 133-ro-solver-algorithm (fairness_target_hours)",
+      "title": "Every crew's credited hours sit within their Credit Min / Credit Max band",
+      "preconditions": "A Done scenario loaded; Credit Hours tab available.",
+      "steps": "1. Open the Credit Hours tab and read the 'Credit Hours per Crew' table.\n2. For each crew, compare Credited Hours against Credit Min and Credit Max.\n3. Read the In Range column for each crew.\n4. Sort/scan for any crew whose Credited Hours falls outside [Credit Min, Credit Max].",
+      "expected": "For every crew, Credit Min ≤ Credited Hours ≤ Credit Max and In Range = true. Any crew below Credit Min is explained by availability (Preassign Rest Days / leave, Target Gap shown), not by the solver arbitrarily under-loading them.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-011",
+      "feature_area": "Solver Quality — Credit Hours",
+      "help_ref": "scenario-kpi.tsx (Credit Hours tab: Period Credit Target / Target Gap / Per Day Rate)",
+      "title": "Credited hours are balanced/fair across crew — min/max spread is reasonable",
+      "preconditions": "A Done scenario with a full-time crew group of the same base/rank and similar Available Days.",
+      "steps": "1. In the Credit Hours tab, filter to one base/rank group of full-time available crew (similar Available Days).\n2. Read the Credited Hours column for the group and note the minimum and maximum.\n3. Read the Period Credit Target and Target Gap columns.\n4. Compute the spread (max − min) across the balanced group.",
+      "expected": "Within a like-for-like available group, the Credited-Hours spread (max − min) is tight (target: no crew's Target Gap materially larger than peers, e.g. within the run's fairness band around Period Credit Target). No available crew is grossly over- or under-loaded relative to peers.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-012",
+      "feature_area": "Solver Quality — Credit Hours",
+      "help_ref": "scenario-kpi.tsx (Credit Hours tab CSV export); scenario-quality.tsx (Awarded credit)",
+      "title": "Credit Hours tab reconciles with the roster's summed credit",
+      "preconditions": "A Done scenario loaded; Open in Gantt view for one sample crew.",
+      "steps": "1. Pick 3 crew in the Credit Hours tab and note each crew's Credited Hours.\n2. Open the Quality Analyzer (Gauge) and read the same crew's Awarded credit (Before opt + After opt).\n3. In the Gantt view, sum the credit of that crew's assigned pairings + credited reserve duties.\n4. Compare the three sources for each crew.",
+      "expected": "For each sample crew, Credit Hours tab Credited Hours = Quality Analyzer Awarded credit (Before opt + After opt) = sum of the crew's on-roster pairing/reserve credit, to within rounding. The three views agree.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-013",
+      "feature_area": "Solver Quality — KPI Metrics",
+      "help_ref": "scenario-kpi.tsx (KPI tab)",
+      "title": "KPI cards match the underlying roster totals",
+      "preconditions": "A Done scenario loaded with a populated KPI tab.",
+      "steps": "1. Open the KPI tab and record each headline card (e.g. total assignments / assigned pairings, coverage %, covered slots, crew count).\n2. In the Gantt view, count the distinct crew that received at least one assignment.\n3. Compare the KPI assignment/coverage cards against the Uncovered tab and Distribution 'Assigned slots' tile.\n4. Confirm no KPI card shows a placeholder or NaN.",
+      "expected": "The KPI 'assigned' / coverage cards equal the roster-derived totals (assigned slots = Distribution 'Assigned slots' tile = total demand − Uncovered rows); crew count on the KPI matches distinct assigned crew. Every card shows a real number with its description, none blank.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T6-SQ-014",
+      "feature_area": "Solver Quality — KPI Metrics",
+      "help_ref": "scenario-kpi.tsx (KPI tab); scenario-run.tsx (Failed banner)",
+      "title": "KPI tab distinguishes a real result from a failed/empty run",
+      "preconditions": "Access to a Done scenario (real result) and a Failed scenario.",
+      "steps": "1. Open the KPI tab on the Done scenario and confirm metric cards render with values.\n2. Open the KPI tab on the Failed scenario.\n3. Confirm the failed run shows the red banner advising to review configuration and resubmit, not fabricated zero-value 'success' cards.\n4. Confirm a 0-coverage-but-Done run (all fixed) still shows honest metrics, not an error banner.",
+      "expected": "A genuine result shows populated KPI cards; a Failed run shows the red review-and-resubmit banner; a legitimately 0-coverage Done run shows real zero/low metrics (no false failure). The KPI tab never presents a failed/empty run as a successful one.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T6-SQ-015",
+      "feature_area": "Solver Quality — Distribution",
+      "help_ref": "scenario-kpi.tsx (Distribution tab)",
+      "title": "Distribution tiles and Σ slot-days reconcile with coverage",
+      "preconditions": "A Done scenario loaded; Distribution tab available.",
+      "steps": "1. Open the Distribution tab; keep the Both type filter.\n2. Read the four tiles: Assigned slots, Uncovered slots, Peak day load, Crew utilization.\n3. Switch to Table view and read the Σ slot-days totals row (Pairing, Reserve, On duty, Available, Idle, Unc. pairing, Unc. reserve).\n4. Compute Assigned-slots tile vs Σ(On duty) and Uncovered-slots tile vs Σ(Unc. pairing + Unc. reserve).",
+      "expected": "Assigned slots tile = Σ(On duty) slot-days; Uncovered slots tile = Σ(Unc. pairing) + Σ(Unc. reserve); and Assigned + Uncovered = total demand — matching the Uncovered tab count and KPI coverage. Peak day load equals the largest single Day on-duty value.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T6-SQ-016",
+      "feature_area": "Solver Quality — Distribution",
+      "help_ref": "scenario-kpi.tsx (Distribution tab: charts, Idle column)",
+      "title": "Daily duty load is balanced across the period with visible outliers",
+      "preconditions": "A Done scenario spanning a multi-week period.",
+      "steps": "1. Open the Distribution tab, Chart view, and inspect 'Daily duty load vs available crew' (Pairing blue, Reserve amber, Available crew green).\n2. Confirm weekend bands and month separators render and the two charts share a linked cursor.\n3. Switch to Table view and scan the On duty vs Available vs Idle columns per day.\n4. Identify the highest and lowest On-duty days.",
+      "expected": "Daily On duty never exceeds Available crew (Idle ≥ 0 every day); the day-to-day load has no unexplained spike/trough (peak day is visible as an outlier tile and in the chart). The distribution reads as a balanced spread, and any low-utilisation day is a real demand gap, not a solver artefact.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T6-SQ-017",
+      "feature_area": "Solver Quality — Distribution",
+      "help_ref": "scenario-kpi.tsx (Distribution tab: Rank / Type filters)",
+      "title": "Distribution filters slice the same totals consistently",
+      "preconditions": "A Done scenario with a report-shaped Distribution source (Rank + Timezone filters available).",
+      "steps": "1. Open the Distribution tab with the Both type filter and note total Assigned slots.\n2. Switch the type filter to Pairing, note Assigned slots; switch to Reserve, note Assigned slots.\n3. Add the Rank filter: select each rank in turn and note per-rank assigned slots.\n4. Sum the parts and compare to the Both/All total.",
+      "expected": "Pairing assigned + Reserve assigned = Both assigned slots; the sum of per-rank assigned slots = the All-ranks total. Slicing by type or rank re-partitions the same totals with no slots gained or lost.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T6-SQ-018",
+      "feature_area": "Solver Quality — Versions",
+      "help_ref": "scenario-kpi.tsx (Versions tab)",
+      "title": "Multiple solver run versions are listed and the current one is marked",
+      "preconditions": "A scenario that has been run at least twice, producing 2+ archived versions.",
+      "steps": "1. Open the Versions tab.\n2. Confirm each archived version shows Version, Executed By, Executed At, File Timestamp, Size, and Actions.\n3. Confirm exactly one version carries the Current badge.\n4. Click Open Gantt on a non-current version and confirm that version's roster loads.",
+      "expected": "The Versions table lists every archived run (≥ 2 rows), each with executor, timestamp and size; exactly one row is badged Current; Open Gantt on an older version loads that version's roster (distinct from the current one).",
+      "severity": "Medium"
+    },
+    {
+      "id": "T6-SQ-019",
+      "feature_area": "Solver Quality — Versions",
+      "help_ref": "scenario-kpi.tsx (Versions tab: Differences dialog)",
+      "title": "Version Differences dialog shows the parameter diff between two runs",
+      "preconditions": "A scenario with 2+ versions produced under different algorithm and/or regulatory parameters.",
+      "steps": "1. In the Versions tab, click Differences (Actions) on a non-current version.\n2. In the Differences dialog, review the Algorithm Parameters and Regulatory Parameters sections.\n3. Confirm changed values are shown in red.\n4. Confirm any parameter present in only one run is marked 'Only in archived version' / 'Only in current scenario'.",
+      "expected": "The Differences dialog lists Algorithm Parameters and Regulatory Parameters; every value that differs between the two runs is highlighted in red, and any parameter unique to one side carries the correct 'Only in archived version' / 'Only in current scenario' marker. Unchanged parameters are not flagged.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T6-SQ-020",
+      "feature_area": "Solver Quality — Versions",
+      "help_ref": "scenario-kpi.tsx (Versions + Notes tabs)",
+      "title": "Select the best version and capture the rationale in Notes",
+      "preconditions": "A scenario with 2+ versions differing in coverage / fairness.",
+      "steps": "1. Compare the versions' KPI/coverage (Open Gantt on each, or read the run reports).\n2. Choose the best version (e.g. highest coverage with acceptable fairness) and Open Gantt on it so it is the working result.\n3. Open the Notes tab and post a question/note recording which version was chosen and why.\n4. Confirm the Notes entry persists (survives Remove Result) and the chosen version is reflected.",
+      "expected": "The best version can be opened and becomes the active roster; the Notes tab records the selection rationale with a Q label and date-time byline, the open-note badge updates, and the note survives Remove Result.",
+      "severity": "Medium"
+    },
+    {
+      "id": "T6-SQ-021",
+      "feature_area": "Solver Quality — Algorithm Parameters",
+      "help_ref": "133-ro-solver-algorithm (weights_unassigned); scenario-kpi.tsx (Versions Differences)",
+      "title": "Raising the coverage/unassigned weight reduces uncovered demand",
+      "preconditions": "A baseline Done scenario with some uncovered demand; ability to re-run with a higher coverage penalty (weights_unassigned).",
+      "steps": "1. Record the baseline run's Uncovered-tab row count and KPI coverage %.\n2. Re-run the scenario with a higher weights_unassigned (coverage penalty) and otherwise identical inputs.\n3. Open the new run's Uncovered tab and KPI coverage %.\n4. Open Versions → Differences and confirm the changed weight is recorded (red) for the run.",
+      "expected": "The higher-coverage-weight run shows an Uncovered row count ≤ the baseline (coverage % equal or higher — moves in the expected direction), and the Differences dialog records the changed weights_unassigned value. The parameter set used is captured with the run.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-022",
+      "feature_area": "Solver Quality — Algorithm Parameters",
+      "help_ref": "133-ro-solver-algorithm (fairness_target_hours); scenario-kpi.tsx (Credit Hours / Distribution)",
+      "title": "Raising the fairness weight tightens the credit-hour distribution",
+      "preconditions": "A baseline Done scenario; ability to re-run with a stronger fairness objective (fairness_target_hours / fairness weight).",
+      "steps": "1. Record the baseline Credited-Hours spread (max − min) for a like-for-like available base/rank group.\n2. Re-run with a stronger fairness weight and otherwise identical inputs.\n3. Read the new run's Credit Hours tab spread for the same group and the Distribution balance.\n4. Confirm via Versions → Differences that the fairness parameter change is recorded.",
+      "expected": "The stronger-fairness run shows a tighter Credited-Hours spread (max − min smaller than baseline) and a more even Distribution, with no crew's Target Gap worsening materially; the changed fairness parameter is recorded in Differences. Result moves in the expected direction.",
+      "severity": "High"
+    },
+    {
+      "id": "T6-SQ-023",
+      "feature_area": "Solver Quality — Algorithm Parameters",
+      "help_ref": "133-ro-solver-algorithm (preferred_base_weight); 125-pbs-result-analyzer; scenario-kpi.tsx (Versions)",
+      "title": "Changing base-preference weight shifts base-match assignments as expected",
+      "preconditions": "A baseline Done scenario spanning multiple bases; ability to re-run with a higher preferred_base_weight.",
+      "steps": "1. Record the baseline count of crew assigned pairings starting at their own base vs an away base (Credit Hours 'Base' vs pairing Start Base, or result.json base_match).\n2. Re-run with a higher preferred_base_weight and identical inputs.\n3. Recount base-matched assignments in the new run.\n4. Confirm the parameter change is captured in Versions → Differences.",
+      "expected": "The higher base-preference run produces at least as many base-matched (own-base) assignments as the baseline (base mismatches equal or fewer — moves in the expected direction), and the changed preferred_base_weight is recorded with the run in the Differences dialog.",
+      "severity": "High"
+    }
+  ]
+}

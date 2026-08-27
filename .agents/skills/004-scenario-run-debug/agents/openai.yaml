@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scenario Run Debug"
+  short_description: "Trace failed scenario runs"
+  default_prompt: "Debug this failed scenario run by tracing live-server, engine-server, pbs-server, solver, and result callback boundaries."

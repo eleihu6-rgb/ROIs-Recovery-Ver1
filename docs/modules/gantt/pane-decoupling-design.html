@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROIS-AI Gantt Pane Decoupling Design</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom theme colors matching ROIS-AI */
+    :root {
+      --pane-roster-main: #3b82f6;
+      --pane-roster-sub: #3b82f6;
+      --pane-pairing: #22c55e;
+      --pane-flight: #a855f7;
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border-color: #475569;
+    }
+
+    .light-mode {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #e2e8f0;
+      --bg-tertiary: #cbd5e1;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --border-color: #94a3b8;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .pane-indicator {
+      width: 6px;
+      border-radius: 2px;
+    }
+
+    .pane-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .pane-header {
+      background: var(--bg-tertiary);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mock-canvas {
+      background: var(--bg-primary);
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mock-row {
+      height: 32px;
+      background: var(--bg-tertiary);
+      margin: 4px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .mock-task-bar {
+      height: 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 500;
+      color: white;
+      margin: 4px;
+    }
+
+    .split-handle {
+      background: var(--border-color);
+      cursor: col-resize;
+      width: 2px;
+    }
+
+    .split-handle-h {
+      background: var(--border-color);
+      cursor: row-resize;
+      height: 2px;
+    }
+
+    .float-window {
+      position: absolute;
+      background: var(--bg-secondary);
+      border: 2px solid var(--pane-pairing);
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      min-width: 200px;
+      min-height: 150px;
+    }
+
+    .float-title-bar {
+      background: var(--pane-pairing);
+      color: white;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: move;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .layout-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .config-panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .code-block {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Fira Code', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      border: 1px solid #2d2d44;
+    }
+
+    .code-block .keyword { color: #c678dd; }
+    .code-block .type { color: #e5c07b; }
+    .code-block .string { color: #98c379; }
+    .code-block .comment { color: #5c6370; }
+    .code-block .property { color: #61afef; }
+
+    .toggle-btn {
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .toggle-btn.active {
+      background: var(--pane-roster-main);
+      color: white;
+    }
+
+    .toggle-btn.inactive {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+    }
+
+    .section-divider {
+      border-top: 2px solid var(--border-color);
+      margin: 32px 0;
+    }
+
+    .arch-box {
+      background: var(--bg-secondary);
+      border: 2px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      position: relative;
+    }
+
+    .arch-label {
+      position: absolute;
+      top: -12px;
+      left: 16px;
+      background: var(--pane-roster-main);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .flow-arrow {
+      color: var(--text-secondary);
+      font-size: 24px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    /* Interactive demo styles */
+    .demo-container {
+      background: var(--bg-primary);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 400px;
+    }
+
+    .demo-toolbar {
+      background: var(--bg-tertiary);
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .demo-time-axis {
+      height: 32px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--text-primary);
+      border-bottom-color: var(--pane-roster-main);
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .problem-tag {
+      background: #ef4444;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+    }
+
+    .solution-tag {
+      background: #22c55e;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body class="p-8">
+  <!-- Header -->
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold mb-2">ROIS-AI Gantt Pane Decoupling Design</h1>
+        <p class="text-lg" style="color: var(--text-secondary)">Four-Pane Complete Decoupling + Custom Layout System</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="themeToggle" class="toggle-btn inactive">Toggle Theme</button>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="flex flex-wrap gap-3 mb-8">
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--pane-roster-main)"></div>
+        <span class="text-sm">Roster Main</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--pane-roster-sub)"></div>
+        <span class="text-sm">Roster Sub</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--pane-pairing)"></div>
+        <span class="text-sm">Pairing</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--pane-flight)"></div>
+        <span class="text-sm">Flight</span>
+      </div>
+    </div>
+
+    <!-- Section 1: Current Architecture Problems -->
+    <h2 class="text-xl font-semibold mb-4">1. Current Architecture Analysis</h2>
+
+    <div class="comparison-grid mb-8">
+      <!-- Current State -->
+      <div class="arch-box">
+        <div class="arch-label" style="background: #ef4444">CURRENT (Coupled)</div>
+        <div class="demo-container" style="min-height: 280px">
+          <div class="demo-toolbar">
+            <span class="text-sm font-semibold">PaneContainer (Single Entry)</span>
+            <span class="problem-tag">Coupled</span>
+          </div>
+          <div class="demo-time-axis">
+            <div style="width: 200px" class="bg-tertiary p-1 rounded">Left Panel (Shared)</div>
+            <div class="flex-1 text-center">Time Axis (Shared)</div>
+          </div>
+          <div class="flex flex-col gap-1 p-2" style="height: 220px">
+            <!-- All panes stacked -->
+            <div class="pane-card flex-1">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-roster-main)"></div>
+                <span class="text-xs font-semibold">Roster Main</span>
+                <span class="problem-tag ml-auto">Shared ScrollX</span>
+              </div>
+              <div class="mock-canvas">
+                <div class="mock-task-bar" style="width: 60%; background: var(--pane-roster-main)">Task A</div>
+              </div>
+            </div>
+            <div class="split-handle-h"></div>
+            <div class="pane-card" style="height: 80px">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-pairing)"></div>
+                <span class="text-xs font-semibold">Pairing</span>
+                <span class="problem-tag ml-auto">Shared Zoom</span>
+              </div>
+              <div class="mock-canvas" style="height: 40px">
+                <div class="mock-task-bar" style="width: 40%; background: var(--pane-pairing)">P-101</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Problems List -->
+        <div class="mt-4">
+          <h4 class="text-sm font-semibold mb-2" style="color: #ef4444">Problems:</h4>
+          <ul class="text-sm space-y-1" style="color: var(--text-secondary)">
+            <li><span class="problem-tag mr-2">1</span>PaneContainer owns all panes — tight coupling</li>
+            <li><span class="problem-tag mr-2">2</span>Shared scrollX, scrollY via gantt-view-store</li>
+            <li><span class="problem-tag mr-2">3</span>Shared pxPerHour (zoom) — all panes zoom together</li>
+            <li><span class="problem-tag mr-2">4</span>Shared dateRange, leftPanelWidth</li>
+            <li><span class="problem-tag mr-2">5</span>Pane visibility toggled centrally — no independent control</li>
+            <li><span class="problem-tag mr-2">6</span>Floating panes still tied to PaneContainer lifecycle</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Proposed State -->
+      <div class="arch-box">
+        <div class="arch-label" style="background: #22c55e">PROPOSED (Decoupled)</div>
+        <div class="demo-container" style="min-height: 280px">
+          <div class="demo-toolbar">
+            <span class="text-sm font-semibold">Layout Manager + Independent Panes</span>
+            <span class="solution-tag">Decoupled</span>
+          </div>
+          <div class="p-2 grid gap-2" style="grid-template-columns: 1fr 1fr; height: 240px">
+            <!-- Independent pane instances -->
+            <div class="pane-card">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-roster-main)"></div>
+                <span class="text-xs font-semibold">Roster Main (Instance #1)</span>
+                <span class="solution-tag ml-auto">Own Viewport</span>
+              </div>
+              <div class="demo-time-axis" style="height: 24px; font-size: 10px">
+                <span>Independent TimeAxis</span>
+              </div>
+              <div class="mock-canvas" style="height: 100px">
+                <div class="mock-task-bar" style="width: 70%; background: var(--pane-roster-main)">Task A</div>
+              </div>
+            </div>
+            <div class="pane-card">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-pairing)"></div>
+                <span class="text-xs font-semibold">Pairing (Instance #1)</span>
+                <span class="solution-tag ml-auto">Own Zoom</span>
+              </div>
+              <div class="demo-time-axis" style="height: 24px; font-size: 10px">
+                <span>Independent TimeAxis</span>
+              </div>
+              <div class="mock-canvas" style="height: 100px">
+                <div class="mock-task-bar" style="width: 50%; background: var(--pane-pairing)">P-101</div>
+              </div>
+            </div>
+            <div class="pane-card" style="grid-column: span 2">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-flight)"></div>
+                <span class="text-xs font-semibold">Flight (Instance #1)</span>
+                <span class="solution-tag ml-auto">Own ScrollY</span>
+              </div>
+              <div class="mock-canvas" style="height: 60px">
+                <div class="mock-task-bar" style="width: 30%; background: var(--pane-flight)">F-201</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Solutions List -->
+        <div class="mt-4">
+          <h4 class="text-sm font-semibold mb-2" style="color: #22c55e">Solutions:</h4>
+          <ul class="text-sm space-y-1" style="color: var(--text-secondary)">
+            <li><span class="solution-tag mr-2">1</span>Each pane is an independent component instance</li>
+            <li><span class="solution-tag mr-2">2</span>Per-pane viewport state (scrollX, scrollY, zoom)</li>
+            <li><span class="solution-tag mr-2">3</span>Per-pane dateRange, leftPanelWidth configurable</li>
+            <li><span class="solution-tag mr-2">4</span>Visibility controlled by layout config, not store toggle</li>
+            <li><span class="solution-tag mr-2">5</span>Floating panes fully autonomous — own lifecycle</li>
+            <li><span class="solution-tag mr-2">6</span>Layout Manager orchestrates placement, not content</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Section 2: Type Definitions -->
+    <h2 class="text-xl font-semibold mb-4">2. Layout Configuration Type Definitions</h2>
+
+    <div class="grid gap-4 mb-8" style="grid-template-columns: 1fr 1fr">
+      <!-- Pane Instance Config -->
+      <div class="config-panel">
+        <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+          <div class="pane-indicator" style="background: var(--pane-roster-main); width: 12px; height: 12px"></div>
+          PaneInstanceConfig
+        </h3>
+        <div class="code-block">
+          <pre><span class="keyword">interface</span> <span class="type">PaneInstanceConfig</span> {
+  <span class="comment">// Unique instance ID (allows multiple of same type)</span>
+  <span class="property">instanceId</span>: <span class="type">string</span>
+  <span class="property">paneType</span>: <span class="type">PaneType</span>
+
+  <span class="comment">// Per-instance viewport state</span>
+  <span class="property">viewport</span>: {
+    <span class="property">scrollX</span>: <span class="type">number</span>
+    <span class="property">scrollY</span>: <span class="type">number</span>
+    <span class="property">pxPerHour</span>: <span class="type">number</span>
+    <span class="property">dateRange</span>: <span class="type">DateRange</span> | <span class="string">'sync'</span> <span class="comment">// 'sync' = follow global</span>
+    <span class="property">leftPanelWidth</span>: <span class="type">number</span> | <span class="string">'sync'</span>
+  }
+
+  <span class="comment">// Per-instance interactive state</span>
+  <span class="property">selection</span>: {
+    <span class="property">frozenRowIds</span>: <span class="type">string</span>[]
+    <span class="property">selectedRowIds</span>: <span class="type">string</span>[]
+    <span class="property">sortColumn</span>: <span class="type">string</span> | <span class="type">null</span>
+    <span class="property">sortDirection</span>: <span class="type">'asc'</span> | <span class="type">'desc'</span>
+  }
+
+  <span class="comment">// Display state</span>
+  <span class="property">visible</span>: <span class="type">boolean</span>
+  <span class="property">floating</span>: <span class="type">boolean</span>
+  <span class="property">floatGeometry</span>?: <span class="type">FloatGeometry</span>
+}</pre>
+        </div>
+      </div>
+
+      <!-- Layout Node Config -->
+      <div class="config-panel">
+        <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+          <div class="pane-indicator" style="background: var(--pane-pairing); width: 12px; height: 12px"></div>
+          LayoutNodeConfig
+        </h3>
+        <div class="code-block">
+          <pre><span class="keyword">type</span> <span class="type">LayoutNodeType</span> = <span class="string">'split-h'</span> | <span class="string">'split-v'</span> | <span class="string">'pane'</span> | <span class="string">'tab'</span> | <span class="string">'float'</span>
+
+<span class="keyword">interface</span> <span class="type">LayoutNodeConfig</span> {
+  <span class="property">type</span>: <span class="type">LayoutNodeType</span>
+  <span class="property">id</span>: <span class="type">string</span>
+
+  <span class="comment">// For split nodes</span>
+  <span class="property">children</span>?: <span class="type">LayoutNodeConfig</span>[]
+  <span class="property">splitRatio</span>?: <span class="type">number</span>[] <span class="comment">// [0.5, 0.5] for equal split</span>
+
+  <span class="comment">// For pane/tab nodes</span>
+  <span class="property">paneInstanceId</span>?: <span class="type">string</span>
+  <span class="property">paneIds</span>?: <span class="type">string</span>[] <span class="comment">// For tab container</span>
+  <span class="property">activePaneId</span>?: <span class="type">string</span>
+
+  <span class="comment">// Size constraints</span>
+  <span class="property">minWidth</span>?: <span class="type">number</span>
+  <span class="property">minHeight</span>?: <span class="type">number</span>
+  <span class="property">flex</span>?: <span class="type">number</span>
+
+  <span class="comment">// For float nodes</span>
+  <span class="property">geometry</span>?: <span class="type">FloatGeometry</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Root Layout Config -->
+    <div class="config-panel mb-8">
+      <h3 class="text-sm font-semibold mb-3">RootLayoutConfig (Complete Layout Definition)</h3>
+      <div class="code-block">
+        <pre><span class="keyword">interface</span> <span class="type">RootLayoutConfig</span> {
+  <span class="property">id</span>: <span class="type">string</span> <span class="comment">// Layout preset ID</span>
+  <span class="property">name</span>: <span class="type">string</span> <span class="comment">// e.g. "Default", "Compare Mode", "Focus Flight"</span>
+  <span class="property">root</span>: <span class="type">LayoutNodeConfig</span> <span class="comment">// Tree structure of layout</span>
+  <span class="property">paneInstances</span>: <span class="type">PaneInstanceConfig</span>[] <span class="comment">// All pane instances</span>
+  <span class="property">floatingPanes</span>?: <span class="type">LayoutNodeConfig</span>[] <span class="comment">// Floating windows</span>
+
+  <span class="comment">// Global sync settings (optional sharing)</span>
+  <span class="property">syncOptions</span>?: {
+    <span class="property">syncScrollX</span>: <span class="type">boolean</span> <span class="comment">// Panes can opt-in to sync</span>
+    <span class="property">syncZoom</span>: <span class="type">boolean</span>
+    <span class="property">syncDateRange</span>: <span class="type">boolean</span>
+    <span class="property">syncTimezone</span>: <span class="type">boolean</span>
+  }
+}</pre>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Section 3: Layout Examples -->
+    <h2 class="text-xl font-semibold mb-4">3. Layout Configuration Examples</h2>
+
+    <!-- Tabs for different layouts -->
+    <div class="flex gap-2 mb-4 border-b" style="border-color: var(--border-color)">
+      <button class="tab-btn active" onclick="showLayout('default')">Default (Stacked)</button>
+      <button class="tab-btn" onclick="showLayout('split')">Horizontal Split</button>
+      <button class="tab-btn" onclick="showLayout('grid')">Grid Layout</button>
+      <button class="tab-btn" onclick="showLayout('float')">Floating Focus</button>
+      <button class="tab-btn" onclick="showLayout('tab')">Tabbed Mode</button>
+      <button class="tab-btn" onclick="showLayout('nested')">Nested Container</button>
+    </div>
+
+    <!-- Layout Demo Container -->
+    <div id="layoutDemo" class="demo-container mb-8" style="min-height: 350px">
+      <!-- Default layout will be rendered here -->
+    </div>
+
+    <!-- Layout Config JSON -->
+    <div id="layoutConfig" class="config-panel mb-8">
+      <h3 class="text-sm font-semibold mb-3">Layout Config JSON</h3>
+      <div class="code-block" id="configCode">
+        <!-- Config will be shown here -->
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Section 4: Architecture Diagram -->
+    <h2 class="text-xl font-semibold mb-4">4. Decoupled Architecture Flow</h2>
+
+    <div class="arch-box mb-8">
+      <div class="arch-label">Architecture Components</div>
+
+      <div class="flex flex-col gap-8">
+        <!-- Layer 1: Layout Manager -->
+        <div class="flex items-center gap-4">
+          <div class="flex-1 p-4 rounded-lg" style="background: var(--bg-tertiary); border: 2px solid var(--pane-roster-main)">
+            <h4 class="font-semibold mb-2">LayoutManager</h4>
+            <ul class="text-sm" style="color: var(--text-secondary)">
+              <li>Reads RootLayoutConfig from store/URL</li>
+              <li>Render layout tree (SplitContainer, TabContainer, FloatLayer)</li>
+              <li>Does NOT render pane content</li>
+              <li>Handles splitter drag, tab switch, float move</li>
+            </ul>
+          </div>
+          <span class="flow-arrow">→</span>
+          <div class="text-sm" style="color: var(--text-secondary)">orchestrates</div>
+        </div>
+
+        <!-- Layer 2: Layout Nodes -->
+        <div class="flex items-center gap-4">
+          <div class="flex-1 grid grid-cols-3 gap-3">
+            <div class="p-3 rounded-lg" style="background: var(--bg-tertiary); border: 1px solid var(--pane-pairing)">
+              <h4 class="text-sm font-semibold mb-1">SplitContainer</h4>
+              <p class="text-xs" style="color: var(--text-secondary)">H/V split with draggable handle</p>
+            </div>
+            <div class="p-3 rounded-lg" style="background: var(--bg-tertiary); border: 1px solid var(--pane-flight)">
+              <h4 class="text-sm font-semibold mb-1">TabContainer</h4>
+              <p class="text-xs" style="color: var(--text-secondary)">Tabbed pane switching</p>
+            </div>
+            <div class="p-3 rounded-lg" style="background: var(--bg-tertiary); border: 1px solid #ef4444">
+              <h4 class="text-sm font-semibold mb-1">FloatLayer</h4>
+              <p class="text-xs" style="color: var(--text-secondary)">Absolute positioned windows</p>
+            </div>
+          </div>
+          <span class="flow-arrow">→</span>
+          <div class="text-sm" style="color: var(--text-secondary)">contains</div>
+        </div>
+
+        <!-- Layer 3: Pane Instances -->
+        <div class="flex items-center gap-4">
+          <div class="flex-1 p-4 rounded-lg" style="background: var(--bg-tertiary); border: 2px solid var(--pane-roster-main)">
+            <h4 class="font-semibold mb-2">PaneInstance (Independent)</h4>
+            <div class="grid grid-cols-4 gap-2 text-xs">
+              <div class="p-2 rounded" style="background: var(--pane-roster-main); color: white">RosterPane #1</div>
+              <div class="p-2 rounded" style="background: var(--pane-roster-main); color: white">RosterPane #2</div>
+              <div class="p-2 rounded" style="background: var(--pane-pairing); color: white">PairingPane #1</div>
+              <div class="p-2 rounded" style="background: var(--pane-flight); color: white">FlightPane #1</div>
+            </div>
+            <ul class="text-sm mt-2" style="color: var(--text-secondary)">
+              <li>Each instance owns: viewport, selection, sort, frozen rows</li>
+              <li>Can opt-in to sync (scrollX, zoom, dateRange)</li>
+              <li>Independent Canvas rendering lifecycle</li>
+            </ul>
+          </div>
+          <span class="flow-arrow">→</span>
+          <div class="text-sm" style="color: var(--text-secondary)">renders</div>
+        </div>
+
+        <!-- Layer 4: Canvas -->
+        <div class="flex items-center gap-4">
+          <div class="flex-1 p-4 rounded-lg" style="background: var(--bg-tertiary); border: 1px solid var(--border-color)">
+            <h4 class="font-semibold mb-2">Canvas Layer</h4>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="p-2 rounded" style="background: var(--bg-primary)">PaneCanvas (timeline)</div>
+              <div class="p-2 rounded" style="background: var(--bg-primary)">PaneHeaderCanvas (left panel)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Section 5: Refactor Checklist -->
+    <h2 class="text-xl font-semibold mb-4">5. Refactor Checklist</h2>
+
+    <div class="grid gap-4 mb-8" style="grid-template-columns: 1fr 1fr">
+      <!-- Store Changes -->
+      <div class="config-panel">
+        <h3 class="text-sm font-semibold mb-3" style="color: var(--pane-roster-main)">Store Refactor</h3>
+        <div class="space-y-3">
+          <div class="flex items-start gap-3 p-2 rounded" style="background: var(--bg-primary)">
+            <input type="checkbox" class="mt-1">
+            <div>
+              <span class="text-sm font-medium">Create LayoutStore</span>
+              <p class="text-xs" style="color: var(--text-secondary)">Store RootLayoutConfig, layout presets, active layout ID</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-2 rounded" style="background: var(--bg-primary)">
+            <input type="checkbox" class="mt-1">
+            <div>
+              <span class="text-sm font-medium">Create PaneInstanceStore</span>
+              <p class="text-xs" style="color: var(--text-secondary)">Map instanceId → PaneInstanceConfig, per-instance viewport state</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-2 rounded" style="background: var(--bg-primary)">
+            <input type="checkbox" class="mt-1">
+            <div>
+              <span class="text-sm font-medium">Deprecate PaneStore</span>
+              <p class="text-xs" style="color: var(--text-secondary)">Move to PaneInstanceStore, keep legacy compat layer</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-2 rounded" style="background: var(--bg-primary)">
+            <input type="checkbox" class="mt-1">
+            <div>
+              <span class="text-sm font-medium">Remove global scrollX/pxPerHour from GanttViewStore</span>
+              <p class="text-xs" style="color: var(--text-secondary)">Each pane instance owns its viewport</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Component Changes -->
+      <div class="config-panel">
+        <h3 class="text-sm font-semibold mb-3" style="color: var(--pane-pairing)">Component Refactor</h3>
+        <div class="space-y-3">
+          <div class="flex items-start gap-3 p-2 rounded" style="background: var(--bg-primary)">
+            <input type="checkbox" class="mt-1">
+            <div>
+              <span class="text-sm font-medium">Create LayoutManager component</span>
+              <p class="text-xs" style="color: var(--text-secondary)">Root layout renderer, handles config change</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-2 rounded" style="background: var(--bg-primary)">
+            <input type="checkbox" class="mt-1">
+            <div>
+              <span class="text-sm font-medium">Create SplitContainer / TabContainer</span>
+              <p class="text-xs" style="color: var(--text-secondary)">Layout nodes, handle splitter drag and tab switch</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-2 rounded" style="background: var(--bg-primary)">
+            <input type="checkbox" class="mt-1">
+            <div>
+              <span class="text-sm font-medium">Refactor PaneContainer → LayoutRenderer</span>
+              <p class="text-xs" style="color: var(--text-secondary)">Remove hardcoded pane order, use config tree</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-2 rounded" style="background: var(--bg-primary)">
+            <input type="checkbox" class="mt-1">
+            <div>
+              <span class="text-sm font-medium">Refactor RosterPane / PairingPane / FlightPane</span>
+              <p class="text-xs" style="color: var(--text-secondary)">Accept instanceId prop, read per-instance state</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Migration Path -->
+    <div class="config-panel mb-8">
+      <h3 class="text-sm font-semibold mb-3">Migration Path</h3>
+      <div class="flex items-center gap-4">
+        <div class="p-3 rounded text-center" style="background: var(--bg-primary); border: 1px solid var(--border-color)">
+          <span class="text-xs font-semibold">Phase 1</span>
+          <p class="text-xs mt-1" style="color: var(--text-secondary)">Types + Stores</p>
+        </div>
+        <span class="flow-arrow text-lg">→</span>
+        <div class="p-3 rounded text-center" style="background: var(--bg-primary); border: 1px solid var(--border-color)">
+          <span class="text-xs font-semibold">Phase 2</span>
+          <p class="text-xs mt-1" style="color: var(--text-secondary)">Layout Nodes</p>
+        </div>
+        <span class="flow-arrow text-lg">→</span>
+        <div class="p-3 rounded text-center" style="background: var(--bg-primary); border: 1px solid var(--border-color)">
+          <span class="text-xs font-semibold">Phase 3</span>
+          <p class="text-xs mt-1" style="color: var(--text-secondary)">Pane Refactor</p>
+        </div>
+        <span class="flow-arrow text-lg">→</span>
+        <div class="p-3 rounded text-center" style="background: var(--bg-primary); border: 1px solid var(--border-color)">
+          <span class="text-xs font-semibold">Phase 4</span>
+          <p class="text-xs mt-1" style="color: var(--text-secondary)">Presets + UI</p>
+        </div>
+        <span class="flow-arrow text-lg">→</span>
+        <div class="p-3 rounded text-center" style="background: var(--bg-primary); border: 1px solid #22c55e">
+          <span class="text-xs font-semibold">Done</span>
+          <p class="text-xs mt-1" style="color: var(--text-secondary)">Tests + Docs</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center py-8" style="border-top: 1px solid var(--border-color)">
+      <p class="text-sm" style="color: var(--text-secondary)">Generated by Claude Code | ROIS-AI Gantt Pane Decoupling Design</p>
+    </div>
+  </div>
+
+  <script>
+    // Theme toggle
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      document.body.classList.toggle('light-mode');
+    });
+
+    // Layout configurations
+    const layouts = {
+      default: {
+        name: 'Default (Stacked)',
+        demo: `
+          <div class="demo-time-axis">
+            <div style="width: 200px" class="p-1 rounded" style="background: var(--bg-tertiary)">Left Panel (Sync)</div>
+            <div class="flex-1 text-center">Shared Time Axis</div>
+          </div>
+          <div class="flex flex-col gap-1 p-2" style="height: 300px">
+            <div class="pane-card flex-1">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-roster-main)"></div>
+                <span class="text-xs font-semibold">Roster Main</span>
+              </div>
+              <div class="mock-canvas">
+                <div class="mock-task-bar" style="width: 60%; background: var(--pane-roster-main)">Task A, B, C</div>
+              </div>
+            </div>
+            <div class="split-handle-h"></div>
+            <div class="pane-card" style="height: 100px">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-pairing)"></div>
+                <span class="text-xs font-semibold">Pairing</span>
+              </div>
+              <div class="mock-canvas" style="height: 60px">
+                <div class="mock-task-bar" style="width: 40%; background: var(--pane-pairing)">P-101, P-102</div>
+              </div>
+            </div>
+          </div>
+        `,
+        config: `{
+  "id": "default-stacked",
+  "name": "Default (Stacked)",
+  "root": {
+    "type": "split-v",
+    "id": "root-split",
+    "children": [
+      { "type": "pane", "paneInstanceId": "roster-main-1", "flex": 1 },
+      { "type": "pane", "paneInstanceId": "pairing-1", "minHeight": 120 }
+    ],
+    "splitRatio": [0.6, 0.4]
+  },
+  "paneInstances": [
+    { "instanceId": "roster-main-1", "paneType": "roster-main", "viewport": { "scrollX": 0, "pxPerHour": 30, "dateRange": "sync" } },
+    { "instanceId": "pairing-1", "paneType": "pairing", "viewport": { "scrollX": "sync", "pxPerHour": "sync", "dateRange": "sync" } }
+  ]
+}`
+      },
+
+      split: {
+        name: 'Horizontal Split',
+        demo: `
+          <div class="p-2 grid gap-1" style="grid-template-columns: 1fr 1fr; height: 300px">
+            <div class="pane-card">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-roster-main)"></div>
+                <span class="text-xs font-semibold">Roster Main (L)</span>
+              </div>
+              <div class="demo-time-axis" style="height: 24px; font-size: 10px">
+                <span>Independent TimeAxis</span>
+              </div>
+              <div class="mock-canvas" style="height: 180px">
+                <div class="mock-task-bar" style="width: 70%; background: var(--pane-roster-main)">Crew A, B, C tasks</div>
+              </div>
+            </div>
+            <div class="pane-card">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-roster-main)"></div>
+                <span class="text-xs font-semibold">Roster Sub (R)</span>
+              </div>
+              <div class="demo-time-axis" style="height: 24px; font-size: 10px">
+                <span>Independent TimeAxis</span>
+              </div>
+              <div class="mock-canvas" style="height: 180px">
+                <div class="mock-task-bar" style="width: 50%; background: var(--pane-roster-main)">Crew D, E tasks</div>
+              </div>
+            </div>
+          </div>
+        `,
+        config: `{
+  "id": "horizontal-split",
+  "name": "Compare Mode (H-Split)",
+  "root": {
+    "type": "split-h",
+    "id": "compare-split",
+    "children": [
+      { "type": "pane", "paneInstanceId": "roster-main-1", "flex": 1 },
+      { "type": "pane", "paneInstanceId": "roster-sub-1", "flex": 1 }
+    ],
+    "splitRatio": [0.5, 0.5]
+  },
+  "paneInstances": [
+    { "instanceId": "roster-main-1", "paneType": "roster-main", "viewport": { "scrollX": 0, "pxPerHour": 40 } },
+    { "instanceId": "roster-sub-1", "paneType": "roster-sub", "viewport": { "scrollX": 0, "pxPerHour": 40 } }
+  ],
+  "syncOptions": { "syncScrollX": false, "syncZoom": false }
+}`
+      },
+
+      grid: {
+        name: 'Grid Layout',
+        demo: `
+          <div class="p-2 grid gap-1" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 300px">
+            <div class="pane-card">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-roster-main)"></div>
+                <span class="text-xs font-semibold">Roster Main</span>
+              </div>
+              <div class="mock-canvas" style="height: 100px">
+                <div class="mock-task-bar" style="width: 60%; background: var(--pane-roster-main)">Tasks</div>
+              </div>
+            </div>
+            <div class="pane-card">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-pairing)"></div>
+                <span class="text-xs font-semibold">Pairing</span>
+              </div>
+              <div class="mock-canvas" style="height: 100px">
+                <div class="mock-task-bar" style="width: 40%; background: var(--pane-pairing)">P-101</div>
+              </div>
+            </div>
+            <div class="pane-card">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-flight)"></div>
+                <span class="text-xs font-semibold">Flight</span>
+              </div>
+              <div class="mock-canvas" style="height: 100px">
+                <div class="mock-task-bar" style="width: 30%; background: var(--pane-flight)">F-201</div>
+              </div>
+            </div>
+            <div class="pane-card">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-roster-sub)"></div>
+                <span class="text-xs font-semibold">Roster Sub</span>
+              </div>
+              <div class="mock-canvas" style="height: 100px">
+                <div class="mock-task-bar" style="width: 50%; background: var(--pane-roster-main)">Sub Tasks</div>
+              </div>
+            </div>
+          </div>
+        `,
+        config: `{
+  "id": "grid-4pane",
+  "name": "Grid Layout (All Panes)",
+  "root": {
+    "type": "split-h",
+    "id": "grid-root",
+    "children": [
+      {
+        "type": "split-v",
+        "children": [
+          { "type": "pane", "paneInstanceId": "roster-main-1", "flex": 1 },
+          { "type": "pane", "paneInstanceId": "flight-1", "flex": 1 }
+        ]
+      },
+      {
+        "type": "split-v",
+        "children": [
+          { "type": "pane", "paneInstanceId": "pairing-1", "flex": 1 },
+          { "type": "pane", "paneInstanceId": "roster-sub-1", "flex": 1 }
+        ]
+      }
+    ],
+    "splitRatio": [0.5, 0.5]
+  },
+  "paneInstances": [
+    { "instanceId": "roster-main-1", "paneType": "roster-main" },
+    { "instanceId": "pairing-1", "paneType": "pairing" },
+    { "instanceId": "flight-1", "paneType": "flight" },
+    { "instanceId": "roster-sub-1", "paneType": "roster-sub" }
+  ]
+}`
+      },
+
+      float: {
+        name: 'Floating Focus',
+        demo: `
+          <div class="p-2 relative" style="height: 300px">
+            <div class="pane-card h-full">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-roster-main)"></div>
+                <span class="text-xs font-semibold">Roster Main (Primary)</span>
+              </div>
+              <div class="mock-canvas" style="height: 220px">
+                <div class="mock-task-bar" style="width: 80%; background: var(--pane-roster-main)">Full Focus View</div>
+              </div>
+            </div>
+            <!-- Floating windows -->
+            <div class="float-window" style="top: 20px; right: 20px; width: 200px; height: 150px">
+              <div class="float-title-bar">
+                <div class="pane-indicator" style="background: var(--pane-pairing); width: 4px"></div>
+                Pairing (Float)
+              </div>
+              <div class="mock-canvas" style="height: 100px">
+                <div class="mock-task-bar" style="width: 40%; background: var(--pane-pairing)">P-101</div>
+              </div>
+            </div>
+            <div class="float-window" style="top: 100px; right: 240px; width: 180px; height: 120px; border-color: var(--pane-flight)">
+              <div class="float-title-bar" style="background: var(--pane-flight)">
+                <div class="pane-indicator" style="background: white; width: 4px"></div>
+                Flight (Float)
+              </div>
+              <div class="mock-canvas" style="height: 70px">
+                <div class="mock-task-bar" style="width: 30%; background: var(--pane-flight)">F-201</div>
+              </div>
+            </div>
+          </div>
+        `,
+        config: `{
+  "id": "float-focus",
+  "name": "Focus Mode (Roster + Floats)",
+  "root": {
+    "type": "pane",
+    "paneInstanceId": "roster-main-1",
+    "flex": 1
+  },
+  "paneInstances": [
+    { "instanceId": "roster-main-1", "paneType": "roster-main", "viewport": { "pxPerHour": 60 } },
+    { "instanceId": "pairing-1", "paneType": "pairing", "floating": true, "floatGeometry": { "x": 800, "y": 50, "width": 400, "height": 300 } },
+    { "instanceId": "flight-1", "paneType": "flight", "floating": true, "floatGeometry": { "x": 600, "y": 200, "width": 300, "height": 200 } }
+  ],
+  "floatingPanes": [
+    { "type": "float", "paneInstanceId": "pairing-1", "geometry": { "x": 800, "y": 50, "width": 400, "height": 300 } },
+    { "type": "float", "paneInstanceId": "flight-1", "geometry": { "x": 600, "y": 200, "width": 300, "height": 200 } }
+  ]
+}`
+      },
+
+      tab: {
+        name: 'Tabbed Mode',
+        demo: `
+          <div class="flex flex-col gap-1 p-2" style="height: 300px">
+            <div class="pane-card flex-1">
+              <div class="pane-header" style="gap: 4px">
+                <div class="pane-indicator" style="background: var(--pane-roster-main)"></div>
+                <div class="flex gap-1 ml-2">
+                  <button class="px-2 py-1 rounded text-xs font-semibold" style="background: var(--pane-roster-main); color: white">Roster Main</button>
+                  <button class="px-2 py-1 rounded text-xs" style="background: var(--bg-primary); color: var(--text-secondary)">Pairing</button>
+                  <button class="px-2 py-1 rounded text-xs" style="background: var(--bg-primary); color: var(--text-secondary)">Flight</button>
+                </div>
+              </div>
+              <div class="mock-canvas" style="height: 220px">
+                <div class="mock-task-bar" style="width: 70%; background: var(--pane-roster-main)">Active Tab: Roster Main</div>
+              </div>
+            </div>
+          </div>
+        `,
+        config: `{
+  "id": "tabbed-mode",
+  "name": "Tabbed (Single View)",
+  "root": {
+    "type": "tab",
+    "id": "main-tabs",
+    "paneIds": ["roster-main-1", "pairing-1", "flight-1"],
+    "activePaneId": "roster-main-1",
+    "flex": 1
+  },
+  "paneInstances": [
+    { "instanceId": "roster-main-1", "paneType": "roster-main" },
+    { "instanceId": "pairing-1", "paneType": "pairing" },
+    { "instanceId": "flight-1", "paneType": "flight" }
+  ]
+}`
+      },
+
+      nested: {
+        name: 'Nested Container',
+        demo: `
+          <div class="p-2" style="height: 300px">
+            <div class="pane-card h-full flex flex-col">
+              <div class="pane-header">
+                <div class="pane-indicator" style="background: var(--pane-roster-main)"></div>
+                <span class="text-xs font-semibold">Roster Main</span>
+                <span class="text-xs ml-auto" style="color: var(--text-secondary)">+ Nested Flight</span>
+              </div>
+              <div class="flex flex-col flex-1 gap-1">
+                <div class="mock-canvas flex-1">
+                  <div class="mock-task-bar" style="width: 70%; background: var(--pane-roster-main)">Roster Tasks</div>
+                </div>
+                <div class="split-handle-h"></div>
+                <div style="height: 80px; background: var(--bg-tertiary); border-radius: 4px; padding: 4px">
+                  <div class="flex items-center gap-2 mb-1">
+                    <div class="pane-indicator" style="background: var(--pane-flight); width: 4px"></div>
+                    <span class="text-xs">Nested Flight Pane</span>
+                  </div>
+                  <div class="mock-canvas" style="height: 40px">
+                    <div class="mock-task-bar" style="width: 30%; background: var(--pane-flight)">F-201</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `,
+        config: `{
+  "id": "nested-roster-flight",
+  "name": "Roster + Nested Flight",
+  "root": {
+    "type": "pane",
+    "id": "roster-with-flight",
+    "paneInstanceId": "roster-main-1",
+    "flex": 1,
+    "children": [
+      { "type": "pane", "paneInstanceId": "flight-1", "minHeight": 80 }
+    ]
+  },
+  "paneInstances": [
+    { "instanceId": "roster-main-1", "paneType": "roster-main" },
+    { "instanceId": "flight-1", "paneType": "flight" }
+  ]
+}`
+      }
+    };
+
+    // Show layout
+    function showLayout(id) {
+      const layout = layouts[id];
+
+      // Update tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.includes(layout.name.split(' ')[0])) {
+          btn.classList.add('active');
+        }
+      });
+
+      // Update demo
+      document.getElementById('layoutDemo').innerHTML = `
+        <div class="demo-toolbar">
+          <span class="text-sm font-semibold">${layout.name}</span>
+        </div>
+        ${layout.demo}
+      `;
+
+      // Update config
+      document.getElementById('configCode').innerHTML = `<pre>${layout.config}</pre>`;
+    }
+
+    // Init with default
+    showLayout('default');
+
+    // Interactive tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const text = this.textContent.toLowerCase();
+        if (text.includes('default')) showLayout('default');
+        else if (text.includes('horizontal')) showLayout('split');
+        else if (text.includes('grid')) showLayout('grid');
+        else if (text.includes('floating')) showLayout('float');
+        else if (text.includes('tabbed')) showLayout('tab');
+        else if (text.includes('nested')) showLayout('nested');
+      });
+    });
+  </script>
+</body>
+</html>

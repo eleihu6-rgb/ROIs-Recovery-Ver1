@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scenario — Option 3: Outlook Style</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ribbon-bg: #f3f2f1;
+      --ribbon-hover: #edebe9;
+      --nav-bg: #f3f2f1;
+      --list-bg: #fff;
+      --reading-bg: #faf9f8;
+      --border: #edebe9;
+      --border-dark: #d2d0ce;
+      --text: #323130;
+      --text-secondary: #605e5c;
+      --text-tertiary: #a19f9d;
+      --accent: #0078d4;
+      --accent-light: #deecf9;
+      --accent-dark: #106ebe;
+      --success: #107c10;
+      --font: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      --mono: "Cascadia Mono", Consolas, monospace;
+    }
+    body { font-family: var(--font); font-size: 12px; color: var(--text); background: var(--reading-bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* App chrome — minimal top */
+    .app-chrome { height: 32px; background: var(--accent); color: #fff; display: flex; align-items: center; padding: 0 12px; font-size: 11px; flex-shrink: 0; }
+    .app-chrome .title { font-weight: 600; margin-right: 16px; }
+    .app-chrome .tabs { display: flex; gap: 2px; flex: 1; }
+    .app-chrome .tab { padding: 6px 10px; border-radius: 2px; opacity: .85; cursor: pointer; }
+    .app-chrome .tab.active { background: rgba(255,255,255,.2); opacity: 1; font-weight: 600; }
+    .app-chrome .user { margin-left: auto; opacity: .9; font-size: 11px; }
+
+    /* Ribbon toolbar — Outlook signature */
+    .ribbon { background: var(--ribbon-bg); border-bottom: 1px solid var(--border-dark); flex-shrink: 0; }
+    .ribbon-tabs { display: flex; padding: 0 8px; border-bottom: 1px solid var(--border); }
+    .ribbon-tab { padding: 6px 14px; font-size: 12px; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .ribbon-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; background: #fff; }
+    .ribbon-body { padding: 6px 12px 8px; display: flex; gap: 4px; align-items: flex-end; flex-wrap: wrap; }
+    .ribbon-group { display: flex; flex-direction: column; align-items: center; padding: 0 8px; border-right: 1px solid var(--border-dark); }
+    .ribbon-group:last-child { border-right: none; margin-left: auto; border-right: 0; }
+    .ribbon-btns { display: flex; gap: 2px; }
+    .ribbon-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 8px; border: 1px solid transparent; border-radius: 2px; background: transparent; cursor: pointer; min-width: 52px; color: var(--text); }
+    .ribbon-btn:hover { background: var(--ribbon-hover); border-color: var(--border-dark); }
+    .ribbon-btn .ico { font-size: 18px; line-height: 1; }
+    .ribbon-btn .lbl { font-size: 10px; color: var(--text-secondary); }
+    .ribbon-btn.primary .ico { color: var(--accent); }
+    .ribbon-btn.danger .ico { color: #d13438; }
+    .ribbon-label { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
+
+    /* Three-pane Outlook layout */
+    .workspace { display: flex; flex: 1; overflow: hidden; }
+
+    /* Folder pane (left) */
+    .folder-pane { width: 220px; background: var(--nav-bg); border-right: 1px solid var(--border-dark); display: flex; flex-direction: column; flex-shrink: 0; }
+    .folder-search { padding: 8px; border-bottom: 1px solid var(--border); }
+    .folder-search input { width: 100%; height: 28px; border: 1px solid var(--border-dark); border-radius: 2px; padding: 0 8px; font-size: 12px; background: #fff; }
+    .folder-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
+    .tree-section { margin-bottom: 4px; }
+    .tree-header { padding: 6px 12px 4px; font-size: 11px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+    .tree-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 20px; cursor: pointer; font-size: 12px; color: var(--text); border-left: 3px solid transparent; }
+    .tree-item:hover { background: var(--ribbon-hover); }
+    .tree-item.active { background: var(--accent-light); border-left-color: var(--accent); font-weight: 600; }
+    .tree-item .count { margin-left: auto; font-size: 10px; color: var(--text-tertiary); background: #fff; padding: 0 6px; border-radius: 8px; border: 1px solid var(--border); }
+    .tree-icon { width: 16px; text-align: center; font-size: 12px; }
+
+    /* Message list (middle) */
+    .message-list { width: 340px; background: var(--list-bg); border-right: 1px solid var(--border-dark); display: flex; flex-direction: column; flex-shrink: 0; }
+    .list-toolbar { padding: 6px 8px; border-bottom: 1px solid var(--border); display: flex; gap: 4px; align-items: center; background: #faf9f8; }
+    .list-toolbar select { height: 26px; border: 1px solid var(--border-dark); border-radius: 2px; font-size: 11px; padding: 0 6px; flex: 1; }
+    .list-toolbar .pager { font-size: 11px; color: var(--text-secondary); white-space: nowrap; padding: 0 4px; }
+    .column-header { display: grid; grid-template-columns: 1fr 72px 64px; padding: 4px 12px; background: #faf9f8; border-bottom: 1px solid var(--border); font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
+    .messages { flex: 1; overflow-y: auto; }
+    .message-row { display: grid; grid-template-columns: 1fr 72px 64px; padding: 8px 12px; border-bottom: 1px solid var(--border); cursor: pointer; align-items: center; }
+    .message-row:hover { background: #f3f2f1; }
+    .message-row.selected { background: var(--accent-light); border-left: 3px solid var(--accent); padding-left: 9px; }
+    .msg-primary { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-secondary { font-size: 11px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-tertiary { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
+    .msg-type { font-size: 10px; font-weight: 600; color: var(--success); text-align: center; }
+    .msg-date { font-size: 10px; color: var(--text-tertiary); text-align: right; }
+
+    /* Reading pane (right) */
+    .reading-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--reading-bg); }
+    .reading-header { padding: 16px 24px 12px; background: #fff; border-bottom: 1px solid var(--border); }
+    .reading-subject { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 8px; border: none; width: 100%; outline: none; background: transparent; }
+    .reading-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 11px; color: var(--text-secondary); }
+    .meta-item { display: flex; align-items: center; gap: 6px; }
+    .meta-label { color: var(--text-tertiary); }
+    .meta-badge { background: #dff6dd; color: var(--success); font-weight: 600; padding: 1px 8px; border-radius: 2px; font-size: 10px; }
+    .reading-body { flex: 1; overflow-y: auto; padding: 16px 24px; }
+    .info-block { background: #fff; border: 1px solid var(--border); border-radius: 2px; margin-bottom: 12px; }
+    .info-block-title { padding: 8px 16px; background: #faf9f8; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+    .info-table { width: 100%; border-collapse: collapse; }
+    .info-table tr { border-bottom: 1px solid var(--border); }
+    .info-table tr:last-child { border-bottom: none; }
+    .info-table th { width: 120px; text-align: left; padding: 8px 16px; font-size: 11px; font-weight: 400; color: var(--text-tertiary); vertical-align: top; background: #faf9f8; }
+    .info-table td { padding: 8px 16px; font-size: 12px; vertical-align: top; }
+    .info-table input, .info-table select, .info-table textarea { width: 100%; border: 1px solid var(--border-dark); border-radius: 2px; padding: 4px 8px; font-size: 12px; font-family: inherit; }
+    .info-table textarea { min-height: 48px; resize: vertical; }
+    .ro-tag { display: inline-block; background: #dff6dd; color: var(--success); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 2px; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--accent-light); color: var(--accent-dark); font-size: 10px; padding: 2px 8px; border-radius: 2px; margin: 2px; }
+    .seg { display: inline-flex; border: 1px solid var(--border-dark); border-radius: 2px; overflow: hidden; }
+    .seg button { padding: 4px 10px; font-size: 10px; border: none; background: #fff; cursor: pointer; color: var(--text-secondary); }
+    .seg button.on { background: var(--accent); color: #fff; }
+    .filter-code { font-family: var(--mono); font-size: 10px; color: var(--text-tertiary); background: #f3f2f1; padding: 4px 8px; display: block; margin-top: 4px; }
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px 16px; }
+    .kpi-box { text-align: center; padding: 12px; background: #faf9f8; border: 1px solid var(--border); }
+    .kpi-box .n { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+    .kpi-box .l { font-size: 10px; color: var(--text-tertiary); margin-top: 4px; }
+    .two-blocks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mockup-label { position: fixed; bottom: 12px; right: 12px; background: var(--accent); color: #fff; padding: 6px 12px; border-radius: 2px; font-size: 10px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app-chrome">
+    <span class="title">ROIS Crew — Flair Airlines</span>
+    <div class="tabs">
+      <span class="tab">Live</span>
+      <span class="tab active">Scenario</span>
+      <span class="tab">Rule</span>
+      <span class="tab">Data</span>
+      <span class="tab">PBS</span>
+      <span class="tab">Help</span>
+    </div>
+    <span class="user">Ryan · F8 · Ver:B142/F291</span>
+  </div>
+
+  <!-- Ribbon = scenario actions (Outlook Home tab pattern) -->
+  <div class="ribbon">
+    <div class="ribbon-tabs">
+      <div class="ribbon-tab active">Home</div>
+      <div class="ribbon-tab">Optimize</div>
+      <div class="ribbon-tab">View</div>
+    </div>
+    <div class="ribbon-body">
+      <div class="ribbon-group">
+        <div class="ribbon-btns">
+          <button class="ribbon-btn primary"><span class="ico">+</span><span class="lbl">New</span></button>
+          <button class="ribbon-btn"><span class="ico">↑</span><span class="lbl">Import</span></button>
+        </div>
+        <span class="ribbon-label">Create</span>
+      </div>
+      <div class="ribbon-group">
+        <div class="ribbon-btns">
+          <button class="ribbon-btn primary"><span class="ico">▶</span><span class="lbl">Run</span></button>
+          <button class="ribbon-btn"><span class="ico">💾</span><span class="lbl">Save</span></button>
+        </div>
+        <span class="ribbon-label">Actions</span>
+      </div>
+      <div class="ribbon-group">
+        <div class="ribbon-btns">
+          <button class="ribbon-btn"><span class="ico">⧉</span><span class="lbl">Duplicate</span></button>
+          <button class="ribbon-btn"><span class="ico">↗</span><span class="lbl">Share</span></button>
+          <button class="ribbon-btn"><span class="ico">✎</span><span class="lbl">Rename</span></button>
+        </div>
+        <span class="ribbon-label">Manage</span>
+      </div>
+      <div class="ribbon-group">
+        <div class="ribbon-btns">
+          <button class="ribbon-btn danger"><span class="ico">🗑</span><span class="lbl">Delete</span></button>
+        </div>
+        <span class="ribbon-label">Remove</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <!-- Folder pane = optimization categories -->
+    <aside class="folder-pane">
+      <div class="folder-search"><input placeholder="Search folders…" /></div>
+      <div class="folder-tree">
+        <div class="tree-section">
+          <div class="tree-header">📁 Scenario</div>
+          <div class="tree-item"><span class="tree-icon">📋</span> All Scenarios <span class="count">40</span></div>
+        </div>
+        <div class="tree-section">
+          <div class="tree-header">⚙ Optimization</div>
+          <div class="tree-item"><span class="tree-icon">🔵</span> PO <span class="count">12</span></div>
+          <div class="tree-item active"><span class="tree-icon">🟢</span> RO <span class="count">18</span></div>
+          <div class="tree-item"><span class="tree-icon">🟣</span> TO <span class="count">6</span></div>
+          <div class="tree-item"><span class="tree-icon">📝</span> Crew Bids <span class="count">4</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Message list = scenario list (table columns like Outlook mail) -->
+    <section class="message-list">
+      <div class="list-toolbar">
+        <select><option>RO</option></select>
+        <select><option>All Status</option></select>
+        <span class="pager">‹ 1/2 ›</span>
+      </div>
+      <div class="column-header">
+        <span>Scenario</span>
+        <span style="text-align:center">Status</span>
+        <span style="text-align:right">Modified</span>
+      </div>
+      <div class="messages">
+        <div class="message-row selected">
+          <div>
+            <div class="msg-primary">#543 Calgary-CC-Ver1</div>
+            <div class="msg-secondary">Jun 1 – Jun 30, 2026 · Manual · 1 optimization</div>
+            <div class="msg-tertiary">system · Cabin / YYC</div>
+          </div>
+          <div class="msg-type">Done</div>
+          <div class="msg-date">13h ago</div>
+        </div>
+        <div class="message-row">
+          <div>
+            <div class="msg-primary">#542 Calgary-CC-Base</div>
+            <div class="msg-secondary">Jun 1 – Jun 30, 2026 · Manual · 2 optimizations</div>
+            <div class="msg-tertiary">ryan · Cabin / YYC</div>
+          </div>
+          <div class="msg-type">Done</div>
+          <div class="msg-date">2d ago</div>
+        </div>
+        <div class="message-row">
+          <div>
+            <div class="msg-primary">#538 YYC Summer RO Draft</div>
+            <div class="msg-secondary">Jul 1 – Jul 31, 2026 · Imported · 1 optimization</div>
+            <div class="msg-tertiary">system · Cabin / YYC</div>
+          </div>
+          <div class="msg-type">Done</div>
+          <div class="msg-date">5d ago</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reading pane = scenario detail -->
+    <main class="reading-pane">
+      <div class="reading-header">
+        <input class="reading-subject" value="Calgary-CC-Ver1" />
+        <div class="reading-meta">
+          <div class="meta-item"><span class="meta-label">Status</span><span class="meta-badge">DONE</span></div>
+          <div class="meta-item"><span class="meta-label">Type</span><span class="ro-tag">RO</span></div>
+          <div class="meta-item"><span class="meta-label">Period</span><span>Jun 1 – Jun 30, 2026</span></div>
+          <div class="meta-item"><span class="meta-label">ID</span><span style="font-family:var(--mono)">#543</span></div>
+        </div>
+      </div>
+      <div class="reading-body">
+        <div class="two-blocks">
+          <div class="info-block">
+            <div class="info-block-title">Basic Info</div>
+            <table class="info-table">
+              <tr><th>Type</th><td><span class="ro-tag">RO</span></td></tr>
+              <tr><th>Source</th><td><label><input type="checkbox" checked /> Lead-in live</label></td></tr>
+              <tr><th>Date</th><td style="display:flex;gap:6px;align-items:center"><input value="2026-06-01" style="flex:1" /> – <input value="2026-06-30" style="flex:1" /></td></tr>
+              <tr><th>Rule Set</th><td><select><option>pbs_solver_ruleset</option></select></td></tr>
+              <tr><th>Pairing Sc.</th><td><select><option>0 – Live</option></select></td></tr>
+              <tr><th>Comment</th><td><textarea>April pilot assignment initial draft</textarea></td></tr>
+            </table>
+          </div>
+          <div class="info-block">
+            <div class="info-block-title">Scope Filters</div>
+            <table class="info-table">
+              <tr><th colspan="2" style="font-weight:600;color:var(--text-secondary)">Crew Filters</th></tr>
+              <tr><th>Division</th><td><select><option>Cabin</option></select></td></tr>
+              <tr><th>Bases</th><td><span class="chip">YYC ×</span></td></tr>
+              <tr><th>Status</th><td><select><option>Active</option></select></td></tr>
+              <tr><th>Fleet Quals</th><td><span class="chip">7M8 ×</span><span class="chip">737 ×</span><code class="filter-code">FILTER: C / YYC / 7M8, 737 / ACTIVE</code></td></tr>
+              <tr><th colspan="2" style="font-weight:600;color:var(--text-secondary)">Pairing Filters</th></tr>
+              <tr><th>Bases</th><td><span class="chip">YYC ×</span></td></tr>
+              <tr><th>Fleets</th><td><span class="chip">737 ×</span></td></tr>
+              <tr><th>Pairing Source</th><td>
+                <div class="seg"><button class="on">Manual</button><button>Optimized</button><button>Imported</button></div>
+                <code class="filter-code">FILTER: * / YYC / 737</code>
+              </td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="info-block">
+          <div class="info-block-title">KPI Results</div>
+          <div class="kpi-row">
+            <div class="kpi-box"><div class="n">1,247</div><div class="l">Pairings</div></div>
+            <div class="kpi-box"><div class="n">94.2%</div><div class="l">Assigned</div></div>
+            <div class="kpi-box"><div class="n">73</div><div class="l">Open Positions</div></div>
+            <div class="kpi-box"><div class="n">12</div><div class="l">Violations</div></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="mockup-label">Option 3 — Outlook Style</div>
+</body>
+</html>

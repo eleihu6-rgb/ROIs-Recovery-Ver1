@@ -1,0 +1,9 @@
+[submodule "rule-engine-rs"]
+	path = rule-engine-rs
+	url = https://github.com/yuanzhu-ai/rois-rule-engine-rs.git
+[submodule "pbs-optimization-report"]
+	path = pbs-optimization-report
+	url = https://github.com/yuapply/Flair_PBS_Optimization_Report
+[submodule "pbs-engine"]
+	path = pbs-engine
+	url = git@github.com:yuapply/PBS_column_based_algorithm.git

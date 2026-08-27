@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Option 6 — Salesforce Lightning</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#f3f3f3;--surface:#fff;--header:#032d60;--accent:#0176d3;--accent-hover:#014486;--border:#c9c9c9;--border-light:#e5e5e5;--text:#181818;--muted:#444;--dim:#706e6b;--success:#2e844a;--success-bg:#acf2bd;--font:"Salesforce Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:monospace}
+    body{font-family:var(--font);font-size:13px;color:var(--text);background:var(--bg);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+    .global-header{height:50px;background:var(--header);display:flex;align-items:center;padding:0 12px;gap:12px;flex-shrink:0}
+    .app-launcher{width:32px;height:32px;background:rgba(255,255,255,.1);border-radius:4px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px}
+    .global-header .logo{color:#fff;font-weight:700;font-size:15px}
+    .global-nav{display:flex;gap:0;margin-left:16px}
+    .global-nav a{color:rgba(255,255,255,.8);text-decoration:none;padding:14px 12px;font-size:13px;border-bottom:3px solid transparent}
+    .global-nav a.on{color:#fff;border-bottom-color:#fff;font-weight:600}
+    .global-right{margin-left:auto;color:rgba(255,255,255,.8);font-size:12px;display:flex;gap:12px;align-items:center}
+    .app-body{display:flex;flex:1;overflow:hidden}
+    .app-nav{width:220px;background:var(--surface);border-right:1px solid var(--border-light);flex-shrink:0}
+    .app-nav-title{padding:12px 16px;font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border-light)}
+    .nav-item{display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:13px;color:var(--muted);cursor:pointer;border-left:3px solid transparent}
+    .nav-item:hover{background:#f3f3f3}
+    .nav-item.on{background:#eef4ff;border-left-color:var(--accent);color:var(--accent);font-weight:600}
+    .content-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+    .record-layout{display:flex;flex:1;overflow:hidden}
+    .list-view{width:320px;background:var(--surface);border-right:1px solid var(--border-light);display:flex;flex-direction:column;flex-shrink:0}
+    .list-view-header{padding:12px;background:#fafaf9;border-bottom:1px solid var(--border-light)}
+    .lv-title{font-size:16px;font-weight:700;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+    .lv-actions{display:flex;gap:6px}
+    .slds-btn{height:32px;padding:0 16px;border-radius:4px;border:1px solid var(--border);background:var(--surface);font-size:13px;cursor:pointer;font-weight:600;color:var(--accent)}
+    .slds-btn-brand{background:var(--accent);border-color:var(--accent);color:#fff}
+    .slds-btn-brand:hover{background:var(--accent-hover)}
+    .lv-filters{display:flex;gap:6px;margin-top:8px}
+    .lv-filters input,.lv-filters select{flex:1;height:32px;border:1px solid var(--border);border-radius:4px;padding:0 8px;font-size:13px}
+    .lv-table{flex:1;overflow-y:auto}
+    .lv-row{display:grid;grid-template-columns:1fr 60px;padding:10px 12px;border-bottom:1px solid var(--border-light);cursor:pointer}
+    .lv-row:hover{background:#f3f3f3}
+    .lv-row.on{background:#eef4ff;border-left:3px solid var(--accent);padding-left:9px}
+    .lv-name{font-weight:600;font-size:13px}
+    .lv-sub{font-size:12px;color:var(--dim);margin-top:2px}
+    .lv-status{font-size:11px;font-weight:700;color:var(--success);text-align:right}
+    .lv-pager{padding:8px;text-align:center;font-size:12px;color:var(--dim);border-top:1px solid var(--border-light)}
+    .record-home{flex:1;overflow-y:auto;background:var(--bg)}
+    .record-header{background:var(--surface);border-bottom:1px solid var(--border-light);padding:12px 16px}
+    .record-header-top{display:flex;align-items:flex-start;gap:12px}
+    .record-icon{width:40px;height:40px;background:#5867e8;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0}
+    .record-title-block{flex:1}
+    .record-title{font-size:18px;font-weight:700;border:none;width:100%;outline:none;background:transparent}
+    .record-subtitle{font-size:12px;color:var(--dim);margin-top:2px}
+    .highlight-fields{display:flex;gap:24px;margin-top:12px;flex-wrap:wrap}
+    .hf label{display:block;font-size:11px;color:var(--dim);margin-bottom:2px}
+    .hf span{font-size:13px;font-weight:600}
+    .hf .badge{display:inline-block;background:var(--success-bg);color:var(--success);padding:2px 8px;border-radius:4px;font-size:11px}
+    .action-bar{display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-light)}
+    .action-bar button{height:32px;padding:0 12px;border-radius:4px;border:1px solid var(--border);background:var(--surface);font-size:12px;cursor:pointer;font-weight:600}
+    .action-bar .primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .record-body{padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .card{background:var(--surface);border:1px solid var(--border-light);border-radius:4px}
+    .card-header{padding:10px 12px;background:#fafaf9;border-bottom:1px solid var(--border-light);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+    .card-header::before{content:'';width:4px;height:16px;background:var(--accent);border-radius:2px}
+    .card-body{padding:12px}
+    .field{margin-bottom:10px}
+    .field label{display:block;font-size:11px;color:var(--dim);margin-bottom:4px}
+    .field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-size:13px;font-family:inherit}
+    .field textarea{min-height:52px}
+    .field-inline{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .ro-pill{display:inline-block;background:var(--success-bg);color:var(--success);font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px}
+    .subsection{margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border-light)}
+    .subsection:last-child{border:none;margin:0;padding:0}
+    .subsection h4{font-size:12px;font-weight:700;margin-bottom:8px;color:var(--muted)}
+    .chips{display:flex;flex-wrap:wrap;gap:4px}
+    .chip{font-size:11px;padding:3px 8px;background:#eef4ff;border:1px solid #b4d4f7;border-radius:4px;color:var(--accent)}
+    .seg{display:flex;border:1px solid var(--border);border-radius:4px;overflow:hidden}
+    .seg button{flex:1;padding:6px;font-size:11px;border:none;background:var(--surface);cursor:pointer;font-weight:600;color:var(--dim)}
+    .seg button.on{background:var(--accent);color:#fff}
+    .filter-txt{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:6px;padding:6px;background:#fafaf9;border-radius:4px}
+    .kpi-card{grid-column:1/-1}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .kpi-item{text-align:center;padding:16px;background:#fafaf9;border-radius:4px;border:1px solid var(--border-light)}
+    .kpi-item .n{font-size:24px;font-weight:700;color:var(--accent)}
+    .kpi-item .l{font-size:11px;color:var(--dim);margin-top:4px}
+    .tag-f{position:fixed;bottom:12px;right:12px;background:var(--accent);color:#fff;padding:6px 14px;border-radius:4px;font-size:11px;font-weight:600}
+  </style>
+</head>
+<body>
+  <header class="global-header">
+    <div class="app-launcher">⊞</div>
+    <div class="logo">ROIS Crew</div>
+    <nav class="global-nav">
+      <a href="#">Dashboard</a><a href="#">Live</a><a href="#" class="on">Scenario</a><a href="#">Rule</a>
+      <a href="#">Data</a><a href="#">PBS</a><a href="#">Help</a>
+    </nav>
+    <div class="global-right"><span>🔍</span><span>Ryan · F8</span><span>Ver:B142/F291</span></div>
+  </header>
+  <div class="app-body">
+    <nav class="app-nav">
+      <div class="app-nav-title">Scenario</div>
+      <div class="app-nav-title" style="border-top:none;padding-top:4px">Optimization</div>
+      <div class="nav-item">All Scenarios</div>
+      <div class="nav-item">PO</div>
+      <div class="nav-item on">RO</div>
+      <div class="nav-item">TO</div>
+      <div class="nav-item">Crew Bids</div>
+    </nav>
+    <div class="content-area">
+      <div class="record-layout">
+        <section class="list-view">
+          <div class="list-view-header">
+            <div class="lv-title">RO Scenarios <span style="font-weight:400;color:var(--dim);font-size:13px">(40)</span>
+              <div class="lv-actions"><button class="slds-btn">Import</button><button class="slds-btn slds-btn-brand">New</button></div>
+            </div>
+            <div class="lv-filters"><input placeholder="Search this list…" /><select><option>RO</option></select><select><option>All Status</option></select></div>
+          </div>
+          <div class="lv-table">
+            <div class="lv-row on"><div><div class="lv-name">#543 Calgary-CC-Ver1</div><div class="lv-sub">Jun 1 – Jun 30 · Manual · system</div></div><div class="lv-status">Done</div></div>
+            <div class="lv-row"><div><div class="lv-name">#542 Calgary-CC-Base</div><div class="lv-sub">Jun 1 – Jun 30 · Manual · ryan</div></div><div class="lv-status">Done</div></div>
+            <div class="lv-row"><div><div class="lv-name">#538 YYC Summer RO</div><div class="lv-sub">Jul 1 – Jul 31 · Imported</div></div><div class="lv-status">Done</div></div>
+          </div>
+          <div class="lv-pager">‹ Page 1 of 2 ›</div>
+        </section>
+        <main class="record-home">
+          <div class="record-header">
+            <div class="record-header-top">
+              <div class="record-icon">RO</div>
+              <div class="record-title-block">
+                <input class="record-title" value="Calgary-CC-Ver1" />
+                <div class="record-subtitle">Scenario #543 · Created by system · 13 hours ago</div>
+              </div>
+            </div>
+            <div class="highlight-fields">
+              <div class="hf"><label>Status</label><span class="badge">Done</span></div>
+              <div class="hf"><label>Type</label><span class="ro-pill">RO</span></div>
+              <div class="hf"><label>Date Range</label><span>Jun 1 – Jun 30, 2026</span></div>
+              <div class="hf"><label>Optimizations</label><span>1</span></div>
+            </div>
+            <div class="action-bar">
+              <button class="primary">▶ Run</button><button>Save</button><button>Duplicate</button>
+              <button>Share</button><button>Rename</button><button>Delete</button>
+            </div>
+          </div>
+          <div class="record-body">
+            <div class="card"><div class="card-header">Basic Info</div><div class="card-body">
+              <div class="field"><label>Type</label><span class="ro-pill">RO</span></div>
+              <div class="field"><label>Source</label><label><input type="checkbox" checked /> Lead-in live</label></div>
+              <div class="field"><label>Date</label><div class="field-inline"><input value="2026-06-01" /><input value="2026-06-30" /></div></div>
+              <div class="field"><label>Rule Set</label><select><option>pbs_solver_ruleset</option></select></div>
+              <div class="field"><label>Pairing Sc.</label><select><option>0 – Live</option></select></div>
+              <div class="field"><label>Comment</label><textarea>April pilot assignment initial draft</textarea></div>
+            </div></div>
+            <div class="card"><div class="card-header">Scope Filters</div><div class="card-body">
+              <div class="subsection"><h4>Crew Filters</h4>
+                <div class="field"><label>Division</label><select><option>Cabin</option></select></div>
+                <div class="field"><label>Bases</label><div class="chips"><span class="chip">YYC ×</span></div></div>
+                <div class="field"><label>Status</label><select><option>Active</option></select></div>
+                <div class="field"><label>Fleet Quals</label><div class="chips"><span class="chip">7M8 ×</span><span class="chip">737 ×</span></div></div>
+                <div class="filter-txt">FILTER: C / YYC / 7M8, 737 / ACTIVE</div>
+              </div>
+              <div class="subsection"><h4>Pairing Filters</h4>
+                <div class="field"><label>Bases</label><div class="chips"><span class="chip">YYC ×</span></div></div>
+                <div class="field"><label>Fleets</label><div class="chips"><span class="chip">737 ×</span></div></div>
+                <div class="field"><label>Pairing Source</label><div class="seg"><button class="on">Manual</button><button>Optimized</button><button>Imported</button></div></div>
+                <div class="filter-txt">FILTER: * / YYC / 737</div>
+              </div>
+            </div></div>
+            <div class="card kpi-card"><div class="card-header">KPI Results</div><div class="card-body"><div class="kpi-grid">
+              <div class="kpi-item"><div class="n">1,247</div><div class="l">Pairings</div></div>
+              <div class="kpi-item"><div class="n">94.2%</div><div class="l">Assigned</div></div>
+              <div class="kpi-item"><div class="n">73</div><div class="l">Open Positions</div></div>
+              <div class="kpi-item"><div class="n">12</div><div class="l">Violations</div></div>
+            </div></div></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+  <div class="tag-f">Option 6 — Salesforce Lightning</div>
+</body>
+</html>

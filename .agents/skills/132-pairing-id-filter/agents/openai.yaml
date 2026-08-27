@@ -1,0 +1,6 @@
+interface:
+  display_name: "132 pairing id filter"
+  short_description: "Project skill 132-pairing-id-filter"
+  default_prompt: "Use $132-pairing-id-filter for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

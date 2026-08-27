@@ -1,0 +1,6 @@
+interface:
+  display_name: "122 release note maker"
+  short_description: "Project skill 122-release-note-maker"
+  default_prompt: "Use $122-release-note-maker for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

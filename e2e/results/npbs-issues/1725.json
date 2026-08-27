@@ -1,0 +1,54 @@
+{
+  "employeeId": "1725",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T3",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T5",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T6",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T7",
+      "code": 201,
+      "name": "Prefer Off"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T1",
+      "name": "Any Landing In Airport",
+      "code": 101,
+      "page": "pairing",
+      "predicate": "Award Pairings If Any Landing In MEX",
+      "reason": "add-bid-rejected: Configure Pairing Bid Any Landing In Airport TIERS T1 T2 T3 T4 T5 T6 T7 MODE Award Avoid BID MEX edit CANCEL SAVE FAVORI",
+      "image": "image/pbs/1725_PBS-3318_T1-101_rejected_20260625-062407-144.png"
+    },
+    {
+      "tier": "T2",
+      "name": "Any Flight Number",
+      "code": 116,
+      "page": "pairing",
+      "predicate": "Award Pairings If Any Flight Number 2626",
+      "reason": "add-bid-rejected: Configure Pairing Bid Any Flight Number TIERS T1 T2 T3 T4 T5 T6 T7 MODE Award Avoid BID 2626 CANCEL SAVE FAVORITE ADD BI",
+      "image": "image/pbs/1725_PBS-3318_T2-116_rejected_20260625-062418-887.png"
+    }
+  ]
+}

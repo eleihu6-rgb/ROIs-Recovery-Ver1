@@ -1,0 +1,69 @@
+{
+  "requested_rule_set_id": "637",
+  "selected_rule_set_ids": [
+    "637"
+  ],
+  "fallback_used": false,
+  "mode": "rust-hybrid",
+  "enabled_functions": [
+    "7506",
+    "8004",
+    "8056"
+  ],
+  "warnings": [],
+  "rules": [
+    {
+      "rule_set_id": "637",
+      "rule_id": "7506003",
+      "function": "7506",
+      "category": "ROSTER",
+      "division": "C",
+      "definition_source": "Rule",
+      "parameter_sources": [
+        "RuleParameter"
+      ],
+      "parameter_row_count": 2,
+      "internal": "prefilter",
+      "rust": "authoritative",
+      "effective_execution": [
+        "internal",
+        "rust"
+      ]
+    },
+    {
+      "rule_set_id": "637",
+      "rule_id": "8004003",
+      "function": "8004",
+      "category": "BASIC",
+      "division": "C",
+      "definition_source": "Rule",
+      "parameter_sources": [
+        "RuleParameter"
+      ],
+      "parameter_row_count": 4,
+      "internal": "not_prefiltered",
+      "rust": "authoritative",
+      "effective_execution": [
+        "rust"
+      ]
+    },
+    {
+      "rule_set_id": "637",
+      "rule_id": "8056003",
+      "function": "8056",
+      "category": "REST",
+      "division": "C",
+      "definition_source": "Rule",
+      "parameter_sources": [
+        "RuleParameter"
+      ],
+      "parameter_row_count": 5,
+      "internal": "prefilter",
+      "rust": "authoritative",
+      "effective_execution": [
+        "internal",
+        "rust"
+      ]
+    }
+  ]
+}

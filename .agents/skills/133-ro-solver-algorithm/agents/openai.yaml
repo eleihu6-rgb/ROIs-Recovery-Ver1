@@ -1,0 +1,6 @@
+interface:
+  display_name: "133 ro solver algorithm"
+  short_description: "Project skill 133-ro-solver-algorithm"
+  default_prompt: "Use $133-ro-solver-algorithm for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

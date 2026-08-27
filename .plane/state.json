@@ -1,0 +1,47 @@
+{
+  "cookies": [
+    {
+      "name": "csrftoken",
+      "value": "ueh2rkiCjcUmD1HvEtAvGWYQwCDzTtlb",
+      "domain": "crew-f8-usva-tst.roiscloud.com",
+      "path": "/",
+      "expires": 1813733809.827057,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "session-id",
+      "value": "v8szxsq7oimrbgm895q4jrbryzntgwrr0r8teaei0n1q7suagcncj529dpciwo5cle5x44o6czslo7gkzarfz3yxz5oci6waofres40e7qiccosl8tc9rrdfsq2vj233",
+      "domain": "crew-f8-usva-tst.roiscloud.com",
+      "path": "/",
+      "expires": 1782889009.82711,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://crew-f8-usva-tst.roiscloud.com",
+      "localStorage": [
+        {
+          "name": "theme",
+          "value": "system"
+        },
+        {
+          "name": "userLanguage",
+          "value": "en"
+        },
+        {
+          "name": "sidebarWidth",
+          "value": "250"
+        },
+        {
+          "name": "app_sidebar_collapsed",
+          "value": "false"
+        }
+      ]
+    }
+  ]
+}

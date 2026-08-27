@@ -1,0 +1,70 @@
+{
+  "employeeId": "13375",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 1,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T2",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 8 Consecutive Days Off In A Row Between Jun 16, 2026 And Jun 23, 2026",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13375_PBS-3323_T2-203_unsupported-input_20260625-055017-900.png"
+    },
+    {
+      "tier": "T3",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 7 Consecutive Days Off In A Row Between Jun 16, 2026 And Jun 23, 2026",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13375_PBS-3323_T3-203_unsupported-input_20260625-055019-026.png"
+    },
+    {
+      "tier": "T4",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 6 Consecutive Days Off In A Row Between Jun 16, 2026 And Jun 21, 2026",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13375_PBS-3323_T4-203_unsupported-input_20260625-055020-163.png"
+    },
+    {
+      "tier": "T5",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 5 Consecutive Days Off In A Row Between Jun 16, 2026 And Jun 21, 2026",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13375_PBS-3323_T5-203_unsupported-input_20260625-055021-273.png"
+    },
+    {
+      "tier": "T6",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 4 Consecutive Days Off In A Row Between Jun 16, 2026 And Jun 19, 2026",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13375_PBS-3323_T6-203_unsupported-input_20260625-055022-415.png"
+    },
+    {
+      "tier": "T7",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition 3 Consecutive Days Off In A Row Between Jun 16, 2026 And Jun 19, 2026",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13375_PBS-3323_T7-203_unsupported-input_20260625-055023-553.png"
+    }
+  ]
+}

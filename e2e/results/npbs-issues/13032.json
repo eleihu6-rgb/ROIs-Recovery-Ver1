@@ -1,0 +1,45 @@
+{
+  "employeeId": "13032",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 7,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T3",
+      "code": 115,
+      "name": "Any/Every Leg With Employee Number"
+    },
+    {
+      "tier": "T4",
+      "code": 115,
+      "name": "Any/Every Leg With Employee Number"
+    },
+    {
+      "tier": "T5",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T6",
+      "code": 109,
+      "name": "Average Daily Credit"
+    },
+    {
+      "tier": "T7",
+      "code": 109,
+      "name": "Average Daily Credit"
+    }
+  ],
+  "issues": []
+}

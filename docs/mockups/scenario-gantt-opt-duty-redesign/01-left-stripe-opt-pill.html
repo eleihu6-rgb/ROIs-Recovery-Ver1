@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>01 — Left Stripe + OPT Pill</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#eef1f5;--surface:#fff;--border:#d4dae3;--text:#1a2332;--muted:#6b7a90;
+      --weekend:#2563eb;--do:#e8ecf2;--do-text:#5c6b7f;--res:#5b9fd4;--flt:#3d7fc4;
+      --opt:#d97706;--opt-bg:#fff7ed;--opt-border:#fbbf24;--now:#dc2626;
+      --font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:ui-monospace,Consolas,monospace;
+      --row-h:28px;--day-w:34px;--crew-w:248px;
+    }
+    body{font-family:var(--font);font-size:11px;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+    .chrome{height:36px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:10px;flex-shrink:0}
+    .chrome .title{font-weight:700;font-size:12px}
+    .chrome .pill{background:#e8f0fe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+    .chrome .spacer{flex:1}
+    .chrome .month{font-weight:600}
+  .legend{margin-left:12px;display:flex;gap:12px;font-size:10px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:4px}
+  .legend .sw{width:12px;height:12px;border-radius:2px;border:1px solid var(--border)}
+  .legend .sw.opt{background:var(--opt-bg);border-left:3px solid var(--opt);border-color:var(--opt-border)}
+    .gantt{flex:1;display:flex;overflow:hidden}
+    .crew-col{width:var(--crew-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow:hidden}
+    .crew-h{display:grid;grid-template-columns:52px 34px 34px 28px 38px 32px;height:44px;border-bottom:1px solid var(--border);background:#f6f8fb;font-size:9px;text-transform:uppercase;color:var(--muted);align-items:end;padding:0 4px 4px}
+    .crew-h span{padding:0 2px}
+    .crew-row{display:grid;grid-template-columns:52px 34px 34px 28px 38px 32px;height:var(--row-h);border-bottom:1px solid #edf0f4;align-items:center;padding:0 4px;font-size:10px}
+    .crew-row .name{grid-column:1/-1;font-size:9px;color:var(--muted);margin-top:-2px;padding-left:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .crew-row .id{font-family:var(--mono);font-weight:600}
+    .timeline-col{flex:1;overflow:auto;position:relative}
+    .days{display:flex;height:44px;border-bottom:1px solid var(--border);background:#f6f8fb;position:sticky;top:0;z-index:5;min-width:max-content}
+    .day{width:var(--day-w);flex-shrink:0;text-align:center;font-size:9px;padding-top:6px;border-right:1px solid #e8ecf2}
+    .day .dow{font-size:8px;color:var(--muted)}
+    .day.weekend .num,.day.weekend .dow{color:var(--weekend);font-weight:600}
+    .rows{min-width:max-content;position:relative}
+    .trow{display:flex;height:var(--row-h);border-bottom:1px solid #edf0f4;position:relative}
+    .trow .cell{width:var(--day-w);flex-shrink:0;border-right:1px solid #f0f3f7;position:relative}
+    .trow .cell.weekend{background:rgba(37,99,235,.03)}
+    .blk{position:absolute;top:3px;height:22px;border-radius:3px;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;overflow:visible}
+    .blk.do{background:var(--do);color:var(--do-text);border:1px solid #d0d7e2}
+    .blk.res{background:var(--res);color:#fff;font-size:8px}
+    .blk.flt{background:linear-gradient(90deg,#4a8fd4 0%,#4a8fd4 35%,transparent 35%,transparent 100%);border-bottom:2px solid #22c55e}
+    .blk.vac{background:#e2e8f0;color:#64748b;font-size:8px}
+    /* ── Option 01: left stripe + OPT pill ── */
+    .blk.opt{background:var(--opt-bg);border:1px solid var(--opt-border);border-left:3px solid var(--opt);color:#92400e}
+    .blk.opt .code{font-weight:700}
+    .blk.opt .opt-pill{
+      position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+      display:flex;align-items:center;gap:2px;
+      background:var(--opt);color:#fff;font-size:7px;font-weight:700;
+      padding:1px 4px;border-radius:3px;white-space:nowrap;line-height:1.2;
+      box-shadow:0 1px 2px rgba(0,0,0,.15);
+    }
+    .blk.opt .opt-pill svg{width:8px;height:8px}
+    .now{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--now);z-index:4;pointer-events:none}
+    .now::after{content:'NOW';position:absolute;top:46px;left:4px;font-size:8px;font-weight:700;color:var(--now)}
+    .tag{position:fixed;bottom:10px;right:10px;background:#0f172a;color:#fff;padding:6px 12px;border-radius:4px;font-size:10px;font-weight:600;z-index:99}
+    .note{position:fixed;bottom:10px;left:10px;background:var(--surface);border:1px solid var(--border);padding:8px 12px;border-radius:6px;font-size:10px;color:var(--muted);max-width:280px;line-height:1.45}
+    .note strong{color:var(--opt)}
+  </style>
+</head>
+<body>
+  <header class="chrome">
+    <span class="title">Roster</span><span class="pill">71</span>
+    <span class="month">Jun 2026</span>
+    <div class="legend">
+      <span><i class="sw opt"></i> Optimized (solver)</span>
+      <span><i class="sw" style="background:var(--do)"></i> Day off</span>
+      <span><i class="sw" style="background:var(--res)"></i> Reserve</span>
+    </div>
+    <span class="spacer"></span>
+    <span style="font-size:10px;color:var(--muted)">Scenario Gantt mockup</span>
+  </header>
+  <div class="gantt">
+    <aside class="crew-col" id="crewCol"></aside>
+    <main class="timeline-col">
+      <div class="days" id="days"></div>
+      <div class="rows" id="rows">
+        <div class="now" style="left:calc(24 * 34px + 120px)"></div>
+      </div>
+    </main>
+  </div>
+  <div class="note"><strong>01 — Left Stripe + OPT Pill</strong><br>Amber left edge + small <code>OPT</code> pill under the code. Scannable in peripheral vision without enlarging every block.</div>
+  <div class="tag">01 — Left Stripe + OPT Pill</div>
+  <script>
+    const DOW=['S','M','T','W','T','F','S'];
+    const crew=[
+      {id:'1824',rank:'CA',base:'YVR',sen:'12',mc:'98:20',mdo:'8',name:'Brian Mammel',blocks:[
+        {d:1,w:1,t:'do'},{d:2,w:1,t:'do',opt:1},{d:3,w:1,t:'do',opt:1},{d:4,w:1,t:'flt'},{d:5,w:2,t:'flt'},
+        {d:8,w:1,t:'res'},{d:12,w:1,t:'do',opt:1},{d:15,w:3,t:'flt'},{d:20,w:1,t:'do'},{d:22,w:2,t:'do',opt:1}
+      ]},
+      {id:'0911',rank:'FO',base:'YVR',sen:'34',mc:'102:10',mdo:'9',name:'Robin Hughes',blocks:[
+        {d:1,w:2,t:'flt'},{d:4,w:1,t:'do'},{d:6,w:1,t:'do',opt:1},{d:7,w:1,t:'do',opt:1},{d:9,w:1,t:'res'},
+        {d:11,w:1,t:'vac'},{d:14,w:2,t:'flt'},{d:18,w:1,t:'do',opt:1},{d:21,w:1,t:'res'},{d:25,w:2,t:'flt'}
+      ]},
+      {id:'0446',rank:'IFD',base:'YVR',sen:'8',mc:'108:50',mdo:'7',name:'Crew 446',blocks:[
+        {d:2,w:1,t:'do'},{d:5,w:1,t:'do',opt:1},{d:6,w:3,t:'flt'},{d:10,w:1,t:'do'},{d:13,w:1,t:'do',opt:1},
+        {d:14,w:1,t:'do',opt:1},{d:16,w:2,t:'res'},{d:19,w:2,t:'flt'},{d:24,w:1,t:'do',opt:1}
+      ]},
+      {id:'1204',rank:'CA',base:'YYC',sen:'21',mc:'95:00',mdo:'10',name:'Crew 1204',blocks:[
+        {d:1,w:1,t:'res'},{d:3,w:2,t:'flt'},{d:7,w:1,t:'do',opt:1},{d:8,w:1,t:'do'},{d:12,w:1,t:'vac'},
+        {d:15,w:1,t:'do',opt:1},{d:17,w:3,t:'flt'},{d:23,w:2,t:'do'},{d:26,w:1,t:'res',opt:1}
+      ]},
+      {id:'0516',rank:'IFD',base:'YVR',sen:'15',mc:'112:05',mdo:'8',name:'Crew 516',blocks:[
+        {d:1,w:3,t:'flt'},{d:5,w:1,t:'do'},{d:7,w:2,t:'do',opt:1},{d:9,w:1,t:'res'},{d:11,w:1,t:'do'},
+        {d:14,w:4,t:'flt'},{d:19,w:1,t:'do',opt:1},{d:22,w:1,t:'do',opt:1},{d:24,w:3,t:'flt'}
+      ]},
+      {id:'0905',rank:'FD',base:'YVR',sen:'19',mc:'134:20',mdo:'9',name:'Crew 905',blocks:[
+        {d:2,w:1,t:'do'},{d:4,w:2,t:'flt'},{d:7,w:3,t:'do',opt:1},{d:10,w:1,t:'res'},{d:13,w:2,t:'flt'},
+        {d:16,w:1,t:'do'},{d:18,w:1,t:'do',opt:1},{d:20,w:2,t:'vac'},{d:25,w:3,t:'flt'}
+      ]},
+    ];
+    const daysEl=document.getElementById('days');
+    for(let d=1;d<=28;d++){
+      const dt=new Date(2026,5,d);
+      const wk=dt.getDay()===0||dt.getDay()===6;
+      daysEl.innerHTML+=`<div class="day${wk?' weekend':''}"><div class="dow">${DOW[dt.getDay()]}</div><div class="num">${d}</div></div>`;
+    }
+    const crewCol=document.getElementById('crewCol');
+    crewCol.innerHTML='<div class="crew-h"><span>CrewId</span><span>Rank</span><span>Base</span><span>Sen</span><span>MCred</span><span>MDO</span></div>';
+    crew.forEach(c=>{
+      crewCol.innerHTML+=`<div class="crew-row"><span class="id">${c.id}</span><span>${c.rank}</span><span>${c.base}</span><span>${c.sen}</span><span style="font-family:var(--mono);font-size:9px">${c.mc}</span><span>${c.mdo}</span><span class="name">${c.name}</span></div>`;
+    });
+    const rowsEl=document.getElementById('rows');
+    const labels={do:'DO',res:'RES',flt:'',vac:'VAC'};
+    crew.forEach(c=>{
+      let cells='';
+      for(let d=1;d<=28;d++){
+        const dt=new Date(2026,5,d);
+        const wk=dt.getDay()===0||dt.getDay()===6;
+        cells+=`<div class="cell${wk?' weekend':''}"></div>`;
+      }
+      rowsEl.innerHTML+=`<div class="trow">${cells}</div>`;
+    });
+    const trows=rowsEl.querySelectorAll('.trow');
+    crew.forEach((c,ri)=>{
+      const row=trows[ri];
+      c.blocks.forEach(b=>{
+        const el=document.createElement('div');
+        const left=(b.d-1)*34+1;
+        const w=b.w*34-2;
+        el.className=`blk ${b.t}${b.opt?' opt':''}`;
+        el.style.cssText=`left:${left}px;width:${w}px`;
+        if(b.t==='do'||b.t==='vac'||b.t==='res'){
+          el.innerHTML=`<span class="code">${labels[b.t]}</span>`;
+          if(b.opt) el.innerHTML+=`<span class="opt-pill"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/></svg>OPT</span>`;
+        }
+        row.appendChild(el);
+      });
+    });
+  </script>
+</body>
+</html>

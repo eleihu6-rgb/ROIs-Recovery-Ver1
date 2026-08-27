@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RES Pairing Creator — 3. Batch entry</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .split { display: grid; grid-template-columns: 1fr 420px; gap: 14px; align-items: start; }
+  @media (max-width: 980px){ .split { grid-template-columns: 1fr; } }
+  .matrix { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .matrix th, .matrix td { padding: 5px 7px; border-bottom: 1px solid var(--border); text-align: center; }
+  .matrix th { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; background: var(--surface-2); }
+  .matrix td.base-c { text-align: left; font-weight: 700; color: var(--primary-600); vertical-align: middle; background: #f7faff; border-right: 1px solid var(--border); }
+  .matrix td.rk-c { text-align: left; font-weight: 600; }
+  .matrix tr.base-top td { border-top: 2px solid var(--border-strong); }
+  .dow-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .dow-row .chip { height: 28px; }
+  .mini-cal .cal-cell { min-height: 50px; }
+  .panel { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); }
+  .panel .ph { background: var(--pm); color: #fff; padding: 7px 11px; font-weight: 600; font-size: 12.5px; border-radius: var(--radius) var(--radius) 0 0; display:flex; align-items:center; gap:7px; }
+  .panel .pb { padding: 11px; display: flex; flex-direction: column; gap: 11px; }
+  .addrk { display:inline-flex; gap:5px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+  .addrk .chip { height:24px; font-size:11px; }
+  .codenote { font-size:11px; color:var(--muted); }
+  .codenote .mono { color:var(--fg); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="mock-shell">
+  <div class="mock-banner">
+    <span class="step">3 / 5</span>
+    <b>Batch entry</b> — define plan values <b>per base × per rank × AM/PM</b> for one day, a range, or a day-of-week pattern.
+    <span class="links">
+      <a href="index.html">Index</a>
+      <a href="01-entry-point.html">1 Entry</a>
+      <a href="02-define-calendar.html">2 Define</a>
+      <a class="active" href="03-batch-entry.html">3 Batch</a>
+      <a href="04-generate-overview.html">4 Generate</a>
+      <a href="05-manage.html">5 Manage</a>
+    </span>
+  </div>
+
+  <div class="dialog">
+    <div class="dialog-title">
+      <span class="ico">📅</span><h2>RES Pairing Planner</h2><span class="sub">— batch entry</span>
+      <span class="spacer"></span><span class="badge-live">LIVE</span><span class="x">✕</span>
+    </div>
+    <div class="dialog-body">
+      <div class="split">
+        <!-- LEFT: calendar showing a day-of-week selection (all Mondays) -->
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+            <b style="font-size:13px">June 2026</b>
+            <span class="hint">— all <span class="tag-pm">Mondays</span> highlighted by the selection mode →</span>
+          </div>
+          <div class="cal mini-cal">
+            <div class="cal-head"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+            <div class="cal-grid">
+              <div class="cal-cell out"><div class="d">31</div></div>
+              <div class="cal-cell dow"><div class="d">1</div><div class="chk"></div></div>
+              <div class="cal-cell"><div class="d">2</div></div>
+              <div class="cal-cell"><div class="d">3</div></div>
+              <div class="cal-cell"><div class="d">4</div></div>
+              <div class="cal-cell"><div class="d">5</div></div>
+              <div class="cal-cell"><div class="d">6</div></div>
+              <div class="cal-cell"><div class="d">7</div></div>
+              <div class="cal-cell dow"><div class="d">8</div><div class="chk"></div></div>
+              <div class="cal-cell"><div class="d">9</div></div>
+              <div class="cal-cell"><div class="d">10</div></div>
+              <div class="cal-cell"><div class="d">11</div></div>
+              <div class="cal-cell"><div class="d">12</div></div>
+              <div class="cal-cell"><div class="d">13</div></div>
+              <div class="cal-cell"><div class="d">14</div></div>
+              <div class="cal-cell dow"><div class="d">15</div><div class="chk"></div></div>
+              <div class="cal-cell"><div class="d">16</div></div>
+              <div class="cal-cell"><div class="d">17</div></div>
+              <div class="cal-cell"><div class="d">18</div></div>
+              <div class="cal-cell"><div class="d">19</div></div>
+              <div class="cal-cell"><div class="d">20</div></div>
+              <div class="cal-cell"><div class="d">21</div></div>
+              <div class="cal-cell dow"><div class="d">22</div><div class="chk"></div></div>
+              <div class="cal-cell"><div class="d">23</div></div>
+              <div class="cal-cell"><div class="d">24</div></div>
+              <div class="cal-cell"><div class="d">25</div></div>
+              <div class="cal-cell"><div class="d">26</div></div>
+              <div class="cal-cell"><div class="d">27</div></div>
+              <div class="cal-cell"><div class="d">28</div></div>
+              <div class="cal-cell dow"><div class="d">29</div><div class="chk"></div></div>
+              <div class="cal-cell"><div class="d">30</div></div>
+            </div>
+          </div>
+          <p class="hint" style="margin-top:8px">The matrix on the right writes the same Base×Rank×AM/PM values into every selected day. Different values per base are handled by the per-base rows — no need for separate passes.</p>
+        </div>
+
+        <!-- RIGHT: batch-entry panel -->
+        <div class="panel">
+          <div class="ph">✎ Set RES for selected days</div>
+          <div class="pb">
+            <!-- 1. selection mode -->
+            <div class="field">
+              <label>Selection mode</label>
+              <div class="seg" style="width:100%">
+                <button style="flex:1">Single day</button>
+                <button style="flex:1">Date range</button>
+                <button class="active" style="flex:1">Day of week</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Weekdays · within range</label>
+              <div class="dow-row" style="margin-bottom:6px">
+                <span class="chip active">Mon</span><span class="chip">Tue</span><span class="chip">Wed</span>
+                <span class="chip">Thu</span><span class="chip">Fri</span><span class="chip">Sat</span><span class="chip">Sun</span>
+              </div>
+              <div style="display:flex; gap:6px; align-items:center">
+                <input class="input" style="width:104px" value="01 Jun 2026">
+                <span class="muted">→</span>
+                <input class="input" style="width:104px" value="30 Jun 2026">
+              </div>
+            </div>
+
+            <!-- 2. division (drives ranks + reserve codes) -->
+            <div class="field">
+              <label>Division</label>
+              <div class="seg" style="width:100%">
+                <button class="active" style="flex:1">Pilot (P)</button>
+                <button style="flex:1">Cabin (C)</button>
+              </div>
+              <div class="codenote" style="margin-top:4px">Reserve codes for Pilot: AM = <span class="mono">PRAM</span>, PM = <span class="mono">PRPM</span>. <span class="muted">(Cabin → <span class="mono">CRAM</span>/<span class="mono">CRPM</span>, ranks IFD/FA.)</span></div>
+            </div>
+
+            <!-- 3. base × rank × AM/PM matrix -->
+            <div style="border-top:1px dashed var(--border-strong); padding-top:10px">
+              <div style="display:flex; align-items:center; justify-content:space-between">
+                <div class="section-title" style="margin:0">Plan value · base × rank × timing</div>
+                <span class="hint">apply to bases ▾</span>
+              </div>
+              <table class="matrix" style="margin-top:6px">
+                <thead><tr>
+                  <th style="text-align:left">Base</th><th style="text-align:left">Rank</th>
+                  <th><span class="pill am">AM</span></th><th><span class="pill pm">PM</span></th>
+                </tr></thead>
+                <tbody>
+                  <tr class="base-top"><td class="base-c" rowspan="2">YVR ✕</td><td class="rk-c">CA</td><td><input class="input num-in" value="5"></td><td><input class="input num-in" value="5"></td></tr>
+                  <tr><td class="rk-c">FO</td><td><input class="input num-in" value="5"></td><td><input class="input num-in" value="5"></td></tr>
+                  <tr class="base-top"><td class="base-c" rowspan="2">YEG ✕</td><td class="rk-c">CA</td><td><input class="input num-in" value="4"></td><td><input class="input num-in" value="4"></td></tr>
+                  <tr><td class="rk-c">FO</td><td><input class="input num-in" value="4"></td><td><input class="input num-in" value="4"></td></tr>
+                </tbody>
+              </table>
+              <div class="addrk">
+                <span class="hint">+ base:</span><span class="chip">YYZ</span><span class="chip">YWG</span>
+              </div>
+              <p class="hint" style="margin-top:6px">Blank / 0 skips that rank-timing. Ranks are fixed by division — Pilot → <b>CA, FO</b>; Cabin → <b>IFD, FA</b> (the only ranks crew exist in).</p>
+            </div>
+
+            <!-- 4. time override -->
+            <details>
+              <summary class="hint" style="cursor:pointer">Override AM/PM windows for these days ▾</summary>
+              <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap">
+                <div class="field"><label>AM (PRAM)</label><div style="display:flex; gap:4px"><input class="input time" value="10:00"><input class="input time" value="22:00"></div></div>
+                <div class="field"><label>PM (PRPM)</label><div style="display:flex; gap:4px"><input class="input time" value="20:00"><input class="input time" value="05:59"></div></div>
+              </div>
+            </details>
+
+            <button class="btn btn-primary" style="justify-content:center">Apply to 5 days · 2 bases</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- cabin example strip, to show ranks differ by division -->
+      <div class="card" style="margin-top:14px">
+        <div class="card-h"><span class="ico">👥</span> Same panel with Division = <b style="margin:0 4px">Cabin (C)</b> — ranks &amp; codes swap automatically</div>
+        <div style="padding:10px 12px; display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start">
+          <table class="matrix" style="width:320px; border:1px solid var(--border); border-radius:6px; overflow:hidden">
+            <thead><tr><th style="text-align:left">Base</th><th style="text-align:left">Rank</th><th><span class="pill am">AM · CRAM</span></th><th><span class="pill pm">PM · CRPM</span></th></tr></thead>
+            <tbody>
+              <tr class="base-top"><td class="base-c" rowspan="2">YVR</td><td class="rk-c">IFD</td><td class="num-cell">2</td><td class="num-cell">2</td></tr>
+              <tr><td class="rk-c">FA</td><td class="num-cell">6</td><td class="num-cell">6</td></tr>
+            </tbody>
+          </table>
+          <div class="codenote" style="max-width:360px">
+            Cabin division (C) has only two ranks: <span class="mono">IFD</span> (In-Flight Director) and <span class="mono">FA</span> (Flight Attendant).<br><br>
+            Reserve codes switch to <span class="mono">CRAM</span> (AM) / <span class="mono">CRPM</span> (PM). Pilot vs Cabin never share a pairing — division is fixed per batch.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dialog-footer">
+      <span class="left">Day-of-week · 5 Mondays · YVR(CA 5/5, FO 5/5) + YEG(CA 4/4, FO 4/4) → 20 pairings</span>
+      <button class="btn btn-ghost">Back</button>
+      <button class="btn btn-primary">Next: Review &amp; Generate →</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

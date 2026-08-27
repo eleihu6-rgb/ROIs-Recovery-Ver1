@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RES Pairing Creator — 5. Manage / modify / delete</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .htabs { display: flex; gap: 2px; padding: 0 10px; background: var(--primary-600); }
+  .htabs .ht { color: rgba(255,255,255,.8); font-size: 12px; padding: 6px 12px; border-radius: 5px 5px 0 0; cursor: pointer; }
+  .htabs .ht.active { background: var(--surface); color: var(--primary-600); font-weight: 600; }
+  .batchbar { display: flex; align-items: center; gap: 8px; background: #eef5ff; border: 1px solid #bcd6fb; border-radius: var(--radius); padding: 8px 12px; margin-bottom: 10px; }
+  .pop { position: relative; }
+  .pop-card { position: absolute; right: 0; top: 38px; width: 280px; z-index: 5; background: #fff; border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: 0 14px 36px rgba(15,27,45,.18); }
+  .pop-card .ph { background: var(--primary); color: #fff; padding: 8px 11px; font-weight: 600; font-size: 12.5px; border-radius: 8px 8px 0 0; }
+  .pop-card .pb { padding: 11px; display: flex; flex-direction: column; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="mock-shell">
+  <div class="mock-banner">
+    <span class="step">5 / 5</span>
+    <b>Manage existing RES</b> — filter, multi-select, batch modify plan/times, or batch delete generated RES pairings.
+    <span class="links">
+      <a href="index.html">Index</a>
+      <a href="01-entry-point.html">1 Entry</a>
+      <a href="02-define-calendar.html">2 Define</a>
+      <a href="03-batch-entry.html">3 Batch</a>
+      <a href="04-generate-overview.html">4 Generate</a>
+      <a class="active" href="05-manage.html">5 Manage</a>
+    </span>
+  </div>
+
+  <div class="dialog">
+    <div class="dialog-title">
+      <span class="ico">🗂️</span><h2>RES Pairing Planner</h2><span class="sub">— manage existing</span>
+      <span class="spacer"></span><span class="badge-live">LIVE</span><span class="x">✕</span>
+    </div>
+    <div class="htabs">
+      <span class="ht">① Define</span>
+      <span class="ht">② Review &amp; Generate</span>
+      <span class="ht active">Manage existing</span>
+    </div>
+    <div class="dialog-body">
+
+      <!-- filters -->
+      <div class="toolbar">
+        <div class="field"><label>Base</label><select class="select"><option>All bases</option><option selected>YVR</option><option>YEG</option></select></div>
+        <div class="field"><label>Division</label><select class="select"><option selected>Pilot (P)</option><option>Cabin (C)</option></select></div>
+        <div class="field"><label>RES type</label>
+          <div class="seg"><button>All</button><button class="active">AM</button><button>PM</button></div>
+        </div>
+        <div class="field"><label>Rank</label><select class="select"><option selected>All</option><option>CA</option><option>FO</option></select></div>
+        <div class="field"><label>Date range</label>
+          <div style="display:flex; gap:6px; align-items:center">
+            <input class="input" style="width:110px" value="01 Jun 2026">
+            <span class="muted">→</span>
+            <input class="input" style="width:110px" value="30 Jun 2026">
+          </div>
+        </div>
+      </div>
+
+      <!-- batch action bar (appears on selection) -->
+      <div class="batchbar">
+        <span style="font-weight:600">4 selected</span>
+        <span class="hint">YVR · AM · Jun 8/15/22/29</span>
+        <span style="flex:1"></span>
+        <div class="pop">
+          <button class="btn btn-sm">✎ Modify…</button>
+          <!-- popover shown for the mockup -->
+          <div class="pop-card">
+            <div class="ph">Modify 4 RES pairings</div>
+            <div class="pb">
+              <div class="field"><label>New plan value</label>
+                <table style="width:100%; font-size:12.5px">
+                  <tr><td><b>CA</b></td><td><input class="input num-in" value="6"></td><td class="hint">was 5</td></tr>
+                  <tr><td><b>FO</b></td><td><input class="input num-in" value="6"></td><td class="hint">was 5</td></tr>
+                </table>
+              </div>
+              <div class="field"><label>Shift AM window (optional)</label>
+                <div style="display:flex; gap:5px"><input class="input time" value="09:00"><span class="muted">→</span><input class="input time" value="21:00"></div>
+              </div>
+              <button class="btn btn-primary btn-sm" style="justify-content:center">Apply changes</button>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-sm">🕑 Change times…</button>
+        <button class="btn btn-sm btn-danger">🗑 Delete</button>
+      </div>
+
+      <!-- table -->
+      <div class="card">
+        <div style="max-height:320px; overflow:auto">
+          <table class="grid">
+            <thead><tr>
+              <th style="width:30px"><input type="checkbox" class="cb" checked></th>
+              <th>Date</th><th>Base</th><th>Div</th><th>Label</th><th>Type</th><th>Window</th>
+              <th>CA</th><th>FO</th><th>Assigned</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+              <tr class="checked"><td><input type="checkbox" class="cb" checked></td><td class="mono">08 Jun</td><td>YVR</td><td>P</td><td class="mono">PRAM-1000-2200</td><td><span class="tag-am">AM</span></td><td class="mono">10:00–22:00</td><td class="num-cell">5</td><td class="num-cell">5</td><td class="center num">3 / 10</td><td><span class="status open">OPEN</span></td></tr>
+              <tr class="checked"><td><input type="checkbox" class="cb" checked></td><td class="mono">15 Jun</td><td>YVR</td><td>P</td><td class="mono">PRAM-1000-2200</td><td><span class="tag-am">AM</span></td><td class="mono">10:00–22:00</td><td class="num-cell">5</td><td class="num-cell">5</td><td class="center num">10 / 10</td><td><span class="status full">FULL</span></td></tr>
+              <tr class="checked"><td><input type="checkbox" class="cb" checked></td><td class="mono">22 Jun</td><td>YVR</td><td>P</td><td class="mono">PRAM-1000-2200</td><td><span class="tag-am">AM</span></td><td class="mono">10:00–22:00</td><td class="num-cell">5</td><td class="num-cell">5</td><td class="center num">0 / 10</td><td><span class="status open">OPEN</span></td></tr>
+              <tr class="checked"><td><input type="checkbox" class="cb" checked></td><td class="mono">29 Jun</td><td>YVR</td><td>P</td><td class="mono">PRAM-1000-2200</td><td><span class="tag-am">AM</span></td><td class="mono">10:00–22:00</td><td class="num-cell">5</td><td class="num-cell">5</td><td class="center num">2 / 10</td><td><span class="status open">OPEN</span></td></tr>
+              <tr><td><input type="checkbox" class="cb"></td><td class="mono">08 Jun</td><td>YVR</td><td>P</td><td class="mono">PRPM-2000-0559</td><td><span class="tag-pm">PM</span></td><td class="mono">20:00–05:59</td><td class="num-cell">5</td><td class="num-cell">5</td><td class="center num">4 / 10</td><td><span class="status open">OPEN</span></td></tr>
+              <tr><td><input type="checkbox" class="cb"></td><td class="mono">08 Jun</td><td>YEG</td><td>P</td><td class="mono">PRAM-1000-2200</td><td><span class="tag-am">AM</span></td><td class="mono">10:00–22:00</td><td class="num-cell">4</td><td class="num-cell">4</td><td class="center num">8 / 8</td><td><span class="status full">FULL</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:8px 12px; border-top:1px solid var(--border); display:flex; align-items:center">
+          <span class="hint">Showing 6 of 48 RES pairings · <span class="tag-am">AM</span> filter active</span>
+        </div>
+      </div>
+
+      <div class="banner-warn" style="margin-top:12px">
+        ⚠ <div>Deleting a pairing that already has <b>assigned crew</b> (e.g. <span class="mono">15 Jun · FULL · 10/10</span>) is blocked by the server (409). The delete action will report which pairings were skipped and why.</div>
+      </div>
+    </div>
+
+    <div class="dialog-footer">
+      <span class="left">4 selected · 3 deletable, 1 has assigned crew</span>
+      <button class="btn btn-ghost">Close</button>
+      <button class="btn btn-danger">🗑 Delete selected</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+{
+  "employeeId": "869",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T5",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T1",
+      "code": 401,
+      "name": "Max Credit Window"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T6",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 7, 2026, Jun 14, 2026, Jun 21, 2026 If Pairing Number T4540",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/869_PBS-3318_T6-106_not-found_20260625-060536-783.png"
+    },
+    {
+      "tier": "T7",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 11, 2026, Jun 18, 2026, Jun 25, 2026 If Pairing Number T4528",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/869_PBS-3318_T7-106_not-found_20260625-060537-588.png"
+    }
+  ]
+}

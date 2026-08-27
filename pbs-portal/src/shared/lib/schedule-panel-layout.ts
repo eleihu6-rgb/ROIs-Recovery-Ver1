@@ -1,0 +1,2 @@
+export const SHARED_SCHEDULE_PANEL_CONTENT_MIN_WIDTH = 632;
+export const SHARED_SCHEDULE_PANEL_GRID_TEMPLATE = "minmax(680px, 712px) minmax(0, 1fr)";

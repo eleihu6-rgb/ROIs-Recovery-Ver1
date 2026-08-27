@@ -1,0 +1,54 @@
+{
+  "employeeId": "619",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T3",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T7",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T4",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Between Jun 1, 2026 And Jun 12, 2026 If Departing On Between 03:59 And 16:00 If Any Duty Legs < 3 legs If Pairing Total Credit > 008:00",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/619_PBS-3313_T4-106_not-found_20260625-060105-830.png"
+    },
+    {
+      "tier": "T5",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Between Jun 29, 2026 And Jun 30, 2026 If Departing On Between 03:59 And 16:00 If Any Duty Legs < 3 legs If Pairing Total Credit > 008:00",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/619_PBS-3313_T5-106_not-found_20260625-060106-630.png"
+    }
+  ]
+}

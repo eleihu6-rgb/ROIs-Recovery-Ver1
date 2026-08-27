@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Option 9 — Command Center</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#f0f2f5;--surface:#fff;--panel:#fafbfc;--border:#d0d7de;--text:#1f2328;--muted:#656d76;--dim:#8b949e;--accent:#0969da;--accent-soft:#ddf4ff;--green:#1a7f37;--green-bg:#dafbe1;--amber:#9a6700;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:ui-monospace,Consolas,monospace}
+    body{font-family:var(--font);font-size:12px;color:var(--text);background:var(--bg);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+    .status-strip{height:28px;background:#24292f;color:#c9d1d9;display:flex;align-items:center;padding:0 12px;font-size:11px;gap:16px;flex-shrink:0}
+    .status-strip .live{display:flex;align-items:center;gap:6px}
+    .status-strip .live::before{content:'';width:6px;height:6px;border-radius:50%;background:#3fb950}
+    .status-strip .sep{opacity:.3}
+    .header{height:44px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:12px}
+    .header .logo{font-weight:700;font-size:13px}
+    .header nav{display:flex;gap:0;flex:1}
+    .header nav a{padding:12px 10px;font-size:12px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent}
+    .header nav a.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+    .header .user{font-size:11px;color:var(--muted)}
+    .summary-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 12px;display:flex;gap:12px;flex-shrink:0}
+    .stat{flex:1;padding:8px 12px;background:var(--panel);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;gap:10px}
+    .stat-icon{width:32px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+    .stat-icon.blue{background:var(--accent-soft);color:var(--accent)}
+    .stat-icon.green{background:var(--green-bg);color:var(--green)}
+    .stat-val{font-family:var(--mono);font-size:16px;font-weight:700}
+    .stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+    .workspace{display:flex;flex:1;overflow:hidden}
+    .left-stack{width:48px;background:#24292f;display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;flex-shrink:0}
+    .stack-btn{width:36px;height:36px;border-radius:4px;border:none;background:transparent;color:#8b949e;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+    .stack-btn:hover{background:#30363d;color:#c9d1d9}
+    .stack-btn.on{background:var(--accent);color:#fff}
+    .nav-col{width:168px;background:var(--surface);border-right:1px solid var(--border);flex-shrink:0;padding:8px 0}
+    .nav-label{padding:6px 12px;font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+    .nav-item{padding:6px 12px;font-size:12px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;display:flex;justify-content:space-between}
+    .nav-item:hover{background:var(--panel)}
+    .nav-item.on{background:var(--accent-soft);border-left-color:var(--accent);color:var(--accent);font-weight:600}
+    .nav-item .cnt{font-family:var(--mono);font-size:10px;color:var(--dim)}
+    .queue{width:300px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+    .queue-head{padding:8px 10px;border-bottom:1px solid var(--border);background:var(--panel)}
+    .queue-head-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+    .queue-head h3{font-size:12px;font-weight:700}
+    .queue-actions{display:flex;gap:2px}
+    .qbtn{height:24px;padding:0 8px;border:1px solid var(--border);border-radius:3px;background:var(--surface);font-size:11px;cursor:pointer;font-weight:600}
+    .qbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .queue-filters{display:flex;gap:4px}
+    .queue-filters input,.queue-filters select{flex:1;height:24px;border:1px solid var(--border);border-radius:3px;font-size:11px;padding:0 6px}
+    .queue-list{flex:1;overflow-y:auto}
+    .queue-item{display:grid;grid-template-columns:4px 1fr auto;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;align-items:start}
+    .queue-item:hover{background:var(--panel)}
+    .queue-item.on{background:var(--accent-soft)}
+    .queue-item .bar{background:var(--green);border-radius:2px;align-self:stretch}
+    .queue-item .id{font-family:var(--mono);font-size:10px;color:var(--dim)}
+    .queue-item .name{font-weight:600;font-size:12px;margin-top:1px}
+    .queue-item .meta{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4}
+    .queue-item .st{font-size:10px;font-weight:700;color:var(--green);text-align:right}
+    .queue-foot{padding:6px;text-align:center;font-size:10px;color:var(--dim);border-top:1px solid var(--border)}
+    .ops-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+    .ops-header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px}
+    .ops-header input{flex:1;border:none;font-size:14px;font-weight:700;outline:none;background:transparent;font-family:var(--mono)}
+    .ops-header .tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;background:var(--green-bg);color:var(--green)}
+    .ops-toolbar{display:flex;gap:2px}
+    .ops-toolbar button{width:28px;height:28px;border:1px solid var(--border);border-radius:3px;background:var(--surface);cursor:pointer;font-size:12px}
+    .ops-body{flex:1;overflow-y:auto;padding:12px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:10px;align-content:start}
+    .ops-card{background:var(--surface);border:1px solid var(--border);border-radius:4px}
+    .ops-card.full{grid-column:1/-1}
+    .ops-card-h{padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center;gap:6px}
+    .ops-card-h::before{content:'';width:2px;height:10px;background:var(--accent)}
+    .ops-card-b{padding:10px}
+    .f{display:grid;grid-template-columns:72px 1fr;gap:4px 8px;align-items:center;font-size:12px}
+    .f label{color:var(--muted);font-size:11px}
+    .f input,.f select,.f textarea{width:100%;border:1px solid var(--border);border-radius:3px;padding:4px 6px;font-size:12px;font-family:inherit}
+    .f textarea{grid-column:2;min-height:44px;resize:vertical}
+    .ro{font-size:10px;font-weight:700;padding:2px 6px;background:var(--green-bg);color:var(--green);border-radius:3px}
+    .sub{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
+    .sub h5{font-size:11px;font-weight:700;margin-bottom:6px;color:var(--muted)}
+    .chips{display:flex;flex-wrap:wrap;gap:3px}
+    .chip{font-size:10px;padding:1px 6px;background:var(--panel);border:1px solid var(--border);border-radius:2px;font-family:var(--mono)}
+    .seg{display:flex;border:1px solid var(--border);border-radius:3px;overflow:hidden}
+    .seg button{flex:1;padding:4px;font-size:10px;border:none;background:var(--surface);cursor:pointer;font-weight:600;color:var(--muted)}
+    .seg button.on{background:var(--accent);color:#fff}
+    .flt{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:4px;padding:4px 6px;background:var(--panel);border-radius:3px}
+    .kpi-inline{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .kpi-inline div{text-align:center;padding:10px;background:var(--panel);border-radius:3px;border:1px solid var(--border)}
+    .kpi-inline .n{font-family:var(--mono);font-size:18px;font-weight:700}
+    .kpi-inline .l{font-size:9px;color:var(--dim);text-transform:uppercase;margin-top:2px}
+    .tag-f{position:fixed;bottom:8px;right:8px;background:#24292f;color:#fff;padding:5px 12px;border-radius:3px;font-size:10px;font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="status-strip">
+    <span class="live">SYSTEM OK</span><span class="sep">|</span>
+    <span>F8 · Calgary HQ</span><span class="sep">|</span>
+    <span>Ver B142/F291</span><span class="sep">|</span>
+    <span>Ryan (Planner)</span><span class="sep">|</span>
+    <span>40 RO scenarios · 18 active filters</span>
+  </div>
+  <header class="header">
+    <div class="logo">ROIS</div>
+    <nav>
+      <a href="#">Dashboard</a><a href="#">Live</a><a href="#" class="on">Scenario</a><a href="#">Rule</a>
+      <a href="#">Data</a><a href="#">Legality</a><a href="#">PBS</a><a href="#">Help</a>
+    </nav>
+    <div class="user">🔍</div>
+  </header>
+  <div class="summary-bar">
+    <div class="stat"><div class="stat-icon blue">40</div><div><div class="stat-val">RO</div><div class="stat-lbl">Scenarios</div></div></div>
+    <div class="stat"><div class="stat-icon green">✓</div><div><div class="stat-val">#543</div><div class="stat-lbl">Selected</div></div></div>
+    <div class="stat"><div class="stat-icon green">94%</div><div><div class="stat-val">Assigned</div><div class="stat-lbl">KPI</div></div></div>
+    <div class="stat"><div class="stat-icon blue">12</div><div><div class="stat-val">Violations</div><div class="stat-lbl">Open</div></div></div>
+  </div>
+  <div class="workspace">
+    <div class="left-stack"><button class="stack-btn">☰</button><button class="stack-btn on">📋</button><button class="stack-btn">📅</button></div>
+    <nav class="nav-col">
+      <div class="nav-label">Scenario</div>
+      <div class="nav-label">Optimization</div>
+      <div class="nav-item">All <span class="cnt">40</span></div>
+      <div class="nav-item">PO <span class="cnt">12</span></div>
+      <div class="nav-item on">RO <span class="cnt">18</span></div>
+      <div class="nav-item">TO <span class="cnt">6</span></div>
+      <div class="nav-item">Crew Bids <span class="cnt">4</span></div>
+    </nav>
+    <section class="queue">
+      <div class="queue-head">
+        <div class="queue-head-top"><h3>Scenario Queue</h3><div class="queue-actions"><button class="qbtn">↑</button><button class="qbtn primary">+</button></div></div>
+        <div class="queue-filters"><input placeholder="Filter…" /><select><option>RO</option></select><select><option>Status</option></select></div>
+      </div>
+      <div class="queue-list">
+        <div class="queue-item on"><div class="bar"></div><div><div class="id">#543</div><div class="name">Calgary-CC-Ver1</div><div class="meta">Jun 1–30 · Manual · 1 opt · 13h</div></div><div class="st">DONE</div></div>
+        <div class="queue-item"><div class="bar"></div><div><div class="id">#542</div><div class="name">Calgary-CC-Base</div><div class="meta">Jun 1–30 · Manual · 2 opt</div></div><div class="st">DONE</div></div>
+        <div class="queue-item"><div class="bar"></div><div><div class="id">#538</div><div class="name">YYC Summer RO</div><div class="meta">Jul 1–31 · Imported</div></div><div class="st">DONE</div></div>
+      </div>
+      <div class="queue-foot">‹ 1 / 2 ›</div>
+    </section>
+    <main class="ops-panel">
+      <div class="ops-header">
+        <input value="Calgary-CC-Ver1" />
+        <span class="tag">DONE</span>
+        <div class="ops-toolbar"><button title="Save">💾</button><button>⧉</button><button>▶</button><button>↗</button><button>✎</button><button>🗑</button></div>
+      </div>
+      <div class="ops-body">
+        <div class="ops-card">
+          <div class="ops-card-h">Basic Info</div>
+          <div class="ops-card-b"><div class="f">
+            <label>Type</label><span class="ro">RO</span>
+            <label>Source</label><label><input type="checkbox" checked /> Lead-in live</label>
+            <label>Date</label><div style="display:flex;gap:4px"><input value="2026-06-01" /><input value="2026-06-30" /></div>
+            <label>Rule Set</label><select><option>pbs_solver_ruleset</option></select>
+            <label>Pairing Sc.</label><select><option>0 – Live</option></select>
+            <label>Comment</label><textarea>April pilot assignment initial draft</textarea>
+          </div></div>
+        </div>
+        <div class="ops-card">
+          <div class="ops-card-h">Scope Filters</div>
+          <div class="ops-card-b">
+            <div class="sub"><h5>Crew Filters</h5><div class="f">
+              <label>Division</label><select><option>Cabin</option></select>
+              <label>Bases</label><div class="chips"><span class="chip">YYC×</span></div>
+              <label>Status</label><select><option>Active</option></select>
+              <label>Fleet</label><div class="chips"><span class="chip">7M8×</span><span class="chip">737×</span></div>
+            </div><div class="flt">C / YYC / 7M8,737 / ACTIVE</div></div>
+            <div class="sub"><h5>Pairing Filters</h5><div class="f">
+              <label>Bases</label><div class="chips"><span class="chip">YYC×</span></div>
+              <label>Fleets</label><div class="chips"><span class="chip">737×</span></div>
+              <label>Source</label><div class="seg"><button class="on">Manual</button><button>Opt</button><button>Imp</button></div>
+            </div><div class="flt">* / YYC / 737</div></div>
+          </div>
+        </div>
+        <div class="ops-card full">
+          <div class="ops-card-h">KPI Results</div>
+          <div class="ops-card-b"><div class="kpi-inline">
+            <div><div class="n">1,247</div><div class="l">Pairings</div></div>
+            <div><div class="n">94.2%</div><div class="l">Assigned</div></div>
+            <div><div class="n">73</div><div class="l">Open</div></div>
+            <div><div class="n">12</div><div class="l">Violations</div></div>
+          </div></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="tag-f">Option 9 — Command Center</div>
+</body>
+</html>

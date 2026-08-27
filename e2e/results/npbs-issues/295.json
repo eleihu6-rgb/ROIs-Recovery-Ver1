@@ -1,0 +1,54 @@
+{
+  "employeeId": "295",
+  "category": "YVR-737-CA",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T6",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T7",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T1",
+      "name": "Prefer Off",
+      "code": 201,
+      "page": "days-off",
+      "predicate": "Prefer Off Jun 18, 2026 - Jun 15, 2026",
+      "reason": "add-bid-rejected: Configure Days Off Bid Prefer Off TIERS T1 T2 T3 T4 T5 T6 T7 DATES / DAYS Dates Days of Week Weekends Date Range TIME WI",
+      "image": "image/pbs/295_PBS-3303_T1-201_rejected_20260621-215358-560.png"
+    },
+    {
+      "tier": "T5",
+      "name": "Prefer Off",
+      "code": 201,
+      "page": "days-off",
+      "predicate": "Prefer Off Jun 18, 2026 - Jun 15, 2026",
+      "reason": "add-bid-rejected: Configure Days Off Bid Prefer Off TIERS T1 T2 T3 T4 T5 T6 T7 DATES / DAYS Dates Days of Week Weekends Date Range TIME WI",
+      "image": "image/pbs/295_PBS-3303_T5-201_rejected_20260621-215410-239.png"
+    }
+  ]
+}

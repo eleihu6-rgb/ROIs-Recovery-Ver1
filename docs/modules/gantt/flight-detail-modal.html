@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flight Detail Modal — ROIS-AI Design Spec</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   THEME TOKENS
+═══════════════════════════════════════════════════════ */
+:root {
+  --font:   'Inter','Segoe UI',system-ui,sans-serif;
+  --mono:   'JetBrains Mono','Fira Code','Consolas',monospace;
+  --r:      6px;   --rs: 4px;  --r2: 3px;
+
+  /* Status colors (theme-independent) */
+  --clr-on-time:    #22c55e;
+  --clr-delayed:    #f59e0b;
+  --clr-cancelled:  #ef4444;
+  --clr-ca:         #3b82f6;
+  --clr-fo:         #a855f7;
+  --clr-pu:         #06b6d4;
+  --clr-fa:         #f97316;
+}
+
+/* ── DARK ── */
+[data-theme="dark"] {
+  --bg:           #0b0e18;
+  --app-bg:       #0f1420;
+  --card:         #151b2c;
+  --card-hi:      #1a2236;
+  --panel:        #111623;
+  --muted:        #1c2438;
+  --border:       rgba(255,255,255,.07);
+  --border-soft:  rgba(255,255,255,.04);
+  --sep:          rgba(255,255,255,.06);
+  --fg:           #dde4f0;
+  --fg-sec:       #8b9ab5;
+  --fg-dim:       #4a5675;
+  --label:        #5c6f8a;
+  --primary:      #3b82f6;
+  --primary-dim:  rgba(59,130,246,.12);
+  --primary-glow: rgba(59,130,246,.25);
+  --amber:        #f59e0b;
+  --amber-dim:    rgba(245,158,11,.12);
+  --green:        #22c55e;
+  --green-dim:    rgba(34,197,94,.12);
+  --red:          #ef4444;
+  --red-dim:      rgba(239,68,68,.12);
+  --sky:          #38bdf8;
+  --sky-dim:      rgba(56,189,248,.12);
+  --overlay:      rgba(0,0,0,.65);
+  --shadow:       0 20px 60px rgba(0,0,0,.7), 0 4px 20px rgba(0,0,0,.5);
+  --shadow-sm:    0 2px 8px rgba(0,0,0,.4);
+  --row-hover:    rgba(255,255,255,.03);
+  --row-stripe:   rgba(255,255,255,.015);
+  --thead-bg:     rgba(255,255,255,.04);
+  --scrim:        linear-gradient(to bottom, transparent, var(--card));
+}
+
+/* ── LIGHT ── */
+[data-theme="light"] {
+  --bg:           #e8edf5;
+  --app-bg:       #eef2f8;
+  --card:         #ffffff;
+  --card-hi:      #f8fafc;
+  --panel:        #f4f6fb;
+  --muted:        #f0f3f8;
+  --border:       rgba(0,0,0,.09);
+  --border-soft:  rgba(0,0,0,.05);
+  --sep:          rgba(0,0,0,.07);
+  --fg:           #1e2d45;
+  --fg-sec:       #4c6180;
+  --fg-dim:       #9aaccb;
+  --label:        #7a92ad;
+  --primary:      #2563eb;
+  --primary-dim:  rgba(37,99,235,.08);
+  --primary-glow: rgba(37,99,235,.18);
+  --amber:        #d97706;
+  --amber-dim:    rgba(217,119,6,.1);
+  --green:        #16a34a;
+  --green-dim:    rgba(22,163,74,.1);
+  --red:          #dc2626;
+  --red-dim:      rgba(220,38,38,.1);
+  --sky:          #0284c7;
+  --sky-dim:      rgba(2,132,199,.1);
+  --overlay:      rgba(15,20,40,.5);
+  --shadow:       0 20px 60px rgba(0,0,0,.18), 0 4px 20px rgba(0,0,0,.1);
+  --shadow-sm:    0 2px 8px rgba(0,0,0,.08);
+  --row-hover:    rgba(0,0,0,.025);
+  --row-stripe:   rgba(0,0,0,.02);
+  --thead-bg:     rgba(0,0,0,.035);
+  --scrim:        linear-gradient(to bottom, transparent, #ffffff);
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+html, body { height: 100%; background: var(--app-bg); color: var(--fg); font-family: var(--font); font-size: 13px; line-height: 1.5 }
+
+svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round }
+
+/* ═══════════════════════════════════════════════════════
+   APP SHELL (blurred gantt background)
+═══════════════════════════════════════════════════════ */
+.app-shell {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 24px 80px;
+  background: var(--app-bg);
+}
+
+/* fake gantt rows behind the overlay */
+.gantt-bg {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  pointer-events: none;
+  opacity: .45;
+}
+.gantt-bg .g-hdr {
+  height: 36px; background: var(--card); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.gantt-bg .g-row {
+  height: 30px; border-bottom: 1px solid var(--border-soft);
+  display: flex; align-items: center; padding: 0 8px; gap: 6px;
+}
+.gantt-bg .g-row:nth-child(odd) { background: var(--row-stripe) }
+.gantt-bg .g-chip {
+  height: 18px; border-radius: 3px; background: var(--primary-dim);
+  border: 1px solid var(--primary); opacity: .6;
+}
+
+/* overlay dimming */
+.overlay {
+  position: fixed; inset: 0;
+  background: var(--overlay);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   MODAL SHELL
+═══════════════════════════════════════════════════════ */
+.modal {
+  position: relative; z-index: 10;
+  width: 860px; max-width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: modal-in .18s ease-out;
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(-10px) scale(.98) }
+  to   { opacity: 1; transform: none }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MODAL HEADER
+═══════════════════════════════════════════════════════ */
+.mhdr {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 16px;
+  height: 52px; flex-shrink: 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.mhdr-icon {
+  width: 30px; height: 30px; flex-shrink: 0;
+  border-radius: var(--rs);
+  background: var(--primary-dim);
+  border: 1px solid var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--primary);
+}
+.mhdr-icon svg { width: 16px; height: 16px }
+
+.mhdr-main { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0 }
+
+.mhdr-title {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 14px; font-weight: 600; color: var(--fg); letter-spacing: .01em;
+}
+.mhdr-id {
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  color: var(--primary); background: var(--primary-dim);
+  border: 1px solid rgba(59,130,246,.25);
+  padding: 0 6px; border-radius: var(--r2); line-height: 1.7;
+}
+.mhdr-flt { font-size: 14px; font-weight: 700; color: var(--fg) }
+.mhdr-date { font-size: 11px; color: var(--fg-sec) }
+
+.mhdr-sub {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: var(--fg-sec);
+}
+
+/* badges */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 7px; border-radius: 99px;
+  font-size: 10px; font-weight: 600; letter-spacing: .03em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.badge-full    { background: var(--green-dim); color: var(--green);  border: 1px solid rgba(34,197,94,.25) }
+.badge-partial { background: var(--amber-dim); color: var(--amber);  border: 1px solid rgba(245,158,11,.25) }
+.badge-cancel  { background: var(--red-dim);   color: var(--red);    border: 1px solid rgba(239,68,68,.25) }
+.badge-type    { background: var(--sky-dim);   color: var(--sky);    border: 1px solid rgba(56,189,248,.2) }
+.badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor }
+
+.mhdr-close {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: var(--rs); border: none;
+  background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--fg-sec); transition: background .12s, color .12s;
+}
+.mhdr-close:hover { background: var(--red-dim); color: var(--red) }
+.mhdr-close svg { width: 14px; height: 14px }
+
+/* ═══════════════════════════════════════════════════════
+   MODAL BODY
+═══════════════════════════════════════════════════════ */
+.mbody { display: flex; flex-direction: column; overflow: hidden }
+
+/* ── Section label ── */
+.sec-label {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px 7px;
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--fg-dim);
+}
+.sec-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--sep);
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLIGHT INFO SECTION
+═══════════════════════════════════════════════════════ */
+.flt-info { padding: 0 16px 14px }
+
+/* Route banner */
+.route-banner {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 14px;
+  background: var(--card-hi);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 16px;
+  position: relative; overflow: hidden;
+}
+.route-banner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--primary-dim) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.route-arp {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; z-index: 1;
+}
+.route-arp-code {
+  font-family: var(--mono); font-size: 22px; font-weight: 700;
+  color: var(--fg); letter-spacing: .05em; line-height: 1;
+}
+.route-arp-name { font-size: 10px; color: var(--fg-sec) }
+
+.route-arrow {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; z-index: 1; padding: 0 16px;
+}
+.route-line {
+  width: 100%; display: flex; align-items: center; gap: 0;
+  color: var(--fg-dim);
+}
+.route-line-bar { flex: 1; height: 1px; background: currentColor; opacity: .4 }
+.route-line svg { width: 16px; height: 16px; opacity: .7 }
+.route-flt {
+  font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--primary);
+  letter-spacing: .06em;
+}
+.route-sub { font-size: 10px; color: var(--fg-dim); text-align: center }
+
+.route-meta {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px; z-index: 1;
+}
+.route-meta-item { display: flex; align-items: center; gap: 5px }
+.route-meta-label { font-size: 9px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: .07em }
+.route-meta-val {
+  font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--fg-sec);
+  background: var(--muted); padding: 1px 6px; border-radius: var(--r2);
+  border: 1px solid var(--border);
+}
+
+/* Times grid */
+.times-grid {
+  display: grid; grid-template-columns: 1fr 1px 1fr; gap: 0;
+}
+.times-sep { background: var(--sep) }
+
+.times-col { padding: 0 4px }
+.times-col:first-child { padding-left: 0 }
+.times-col:last-child  { padding-right: 0; padding-left: 12px }
+
+.times-col-hdr {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 8px;
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--fg-dim);
+}
+.times-col-hdr-dot { width: 6px; height: 6px; border-radius: 50% }
+.dep-dot { background: var(--primary) }
+.arv-dot { background: var(--green) }
+
+.time-row {
+  display: flex; align-items: center;
+  height: 28px; padding: 0 6px;
+  border-radius: var(--r2);
+  gap: 8px;
+}
+.time-row:hover { background: var(--row-hover) }
+
+.time-lbl {
+  font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--label); width: 32px; flex-shrink: 0;
+}
+.time-val {
+  font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--fg);
+  flex: 1;
+}
+.time-val.actual { color: var(--green) }
+.time-val.estimated { color: var(--amber) }
+.time-val.delayed { color: var(--red) }
+.time-val.muted { color: var(--fg-dim) }
+
+.time-delta {
+  font-family: var(--mono); font-size: 10px;
+  padding: 0 4px; border-radius: 3px;
+}
+.time-delta.late  { color: var(--red);   background: var(--red-dim)  }
+.time-delta.early { color: var(--green); background: var(--green-dim) }
+
+/* Duration row */
+.dur-row {
+  display: flex; align-items: center; gap: 0;
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--sep);
+}
+.dur-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 0;
+}
+.dur-item + .dur-item { border-left: 1px solid var(--sep) }
+.dur-lbl { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-dim) }
+.dur-val { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--fg); line-height: 1 }
+.dur-unit { font-size: 9px; color: var(--fg-sec) }
+
+/* ═══════════════════════════════════════════════════════
+   COMPOSITION SECTION
+═══════════════════════════════════════════════════════ */
+.comp-section { padding: 0 16px 14px }
+
+.comp-grid {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.comp-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 14px;
+  background: var(--card-hi); border: 1px solid var(--border);
+  border-radius: var(--rs); min-width: 80px;
+}
+.comp-rank {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  letter-spacing: .08em; color: var(--fg-sec);
+}
+.comp-rank.ca { color: var(--clr-ca) }
+.comp-rank.fo { color: var(--clr-fo) }
+.comp-rank.pu { color: var(--clr-pu) }
+.comp-rank.fa { color: var(--clr-fa) }
+
+.comp-nums {
+  display: flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 11px;
+}
+.comp-plan { color: var(--fg-sec) }
+.comp-act  { font-weight: 700; color: var(--fg) }
+.comp-act.over  { color: var(--amber) }
+.comp-act.under { color: var(--red) }
+.comp-frac { color: var(--fg-dim); font-size: 10px }
+
+/* ═══════════════════════════════════════════════════════
+   CREW TABLE SECTION
+═══════════════════════════════════════════════════════ */
+.crew-section {
+  border-top: 1px solid var(--sep);
+  display: flex; flex-direction: column;
+}
+
+.crew-table-wrap {
+  overflow: auto; max-height: 260px;
+}
+.crew-table-wrap::-webkit-scrollbar { width: 6px; height: 6px }
+.crew-table-wrap::-webkit-scrollbar-track { background: transparent }
+.crew-table-wrap::-webkit-scrollbar-thumb { background: var(--fg-dim); border-radius: 3px }
+
+.crew-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px;
+}
+
+.crew-table thead {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--panel);
+}
+.crew-table thead tr {
+  border-bottom: 1px solid var(--border);
+}
+.crew-table th {
+  padding: 7px 10px;
+  font-size: 9px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--fg-dim);
+  text-align: left; white-space: nowrap;
+  background: var(--thead-bg);
+}
+.crew-table th:first-child { padding-left: 16px }
+.crew-table th:last-child  { padding-right: 16px }
+
+.crew-table td {
+  padding: 8px 10px; border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle; white-space: nowrap;
+}
+.crew-table td:first-child { padding-left: 16px }
+.crew-table td:last-child  { padding-right: 16px }
+
+.crew-table tbody tr:nth-child(even) { background: var(--row-stripe) }
+.crew-table tbody tr:hover { background: var(--row-hover) }
+.crew-table tbody tr:last-child td { border-bottom: none }
+
+/* col widths */
+.col-seq    { width: 36px; text-align: center }
+.col-id     { width: 90px }
+.col-name   { min-width: 110px }
+.col-rank   { width: 72px }
+.col-acting { width: 72px }
+.col-label  { min-width: 100px }
+.col-source { width: 72px }
+.col-mbh    { width: 64px; text-align: right }
+.col-mfdp   { width: 64px; text-align: right }
+
+.seq-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--muted); border: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--fg-dim);
+}
+
+.crew-id-val {
+  font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--fg-sec);
+}
+.crew-name-val { font-weight: 500; color: var(--fg) }
+
+.rank-pill {
+  display: inline-flex; align-items: center;
+  padding: 1px 7px; border-radius: 99px;
+  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .04em;
+}
+.rank-ca { background: rgba(59,130,246,.15);  color: var(--clr-ca); border: 1px solid rgba(59,130,246,.25) }
+.rank-fo { background: rgba(168,85,247,.15);  color: var(--clr-fo); border: 1px solid rgba(168,85,247,.25) }
+.rank-pu { background: rgba(6,182,212,.15);   color: var(--clr-pu); border: 1px solid rgba(6,182,212,.25)  }
+.rank-fa { background: rgba(249,115,22,.15);  color: var(--clr-fa); border: 1px solid rgba(249,115,22,.25) }
+.rank-default { background: var(--muted); color: var(--fg-sec); border: 1px solid var(--border) }
+
+.source-chip {
+  display: inline-flex; align-items: center;
+  padding: 1px 6px; border-radius: var(--r2);
+  font-size: 10px; font-weight: 600; letter-spacing: .04em;
+  background: var(--muted); color: var(--fg-dim); border: 1px solid var(--border);
+}
+.source-chip.manual { color: var(--amber); background: var(--amber-dim); border-color: rgba(245,158,11,.25) }
+.source-chip.system { color: var(--sky);   background: var(--sky-dim);   border-color: rgba(56,189,248,.2)  }
+.source-chip.import { color: var(--green); background: var(--green-dim); border-color: rgba(34,197,94,.2)   }
+
+.mono-val {
+  font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--fg-sec);
+}
+.mono-val.hi { color: var(--amber) }
+
+.label-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--fg-sec);
+}
+.label-tag .l-sep { color: var(--fg-dim); font-size: 10px }
+
+/* ═══════════════════════════════════════════════════════
+   MODAL FOOTER
+═══════════════════════════════════════════════════════ */
+.mfooter {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+.mfooter-left { display: flex; align-items: center; gap: 8px; color: var(--fg-dim); font-size: 10px }
+.mfooter-left svg { width: 12px; height: 12px }
+.mfooter-right { display: flex; align-items: center; gap: 6px }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 12px; height: 30px; border-radius: var(--rs);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  border: 1px solid transparent; transition: background .12s, color .12s, border-color .12s;
+  white-space: nowrap;
+}
+.btn-ghost {
+  background: transparent; color: var(--fg-sec); border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--row-hover); color: var(--fg); border-color: var(--border) }
+.btn-primary {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.btn-primary:hover { filter: brightness(1.1) }
+.btn svg { width: 13px; height: 13px }
+
+/* ═══════════════════════════════════════════════════════
+   THEME TOGGLE (top-right corner utility)
+═══════════════════════════════════════════════════════ */
+.theme-toggle {
+  position: fixed; top: 16px; right: 16px; z-index: 100;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--card); border: 1px solid var(--border);
+  padding: 5px 12px; border-radius: 99px; box-shadow: var(--shadow-sm);
+}
+.theme-toggle span { font-size: 11px; color: var(--fg-sec) }
+.tgl {
+  position: relative; display: inline-flex;
+  width: 34px; height: 18px; cursor: pointer;
+}
+.tgl input { opacity: 0; width: 0; height: 0 }
+.tgl-track {
+  position: absolute; inset: 0; border-radius: 9px;
+  background: var(--muted); border: 1px solid var(--border);
+  transition: background .2s;
+}
+.tgl input:checked ~ .tgl-track { background: var(--primary); border-color: var(--primary) }
+.tgl-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--fg-dim); transition: transform .2s, background .2s;
+}
+.tgl input:checked ~ .tgl-thumb { transform: translateX(16px); background: #fff }
+
+/* ═══════════════════════════════════════════════════════
+   SPEC NOTES PANEL (below the modal)
+═══════════════════════════════════════════════════════ */
+.spec-notes {
+  position: relative; z-index: 10;
+  width: 860px; max-width: 100%;
+  margin-top: 32px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 16px;
+}
+.spec-notes h3 {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--fg-dim); margin-bottom: 12px;
+}
+.spec-notes ul { list-style: none; display: flex; flex-direction: column; gap: 6px }
+.spec-notes li {
+  font-size: 11px; color: var(--fg-sec); padding-left: 14px; position: relative;
+}
+.spec-notes li::before {
+  content: '›'; position: absolute; left: 0; color: var(--primary); font-weight: 700;
+}
+.spec-notes code {
+  font-family: var(--mono); font-size: 10px; color: var(--primary);
+  background: var(--primary-dim); padding: 0 4px; border-radius: 3px;
+}
+</style>
+</head>
+<body>
+
+<!-- ─── Theme Toggle ─── -->
+<div class="theme-toggle">
+  <span>🌙</span>
+  <label class="tgl">
+    <input type="checkbox" id="theme-chk" />
+    <span class="tgl-track"></span>
+    <span class="tgl-thumb"></span>
+  </label>
+  <span>☀️</span>
+</div>
+
+<!-- ─── Fake Gantt Background ─── -->
+<div class="gantt-bg">
+  <div class="g-hdr"></div>
+  <div class="g-row"><div class="g-chip" style="width:120px;margin-left:60px"></div><div class="g-chip" style="width:80px;margin-left:30px"></div></div>
+  <div class="g-row"><div class="g-chip" style="width:90px;margin-left:110px;background:rgba(168,85,247,.2);border-color:#a855f7"></div></div>
+  <div class="g-row"><div class="g-chip" style="width:140px;margin-left:20px"></div></div>
+  <div class="g-row"><div class="g-chip" style="width:100px;margin-left:80px;background:rgba(34,197,94,.12);border-color:#22c55e;opacity:.5"></div></div>
+  <div class="g-row"></div>
+  <div class="g-row"><div class="g-chip" style="width:70px;margin-left:200px"></div></div>
+  <div class="g-row"><div class="g-chip" style="width:110px;margin-left:40px"></div></div>
+  <div class="g-row"></div>
+  <div class="g-row"><div class="g-chip" style="width:130px;margin-left:150px;background:rgba(249,115,22,.12);border-color:#f97316;opacity:.5"></div></div>
+</div>
+
+<!-- ─── Overlay ─── -->
+<div class="overlay"></div>
+
+<!-- ─── App Shell ─── -->
+<div class="app-shell">
+
+  <!-- ══════════════════════════════════════════
+       MODAL
+  ══════════════════════════════════════════ -->
+  <div class="modal">
+
+    <!-- Header -->
+    <div class="mhdr">
+      <div class="mhdr-icon">
+        <!-- plane icon -->
+        <svg viewBox="0 0 24 24"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 21 4s-2 0-3.5 1.5L14 9 5.8 6.2c-.5-.2-1.1.1-1.1.7l-.3 1.5c-.1.5.2 1 .7 1.2L11 11.5l-2 3.5-2.7-.1c-.4 0-.8.2-1 .5l-.5.9c-.2.4.1.9.5.9l4.3.5.5 4.3c.1.5.6.7.9.5l.9-.5c.3-.2.5-.6.5-1l-.1-2.7 3.5-2 1.5 5.8c.2.5.7.8 1.2.7l1.5-.3c.5-.1.8-.6.7-1.1z"/></svg>
+      </div>
+
+      <div class="mhdr-main">
+        <div class="mhdr-title">
+          <span class="mhdr-id">#12345</span>
+          <span class="mhdr-flt">F8 8888</span>
+          <span class="mhdr-date">2026-04-25</span>
+          <span class="badge badge-full"><span class="badge-dot"></span>Full</span>
+          <span class="badge badge-type">PAX</span>
+        </div>
+        <div class="mhdr-sub">
+          <span>Flight Composition: CA×2 / FO×2 / PU×1 / FA×6</span>
+          <span style="color:var(--sep)">|</span>
+          <span>Roster·Live</span>
+        </div>
+      </div>
+
+      <button class="mhdr-close" title="Close">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="mbody">
+
+      <!-- ── FLIGHT INFO ── -->
+      <div class="sec-label">Flight Info</div>
+      <div class="flt-info">
+
+        <!-- Route Banner -->
+        <div class="route-banner">
+          <div class="route-arp">
+            <span class="route-arp-code">PEK</span>
+            <span class="route-arp-name">Beijing Capital</span>
+          </div>
+
+          <div class="route-arrow">
+            <span class="route-flt">F8 8888</span>
+            <div class="route-line">
+              <span class="route-line-bar"></span>
+              <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+            <span class="route-sub">B737-800 · B-5678</span>
+          </div>
+
+          <div class="route-arp" style="align-items:flex-end">
+            <span class="route-arp-code">SHA</span>
+            <span class="route-arp-name">Shanghai Hongqiao</span>
+          </div>
+
+          <div style="width:1px;background:var(--sep);margin:0 16px;align-self:stretch"></div>
+
+          <div class="route-meta">
+            <div class="route-meta-item">
+              <span class="route-meta-label">Fleet</span>
+              <span class="route-meta-val">B737-800</span>
+            </div>
+            <div class="route-meta-item">
+              <span class="route-meta-label">Reg</span>
+              <span class="route-meta-val">B-5678</span>
+            </div>
+            <div class="route-meta-item">
+              <span class="route-meta-label">Airline</span>
+              <span class="route-meta-val">F8</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Times Grid -->
+        <div class="times-grid">
+
+          <!-- Departure -->
+          <div class="times-col">
+            <div class="times-col-hdr">
+              <span class="times-col-hdr-dot dep-dot"></span>
+              Departure — PEK
+            </div>
+            <div class="time-row">
+              <span class="time-lbl">STD</span>
+              <span class="time-val">08:30 UTC+8</span>
+            </div>
+            <div class="time-row">
+              <span class="time-lbl">ETD</span>
+              <span class="time-val estimated">08:47 UTC+8</span>
+              <span class="time-delta late">+17m</span>
+            </div>
+            <div class="time-row">
+              <span class="time-lbl">ATD</span>
+              <span class="time-val actual">08:52 UTC+8</span>
+              <span class="time-delta late">+22m</span>
+            </div>
+          </div>
+
+          <!-- Separator -->
+          <div class="times-sep"></div>
+
+          <!-- Arrival -->
+          <div class="times-col">
+            <div class="times-col-hdr">
+              <span class="times-col-hdr-dot arv-dot"></span>
+              Arrival — SHA
+            </div>
+            <div class="time-row">
+              <span class="time-lbl">STA</span>
+              <span class="time-val">10:30 UTC+8</span>
+            </div>
+            <div class="time-row">
+              <span class="time-lbl">ETA</span>
+              <span class="time-val estimated">10:50 UTC+8</span>
+              <span class="time-delta late">+20m</span>
+            </div>
+            <div class="time-row">
+              <span class="time-lbl">ATA</span>
+              <span class="time-val muted">—</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Duration row -->
+        <div class="dur-row">
+          <div class="dur-item">
+            <span class="dur-lbl">Block Hours</span>
+            <span class="dur-val">2:00</span>
+            <span class="dur-unit">BH</span>
+          </div>
+          <div class="dur-item">
+            <span class="dur-lbl">Flight Time</span>
+            <span class="dur-val">1:43</span>
+            <span class="dur-unit">FT (actual)</span>
+          </div>
+          <div class="dur-item">
+            <span class="dur-lbl">Flight Date</span>
+            <span class="dur-val" style="font-size:15px">Apr 25</span>
+            <span class="dur-unit">2026</span>
+          </div>
+          <div class="dur-item">
+            <span class="dur-lbl">Status</span>
+            <span class="badge badge-partial" style="font-size:11px;padding:3px 10px">Delayed</span>
+            <span class="dur-unit" style="color:var(--amber)">+22 min</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── COMPOSITION ── -->
+      <div class="sec-label">Flight Composition</div>
+      <div class="comp-section">
+        <div class="comp-grid">
+          <div class="comp-card">
+            <span class="comp-rank ca">CA</span>
+            <div class="comp-nums">
+              <span class="comp-act">2</span>
+              <span class="comp-frac">/ 2</span>
+            </div>
+          </div>
+          <div class="comp-card">
+            <span class="comp-rank fo">FO</span>
+            <div class="comp-nums">
+              <span class="comp-act">2</span>
+              <span class="comp-frac">/ 2</span>
+            </div>
+          </div>
+          <div class="comp-card">
+            <span class="comp-rank pu">PU</span>
+            <div class="comp-nums">
+              <span class="comp-act">1</span>
+              <span class="comp-frac">/ 1</span>
+            </div>
+          </div>
+          <div class="comp-card">
+            <span class="comp-rank fa">FA</span>
+            <div class="comp-nums">
+              <span class="comp-act over">5</span>
+              <span class="comp-frac">/ 6</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CREW LIST ── -->
+      <div class="crew-section">
+        <div class="sec-label" style="padding-top:12px">Crew Assignment</div>
+
+        <div class="crew-table-wrap">
+          <table class="crew-table">
+            <thead>
+              <tr>
+                <th class="col-seq">Seq</th>
+                <th class="col-id">Crew ID</th>
+                <th class="col-name">Name</th>
+                <th class="col-rank">Rank</th>
+                <th class="col-acting">Acting</th>
+                <th class="col-label">Label</th>
+                <th class="col-source">Source</th>
+                <th class="col-mbh">MBH</th>
+                <th class="col-mfdp">MFDP</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- CA 1 -->
+              <tr>
+                <td class="col-seq"><span class="seq-num">1</span></td>
+                <td class="col-id"><span class="crew-id-val">F800123</span></td>
+                <td class="col-name"><span class="crew-name-val">ZHANG WEI</span></td>
+                <td class="col-rank"><span class="rank-pill rank-ca">CA</span></td>
+                <td class="col-acting"><span class="rank-pill rank-ca">CA</span></td>
+                <td class="col-label"><span class="label-tag">F8 8888<span class="l-sep">·</span>PEK-SHA</span></td>
+                <td class="col-source"><span class="source-chip system">SYSTEM</span></td>
+                <td class="col-mbh"><span class="mono-val">2:00</span></td>
+                <td class="col-mfdp"><span class="mono-val">13:00</span></td>
+              </tr>
+              <!-- CA 2 -->
+              <tr>
+                <td class="col-seq"><span class="seq-num">2</span></td>
+                <td class="col-id"><span class="crew-id-val">F800124</span></td>
+                <td class="col-name"><span class="crew-name-val">LI MING</span></td>
+                <td class="col-rank"><span class="rank-pill rank-ca">CA</span></td>
+                <td class="col-acting"><span class="rank-pill rank-fo">FO</span></td>
+                <td class="col-label"><span class="label-tag">F8 8888<span class="l-sep">·</span>PEK-SHA</span></td>
+                <td class="col-source"><span class="source-chip import">IMPORT</span></td>
+                <td class="col-mbh"><span class="mono-val">2:00</span></td>
+                <td class="col-mfdp"><span class="mono-val">11:30</span></td>
+              </tr>
+              <!-- FO 1 -->
+              <tr>
+                <td class="col-seq"><span class="seq-num">3</span></td>
+                <td class="col-id"><span class="crew-id-val">F800201</span></td>
+                <td class="col-name"><span class="crew-name-val">WANG FANG</span></td>
+                <td class="col-rank"><span class="rank-pill rank-fo">FO</span></td>
+                <td class="col-acting"><span class="rank-pill rank-fo">FO</span></td>
+                <td class="col-label"><span class="label-tag">F8 8888<span class="l-sep">·</span>PEK-SHA</span></td>
+                <td class="col-source"><span class="source-chip system">SYSTEM</span></td>
+                <td class="col-mbh"><span class="mono-val">2:00</span></td>
+                <td class="col-mfdp"><span class="mono-val">13:00</span></td>
+              </tr>
+              <!-- FO 2 -->
+              <tr>
+                <td class="col-seq"><span class="seq-num">4</span></td>
+                <td class="col-id"><span class="crew-id-val">F800202</span></td>
+                <td class="col-name"><span class="crew-name-val">CHEN JIAN</span></td>
+                <td class="col-rank"><span class="rank-pill rank-fo">FO</span></td>
+                <td class="col-acting"><span class="rank-pill rank-ca">CA</span></td>
+                <td class="col-label"><span class="label-tag">F8 8888<span class="l-sep">·</span>PEK-SHA</span></td>
+                <td class="col-source"><span class="source-chip manual">MANUAL</span></td>
+                <td class="col-mbh"><span class="mono-val hi">2:00</span></td>
+                <td class="col-mfdp"><span class="mono-val">10:00</span></td>
+              </tr>
+              <!-- PU -->
+              <tr>
+                <td class="col-seq"><span class="seq-num">5</span></td>
+                <td class="col-id"><span class="crew-id-val">F800301</span></td>
+                <td class="col-name"><span class="crew-name-val">ZHAO LI</span></td>
+                <td class="col-rank"><span class="rank-pill rank-pu">PU</span></td>
+                <td class="col-acting"><span class="rank-pill rank-pu">PU</span></td>
+                <td class="col-label"><span class="label-tag">F8 8888<span class="l-sep">·</span>PEK-SHA</span></td>
+                <td class="col-source"><span class="source-chip system">SYSTEM</span></td>
+                <td class="col-mbh"><span class="mono-val">2:00</span></td>
+                <td class="col-mfdp"><span class="mono-val">14:00</span></td>
+              </tr>
+              <!-- FA 1 -->
+              <tr>
+                <td class="col-seq"><span class="seq-num">6</span></td>
+                <td class="col-id"><span class="crew-id-val">F800401</span></td>
+                <td class="col-name"><span class="crew-name-val">SUN XIA</span></td>
+                <td class="col-rank"><span class="rank-pill rank-fa">FA</span></td>
+                <td class="col-acting"><span class="rank-pill rank-fa">FA</span></td>
+                <td class="col-label"><span class="label-tag">F8 8888<span class="l-sep">·</span>PEK-SHA</span></td>
+                <td class="col-source"><span class="source-chip system">SYSTEM</span></td>
+                <td class="col-mbh"><span class="mono-val">2:00</span></td>
+                <td class="col-mfdp"><span class="mono-val">14:00</span></td>
+              </tr>
+              <!-- FA 2 -->
+              <tr>
+                <td class="col-seq"><span class="seq-num">7</span></td>
+                <td class="col-id"><span class="crew-id-val">F800402</span></td>
+                <td class="col-name"><span class="crew-name-val">LIU HONG</span></td>
+                <td class="col-rank"><span class="rank-pill rank-fa">FA</span></td>
+                <td class="col-acting"><span class="rank-pill rank-fa">FA</span></td>
+                <td class="col-label"><span class="label-tag">F8 8888<span class="l-sep">·</span>PEK-SHA</span></td>
+                <td class="col-source"><span class="source-chip import">IMPORT</span></td>
+                <td class="col-mbh"><span class="mono-val">2:00</span></td>
+                <td class="col-mfdp"><span class="mono-val">13:30</span></td>
+              </tr>
+              <!-- FA 3 -->
+              <tr>
+                <td class="col-seq"><span class="seq-num">8</span></td>
+                <td class="col-id"><span class="crew-id-val">F800403</span></td>
+                <td class="col-name"><span class="crew-name-val">YANG MEI</span></td>
+                <td class="col-rank"><span class="rank-pill rank-fa">FA</span></td>
+                <td class="col-acting"><span class="rank-pill rank-fa">FA</span></td>
+                <td class="col-label"><span class="label-tag">F8 8888<span class="l-sep">·</span>PEK-SHA</span></td>
+                <td class="col-source"><span class="source-chip system">SYSTEM</span></td>
+                <td class="col-mbh"><span class="mono-val">2:00</span></td>
+                <td class="col-mfdp"><span class="mono-val">12:45</span></td>
+              </tr>
+              <!-- FA 4 -->
+              <tr>
+                <td class="col-seq"><span class="seq-num">9</span></td>
+                <td class="col-id"><span class="crew-id-val">F800404</span></td>
+                <td class="col-name"><span class="crew-name-val">ZHOU YAN</span></td>
+                <td class="col-rank"><span class="rank-pill rank-fa">FA</span></td>
+                <td class="col-acting"><span class="rank-pill rank-fa">FA</span></td>
+                <td class="col-label"><span class="label-tag">F8 8888<span class="l-sep">·</span>PEK-SHA</span></td>
+                <td class="col-source"><span class="source-chip manual">MANUAL</span></td>
+                <td class="col-mbh"><span class="mono-val">2:00</span></td>
+                <td class="col-mfdp"><span class="mono-val">11:00</span></td>
+              </tr>
+              <!-- FA 5 — missing, partial -->
+              <tr>
+                <td class="col-seq"><span class="seq-num" style="color:var(--fg-dim);background:transparent;border-style:dashed">—</span></td>
+                <td class="col-id" style="color:var(--fg-dim);font-style:italic" colspan="7">
+                  <span style="font-size:11px;color:var(--red);opacity:.7">▲ 1 position unfilled (FA required)</span>
+                </td>
+                <td class="col-mfdp"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /mbody -->
+
+    <!-- Footer -->
+    <div class="mfooter">
+      <div class="mfooter-left">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Updated 2026-04-25 07:14 UTC · 9 crew / 10 slots
+      </div>
+      <div class="mfooter-right">
+        <button class="btn btn-ghost">
+          <svg viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 012 2v7"/><path d="M11 18H8a2 2 0 01-2-2V9"/></svg>
+          Assign Crew
+        </button>
+        <button class="btn btn-ghost">
+          <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit
+        </button>
+        <button class="btn btn-primary">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Close
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /modal -->
+
+  <!-- ══════════════════════════════════════════
+       SPEC NOTES
+  ══════════════════════════════════════════ -->
+  <div class="spec-notes">
+    <h3>Design Spec Notes</h3>
+    <ul>
+      <li><strong>Trigger:</strong> Double-click on a flight block in Flight Pane → <code>onItemDoubleClick</code> callback (currently TBD in <code>flight-pane.tsx:225</code>)</li>
+      <li><strong>State:</strong> Add <code>flightDetailOpen / flightDetailId</code> to <code>ui-store.ts</code>; modal fetches data via <code>flightApi.getById(id)</code> + new <code>flightApi.getCrewList(id)</code></li>
+      <li><strong>New API needed:</strong> <code>GET /api/flight/:id/crew</code> — joins <code>roster_flight</code> with <code>crew</code> table, returns <code>crew_id, name, crew_rank, acting_rank, seq_order, label, source, mbh (sch_credited_minutes), mfdp</code></li>
+      <li><strong>Title:</strong> <code>#id | flt_dt | airline + flt_num</code> + composition badge (Full / Partial / Cancelled) + flight type badge</li>
+      <li><strong>Composition cards:</strong> from <code>flight_composition</code> table (<code>acting_rank + plan_value</code>); actual count from crew list length per rank</li>
+      <li><strong>MBH</strong> = <code>roster_flight.sch_credited_minutes</code> formatted as H:MM; <strong>MFDP</strong> = maximum FDP limit from rule engine (separate lookup)</li>
+      <li><strong>Rank pill color:</strong> CA=blue, FO=purple, PU=cyan, FA=orange — consistent with Gantt canvas coloring</li>
+      <li><strong>Source chips:</strong> SYSTEM=sky, IMPORT=green, MANUAL=amber</li>
+      <li><strong>Unfilled slot row:</strong> shown when actual count &lt; plan_value for any rank</li>
+      <li><strong>Responsive:</strong> max-width 860px, crew table scrollable vertically (max-height 260px)</li>
+      <li><strong>Theme:</strong> inherits app theme via <code>data-theme</code> on <code>&lt;html&gt;</code>, toggle above for preview</li>
+    </ul>
+  </div>
+
+</div><!-- /app-shell -->
+
+<script>
+  const chk = document.getElementById('theme-chk')
+  const html = document.documentElement
+  chk.addEventListener('change', () => {
+    html.setAttribute('data-theme', chk.checked ? 'light' : 'dark')
+  })
+</script>
+</body>
+</html>

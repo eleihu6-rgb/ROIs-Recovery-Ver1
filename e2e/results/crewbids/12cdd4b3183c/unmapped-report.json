@@ -1,0 +1,1206 @@
+{
+  "generatedAt": "see git commit",
+  "totalRecords": 1096,
+  "effectiveCrew": 659,
+  "selectedCrew": 24,
+  "bucketCounts": {
+    "YVR-CA": 6,
+    "YVR-FO": 6,
+    "YYZ-CA": 6,
+    "YYZ-FO": 6
+  },
+  "droppedReasonCounts": {
+    "secondary-clause-dropped": 443,
+    "beyond-tier-7": 4033,
+    "unmapped-pairing-condition": 54,
+    "unmapped-predicate": 4,
+    "unmapped-set-condition": 1
+  },
+  "selectedCrewDropped": [
+    {
+      "employeeId": "73",
+      "category": "YYZ-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Departing On Jul 16, 2026, Jul 20, 2026, Jul 23, 2026, Jul 27, 2026, Jul 30, 2026 If Any Landing In GDL",
+          "reason": "secondary-clause-dropped: Any Landing In GDL"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 2, 2026, Jul 6, 2026 If Pairing Number T4105",
+          "reason": "secondary-clause-dropped: Pairing Number T4105"
+        }
+      ]
+    },
+    {
+      "employeeId": "113",
+      "category": "YVR-737-CA",
+      "dropped": []
+    },
+    {
+      "employeeId": "295",
+      "category": "YVR-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Any Landing In GDL, LAS, PVR, YWG",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 18, 2026 - Jul 16, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 19:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In CUN, MEX, SFO, YEG, YXX, YYC, YYZ",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In GDL, LAS, LAX, PVR, YWG",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "379",
+      "category": "YVR-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Pairing Number V4110 Check-In Date Jul 5, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4125 Check-In Date Jul 9, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4121 Check-In Date Jul 12, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4120 Check-In Date Jul 24, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4140 Check-In Date Jul 25, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 26, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 27, 2026",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "386",
+      "category": "YYZ-737-FO",
+      "dropped": [
+        {
+          "predicate": "Avoid Pairings If Any Landing In FLL, GDL, KIN, MBJ, MCO, MEX, YKF, YXX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In YVR If Pairing Check-In Time Between 08:00 And 11:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PUJ If Pairing Check-In Time Between 08:30 And 09:30",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PUJ If Pairing Check-In Time Between 06:30 And 07:30",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In CUN If Pairing Check-In Time Between 08:30 And 09:30",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Average Daily Credit > 008:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Average Daily Credit > 007:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Average Daily Credit > 006:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Average Daily Credit > 005:00",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "387",
+      "category": "YYZ-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Pairing Number T4145 Check-In Date Jul 13, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4145 Check-In Date Jul 16, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4145 Check-In Date Jul 18, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4145 Check-In Date Jul 20, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4145 Check-In Date Jul 23, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4145 Check-In Date Jul 25, 2026",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "390",
+      "category": "YVR-737-CA",
+      "dropped": []
+    },
+    {
+      "employeeId": "504",
+      "category": "YVR-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Any Landing In PVR If Pairing Check-In Time > 11:00 If Total Legs In Pairing < 3 legs",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time > 11:00"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PVR If Pairing Check-In Time > 11:00 If Total Legs In Pairing < 3 legs",
+          "reason": "secondary-clause-dropped: Total Legs In Pairing < 3 legs"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In MEX If Total Legs In Pairing < 3 legs",
+          "reason": "secondary-clause-dropped: Total Legs In Pairing < 3 legs"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In SJD If Pairing Length < 3 days",
+          "reason": "secondary-clause-dropped: Pairing Length < 3 days"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In YWG If Total Legs In Pairing < 3 legs",
+          "reason": "secondary-clause-dropped: Total Legs In Pairing < 3 legs"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In CUN If Total Legs In Pairing < 3 legs",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In CUN And Of Duration > 047:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Duty On Time > 09:00 If Any Landing In PVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Duty Legs < 3 legs If Any Landing In YXU If Pairing Check-In Time < 16:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In CUN And Of Duration > 031:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PHX If Pairing Length < 3 days",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In MEX If Total Legs In Pairing < 4 legs",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In YYZ And Of Duration > 024:00 If Total Legs In Pairing < 4 legs",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In SFO If Pairing Length < 3 days",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In LAX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In KIN",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Sunday",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "529",
+      "category": "YVR-737-CA",
+      "dropped": []
+    },
+    {
+      "employeeId": "534",
+      "category": "YYZ-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Any Duty Duration > 007:00",
+          "reason": "unmapped-pairing-condition: Any Duty Duration > 007:00"
+        }
+      ]
+    },
+    {
+      "employeeId": "296",
+      "category": "YYZ-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Departing On Jul 3, 2026, Jul 7, 2026, Jul 14, 2026, Jul 17, 2026, Jul 21, 2026, Jul 24, 2026, Jul 28, 2026, Jul 31, 2026 If Any Landing In KIN",
+          "reason": "secondary-clause-dropped: Any Landing In KIN"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 10, 2026 If Pairing Number T4137",
+          "reason": "secondary-clause-dropped: Pairing Number T4137"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 10, 2026 If Pairing Number T4120",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "722",
+      "category": "YYZ-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Departing On Jul 6, 2026, Jul 9, 2026, Jul 23, 2026, Jul 30, 2026 If Any Landing In PUJ",
+          "reason": "secondary-clause-dropped: Any Landing In PUJ"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 6, 2026, Jul 9, 2026, Jul 23, 2026, Jul 30, 2026 If Any Landing In CUN",
+          "reason": "secondary-clause-dropped: Any Landing In CUN"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 10, 2026, Jul 24, 2026, Jul 31, 2026 If Any Landing In PUJ, PVR",
+          "reason": "secondary-clause-dropped: Any Landing In PUJ, PVR"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 10, 2026, Jul 24, 2026, Jul 31, 2026 If Any Landing In CUN",
+          "reason": "secondary-clause-dropped: Any Landing In CUN"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 10, 2026, Jul 24, 2026, Jul 31, 2026 If Any Landing In FLL",
+          "reason": "secondary-clause-dropped: Any Landing In FLL"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 12, 2026, Jul 26, 2026, Jul 20, 2026 If Any Landing In PUJ",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 12, 2026, Jul 26, 2026, Jul 20, 2026 If Any Landing In CUN",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 12, 2026, Jul 26, 2026, Jul 20, 2026 If Any Landing In FLL",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 2, 2026, Jul 3, 2026, Jul 4, 2026, Jul 5, 2026, Jul 14, 2026, Jul 15, 2026, Jul 28, 2026, Jul 29, 2026, Jul 19, 2026, Jul 8, 2026, Jul 22, 2026, Jul 11, 2026, Jul 25, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 13, 2026, Jul 27, 2026 If Any Landing In CUN, FLL, GDL, PUJ",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "501",
+      "category": "YYZ-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Pairing Number T4135 Check-In Date Jul 9, 2026, T4135 Check-In Date Jul 10, 2026, T4135 Check-In Date Jul 11, 2026, T4135 Check-In Date Jul 12, 2026, T4135 Check-In Date Jul 13, 2026, T4135 Check-In Date Jul 16, 2026, T4135 Check-In Date Jul 17, 2026, T4135 Check-In Date Jul 18, 2026, T4135 Check-In Date Jul 19, 2026, T4135 Check-In Date Jul 20, 2026, T4135 Check-In Date Jul 23, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4174 Check-In Date Jul 25, 2026, T4174 Check-In Date Jul 26, 2026, T4174 Check-In Date Jul 27, 2026, T4174 Check-In Date Jul 28, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4114 Check-In Date Jul 7, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4137 Check-In Date Jul 8, 2026, T4137 Check-In Date Jul 10, 2026, T4137 Check-In Date Jul 12, 2026, T4137 Check-In Date Jul 17, 2026, T4137 Check-In Date Jul 24, 2026, T4137 Check-In Date Jul 19, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4183 Check-In Date Jul 28, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4120 Check-In Date Jul 10, 2026, T4120 Check-In Date Jul 12, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4162 Check-In Date Jul 16, 2026, T4162 Check-In Date Jul 17, 2026, T4162 Check-In Date Jul 18, 2026, T4162 Check-In Date Jul 19, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4173 Check-In Date Jul 23, 2026, T4173 Check-In Date Jul 24, 2026, T4173 Check-In Date Jul 25, 2026, T4173 Check-In Date Jul 26, 2026, T4173 Check-In Date Jul 27, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4108 Check-In Date Jul 7, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4139 Check-In Date Jul 8, 2026, T4139 Check-In Date Jul 9, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4144 Check-In Date Jul 9, 2026, T4144 Check-In Date Jul 13, 2026, T4144 Check-In Date Jul 16, 2026, T4144 Check-In Date Jul 20, 2026, T4144 Check-In Date Jul 23, 2026, T4144 Check-In Date Jul 27, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4152 Check-In Date Jul 12, 2026, T4152 Check-In Date Jul 13, 2026, T4152 Check-In Date Jul 16, 2026, T4152 Check-In Date Jul 17, 2026, T4152 Check-In Date Jul 18, 2026, T4152 Check-In Date Jul 19, 2026, T4152 Check-In Date Jul 20, 2026, T4152 Check-In Date Jul 23, 2026, T4152 Check-In Date Jul 24, 2026, T4152 Check-In Date Jul 25, 2026, T4152 Check-In Date Jul 26, 2026, T4152 Check-In Date Jul 27, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4159 Check-In Date Jul 17, 2026, T4159 Check-In Date Jul 24, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4128 Check-In Date Jul 7, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4138 Check-In Date Jul 8, 2026, T4138 Check-In Date Jul 11, 2026, T4138 Check-In Date Jul 12, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4163 Check-In Date Jul 18, 2026, T4163 Check-In Date Jul 19, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4184 Check-In Date Jul 28, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In CUN, KIN, MBJ, PUJ, PVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Average Daily Credit > 006:00",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "755",
+      "category": "YYZ-737-CA",
+      "dropped": [
+        {
+          "predicate": "Prefer Off Jul 30, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 31, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 12, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 21, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4103",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4191",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4184",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4174",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4163",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4138",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4135",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4119",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4116",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4128",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4159",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4176",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In GDL, KIN, PVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PUJ",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In FLL, MEX, YEG, YHZ, YKF, YWG, YXX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Pairing Check-In Time < 10:00",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "1153",
+      "category": "YVR-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Pairing Number V4103 Check-In Date Jul 3, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4110 Check-In Date Jul 4, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 5, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4120 Check-In Date Jul 10, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4121 Check-In Date Jul 11, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 12, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4128 Check-In Date Jul 16, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4140 Check-In Date Jul 21, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 22, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 22, 2026, V4137 Check-In Date Jul 23, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Waive No Same Day Duty Starts",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In MEX, SFO, YEG, YXX, YYC, YYZ",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 7, 2026 - Jul 8, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 11, 2026 - Jul 14, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 19, 2026 - Jul 19, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4103 Check-In Date Jul 2, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4110 Check-In Date Jul 3, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4110 Check-In Date Jul 5, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 6, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4120 Check-In Date Jul 9, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4121 Check-In Date Jul 10, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4128 Check-In Date Jul 15, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4137 Check-In Date Jul 18, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 20, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4137 Check-In Date Jul 21, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Waive No Same Day Duty Starts",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In MEX, SFO, YEG, YXX, YYC, YYZ",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 24, 2026 - Jul 31, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 11, 2026 - Jul 14, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4128 Check-In Date Jul 15, 2026, V4128 Check-In Date Jul 16, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4103 Check-In Date Jul 2, 2026, V4103 Check-In Date Jul 7, 2026, V4110 Check-In Date Jul 3, 2026, V4110 Check-In Date Jul 7, 2026, V4105 Check-In Date Jul 5, 2026, V4105 Check-In Date Jul 6, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4120 Check-In Date Jul 10, 2026, V4120 Check-In Date Jul 13, 2026, V4121 Check-In Date Jul 10, 2026, V4121 Check-In Date Jul 12, 2026, V4105 Check-In Date Jul 12, 2026, V4105 Check-In Date Jul 13, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4140 Check-In Date Jul 19, 2026, V4140 Check-In Date Jul 21, 2026, V4105 Check-In Date Jul 19, 2026, V4105 Check-In Date Jul 23, 2026, V4137 Check-In Date Jul 20, 2026, V4137 Check-In Date Jul 22, 2026, V4137 Check-In Date Jul 23, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Waive No Same Day Duty Starts",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In MEX, SFO, YEG, YXX, YYC, YYZ",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 24, 2026 - Jul 31, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 11, 2026 - Jul 14, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In GDL, LAS, PVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In GDL, LAS, LAX, PVR, YWG",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In CUN",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "1559",
+      "category": "YVR-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Departing On Jul 2, 2026, Jul 4, 2026, Jul 10, 2026, Jul 12, 2026, Jul 16, 2026, Jul 18, 2026, Jul 23, 2026 If Any Landing In PVR",
+          "reason": "secondary-clause-dropped: Any Landing In PVR"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 2, 2026, Jul 4, 2026, Jul 10, 2026, Jul 12, 2026, Jul 16, 2026, Jul 18, 2026, Jul 23, 2026 If Any Landing In PVR",
+          "reason": "secondary-clause-dropped: Any Landing In PVR"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 3, 2026, Jul 11, 2026, Jul 17, 2026 If Any Landing In PVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In LAX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In SFO",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In GDL",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In YWG",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In LAS",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "1591",
+      "category": "YVR-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Departing On Jul 14, 2026, Jul 21, 2026 If Any Landing In PVR If Pairing Check-In Time = 12:00",
+          "reason": "secondary-clause-dropped: Any Landing In PVR"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 14, 2026, Jul 21, 2026 If Any Landing In PVR If Pairing Check-In Time = 12:00",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time = 12:00"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 2, 2026, Jul 3, 2026, Jul 4, 2026, Jul 5, 2026, Jul 6, 2026, Jul 10, 2026, Jul 11, 2026, Jul 12, 2026, Jul 13, 2026, Jul 16, 2026, Jul 18, 2026, Jul 19, 2026, Jul 20, 2026, Jul 23, 2026, Jul 24, 2026, Jul 25, 2026, Jul 30, 2026, Jul 31, 2026 If Any Landing In GDL",
+          "reason": "secondary-clause-dropped: Any Landing In GDL"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In YWG If Pairing Check-In Time = 13:55",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time = 13:55"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In LAX",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "1688",
+      "category": "YYZ-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Any Landing In CUN If Pairing Check-In Time Between 05:00 And 08:00",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time Between 05:00 And 08:00"
+        }
+      ]
+    },
+    {
+      "employeeId": "1702",
+      "category": "YYZ-737-FO",
+      "dropped": [
+        {
+          "predicate": "Prefer Off Jul 5, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 10, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 12, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 17, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 18, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 20, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 2, 2026 If Pairing Number T4103",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 2, 2026 If Pairing Number T4107",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Pairing Number T4216",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Pairing Number TB5344",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 6, 2026 If Pairing Number T4103",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 6, 2026 If Pairing Number T4120",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 9, 2026 If Pairing Number T4135",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 9, 2026 If Pairing Number TB5351",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 9, 2026 If Pairing Number T4220",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 11, 2026 If Pairing Number T4135",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 11, 2026 If Pairing Number T4138",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 11, 2026 If Pairing Number T4220",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 13, 2026 If Pairing Number T4135",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 13, 2026 If Pairing Number T4154",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 13, 2026 If Pairing Number T4136",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 16, 2026 If Pairing Number T4135",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 16, 2026 If Pairing Number TB5359",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 16, 2026 If Pairing Number T4162",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If TAFB > 015:01",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 17:59",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Pairing Check-Out Time Between 01:00 And 10:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Total Legs In Pairing (Counting Deadhead Legs) > 2 legs",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Set Condition Short Call Type PRAM",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 7, 2026, Jul 8, 2026, Jul 31, 2026, Jul 19, 2026, Jul 20, 2026",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "1812",
+      "category": "YYZ-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Pairing Number T4164 Check-In Date Jul 22, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number T4170 Check-In Date Jul 27, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Layover In CUN, MEX, YKF, YVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 15:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Total Credit > 009:59",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Total Credit > 009:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Total Credit > 008:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Total Credit > 007:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Total Credit > 006:00",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "1917",
+      "category": "YYZ-737-FO",
+      "dropped": [
+        {
+          "predicate": "Avoid Pairings If Any Enroute Check-Out Time > 05:00",
+          "reason": "unmapped-pairing-condition: Any Enroute Check-Out Time > 05:00"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Enroute Check-Out Time < 10:00",
+          "reason": "unmapped-pairing-condition: Any Enroute Check-Out Time < 10:00"
+        },
+        {
+          "predicate": "Award Pairings If Average Daily Credit > 008:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In (Counting Deadhead Legs) YKF",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In (Counting Deadhead Legs) LAS",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In (Counting Deadhead Legs) YEG",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In (Counting Deadhead Legs) YXX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In (Counting Deadhead Legs) YYC",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In (Counting Deadhead Legs) YLW",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "2080",
+      "category": "YVR-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In LAX If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Any Landing In LAX"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In LAX If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time < 08:00 Followed By Pairings"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In LAX If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Departing On Jul 5, 2026"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In LAX If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Any Landing In PVR"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In LAX If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time < 08:00 Followed By Pairings"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In LAX If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Departing On Jul 6, 2026"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In LAX If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Any Landing In LAX"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Any Landing In LAX"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00",
+          "reason": "secondary-clause-dropped: Any Landing In PVR"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 4, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time < 08:00"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Any Landing In PVR"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time < 08:00 Followed By Pairings"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Departing On Jul 6, 2026"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00 Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Any Landing In LAX"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026 If Any Landing In SFO Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Any Landing In SFO Followed By Pairings"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026 If Any Landing In SFO Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Departing On Jul 6, 2026"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026 If Any Landing In SFO Followed By Pairings If Departing On Jul 6, 2026 If Any Landing In LAX",
+          "reason": "secondary-clause-dropped: Any Landing In LAX"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 17, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00",
+          "reason": "secondary-clause-dropped: Any Landing In PVR"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 17, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time < 08:00"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 19, 2026 If Any Landing In PVR If Pairing Check-In Time < 08:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 18, 2026 If Any Landing In LAX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 17, 2026 If Any Landing In SFO Followed By Pairings If Departing On Jul 18, 2026 If Any Landing In LAX Followed By Pairings If Departing On Jul 19, 2026 If Any Landing In SFO",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 29, 2026 If Any Landing In LAX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 30, 2026 If Any Landing In LAX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 31, 2026 If Any Landing In SFO",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026, Jul 6, 2026, Jul 17, 2026, Jul 18, 2026, Jul 19, 2026, Jul 29, 2026, Jul 30, 2026, Jul 31, 2026, Jul 4, 2026 If Any Landing In LAX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026, Jul 6, 2026, Jul 17, 2026, Jul 18, 2026, Jul 19, 2026, Jul 29, 2026, Jul 30, 2026, Jul 31, 2026, Jul 4, 2026 If Any Landing In SFO",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026, Jul 6, 2026, Jul 17, 2026, Jul 18, 2026, Jul 19, 2026, Jul 29, 2026, Jul 30, 2026, Jul 31, 2026, Jul 4, 2026 If Any Landing In YEG If Pairing Check-In Time < 08:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026, Jul 6, 2026, Jul 17, 2026, Jul 18, 2026, Jul 19, 2026, Jul 29, 2026, Jul 30, 2026, Jul 31, 2026, Jul 4, 2026 If Any Landing In YEG, YYC",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026, Jul 6, 2026, Jul 17, 2026, Jul 18, 2026, Jul 19, 2026, Jul 29, 2026, Jul 30, 2026, Jul 31, 2026, Jul 4, 2026 If Any Landing In YWG",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Departing On Jul 5, 2026, Jul 6, 2026, Jul 17, 2026, Jul 18, 2026, Jul 19, 2026, Jul 29, 2026, Jul 30, 2026, Jul 31, 2026, Jul 4, 2026 If Any Landing In LAS",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "2083",
+      "category": "YVR-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Any Landing In YWG",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In LAS",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In GDL",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4137",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4137, V4140, V4146, V4150",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 10, 2026 - Jul 15, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 10, 2026 - Jul 14, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 10, 2026 - Jul 13, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 10, 2026 - Jul 12, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 10, 2026 - Jul 11, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 10, 2026, Jul 11, 2026, Jul 12, 2026, Jul 13, 2026, Jul 14, 2026, Jul 15, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4150",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In YWG",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In LAS",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In GDL",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PVR",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "2376",
+      "category": "YVR-737-FO",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Any Leg With Employee Number 113, 1314, 656, 854, 857",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Leg With Employee Number 1315, 1318, 1326, 1330, 999",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Leg With Employee Number 1439, 1454, 1474, 1555, 1585",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Leg With Employee Number 1342, 1473, 2156, 2157, 529",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Leg With Employee Number 1333",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Set Condition Short Call Type PRMM",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Set Condition Maximum Days On In A Row 3",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 7, 2026, Jul 8, 2026, Jul 6, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 31, 2026 - Jul 2, 2026",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,707 @@
+{
+  "testId": "PBS-3330",
+  "sourcePeriod": "March 2026",
+  "targetPeriod": "current Portal RP (June 2026 in this environment)",
+  "sourceEvidence": "/Users/lei/.codex/attachments/a0db637e-8921-4836-8a0b-4a7d100dd7bf/pasted-text.txt",
+  "selectionPolicy": "Current Bid wins; Default Bid is used only when Current Bid is absent.",
+  "tierPolicy": "Only first seven real bid preferences map to T1-T7. Group labels do not consume tiers.",
+  "comboPolicy": "Composite preferences are represented as multiple ordinary Portal rows with the same tier.",
+  "selectedCrew": [
+    {
+      "employeeId": "19",
+      "category": "YYZ-737-IFD",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists, so it overrides Default Bid.",
+      "skippedContexts": []
+    },
+    {
+      "employeeId": "73",
+      "category": "YYZ-737-FO",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists, so Default Bid is skipped.",
+      "skippedContexts": [
+        {
+          "context": "Default Bid",
+          "reason": "Skipped because Current Bid exists for the same employee."
+        }
+      ]
+    },
+    {
+      "employeeId": "96",
+      "category": "YVR-737-IFD",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists; only the first seven real preferences are replayed into T1-T7.",
+      "skippedContexts": [
+        {
+          "context": "Default Bid",
+          "reason": "Skipped because Current Bid exists for the same employee."
+        }
+      ]
+    },
+    {
+      "employeeId": "113",
+      "category": "YVR-737-CA",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists.",
+      "skippedContexts": []
+    },
+    {
+      "employeeId": "169",
+      "category": "YOW-737-CA",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists.",
+      "skippedContexts": []
+    },
+    {
+      "employeeId": "106",
+      "category": "YYZ-737-IFD",
+      "selectedContext": "Default Bid",
+      "contextReason": "No Current Bid block is present for this employee in the supplied source, so Default Bid is used as fallback.",
+      "skippedContexts": []
+    }
+  ],
+  "summary": {
+    "selectedCrewCount": 6,
+    "selectedSourcePreferenceCount": 32,
+    "attemptedSourcePreferenceCount": 28,
+    "ignoredPreferenceCount": 4,
+    "attemptedUiProperties": 40,
+    "placedUiProperties": 32,
+    "issuesByCategory": {
+      "value-not-available": 8,
+      "ignored": 4,
+      "partial-import": 2
+    },
+    "unexpectedUiOperationFailures": 0
+  },
+  "crewSummaries": [
+    {
+      "employeeId": "19",
+      "category": "YYZ-737-IFD",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists, so it overrides Default Bid.",
+      "skippedContexts": [],
+      "sourcePreferenceCount": 5,
+      "attemptedSourcePreferences": 5,
+      "attemptedUiProperties": 8,
+      "ignoredPreferences": 0,
+      "placedUiProperties": 7,
+      "issuesByCategory": {
+        "value-not-available": 1
+      }
+    },
+    {
+      "employeeId": "73",
+      "category": "YYZ-737-FO",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists, so Default Bid is skipped.",
+      "skippedContexts": [
+        {
+          "context": "Default Bid",
+          "reason": "Skipped because Current Bid exists for the same employee."
+        }
+      ],
+      "sourcePreferenceCount": 4,
+      "attemptedSourcePreferences": 4,
+      "attemptedUiProperties": 6,
+      "ignoredPreferences": 0,
+      "placedUiProperties": 4,
+      "issuesByCategory": {
+        "value-not-available": 2
+      }
+    },
+    {
+      "employeeId": "96",
+      "category": "YVR-737-IFD",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists; only the first seven real preferences are replayed into T1-T7.",
+      "skippedContexts": [
+        {
+          "context": "Default Bid",
+          "reason": "Skipped because Current Bid exists for the same employee."
+        }
+      ],
+      "sourcePreferenceCount": 11,
+      "attemptedSourcePreferences": 7,
+      "attemptedUiProperties": 14,
+      "ignoredPreferences": 4,
+      "placedUiProperties": 14,
+      "issuesByCategory": {
+        "ignored": 4
+      }
+    },
+    {
+      "employeeId": "113",
+      "category": "YVR-737-CA",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists.",
+      "skippedContexts": [],
+      "sourcePreferenceCount": 5,
+      "attemptedSourcePreferences": 5,
+      "attemptedUiProperties": 5,
+      "ignoredPreferences": 0,
+      "placedUiProperties": 2,
+      "issuesByCategory": {
+        "value-not-available": 3,
+        "partial-import": 1
+      }
+    },
+    {
+      "employeeId": "169",
+      "category": "YOW-737-CA",
+      "selectedContext": "Current Bid",
+      "contextReason": "Current Bid exists.",
+      "skippedContexts": [],
+      "sourcePreferenceCount": 4,
+      "attemptedSourcePreferences": 4,
+      "attemptedUiProperties": 4,
+      "ignoredPreferences": 0,
+      "placedUiProperties": 3,
+      "issuesByCategory": {
+        "value-not-available": 1
+      }
+    },
+    {
+      "employeeId": "106",
+      "category": "YYZ-737-IFD",
+      "selectedContext": "Default Bid",
+      "contextReason": "No Current Bid block is present for this employee in the supplied source, so Default Bid is used as fallback.",
+      "skippedContexts": [],
+      "sourcePreferenceCount": 3,
+      "attemptedSourcePreferences": 3,
+      "attemptedUiProperties": 3,
+      "ignoredPreferences": 0,
+      "placedUiProperties": 2,
+      "issuesByCategory": {
+        "partial-import": 1,
+        "value-not-available": 1
+      }
+    }
+  ],
+  "placed": [
+    {
+      "employeeId": "19",
+      "selectedContext": "Current Bid",
+      "tier": "T1",
+      "page": "days-off",
+      "propertyCode": 201,
+      "name": "Prefer Off",
+      "sourceSeq": 2,
+      "sourceConditionId": "19-current-2",
+      "source": "Prefer Off Mar 3, 2026, Mar 5, 2026, Mar 6, 2026, Mar 7, 2026, Mar 8, 2026, Mar 9, 2026, Mar 11, 2026, Mar 13, 2026, Mar 14, 2026, Mar 15, 2026, Mar 17, 2026, Mar 18, 2026, Mar 19, 2026, Mar 21, 2026, Mar 22, 2026, Mar 24, 2026, Mar 25, 2026, Mar 26, 2026, Mar 28, 2026, Mar 29, 2026, Mar 31, 2026"
+    },
+    {
+      "employeeId": "19",
+      "selectedContext": "Current Bid",
+      "tier": "T3",
+      "page": "pairing",
+      "propertyCode": 106,
+      "name": "Departing On",
+      "sourceSeq": 4,
+      "sourceConditionId": "19-current-4",
+      "source": "Award Pairings If Departing On Mar 2, 2026, Mar 4, 2026 If Pairing Number T4506"
+    },
+    {
+      "employeeId": "19",
+      "selectedContext": "Current Bid",
+      "tier": "T3",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 4,
+      "sourceConditionId": "19-current-4",
+      "source": "Award Pairings If Departing On Mar 2, 2026, Mar 4, 2026 If Pairing Number T4506"
+    },
+    {
+      "employeeId": "19",
+      "selectedContext": "Current Bid",
+      "tier": "T4",
+      "page": "pairing",
+      "propertyCode": 106,
+      "name": "Departing On",
+      "sourceSeq": 5,
+      "sourceConditionId": "19-current-5",
+      "source": "Award Pairings If Departing On Mar 16, 2026, Mar 20, 2026, Mar 23, 2026, Mar 27, 2026, Mar 30, 2026 If Pairing Number T4545"
+    },
+    {
+      "employeeId": "19",
+      "selectedContext": "Current Bid",
+      "tier": "T4",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 5,
+      "sourceConditionId": "19-current-5",
+      "source": "Award Pairings If Departing On Mar 16, 2026, Mar 20, 2026, Mar 23, 2026, Mar 27, 2026, Mar 30, 2026 If Pairing Number T4545"
+    },
+    {
+      "employeeId": "19",
+      "selectedContext": "Current Bid",
+      "tier": "T5",
+      "page": "pairing",
+      "propertyCode": 106,
+      "name": "Departing On",
+      "sourceSeq": 6,
+      "sourceConditionId": "19-current-6",
+      "source": "Award Pairings If Departing On Mar 12, 2026 If Pairing Number T4537"
+    },
+    {
+      "employeeId": "19",
+      "selectedContext": "Current Bid",
+      "tier": "T5",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 6,
+      "sourceConditionId": "19-current-6",
+      "source": "Award Pairings If Departing On Mar 12, 2026 If Pairing Number T4537"
+    },
+    {
+      "employeeId": "73",
+      "selectedContext": "Current Bid",
+      "tier": "T3",
+      "page": "pairing",
+      "propertyCode": 106,
+      "name": "Departing On",
+      "sourceSeq": 4,
+      "sourceConditionId": "73-current-4",
+      "source": "Award Pairings If Departing On Mar 16, 2026, Mar 20, 2026, Mar 23, 2026, Mar 27, 2026, Mar 30, 2026 If Any Landing In GDL"
+    },
+    {
+      "employeeId": "73",
+      "selectedContext": "Current Bid",
+      "tier": "T3",
+      "page": "pairing",
+      "propertyCode": 101,
+      "name": "Any Landing In Airport",
+      "sourceSeq": 4,
+      "sourceConditionId": "73-current-4",
+      "source": "Award Pairings If Departing On Mar 16, 2026, Mar 20, 2026, Mar 23, 2026, Mar 27, 2026, Mar 30, 2026 If Any Landing In GDL"
+    },
+    {
+      "employeeId": "73",
+      "selectedContext": "Current Bid",
+      "tier": "T4",
+      "page": "pairing",
+      "propertyCode": 106,
+      "name": "Departing On",
+      "sourceSeq": 5,
+      "sourceConditionId": "73-current-5",
+      "source": "Award Pairings If Departing On Mar 2, 2026, Mar 6, 2026 If Pairing Number T4105"
+    },
+    {
+      "employeeId": "73",
+      "selectedContext": "Current Bid",
+      "tier": "T4",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 5,
+      "sourceConditionId": "73-current-5",
+      "source": "Award Pairings If Departing On Mar 2, 2026, Mar 6, 2026 If Pairing Number T4105"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T1",
+      "page": "pairing",
+      "propertyCode": 110,
+      "name": "Any/Every Duty On Date / Day",
+      "sourceSeq": 2,
+      "sourceConditionId": "96-current-2",
+      "source": "Award Pairings If Any Duty On Mar 9, 2026 If Pairing Number V4521"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T1",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 2,
+      "sourceConditionId": "96-current-2",
+      "source": "Award Pairings If Any Duty On Mar 9, 2026 If Pairing Number V4521"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T2",
+      "page": "pairing",
+      "propertyCode": 110,
+      "name": "Any/Every Duty On Date / Day",
+      "sourceSeq": 3,
+      "sourceConditionId": "96-current-3",
+      "source": "Award Pairings If Any Duty On Mar 10, 2026 If Pairing Number V4522"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T2",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 3,
+      "sourceConditionId": "96-current-3",
+      "source": "Award Pairings If Any Duty On Mar 10, 2026 If Pairing Number V4522"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T3",
+      "page": "pairing",
+      "propertyCode": 110,
+      "name": "Any/Every Duty On Date / Day",
+      "sourceSeq": 4,
+      "sourceConditionId": "96-current-4",
+      "source": "Award Pairings If Any Duty On Mar 12, 2026 If Pairing Number V4522"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T3",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 4,
+      "sourceConditionId": "96-current-4",
+      "source": "Award Pairings If Any Duty On Mar 12, 2026 If Pairing Number V4522"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T4",
+      "page": "pairing",
+      "propertyCode": 110,
+      "name": "Any/Every Duty On Date / Day",
+      "sourceSeq": 5,
+      "sourceConditionId": "96-current-5",
+      "source": "Award Pairings If Any Duty On Mar 14, 2026 If Pairing Number V4531"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T4",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 5,
+      "sourceConditionId": "96-current-5",
+      "source": "Award Pairings If Any Duty On Mar 14, 2026 If Pairing Number V4531"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T5",
+      "page": "pairing",
+      "propertyCode": 110,
+      "name": "Any/Every Duty On Date / Day",
+      "sourceSeq": 6,
+      "sourceConditionId": "96-current-6",
+      "source": "Award Pairings If Any Duty On Mar 15, 2026 If Pairing Number V4522"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T5",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 6,
+      "sourceConditionId": "96-current-6",
+      "source": "Award Pairings If Any Duty On Mar 15, 2026 If Pairing Number V4522"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T6",
+      "page": "pairing",
+      "propertyCode": 110,
+      "name": "Any/Every Duty On Date / Day",
+      "sourceSeq": 7,
+      "sourceConditionId": "96-current-7",
+      "source": "Award Pairings If Any Duty On Mar 17, 2026 If Pairing Number V4522"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T6",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 7,
+      "sourceConditionId": "96-current-7",
+      "source": "Award Pairings If Any Duty On Mar 17, 2026 If Pairing Number V4522"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T7",
+      "page": "pairing",
+      "propertyCode": 110,
+      "name": "Any/Every Duty On Date / Day",
+      "sourceSeq": 8,
+      "sourceConditionId": "96-current-8",
+      "source": "Award Pairings If Any Duty On Mar 19, 2026 If Pairing Number V4531"
+    },
+    {
+      "employeeId": "96",
+      "selectedContext": "Current Bid",
+      "tier": "T7",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 8,
+      "sourceConditionId": "96-current-8",
+      "source": "Award Pairings If Any Duty On Mar 19, 2026 If Pairing Number V4531"
+    },
+    {
+      "employeeId": "113",
+      "selectedContext": "Current Bid",
+      "tier": "T1",
+      "page": "days-off",
+      "propertyCode": 201,
+      "name": "Prefer Off",
+      "sourceSeq": 2,
+      "sourceConditionId": "113-current-2",
+      "source": "Prefer Off Mar 31, 2026"
+    },
+    {
+      "employeeId": "113",
+      "selectedContext": "Current Bid",
+      "tier": "T3",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 4,
+      "sourceConditionId": "113-current-4",
+      "source": "Award Pairings If Pairing Number V4119"
+    },
+    {
+      "employeeId": "169",
+      "selectedContext": "Current Bid",
+      "tier": "T1",
+      "page": "days-off",
+      "propertyCode": 201,
+      "name": "Prefer Off",
+      "sourceSeq": 2,
+      "sourceConditionId": "169-current-2",
+      "source": "Prefer Off Mar 10, 2026, Mar 11, 2026, Mar 12, 2026, Mar 13, 2026, Mar 14, 2026, Mar 15, 2026"
+    },
+    {
+      "employeeId": "169",
+      "selectedContext": "Current Bid",
+      "tier": "T2",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 3,
+      "sourceConditionId": "169-current-3",
+      "source": "Award Pairings If Pairing Number O4105"
+    },
+    {
+      "employeeId": "169",
+      "selectedContext": "Current Bid",
+      "tier": "T3",
+      "page": "pairing",
+      "propertyCode": 102,
+      "name": "Pairing Number",
+      "sourceSeq": 4,
+      "sourceConditionId": "169-current-4",
+      "source": "Award Pairings If Pairing Number O4109"
+    },
+    {
+      "employeeId": "106",
+      "selectedContext": "Default Bid",
+      "tier": "T1",
+      "page": "days-off",
+      "propertyCode": 201,
+      "name": "Prefer Off",
+      "sourceSeq": 2,
+      "sourceConditionId": "106-default-2",
+      "source": "Prefer Off Weekends"
+    },
+    {
+      "employeeId": "106",
+      "selectedContext": "Default Bid",
+      "tier": "T2",
+      "page": "line",
+      "propertyCode": 402,
+      "name": "Min Credit Window",
+      "sourceSeq": 3,
+      "sourceConditionId": "106-default-3",
+      "source": "Set Condition Minimum Credit Window"
+    }
+  ],
+  "issues": [
+    {
+      "category": "value-not-available",
+      "employeeId": "19",
+      "image": "image/pbs/19_PBS-3330_T2-101_value-or-summary-mismatch_20260622-174448-197.png",
+      "name": "Any Landing In Airport",
+      "page": "pairing",
+      "propertyCode": 101,
+      "reason": "Error: Any Landing In Airport existing bid is missing expected value(s): MBJ, MCO, PUJ, PVR; actual text: Any Landing In Airport Avoid · Any · FLL, KIN, MEX, YEG, YHZ, YKF, YVR, YWG, YXX, YYC T1 T2 T3 T4 T5 T6 T7",
+      "selectedContext": "Current Bid",
+      "source": "Avoid Pairings If Any Landing In FLL, KIN, MBJ, MCO, MEX, PUJ, PVR, YEG, YHZ, YKF, YVR, YWG, YXX, YYC",
+      "sourceConditionId": "19-current-3",
+      "sourceSeq": 3,
+      "tier": "T2"
+    },
+    {
+      "category": "value-not-available",
+      "employeeId": "73",
+      "image": "image/pbs/73_PBS-3330_T1-101_value-or-summary-mismatch_20260622-174549-637.png",
+      "name": "Any Landing In Airport",
+      "page": "pairing",
+      "propertyCode": 101,
+      "reason": "Error: Any Landing In Airport existing bid is missing expected value(s): MBJ, MCO, PVR; actual text: Any Landing In Airport Avoid · Any · CUN, FLL, KIN, YEG, YHZ, YKF, YVR, YWG, YXX, YYC T1 T2 T3 T4 T5 T6 T7",
+      "selectedContext": "Current Bid",
+      "source": "Avoid Pairings If Any Landing In CUN, FLL, KIN, MBJ, MCO, PVR, YEG, YHZ, YKF, YVR, YWG, YXX, YYC",
+      "sourceConditionId": "73-current-2",
+      "sourceSeq": 2,
+      "tier": "T1"
+    },
+    {
+      "category": "value-not-available",
+      "employeeId": "73",
+      "image": "image/pbs/73_PBS-3330_T2-102_add-bid-disabled_20260622-174559-115.png",
+      "name": "Pairing Number",
+      "page": "pairing",
+      "propertyCode": 102,
+      "reason": "add-bid-disabled (value not accepted): Pairing Number",
+      "selectedContext": "Current Bid",
+      "source": "Award Pairings If Pairing Number TB5355",
+      "sourceConditionId": "73-current-3",
+      "sourceSeq": 3,
+      "tier": "T2"
+    },
+    {
+      "category": "ignored",
+      "employeeId": "96",
+      "reason": "ignored: exceeds T1-T7 capacity after the first seven real bid preferences.",
+      "selectedContext": "Current Bid",
+      "source": "Prefer Off Mar 2, 2026, Mar 3, 2026, Mar 4, 2026, Mar 5, 2026, Mar 6, 2026, Mar 7, 2026, Mar 8, 2026, Mar 20, 2026, Mar 30, 2026, Mar 31, 2026",
+      "sourceSeq": 9
+    },
+    {
+      "category": "ignored",
+      "employeeId": "96",
+      "reason": "ignored: exceeds T1-T7 capacity after the first seven real bid preferences.",
+      "selectedContext": "Current Bid",
+      "source": "Avoid Pairings If Any Landing In CUN, LAS, LAX, MEX, SFO, YEG, YYC, YYZ",
+      "sourceSeq": 10
+    },
+    {
+      "category": "ignored",
+      "employeeId": "96",
+      "reason": "ignored: exceeds T1-T7 capacity after the first seven real bid preferences.",
+      "selectedContext": "Current Bid",
+      "source": "Avoid Pairings If Pairing Check-In Time < 06:15",
+      "sourceSeq": 11
+    },
+    {
+      "category": "ignored",
+      "employeeId": "96",
+      "reason": "ignored: exceeds T1-T7 capacity after the first seven real bid preferences.",
+      "selectedContext": "Current Bid",
+      "source": "Avoid Pairings If Any Duty Legs (Counting Deadhead Legs) > 2 legs",
+      "sourceSeq": 12
+    },
+    {
+      "category": "value-not-available",
+      "employeeId": "113",
+      "image": "image/pbs/113_PBS-3330_T2-102_value-or-summary-mismatch_20260622-174911-208.png",
+      "name": "Pairing Number",
+      "page": "pairing",
+      "propertyCode": 102,
+      "reason": "Error: Pairing Number existing bid is missing expected value(s): V4148; actual text: Pairing Number Avoid · V4102, V4106, V4107, V4111, V4115, V4127, V4132, V4134, V4138, V4145 T1 T2 T3 T4 T5 T6 T7",
+      "selectedContext": "Current Bid",
+      "source": "Avoid Pairings If Pairing Number V4102, V4106, V4107, V4111, V4115, V4127, V4132, V4134, V4138, V4145, V4148",
+      "sourceConditionId": "113-current-3",
+      "sourceSeq": 3,
+      "tier": "T2"
+    },
+    {
+      "category": "partial-import",
+      "employeeId": "113",
+      "name": "Pairing Number",
+      "page": "pairing",
+      "propertyCode": 102,
+      "reason": "The source has \"Limit 3\"; the current Portal manual Pairing Number dialog does not expose a Limit N control in this test flow, so only the pairing-number list is attempted.",
+      "selectedContext": "Current Bid",
+      "source": "Award Pairings If Pairing Number V4114, V4131, V4137 Limit 3",
+      "sourceConditionId": "113-current-5",
+      "sourceSeq": 5,
+      "tier": "T4"
+    },
+    {
+      "category": "value-not-available",
+      "employeeId": "113",
+      "image": "image/pbs/113_PBS-3330_T4-102_value-or-summary-mismatch_20260622-174932-569.png",
+      "name": "Pairing Number",
+      "page": "pairing",
+      "propertyCode": 102,
+      "reason": "Error: Pairing Number existing bid is missing expected value(s): V4131; actual text: Pairing Number Award · V4114, V4137 T1 T2 T3 T4 T5 T6 T7",
+      "selectedContext": "Current Bid",
+      "source": "Award Pairings If Pairing Number V4114, V4131, V4137 Limit 3",
+      "sourceConditionId": "113-current-5",
+      "sourceSeq": 5,
+      "tier": "T4"
+    },
+    {
+      "category": "value-not-available",
+      "employeeId": "113",
+      "image": "image/pbs/113_PBS-3330_T5-102_value-or-summary-mismatch_20260622-174957-580.png",
+      "name": "Pairing Number",
+      "page": "pairing",
+      "propertyCode": 102,
+      "reason": "Error: Pairing Number existing bid is missing expected value(s): V4199; actual text: Pairing Number Award · V4112, V4122, V4133, V4136, V4141, V4143, V4144, V4147 T1 T2 T3 T4 T5 T6 T7",
+      "selectedContext": "Current Bid",
+      "source": "Award Pairings If Pairing Number V4112, V4122, V4133, V4136, V4141, V4143, V4144, V4147, V4199",
+      "sourceConditionId": "113-current-6",
+      "sourceSeq": 6,
+      "tier": "T5"
+    },
+    {
+      "category": "value-not-available",
+      "employeeId": "169",
+      "image": "image/pbs/169_PBS-3330_T4-102_add-bid-disabled_20260622-175101-902.png",
+      "name": "Pairing Number",
+      "page": "pairing",
+      "propertyCode": 102,
+      "reason": "add-bid-disabled (value not accepted): Pairing Number",
+      "selectedContext": "Current Bid",
+      "source": "Award Pairings If Pairing Number O4116",
+      "sourceConditionId": "169-current-5",
+      "sourceSeq": 5,
+      "tier": "T4"
+    },
+    {
+      "category": "partial-import",
+      "employeeId": "106",
+      "name": "Any Landing In Airport",
+      "page": "pairing",
+      "propertyCode": 101,
+      "reason": "The source says \"(Counting Deadhead Legs)\"; Portal airport bid dialog only exposes the airport selection in this test flow, so the deadhead-counting semantic is recorded as incomplete.",
+      "selectedContext": "Default Bid",
+      "source": "Avoid Pairings If Any Landing In (Counting Deadhead Legs) FLL, KIN, MBJ, MCO, MEX, YHZ, YWG, YXX",
+      "sourceConditionId": "106-default-4",
+      "sourceSeq": 4,
+      "tier": "T3"
+    },
+    {
+      "category": "value-not-available",
+      "employeeId": "106",
+      "image": "image/pbs/106_PBS-3330_T3-101_value-or-summary-mismatch_20260622-175222-137.png",
+      "name": "Any Landing In Airport",
+      "page": "pairing",
+      "propertyCode": 101,
+      "reason": "Error: Any Landing In Airport existing bid is missing expected value(s): MBJ, MCO; actual text: Any Landing In Airport Avoid · Any · FLL, KIN, MEX, YHZ, YWG, YXX T1 T2 T3 T4 T5 T6 T7",
+      "selectedContext": "Default Bid",
+      "source": "Avoid Pairings If Any Landing In (Counting Deadhead Legs) FLL, KIN, MBJ, MCO, MEX, YHZ, YWG, YXX",
+      "sourceConditionId": "106-default-4",
+      "sourceSeq": 4,
+      "tier": "T3"
+    }
+  ]
+}

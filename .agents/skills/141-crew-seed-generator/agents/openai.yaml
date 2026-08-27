@@ -1,0 +1,6 @@
+interface:
+  display_name: "141 crew seed generator"
+  short_description: "Project skill 141-crew-seed-generator"
+  default_prompt: "Use $141-crew-seed-generator for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

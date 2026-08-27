@@ -1,0 +1,26 @@
+0. 要点
+	1. 2107 控制 brief/debrief是否纳入 fdp，包括duty级、seg级
+	2. assignment.fdp_pct控制某类seg计算比例，如fdp_pct=0则该类任务不计算
+	3. 2107 参数 IS PRE-FERRY COUNT, IS POST-FERRY COUNT控制首尾 DHD是否纳入fdp
+1. fdp计算关键函数
+	1. customBiz.cpp::calculateDutyFdp()
+		输入duty
+		结果赋值duty.fdp字段
+		逻辑为遍历 dutyNode、seg、seg间空白、dutyNode间空白(dropoff~pickup)
+		每一小段单独判断是否算入fdp
+	2. customBiz.cpp:calculatePairingDutyTimes()
+		输入pairing
+		结果赋值pairing下duty
+		调用上述 calculateDutyFdp
+	3. RuleParams->bIncludeLastDHD
+		根据法规解析bool常量，判断末尾seg=DHD是否计入FDP
+	4. RuleParams->bPreFerryCount
+		同上，判断开头seg=DHD是否计入FDP
+	5. RuleParams::loadRuleParams()
+		法规初始化流程中逻辑，按2107(BASIC_DEFINITION)初始化上述静态bool变量
+2. 判断逻辑：哪些段需计入fdp
+	1. seg.assignment=FLY
+	2. duty级brief计入，duty级debrief不计入，duty级pickup/dropoff不计入
+	3. seg级（长中转）brief/debrief计入，seg级pickup/dropoff不计入
+	4. seg间空白计入（无dutyNode）
+	5. 按法规2107判断首尾 bus(ferry)/dhd、brief、debrief等是否计入fdp，其中2、3两项规则应体现在2107中

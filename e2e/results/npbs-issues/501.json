@@ -1,0 +1,45 @@
+{
+  "employeeId": "501",
+  "category": "YYZ-737-CA",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 7,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T4",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T5",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 109,
+      "name": "Average Daily Credit"
+    },
+    {
+      "tier": "T7",
+      "code": 114,
+      "name": "Any/Every Enroute Check-In Time"
+    }
+  ],
+  "issues": []
+}

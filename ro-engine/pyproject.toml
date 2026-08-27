@@ -1,0 +1,26 @@
+[project]
+name = "ro-engine"
+version = "2.0.0"
+description = "RO Engine v2 — black-box roster optimization CLI"
+requires-python = ">=3.12"
+dependencies = [
+    "ortools>=9.11",
+    "numpy>=2.0.0",
+    "pydantic>=2.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]

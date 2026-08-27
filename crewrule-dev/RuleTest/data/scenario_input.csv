@@ -1,0 +1,819 @@
+------Scenario(1):worksetId,airline,version,action,status,processId,strDtLoc,endDtLoc,pairingBaseIds,crewBaseIds,rankIds,actingRankId,fleetIds,runModeIds,ttId,tttIds,assignmentGroupIds,paIds,qualificationIds,languageIds,pairingScnId,ruleSetId,cqfSetId,isFavorite,isPublic,filterCrewCountry,filterCrewQual,filterCrewPosition,filterCrewTeam
+9007^QW^2^^New^^2021-06-01^2021-06-30^4^4^1,2^^101,102^^726^726,126^^^^^^480^557^false^false^^^^
+------Workset(1):id,name,type,category,division,creationDate
+9007^QW/M_2021_Monthly^S^PO^P^2021-07-06T01:52:00Z
+------Airport(71):airport,airportName,airportNativeName,airport4code,airportAbbr,city,category,dir,zoneId,utcStandardOffset,dstGrp,plateauType,cats,rnp
+TNA^JINAN/YAOQIANG^济南遥墙^ZSJN^TNA^TNA^^D^Asia/Shanghai^480^CN1^^^
+TXN^TUNXI^屯溪^ZSTX^TXN^TXN^2B^D^Asia/Shanghai^480^CN1^^^
+SHA^TUNXI^上海^ZSTX^TXN^TXN^2B^D^Asia/Shanghai^480^CN1^^^
+CAN^TUNXI^屯溪^ZSTX^TXN^TXN^2B^D^Asia/Shanghai^480^CN1^^^
+PEK^TUNXI^北京^ZSTX^TXN^TXN^2B^D^Asia/Shanghai^480^CN1^^^
+MDG^MUDANJIANG/HAILANG^牡丹江海浪^ZYMD^MDG^MDG^^D^Asia/Shanghai^480^CN1^^^
+LHW^LANZHOU/ZHONGCHUAN              ^兰州中川^ZLLL^LHW^LHW^4^D^Asia/Shanghai^480^CN1^^^
+XIC^XICHANG/QISHAN                  ^西昌青山^ZUXC^XIC^XIC^2A^D^Asia/Shanghai^480^CN1^^^
+KMG^KUNMING/CHANGSHUI^昆明长水^ZPPP^KMG^KMG^^D^Asia/Shanghai^480^CN1^^^
+LFQ^LINFEN^临汾^ZBLF^LFQ^LFQ^^D^Asia/Shanghai^480^CN1^^^
+CKG^CHONGQING/JIANGBE^重庆江北^ZUCK^CKG^CKG^^D^Asia/Shanghai^480^CN1^^^
+CTU^CHENGDU/SHUANGLIU^成都双流^ZUUU^CTU^CTU^^D^Asia/Shanghai^480^CN1^^^
+HET^HOHHOT/BAITA^呼和浩特/白塔^ZBHH^HET^HET^4^D^Asia/Shanghai^480^CN1^^^
+ZUH^ZHUHAIJINWAN^珠海金湾^ZGSD^ZUH^ZUH^^D^Asia/Shanghai^480^CN1^^^
+YNJ^YANJI/CHAOYANCHUAN              ^延吉朝阳川^ZYYJ^YNJ^YNJ^2B^D^Asia/Shanghai^480^CN1^^^
+BKI^KOTA KINABALU^哥打基纳巴卢^WBKK^BKI^BKI^^I^Asia/Shanghai^480^MY1^^^
+LYG^LIANYUNGANG/BAITABU^连云港白塔埠^ZSLG^LYG^LYG^^D^Asia/Shanghai^480^CN1^^^
+JIC^KUNMING/CHANGSHUI^昆明长水^ZPPP^JIC^JIC^^D^Asia/Shanghai^480^CN1^^^
+CSX^CHANGSHA/HUANG HUA^长沙黄花^ZGHA^CSX^CSX^^D^Asia/Shanghai^480^CN1^^^
+DYG^ZHANGJIAJIE/HEHUA^张家界荷花^ZGDY^DYG^DYG^2B^D^Asia/Shanghai^480^CN1^^^
+KJH^QINGDAO/LIUTING                 ^凯里黄平机场^ZUKJ^凯^TAO^^D^Asia/Shanghai^480^CN1^^^
+KHG^KASHI^喀什^ZWSH^KHG^KHG^4^D^Asia/Shanghai^480^CN1^^^
+NNY^NANYANG/JIANGYING^南阳姜营^ZHNY^NNY^NNY^^D^Asia/Shanghai^480^CN1^^^
+TSN^TIANJINBINHAI^天津滨海^ZBTJ^TSN^TSN^^D^Asia/Shanghai^480^CN1^^^
+KHN^NANCHANG/CHANGBEI       ^南昌昌北^ZSCN^KHN^KHN^^D^Asia/Shanghai^480^CN1^^^
+NKG^NANJING/LUKOU^南京禄口^ZSNJ^NKG^NKG^^D^Asia/Shanghai^480^CN1^^^
+TAO^QINGDAO/LIUTING                 ^青岛流亭^ZSQD^TAO^TAO^^D^Asia/Shanghai^480^CN1^^^
+KCH^KUCHING^古晋^WBGG^KCH^KCH^^I^Asia/Shanghai^480^MY1^^^
+NGB^NINGBO/LISHE^宁波栎社^ZSNB^NGB^NGB^^D^Asia/Shanghai^480^CN1^^^
+TEN^TONGREN/DAXING^铜仁大兴^ZUTR^TEN^TEN^^D^Asia/Shanghai^480^CN1^^^
+INC^YINCHUAN/HEDONG^银川河东^ZLIC^INC^INC^^D^Asia/Shanghai^480^CN1^^^
+AQG^ANQING/DALONGSHAN               ^安庆^ZSAQ^AQG^AQG^^D^Asia/Shanghai^480^CN1^^^
+SYX^SANYA/PHOENIX^三亚凤凰^ZJSY^SYX^SYX^^D^Asia/Shanghai^480^CN1^^^
+DLC^ZHOUSHUIZI^周水子^ZYTL^DLC^DLC^2B^D^Asia/Shanghai^480^CN1^^^
+KUL^SEPANG^雪邦^WMKK^KUL^KUL^^I^Asia/Shanghai^480^MY1^^^
+AKU^AKESU/WENSU                     ^温宿^ZWAK^AKU^AKU^^D^Asia/Shanghai^480^CN1^^^
+ZHA^ZHANJIANG^湛江^ZGZJ^ZHA^ZHA^3^D^Asia/Shanghai^480^CN1^^^
+KRL^KORLA^库尔勒^ZWKL^KRL^KRL^4^D^Asia/Shanghai^480^CN1^^^
+ICN^INCHEON^仁川^RKSI^ICN^SEL^^I^Asia/Shanghai^540^KR1^^^
+JHB^SULTAN ISMAIL INTL^新山^WMKJ^JHB^JHB^^I^Asia/Shanghai^480^MY1^^^
+URC^URUMQI/DIWOPU                  ^乌鲁木齐地窝堡^ZWWW^URC^URC^3^D^Asia/Shanghai^480^CN1^^^
+JHG^XISHUANGBANNA/GASA^西双版纳嘎洒^ZPJH^JHG^JHG^2A^D^Asia/Shanghai^480^CN1^^^
+PNH^PHNOM-PENH^金边国际机场^VDPP^PNH^PNH^^I^Asia/Shanghai^420^KH1^^^
+JJN^JINJIANG^晋江^ZSQZ^JJN^JJN^^D^Asia/Shanghai^480^CN1^^^
+NNG^NANNING/WUXU                    ^南宁吴圩^ZGNN^NNG^NNG^^D^Asia/Shanghai^480^CN1^^^
+PEN^PENANG INTL^槟榔屿^WMKP^PEN^PEN^^I^Asia/Shanghai^480^MY1^^^
+KOS^SIHANOUK INTERNATIONAL^西哈努克国际机场^VDSV^KOS^KOS^^I^Asia/Phnom_Penh^420^^^^
+KWL^GUILIN/LIANGJIANG^桂林两江^ZGKL^KWL^KWL^^D^Asia/Shanghai^480^CN1^^^
+HFE^HEFEI/XINQIAO^合肥新桥^ZSOF^HFE^HFE^^D^Asia/Shanghai^480^CN1^^^
+SHE^SHENYANG/TAOXIAN^沈阳桃仙^ZYTX^SHE^SHE^^D^Asia/Shanghai^480^CN1^^^
+HRB^HARBIN/TAIPING^哈尔滨太平^ZYHB^HRB^HRB^^D^Asia/Shanghai^480^CN1^^^
+YBP^YIBIN^宜宾菜坝^ZUYB^YBP^YBP^3^D^Asia/Shanghai^480^CN1^^^
+KOW^GANZHOU/HUANGJIN                ^赣州黄金^ZSGZ^KOW^KOW^3^D^Asia/Shanghai^480^CN1^^^
+LYA^LUOYANG^洛阳^ZHLY^LYA^LYA^^D^Asia/Shanghai^480^CN1^^^
+GMP^GIMPO^金浦^RKSS^GMP^SEL^^I^Asia/Shanghai^540^KR1^^^
+CGO^ZHENGZHOU/XINZHENG              ^郑州新郑^ZHCC^CGO^CGO^^D^Asia/Shanghai^480^CN1^^^
+CGQ^LONGJIA^长春龙嘉^ZYCC^CGQ^CGQ^^D^Asia/Shanghai^480^CN1^^^
+WNZ^WENZHOU/LONGWAN^温州龙湾^ZSWZ^WNZ^WNZ^4^D^Asia/Shanghai^480^CN1^^^
+ZYI^^遵义/新舟^ZUZY^ZYI^ZYI^^D^Asia/Shanghai^480^CN1^^^
+HLD^HAILAR^海拉尔^ZBLA^HLD^HLD^^D^Asia/Shanghai^480^CN1^^^
+CJU^CHEJU INTL^济州国际机场^RKPC^CJU^CJU^^I^Asia/Shanghai^540^KR1^^^
+PUS^GIMHAE^金海^RKPK^PUS^PUS^1B^I^Asia/Shanghai^540^KR1^^^
+HAK^HAIKOU/MEILAN^海口美兰^ZJHK^HAK^HAK^^D^Asia/Shanghai^480^CN1^^^
+BAV^BAOTOU                          ^包头^ZBOW^BAV^BAV^^D^Asia/Shanghai^480^CN1^^^
+NTG^NANTONG/XINGDONG^南通兴东^ZSNT^NTG^NTG^^D^Asia/Shanghai^480^CN1^^^
+KWE^GUIYANG/LONGDONGBAO^贵阳龙洞堡^ZUGY^KWE^KWE^4^D^Asia/Shanghai^480^CN1^^^
+JIQ^KUNMING/CHANGSHUI^昆明长水^ZPPP^KMG^KMG^^D^Asia/Shanghai^480^CN1^^^
+FOC^FUZHOU/CHANGLE     ^福州长乐^ZSFZ^FOC^FOC^^D^Asia/Shanghai^480^CN1^^^
+HTN^HOTAN^和田^ZWTN^HTN^HTN^^D^Asia/Shanghai^480^CN1^^^
+HSN^ZHOUSHAN/PUTUOSHAN^舟山普陀山^ZSZS^HSN^HSN^4^D^Asia/Shanghai^480^CN1^^^
+MFM^MACAO INTL^澳门国际机场^VMMC^MFM^MFM^^R^Asia/Shanghai^480^MO1^^^
+LUM^MANGSHI^芒市^ZPMS^LUM^LUM^^D^Asia/Shanghai^480^CN1^^^
+REP^SIEMREAP^西埃姆^VDSR^REP^REP^^I^Asia/Shanghai^420^KH1^^^
+YNT^YANTAI/LAISHAN                  ^烟台莱山^ZSYT^YNT^YNT^2B^D^Asia/Shanghai^480^CN1^^^
+------City(68):city,cityName,cityNativeName,cityDesc,country
+TNA^^^Jinan^CN
+TXN^^^Tunxi^CN
+MDG^^^Mudanjiang^CN
+LHW^^^Lanzhou^CN
+XIC^^^Xichang^CN
+KMG^^^Kunming^CN
+CKG^^^Chongqing^CN
+CTU^^^Chengdu^CN
+HET^^^Hohhot^CN
+ZUH^^^Zhuhai^CN
+YNJ^^^Yanji^CN
+BKI^^^Kota Kinabalu^MY
+LYG^^^Lianyungang^CN
+CSX^^^Changsha^CN
+DYG^^^Zhangjiajie^CN
+TAO^^^Qingdao^CN
+KHG^^^Kashi^CN
+NNY^^^Nanyang^CN
+TSN^^^Tianjin^CN
+KHN^^^Nanchang^CN
+NKG^^^Nanking/Nanjing^CN
+TAO^^^Qingdao^CN
+KCH^^^Kuching^MY
+NGB^^^Ningbo^CN
+TEN^^^Tongren^CN
+INC^^^Yinchuan^CN
+AQG^^^Anqing^CN
+SYX^^^Sanya^CN
+DLC^^^Dalian^CN
+KUL^^^Kuala Lumpur^MY
+AKU^^^Aksu^CN
+ZHA^^^Zhanjiang^CN
+KRL^^^Korla^CN
+SEL^^^Seoul^KR
+JHB^^^Johor Bahru^MY
+URC^^^Urumqi^CN
+JHG^^^Xishuangbanna^CN
+PNH^^^Phnom Penh^KH
+JJN^^^Jinjiang^CN
+NNG^^^Nanning^CN
+PEN^^^Penang^MY
+KWL^^^Guilin^CN
+HFE^^^Hefei^CN
+SHE^^^Shenyang^CN
+HRB^^^Harbin^CN
+YBP^^^Yibin^CN
+KOW^^^Ganzhou^CN
+LYA^^^Luoyang^CN
+SEL^^^Seoul^KR
+CGO^^^Zhengzhou^CN
+CGQ^^^Changchun^CN
+WNZ^^^Wenzhou^CN
+ZYI^^^Zunyi^CN
+HLD^^^Hailar^CN
+CJU^^^Cheju^KR
+PUS^^^Pusan^KR
+HAK^^^Haikou^CN
+BAV^^^Baotou^CN
+NTG^^^Nantong^CN
+KWE^^^Guiyang^CN
+KMG^^^Kunming^CN
+FOC^^^Fuzhou^CN
+HTN^^^Hotan^CN
+HSN^^^Zhoushan^CN
+MFM^^^Macau^MO
+LUM^^^Mangshi^CN
+REP^^^Siem Reap^KH
+YNT^^^Yantai^CN
+------Fleet(7):id,airline,acType,fleetGrp,fleet,description,displayOrder,restfacility
+4^QW^MGMT^MGMT^MGMT^Manager^4^0
+2^QW^A320^A320^A320^A320^2^0
+3^QW^A321^A321^A321^A321^3^0
+1^QW^A319^A319^A319^A319^1^0
+101^QW^320^320^320^320^5^0
+102^QW^32A^32A^32A^32A^6^0
+20^QW^B738^B738^B738^7C-B738^20^0
+------Rule(19):id,function,instance,ruleClass,description,reference,category,storeStructure,subversion,source,detail,severity,accessibility,overridability,isEnabled,isExcluded,ruleApplicability
+2003014^2003^014^P^Base Definition and Restriction-QW/LONG^Pairing^Definition^Table^1^Company^Max Pairing Length^2^W^S^true^false^com.pisolution.airline.crew.pm.domain.RuleApplicability@41d47982
+2004010^2004^010^P^Duty Limitation-AK-1-ACC^Pairing^Duty^Mix^1^Company^Max Number of Duty in Pairing^2^W^H^true^false^com.pisolution.airline.crew.pm.domain.RuleApplicability@5bc30777
+2019010^2019^010^P^AC/LT/LO Restriction-QW^Pairing^Connectivity^Table^1^Company^List all allow AC Change and LT station^1^^^true^false^
+2102004^2102^004^S^Basic definition of Split duty/Long transit-QW^Pairing^Connectivity^Table^1^Company^Basic definition of Split duty/Long transit^2^^H^true^false^com.pisolution.airline.crew.pm.domain.RuleApplicability@6ee7ce52
+2107003^2107^003^S^Definition of FDP-LQ-PILOT^CAP371^FDP^Table^1^Company^Definition of FDP^2^^H^true^false^com.pisolution.airline.crew.pm.domain.RuleApplicability@15280370
+2109004^2109^004^P^Long Transit/Split Duty definition-LQ^Pairing^Connectivity^MultiTable^1^Company^Max Number of Duty in Pairing^2^W^S^true^false^
+2112003^2112^003^P^Fleet Def and Mix Group-LQ^Pairing^Definition^MultiTable^1^Company^Define Fleet details and allowable fleet mixing in duty^2^W^H^true^false^
+2124001^2124^001^P^Min Rest Post Duty-QW/FD^Pairing^Rest^Table^1^Company^Min Rest Post Duty^2^W^s^true^false^
+3001001^3001^001^P^Min Connection Time New^Pairing^Connectivity^Table^1^Company^New Min Connection Time^2^W^H^true^false^com.pisolution.airline.crew.pm.domain.RuleApplicability@22327c82
+3007001^3007^001^P^FD-Max Flight Duty Period-121-Standard^CAAC-121-R5^FDP^MultiTable^1^Company^Max Number of Duty in Pairing^2^W^S^true^false^com.pisolution.airline.crew.pm.domain.RuleApplicability@589b0049
+3008001^3008^001^P^FD-Max Block Hour-121-Standard^CAAC-121-R5^Duty^Table^1^Company^Max block hour in duty^2^W^S^true^false^com.pisolution.airline.crew.pm.domain.RuleApplicability@6a24b6e1
+3013001^3013^001^P^Composition-QW^Pairing^Definition^Table^1^Company^Define complement details^2^W^H^true^false^
+3021001^3021^001^P^Brief-QW^Pairing^Duty^Table^1^Company^Briefing time^2^W^H^true^false^
+3022003^3022^003^P^Debrief-AK-0-Mins^Pairing^Duty^Table^1^Company^DeBriefing time^2^W^H^true^false^
+3023002^3023^002^P^Pick Up-LQ^Pairing^Duty^Table^1^Company^Pick Up time^2^W^H^true^false^
+3024002^3024^002^P^Drop Off-LQ^Pairing^Duty^Table^1^Company^Drop Off time^2^W^H^true^false^
+8091001^8091^001^R^实力搭配规则 V1^CAP371^COF^Table^^General^Rank Combination^4^^S^true^^
+8101001^8101^001^R^Min X hrs in Rolling Y Hours before Required Duty^CAAC-121-R5^Rest^Table^1^CAAC-121-495 (d)^飞行任务和主备份任务前的144小时内连续48小时的休息期^4^W^H^true^false^
+8115001^8115^001^R^任务最大连飞天数--R6^CAAC-121-R6^派遣^Table^1^CAAC-121^^5^W^S^true^false^
+------RuleParameter(95):id,ruleId,phaseId,paramNames,paramValues
+29563^2003014^1^tableRow1^TAO,240,9,N,60:00,9,AQG|BAV|CGO|CKG|FOC|HAK|HET|HFE|HLD|HRB|HSN|INC|JHG|JJN|KHN|KOW|KWE|KWL|LFQ|LYA|LYG|MDG|NGB|NNG|NNY|NTG|TNA|TSN|TXN|URC|WNZ|YBP|YNJ|ZYI
+29564^2003014^1^tableRow2^CGQ,240,9,N,60:00,9,AQG|BAV|CGO|CKG|FOC|HAK|HET|HFE|HLD|HRB|HSN|INC|JHG|JJN|KHN|KOW|KWE|KWL|LFQ|LYA|LYG|MDG|NGB|NNG|NNY|NTG|TNA|TSN|TXN|URC|WNZ|YBP|YNJ|ZYI
+29565^2003014^1^tableRow3^CSX,240,9,N,60:00,9,AQG|BAV|CGO|CKG|FOC|HAK|HET|HFE|HLD|HRB|HSN|INC|JHG|JJN|KHN|KOW|KWE|KWL|LFQ|LYA|LYG|MDG|NGB|NNG|NNY|NTG|TNA|TSN|TXN|URC|WNZ|YBP|YNJ|ZYI
+29566^2003014^1^tableRow4^NKG,240,9,N,60:00,9,AQG|BAV|CGO|CKG|FOC|HAK|HET|HFE|HLD|HRB|HSN|INC|JHG|JJN|KHN|KOW|KWE|KWL|LFQ|LYA|LYG|MDG|NGB|NNG|NNY|NTG|TNA|TSN|TXN|URC|WNZ|YBP|YNJ|ZYI
+29567^2003014^1^tableRow5^LHW,240,9,N,60:00,9,AQG|BAV|CGO|CKG|FOC|HAK|HET|HFE|HLD|HRB|HSN|INC|JHG|JJN|KHN|KOW|KWE|KWL|LFQ|LYA|LYG|MDG|NGB|NNG|NNY|NTG|TNA|TSN|TXN|URC|WNZ|YBP|YNJ|ZYI
+29568^2003014^1^tableRow6^YNT,240,9,N,60:00,9,AQG|BAV|CGO|CKG|FOC|HAK|HET|HFE|HLD|HRB|HSN|INC|JHG|JJN|KHN|KOW|KWE|KWL|LFQ|LYA|LYG|MDG|NGB|NNG|NNY|NTG|TNA|TSN|TXN|URC|WNZ|YBP|YNJ|ZYI
+29569^2003014^1^tableRow7^KMG,240,9,N,60:00,9,AQG|BAV|CGO|CKG|FOC|HAK|HET|HFE|HLD|HRB|HSN|INC|JHG|JJN|KHN|KOW|KWE|KWL|LFQ|LYA|LYG|MDG|NGB|NNG|NNY|NTG|TNA|TSN|TXN|URC|WNZ|YBP|YNJ|ZYI
+29570^2003014^1^tableRow8^SHE,240,9,N,60:00,9,AQG|BAV|CGO|CKG|FOC|HAK|HET|HFE|HLD|HRB|HSN|INC|JHG|JJN|KHN|KOW|KWE|KWL|LFQ|LYA|LYG|MDG|NGB|NNG|NNY|NTG|TNA|TSN|TXN|URC|WNZ|YBP|YNJ|ZYI
+29571^2003014^1^tableRow9^CTU,240,9,N,60:00,9,AQG|BAV|CGO|CKG|FOC|HAK|HET|HFE|HLD|HRB|HSN|INC|JHG|JJN|KHN|KOW|KWE|KWL|LFQ|LYA|LYG|MDG|NGB|NNG|NNY|NTG|TNA|TSN|TXN|URC|WNZ|YBP|YNJ|ZYI
+29572^2003014^1^tableHeader^Base,maxPairingLength,maxNrDutiesInPairing,allowReturnBaseWithinDuty,MaxPairingBLH,MaxPairingCalendarDays,Allowable Layover Stations
+29345^2004010^1^maxNrFlySegsInDuty,maxNrNonoperateLegsInDuty,maxNrAircraftChangeInDuty,maxNrConsecutiveDhd,maxNrDHDInDuty,isDhdAllowedInMiddleDuty,dutyEndAfterMidNightThredhold,isDutySegmentsInSameCalendarDay,isDeadheadAllowBeforeAndAfterFourDayPairing,maxNrGRDCommuteInDuty,isDutyBelongToDifferentDayChecked,discountFactorForDhdBlkTime,maxNrAircraftchangsAndLTInDuty,isDHDmustBetweenBaseAndLOStation,totalSegsInDuty,maxFlightBLHAllowDHD,isInternationalDHDallowed,OVER NIGHT FLY THREDHOLD,maxDutyDP^6,1,1,1,2,N,02:00,N,N,1,N,1,1,Y,6,05:30,Y,05:00,24:00
+29373^2019010^1^tableRow1^*,N,N,N
+29374^2019010^1^tableRow2^CAN,N,Y,N
+29375^2019010^1^tableRow3^SZX,N,Y,N
+29376^2019010^1^tableRow4^LGK,N,Y,N
+29377^2019010^1^tableRow5^KUL,N,Y,Y
+29378^2019010^1^tableRow6^BKI,N,Y,Y
+29379^2019010^1^tableRow7^KCH,N,Y,Y
+29380^2019010^1^tableRow8^JHB,N,Y,Y
+29381^2019010^1^tableRow9^PEN,N,Y,Y
+29382^2019010^1^tableHeader^Airport,Restrict AC Change,Restrict Long Transit,Restrict Layover
+29583^2102004^1^tableRow1^P,I,I,03:30,00:90,00:30,FLY,FLY,*,00:00,00:00,*
+29584^2102004^1^tableRow2^P,I,D,03:30,00:90,00:30,FLY,FLY,*,00:00,00:00,*
+29585^2102004^1^tableRow3^P,D,I,03:30,00:90,00:30,FLY,FLY,*,00:00,00:00,*
+29586^2102004^1^tableRow4^P,D,D,03:30,00:90,00:30,FLY,FLY,*,00:00,00:00,*
+29587^2102004^1^tableHeader^Division,inbound,outbound,max TurnTime,PSEUDO BRIEF,PSEUDO DEBRIEF,IN ASSIGNMENT,OUT ASSIGNMENT,AIRPORT,PICK UP,DROP OFF,Fleets
+4976^2107003^1^tableRow1^P,IS FDP AUG ALLOWED WHILE BLH NOT AUG,N
+4977^2107003^1^tableRow2^P,IS PICKUP COUNT,N
+4978^2107003^1^tableRow3^P,IS DROPOFF COUNT,N
+4979^2107003^1^tableRow4^P,IS PRE-FERRY COUNT,Y
+4980^2107003^1^tableRow5^P,IS POST-FERRY COUNT,N
+4981^2107003^1^tableRow6^P,INCLUDE CHECK OUT,N
+4982^2107003^1^tableRow7^P,INCLUDE CHECK IN,Y
+4983^2107003^1^tableHeader^Division,Definition,Value
+29491^2109004^1^tableRow1^allowed End Time,23:59
+29492^2109004^1^tableRow2^allowed Start Time,00:00
+29493^2109004^1^tableRow3^max Times Per Pairing,4
+29494^2109004^1^tableRow4^max Times Per Duty,1
+29495^2109004^1^tableHeader^Definition,Value
+5265^2112003^1^table1Header^Fleet,Bunk_Number,Filter_Flight,Fleet_group
+5266^2112003^1^table1Row1^320,0,Y,320
+5267^2112003^1^table1Row2^32A,0,Y,32A
+5268^2112003^1^table2Header^Comb,Allowable_Fleet_Mix
+5269^2112003^1^table2Row1^1,320|32A
+29310^2124001^1^tableRow1^*,MVO|FLY|SBY,*,0,99,00:00,20:00,00:00,23:00,*,*,10:00
+29311^2124001^1^tableHeader^Composition,ASSIGNMENTS,With_Bunk,Landing_Times_Lower,Landing_Times_Upper,BLH Lower,BLH Upper,FDP Lower,FDP Upper,is Cross Midnight,is Delay,Min Rest
+29482^3001001^1^tableRow1^*,,,Y,,,Y,,,,02:00
+29483^3001001^1^tableRow2^*,,,Y,,,,,,,02:00
+29484^3001001^1^tableRow3^*,,,N,,,,,,,00:01
+29485^3001001^1^tableHeader^Airport,Inbound Duty,Outbound Duty,Aircraft Change,FLT2FERRY,FERRY2FLT,DHD2FLT,FLT2DHD,TRAIN2FLT,FLT2TRAIN,Mct
+29422^3007001^1^tableRow1^2P,00:00,04:59,1,4,,12:00,2:00,N
+29423^3007001^1^tableRow2^2P,00:00,04:59,5,5,,11:00,2:00,N
+29424^3007001^1^tableRow3^2P,00:00,04:59,6,6,,10:00,2:00,N
+29425^3007001^1^tableRow4^2P,00:00,04:59,7,99,,09:00,2:00,N
+29426^3007001^1^tableRow5^2P,05:00,11:59,1,4,,14:00,2:00,N
+29427^3007001^1^tableRow6^2P,05:00,11:59,5,5,,13:00,2:00,N
+29428^3007001^1^tableRow7^2P,05:00,11:59,6,6,,12:00,2:00,N
+29429^3007001^1^tableRow8^2P,05:00,11:59,7,99,,11:00,2:00,N
+29430^3007001^1^tableRow9^2P,12:00,23:59,1,4,,13:00,2:00,N
+29431^3007001^1^tableRow10^2P,12:00,23:59,5,5,,12:00,2:00,N
+29432^3007001^1^tableRow11^2P,12:00,23:59,6,6,,11:00,2:00,N
+29433^3007001^1^tableRow12^2P,12:00,23:59,7,99,,10:00,2:00,N
+29434^3007001^1^tableRow13^3P,00:00,23:59,0,99,1,18:00,2:00,N
+29435^3007001^1^tableRow14^3P,00:00,23:59,0,99,2,17:00,2:00,N
+29436^3007001^1^tableRow15^3P,00:00,23:59,0,99,3,16:00,2:00,N
+29437^3007001^1^tableRow16^4P,00:00,23:59,0,99,1,20:00,2:00,N
+29438^3007001^1^tableRow17^4P,00:00,23:59,0,99,2,19:00,2:00,N
+29439^3007001^1^tableRow18^4P,00:00,23:59,0,99,3,18:00,2:00,N
+29440^3007001^1^tableHeader^Composition,Rpt Start,Rpt End,Landing Lower,Landings Upper,Rest Facility,Max FDP,Max Extension,Isaugment
+29395^3008001^1^table1Row1^UseHistoricalBlh,N
+29396^3008001^1^table2Row1^2P,00:00,04:59,08:00,N
+29397^3008001^1^table2Row2^2P,05:00,19:59,09:00,N
+29398^3008001^1^table2Row3^2P,20:00,23:59,08:00,N
+29399^3008001^1^table2Row4^3P,00:00,23:59,13:00,N
+29400^3008001^1^table2Row5^4P,00:00,23:59,17:00,N
+29401^3008001^1^table2Header^Composition,Rpt Start,Rpt End,Max BLH,Isaugment
+29402^3008001^1^table1Header^Definition,Value
+29273^3013001^1^tableRow1^100,1,2P,1,1,1
+29274^3013001^1^tableRow2^110,2,3P,2,1,0
+29275^3013001^1^tableRow3^120,2,4P,2,2,0
+29276^3013001^1^tableHeader^Composition ID,Hierarchy,Composition,CAPT,F/O,S/O
+29289^3021001^1^tableRow1^*,00:00,23:59,*,*,*,*,01:30
+29290^3021001^1^tableHeader^Airport,DepStart,DepEnd,Duty Type,Flt Nums,Fleets,Assignment,Brief Time
+27733^3022003^1^tableRow1^*,*,*,*,*,00:00
+27734^3022003^1^tableHeader^Airport,Duty Type,Flt Nums,Fleets,Assignment,Debrief Time
+29291^3023002^1^tableRow1^*,00:00,23:59,*,*,*,*,00:15
+29292^3023002^1^tableHeader^Airport,DepStart,DepEnd,Duty Type,Flt Nums,Fleets,Assignment,Pickup Time
+29293^3024002^1^tableRow1^*,*,*,*,*,00:15
+29294^3024002^1^tableHeader^Airport,Duty Type,Flt Nums,Fleets,Assignment,Dropoff Time
+4190^8091001^1^tableHeader^Description
+4191^8091001^1^tableRow1^RANK_COMBINATION
+29527^8101001^1^tableRow1^*,*,*,144,RH,48:00,Y,FLY|MVO|SBY,D,S
+29528^8101001^1^tableHeader^Bases,Ranks,Fleets,Period,Unit,Min Rest,Utilize Layover,Assignment Groups,Assignment Level(P/D),Check Period By Start Or End(S/E)
+29525^8115001^1^tableRow1^*,*,*,FLY|SBY|MVO,6,4,5,CD,12:00
+29526^8115001^1^tableHeader^base,rank,fleet,duty assignments,max timezone gap,max Consecutive time,VR_ADD max Consecutive time,Unit,last day max sta
+------Cqf(13):id,function,instance,cqfClass,description,reference,category,isEnabled,storeStructure,source,detailDisplay
+1001001^1001^001^C^LQ OPP1^Pairing^OPP^true^Table^^Operation Preferred PTNs
+3001001^3001^001^C^Allowance BK^Pairing^Cost^true^Table^^Crew allowance
+3002006^3002^006^C^Hotel Cost ZH-XG-NOV^Pairing^Cost^true^Table^^Hotel cost and defintion
+3003002^3003^002^C^Meal-XG^Pairing^Cost^true^Table^^Meal Allowance
+4003003^4003^003^Q^Quality Bonus &Penalty ZH-320^Pairing^Quality^true^Mix^^Crew allowance
+4004001^4004^001^Q^Optimizer Parameter^Pairing^Quality^true^Mix^^Parameter to control the optimizer quality
+4005008^4005^008^Q^BAC OK^Pairing^Quality^true^Table^^Base Augment Control
+5001001^5001^001^F^Fatigue Definition 1^Pairing^Fatigue^true^Table^^Crew allowance
+5002001^5002^001^F^Fatigue Definition 2^Pairing^Fatigue^true^Mix^^Hotel cost and defintion
+5003001^5003^001^F^Fatigue Definition 3^Pairing^Fatigue^true^Mix^^Fatigue Definition 3
+5006006^5006^006^Q^FlyHourPerHeadcountInEachBase-LQ-PILOT^Pairing^Quality^true^Table^^maxFlyHourPerHeadcount
+5007001^5007^001^Q^OR Cost Ranking^Pairing^Quality^true^Table^^maxFlyHourPerHeadcount
+5008002^5008^002^Q^BLANK DAY RESTRICTION-J^Pairing^Quality^true^Table^^maxFlyHourPerHeadcount
+------CqfParameter(117):id,cqfId,phaseId,paramNames,paramValues
+1701^1001001^1^tableRow1^1,1,1,6031,FLY,FLY,NKG,YNT,*,9509/8+505
+1702^1001001^1^tableRow2^1,1,1,6031,FLY,FLY,YNT,YNJ,*,9509/8+505
+1703^1001001^1^tableRow3^1,1,1,6032,FLY,FLY,YNJ,YNT,*,
+1704^1001001^1^tableRow4^1,1,1,6032,FLY,FLY,YNT,NKG,*,
+1705^1001001^1^tableRow5^2,1,1,9849,FLY,FLY,TAO,INC,*,6069/70
+1706^1001001^1^tableRow6^2,1,1,9849,FLY,FLY,INC,LHW,*,
+1707^1001001^1^tableRow7^2,2,2,6069,FLY,FLY,LHW,CGO,*,
+1708^1001001^1^tableRow8^2,2,2,6069,FLY,FLY,CGO,YNJ,*,
+1709^1001001^1^tableRow9^2,3,3,6070,FLY,FLY,YNJ,CGO,*,
+1710^1001001^1^tableRow10^2,3,3,6070,FLY,FLY,CGO,LHW,*,
+1711^1001001^1^tableRow11^2,4,4,9850,FLY,FLY,LHW,INC,*,
+1712^1001001^1^tableRow12^2,4,4,9850,FLY,FLY,INC,TAO,*,
+1713^1001001^1^tableRow13^3,1,1,9849,FLY,FLY,TAO,INC,*,6069/70
+1714^1001001^1^tableRow14^3,1,1,9849,FLY,FLY,INC,LHW,*,
+1715^1001001^1^tableRow15^3,2,2,6069,FLY,FLY,LHW,CGO,*,
+1716^1001001^1^tableRow16^3,2,2,6069,FLY,FLY,CGO,YNJ,*,
+1717^1001001^1^tableRow17^3,4,3,6070,FLY,FLY,YNJ,CGO,*,
+1718^1001001^1^tableRow18^3,4,3,6070,FLY,FLY,CGO,LHW,*,
+1719^1001001^1^tableRow19^3,5,4,9850,FLY,FLY,LHW,INC,*,
+1720^1001001^1^tableRow20^3,5,4,9850,FLY,FLY,INC,TAO,*,
+1721^1001001^1^tableRow21^4,1,1,9799,FLY,FLY,TAO,LHW,*,URC1
+1722^1001001^1^tableRow22^4,1,1,9799,FLY,FLY,LHW,URC,*,
+1723^1001001^1^tableRow23^4,2,2,9868,FLY,FLY,URC,JIC,*,
+1724^1001001^1^tableRow24^4,2,2,9868,FLY,FLY,JIC,TAO,*,
+1725^1001001^1^tableRow25^5,1,1,9799,FLY,FLY,TAO,LHW,*,URC1
+1726^1001001^1^tableRow26^5,1,1,9799,FLY,FLY,LHW,URC,*,
+1727^1001001^1^tableRow27^5,3,2,9868,FLY,FLY,URC,JIC,*,
+1728^1001001^1^tableRow28^5,3,2,9868,FLY,FLY,JIC,TAO,*,
+1729^1001001^1^tableRow29^6,1,1,9867,FLY,FLY,TAO,JIC,*,URC2
+1730^1001001^1^tableRow30^6,1,1,9867,FLY,FLY,JIC,URC,*,
+1731^1001001^1^tableRow31^6,3,2,9800,FLY,FLY,URC,LHW,*,
+1732^1001001^1^tableRow32^6,3,2,9800,FLY,FLY,LHW,TAO,*,
+1733^1001001^1^tableRow33^7,1,1,6079,FLY,FLY,CSX,HET,*,CSX1
+1734^1001001^1^tableRow34^7,1,1,6079,FLY,FLY,HET,HLD,*,
+1735^1001001^1^tableRow35^7,2,2,6080,FLY,FLY,HLD,HET,*,
+1736^1001001^1^tableRow36^7,2,2,6080,FLY,FLY,HET,CSX,*,
+1737^1001001^1^tableRow37^8,1,1,9837,FLY,FLY,TAO,KWL,*,LUM
+1738^1001001^1^tableRow38^8,1,1,9837,FLY,FLY,KWL,KMG,*,
+1739^1001001^1^tableRow39^8,2,1,6153,FLY,FLY,KMG,LUM,*,
+1740^1001001^1^tableRow40^8,2,2,6154,FLY,FLY,LUM,KMG,*,
+1741^1001001^1^tableRow41^8,3,2,9838,FLY,FLY,KMG,KWL,*,
+1742^1001001^1^tableRow42^8,3,2,9838,FLY,FLY,KWL,TAO,*,
+1743^1001001^1^tableRow43^9,1,1,6083,FLY,FLY,CSX,YNT,*,6083+D1
+1744^1001001^1^tableRow44^9,1,1,6083,FLY,FLY,YNT,MDG,*,
+1745^1001001^1^tableRow45^9,2,2,6084,FLY,FLY,MDG,YNT,*,
+1746^1001001^1^tableRow46^9,2,2,6084,FLY,FLY,YNT,CSX,*,
+1747^1001001^1^tableRow47^10,1,1,6083,FLY,FLY,CSX,YNT,*,6083+D2
+1748^1001001^1^tableRow48^10,1,1,6083,FLY,FLY,YNT,MDG,*,
+1749^1001001^1^tableRow49^10,3,2,6084,FLY,FLY,MDG,YNT,*,
+1750^1001001^1^tableRow50^10,3,2,6084,FLY,FLY,YNT,CSX,*,
+1948^1001001^1^tableHeader^PTN,Day,Duty,FLT,Prime Activity,Assignment,DEP,ARV,FLT Type,Remark
+1176^3001001^1^tableRow1^PNH,CAPT,*,986,300,300,300
+1177^3001001^1^tableRow2^PNH,F/O,*,328,150,150,150
+1178^3001001^1^tableHeader^Base,Rank,Fleet,Salary Per Day,Incentive Dom,Incentive Int,Overnight
+472^3002006^1^tableHeader^Hotel City,Daily Rate,Short Stay Rate
+473^3002006^1^tableRow17^SIN,1274,1274
+474^3002006^1^tableRow18^SYX,350,350
+475^3002006^1^tableRow15^SHA,300,300
+476^3002006^1^tableRow16^SHE,230,230
+477^3002006^1^tableRow19^URC,396,396
+478^3002006^1^tableRow10^JJN,180,180
+479^3002006^1^tableRow13^NNG,170,170
+480^3002006^1^tableRow14^PEK,260,260
+481^3002006^1^tableRow11^KMG,260,260
+482^3002006^1^tableRow12^NKG,300,300
+483^3002006^1^tableRow4^CTU,280,280
+484^3002006^1^tableRow20^XIY,230,230
+485^3002006^1^tableRow5^DLC,260,260
+486^3002006^1^tableRow21^ZHA,240,240
+487^3002006^1^tableRow6^FOC,240,240
+488^3002006^1^tableRow7^HAK,250,250
+489^3002006^1^tableRow8^HLD,600,600
+490^3002006^1^tableRow9^HRB,200,200
+491^3002006^1^tableRow1^*,250,250
+492^3002006^1^tableRow2^CAN,240,240
+493^3002006^1^tableRow3^CKG,248,248
+244^3003002^1^tableHeader^Meal Type,Rate
+245^3003002^1^tableRow1^B,220
+246^3003002^1^tableRow2^L,270
+247^3003002^1^tableRow3^D,270
+1183^4003003^1^sameAircraftBonus,bonusForPureExpatAllowPairing,penaltyForBlankDayInPairing,penaltyForCrewDay,uncoveragePenalty,penaltyForFlyHour,FatiguePenaltyCost,deadheadPenaltyCost,lowBLHDutyThredhold,isPostOptimization,penaltyCostForOverComplement,earlyDepThredholdToLinkWithLateArrLastDay,maxNumOfDifferentLayoverStationsInPairing,minBlkHoursRequiredForOneDayPairingWithOnlyTwoSegs,penaltyDutyDpBlkRatio,bigDpBlkRatioThredhold,dailyDhdsLimit,dailyBlankDaysLimit,minPairingLengthAllowSingleDHD/BUS,maxFlightBLHAllowDHD,isDummyFerryAllowedInOneDayPairing,MaxPairingDayswithAttributeD,noneBaseDutyPassBaseMustRestInBase,isInternationalDHDallowed,penaltyForNumDaysInPairing^1000000,1000,90000,2000000,9990000,5,50000,50000,01:00,Y,90000,5,6,01:00,0,2.5,4,100,3,07:00,N,10,N,Y,200000
+9^4004001^1^rollingByDummyCopies,rollingByNextWeek,rollingDays^NO,YES,3
+1171^4005008^1^tableRow1^PEK,CAP,737,,,1000,1000,0.5,,,,,,,
+1172^4005008^1^tableHeader^Base,Rank,Fleet Group,Fleet,Airport,Default Head Counts Auto,Default Head Counts Manual,Utility Rate,Mon,Tue,Wed,Thu,Fri,Sat,Sun
+10^5001001^1^tableHeader^Name,Lower,Upper,Score,Physical,Mental
+11^5001001^1^tableRow4^LateArrThredhold,00:01,02:00,6,Y,N
+12^5001001^1^tableRow5^LateArrThredhold,02:01,07:00,8,Y,N
+13^5001001^1^tableRow10^FDPThredhold,16:01,18:00,2,Y,N
+14^5001001^1^tableRow6^DutyTimeThredhold,10:00,14:00,2,Y,N
+15^5001001^1^tableRow7^DutyTimeThredhold,14:01,16:00,4,Y,N
+16^5001001^1^tableRow8^DutyTimeThredhold,16:01,18:00,6,Y,N
+17^5001001^1^tableRow9^FDPThredhold,14:00,16:00,1,Y,N
+18^5001001^1^tableRow11^FDPThredhold,18:01,20:00,3,Y,N
+19^5001001^1^tableRow12^FDPThredhold,20:01,99:00,4,Y,N
+20^5001001^1^tableRow1^EarlyDepThredhold,02:00,07:00,8,Y,N
+21^5001001^1^tableRow2^EarlyDepThredhold,07:01,08:30,5,Y,N
+22^5001001^1^tableRow3^LateArrThredhold,23:00,23:59,4,Y,N
+1095^5002001^1^scorePointsForLayoverInDiffSta,scorePointsForAircraftChange,scorePointsForTotalLanding,scorePointsForDifficultAirport,scorePointsForPerUnitBlkTime,scorePointsForBlankDayInPairing^2,1,1,2,2,1
+1096^5003001^1^minuteThredhold,scorePoints,overnightFlyThreshold^15,1,05:00
+1187^5006006^1^tableRow1^KUL,507,00:00,03:20
+1188^5006006^1^tableRow2^BKI,56,00:00,03:20
+1189^5006006^1^tableRow3^JHB,34,00:00,03:20
+1190^5006006^1^tableRow4^KCH,32,00:00,03:20
+1191^5006006^1^tableRow5^PEN,21,00:00,03:20
+1192^5006006^1^tableRow6^ICN,999,00:00,03:20
+1193^5006006^1^tableRow7^GMP,999,00:00,03:20
+1194^5006006^1^tableRow8^PUS,999,00:00,03:20
+1195^5006006^1^tableRow9^CJU,999,00:00,03:20
+1196^5006006^1^tableHeader^Base,HeadCounts,minAvgDailyFlyHour,maxAvgDailyFlyHour
+1683^5007001^1^tableRow1^overNightPenalty,1
+1684^5007001^1^tableRow2^penaltyDhdCost,2
+1685^5007001^1^tableRow3^changeAircraftPenalty,3
+1686^5007001^1^tableRow4^longTransitPenalty,4
+1687^5007001^1^tableRow5^penaltyForBlankDayInPairing,5
+1688^5007001^1^tableHeader^Cost Name,Rank
+1215^5008002^1^tableRow1^*,1,48:00
+1216^5008002^1^tableHeader^AIRPORT,MAX BLANKDAY NUMBER,MAX REST HOURS
+------Aircraft(6):airline,acReg,acType,acTypeSon,crewAcType,dow,dowL,doi,doiL,flyDevice,maxDepartWeight,maxLandfallWeight,maxNoOilWeight,startDate,endDate,seats,isExistRest,isCat2,restfacility
+LQ^XU-963^A319^0^0^0^0^0.0^0.0^0^0^0^0^^^0^false^false^0
+LQ^XU-971^A319^^^0^0^0.0^0.0^^0^0^0^^^0^false^false^0
+LQ^XU-983^A319^^^0^0^0.0^0.0^^0^0^0^^^0^false^false^0
+LQ^XU-901^A320^^^0^0^0.0^0.0^^0^0^0^^^0^false^false^0
+LQ^XU-919^A321^^^0^0^0.0^0.0^^0^0^0^^^0^false^false^0
+LQ^XU-961^A321^^^0^0^0.0^0.0^^0^0^0^^^0^false^false^0
+------AssignmentGroup(19):id,airline,assignmentGroup,name,optimizerIndicator,allowOverlap
+301^QW^CSB^System Default Company Standby  Duty^true^false
+360^QW^DO^System standard Days Off^true^false
+305^QW^HSB^System Default Home Standby  Duty^true^false
+313^QW^REST^System Default Rest Group^true^false
+500^QW^FLY^System Default Fly Duty^true^false
+503^QW^GND^System Default Ground Duty^true^false
+501^QW^LEA^System Default Leave Duty^true^false
+502^QW^SBY^System Default Standby  Duty^true^false
+308^QW^OFF^OFF test^true^false
+504^QW^DHD^DHD^false^false
+374^QW^MVP^Moving Operation Position^true^false
+314^QW^CMT^Commute Duty^true^false
+373^QW^MVO^Moving Operation Group^true^false
+364^QW^OVERLAPABLE^System Overlapable Group^false^false
+999^QW^PUBLISH_FLY^PUBLISH_FLY^false^false
+998^QW^PUBLISH_SBY^PUBLISH_SBY^false^false
+1000^QW^PSG^?????^false^false
+400^QW^RE^AK Red Eye Group, include ES/LF/RE^false^false
+201^QW^SIM^System Default Simulator Duty^true^false
+------Assignment(163):id,airline,assignment,description,label,type,defaultLocation,defaultAssignmentGroup,colorHex,fixedDurationMin,fixedStartTime,fixedEndTime,btPct,creditPct,fdpPct,dpPct,ftPct,displayLabel,isAdhoc,isRecency,isQualifier,wpPct,restTime,divideCrewManday
+2005^QW^SL^Sick Leave^SL^L^^LEA^3EB079^1439^0^1439^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+2001^QW^GT^培训^GT^G^^GND^4285f4^^^^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+2002^QW^GDT^地面任务^GDT^G^^GND^F4B400^^^^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+2003^QW^OL^Other Leave^OL^L^^LEA^3EB079^1439^0^1439^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+2004^QW^AL^年休假^AL^L^^LEA^198c19^1439^0^1439^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+2006^QW^HL^Life Roster^HL^L^^LEA^3EB079^1439^0^1439^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+301^QW^STB^System Default Standby^STB^S^^STB^de564b^480^^^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+2007^QW^CL^事假^CL^L^^LEA^3EB079^1439^0^1439^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+291^QW^PSG^Personal DHD^PSG^W^^^3EB079^^^^0.0^0.0^0.0^0.0^0.0^Y^false^false^false^0.0^^E
+2009^QW^FLY^执行航班^^W^^^4285f4^^^^1.0^1.0^1.0^1.0^1.0^Y^false^false^false^1.0^^E
+100^QW^DO-REP^DO at REP^OFF^O^REP^OFF^8099FF^1439^0^1439^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+101^QW^DO-KOS^DO at KOS^OFF^O^KOS^OFF^8099FF^1439^0^1439^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+2012^QW^DHD^加机组^^W^^^FF69B4^^^^0.0^0.0^0.0^1.0^0.0^N^false^false^false^0.0^^E
+2013^QW^GDH^地面置位^GDH^G^^GND^FF69B4^^^^0.0^0.0^1.0^0.0^0.0^Y^true^false^false^0.0^^E
+300^QW^RST^Standard Post Duty Rest^^O^^^adadad^^^^0.0^0.0^0.0^0.0^0.0^N^false^false^false^0.0^^E
+298^QW^SBY^System Default Standby^^S^^CSB^666666^240^^^0.0^0.0^0.0^0.0^0.0^N^false^false^false^0.0^^E
+340^QW^GND^System Default Ground^^W^^^F4B400^^^^0.0^0.0^0.0^1.0^0.0^Y^false^false^false^0.0^^E
+369^QW^DO^System Default Days Off^OFF^O^^OFF^8099FF^1439^0^1439^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+418^QW^LEA^Annual leave^^W^^LEA^198c19^1439^0^1439^0.0^0.5^1.0^0.0^0.0^N^true^false^false^0.0^^E
+366^QW^LO^System Default Layover^^O^^OFF^b5b5b5^1439^0^1439^0.0^0.0^0.0^0.0^0.0^N^false^false^false^0.0^^E
+295^QW^BRIEF^System Default Prior flight briefing^^W^^^f69923^^^^0.0^0.0^0.0^0.0^0.0^N^false^false^false^0.0^^E
+296^QW^DEBRIEF^System Default Post flight debriefing^^W^^^f69923^^^^0.0^0.0^0.0^0.0^0.0^N^false^false^false^0.0^^E
+297^QW^DROPOFF^System Default Post duty dropoff^^W^^^ffc927^^^^0.0^0.0^0.0^0.0^0.0^N^false^false^false^0.0^^E
+294^QW^PICKUP^System Default Prior duty pickup^^W^^^ffc927^^^^0.0^0.0^0.0^0.0^0.0^N^false^false^false^0.0^^E
+102^QW^DO-PNH^DO at PNH^OFF^O^PNH^OFF^8099FF^1439^0^1439^0.0^0.0^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+371^QW^OFF^OFF^^O^^^0F9956^^0^1439^0.0^0.0^0.0^0.0^0.0^N^false^false^false^0.0^^E
+2015^QW^OPR^OPERATING^^W^^^4285f4^^^^1.0^0.0^1.0^1.0^1.0^N^false^false^false^0.0^^E
+2018^QW^MC^Medical Check^MC^G^^GND^3b77db^^^^0.0^0.0^1.0^1.0^0.0^Y^true^false^false^0.0^^E
+299^QW^CMT^Commute Duty^^W^^^FF69B4^^^^0.0^0.5^1.0^0.0^0.0^Y^false^false^false^1.0^^E
+293^QW^MVP^Moving Pattern Commute^^W^^^FF69B4^^^^0.0^0.0^0.0^1.0^0.0^Y^false^false^false^1.0^^E
+292^QW^MVO^Moving Pattern Operating^^W^^^c71585^^^^1.0^1.0^1.0^1.0^1.0^Y^false^false^false^1.0^^E
+2020^QW^DIV^Divert^^W^^^3b77db^^^^1.0^0.0^1.0^1.0^1.0^N^false^false^false^0.0^^E
+3000^QW^>OFF^>OFF^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3002^QW^AWOL^AWOL^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3003^QW^BK1^BK1^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3004^QW^BK2^BK2^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3005^QW^BK3^BK3^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3006^QW^CBT^CBT ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3007^QW^CDO^CDO ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3008^QW^CLVE^CLVE^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3009^QW^CNET^CNET^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3010^QW^CR^CR  ^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3011^QW^CRI^CRI ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3012^QW^CRM^CRM ^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3013^QW^CRMI^CRMI^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3014^QW^CS2^CS2^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3015^QW^CS2L^CS2L^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3016^QW^CS2R^CS2R^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3017^QW^CSLX^CSLX^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3018^QW^CSX^CSX ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3019^QW^D73A^D73A^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3020^QW^D7S3^D7S3^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3021^QW^DEPU^DEPU^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3022^QW^DG^DG  ^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3023^QW^DRL^DRL ^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3024^QW^DSD^DSD ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3025^QW^EL^EL  ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3026^QW^ELT^ELT ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3027^QW^ELTI^ELTI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3028^QW^ENDT^ENDT^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3029^QW^ETOP^ETOP^^W^^SIM^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3030^QW^ETPI^ETPI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3031^QW^FAID^FAID^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3032^QW^FATG^FATG^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3033^QW^FFS^FFS ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3034^QW^FFSI^FFSI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3035^QW^GRAD^GRAD^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3036^QW^GRND^GRND^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3037^QW^HOFF^HOFF^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3038^QW^HRST^HRST^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3039^QW^HSBY^HSBY^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3040^QW^INPI^INPI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3041^QW^ITVP^ITVP^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3042^QW^ITVW^ITVW^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3043^QW^JH1^JH1^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3044^QW^JH2^JH2^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3045^QW^JH3^JH3^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3046^QW^KC1^KC1^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3047^QW^KC2^KC2^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3048^QW^KU1^KU1^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3049^QW^KU2^KU2^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3050^QW^KU3^KU3^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3051^QW^KU4^KU4^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3052^QW^KU5^KU5^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3053^QW^KU6^KU6^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3054^QW^LDEE^LDEE^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3055^QW^LDEI^LDEI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3056^QW^LFSI^LFSI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3057^QW^LFUS^LFUS^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3058^QW^LOAD^LOAD^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3059^QW^LOF1^LOF1^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3060^QW^LOFI^LOFI^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3061^QW^LOFT^LOFT^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3062^QW^LPC^LPC ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3063^QW^LPCI^LPCI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3064^QW^LSI^LSI ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3065^QW^LTSB^LTSB^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3066^QW^LVI^LVI ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3067^QW^LVO^LVO ^^W^^SIM^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+3068^QW^LWP^LWP ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3069^QW^LWPP^LWPP^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3070^QW^MDIA^MDIA^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3071^QW^MED^MED ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3072^QW^MFTD^MFTD^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3073^QW^MIA^MIA ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3074^QW^ML^ML  ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3075^QW^MTG^MTG ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3076^QW^NILD^NILD^^W^^GND^F4B400^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3077^QW^NQ^NQ  ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3078^QW^OC^OC  ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3079^QW^OFCE^OFCE^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3081^QW^OFL^OFL ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3082^QW^OMTG^OMTG^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3083^QW^OPC^OPC ^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3084^QW^OPCI^OPCI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3085^QW^OPMI^OPMI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3086^QW^OPSM^OPSM^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3087^QW^PATL^PATL^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3088^QW^PE1^PE1^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3089^QW^PE2^PE2^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3090^QW^PERF^PERF^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3091^QW^RAL^RAL ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3092^QW^REST^REST^^W^^GND^ADADAD^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3093^QW^RNP^RNP ^^W^^SIM^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+3094^QW^RNPI^RNPI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3095^QW^ROFF^ROFF^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3096^QW^RS16^RS16^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3097^QW^RS17^RS17^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3098^QW^RSGN^RSGN^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3099^QW^S/T^S/T ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3100^QW^S/TI^S/TI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3101^QW^SDSD^SDSD^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3102^QW^SEPR^SEPR^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3103^QW^SEPX^SEPX^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3104^QW^SIM^SIM ^^W^^SIM^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3105^QW^SIMI^SIMI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3106^QW^SITV^SITV^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3127^QW^ELX^ELX^^W^^GND^F4B400^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3108^QW^SLX^SLX ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3109^QW^SMS^SMS ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3110^QW^SOFF^SOFF^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3111^QW^SPCO^SPCO^^W^^GND^F4B400^1439^0^1439^0.0^0.5^0.0^0.0^0.0^Y^true^false^false^0.0^^E
+3112^QW^SPOI^SPOI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3113^QW^SRST^SRST^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3114^QW^SUPP^SUPP^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3115^QW^SYST^SYST^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3116^QW^TADM^TADM^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3117^QW^TMTG^TMTG^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3118^QW^TRG^TRG ^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3119^QW^TRGI^TRGI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3120^QW^TRTO^TRTO^^W^^GND^F5BB19^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3121^QW^TSBY^TSBY^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3122^QW^UAVL^UAVL^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3123^QW^VOFF^VOFF^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3124^QW^XSBY^XSBY^^W^^GND^666666^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3125^QW^ZFTI^ZFTI^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3126^QW^ZFTT^ZFTT^^W^^GND^3EB079^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+3128^QW^SI^SI^^W^^GND^F4B400^1439^0^1439^0.0^0.5^0.0^0.0^0.0^N^true^false^false^0.0^^E
+200^QW^ES^Early Start-Red Eye,brief between 0 and 600^^W^^^FF748C^^^^1.0^1.0^1.0^1.0^1.0^Y^false^false^true^1.0^^E
+201^QW^LF^Late Finish-Red Eye, debrief between 2300 and 0300^^W^^^ae5eae^^^^1.0^1.0^1.0^1.0^1.0^Y^false^false^true^1.0^^E
+202^QW^RE^Extreme Late Finish-Red Eye, debrief >=0300^^W^^^8C1953^^^^1.0^1.0^1.0^1.0^1.0^Y^false^false^true^1.0^^E
+3856^QW^FDUT^执行航班^^W^^^4285f4^^^^1.0^1.0^1.0^1.0^1.0^Y^false^false^false^1.0^^E
+3866^QW^IN^Indian Patterns^^W^^^c71585^^^^1.0^1.0^1.0^1.0^1.0^Y^false^false^true^1.0^^E
+------AssignmentGroupMap(95):assignmentGroupId,assignmentId
+201^3029
+201^3067
+201^3093
+201^3104
+308^100
+308^101
+308^102
+308^369
+308^2003
+308^2004
+308^2005
+308^2006
+308^2007
+313^100
+313^101
+313^102
+313^300
+313^366
+313^369
+313^371
+313^418
+313^2003
+313^2004
+313^2005
+313^2006
+313^2007
+314^292
+314^293
+314^299
+360^371
+360^418
+360^2003
+360^2004
+360^2005
+360^2006
+360^2007
+360^3095
+364^293
+364^300
+364^371
+373^292
+374^293
+400^200
+400^201
+400^202
+500^200
+500^201
+500^202
+500^2009
+500^2013
+500^2015
+500^2020
+501^418
+501^2003
+501^2004
+501^2005
+501^2006
+501^2007
+502^298
+502^301
+502^3003
+502^3004
+502^3005
+502^3019
+502^3020
+502^3039
+502^3043
+502^3044
+502^3045
+502^3046
+502^3047
+502^3048
+502^3049
+502^3050
+502^3051
+502^3052
+502^3053
+502^3065
+502^3088
+502^3089
+502^3121
+502^3124
+503^340
+503^2001
+503^2002
+503^2013
+503^2018
+503^3111
+504^2012
+998^301
+999^291
+999^292
+999^293
+999^2009
+999^2012
+------Fleet(7):id,airline,acType,fleetGrp,fleet,description,displayOrder,restfacility
+4^QW^MGMT^MGMT^MGMT^Manager^4^0
+2^QW^A320^A320^A320^A320^2^0
+3^QW^A321^A321^A321^A321^3^0
+1^QW^A319^A319^A319^A319^1^0
+101^QW^320^320^320^320^5^0
+102^QW^32A^32A^32A^32A^6^0
+20^QW^B738^B738^B738^7C-B738^20^0
+------Base(22):id,airline,base,name,displayOrder,isPrimeDisplayBase
+4^QW^PNH^^4^true
+------Composition(19):id,airline,name,nameDesc,division,displayOrder,hierarchy
+1^QW^CAP^CAP^P^1^0
+2^QW^FO^FO^P^2^0
+100^QW^2P^1CAP1FO^P^11^1
+110^QW^3P^2CAP1FO^P^10^2
+120^QW^4P^2CAP2FO^P^10^3
+------CompositionRank(35):id,compId,rankId,planValue,planValueExtra
+1^1^1^1^0
+2^2^2^1^0
+35^100^3^1^0
+6^100^2^1^0
+5^100^1^1^0
+7^110^1^2^0
+8^110^2^1^0
+34^120^2^2^0
+33^120^1^2^0
+------Attribute(73):id,airline,code,type,name,isVisible,operation,source
+105^QW^REGIONAL^FLIGHT^If the airport is a special qual required^true^^man
+101^QW^EXPAT_ALLOW^FLIGHT^Whether allow expat to fly^true^^man
+102^QW^EXPAT_MUST^FLIGHT^Whether must have expat to fly^true^^man
+103^QW^ICAO^FLIGHT^If the flight is a ICAO route^true^^man
+104^QW^SPECIAL_AIRPORT^FLIGHT^If the airport is a special qual required^true^^man
+301^QW^SHOE_SIZE^CREW^Crew shoe size^true^^man
+8^QW^RunPO^FUNC^Run Pattern Optimizer^true^^man
+9^QW^MapScen^FUNC^Map Scenario^true^^man
+1^QW^PO^APP^Pattern Optimizer^true^^man
+2^QW^RO^APP^Roster Optimizer^true^^man
+3^QW^PM^APP^Parameter Master^true^^man
+4^QW^SE^APP^Smart Editor^true^^man
+5^QW^CA^AIRLINE^Air China^true^^man
+6^QW^ZH^AIRLINE^Shenzhen Airlines^true^^man
+7^QW^MF^AIRLINE^Xiamen Airlines^true^^man
+400^QW^Soft^OVERRIDE^Soft rule^true^^man
+401^QW^Hard^OVERRIDE^Hard rule, cannot be overriden^true^^man
+11^QW^B^ROUTE^REP-PNH-BKK 4 SECS PTN^true^OR^man
+
+------Rank(7):id,airline,rank,division,displayOrder,description,isIncludeInFt,isActingRank,isCrewRank
+1^QW^CAPT^P^1^Captain^true^true^true
+2^QW^F/O^P^2^First Officer^true^true^true
+3^QW^S/O^P^4^Second Officer^true^true^true
+------RankActing(9):id,airline,activeRank,actingRank,qual
+------Holiday(0):id,airline,holiday,country,city,mark,doType,strDt,endDt
+------Route(0):id,routeId,airline,fltNum,depArp,arvArp,segType,fltDtStart,fltDtEnd,stdStart,stdEnd,fleetGrp,fleet,register,segSeq,minBlh,maxBlh,flightFlag,flightAssignment
+------RankCombinationCriteria(0):id,airline,division,crewNum,pri,fleets,routeId,combinationName,assignment,effDt,expDt,crewNumRanks
+------RankCombination(0):id,rankCombCriteriaId,options,seqOrder,rank,positions
+------SystemParameter(60):paramName,paramValues,appIds,paramDesc
+WEEKDAY_START_FROM^MON^^
+DATABASE_TIMEZONE^UTC^^
+DEFAULT_FD_RULESET^4^PE^
+DEFAULT_CC_RULESET^4^PE^
+AIRLINE^CA,ZH,MF^^
+DAY_OFF_CALENDER_DAY^YES^^
+FLIGHT_TYPE_SEGMENTATION^SECTOR_BASED ^^To differ same flight number with different type
+SCENARIO_MAX_NESTED_FOLDER^4^PO^Max allowed nested folder on scenario list
+SCENARIO_MAX_OPEN_TABS^6^PO^Max allow-to-open sceenarios
+SYSTEM_DISPLAY_BASE^PNH^PO^Client main Time zone
+DEFAULT_AM_RULESET^Default_Ruleset_AM^PE^
+ROSTER_OPTIMIZER_TARGET_DUTY^PAIRING,DAYOFF,STANDBY^RO^Roster Optimizer duty drop down list
+DEV_DUMMY_USER^ROIS^^dummy user to match profile
+DEFAULT_FD_CQF^155^PE^
+DIVIDE_CREW_MANDAY^Y^4^Y-Divide manday in each day, No-all in DEP day
+CREW_MANDAY_STORE_TIMEZONE^CREW_BASE^4^CREW_BAES or UTC
+COMPARE_RPT_URL^http://103.242.57.106:10031/pi-solution/compare.xhtml?sid=^^Multiple scenario comparsion
+PAIRING_RPT_URL^http://103.242.57.106:10031/pi-solution/summary.xhtml?sid=^^Single Pairing scenario summary
+WORK_DAY_GROUP^WDG^^ASSIGNMENT_GROU
+PAIRING_MAP_DEP_TM_TOLERANCE^02:00^^If dep tm with +-x hours, treat as same flight
+DEFAULT_UI_LANGUAGE^CHINESE^^
+DEFAULT_CREW_NAME_DISPLAY_ORDER^LAST_NAME,FIRST_NAME^SE^
+DEFAULT_PAIR_DISPLAY_ORDER^START_DATE,PAIRING_LENGTH,ASCENDING^SE^
+DEFAULT_CREW_DISPLAY_ORDER^STAFF_ID^SE^IDCREW@CREW
+CLIENT_DEFAULT_MAIN_TIME_ZONE_BASE^PNH^^
+ROSTER_RPT_URL^http://103.242.57.106:10031/pi-solution/ro/summary.xhtml?sid=^^Single Roster scenario summary
+DEFAULT_LEADIN_DAYS_PRIOR_ROSTER_PERIOD^8^^Unit Days
+DEFAULT_LEADOUT_DAYS_POST_ROSTER_PERIOD^8^^Unit Days
+DEFAULT_LEGALITY_HARD_VIOLATION_COLOR^ff0000^SE^Hex Code
+DEFAULT_LEGALITY_SOFT_WARNING_COLOR^ffce3c^SE^Hex Code
+MANDAY_CREW_NO_ASSIGNMENT_COLOR^eb4343^SE^Mandy Graphic Display
+MANDAY_OPEN_PAIRING_COLOR^333333^SE^Mandy Graphic Display
+DAYS_OFF_ONLY_AT_CREW_BASE^Y^^Exclude outstation Layover blank day
+DISPLAY_FULL_CALENDAR_DAY_ASSIGNMENT_START_END_TM^N^SE^Whether display 0000-2359 on full day asssginemnet
+TIMELINE_HOLIDAY_TEXT_COLOR^0F9D58^SE^Time Line Holiday Text Color
+LIVE_WINDOW_START_OFFSET_DAYS^-365^^Current Days Minus Days
+LIVE_WINDOW_END_OFFSET_DAYS^90^^Current Days Plus Days,actually not used,Live all future data from start.
+LIVE_WINDOW_START_DUMMY_DATE^^^Dummy Date(YYYY-MM-DD) for Live start, leave null as Sysdate
+EVA_ALLOW_IMPORT_MATERIAL^Y^^Switch for open import function
+WEEKEND_BACKGROUND_COLOR^666666^SE^Weekend background Color
+ROSTER_LINKE_LOCK_MODE^PAIRING_MONTH^^PAIRING_MONTH or PAIRING_LENGTH
+EDITOR_TIMEOUT_MIN^30^SE^Editor Timeout Minutes UndoAll Unlock
+LIVE_NOT_MATCH_ROSTER_DUTY^LEA,GND,TRG^^Not In Duty, split with ,
+LIVE_WINDOW_MANDAY_START_OFFSET_DAYS^BOY|-30^^BOY=Beggining of Year,1.BOY,2.BOY|-30,3.-365
+DELAY BUFFER^30^^Definition of Delay for rule 2124 (min Rest)
+NUM_OF_CREW_IN_ONE_FLIGHT_REQUEST_COMMIT^100^^Number of Crew in a database commit during flight request
+EABLE_PTN_MIN_REST_LINE^N^SE^Roster rest is enough to draw line
+NUM_OF_CREW_IN_ONE_LEAVE_REQUEST_COMMIT^200^^Number of Crew in a database commit during AL request
+NUM_OF_CREW_IN_ONE_DO_REQUEST_COMMIT^200^^Number of Crew in a database commit during DO request
+NUM_OF_CREW_IN_ONE_SWAP_REQUEST_COMMIT^100^^Number of Crew in a database commit during SWAP request
+BRIEF_FROZEN_BUFFER^03:00^^the brief will be frozen before start time
+ASSIGNMENT_KEYBOARD^DO,AL,CL,SL,GT,GDT,GDH,MC,3/1^^Set keyboard for 'select a ground assignment' window
+AUTO_ADD_BASE_BALANCE_MOVING^Y^^auto add base balance moving mvp
+CLIENT_DATA_WINDOW_START_OFFSET_DAYS^-30^^Client Data Window Start
+CLIENT_DATA_WINDOW_END_OFFSET_DAYS^90^^Client Data Window End
+LIVE_RPT_URL^http://103.242.57.106:10031/lqlive/ro/summary.xhtml?sid=0&startDate=2019-05-01&endDate=2019-05-31^^Live report
+MAX_NUM_OF_OVERASSIGN_PER_RANK^FLY/1,MVP/1,MVO/1^^超配1人
+SPLIT_DUTY^09:00^^Wheather two segs in one duty or two duties
+CREW_MEMO_COLOR^FFE153^SE^Crew Memo Color
+EABLE_ROSTER_LINE_CREW_MEMO^Y^SE^Whether eable roster line crew memo.
+------OptimizationNecessity(11):id,airline,category,division,componentType,function,name,necessity
+53^QW^PO^P^R^2004^Duty Limitation^M
+56^QW^PO^P^R^3007^Min Flight Duty Period^M
+57^QW^PO^P^R^3008^Min Block Hour Per Duty^M
+64^QW^PO^P^C^3001^Allowance^M
+65^QW^PO^P^C^3002^Hotel Cost^M
+66^QW^PO^P^C^3003^Meal Cost^M
+68^QW^PO^P^C^4003^Quality Bonus &Penalty^M
+69^QW^PO^P^C^4004^Optimizer Parameter^M
+72^QW^PO^P^C^5001^Fatigue Definition 1^M
+73^QW^PO^P^C^5002^Fatigue Definition 2^M
+74^QW^PO^P^C^5003^Fatigue Definition 3^M

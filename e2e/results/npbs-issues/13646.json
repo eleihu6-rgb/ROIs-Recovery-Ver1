@@ -1,0 +1,50 @@
+{
+  "employeeId": "13646",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 109,
+      "name": "Average Daily Credit"
+    },
+    {
+      "tier": "T3",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T4",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T5",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T6",
+      "code": 117,
+      "name": "Any Leg Is Redeye"
+    },
+    {
+      "tier": "T7",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T1",
+      "name": "Days Off / Days On Pattern",
+      "code": 205,
+      "page": "days-off",
+      "predicate": "Set Condition Pattern Between 3 and 7 Days On, with 3 Days Off (Minimum)",
+      "reason": "unsupported-input: days-off-on-pattern for Days Off / Days On Pattern",
+      "image": "image/pbs/13646_PBS-3331_T1-205_unsupported-input_20260625-055416-864.png"
+    }
+  ]
+}

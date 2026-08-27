@@ -1,0 +1,73 @@
+# monitoring/docker-compose.yml
+# Deploy on the dedicated monitoring server.
+# cp .env.example .env, fill in APP_SERVER_POSTGRES_HOST, then: docker compose up -d
+
+services:
+  loki:
+    image: grafana/loki:3.4.3
+    container_name: rois-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+    networks:
+      - monitor-net
+
+  prometheus:
+    image: prom/prometheus:v3.3.1
+    container_name: rois-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+    networks:
+      - monitor-net
+
+  grafana:
+    image: grafana/grafana:11.6.1
+    container_name: rois-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?required}
+      GF_SERVER_ROOT_URL: http://${MONITORING_HOST:?required}:${GRAFANA_PORT:-3001}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - monitor-net
+
+  windmill:
+    image: ghcr.io/windmill-labs/windmill:1.380.1
+    container_name: rois-windmill
+    restart: unless-stopped
+    ports:
+      - "${WINDMILL_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql://${WM_DB_USER:-postgres}:${WM_DB_PASSWORD:?required}@${APP_SERVER_POSTGRES_HOST:?required}:5432/windmill
+      BASE_URL: http://${MONITORING_HOST:?required}:${WINDMILL_PORT:-8000}
+      WM_SERVER_BIND_ADDR: "0.0.0.0:8000"
+    networks:
+      - monitor-net
+
+volumes:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  monitor-net:
+    driver: bridge

@@ -1,0 +1,123 @@
+{
+  "period": "202606",
+  "source": "CLASS-BidsReport_March2026.txt",
+  "buckets": [
+    "YUL-FO"
+  ],
+  "generatedFrom": "e2e/utils/npbs/generate-fixture.mjs",
+  "crew": [
+    {
+      "employeeId": "2199",
+      "category": "YUL-737-FO",
+      "base": "YUL",
+      "rank": "FO",
+      "seniority": 170,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Set Condition Minimum Credit Window",
+          "page": "line",
+          "action": "award",
+          "propertyCode": 402,
+          "name": "Min Credit Window",
+          "bid": {
+            "type": "flag"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 20, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 20, 2026"
+            ],
+            "raw": "Jun 20, 2026"
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Pairing Number M4102",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-id-list",
+            "values": [
+              "M4102"
+            ]
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Pairing Number M4106 Check-In Date Jun 9, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-id-list",
+            "values": [
+              "M4106"
+            ]
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Set Condition Minimum Credit Window",
+          "page": "line",
+          "action": "award",
+          "propertyCode": 402,
+          "name": "Min Credit Window",
+          "bid": {
+            "type": "flag"
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Prefer Off Jun 16, 2026, Jun 8, 2026, Jun 7, 2026, Jun 15, 2026, Jun 17, 2026, Jun 18, 2026, Jun 19, 2026, Jun 20, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 16, 2026",
+              "Jun 8, 2026",
+              "Jun 7, 2026",
+              "Jun 15, 2026",
+              "Jun 17, 2026",
+              "Jun 18, 2026",
+              "Jun 19, 2026",
+              "Jun 20, 2026"
+            ],
+            "raw": "Jun 16, 2026, Jun 8, 2026, Jun 7, 2026, Jun 15, 2026, Jun 17, 2026, Jun 18, 2026, Jun 19, 2026, Jun 20, 2026"
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Award Pairings If Pairing Number M4102",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-id-list",
+            "values": [
+              "M4102"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+import { chromium } from '@playwright/test'
+
+const browser = await chromium.launch()
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+await page.goto('https://cr.rois.one/', { waitUntil: 'domcontentloaded' })
+await page.getByRole('heading', { name: 'ROIS' }).waitFor({ state: 'visible' })
+await page.getByTestId('login-user-code').fill('Jen')
+await page.getByTestId('login-password').fill('Our2027')
+await page.getByTestId('login-sign-in').click()
+await page.getByTestId('module-nav-live').waitFor({ state: 'visible', timeout: 15000 })
+await page.waitForFunction(() => typeof window.__ganttTest !== 'undefined', undefined, { timeout: 30000 })
+await page.waitForTimeout(2000)
+await page.screenshot({ path: 'results/cr-rois-one-live-dashboard.png', fullPage: false })
+await browser.close()
+console.log('done')

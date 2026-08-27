@@ -1,0 +1,6 @@
+interface:
+  display_name: "131 assignment group mapping"
+  short_description: "Project skill 131-assignment-group-mapping"
+  default_prompt: "Use $131-assignment-group-mapping for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

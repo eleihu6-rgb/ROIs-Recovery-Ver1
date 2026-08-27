@@ -1,0 +1,35 @@
+{
+  "employeeId": "13378",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T4",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T1",
+      "code": 113,
+      "name": "TAFB"
+    },
+    {
+      "tier": "T2",
+      "code": 113,
+      "name": "TAFB"
+    },
+    {
+      "tier": "T3",
+      "code": 113,
+      "name": "TAFB"
+    },
+    {
+      "tier": "T5",
+      "code": 113,
+      "name": "TAFB"
+    }
+  ],
+  "issues": []
+}

@@ -1,0 +1,50 @@
+{
+  "employeeId": "2902",
+  "category": "YYZ-737-FO",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 104,
+      "name": "Any/Every Layover In Airport"
+    },
+    {
+      "tier": "T3",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T5",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T6",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T7",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T2",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Avoid Pairings If Departing On Jun 26, 2026, Jun 27, 2026",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/2902_PBS-3312_T2-106_not-found_20260625-054614-560.png"
+    }
+  ]
+}

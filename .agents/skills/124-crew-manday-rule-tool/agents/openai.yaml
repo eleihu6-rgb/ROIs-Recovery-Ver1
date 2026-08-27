@@ -1,0 +1,6 @@
+interface:
+  display_name: "124 crew manday rule tool"
+  short_description: "Project skill 124-crew-manday-rule-tool"
+  default_prompt: "Use $124-crew-manday-rule-tool for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,2815 @@
+{
+  "period": "202606",
+  "source": "CLASS-BidsReport_March2026.txt",
+  "buckets": [
+    "YVR-CA",
+    "YVR-FO",
+    "YYZ-CA",
+    "YYZ-FO"
+  ],
+  "generatedFrom": "e2e/utils/npbs/generate-fixture.mjs",
+  "crew": [
+    {
+      "employeeId": "113",
+      "category": "YVR-737-CA",
+      "base": "YVR",
+      "rank": "CA",
+      "seniority": 2,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 31, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 31, 2026"
+            ],
+            "raw": "Jun 31, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Avoid Pairings If Pairing Number V4102, V4106, V4107, V4111, V4115, V4127, V4132, V4134, V4138, V4145, V4148",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4102",
+              "V4106",
+              "V4107",
+              "V4111",
+              "V4115",
+              "V4127",
+              "V4132",
+              "V4134",
+              "V4138",
+              "V4145",
+              "V4148"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Pairing Number V4119",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4119"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Pairing Number V4114, V4131, V4137 Limit 3",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4114",
+              "V4131",
+              "V4137"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Award Pairings If Pairing Number V4112, V4122, V4133, V4136, V4141, V4143, V4144, V4147, V4199",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4112",
+              "V4122",
+              "V4133",
+              "V4136",
+              "V4141",
+              "V4143",
+              "V4144",
+              "V4147",
+              "V4199"
+            ],
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "295",
+      "category": "YVR-737-CA",
+      "base": "YVR",
+      "rank": "CA",
+      "seniority": 11,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 18, 2026 - Jun 15, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 18, 2026",
+            "to": "Jun 15, 2026",
+            "values": [
+              "Jun 18, 2026",
+              "Jun 15, 2026"
+            ],
+            "raw": "Jun 18, 2026 - Jun 15, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 19:00",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": ">",
+            "value": "19:00",
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Avoid Pairings If Any Landing In CUN, LAS, LAX, MEX, SFO, YEG, YWG, YXX, YYC, YYZ",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "CUN",
+              "LAS",
+              "LAX",
+              "MEX",
+              "SFO",
+              "YEG",
+              "YWG",
+              "YXX",
+              "YYC",
+              "YYZ"
+            ],
+            "values": [
+              "CUN",
+              "LAS",
+              "LAX",
+              "MEX",
+              "SFO",
+              "YEG",
+              "YWG",
+              "YXX",
+              "YYC",
+              "YYZ"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Any Landing In GDL, PVR",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "GDL",
+              "PVR"
+            ],
+            "values": [
+              "GDL",
+              "PVR"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Prefer Off Jun 18, 2026 - Jun 15, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 18, 2026",
+            "to": "Jun 15, 2026",
+            "values": [
+              "Jun 18, 2026",
+              "Jun 15, 2026"
+            ],
+            "raw": "Jun 18, 2026 - Jun 15, 2026"
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 19:00",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": ">",
+            "value": "19:00",
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Avoid Pairings If Any Landing In CUN, LAX, MEX, SFO, YEG, YXX, YYC, YYZ",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "CUN",
+              "LAX",
+              "MEX",
+              "SFO",
+              "YEG",
+              "YXX",
+              "YYC",
+              "YYZ"
+            ],
+            "values": [
+              "CUN",
+              "LAX",
+              "MEX",
+              "SFO",
+              "YEG",
+              "YXX",
+              "YYC",
+              "YYZ"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "379",
+      "category": "YVR-737-CA",
+      "base": "YVR",
+      "rank": "CA",
+      "seniority": 12,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 7, 2026 - Jun 8, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 7, 2026",
+            "to": "Jun 8, 2026",
+            "values": [
+              "Jun 7, 2026",
+              "Jun 8, 2026"
+            ],
+            "raw": "Jun 7, 2026 - Jun 8, 2026"
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Prefer Off Jun 14, 2026 - Jun 19, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 14, 2026",
+            "to": "Jun 19, 2026",
+            "values": [
+              "Jun 14, 2026",
+              "Jun 19, 2026"
+            ],
+            "raw": "Jun 14, 2026 - Jun 19, 2026"
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 29, 2026 - Jun 31, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 29, 2026",
+            "to": "Jun 31, 2026",
+            "values": [
+              "Jun 29, 2026",
+              "Jun 31, 2026"
+            ],
+            "raw": "Jun 29, 2026 - Jun 31, 2026"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jun 2, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4105"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Award Pairings If Pairing Number V4110 Check-In Date Jun 3, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4110"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Award Pairings If Pairing Number V4107 Check-In Date Jun 4, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4107"
+            ],
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "386",
+      "category": "YYZ-737-FO",
+      "base": "YYZ",
+      "rank": "FO",
+      "seniority": 14,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 15, 2026, Jun 29, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 15, 2026",
+              "Jun 29, 2026"
+            ],
+            "raw": "Jun 15, 2026, Jun 29, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 18, 2026, Jun 19, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 18, 2026",
+              "Jun 19, 2026"
+            ],
+            "raw": "Jun 18, 2026, Jun 19, 2026"
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 14:00",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": ">",
+            "value": "14:00",
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Avoid Pairings If Pairing Check-In Time < 06:40",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": "<",
+            "value": "06:40",
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Avoid Pairings If Any Duty Legs > 2 legs",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 107,
+          "name": "Flight Legs per Duty",
+          "bid": {
+            "type": "flight-legs-per-duty",
+            "operator": ">",
+            "value": 2,
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Avoid Pairings If Pairing Length > 2 days",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 112,
+          "name": "Pairing Length",
+          "bid": {
+            "type": "pairing-length-preference",
+            "minDays": 3,
+            "maxDays": null,
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "387",
+      "category": "YYZ-737-CA",
+      "base": "YYZ",
+      "rank": "CA",
+      "seniority": 15,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Set Condition Minimum Credit Window",
+          "page": "line",
+          "action": "award",
+          "propertyCode": 429,
+          "name": "Credit Window Preference",
+          "bid": {
+            "type": "credit-window-preference",
+            "direction": "less"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 11:00",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": ">",
+            "value": "11:00",
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Pairing Number T4106 Check-In Date Jun 2, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4106"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Pairing Number T4106 Check-In Date Jun 4, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4106"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Award Pairings If Pairing Number T4106 Check-In Date Jun 6, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4106"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Award Pairings If Pairing Number T4145 Check-In Date Jun 9, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4145"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Award Pairings If Pairing Number T4145 Check-In Date Jun 11, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4145"
+            ],
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "390",
+      "category": "YVR-737-CA",
+      "base": "YVR",
+      "rank": "CA",
+      "seniority": 16,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Award Pairings If Pairing Number V4150",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4150"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Avoid Pairings If Any Landing In LAS, LAX, SFO, YEG, YWG, YXX, YYC, YYZ",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "LAS",
+              "LAX",
+              "SFO",
+              "YEG",
+              "YWG",
+              "YXX",
+              "YYC",
+              "YYZ"
+            ],
+            "values": [
+              "LAS",
+              "LAX",
+              "SFO",
+              "YEG",
+              "YWG",
+              "YXX",
+              "YYC",
+              "YYZ"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Prefer Off Jun 6, 2026, Jun 7, 2026, Jun 13, 2026, Jun 14, 2026, Jun 20, 2026, Jun 21, 2026, Jun 27, 2026, Jun 28, 2026, Jun 8, 2026, Jun 15, 2026, Jun 22, 2026, Jun 29, 2026, Jun 2, 2026, Jun 3, 2026, Jun 4, 2026, Jun 5, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 6, 2026",
+              "Jun 7, 2026",
+              "Jun 13, 2026",
+              "Jun 14, 2026",
+              "Jun 20, 2026",
+              "Jun 21, 2026",
+              "Jun 27, 2026",
+              "Jun 28, 2026",
+              "Jun 8, 2026",
+              "Jun 15, 2026",
+              "Jun 22, 2026",
+              "Jun 29, 2026",
+              "Jun 2, 2026",
+              "Jun 3, 2026",
+              "Jun 4, 2026",
+              "Jun 5, 2026"
+            ],
+            "raw": "Jun 6, 2026, Jun 7, 2026, Jun 13, 2026, Jun 14, 2026, Jun 20, 2026, Jun 21, 2026, Jun 27, 2026, Jun 28, 2026, Jun 8, 2026, Jun 15, 2026, Jun 22, 2026, Jun 29, 2026, Jun 2, 2026, Jun 3, 2026, Jun 4, 2026, Jun 5, 2026"
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Any Landing In CUN",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "CUN"
+            ],
+            "values": [
+              "CUN"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "504",
+      "category": "YVR-737-CA",
+      "base": "YVR",
+      "rank": "CA",
+      "seniority": 18,
+      "context": "Default",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Award Pairings If Any Landing In GDL",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "GDL"
+            ],
+            "values": [
+              "GDL"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Award Pairings If Any Landing In LAS",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "LAS"
+            ],
+            "values": [
+              "LAS"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Any Landing In PVR If Pairing Check-In Time > 11:00 If Total Legs In Pairing < 3 legs",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "PVR"
+            ],
+            "values": [
+              "PVR"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Any Layover In CUN And Of Duration > 090:00",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "layover",
+            "locations": [
+              "CUN And Of Duration > 090:00"
+            ],
+            "values": [
+              "CUN And Of Duration > 090:00"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Award Pairings If Any Layover In MEX If Total Legs In Pairing < 3 legs",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "layover",
+            "locations": [
+              "MEX"
+            ],
+            "values": [
+              "MEX"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Award Pairings If Any Landing In SJD If Pairing Length < 3 days",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "SJD"
+            ],
+            "values": [
+              "SJD"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Award Pairings If Any Landing In YWG If Total Legs In Pairing < 3 legs",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "YWG"
+            ],
+            "values": [
+              "YWG"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "529",
+      "category": "YVR-737-CA",
+      "base": "YVR",
+      "rank": "CA",
+      "seniority": 19,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 16, 2026, Jun 18, 2026, Jun 23, 2026, Jun 25, 2026, Jun 20, 2026, Jun 27, 2026, Jun 15, 2026, Jun 14, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 16, 2026",
+              "Jun 18, 2026",
+              "Jun 23, 2026",
+              "Jun 25, 2026",
+              "Jun 20, 2026",
+              "Jun 27, 2026",
+              "Jun 15, 2026",
+              "Jun 14, 2026"
+            ],
+            "raw": "Jun 16, 2026, Jun 18, 2026, Jun 23, 2026, Jun 25, 2026, Jun 20, 2026, Jun 27, 2026, Jun 15, 2026, Jun 14, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Award Pairings If Any Landing In PVR",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "PVR"
+            ],
+            "values": [
+              "PVR"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Pairing Number V4103, V4120",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4103",
+              "V4120"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Any Landing In GDL",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "GDL"
+            ],
+            "values": [
+              "GDL"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Award Pairings If Any Landing In YWG",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "YWG"
+            ],
+            "values": [
+              "YWG"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Avoid Pairings If Any Landing In LAX, MEX, SFO, YEG, YYC",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "LAX",
+              "MEX",
+              "SFO",
+              "YEG",
+              "YYC"
+            ],
+            "values": [
+              "LAX",
+              "MEX",
+              "SFO",
+              "YEG",
+              "YYC"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "534",
+      "category": "YYZ-737-CA",
+      "base": "YYZ",
+      "rank": "CA",
+      "seniority": 22,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 22, 2026, Jun 29, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 22, 2026",
+              "Jun 29, 2026"
+            ],
+            "raw": "Jun 22, 2026, Jun 29, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 13:00",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": ">",
+            "value": "13:00",
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Any Landing In PVR",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "PVR"
+            ],
+            "values": [
+              "PVR"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Any Landing In GDL",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "GDL"
+            ],
+            "values": [
+              "GDL"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Award Pairings If Any Landing In CUN",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "CUN"
+            ],
+            "values": [
+              "CUN"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "296",
+      "category": "YYZ-737-CA",
+      "base": "YYZ",
+      "rank": "CA",
+      "seniority": 28,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Set Condition Minimum Credit Window",
+          "page": "line",
+          "action": "award",
+          "propertyCode": 429,
+          "name": "Credit Window Preference",
+          "bid": {
+            "type": "credit-window-preference",
+            "direction": "less"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 15, 2026, Jun 22, 2026, Jun 8, 2026, Jun 29, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 15, 2026",
+              "Jun 22, 2026",
+              "Jun 8, 2026",
+              "Jun 29, 2026"
+            ],
+            "raw": "Jun 15, 2026, Jun 22, 2026, Jun 8, 2026, Jun 29, 2026"
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Avoid Pairings If Any Landing In CUN, FLL, MBJ, MCO, MEX, PUJ, YEG, YHZ, YKF, YWG, YXX, YYC",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "CUN",
+              "FLL",
+              "MBJ",
+              "MCO",
+              "MEX",
+              "PUJ",
+              "YEG",
+              "YHZ",
+              "YKF",
+              "YWG",
+              "YXX",
+              "YYC"
+            ],
+            "values": [
+              "CUN",
+              "FLL",
+              "MBJ",
+              "MCO",
+              "MEX",
+              "PUJ",
+              "YEG",
+              "YHZ",
+              "YKF",
+              "YWG",
+              "YXX",
+              "YYC"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Avoid Pairings If Pairing Length > 1 days",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 112,
+          "name": "Pairing Length",
+          "bid": {
+            "type": "pairing-length-preference",
+            "minDays": 2,
+            "maxDays": null,
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 12:00",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": ">",
+            "value": "12:00",
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "501",
+      "category": "YYZ-737-CA",
+      "base": "YYZ",
+      "rank": "CA",
+      "seniority": 34,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 2, 2026 - Jun 6, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 2, 2026",
+            "to": "Jun 6, 2026",
+            "values": [
+              "Jun 2, 2026",
+              "Jun 6, 2026"
+            ],
+            "raw": "Jun 2, 2026 - Jun 6, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 29, 2026 - Jun 31, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 29, 2026",
+            "to": "Jun 31, 2026",
+            "values": [
+              "Jun 29, 2026",
+              "Jun 31, 2026"
+            ],
+            "raw": "Jun 29, 2026 - Jun 31, 2026"
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Prefer Off Jun 14, 2026 - Jun 15, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 14, 2026",
+            "to": "Jun 15, 2026",
+            "values": [
+              "Jun 14, 2026",
+              "Jun 15, 2026"
+            ],
+            "raw": "Jun 14, 2026 - Jun 15, 2026"
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 21, 2026 - Jun 22, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 21, 2026",
+            "to": "Jun 22, 2026",
+            "values": [
+              "Jun 21, 2026",
+              "Jun 22, 2026"
+            ],
+            "raw": "Jun 21, 2026 - Jun 22, 2026"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 17:00",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": ">",
+            "value": "17:00",
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Avoid Pairings If Any Landing In MCO, YKF, YWG, YXX, YYC",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "MCO",
+              "YKF",
+              "YWG",
+              "YXX",
+              "YYC"
+            ],
+            "values": [
+              "MCO",
+              "YKF",
+              "YWG",
+              "YXX",
+              "YYC"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "755",
+      "category": "YYZ-737-CA",
+      "base": "YYZ",
+      "rank": "CA",
+      "seniority": 35,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Set Condition Pattern Between 5 and 6 Days On, with 6 Days Off (Minimum)",
+          "page": "line",
+          "action": "award",
+          "propertyCode": 408,
+          "name": "Commuter Pattern",
+          "bid": {
+            "type": "days-off-on-pattern",
+            "daysOnMin": 5,
+            "daysOnMax": 6,
+            "daysOff": 6
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 2, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 2, 2026"
+            ],
+            "raw": "Jun 2, 2026"
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Prefer Off Jun 3, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 3, 2026"
+            ],
+            "raw": "Jun 3, 2026"
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 4, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 4, 2026"
+            ],
+            "raw": "Jun 4, 2026"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Prefer Off Jun 5, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 5, 2026"
+            ],
+            "raw": "Jun 5, 2026"
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Prefer Off Jun 28, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 28, 2026"
+            ],
+            "raw": "Jun 28, 2026"
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Prefer Off Jun 29, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 29, 2026"
+            ],
+            "raw": "Jun 29, 2026"
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "848",
+      "category": "YYZ-737-CA",
+      "base": "YYZ",
+      "rank": "CA",
+      "seniority": 42,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 4, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 4, 2026"
+            ],
+            "raw": "Jun 4, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 5, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 5, 2026"
+            ],
+            "raw": "Jun 5, 2026"
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Prefer Off Jun 11, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 11, 2026"
+            ],
+            "raw": "Jun 11, 2026"
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 7, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 7, 2026"
+            ],
+            "raw": "Jun 7, 2026"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Prefer Off Jun 12, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 12, 2026"
+            ],
+            "raw": "Jun 12, 2026"
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Prefer Off Jun 18, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 18, 2026"
+            ],
+            "raw": "Jun 18, 2026"
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Prefer Off Jun 19, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 19, 2026"
+            ],
+            "raw": "Jun 19, 2026"
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "1153",
+      "category": "YVR-737-FO",
+      "base": "YVR",
+      "rank": "FO",
+      "seniority": 76,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T2",
+          "predicate": "Avoid Pairings If Any Landing In MEX, SFO, YEG, YXX, YYC, YYZ",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "MEX",
+              "SFO",
+              "YEG",
+              "YXX",
+              "YYC",
+              "YYZ"
+            ],
+            "values": [
+              "MEX",
+              "SFO",
+              "YEG",
+              "YXX",
+              "YYC",
+              "YYZ"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Prefer Off Jun 2, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 2, 2026"
+            ],
+            "raw": "Jun 2, 2026"
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 6, 2026 - Jun 9, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 6, 2026",
+            "to": "Jun 9, 2026",
+            "values": [
+              "Jun 6, 2026",
+              "Jun 9, 2026"
+            ],
+            "raw": "Jun 6, 2026 - Jun 9, 2026"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Prefer Off Jun 13, 2026 - Jun 15, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 13, 2026",
+            "to": "Jun 15, 2026",
+            "values": [
+              "Jun 13, 2026",
+              "Jun 15, 2026"
+            ],
+            "raw": "Jun 13, 2026 - Jun 15, 2026"
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Prefer Off Jun 19, 2026 - Jun 20, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 19, 2026",
+            "to": "Jun 20, 2026",
+            "values": [
+              "Jun 19, 2026",
+              "Jun 20, 2026"
+            ],
+            "raw": "Jun 19, 2026 - Jun 20, 2026"
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Prefer Off Jun 24, 2026 - Jun 31, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 24, 2026",
+            "to": "Jun 31, 2026",
+            "values": [
+              "Jun 24, 2026",
+              "Jun 31, 2026"
+            ],
+            "raw": "Jun 24, 2026 - Jun 31, 2026"
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "1559",
+      "category": "YVR-737-FO",
+      "base": "YVR",
+      "rank": "FO",
+      "seniority": 121,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 24, 2026, Jun 25, 2026, Jun 26, 2026, Jun 27, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 24, 2026",
+              "Jun 25, 2026",
+              "Jun 26, 2026",
+              "Jun 27, 2026"
+            ],
+            "raw": "Jun 24, 2026, Jun 25, 2026, Jun 26, 2026, Jun 27, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 7, 2026, Jun 8, 2026, Jun 14, 2026, Jun 15, 2026, Jun 21, 2026, Jun 22, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 7, 2026",
+              "Jun 8, 2026",
+              "Jun 14, 2026",
+              "Jun 15, 2026",
+              "Jun 21, 2026",
+              "Jun 22, 2026"
+            ],
+            "raw": "Jun 7, 2026, Jun 8, 2026, Jun 14, 2026, Jun 15, 2026, Jun 21, 2026, Jun 22, 2026"
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 24, 2026, Jun 25, 2026, Jun 26, 2026, Jun 27, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 24, 2026",
+              "Jun 25, 2026",
+              "Jun 26, 2026",
+              "Jun 27, 2026"
+            ],
+            "raw": "Jun 24, 2026, Jun 25, 2026, Jun 26, 2026, Jun 27, 2026"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Prefer Off Jun 7, 2026, Jun 8, 2026, Jun 14, 2026, Jun 15, 2026, Jun 21, 2026, Jun 22, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 7, 2026",
+              "Jun 8, 2026",
+              "Jun 14, 2026",
+              "Jun 15, 2026",
+              "Jun 21, 2026",
+              "Jun 22, 2026"
+            ],
+            "raw": "Jun 7, 2026, Jun 8, 2026, Jun 14, 2026, Jun 15, 2026, Jun 21, 2026, Jun 22, 2026"
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Prefer Off Jun 6, 2026, Jun 13, 2026, Jun 20, 2026 Between 03:00 And 23:59",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 6, 2026",
+              "Jun 13, 2026",
+              "Jun 20, 2026"
+            ],
+            "window": {
+              "from": "03:00",
+              "to": "23:59"
+            },
+            "raw": "Jun 6, 2026, Jun 13, 2026, Jun 20, 2026 Between 03:00 And 23:59"
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "1591",
+      "category": "YVR-737-FO",
+      "base": "YVR",
+      "rank": "FO",
+      "seniority": 133,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Any Landing In PVR",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "PVR"
+            ],
+            "values": [
+              "PVR"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Award Pairings If Any Landing In GDL",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "GDL"
+            ],
+            "values": [
+              "GDL"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Award Pairings If Any Landing In YWG If Pairing Check-In Time = 13:55",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "YWG"
+            ],
+            "values": [
+              "YWG"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Award Pairings If Any Landing In LAS",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "LAS"
+            ],
+            "values": [
+              "LAS"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "1688",
+      "category": "YYZ-737-FO",
+      "base": "YYZ",
+      "rank": "FO",
+      "seniority": 134,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Award Pairings If Pairing Number T4135 Check-In Date Jun 12, 2026, T4135 Check-In Date Jun 13, 2026, T4135 Check-In Date Jun 14, 2026, T4135 Check-In Date Jun 15, 2026, T4135 Check-In Date Jun 16, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4135",
+              "T4135",
+              "T4135",
+              "T4135",
+              "T4135"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Award Pairings If Pairing Number T4174 Check-In Date Jun 25, 2026, T4174 Check-In Date Jun 26, 2026, T4174 Check-In Date Jun 27, 2026, T4174 Check-In Date Jun 28, 2026, T4174 Check-In Date Jun 29, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4174",
+              "T4174",
+              "T4174",
+              "T4174",
+              "T4174"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Set Condition Pattern Between 4 and 6 Days On, with 8 Days Off (Minimum)",
+          "page": "line",
+          "action": "award",
+          "propertyCode": 408,
+          "name": "Commuter Pattern",
+          "bid": {
+            "type": "days-off-on-pattern",
+            "daysOnMin": 4,
+            "daysOnMax": 6,
+            "daysOff": 8
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Any Landing In CUN If Pairing Check-In Time Between 05:00 And 08:00",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "CUN"
+            ],
+            "values": [
+              "CUN"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "1702",
+      "category": "YYZ-737-FO",
+      "base": "YYZ",
+      "rank": "FO",
+      "seniority": 140,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 7, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 7, 2026"
+            ],
+            "raw": "Jun 7, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 8, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 8, 2026"
+            ],
+            "raw": "Jun 8, 2026"
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Prefer Off Jun 31, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 31, 2026"
+            ],
+            "raw": "Jun 31, 2026"
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 14, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 14, 2026"
+            ],
+            "raw": "Jun 14, 2026"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Prefer Off Jun 15, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 15, 2026"
+            ],
+            "raw": "Jun 15, 2026"
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Prefer Off Jun 19, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 19, 2026"
+            ],
+            "raw": "Jun 19, 2026"
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Prefer Off Jun 3, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 3, 2026"
+            ],
+            "raw": "Jun 3, 2026"
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "1812",
+      "category": "YYZ-737-FO",
+      "base": "YYZ",
+      "rank": "FO",
+      "seniority": 145,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Award Pairings If Pairing Number T4164 Check-In Date Jun 22, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4164"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Award Pairings If Pairing Number T4170 Check-In Date Jun 27, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4170"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Avoid Pairings If Any Layover In CUN, MEX, YKF, YVR",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "layover",
+            "locations": [
+              "CUN",
+              "MEX",
+              "YKF",
+              "YVR"
+            ],
+            "values": [
+              "CUN",
+              "MEX",
+              "YKF",
+              "YVR"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 15:00",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": ">",
+            "value": "15:00",
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "2072",
+      "category": "YYZ-737-FO",
+      "base": "YYZ",
+      "rank": "FO",
+      "seniority": 155,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T2",
+          "predicate": "Award Pairings If Pairing Number T4106 Check-In Date Jun 2, 2026, T4107 Check-In Date Jun 3, 2026, T4114 Check-In Date Jun 5, 2026, T4120 Check-In Date Jun 12, 2026, T4154 Check-In Date Jun 13, 2026, T4162 Check-In Date Jun 16, 2026, T4162 Check-In Date Jun 18, 2026, T4173 Check-In Date Jun 23, 2026, T4173 Check-In Date Jun 25, 2026, T4173 Check-In Date Jun 27, 2026, T4173 Check-In Date Jun 30, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4106",
+              "T4107",
+              "T4114",
+              "T4120",
+              "T4154",
+              "T4162",
+              "T4162",
+              "T4173",
+              "T4173",
+              "T4173",
+              "T4173"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Pairing Number T4108 Check-In Date Jun 2, 2026, T4107 Check-In Date Jun 2, 2026, T4103 Check-In Date Jun 2, 2026, T4105 Check-In Date Jun 2, 2026, T4114 Check-In Date Jun 3, 2026, TB5343 Check-In Date Jun 3, 2026, T4115 Check-In Date Jun 3, 2026, TB5344 Check-In Date Jun 4, 2026, T4216 Check-In Date Jun 4, 2026, T4106 Check-In Date Jun 4, 2026, T4120 Check-In Date Jun 5, 2026, T4108 Check-In Date Jun 5, 2026, T4103 Check-In Date Jun 5, 2026, T4152 Check-In Date Jun 12, 2026, T4138 Check-In Date Jun 12, 2026, T4152 Check-In Date Jun 13, 2026, T4144 Check-In Date Jun 13, 2026, T4145 Check-In Date Jun 13, 2026, T4158 Check-In Date Jun 14, 2026, TB5359 Check-In Date Jun 16, 2026, T4135 Check-In Date Jun 17, 2026, T4152 Check-In Date Jun 18, 2026, T4163 Check-In Date Jun 18, 2026, TB5362 Check-In Date Jun 18, 2026, T4135 Check-In Date Jun 23, 2026, T4144 Check-In Date Jun 23, 2026, T4152 Check-In Date Jun 23, 2026, T4145 Check-In Date Jun 23, 2026, TB5374 Check-In Date Jun 24, 2026, T4174 Check-In Date Jun 25, 2026, TB5372 Check-In Date Jun 25, 2026, T4152 Check-In Date Jun 25, 2026, T4174 Check-In Date Jun 26, 2026, T4152 Check-In Date Jun 27, 2026, T4174 Check-In Date Jun 28, 2026, TB5386 Check-In Date Jun 30, 2026, T4152 Check-In Date Jun 30, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4108",
+              "T4107",
+              "T4103",
+              "T4105",
+              "T4114",
+              "TB5343",
+              "T4115",
+              "TB5344",
+              "T4216",
+              "T4106",
+              "T4120",
+              "T4108",
+              "T4103",
+              "T4152",
+              "T4138",
+              "T4152",
+              "T4144",
+              "T4145",
+              "T4158",
+              "TB5359",
+              "T4135",
+              "T4152",
+              "T4163",
+              "TB5362",
+              "T4135",
+              "T4144",
+              "T4152",
+              "T4145",
+              "TB5374",
+              "T4174",
+              "TB5372",
+              "T4152",
+              "T4174",
+              "T4152",
+              "T4174",
+              "TB5386",
+              "T4152"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 3, 2026 Between 21:00 And 23:59",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 3, 2026"
+            ],
+            "window": {
+              "from": "21:00",
+              "to": "23:59"
+            },
+            "raw": "Jun 3, 2026 Between 21:00 And 23:59"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Prefer Off Jun 31, 2026 Between 16:00 And 23:59",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 31, 2026"
+            ],
+            "window": {
+              "from": "16:00",
+              "to": "23:59"
+            },
+            "raw": "Jun 31, 2026 Between 16:00 And 23:59"
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Award Pairings If Pairing Number T4106 Check-In Date Jun 2, 2026, T4107 Check-In Date Jun 3, 2026, T4114 Check-In Date Jun 5, 2026, T4120 Check-In Date Jun 12, 2026, T4154 Check-In Date Jun 13, 2026, T4162 Check-In Date Jun 16, 2026, T4162 Check-In Date Jun 18, 2026, T4173 Check-In Date Jun 23, 2026, T4173 Check-In Date Jun 25, 2026, T4173 Check-In Date Jun 27, 2026, T4173 Check-In Date Jun 30, 2026",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4106",
+              "T4107",
+              "T4114",
+              "T4120",
+              "T4154",
+              "T4162",
+              "T4162",
+              "T4173",
+              "T4173",
+              "T4173",
+              "T4173"
+            ],
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "2083",
+      "category": "YVR-737-FO",
+      "base": "YVR",
+      "rank": "FO",
+      "seniority": 159,
+      "context": "Default",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 10, 2026 - Jun 15, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 10, 2026",
+            "to": "Jun 15, 2026",
+            "values": [
+              "Jun 10, 2026",
+              "Jun 15, 2026"
+            ],
+            "raw": "Jun 10, 2026 - Jun 15, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Prefer Off Jun 10, 2026 - Jun 14, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 10, 2026",
+            "to": "Jun 14, 2026",
+            "values": [
+              "Jun 10, 2026",
+              "Jun 14, 2026"
+            ],
+            "raw": "Jun 10, 2026 - Jun 14, 2026"
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Prefer Off Jun 10, 2026 - Jun 13, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 10, 2026",
+            "to": "Jun 13, 2026",
+            "values": [
+              "Jun 10, 2026",
+              "Jun 13, 2026"
+            ],
+            "raw": "Jun 10, 2026 - Jun 13, 2026"
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 10, 2026 - Jun 12, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 10, 2026",
+            "to": "Jun 12, 2026",
+            "values": [
+              "Jun 10, 2026",
+              "Jun 12, 2026"
+            ],
+            "raw": "Jun 10, 2026 - Jun 12, 2026"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Prefer Off Jun 10, 2026 - Jun 11, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 10, 2026",
+            "to": "Jun 11, 2026",
+            "values": [
+              "Jun 10, 2026",
+              "Jun 11, 2026"
+            ],
+            "raw": "Jun 10, 2026 - Jun 11, 2026"
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Prefer Off Jun 10, 2026, Jun 11, 2026, Jun 12, 2026, Jun 13, 2026, Jun 14, 2026, Jun 15, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 10, 2026",
+              "Jun 11, 2026",
+              "Jun 12, 2026",
+              "Jun 13, 2026",
+              "Jun 14, 2026",
+              "Jun 15, 2026"
+            ],
+            "raw": "Jun 10, 2026, Jun 11, 2026, Jun 12, 2026, Jun 13, 2026, Jun 14, 2026, Jun 15, 2026"
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Award Pairings If Pairing Number V4150",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4150"
+            ],
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "2155",
+      "category": "YYZ-737-FO",
+      "base": "YYZ",
+      "rank": "FO",
+      "seniority": 165,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Prefer Off Jun 16, 2026, Jun 18, 2026, Jun 20, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 16, 2026",
+              "Jun 18, 2026",
+              "Jun 20, 2026"
+            ],
+            "raw": "Jun 16, 2026, Jun 18, 2026, Jun 20, 2026"
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 16:59",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 103,
+          "name": "Pairing Check-In / Check-Out Time",
+          "bid": {
+            "type": "pairing-check-time",
+            "timeType": "check_in",
+            "operator": ">",
+            "value": "16:59",
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Avoid Pairings If Any Landing In YKF",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "YKF"
+            ],
+            "values": [
+              "YKF"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Avoid Pairings If Any Landing In FLL",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 168,
+          "name": "Airport Preference",
+          "bid": {
+            "type": "airport-preference",
+            "event": "landing",
+            "locations": [
+              "FLL"
+            ],
+            "values": [
+              "FLL"
+            ],
+            "dateScope": null,
+            "minimumLayoverDuration": null
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Avoid Pairings If Pairing Number T4146",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "T4146"
+            ],
+            "dateScope": null
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "2376",
+      "category": "YVR-737-FO",
+      "base": "YVR",
+      "rank": "FO",
+      "seniority": 192,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Avoid Pairings If Any Duty Legs > 2 legs",
+          "page": "pairing",
+          "action": "avoid",
+          "propertyCode": 107,
+          "name": "Flight Legs per Duty",
+          "bid": {
+            "type": "flight-legs-per-duty",
+            "operator": ">",
+            "value": 2,
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Prefer Off Jun 7, 2026, Jun 8, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 7, 2026",
+              "Jun 8, 2026"
+            ],
+            "raw": "Jun 7, 2026, Jun 8, 2026"
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Prefer Off Jun 6, 2026 Between 17:00 And 23:59",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "dates",
+            "values": [
+              "Jun 6, 2026"
+            ],
+            "window": {
+              "from": "17:00",
+              "to": "23:59"
+            },
+            "raw": "Jun 6, 2026 Between 17:00 And 23:59"
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Prefer Off Jun 31, 2026 - Jun 2, 2026",
+          "page": "days-off",
+          "action": "award",
+          "propertyCode": 201,
+          "name": "Prefer Off",
+          "bid": {
+            "type": "prefer-off",
+            "mode": "date_range",
+            "from": "Jun 31, 2026",
+            "to": "Jun 2, 2026",
+            "values": [
+              "Jun 31, 2026",
+              "Jun 2, 2026"
+            ],
+            "raw": "Jun 31, 2026 - Jun 2, 2026"
+          }
+        }
+      ]
+    },
+    {
+      "employeeId": "2417",
+      "category": "YVR-737-FO",
+      "base": "YVR",
+      "rank": "FO",
+      "seniority": 197,
+      "context": "Current",
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "Award Pairings If Pairing Number V4150",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4150"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T2",
+          "predicate": "Award Pairings If Pairing Number V4103, V4120, V4146",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4103",
+              "V4120",
+              "V4146"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T3",
+          "predicate": "Award Pairings If Pairing Number V4104, V4114, V4131, V4137",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4104",
+              "V4114",
+              "V4131",
+              "V4137"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T4",
+          "predicate": "Award Pairings If Pairing Number V4110, V4118, V4121, V4135, V4140",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4110",
+              "V4118",
+              "V4121",
+              "V4135",
+              "V4140"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T5",
+          "predicate": "Award Pairings If Pairing Number V4105",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4105"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T6",
+          "predicate": "Award Pairings If Pairing Number V4101",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4101"
+            ],
+            "dateScope": null
+          }
+        },
+        {
+          "tier": "T7",
+          "predicate": "Award Pairings If Pairing Number V4109, V4117, V4124, V4128",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Preference",
+          "bid": {
+            "type": "pairing-preference",
+            "values": [
+              "V4109",
+              "V4117",
+              "V4124",
+              "V4128"
+            ],
+            "dateScope": null
+          }
+        }
+      ]
+    }
+  ]
+}

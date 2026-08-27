@@ -1,0 +1,167 @@
+{
+  "generatedAt": "see git commit",
+  "totalRecords": 1096,
+  "effectiveCrew": 659,
+  "selectedCrew": 6,
+  "bucketCounts": {
+    "YVR-CA": 6
+  },
+  "droppedReasonCounts": {
+    "secondary-clause-dropped": 443,
+    "beyond-tier-7": 4033,
+    "unmapped-pairing-condition": 54,
+    "unmapped-predicate": 4,
+    "unmapped-set-condition": 1
+  },
+  "selectedCrewDropped": [
+    {
+      "employeeId": "113",
+      "category": "YVR-737-CA",
+      "dropped": []
+    },
+    {
+      "employeeId": "295",
+      "category": "YVR-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Any Landing In GDL, LAS, PVR, YWG",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Jul 18, 2026 - Jul 16, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Pairing Check-In Time > 19:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Avoid Pairings If Any Landing In CUN, MEX, SFO, YEG, YXX, YYC, YYZ",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In GDL, LAS, LAX, PVR, YWG",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "379",
+      "category": "YVR-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Pairing Number V4110 Check-In Date Jul 5, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4125 Check-In Date Jul 9, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4121 Check-In Date Jul 12, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4120 Check-In Date Jul 24, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4140 Check-In Date Jul 25, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 26, 2026",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Pairing Number V4105 Check-In Date Jul 27, 2026",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "390",
+      "category": "YVR-737-CA",
+      "dropped": []
+    },
+    {
+      "employeeId": "504",
+      "category": "YVR-737-CA",
+      "dropped": [
+        {
+          "predicate": "Award Pairings If Any Landing In PVR If Pairing Check-In Time > 11:00 If Total Legs In Pairing < 3 legs",
+          "reason": "secondary-clause-dropped: Pairing Check-In Time > 11:00"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PVR If Pairing Check-In Time > 11:00 If Total Legs In Pairing < 3 legs",
+          "reason": "secondary-clause-dropped: Total Legs In Pairing < 3 legs"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In MEX If Total Legs In Pairing < 3 legs",
+          "reason": "secondary-clause-dropped: Total Legs In Pairing < 3 legs"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In SJD If Pairing Length < 3 days",
+          "reason": "secondary-clause-dropped: Pairing Length < 3 days"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In YWG If Total Legs In Pairing < 3 legs",
+          "reason": "secondary-clause-dropped: Total Legs In Pairing < 3 legs"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In CUN If Total Legs In Pairing < 3 legs",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In CUN And Of Duration > 047:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Duty On Time > 09:00 If Any Landing In PVR",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Duty Legs < 3 legs If Any Landing In YXU If Pairing Check-In Time < 16:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In CUN And Of Duration > 031:00",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In PHX If Pairing Length < 3 days",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In MEX If Total Legs In Pairing < 4 legs",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Layover In YYZ And Of Duration > 024:00 If Total Legs In Pairing < 4 legs",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In SFO If Pairing Length < 3 days",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In LAX",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Award Pairings If Any Landing In KIN",
+          "reason": "beyond-tier-7"
+        },
+        {
+          "predicate": "Prefer Off Sunday",
+          "reason": "beyond-tier-7"
+        }
+      ]
+    },
+    {
+      "employeeId": "529",
+      "category": "YVR-737-CA",
+      "dropped": []
+    }
+  ]
+}

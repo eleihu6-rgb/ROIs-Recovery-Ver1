@@ -1,0 +1,362 @@
+data: /home/yuan.z/rois/rois-ai/engine-server/manual-rerun/F8/736/20260805_report_parity/ro_input.txt
+pref_dir: /home/yuan.z/rois/rois-ai/engine-server/manual-rerun/F8/736/20260805_report_parity
+coverage_first: true
+debug: false
+draw_gantt: false
+progress:
+  enabled: true
+  filename: progress.json
+  min_write_interval_sec: 0.25
+  heartbeat_interval_sec: 5.0
+  stage_weights:
+    load_scenario: 0.02
+    build_matrix: 0.01
+    greedy_generation: 0.32
+    initial_rule_check: 0.02
+    optimization: 0.05
+    final_rule_check: 0.02
+    ro_output: 0.05
+    gantt: 0.04
+    reports: 0.5
+    credit_report: 0.01
+  stage_labels:
+    load_scenario: Loading scenario
+    build_matrix: Building crew-pairing matrix
+    greedy_generation: Building initial roster
+    initial_rule_check: Checking rules
+    optimization: Optimising assignment
+    final_rule_check: Final rule check
+    ro_output: Writing roster output
+    gantt: Drawing gantt charts
+    reports: Building bid explanation reports
+    credit_report: Writing credit hour report
+  phase_labels:
+    phase1_primary: Assigning awarded and preferred flying
+    phase2_acting: Filling gaps with acting-rank flying
+    phase2b_pattern_relax: Relaxing commuter patterns for coverage
+    phase3_credit: Filling crew to minimum credit hours
+    phase4_coverage_rescue: Recovering uncovered flights
+problem:
+  crew_type: BOTH
+  bases: []
+  ranks:
+  - IFD
+  - FA
+  qualification: '737'
+  crew_types:
+  - P
+  - C
+solver:
+  solver_iter_num: 1
+  explore_iter_num: 100
+  model_debug: false
+  greedy_trace: false
+  assignment_trace_enabled: false
+  assignment_trace_filename: initial_assignment_trace.json
+  assignment_trace_batch_rows: 50000
+  assignment_report_batch_rows: 5000
+  mip_gap: 0.001
+  mip_time_limit: 3600.0
+  seed: 42
+  enforce_feasible: false
+  min_reserve_covered_percentage: 0.0
+  day_pressure_spread: false
+  floor_rescue_rules:
+    reserve_single_days: null
+    reserve_day_balance: null
+    avoid_pairing_bids: null
+    requested_days_off: null
+    avoid_reserve_bids: null
+    avoid_reserve_line_rules: null
+    award_reserve_and_commuter_blocks: null
+    min_consecutive_days_off_window_blocks: true
+    min_base_layover_bids: null
+  w_coverage_under: 1000000.0
+  w_coverage_over: 1000.0
+  w_fairness: 10.0
+  w_column_cost: 1.0
+  active_costs:
+  - FLY_TIME
+  - FLY_TIME_FAIRNESS
+  - PREFERENCE
+  cost_weights:
+    FLY_TIME: 1.0
+    FLY_TIME_FAIRNESS: 1.0
+    PREFERENCE: 1.0
+  initial_column_method: seniority_greedy_pass_config
+  column_generation_method: none
+  down_rank_penalty: 500000.0
+  batch_size: 0
+  batch_outer_iter_num: 1
+  network_generation_method: random_enumeration_multi_pass
+  network_k: 5
+  network_num_random_columns: 0
+  network_max_pairings_per_column: 0
+  network_min_pairings_per_column: 0
+  network_temperature: 5000
+  network_normalize_node_cost: false
+  enable_tqdm: true
+  enable_mip_spinner: true
+  seniority_decay_rate: 0.95
+  seniority_top_n: 10
+  seniority_top_weight: 5.0
+  pref_scale: 1000.0
+  weight_award_global: 1.0
+  weight_avoid_global: -1.0
+  weight_by_duration: false
+  improve_award_lines: true
+  fair_share_fill: true
+  enforce_credit_ceiling: true
+  min_reserve_covered_by_date: {}
+  reserve_weekday_priority:
+    tue: 1
+    wed: 1
+    fri: 2
+    sat: 2
+    sun: 2
+    mon: 3
+    thu: 3
+  pass_expansion_order:
+    within_phase: rank_then_template
+  rank_groups:
+    pilot:
+      crew_type: P
+      ranks:
+      - CA
+      - FO
+      credit_targets:
+        CA:
+          min: 75.0
+          prefer: 88.0
+          max: 92.0
+        FO:
+          min: 80.0
+          prefer: 85.0
+          max: 85.0
+      reserve_assignments:
+      - PRAM
+      - PRPM
+    cabin:
+      crew_type: C
+      ranks:
+      - IFD
+      - FA
+      credit_targets:
+        IFD:
+          min: 80.0
+          prefer: 85.0
+          max: 85.0
+        FA:
+          min: 80.0
+          prefer: 85.0
+          max: 85.0
+      reserve_assignments:
+      - CRAM
+      - CRPM
+  pass_templates:
+    phase1_primary:
+    - suffix: award_flight
+      base_mode: home
+      pairing_type: flight
+      score_filter: award
+      credit_cap_mode: prefer
+      crew_order: senior_first
+      candidate_order: high_score_first
+    - suffix: award_reserve
+      base_mode: home
+      pairing_type: reserve
+      score_filter: award
+      credit_cap_mode: prefer
+      crew_order: senior_first
+      candidate_order: high_score_first
+    - suffix: reserve_quota
+      quota_fill: true
+      base_mode: home
+      pairing_type: reserve
+      score_filter: safe
+      credit_cap_mode: max
+      crew_order: junior_first
+    - suffix: safe_flight
+      base_mode: home
+      pairing_type: flight
+      score_filter: safe
+      credit_cap_mode: prefer
+      crew_order: senior_first
+      candidate_order: high_score_first
+    - suffix: any_flight
+      base_mode: home
+      pairing_type: flight
+      score_filter: any
+      credit_cap_mode: max
+      crew_order: junior_first
+      candidate_order: low_score_first
+    phase2_acting:
+    - suffix: acting_any_flight
+      base_mode: any
+      pairing_type: flight
+      score_filter: any
+      credit_cap_mode: max
+      crew_order: junior_first
+      candidate_order: low_score_first
+    phase2b_pattern_relax:
+    - suffix: pattern_relax_flight
+      base_mode: home
+      pairing_type: flight
+      credit_cap_mode: max
+      crew_order: round_robin_junior
+      relax_pattern_blocks: true
+      max_per_crew: 2
+    phase3_credit:
+    - suffix: credit_fill_am_reserve
+      base_mode: home
+      pairing_type: reserve
+      pairing_period: am
+      score_filter: safe
+      credit_cap_mode: max
+      crew_order: deficit_first
+      candidate_order: high_score_first
+      day_balance_tolerance: 1
+    - suffix: credit_fill_pm_reserve
+      base_mode: home
+      pairing_type: reserve
+      pairing_period: pm
+      score_filter: safe
+      credit_cap_mode: max
+      crew_order: deficit_first
+      candidate_order: high_score_first
+      day_balance_tolerance: 1
+    - suffix: credit_fill_sweep
+      allow_reserve_singles: true
+      base_mode: home
+      pairing_type: any
+      score_filter: safe
+      credit_cap_mode: max
+      crew_order: deficit_first
+      candidate_order: high_score_first
+    - suffix: credit_fill_violate_avoid
+      allow_reserve_singles: true
+      base_mode: home
+      pairing_type: any
+      score_filter: violate_avoid
+      violation_ordered: true
+      mmg_floor: true
+      credit_cap_mode: max
+      crew_order: deficit_first
+    - suffix: credit_fill_violate_dayoff
+      allow_reserve_singles: true
+      base_mode: home
+      pairing_type: any
+      score_filter: violate_dayoff
+      violation_ordered: true
+      mmg_floor: true
+      credit_cap_mode: max
+      crew_order: deficit_first
+    - suffix: credit_fill_violate_avoid_reserve
+      allow_reserve_singles: true
+      base_mode: home
+      pairing_type: any
+      score_filter: violate_avoid_reserve
+      violation_ordered: true
+      mmg_floor: true
+      credit_cap_mode: max
+      crew_order: deficit_first
+    - suffix: credit_fill_violate_reserve_linerule
+      allow_reserve_singles: true
+      relax_linerule_blocks: true
+      relax_window_rule_blocks: true
+      base_mode: home
+      pairing_type: any
+      score_filter: any
+      violation_ordered: true
+      mmg_floor: true
+      credit_cap_mode: max
+      crew_order: deficit_first
+    phase4_coverage_rescue:
+    - suffix: coverage_relax_flight
+      base_mode: home
+      pairing_type: flight
+      credit_cap_mode: max
+      crew_order: round_robin_junior
+      relax_reserve_award_blocks: true
+      max_per_crew: 2
+    - suffix: coverage_displace_flight
+      base_mode: home
+      pairing_type: flight
+      credit_cap_mode: max
+      crew_order: round_robin_junior
+      relax_reserve_award_blocks: true
+      displace_reserve: true
+      max_displace_per_pairing: 6
+      max_per_crew: 1
+    - suffix: coverage_reserve_recover
+      base_mode: home
+      pairing_type: reserve
+      score_filter: safe
+      allow_reserve_singles: true
+      credit_cap_mode: max
+      crew_order: deficit_first
+    - suffix: coverage_reserve_award_relax
+      base_mode: home
+      pairing_type: reserve
+      credit_cap_mode: max
+      crew_order: round_robin_junior
+      relax_reserve_award_blocks: true
+      allow_reserve_singles: true
+      max_per_crew: 2
+preference:
+  pairing_match_key: interface_id
+  tier_weights:
+  - 7
+  - 6
+  - 5
+  - 4
+  - 3
+  - 2
+  - 1
+  pref_scale: 1000
+  weight_award_global: 1.0
+  weight_avoid_global: -1.0
+  weight_dayoff_avoid: -1.0
+  weight_by_duration: false
+  higher_credit_tier_weights:
+  - 0.7
+  - 0.6
+  - 0.5
+  - 0.4
+  - 0.3
+  - 0.2
+  - 0.1
+  greedy_harm_weight: 5000.0
+  greedy_harm_mode: max
+  greedy_contestation_tiebreak: false
+  explorers: []
+rule_engine:
+  mode: rust-hybrid
+  cpp_lib_path: /home/rois/PBS_column_based_algorithm-main/api_rule_engine_py/tools/ro_input_only/rule_cpp_build/build/libCrewRulePython.so
+  cpp_bridge_dir: /home/rois/PBS_column_based_algorithm-main/api_rule_engine_py/tools
+  working_directory: /home/yuan.z/rois/rois-ai/engine-server/manual-rerun/F8/736/20260805_report_parity
+  scenario_id: 611
+  debug: false
+  rust:
+    ro_input_path: null
+    expected_scenario_id: null
+    unsupported_rule_policy: warn
+    engine_warning_policy: warn
+pattern:
+  max_on_hard_cap: 7
+  top_x: 1
+  boundary_mode: strict
+  extra_off_allowance: 2
+  extra_off_penalty: 100.0
+  extra_off_hard_cap: null
+  density_award_multiplier: 2.0
+  density_neutral_multiplier: 1.0
+  density_avoid_multiplier: 0.1
+  density_penalty_alpha: 0.1
+  window_under_penalty_weight: 8.0
+  window_over_penalty_weight: 1.0
+  window_penalty_power: 2
+  window_rest_density_cost: 1.0
+  window_dayoff_work_cost: 1.0
+  defer_layout: true
+  forbid_zero_supply_workdays: true

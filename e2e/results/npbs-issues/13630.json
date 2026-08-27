@@ -1,0 +1,44 @@
+{
+  "employeeId": "13630",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 6,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T6",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T4",
+      "code": 114,
+      "name": "Any/Every Enroute Check-In Time"
+    },
+    {
+      "tier": "T2",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T1",
+      "name": "Max Consecutive Days On",
+      "code": 202,
+      "page": "days-off",
+      "predicate": "Set Condition Maximum Days On In A Row 3",
+      "reason": "unsupported-input: stepper for Max Consecutive Days On",
+      "image": "image/pbs/13630_PBS-3318_T1-202_unsupported-input_20260625-054920-127.png"
+    },
+    {
+      "tier": "T3",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition Minimum Days Off In A Row 2",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13630_PBS-3318_T3-203_unsupported-input_20260625-054921-275.png"
+    }
+  ]
+}

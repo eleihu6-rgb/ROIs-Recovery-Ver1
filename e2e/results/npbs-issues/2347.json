@@ -1,0 +1,20 @@
+{
+  "employeeId": "2347",
+  "category": "YYZ-737-IFD",
+  "context": "Default",
+  "totalProperties": 2,
+  "placed": 2,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T1",
+      "code": 401,
+      "name": "Max Credit Window"
+    }
+  ],
+  "issues": []
+}

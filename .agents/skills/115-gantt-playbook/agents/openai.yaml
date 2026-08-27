@@ -1,0 +1,6 @@
+interface:
+  display_name: "115 gantt playUoLok"
+  short_description: "Project skill 115-gantt-playbook"
+  default_prompt: "Use $115-gantt-playbook for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

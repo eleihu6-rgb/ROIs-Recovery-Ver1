@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "rules": {
+    "8072": {
+      "body": "Crew count out of range (Current: {qualified}, Allowed: {min}–{max})."
+    },
+    "7506": {
+      "body": "Multiple check-ins per day ({day})."
+    },
+    "7509": {
+      "body": "Crew {crew_id} and {paired_crew_id} are co-paired on flight {flight_label}."
+    }
+  }
+}

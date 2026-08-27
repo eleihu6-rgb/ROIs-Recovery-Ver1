@@ -1,0 +1,48 @@
+{
+  "employeeId": "19",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 5,
+  "placed": 2,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T3",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 2, 2026, Jun 6, 2026, Jun 11, 2026, Jun 13, 2026, Jun 16, 2026, Jun 18, 2026 If Pairing Number T4520",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/19_PBS-3301_T3-106_not-found_20260625-044807-089.png"
+    },
+    {
+      "tier": "T4",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 4, 2026 If Pairing Number T4528",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/19_PBS-3301_T4-106_not-found_20260625-044807-861.png"
+    },
+    {
+      "tier": "T5",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 9, 2026 If Pairing Number T4542",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/19_PBS-3301_T5-106_not-found_20260625-044808-638.png"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "employeeId": "13649",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 4,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 115,
+      "name": "Any/Every Leg With Employee Number"
+    },
+    {
+      "tier": "T3",
+      "code": 114,
+      "name": "Any/Every Enroute Check-In Time"
+    },
+    {
+      "tier": "T1",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    }
+  ],
+  "issues": []
+}

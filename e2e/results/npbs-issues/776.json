@@ -1,0 +1,25 @@
+{
+  "employeeId": "776",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 3,
+  "placed": 3,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T2",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T3",
+      "code": 102,
+      "name": "Pairing Number"
+    }
+  ],
+  "issues": []
+}

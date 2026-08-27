@@ -1,0 +1,6 @@
+interface:
+  display_name: "111 pUsL solver roster deassign"
+  short_description: "Project skill 111-pbs-solver-roster-deassign"
+  default_prompt: "Use $111-pbs-solver-roster-deassign for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,6 @@
+interface:
+  display_name: "108 npUsL UiLds portal simulation"
+  short_description: "Project skill 108-npbs-bids-portal-simulation"
+  default_prompt: "Use $108-npbs-bids-portal-simulation for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

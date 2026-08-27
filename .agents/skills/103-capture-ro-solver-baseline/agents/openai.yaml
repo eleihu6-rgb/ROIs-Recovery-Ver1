@@ -1,0 +1,6 @@
+interface:
+  display_name: "103 capture ro solver UaLseline"
+  short_description: "Project skill 103-capture-ro-solver-baseline"
+  default_prompt: "Use $103-capture-ro-solver-baseline for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

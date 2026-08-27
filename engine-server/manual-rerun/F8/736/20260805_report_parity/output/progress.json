@@ -1,0 +1,1 @@
+{"schema_version": 1, "state": "succeeded", "percent": 100.0, "stage": "credit_report", "stage_label": "Writing credit hour report", "stage_index": 9, "stage_total": 9, "detail": null, "step_index": null, "step_total": null, "started_at": "2026-08-05T08:35:11.999Z", "updated_at": "2026-08-05T08:35:20.003Z", "elapsed_sec": 8.0, "error": null}

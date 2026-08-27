@@ -1,0 +1,50 @@
+{
+  "employeeId": "365",
+  "category": "YYZ-737-IFD",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 6,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T4",
+      "code": 117,
+      "name": "Any Leg Is Redeye"
+    },
+    {
+      "tier": "T5",
+      "code": 107,
+      "name": "Any/Every Duty Legs"
+    },
+    {
+      "tier": "T7",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T1",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T6",
+      "name": "Departing On",
+      "code": 106,
+      "page": "pairing",
+      "predicate": "Award Pairings If Departing On Jun 3, 2026 If Any Landing In YYG If Pairing Number T4503",
+      "reason": "property-not-found-in-workspace: Departing On",
+      "image": "image/pbs/365_PBS-3305_T6-106_not-found_20260625-055604-367.png"
+    }
+  ]
+}

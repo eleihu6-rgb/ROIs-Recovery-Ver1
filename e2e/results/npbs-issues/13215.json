@@ -1,0 +1,54 @@
+{
+  "employeeId": "13215",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 7,
+  "placed": 5,
+  "placedDetail": [
+    {
+      "tier": "T5",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T6",
+      "code": 101,
+      "name": "Any Landing In Airport"
+    },
+    {
+      "tier": "T7",
+      "code": 103,
+      "name": "Pairing Check-In Time"
+    },
+    {
+      "tier": "T1",
+      "code": 401,
+      "name": "Max Credit Window"
+    },
+    {
+      "tier": "T2",
+      "code": 404,
+      "name": "No Same Day Pairings"
+    }
+  ],
+  "issues": [
+    {
+      "tier": "T3",
+      "name": "Max Consecutive Days On",
+      "code": 202,
+      "page": "days-off",
+      "predicate": "Set Condition Maximum Days On In A Row 3",
+      "reason": "unsupported-input: stepper for Max Consecutive Days On",
+      "image": "image/pbs/13215_PBS-3335_T3-202_unsupported-input_20260625-055911-106.png"
+    },
+    {
+      "tier": "T4",
+      "name": "Min Consecutive Days Off",
+      "code": 203,
+      "page": "days-off",
+      "predicate": "Set Condition Minimum Days Off In A Row 2",
+      "reason": "unsupported-input: stepper for Min Consecutive Days Off",
+      "image": "image/pbs/13215_PBS-3335_T4-203_unsupported-input_20260625-055912-266.png"
+    }
+  ]
+}

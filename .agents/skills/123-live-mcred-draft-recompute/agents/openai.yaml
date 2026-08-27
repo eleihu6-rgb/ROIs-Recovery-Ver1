@@ -1,0 +1,6 @@
+interface:
+  display_name: "123 live mcred draft recompute"
+  short_description: "Project skill 123-live-mcred-draft-recompute"
+  default_prompt: "Use $123-live-mcred-draft-recompute for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

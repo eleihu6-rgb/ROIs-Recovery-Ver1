@@ -1,0 +1,6 @@
+interface:
+  display_name: "104 run pUsL solver local"
+  short_description: "Project skill 104-run-pbs-solver-local"
+  default_prompt: "Use $104-run-pbs-solver-local for the relevant ROIS workflow."
+policy:
+  allow_implicit_invocation: true

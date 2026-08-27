@@ -1,0 +1,198 @@
+import { z } from 'zod'
+import type { FastifyInstance } from 'fastify'
+import { success, fail, error } from '../../utils/response.js'
+import { flightService } from '../../services/flight/flight-service.js'
+
+export default async function flightRoutes(fastify: FastifyInstance) {
+  // GET /api/flight — grouped list with pagination (FlightItem)
+  fastify.get('/', async (request, reply) => {
+    const schema = z.object({
+      startDate: z.string().default(new Date().toISOString().slice(0, 10)),
+      endDate: z.string().default(new Date().toISOString().slice(0, 10)),
+      depArp: z.string().length(3).optional(),
+      arvArp: z.string().length(3).optional(),
+      fltNum: z.string().optional(),
+      fleet: z.string().optional(),
+      status: z.string().optional(),
+      page: z.coerce.number().int().positive().default(1),
+      pageSize: z.coerce.number().int().min(0).max(10000).default(20),
+      // 'grouped' (default, unchanged) = register/fleet bin-packed FlightItems (loads all
+      // matching rows to group globally). 'none' = windowed flat rows paginated in SQL —
+      // lighter/faster first paint for long ranges, no global in-memory bin-packing.
+      grouping: z.enum(['grouped', 'none']).default('grouped'),
+    })
+
+    const parsed = schema.safeParse(request.query)
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.message)
+    }
+
+    const result = await flightService.listGrouped(fastify, parsed.data)
+    return success(reply, result)
+  })
+
+  // GET /api/flight/navi-counts — per-flight pairing & crew counts for the Flight Navi table
+  fastify.get('/navi-counts', async (request, reply) => {
+    const schema = z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+    })
+    const parsed = schema.safeParse(request.query)
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.message)
+    }
+    try {
+      const result = await flightService.naviCounts(fastify, parsed.data.startDate, parsed.data.endDate)
+      return success(reply, result)
+    } catch (err) {
+      fastify.log.error({ err }, 'flightService.naviCounts failed')
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // POST /api/flight/compositions — bulk per-flight composition (plan/actual)
+  fastify.post('/compositions', async (request, reply) => {
+    const schema = z.object({
+      flightIds: z.array(z.number().int().positive()).max(1000),
+    })
+    const parsed = schema.safeParse(request.body)
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.message)
+    }
+    try {
+      const result = await flightService.getCompositions(fastify, parsed.data.flightIds)
+      return success(reply, result)
+    } catch (err) {
+      fastify.log.error({ err }, 'flightService.getCompositions failed')
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // GET /api/flight/:id — detail with compositions
+  fastify.get('/:id', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const numId = Number(id)
+    if (Number.isNaN(numId)) {
+      return fail(reply, 400, 'Invalid id')
+    }
+
+    try {
+      const result = await flightService.getById(fastify, numId)
+      if (!result) {
+        return fail(reply, 404, 'Flight not found')
+      }
+      return success(reply, result)
+    } catch (err) {
+      fastify.log.error({ err, id: numId }, 'flightService.getById failed')
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // GET /api/flight/:id/crew — crew assignments for flight detail
+  fastify.get('/:id/crew', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const numId = Number(id)
+    if (Number.isNaN(numId)) {
+      return fail(reply, 400, 'Invalid id')
+    }
+
+    try {
+      const result = await flightService.getCrewList(fastify, numId)
+      return success(reply, result)
+    } catch (err) {
+      fastify.log.error({ err, id: numId }, 'flightService.getCrewList failed')
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // GET /api/flight/:id/pairings — distinct pairing ids this flight is rostered into
+  fastify.get('/:id/pairings', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const numId = Number(id)
+    if (Number.isNaN(numId)) {
+      return fail(reply, 400, 'Invalid id')
+    }
+
+    try {
+      const result = await flightService.getPairingIds(fastify, numId)
+      return success(reply, result)
+    } catch (err) {
+      fastify.log.error({ err, id: numId }, 'flightService.getPairingIds failed')
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // POST /api/flight — create single flight
+  fastify.post('/', async (request, reply) => {
+    const body = request.body as Record<string, unknown>
+    const username = (body.username as string) ?? 'system'
+
+    try {
+      const result = await flightService.create(fastify, body as never, username)
+      return success(reply, result)
+    } catch (err) {
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // PUT /api/flight/:id — update flight
+  fastify.put('/:id', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const numId = Number(id)
+    if (Number.isNaN(numId)) {
+      return fail(reply, 400, 'Invalid id')
+    }
+
+    const body = request.body as Record<string, unknown>
+    const username = (body.username as string) ?? 'system'
+
+    try {
+      const result = await flightService.update(fastify, numId, body as never, username)
+      if (!result) {
+        return fail(reply, 404, 'Flight not found')
+      }
+      return success(reply, result)
+    } catch (err) {
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // DELETE /api/flight/:id — soft delete
+  fastify.delete('/:id', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const numId = Number(id)
+    if (Number.isNaN(numId)) {
+      return fail(reply, 400, 'Invalid id')
+    }
+
+    const username = ((request.query as Record<string, string>).username) ?? 'system'
+
+    try {
+      const result = await flightService.remove(fastify, numId, username)
+      if (!result) {
+        return fail(reply, 404, 'Flight not found')
+      }
+      return success(reply, result)
+    } catch (err) {
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // POST /api/flight/batch — batch import flights
+  fastify.post('/batch', async (request, reply) => {
+    const body = request.body as { flights: Record<string, unknown>[]; username?: string }
+
+    if (!Array.isArray(body.flights) || body.flights.length === 0) {
+      return fail(reply, 400, 'flights array is required and must not be empty')
+    }
+
+    const username = body.username ?? 'system'
+
+    try {
+      const result = await flightService.batchImport(fastify, body.flights as never[], username)
+      return success(reply, result)
+    } catch (err) {
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+}

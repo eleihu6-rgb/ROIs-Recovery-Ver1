@@ -1,0 +1,819 @@
+{
+  "caseId": "PBS-3510",
+  "source": "/Users/lei/Downloads/_seniority_award_pairing_p1_p6/PAIRING_SCORE.csv",
+  "period": "Jun 2026",
+  "description": "OR seniority award replay: aggregate June 2026 PAIRING_SCORE rows by crew and tier, then replay selectable Specific Date Pairing Number bids through the PBS Portal UI. Source runs outside the Jun 2026 pairing-search period are recorded as blockedRuns.",
+  "crew": [
+    {
+      "employeeId": "247",
+      "sourceRowCount": 27,
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "PAIRING_SCORE.csv crew 247 T1 award pairing occurrences",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-occurrence-list",
+            "values": [
+              "E4109",
+              "E4103",
+              "E4112",
+              "E4106",
+              "E4106",
+              "E4109",
+              "E4103",
+              "E4106",
+              "E4109",
+              "E4111",
+              "E4103",
+              "E4103",
+              "E4106",
+              "E4108",
+              "E4101",
+              "E4106",
+              "E4110",
+              "E4114",
+              "E4203",
+              "E4106",
+              "E4117",
+              "E4106",
+              "E4117",
+              "E4103",
+              "E4127"
+            ],
+            "originDates": [
+              "2026-06-04",
+              "2026-06-05",
+              "2026-06-06",
+              "2026-06-07",
+              "2026-06-09",
+              "2026-06-11",
+              "2026-06-12",
+              "2026-06-04",
+              "2026-06-06",
+              "2026-06-07",
+              "2026-06-08",
+              "2026-06-10",
+              "2026-06-11",
+              "2026-06-04",
+              "2026-06-05",
+              "2026-06-06",
+              "2026-06-08",
+              "2026-06-12",
+              "2026-06-01",
+              "2026-06-02",
+              "2026-06-14",
+              "2026-06-16",
+              "2026-06-18",
+              "2026-06-19",
+              "2026-06-21"
+            ]
+          },
+          "sourcePairingIds": [
+            "61938",
+            "62014",
+            "62077",
+            "62137",
+            "62243",
+            "62322",
+            "62389",
+            "61952",
+            "62067",
+            "62141",
+            "62202",
+            "62284",
+            "62333",
+            "61916",
+            "61977",
+            "62080",
+            "62187",
+            "62358",
+            "61803",
+            "61861",
+            "62480",
+            "62641",
+            "62715",
+            "62790",
+            "62904"
+          ],
+          "sourceInterfaceIds": [
+            "111805",
+            "111783",
+            "111816",
+            "111795",
+            "111796",
+            "111807",
+            "111786",
+            "111793",
+            "111806",
+            "111814",
+            "111784",
+            "111785",
+            "111797",
+            "111804",
+            "111779",
+            "111794",
+            "111812",
+            "111819",
+            "111781",
+            "111792",
+            "111824",
+            "111800",
+            "111825",
+            "111789",
+            "111856"
+          ],
+          "sourceLivePairingIds": [
+            "10923",
+            "11003",
+            "11072",
+            "11138",
+            "11268",
+            "11347",
+            "11416",
+            "10939",
+            "11061",
+            "11142",
+            "11209",
+            "11310",
+            "11359",
+            "10901",
+            "10964",
+            "11075",
+            "11192",
+            "11384",
+            "10779",
+            "10838",
+            "11506",
+            "11668",
+            "11739",
+            "11841",
+            "11959"
+          ],
+          "blockedRuns": [
+            {
+              "pairingLabel": "E4111",
+              "originDate": "2026-05-25",
+              "sourcePairingId": "61411",
+              "sourceInterfaceId": "109381",
+              "sourceLivePairingId": "10289",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            },
+            {
+              "pairingLabel": "E4117",
+              "originDate": "2026-05-28",
+              "sourcePairingId": "61556",
+              "sourceInterfaceId": "109398",
+              "sourceLivePairingId": "10483",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "employeeId": "274",
+      "sourceRowCount": 28,
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "PAIRING_SCORE.csv crew 274 T1 award pairing occurrences",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-occurrence-list",
+            "values": [
+              "E4109",
+              "E4103",
+              "E4112",
+              "E4106",
+              "E4106",
+              "E4109",
+              "E4103",
+              "E4106",
+              "E4109",
+              "E4111",
+              "E4103",
+              "E4103",
+              "E4106",
+              "E4108",
+              "E4101",
+              "E4106",
+              "E4110",
+              "E4114"
+            ],
+            "originDates": [
+              "2026-06-04",
+              "2026-06-05",
+              "2026-06-06",
+              "2026-06-07",
+              "2026-06-09",
+              "2026-06-11",
+              "2026-06-12",
+              "2026-06-04",
+              "2026-06-06",
+              "2026-06-07",
+              "2026-06-08",
+              "2026-06-10",
+              "2026-06-11",
+              "2026-06-04",
+              "2026-06-05",
+              "2026-06-06",
+              "2026-06-08",
+              "2026-06-12"
+            ]
+          },
+          "sourcePairingIds": [
+            "61938",
+            "62014",
+            "62077",
+            "62137",
+            "62243",
+            "62322",
+            "62389",
+            "61952",
+            "62067",
+            "62141",
+            "62202",
+            "62284",
+            "62333",
+            "61916",
+            "61977",
+            "62080",
+            "62187",
+            "62358"
+          ],
+          "sourceInterfaceIds": [
+            "111805",
+            "111783",
+            "111816",
+            "111795",
+            "111796",
+            "111807",
+            "111786",
+            "111793",
+            "111806",
+            "111814",
+            "111784",
+            "111785",
+            "111797",
+            "111804",
+            "111779",
+            "111794",
+            "111812",
+            "111819"
+          ],
+          "sourceLivePairingIds": [
+            "10923",
+            "11003",
+            "11072",
+            "11138",
+            "11268",
+            "11347",
+            "11416",
+            "10939",
+            "11061",
+            "11142",
+            "11209",
+            "11310",
+            "11359",
+            "10901",
+            "10964",
+            "11075",
+            "11192",
+            "11384"
+          ],
+          "blockedRuns": []
+        },
+        {
+          "tier": "T2",
+          "predicate": "PAIRING_SCORE.csv crew 274 T2 award pairing occurrences",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-occurrence-list",
+            "values": [
+              "E4101",
+              "E4107",
+              "E4116A",
+              "E4106",
+              "E4106",
+              "E4129"
+            ],
+            "originDates": [
+              "2026-06-01",
+              "2026-06-03",
+              "2026-06-12",
+              "2026-06-13",
+              "2026-06-20",
+              "2026-06-22"
+            ]
+          },
+          "sourcePairingIds": [
+            "61764",
+            "61887",
+            "62393",
+            "62455",
+            "62863",
+            "62972"
+          ],
+          "sourceInterfaceIds": [
+            "111778",
+            "111803",
+            "112166",
+            "111798",
+            "111802",
+            "111858"
+          ],
+          "sourceLivePairingIds": [
+            "10734",
+            "10866",
+            "11422",
+            "11481",
+            "11917",
+            "12028"
+          ],
+          "blockedRuns": [
+            {
+              "pairingLabel": "E4122",
+              "originDate": "2026-05-24",
+              "sourcePairingId": "61347",
+              "sourceInterfaceId": "109414",
+              "sourceLivePairingId": "10205",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            },
+            {
+              "pairingLabel": "E4127",
+              "originDate": "2026-05-26",
+              "sourcePairingId": "61456",
+              "sourceInterfaceId": "109424",
+              "sourceLivePairingId": "10359",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            },
+            {
+              "pairingLabel": "E4111",
+              "originDate": "2026-05-29",
+              "sourcePairingId": "61611",
+              "sourceInterfaceId": "109382",
+              "sourceLivePairingId": "10552",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            },
+            {
+              "pairingLabel": "E4108",
+              "originDate": "2026-05-31",
+              "sourcePairingId": "61700",
+              "sourceInterfaceId": "109363",
+              "sourceLivePairingId": "10662",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "employeeId": "383",
+      "sourceRowCount": 30,
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "PAIRING_SCORE.csv crew 383 T1 award pairing occurrences",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-occurrence-list",
+            "values": [
+              "E4109",
+              "E4103",
+              "E4112",
+              "E4106",
+              "E4106",
+              "E4109",
+              "E4103",
+              "E4106",
+              "E4109",
+              "E4111",
+              "E4103",
+              "E4103",
+              "E4106",
+              "E4108",
+              "E4101",
+              "E4106",
+              "E4110",
+              "E4114"
+            ],
+            "originDates": [
+              "2026-06-04",
+              "2026-06-05",
+              "2026-06-06",
+              "2026-06-07",
+              "2026-06-09",
+              "2026-06-11",
+              "2026-06-12",
+              "2026-06-04",
+              "2026-06-06",
+              "2026-06-07",
+              "2026-06-08",
+              "2026-06-10",
+              "2026-06-11",
+              "2026-06-04",
+              "2026-06-05",
+              "2026-06-06",
+              "2026-06-08",
+              "2026-06-12"
+            ]
+          },
+          "sourcePairingIds": [
+            "61938",
+            "62014",
+            "62077",
+            "62137",
+            "62243",
+            "62322",
+            "62389",
+            "61952",
+            "62067",
+            "62141",
+            "62202",
+            "62284",
+            "62333",
+            "61916",
+            "61977",
+            "62080",
+            "62187",
+            "62358"
+          ],
+          "sourceInterfaceIds": [
+            "111805",
+            "111783",
+            "111816",
+            "111795",
+            "111796",
+            "111807",
+            "111786",
+            "111793",
+            "111806",
+            "111814",
+            "111784",
+            "111785",
+            "111797",
+            "111804",
+            "111779",
+            "111794",
+            "111812",
+            "111819"
+          ],
+          "sourceLivePairingIds": [
+            "10923",
+            "11003",
+            "11072",
+            "11138",
+            "11268",
+            "11347",
+            "11416",
+            "10939",
+            "11061",
+            "11142",
+            "11209",
+            "11310",
+            "11359",
+            "10901",
+            "10964",
+            "11075",
+            "11192",
+            "11384"
+          ],
+          "blockedRuns": []
+        },
+        {
+          "tier": "T2",
+          "predicate": "PAIRING_SCORE.csv crew 383 T2 award pairing occurrences",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-occurrence-list",
+            "values": [
+              "E4109",
+              "E4106",
+              "E4122",
+              "E4124",
+              "E4126",
+              "E4126",
+              "E4126",
+              "E4132",
+              "E4126",
+              "E4129",
+              "E4136",
+              "E4116A"
+            ],
+            "originDates": [
+              "2026-06-13",
+              "2026-06-14",
+              "2026-06-16",
+              "2026-06-18",
+              "2026-06-19",
+              "2026-06-21",
+              "2026-06-22",
+              "2026-06-23",
+              "2026-06-24",
+              "2026-06-26",
+              "2026-06-27",
+              "2026-06-12"
+            ]
+          },
+          "sourcePairingIds": [
+            "62442",
+            "62510",
+            "62648",
+            "62733",
+            "62796",
+            "62925",
+            "62994",
+            "63055",
+            "63115",
+            "63221",
+            "63291",
+            "62393"
+          ],
+          "sourceInterfaceIds": [
+            "111808",
+            "111799",
+            "111835",
+            "111843",
+            "111849",
+            "111850",
+            "111851",
+            "111865",
+            "111852",
+            "111860",
+            "111875",
+            "112166"
+          ],
+          "sourceLivePairingIds": [
+            "11470",
+            "11540",
+            "11674",
+            "11759",
+            "11846",
+            "11980",
+            "12051",
+            "12112",
+            "12170",
+            "12277",
+            "12348",
+            "11422"
+          ],
+          "blockedRuns": []
+        }
+      ]
+    },
+    {
+      "employeeId": "499",
+      "sourceRowCount": 16,
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "PAIRING_SCORE.csv crew 499 T1 award pairing occurrences",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-occurrence-list",
+            "values": [
+              "E4109"
+            ],
+            "originDates": [
+              "2026-06-04"
+            ]
+          },
+          "sourcePairingIds": [
+            "61938"
+          ],
+          "sourceInterfaceIds": [
+            "111805"
+          ],
+          "sourceLivePairingIds": [
+            "10923"
+          ],
+          "blockedRuns": []
+        },
+        {
+          "tier": "T2",
+          "predicate": "PAIRING_SCORE.csv crew 499 T2 award pairing occurrences",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-occurrence-list",
+            "values": [
+              "E4104",
+              "E4103",
+              "E4110",
+              "E4110",
+              "E4113",
+              "E4114",
+              "E4130",
+              "E4129",
+              "E4131",
+              "E4134",
+              "E4132",
+              "E4139"
+            ],
+            "originDates": [
+              "2026-06-01",
+              "2026-06-03",
+              "2026-06-05",
+              "2026-06-06",
+              "2026-06-07",
+              "2026-06-08",
+              "2026-06-23",
+              "2026-06-24",
+              "2026-06-25",
+              "2026-06-27",
+              "2026-06-28",
+              "2026-06-29"
+            ]
+          },
+          "sourcePairingIds": [
+            "61810",
+            "61898",
+            "61996",
+            "62060",
+            "62101",
+            "62169",
+            "63021",
+            "63092",
+            "63157",
+            "63300",
+            "63378",
+            "63420"
+          ],
+          "sourceInterfaceIds": [
+            "111790",
+            "111782",
+            "111809",
+            "111810",
+            "111817",
+            "111818",
+            "111861",
+            "111859",
+            "111864",
+            "111873",
+            "111868",
+            "111881"
+          ],
+          "sourceLivePairingIds": [
+            "10785",
+            "10879",
+            "10983",
+            "11053",
+            "11100",
+            "11172",
+            "12077",
+            "12148",
+            "12213",
+            "12357",
+            "12436",
+            "12479"
+          ],
+          "blockedRuns": [
+            {
+              "pairingLabel": "E4123",
+              "originDate": "2026-05-26",
+              "sourcePairingId": "61473",
+              "sourceInterfaceId": "109417",
+              "sourceLivePairingId": "10379",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            },
+            {
+              "pairingLabel": "E4116",
+              "originDate": "2026-05-28",
+              "sourcePairingId": "61534",
+              "sourceInterfaceId": "109394",
+              "sourceLivePairingId": "10458",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            },
+            {
+              "pairingLabel": "E4129",
+              "originDate": "2026-05-31",
+              "sourcePairingId": "61715",
+              "sourceInterfaceId": "109427",
+              "sourceLivePairingId": "10678",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "employeeId": "536",
+      "sourceRowCount": 12,
+      "properties": [
+        {
+          "tier": "T1",
+          "predicate": "PAIRING_SCORE.csv crew 536 T1 award pairing occurrences",
+          "page": "pairing",
+          "action": "award",
+          "propertyCode": 102,
+          "name": "Pairing Number",
+          "bid": {
+            "type": "pairing-occurrence-list",
+            "values": [
+              "E4105A",
+              "E4111",
+              "E4110",
+              "E4111A",
+              "E4118",
+              "E4119",
+              "E4120",
+              "E4123",
+              "E4126"
+            ],
+            "originDates": [
+              "2026-06-02",
+              "2026-06-05",
+              "2026-06-07",
+              "2026-06-08",
+              "2026-06-14",
+              "2026-06-15",
+              "2026-06-16",
+              "2026-06-17",
+              "2026-06-29"
+            ]
+          },
+          "sourcePairingIds": [
+            "61835",
+            "62018",
+            "62116",
+            "62210",
+            "62493",
+            "62543",
+            "62611",
+            "62673",
+            "63425"
+          ],
+          "sourceInterfaceIds": [
+            "112168",
+            "111813",
+            "111811",
+            "112165",
+            "111827",
+            "111829",
+            "111833",
+            "111842",
+            "111855"
+          ],
+          "sourceLivePairingIds": [
+            "10814",
+            "11009",
+            "11115",
+            "11214",
+            "11522",
+            "11572",
+            "11642",
+            "11700",
+            "12484"
+          ],
+          "blockedRuns": [
+            {
+              "pairingLabel": "E4109",
+              "originDate": "2026-05-24",
+              "sourcePairingId": "61377",
+              "sourceInterfaceId": "109370",
+              "sourceLivePairingId": "10241",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            },
+            {
+              "pairingLabel": "E4125",
+              "originDate": "2026-05-26",
+              "sourcePairingId": "61486",
+              "sourceInterfaceId": "109420",
+              "sourceLivePairingId": "10393",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            },
+            {
+              "pairingLabel": "E4125",
+              "originDate": "2026-05-28",
+              "sourcePairingId": "61568",
+              "sourceInterfaceId": "109421",
+              "sourceLivePairingId": "10501",
+              "reason": "out-of-period for Jun 2026 portal pairing search"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

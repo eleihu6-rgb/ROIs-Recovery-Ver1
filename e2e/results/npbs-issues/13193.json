@@ -1,0 +1,15 @@
+{
+  "employeeId": "13193",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 2,
+  "placed": 1,
+  "placedDetail": [
+    {
+      "tier": "T2",
+      "code": 201,
+      "name": "Prefer Off"
+    }
+  ],
+  "issues": []
+}

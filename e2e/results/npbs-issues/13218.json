@@ -1,0 +1,30 @@
+{
+  "employeeId": "13218",
+  "category": "YYZ-737-FA",
+  "context": "Current",
+  "totalProperties": 4,
+  "placed": 4,
+  "placedDetail": [
+    {
+      "tier": "T1",
+      "code": 201,
+      "name": "Prefer Off"
+    },
+    {
+      "tier": "T3",
+      "code": 110,
+      "name": "Any/Every Duty On Date / Day"
+    },
+    {
+      "tier": "T4",
+      "code": 102,
+      "name": "Pairing Number"
+    },
+    {
+      "tier": "T2",
+      "code": 402,
+      "name": "Min Credit Window"
+    }
+  ],
+  "issues": []
+}
