@@ -70,6 +70,7 @@ import permissionAdminRoutes from './routes/admin/permission-admin.js'
 import pbsSimulatedCrewPortalAdminRoutes from './routes/admin/pbs-simulated-crew-portal.js'
 import crewMemoRoutes from './routes/crew-memo/index.js'
 import resPairingRoutes from './routes/res-pairing/res-pairing.js'
+import mobileRosterRoutes from './routes/mobile-roster/mobile-roster.js'
 import { bumpBackendVersion, formatAppVersion } from './utils/app-version.js'
 import { resolveFiliale } from './utils/filiale.js'
 import { flushRosterPublishAdjustBatches } from './services/roster/roster-publish-outbound-service.js'
@@ -193,6 +194,7 @@ const start = async () => {
     await server.register(flightRoutes)
     await server.register(pairingRoutes)
     await server.register(resPairingRoutes, { prefix: '/api' })
+    await server.register(mobileRosterRoutes, { prefix: '/api/mobile-roster' })
     await server.register(rosterRoutes)
     await server.register(ganttRoutes)
     await server.register(scenarioRoutes)
