@@ -22,7 +22,7 @@ export default defineConfig({
   projects: [
     {
       name: 'cr-public-validation',
-      testMatch: /gantt\/real-user-login\.spec\.ts/,
+      testMatch: /gantt\/(real-user-login|flight-pane-fleet-filter|flight-schedule-et-ssim)\.spec\.ts/,
     },
   ],
   outputDir: path.join(__dirname, '../results/test-results'),

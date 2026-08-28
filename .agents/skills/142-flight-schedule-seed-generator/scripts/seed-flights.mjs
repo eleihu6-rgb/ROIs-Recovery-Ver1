@@ -88,9 +88,6 @@ async function loadAirportOffsets(client, codes) {
 
 function buildRow({ airline, fleet, flightAssignment, flt_num, depArp, arvArp, date, depLocal, blockMin, offsets, asOf }) {
   const schDep = localToUtc(date, depLocal, offsets[depArp]);
-  if (flt_num === 'EK002' && date === '2026-08-15') {
-    console.error('DEBUG', { depArp, zone: offsets[depArp], depLocal, computed: schDep.toISOString() });
-  }
   const schArv = new Date(schDep.getTime() + blockMin * 60_000);
   const flightFlag = date <= asOf ? 'A' : 'S';
   return {
