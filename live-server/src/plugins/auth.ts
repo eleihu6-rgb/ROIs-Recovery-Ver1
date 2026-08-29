@@ -32,6 +32,11 @@ const PUBLIC_PATHS = [
   '/api/public/config',   // Public system config (for login page)
 ]
 
+/** Exact public exceptions that must not expose other methods or descendants. */
+const PUBLIC_EXACT_ROUTES = [
+  { method: 'POST', path: '/api/mobile-roster/session' }, // Crew credential authentication; production requires HTTPS and mobile hardening
+]
+
 /**
  * Global JWT authentication hook.
  * Verifies Authorization: Bearer <token> on every request except public paths.
@@ -44,7 +49,10 @@ export default fp(async (fastify: FastifyInstance) => {
 
     // Skip public paths
     const path = request.url.split('?')[0]
-    if (PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'))) return
+    if (
+      PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'))
+      || PUBLIC_EXACT_ROUTES.some((route) => route.method === request.method && route.path === path)
+    ) return
 
     // Extract Bearer token
     const authHeader = request.headers.authorization

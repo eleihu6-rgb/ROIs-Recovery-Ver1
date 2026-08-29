@@ -38,9 +38,13 @@ import {
   SEGMENT_DUTY_BORDER,
   SEGMENT_FLIGHT_HEIGHT,
   SEGMENT_BAR_HEIGHT,
+  DELAY_GHOST_THRESHOLD_MIN,
+  DELAY_GHOST_ACTUAL_TIME_COLOR,
 } from '../gantt-constants'
 import { timeToX, msToX, parseIsoMs, getVisibleRowRange, roundedRect, gradientFill, getContrastTextColor, lightenColor, darkenColor, parseIsoCached } from '../gantt-utils'
 import { isDeadheadRosterPuck, resolveSegmentDutyFill } from '@/utils/puck-duty-color'
+import { drawDelayGhost } from './flight-renderer'
+import { deltaMinutes } from '@/components/flight/derive-flight-ops-status'
 import { drawViolationBadge, violationBadgePosition } from '../violation-overlay'
 import { drawMemoBadge, memoBadgePosition } from '../memo-overlay'
 import {
@@ -679,11 +683,36 @@ const drawSegmentGroup = (
     for (const item of duty.items) {
       if (!item.schStrDtUtc || !item.schEndDtUtc) continue
 
-      const segStart = timeToX(parseIsoCached(item.schStrDtUtc), rangeStart, pxPerHour, 'UTC') - scrollX
-      const segEnd = timeToX(parseIsoCached(item.schEndDtUtc), rangeStart, pxPerHour, 'UTC') - scrollX
+      const schStart = timeToX(parseIsoCached(item.schStrDtUtc), rangeStart, pxPerHour, 'UTC') - scrollX
+      const schEnd = timeToX(parseIsoCached(item.schEndDtUtc), rangeStart, pxPerHour, 'UTC') - scrollX
+
+      // Same anchor-swap as the Flight pane: once an item's actual time has drifted from
+      // schedule past the threshold, the solid box tracks ACTUAL and a hatched ghost is drawn
+      // behind it at the ORIGINAL SCHEDULED position (Ryan: "same style" ghost across
+      // Flight/Pairing/Roster).
+      let hasDelayGhost = false
+      let segStart = schStart
+      let segEnd = schEnd
+      if (item.actStrDtUtc && item.actEndDtUtc) {
+        const depDelta = deltaMinutes(item.actStrDtUtc, item.schStrDtUtc)
+        const arvDelta = deltaMinutes(item.actEndDtUtc, item.schEndDtUtc)
+        const maxDelta = Math.max(Math.abs(depDelta ?? 0), Math.abs(arvDelta ?? 0))
+        if (maxDelta >= DELAY_GHOST_THRESHOLD_MIN) {
+          hasDelayGhost = true
+          segStart = timeToX(parseIsoCached(item.actStrDtUtc), rangeStart, pxPerHour, 'UTC') - scrollX
+          segEnd = timeToX(parseIsoCached(item.actEndDtUtc), rangeStart, pxPerHour, 'UTC') - scrollX
+        }
+      }
       const segWidth = Math.max(segEnd - segStart, MIN_TASK_WIDTH)
 
-      if (segStart > canvasWidth || segEnd < 0) continue
+      if (Math.min(segStart, schStart) > canvasWidth || Math.max(segEnd, schEnd) < 0) continue
+
+      if (hasDelayGhost) {
+        const schWidth = Math.max(schEnd - schStart, MIN_TASK_WIDTH)
+        if (schEnd >= 0 && schStart <= canvasWidth) {
+          drawDelayGhost(ctx, item.schStrDtUtc, schStart, flightY, schWidth, flightHeight, timezone)
+        }
+      }
 
       const isSelected = selectedTaskIds.has(item.id)
       const isHovered = hoveredTaskId === item.id
@@ -724,7 +753,7 @@ const drawSegmentGroup = (
 
       // Text content based on width
       if (segWidth >= 60) {
-        drawRosterPuck(ctx, item, segStart, flightY, segWidth, flightHeight, timezone, isDH, puckTextColor)
+        drawRosterPuck(ctx, item, segStart, flightY, segWidth, flightHeight, timezone, isDH, puckTextColor, hasDelayGhost)
       } else if (segWidth >= 30) {
         drawPartialRosterPuck(ctx, item, segStart, flightY, segWidth, flightHeight, isDH, puckTextColor)
       } else if (segWidth >= 16) {
@@ -935,6 +964,7 @@ const drawRosterPuck = (
   timezone: string,
   isDH: boolean,
   overrideTextColor?: string,
+  showActualTimes = false,
 ): void => {
   const textColor = overrideTextColor ?? (isDH ? '#d8b4fe' : '#bfdbfe')
   const airportColor = overrideTextColor ?? (isDH ? '#d8b4fe' : FLIGHT_PUCK_AIRPORT_COLOR)
@@ -957,11 +987,13 @@ const drawRosterPuck = (
   ctx.fillStyle = airportColor
   ctx.fillText(depArp, x + 4, y + height / 2 - 4)
 
-  // Left bottom: dep_time
-  if (item.schStrDtUtc) {
+  // Left bottom: dep_time — flagged amber with a "→" suffix once it reflects the ACTUAL
+  // (shifted) time, same treatment as the Flight pane (drawFullPuck in flight-renderer.ts).
+  const depSrc = showActualTimes ? item.actStrDtUtc : item.schStrDtUtc
+  if (depSrc) {
     ctx.font = `8px ${PUCK_FONT_MONO}`
-    ctx.fillStyle = timeColor
-    const depTime = formatTime(item.schStrDtUtc, timezone)
+    ctx.fillStyle = showActualTimes ? DELAY_GHOST_ACTUAL_TIME_COLOR : timeColor
+    const depTime = formatTime(depSrc, timezone) + (showActualTimes ? ' →' : '')
     ctx.fillText(depTime, x + 4, y + height / 2 + 4)
   }
 

@@ -55,11 +55,11 @@ export const localToUtc = (dateStr: string, timeStr: string, timezone: string): 
 }
 
 /** Format a UTC ISO string as "YYYY-MM-DD" in the display timezone. */
-const utcToLocalDate = (utcStr: string, timezone: string): string =>
+export const utcToLocalDate = (utcStr: string, timezone: string): string =>
   new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date(utcStr))
 
 /** Format a UTC ISO string as "HH:MM" in the display timezone. */
-const utcToLocalTime = (utcStr: string, timezone: string): string =>
+export const utcToLocalTime = (utcStr: string, timezone: string): string =>
   new Intl.DateTimeFormat('en-GB', {
     timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(new Date(utcStr))

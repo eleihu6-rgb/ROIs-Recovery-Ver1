@@ -42,7 +42,8 @@ interface PairingListQuery extends PaginationQuery {
   // Filter params
   label?: string
   fleet?: string
-  base?: string
+  /** Home-base filter — OR match across the selected bases (e.g. ['DXB','ADD']). */
+  base?: string[]
   division?: string
   segFltNum?: string
   depArp?: string
@@ -64,11 +65,12 @@ interface PairingListQuery extends PaginationQuery {
  * Create a stable hash from filter params for cache key
  */
 function hashFilters(filters: Partial<PairingListQuery>): string {
-  const filterKeys = ['label', 'fleet', 'base', 'division', 'segFltNum', 'depArp', 'isFull'] as const
+  const filterKeys = ['label', 'fleet', 'division', 'segFltNum', 'depArp', 'isFull'] as const
   const values = filterKeys.map(k => filters[k] ?? '').join('|')
+  const baseKey = (filters.base ?? []).slice().sort().join(',')
   const assignmentsKey = (filters.assignments ?? []).join(',')
   const coverageKey = (filters.coverage ?? '').split(',').sort().join(',')
-  return crypto.createHash('md5').update(`${values}|${assignmentsKey}|${coverageKey}`).digest('hex').slice(0, 8)
+  return crypto.createHash('md5').update(`${values}|${baseKey}|${assignmentsKey}|${coverageKey}`).digest('hex').slice(0, 8)
 }
 
 /**
@@ -284,8 +286,9 @@ export const pairingService = {
       if (fleet) {
         conditions.push(eq(pairing.fleet, fleet))
       }
-      if (base) {
-        conditions.push(eq(pairing.base, base))
+      if (base && base.length > 0) {
+        // Home base — OR match across the selected bases (e.g. DXB, ADD).
+        conditions.push(inArray(pairing.base, base))
       }
       if (division) {
         conditions.push(eq(pairing.division, division))

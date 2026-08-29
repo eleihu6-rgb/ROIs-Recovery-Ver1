@@ -51,9 +51,9 @@ const envSchema = z
     ROSTER_SOFT_DELETE_CLEANUP_BATCH_SIZE: z.coerce.number().int().positive().default(1000),
     ROSTER_SOFT_DELETE_CLEANUP_INTERVAL_MS: z.coerce.number().int().positive().default(604_800_000),
     SCHEDULER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
-    LIVE_SCHEMA: z.string().regex(/^[a-z][a-z0-9_]*$/).default('f8_dev_live'),
-    SCENARIO_SCHEMA: z.string().regex(/^[a-z][a-z0-9_]*$/).default('f8_dev_scenario'),
-    PBS_SCHEMA: z.string().default('f8_dev_pbs'),
+    LIVE_SCHEMA: z.string().regex(/^[a-z][a-z0-9_]*$/).default('f8_sit_live'),
+    SCENARIO_SCHEMA: z.string().regex(/^[a-z][a-z0-9_]*$/).default('f8_sit_scenario'),
+    PBS_SCHEMA: z.string().default('f8_sit_pbs'),
     FILIALE: optionalNonBlankString(),
     // Scenario Gantt data source: 'gz' parses optimizer gz files; 'db' reads the
     // partition-backed scenario schema. Default 'db' (parity proven — DB↔gz tests +

@@ -1,20 +1,25 @@
-# DEV 数据库 Schema 隔离方案
+# DEV 数据库 Schema 隔离方案（已废弃 — Historical Only）
 
-> 目的：本地开发使用独立的 `f8_dev_*` schema，彻底杜绝开发操作影响 UAT 数据。
+> **2026-08-28 起废弃**：本文档描述的 `f8_dev_*` 隔离 schema 方案已停用。本地开发现在直接使用
+> `f8_sit_live` / `f8_sit_scenario` / `f8_sit_pbs`（与 SIT 环境共用同一份 schema），当前规则见根
+> `CLAUDE.md` 的 §Remote-DB-Only。本文档以下内容仅作历史记录（曾经如何搭建/重建 `f8_dev_*`），
+> **不再是当前规则**，AI agent 不应据此判断当前应连接的 schema。
+
+> 目的（历史）：本地开发使用独立的 `f8_dev_*` schema，彻底杜绝开发操作影响 UAT 数据。
 > 日期：2026-08-12
 > 适用：所有在本地（CoreServer 10.15.12.3）开发 live-server / pbs-server / gantt / pbs-portal 的工程师与 AI agent。
 
-## 1. Schema 总览
+## 1. Schema 总览（历史状态，2026-08-12）
 
-数据库 `rois` 按环境 + 业务隔离，共 9 个 schema（2026-08-12 起，旧的 `f8`/`f8_pbs`/`scenario` 已删除）：
+数据库 `rois` 按环境 + 业务隔离，当时共 9 个 schema（2026-08-12 起，旧的 `f8`/`f8_pbs`/`scenario` 已删除）：
 
 | 环境 | Live（排班管理）| Scenario（场景）| PBS（机组申请）|
 |------|----------------|----------------|---------------|
-| **DEV（本地开发）** | `f8_dev_live` | `f8_dev_scenario` | `f8_dev_pbs` |
+| ~~DEV（本地开发，已废弃）~~ | ~~`f8_dev_live`~~ | ~~`f8_dev_scenario`~~ | ~~`f8_dev_pbs`~~ |
 | **UAT** | `f8_uat_live` | `f8_uat_scenario` | `f8_uat_pbs` |
-| **SIT** | `f8_sit_live` | `f8_sit_scenario` | `f8_sit_pbs` |
+| **SIT（本地开发现在也用这套）** | `f8_sit_live` | `f8_sit_scenario` | `f8_sit_pbs` |
 
-**铁律：本地开发一律使用 `f8_dev_*` 三个 schema。** 查询、写入、seed、测试都不得指向 `f8_uat_*`。
+~~铁律：本地开发一律使用 `f8_dev_*` 三个 schema。~~ **现行规则：本地开发直接使用 `f8_sit_live` 三个 schema，详见根 `CLAUDE.md`。**
 
 ## 2. DB 实例与连接
 
@@ -67,17 +72,15 @@
 4. 重建视图（`pbs_bid_feedback_team_rule_source`，引用改为 `f8_dev_live`）。
 5. 授权 dev 角色（`GRANT USAGE, CREATE ON SCHEMA ... TO f8_dev_live, f8_dev_pbs` + 表/序列 ALL）。
 
-## 7. AI agent 注意事项
+## 7. AI agent 注意事项（已更新，§1-6 的 `f8_dev_*` 描述已废弃）
 
-- 查询/调试本地库一律用 `f8_dev_*`（用各服务 `.env` 的 `DATABASE_URL`，search_path 已指向 dev）。
-- **禁止**用 dev 连接改 UAT schema；也**禁止**用 UAT 凭据访问 dev（已撤销权限）。
+- 查询/调试本地库一律用 `f8_sit_live`/`f8_sit_scenario`/`f8_sit_pbs`（用各服务 `.env` 的 `DATABASE_URL`，search_path 已指向 SIT）。
 - 判断目标环境先看 `.env` 的 `LIVE_SCHEMA`/`PBS_SCHEMA`/`SCENARIO_SCHEMA`（或 `DATABASE_URL` 的 search_path），再选 schema。
-- 涉及 schema 的测试断言（如 `schema: 'f8'`）在 dev 下应为 `f8_dev_live`——发现 stale 断言按 §Stale-Test 更新。
+- 涉及 schema 的测试断言（如 `schema: 'f8'`）本地下应为 `f8_sit_live`——发现 stale 断言（含旧 `f8_dev_live` 断言）按 §Stale-Test 更新。
 
-## 8. 测试安全性
+## 8. 测试安全性（重要变更——不再隔离）
 
-**在本地跑单元 / 集成 / E2E 测试是安全的——所有 DB 写操作（seed、清理、业务写入）都落在 `f8_dev_*`，不会影响 SIT/UAT 数据。**
+**本地跑单元 / 集成 / E2E 测试的写操作现在落在 `f8_sit_live` 等共享 SIT schema 上，会影响 SIT 环境和其他人/其他 agent 正在使用的数据。原先 `f8_dev_*` 提供的隔离已不存在。**
 
-- dev 服务（live 3200 / pbs 3202）连接 `f8_dev_*`；测试若连后端，写操作走 dev schema。
-- SIT/UAT 服务与 dev 完全隔离（不同 schema + 不同端口 + 不同主机 10.15.12.4 / 10.15.12.3）。
-- 唯一需注意：测试若显式指定了 `search_path=f8_uat_*` 或硬编码 schema（如部分历史 fixture），会连到错误环境——按 §Stale-Test 更新为 `f8_dev_*`。
+- 批量写入、delete、或改动特定日期范围/特定业务对象（如 flight、pairing）的数据前，先确认没有其他 agent/测试/演示依赖同一批数据；有约定（如日期范围、flight number 白名单）必须遵守，禁止无协调地覆盖。
+- 测试若显式指定了 `search_path=f8_uat_*` 或硬编码旧的 `f8_dev_*` schema（如部分历史 fixture），会连到错误环境——按 §Stale-Test 更新为 `f8_sit_live`。

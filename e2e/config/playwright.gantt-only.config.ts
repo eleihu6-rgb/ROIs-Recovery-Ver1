@@ -6,6 +6,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '../..')
 
 const ganttBase = process.env.GANTT_BASE_URL ?? 'http://localhost:5173'
+// Optional demo pacing: PW_SLOWMO=<ms> delays each action so a headed run is watchable.
+// Default 0 keeps CI/headless runs at full speed (no behaviour change).
+const slowMo = Number(process.env.PW_SLOWMO ?? 0)
 
 export default defineConfig({
   testDir: path.join(__dirname, '../tests/gantt'),
@@ -20,6 +23,7 @@ export default defineConfig({
     baseURL: ganttBase,
     storageState: path.join(__dirname, '../results/.auth/gantt-admin.json'),
     viewport: { width: 1440, height: 900 },
+    launchOptions: { slowMo },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

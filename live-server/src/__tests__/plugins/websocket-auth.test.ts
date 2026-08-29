@@ -80,7 +80,7 @@ async function createWsApp(): Promise<{
   process.env.APP_ENV = 'test'
   process.env.JWT_SECRET = JWT_SECRET
   // Test tokens are signed with schema 'f8'; the local env default is
-  // f8_dev_live, which would make validateAuthPayload 401 the connection.
+  // f8_sit_live, which would make validateAuthPayload 401 the connection.
   process.env.LIVE_SCHEMA = 'f8'
   process.env.DATABASE_URL ||= 'postgres://test:test@localhost:5432/test'
 

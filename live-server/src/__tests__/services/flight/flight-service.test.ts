@@ -23,6 +23,38 @@ const mockFlight = {
   isDeleted: 0,
 }
 
+// getById/update route their DB row through toFlightApi() (to compute isCancelled),
+// which needs real Date fields and the full FlightRowDB shape — mockFlight is too sparse.
+const fullFlightRow = {
+  id: 1, airline: 'CA', fltDt: '2026-03-01', fltNum: 'CA101', depArp: 'PEK', arvArp: 'PVG',
+  schDepDtUtc: new Date('2026-03-01T02:00:00Z'), schArvDtUtc: new Date('2026-03-01T04:00:00Z'),
+  actDepDtUtc: null, actArvDtUtc: null, actDepArp: '', actArvArp: '',
+  flightFlag: '', blkMin: 120, fleet: '320', register: 'B-001', fltType: 'J', fltSts: 'OK', isDeleted: 0,
+}
+
+const toFlightApiExpected = (row: typeof fullFlightRow) => ({
+  id: row.id,
+  airline: row.airline,
+  fltDt: row.fltDt,
+  fltNum: row.fltNum,
+  depArp: row.depArp,
+  arvArp: row.arvArp,
+  schDepDtUtc: row.schDepDtUtc.toISOString(),
+  schArvDtUtc: row.schArvDtUtc.toISOString(),
+  actDepDtUtc: (row.actDepDtUtc as Date | null)?.toISOString() ?? '',
+  actArvDtUtc: (row.actArvDtUtc as Date | null)?.toISOString() ?? '',
+  actDepArp: row.actDepArp,
+  actArvArp: row.actArvArp,
+  flightFlag: row.flightFlag,
+  blkMin: row.blkMin,
+  fleet: row.fleet,
+  register: row.register,
+  fltType: row.fltType,
+  fltSts: row.fltSts,
+  isDeleted: row.isDeleted,
+  isCancelled: row.fltSts?.toUpperCase().includes('CX') || row.flightFlag?.toUpperCase() === 'X',
+})
+
 /**
  * Create a chainable mock db where every method returns `this` so any
  * chain like select().from().where().orderBy().limit().offset() works.
@@ -181,14 +213,14 @@ describe('flightService', () => {
       let thenCallCount = 0
       fastify.db.then.mockImplementation((resolve: any) => {
         thenCallCount++
-        if (thenCallCount === 1) return resolve([mockFlight])    // flight row
+        if (thenCallCount === 1) return resolve([fullFlightRow])  // flight row
         if (thenCallCount === 2) return resolve(compositions)     // compositions
         return resolve([])
       })
 
       const result = await flightService.getById(fastify, 1)
 
-      expect(result).toEqual({ ...mockFlight, compositions })
+      expect(result).toEqual({ ...toFlightApiExpected(fullFlightRow), compositions })
     })
 
     it('should return null when flight not found', async () => {
@@ -219,14 +251,50 @@ describe('flightService', () => {
 
   describe('update', () => {
     it('should update flight and invalidate caches', async () => {
-      const updated = { ...mockFlight, fltNum: 'CA102' }
+      const updated = { ...fullFlightRow, fltNum: 'CA102' }
       fastify.db.returning.mockResolvedValue([updated])
 
       const result = await flightService.update(fastify, 1, { fltNum: 'CA102' } as any, 'admin')
 
-      expect(result).toEqual(updated)
+      expect(result).toEqual(toFlightApiExpected(updated))
       expect(invalidate).toHaveBeenCalledWith(fastify.redis, 'flight:1')
       expect(invalidatePattern).toHaveBeenCalledWith(fastify.redis, 'flight:list:*')
+    })
+  })
+
+  // ---------- cancel / restore ----------
+
+  describe('cancel', () => {
+    it('should set fltSts to CX and return isCancelled=true', async () => {
+      const cancelled = { ...fullFlightRow, fltSts: 'CX' }
+      fastify.db.returning.mockResolvedValue([cancelled])
+
+      const result = await flightService.cancel(fastify, 1, 'admin')
+
+      expect(result).toEqual(toFlightApiExpected(cancelled))
+      expect(result?.isCancelled).toBe(true)
+      expect(invalidate).toHaveBeenCalledWith(fastify.redis, 'flight:1')
+      expect(invalidatePattern).toHaveBeenCalledWith(fastify.redis, 'flight:list:*')
+    })
+
+    it('should return null when flight not found', async () => {
+      fastify.db.returning.mockResolvedValue([])
+
+      const result = await flightService.cancel(fastify, 999, 'admin')
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('restore', () => {
+    it('should clear fltSts and return isCancelled=false', async () => {
+      const restored = { ...fullFlightRow, fltSts: null }
+      fastify.db.returning.mockResolvedValue([restored])
+
+      const result = await flightService.restore(fastify, 1, 'admin')
+
+      expect(result).toEqual(toFlightApiExpected(restored))
+      expect(result?.isCancelled).toBe(false)
     })
   })
 

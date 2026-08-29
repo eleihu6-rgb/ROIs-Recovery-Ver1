@@ -21,15 +21,19 @@ import {
   FLIGHT_PUCK_TIME_COLOR,
   SEGMENT_FLIGHT_HEIGHT,
   SEGMENT_BAR_HEIGHT,
+  DELAY_GHOST_THRESHOLD_MIN,
+  DELAY_GHOST_ACTUAL_TIME_COLOR,
 } from '../gantt-constants'
 import { msToX, roundedRect, gradientFill, parseIsoMs, lightenColor, getContrastTextColor } from '../gantt-utils'
 import { drawSelectionOutline } from '../selection-outline'
+import { drawDelayGhost } from './flight-renderer'
 import type { BaseRenderContext } from './base-renderer'
 import type { Pairing, PairingSegment, PairingItem } from '@/types/pairing'
 import { formatTime } from '@/stores/timezone-store'
 import { SESSION_COLORS } from '@/stores/pairing-store'
 import { useAssignmentStore } from '@/stores/assignment-store'
 import { isDeadheadSegAssignment, resolveSegmentDutyFill } from '@/utils/puck-duty-color'
+import { deltaMinutes } from '@/components/flight/derive-flight-ops-status'
 
 /** Ground-type assignment groups — use task color instead of flight blue. */
 const GROUND_GROUPS = new Set(['SBY', 'DO', 'VAC', 'SIM', 'TRN', 'ADM', 'OFF', 'SLV', 'GND', 'GRD', 'LVE'])
@@ -319,12 +323,37 @@ const drawSegmentRow = (
     for (const seg of duty.segments) {
       if (!seg.schStrDtUtc || !seg.schEndDtUtc) continue
 
-      const segStart = msToX(parseIsoMs(seg.schStrDtUtc), rangeStartMs, pxPerHour) - scrollX
-      const segEnd = msToX(parseIsoMs(seg.schEndDtUtc), rangeStartMs, pxPerHour) - scrollX
+      const schStart = msToX(parseIsoMs(seg.schStrDtUtc), rangeStartMs, pxPerHour) - scrollX
+      const schEnd = msToX(parseIsoMs(seg.schEndDtUtc), rangeStartMs, pxPerHour) - scrollX
+
+      // Same anchor-swap as the Flight pane: once a segment's actual time has drifted from
+      // schedule past the threshold, the solid segment box tracks ACTUAL and a hatched ghost
+      // is drawn behind it at the ORIGINAL SCHEDULED position (Ryan: "same style" ghost across
+      // Flight/Pairing/Roster).
+      let hasDelayGhost = false
+      let segStart = schStart
+      let segEnd = schEnd
+      if (seg.actStrDtUtc && seg.actEndDtUtc) {
+        const depDelta = deltaMinutes(seg.actStrDtUtc, seg.schStrDtUtc)
+        const arvDelta = deltaMinutes(seg.actEndDtUtc, seg.schEndDtUtc)
+        const maxDelta = Math.max(Math.abs(depDelta ?? 0), Math.abs(arvDelta ?? 0))
+        if (maxDelta >= DELAY_GHOST_THRESHOLD_MIN) {
+          hasDelayGhost = true
+          segStart = msToX(parseIsoMs(seg.actStrDtUtc), rangeStartMs, pxPerHour) - scrollX
+          segEnd = msToX(parseIsoMs(seg.actEndDtUtc), rangeStartMs, pxPerHour) - scrollX
+        }
+      }
       const segWidth = Math.max(segEnd - segStart, MIN_TASK_WIDTH)
 
       // Skip if outside canvas
-      if (segStart > canvasWidth || segEnd < 0) continue
+      if (Math.min(segStart, schStart) > canvasWidth || Math.max(segEnd, schEnd) < 0) continue
+
+      if (hasDelayGhost) {
+        const schWidth = Math.max(schEnd - schStart, MIN_TASK_WIDTH)
+        if (schEnd >= 0 && schStart <= canvasWidth) {
+          drawDelayGhost(ctx, seg.schStrDtUtc, schStart, flightY, schWidth, SEGMENT_FLIGHT_HEIGHT, timezone)
+        }
+      }
 
       // Check if deadhead
       const isDH = isDeadheadSegAssignment(seg.segAssignment)
@@ -366,7 +395,7 @@ const drawSegmentRow = (
 
       // Text content based on width
       if (segWidth >= 60) {
-        drawFullFlightPuck(ctx, seg, segStart, flightY, segWidth, SEGMENT_FLIGHT_HEIGHT, timezone, isDH, labelBaseColor)
+        drawFullFlightPuck(ctx, seg, segStart, flightY, segWidth, SEGMENT_FLIGHT_HEIGHT, timezone, isDH, labelBaseColor, hasDelayGhost)
       } else if (segWidth >= 30) {
         drawPartialFlightPuck(ctx, seg, segStart, flightY, segWidth, SEGMENT_FLIGHT_HEIGHT, isDH, labelBaseColor)
       } else if (segWidth >= 16) {
@@ -491,6 +520,7 @@ const drawFullFlightPuck = (
   timezone: string,
   isDH: boolean,
   groundBaseColor: string | null = null,
+  showActualTimes = false,
 ): void => {
   const groundText = groundBaseColor ? getContrastTextColor(groundBaseColor) : ''
   const textColor = groundText || (isDH ? '#d8b4fe' : '#86efac')
@@ -511,10 +541,11 @@ const drawFullFlightPuck = (
   ctx.fillStyle = airportColor
   ctx.fillText(seg.depArp || '', x + 4, y + height / 2 - 4)
 
-  // Left bottom: dep_time
+  // Left bottom: dep_time — flagged amber with a "→" suffix once it reflects the ACTUAL
+  // (shifted) time, same treatment as the Flight pane (drawFullPuck in flight-renderer.ts).
   ctx.font = `8px ${PUCK_FONT_MONO}`
-  ctx.fillStyle = timeColor
-  const depTime = formatTime(seg.schStrDtUtc, timezone)
+  ctx.fillStyle = showActualTimes ? DELAY_GHOST_ACTUAL_TIME_COLOR : timeColor
+  const depTime = formatTime(showActualTimes ? seg.actStrDtUtc : seg.schStrDtUtc, timezone) + (showActualTimes ? ' →' : '')
   ctx.fillText(depTime, x + 4, y + height / 2 + 4)
 
   // Center: flt_num

@@ -60,6 +60,7 @@ Codex must follow these root `CLAUDE.md` rules even when they are not repeated e
 - **Data model first**: Before inferring table relationships, read `docs/architecture/data-model.md` and `docs/architecture/codebase-index.md`. Foreign keys in `sql/schema/**.sql` are authoritative.
 - **Version bumping**: Runtime versions now live in ignored `live-server/version.tmp` and are bumped by module `dev` / `build` scripts plus Vite HMR. Do not edit a tracked `gantt/src/version.ts`; that file has been removed. Pure docs/tests may skip runtime version bumps.
 - **§Playwright-Required / §Simulate-User / §No-Illusion**: UI features and UI bug fixes need Playwright coverage that drives the real UI. Do not claim done without a test run receipt.
+- **§PW-Snapshot**: Every UI-related Playwright validation must also capture a screenshot in the same run (`docs/assets/screenshots/<module>/<feature-name>.png`). Re-validating the same feature across iterations must not overwrite the prior screenshot — suffix with `-Ver<N>` (`Ver1`, `Ver2`, ...) so progress is trackable.
 - **§Stale-Test**: If a touched-area test is stale because the product legitimately changed, update the test to cover the current behavior instead of merely reporting it.
 - **§Minimal-First**: Implement the smallest real solution. Do not add speculative abstractions, caches, retries, or config switches for future possibilities.
 - **§Surgical**: Touch only what the task requires. Keep existing style and avoid unrelated refactors, except mandatory nearby UI-standard cleanup and stale-test updates.

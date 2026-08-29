@@ -4,7 +4,7 @@ import { useRosterStore } from '@/stores/roster-store'
 import { useGanttViewStore } from '@/stores/gantt-view-store'
 import { usePaneStore } from '@/stores/pane-store'
 import { usePairingStore } from '@/stores/pairing-store'
-import { useDraftStore } from '@/stores/draft-store'
+import { pairingApi } from '@/services/pairing-api'
 import { Edit, Trash2, ArrowRightLeft, Crosshair, Link2, PackagePlus, PackageSearch, Pin, PinOff, Plane, SquarePlus, ClipboardEdit, Users, StickyNote, CalendarClock, CalendarDays, UserRound, CalendarArrowDown } from 'lucide-react'
 import { notify } from '@/utils/notify'
 import { useCrewMemoStore } from '@/stores/crew-memo-store'
@@ -331,6 +331,25 @@ export const ContextMenu = () => {
       if (liveHasFlightPaneOpen()) {
         items.push({ icon: Plane, label: 'Locate Flight', onClick: handleLocateFlight })
       }
+      items.push({
+        icon: Trash2,
+        label: 'Remove flight from pairing',
+        danger: true,
+        onClick: () => {
+          const fltId = findCtx.findFltId as number
+          void (async () => {
+            try {
+              const res = await pairingApi.removeFlight(pairingId, fltId)
+              usePairingStore.getState().removeItem(pairingId)
+              if (!res.deleted) await bringPairingIdToTop(pairingId)
+              notify.success(res.deleted ? 'Pairing removed (no flights left)' : 'Flight removed from pairing')
+            } catch (e) {
+              notify.error((e as Error).message || 'Failed to remove flight')
+            }
+          })()
+          closeContextMenu()
+        },
+      })
     }
     items.push(
       {
@@ -394,12 +413,15 @@ export const ContextMenu = () => {
         icon: PackagePlus,
         label: `Create Pairing (${flightIds.length} flight${flightIds.length > 1 ? 's' : ''})`,
         onClick: () => {
-          useDraftStore.getState().addOp(
-            { type: 'create-pairing-from-flights', flightIds },
-            [],
-            [],
-          )
-          notify.info(`Pairing from ${flightIds.length} flight(s) will be created on Save`)
+          void (async () => {
+            try {
+              const res = await pairingApi.build(flightIds as number[])
+              await bringPairingIdToTop(res.pairingId)
+              notify.success(`Pairing ${res.label} created (${res.dutyCount} duty${res.dutyCount > 1 ? 's' : ''}, ${res.segCount} flight${res.segCount > 1 ? 's' : ''})`)
+            } catch (e) {
+              notify.error((e as Error).message || 'Failed to create pairing')
+            }
+          })()
           clearSelection()
           closeContextMenu()
         },

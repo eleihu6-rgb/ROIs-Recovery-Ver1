@@ -14,6 +14,14 @@ import {
   FLIGHT_COLOR_DH_BOTTOM,
   FLIGHT_PUCK_AIRPORT_COLOR,
   FLIGHT_PUCK_TIME_COLOR,
+  DELAY_GHOST_THRESHOLD_MIN,
+  DELAY_GHOST_DASH,
+  DELAY_GHOST_BORDER_COLOR,
+  DELAY_GHOST_FILL_COLOR,
+  DELAY_GHOST_HATCH_COLOR,
+  DELAY_GHOST_HATCH_ALPHA,
+  DELAY_GHOST_LABEL_COLOR,
+  DELAY_GHOST_ACTUAL_TIME_COLOR,
   getGanttColors,
 } from '../gantt-constants'
 import { msToX, parseIsoMs, getVisibleRowRange, roundedRect, gradientFill, lightenColor, darkenColor } from '../gantt-utils'
@@ -22,6 +30,7 @@ import { rowY } from './base-renderer'
 import type { BaseRenderContext } from './base-renderer'
 import type { Flight, FlightItem, FlightCompositionStatus } from '@/types/flight'
 import { formatTime, isCrossDayLocal } from '@/stores/timezone-store'
+import { deltaMinutes } from '@/components/flight/derive-flight-ops-status'
 
 /** Hover overlay */
 const HOVER_OVERLAY = 'rgba(255, 255, 255, 0.18)'
@@ -96,13 +105,39 @@ const drawFlightBlock = (
 
   // V4-P03: epoch-ms pure arithmetic (pixel-identical to timeToX's UTC branch —
   // msToX replicates date-fns differenceInMinutes truncation, see gantt-utils.ts).
-  const x = msToX(parseIsoMs(flight.schDepDtUtc), rangeStartMs, pxPerHour) - scrollX
-  const endX = msToX(parseIsoMs(flight.schArvDtUtc), rangeStartMs, pxPerHour) - scrollX
+  const schX = msToX(parseIsoMs(flight.schDepDtUtc), rangeStartMs, pxPerHour) - scrollX
+  const schEndX = msToX(parseIsoMs(flight.schArvDtUtc), rangeStartMs, pxPerHour) - scrollX
+
+  // Once a flight has a significant recorded delay, the solid puck moves to its ACTUAL
+  // (real-time) position and the scheduled slot is drawn as a translucent ghost BEFORE it —
+  // Ryan: "if a flight delay, it [the ghost] should stay before the regular flight puck."
+  let hasDelayGhost = false
+  let x = schX
+  let endX = schEndX
+  if (!flight.isCancelled) {
+    const depDelta = deltaMinutes(flight.actDepDtUtc, flight.schDepDtUtc)
+    const arvDelta = deltaMinutes(flight.actArvDtUtc, flight.schArvDtUtc)
+    const maxDelta = Math.max(Math.abs(depDelta ?? 0), Math.abs(arvDelta ?? 0))
+    if (maxDelta >= DELAY_GHOST_THRESHOLD_MIN) {
+      hasDelayGhost = true
+      x = msToX(parseIsoMs(flight.actDepDtUtc), rangeStartMs, pxPerHour) - scrollX
+      endX = msToX(parseIsoMs(flight.actArvDtUtc), rangeStartMs, pxPerHour) - scrollX
+    }
+  }
   const width = Math.max(endX - x, MIN_TASK_WIDTH)
   const y = rowY(rowIndex, scrollY, frozenRowCount) + TASK_PADDING
 
   if (y + TASK_HEIGHT < HEADER_HEIGHT) return
-  if (x > canvasWidth || endX < 0) return
+  if (Math.min(x, schX) > canvasWidth || Math.max(endX, schEndX) < 0) return
+
+  // Delay ghost bar — hatched (diagonal-stripe) outline at the ORIGINAL SCHEDULED
+  // position, drawn behind the solid actual-time puck, labeled "{depTime} sched".
+  if (hasDelayGhost) {
+    const schWidth = Math.max(schEndX - schX, MIN_TASK_WIDTH)
+    if (schEndX >= 0 && schX <= canvasWidth) {
+      drawDelayGhost(ctx, flight.schDepDtUtc, schX, y, schWidth, TASK_HEIGHT, timezone)
+    }
+  }
 
   const status = compositionStatusMap.get(flight.id) ?? (flight.isCancelled ? 'cancelled' : 'partial')
   const isSelected = selectedFlightIds.has(flight.id)
@@ -158,7 +193,7 @@ const drawFlightBlock = (
 
   // Three-column puck layout based on width
   if (width >= PUCK_WIDTH_FULL) {
-    drawFullPuck(ctx, flight, x, y, width, TASK_HEIGHT, timezone, isDeadhead)
+    drawFullPuck(ctx, flight, x, y, width, TASK_HEIGHT, timezone, isDeadhead, hasDelayGhost)
   } else if (width >= PUCK_WIDTH_PARTIAL) {
     drawPartialPuck(ctx, flight, x, y, width, TASK_HEIGHT, isDeadhead)
   } else if (width >= PUCK_WIDTH_MINIMAL) {
@@ -166,6 +201,40 @@ const drawFlightBlock = (
   } else {
     drawDotPuck(ctx, x, y, TASK_HEIGHT, isDeadhead)
   }
+}
+
+/**
+ * Draw diagonal stripes clipped to a box — shared by the cancelled-flight overlay
+ * and the delay ghost hatch pattern.
+ */
+const drawDiagonalStripes = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: string,
+  alpha: number,
+  step = 6,
+): void => {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+
+  ctx.strokeStyle = color
+  ctx.lineWidth = 1
+  ctx.globalAlpha = alpha
+
+  for (let i = -h; i < w + h; i += step) {
+    ctx.beginPath()
+    ctx.moveTo(x + i, y)
+    ctx.lineTo(x + i + h, y + h)
+    ctx.stroke()
+  }
+
+  ctx.globalAlpha = 1
+  ctx.restore()
 }
 
 /**
@@ -178,25 +247,55 @@ const drawCancelledStripes = (
   w: number,
   h: number,
 ): void => {
+  drawDiagonalStripes(ctx, x, y, w, h, FLIGHT_COLOR_CANCELLED_STRIPE, 0.4)
+}
+
+/**
+ * Draw the delay ghost bar at a flight's original scheduled (STD/STA) position — a
+ * hatched (diagonal-stripe) gray box with a "{depTime} sched" label, drawn behind the
+ * solid puck once that puck has moved to its actual (ATD/ATA) position. Same styling is
+ * reused for the flight's occurrences in the Pairing and Roster panes (Ryan's reference
+ * screenshot, 2026-08-28: "same style" across Flight/Pairing/Roster).
+ */
+export const drawDelayGhost = (
+  ctx: CanvasRenderingContext2D,
+  schDtUtc: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  timezone: string,
+): void => {
   ctx.save()
+  ctx.fillStyle = DELAY_GHOST_FILL_COLOR
   ctx.beginPath()
-  ctx.rect(x, y, w, h)
-  ctx.clip()
-
-  ctx.strokeStyle = FLIGHT_COLOR_CANCELLED_STRIPE
-  ctx.lineWidth = 1
-  ctx.globalAlpha = 0.4
-
-  const step = 6
-  for (let i = -h; i < w + h; i += step) {
-    ctx.beginPath()
-    ctx.moveTo(x + i, y)
-    ctx.lineTo(x + i + h, y + h)
-    ctx.stroke()
-  }
-
-  ctx.globalAlpha = 1
+  roundedRect(ctx, x, y, w, h, 3)
+  ctx.fill()
   ctx.restore()
+
+  drawDiagonalStripes(ctx, x, y, w, h, DELAY_GHOST_HATCH_COLOR, DELAY_GHOST_HATCH_ALPHA, 5)
+
+  ctx.save()
+  ctx.setLineDash(DELAY_GHOST_DASH)
+  ctx.strokeStyle = DELAY_GHOST_BORDER_COLOR
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  roundedRect(ctx, x, y, w, h, 3)
+  ctx.stroke()
+  ctx.restore()
+
+  if (w >= 40) {
+    const label = `${formatTime(schDtUtc, timezone)} sched`
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(x, y, w, h)
+    ctx.clip()
+    ctx.font = `9px ${PUCK_FONT_MONO}`
+    ctx.fillStyle = DELAY_GHOST_LABEL_COLOR
+    ctx.textBaseline = 'middle'
+    ctx.fillText(label, x + 4, y + h / 2 + 1)
+    ctx.restore()
+  }
 }
 
 /** Font for puck layout */
@@ -218,8 +317,13 @@ const drawFullPuck = (
   height: number,
   timezone: string,
   isDeadhead: boolean,
+  showActualTimes: boolean,
 ): void => {
   const textColor = isDeadhead ? '#d8b4fe' : '#ffffff'
+  // Puck's own x/width already track actual time when showActualTimes — label with the same
+  // pair of timestamps so the printed time matches the position it's drawn at.
+  const depDtUtc = showActualTimes ? flight.actDepDtUtc : flight.schDepDtUtc
+  const arvDtUtc = showActualTimes ? flight.actArvDtUtc : flight.schArvDtUtc
 
   ctx.save()
   ctx.beginPath()
@@ -239,10 +343,11 @@ const drawFullPuck = (
   ctx.fillStyle = isDeadhead ? '#d8b4fe' : FLIGHT_PUCK_AIRPORT_COLOR
   ctx.fillText(flight.depArp || '', x + 4, y + 4)
 
-  // Departure time (mono, bottom)
+  // Departure time (mono, bottom) — flagged amber with a "→" suffix once it reflects the
+  // ACTUAL (shifted) time rather than schedule, so it visually pairs with the sched ghost.
   ctx.font = `9px ${PUCK_FONT_MONO}`
-  ctx.fillStyle = isDeadhead ? '#c4b5fd' : FLIGHT_PUCK_TIME_COLOR
-  const depTime = formatTime(flight.schDepDtUtc, timezone)
+  ctx.fillStyle = showActualTimes ? DELAY_GHOST_ACTUAL_TIME_COLOR : isDeadhead ? '#c4b5fd' : FLIGHT_PUCK_TIME_COLOR
+  const depTime = formatTime(depDtUtc, timezone) + (showActualTimes ? ' →' : '')
   ctx.fillText(depTime, x + 4, y + 15)
 
   // --- Center column: flt_num ---
@@ -257,7 +362,7 @@ const drawFullPuck = (
   ctx.textBaseline = 'top'
 
   // V4-P04: cached cross-day check (was: new Intl.DateTimeFormat per flight per frame)
-  const isCrossDay = isCrossDayLocal(flight.schDepDtUtc, flight.schArvDtUtc, timezone)
+  const isCrossDay = isCrossDayLocal(depDtUtc, arvDtUtc, timezone)
 
   // Airport code (bold, top)
   ctx.font = `bold 9px ${PUCK_FONT_FAMILY}`
@@ -268,7 +373,7 @@ const drawFullPuck = (
   // Arrival time (mono, bottom) with +1 indicator if cross-day
   ctx.font = `9px ${PUCK_FONT_MONO}`
   ctx.fillStyle = isDeadhead ? '#c4b5fd' : FLIGHT_PUCK_TIME_COLOR
-  const arvTime = formatTime(flight.schArvDtUtc, timezone)
+  const arvTime = formatTime(arvDtUtc, timezone)
   if (isCrossDay) {
     ctx.fillText(arvTime + '⁺¹', x + width - 4, y + 15)
   } else {

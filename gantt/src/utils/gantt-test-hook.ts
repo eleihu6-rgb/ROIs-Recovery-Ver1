@@ -169,11 +169,11 @@ export interface GanttTestApi {
   /** Active sort criteria (priority-ordered) for a roster pane. Default: roster-main. */
   rosterSort: (paneType?: 'roster-main' | 'roster-sub') => Array<{ column: string; direction: 'asc' | 'desc' }>
   /** Apply a crew base/rank/fleet/division filter (test setup) and re-run pane queries. */
-  applyCrewFilter: (filter: { divisions?: string[]; bases?: string[]; ranks?: string[]; fleets?: string[] }) => Promise<void>
+  applyCrewFilter: (filter: { divisions?: string[]; bases?: string[]; ranks?: string[]; fleets?: string[]; crewIds?: string[] }) => Promise<void>
   /** The currently applied global crew filter (null when none is active). */
   activeCrewFilter: () => { divisions?: string[]; bases?: string[]; ranks?: string[]; fleets?: string[] } | null
   /** Apply a pairing base/fleet/division/depArp/isFull filter (test setup) and re-run pane queries. */
-  applyPairingFilter: (filter: { bases?: string[]; fleets?: string[]; divisions?: string[]; ranks?: string[]; depArps?: string[]; isFull?: boolean | null; assignments?: string[]; coverage?: CoverageState[] }) => Promise<void>
+  applyPairingFilter: (filter: { bases?: string[]; fleets?: string[]; divisions?: string[]; ranks?: string[]; depArps?: string[]; isFull?: boolean | null; assignments?: string[]; coverage?: CoverageState[]; pairingIds?: string[] }) => Promise<void>
   /** Apply a flight depArp/arvArp/fltNum/fleet/status filter (test setup) and re-run pane queries. */
   applyFlightFilter: (filter: { depArps?: string[]; arvArps?: string[]; fltNums?: string[]; fleets?: string[]; statuses?: string[] }) => Promise<void>
   pairings: () => Array<Record<string, unknown>>
@@ -201,6 +201,8 @@ export interface GanttTestApi {
   rosterModelBuilds: (paneType: string) => number
   /** Test-only horizontal scroll setter for deterministic UI feature assertions. */
   setScrollX: (x: number) => void
+  /** Test-only zoom pin (pxPerHour) for deterministic pixel-geometry assertions. */
+  setZoom: (pxPerHour: number) => void
   timezone: () => { timezone: string; timezoneAirport: string }
   /** Hover a flight by id — builds the real status line from live stores and sets it. */
   hoverFlight: (fltId: number) => void
@@ -260,6 +262,18 @@ export interface GanttTestApi {
   flightProbe: () => {
     id: number; schDepDtUtc: string; rowIndex: number; rowCenterY: number
     scrollX: number; pxPerHour: number; rangeStartIso: string
+  } | null
+  /** Bring one specific flight puck into the flight viewport; returns its on-canvas x/y (or null). */
+  focusFlight: (fltId: number) => {
+    id: number; x: number; y: number; rowIndex: number; scrollX: number; scrollY: number
+  } | null
+  /** Bring one specific pairing segment into the pairing viewport; returns its on-canvas x/y (or null). */
+  focusPairingSegment: (segId: number) => {
+    id: number; pairingId: number; x: number; y: number; rowIndex: number; scrollX: number; scrollY: number
+  } | null
+  /** Bring one specific roster_flight item into the roster viewport; returns its on-canvas x/y (or null). */
+  focusRosterItem: (itemId: number) => {
+    id: number; pairingId: number | null; crewId: string; x: number; y: number; rowIndex: number; scrollX: number; scrollY: number
   } | null
   /** V4-P03：判断指定 id 的 flight 是否在当前选中集合中。 */
   isFlightSelected: (id: number) => boolean
@@ -696,6 +710,8 @@ const roster = (): Array<Record<string, unknown>> =>
     ybh: i.ybh,
     start: i.schStrDtUtc,
     end: i.schEndDtUtc,
+    actStrDtUtc: i.actStrDtUtc,
+    actEndDtUtc: i.actEndDtUtc,
   }))
 
 const rosterKeys = (): string[] => {
@@ -827,7 +843,7 @@ const rosterSort = (
 ): Array<{ column: string; direction: 'asc' | 'desc' }> =>
   usePaneStore.getState().getSortCriteria(paneType).map((c) => ({ column: c.column, direction: c.direction }))
 
-type CrewFilterInput = { divisions?: string[]; bases?: string[]; ranks?: string[]; fleets?: string[] }
+type CrewFilterInput = { divisions?: string[]; bases?: string[]; ranks?: string[]; fleets?: string[]; crewIds?: string[] }
 
 /** Apply a crew base/rank/fleet/division filter (test setup) and re-run pane queries. */
 const applyCrewFilter = async (filter: CrewFilterInput): Promise<void> => {
@@ -842,7 +858,7 @@ const activeCrewFilter = (): CrewFilterInput | null => {
   return { divisions: f.divisions, bases: f.bases, ranks: f.ranks, fleets: f.fleets }
 }
 
-type PairingFilterInput = { bases?: string[]; fleets?: string[]; divisions?: string[]; ranks?: string[]; depArps?: string[]; isFull?: boolean | null; assignments?: string[]; coverage?: CoverageState[] }
+type PairingFilterInput = { bases?: string[]; fleets?: string[]; divisions?: string[]; ranks?: string[]; depArps?: string[]; isFull?: boolean | null; assignments?: string[]; coverage?: CoverageState[]; pairingIds?: string[] }
 
 /** Apply a pairing base/fleet/division/depArp/isFull filter (test setup) and re-run pane queries. */
 const applyPairingFilter = async (filter: PairingFilterInput): Promise<void> => {
@@ -900,6 +916,8 @@ const flights = (): Array<Record<string, unknown>> =>
     const legs = (it.flights as unknown as Record<string, unknown>[] | undefined) ?? []
     return legs.map((f) => ({
       id: f.id,
+      airline: f.airline ?? null,
+      fltDt: f.fltDt ?? null,
       registration: it.registration,
       fleet: it.fleet,
       fltNum: f.fltNum ?? null,
@@ -907,6 +925,9 @@ const flights = (): Array<Record<string, unknown>> =>
       arvArp: f.arvArp ?? null,
       start: f.schDepDtUtc ?? null,
       end: f.schArvDtUtc ?? null,
+      actDepDtUtc: f.actDepDtUtc ?? null,
+      actArvDtUtc: f.actArvDtUtc ?? null,
+      isCancelled: f.isCancelled ?? false,
     }))
   })
 
@@ -926,6 +947,16 @@ const zoom = (): { pxPerHour: number; zoomMin: number; zoomMax: number; dirty: b
 
 const setScrollX = (x: number): void => {
   useGanttViewStore.getState().setScrollX(x)
+}
+
+/** Pin pxPerHour to an exact value (min=max=px) for deterministic pixel-geometry assertions. */
+const setZoom = (pxPerHour: number): void => {
+  useGanttViewStore.getState().setZoomBounds(pxPerHour, pxPerHour)
+  // Changing pxPerHour changes the coordinate system — an RP navigation window (from
+  // an earlier zoomToRp, e.g. the dashboard's default "current RP" fit on load) stored
+  // in the OLD pixel space would otherwise clamp scrollX to a stale bound. Manual zoom
+  // (time-axis.tsx drag-to-zoom) already clears it for the same reason; mirror that here.
+  useGanttViewStore.getState().clearScrollWindow()
 }
 
 /** Per-scenario zoom state — proves the scenario zoom buttons changed the canvas geometry. */
@@ -975,7 +1006,17 @@ const hoverFlight = (fltId: number): void => {
 const pairingSegments = (): Array<Record<string, unknown>> =>
   usePairingStore.getState().items.flatMap((pi) =>
     (pi.segments ?? []).map((s) => ({
-      segId: s.id, pairingId: pi.pairing.id, segSeq: s.segSeq,
+      segId: s.id, pairingId: pi.pairing.id, segSeq: s.segSeq, dutySeq: s.dutySeq,
+      schStrDtUtc: s.schStrDtUtc, schEndDtUtc: s.schEndDtUtc,
+      actStrDtUtc: s.actStrDtUtc, actEndDtUtc: s.actEndDtUtc,
+      briefStartUtc: (s as unknown as { briefStartUtc?: string | null }).briefStartUtc ?? null,
+      // Render anchors: the pairing canvas draws the layover puck from the previous duty's
+      // dropoffEndUtc → next duty's pickupStartUtc, and the back-to-base REST puck from the
+      // last duty's dropoffEndUtc for dutySchRestMin minutes. Expose them so tests can prove
+      // (store truth, not pixels) that a freshly-built pairing carries the puck data.
+      pickupStartUtc: (s as unknown as { pickupStartUtc?: string | null }).pickupStartUtc ?? null,
+      dropoffEndUtc: (s as unknown as { dropoffEndUtc?: string | null }).dropoffEndUtc ?? null,
+      dutySchRestMin: (s as unknown as { dutySchRestMin?: number | null }).dutySchRestMin ?? null,
       fltId: s.fltId, fltNum: s.fltNum, depArp: s.depArp, arvArp: s.arvArp,
       pairingCreditMin: sumPairingCreditMinutes(pi.segments ?? []),
     })))
@@ -1215,6 +1256,170 @@ const flightProbe = (): {
     }
   }
   return null
+}
+
+/**
+ * Test-only: bring ONE specific flight puck into the flight canvas viewport and return its
+ * on-canvas geometry so a test can right-click exactly that leg (flightProbe only ever returns
+ * the FIRST visible puck, which is useless when we must exercise every flight one by one).
+ *
+ * Applies the scroll to the real stores (view scrollX + flight-pane scrollY) exactly matching the
+ * renderer's row order (sortFlightRows + reorderFrozenFirst) and rowY geometry, then returns the
+ * resulting canvas-relative x/y of the puck centre. Returns null if the id is not loaded.
+ */
+const focusFlight = (fltId: number): {
+  id: number; x: number; y: number; rowIndex: number; scrollX: number; scrollY: number
+} | null => {
+  const flightItems = useFlightStore.getState().items
+  if (!flightItems.length) return null
+
+  const sortColumn = usePaneStore.getState().getSortColumn('flight')
+  const sortDirection = usePaneStore.getState().getSortDirection('flight')
+  const sortedItems = sortFlightRows(flightItems, sortColumn, sortDirection)
+  const frozenRowIds = usePaneStore.getState().getFrozenRowIds('flight')
+  const { frozen, nonFrozen } = reorderFrozenFirst(sortedItems, frozenRowIds)
+  const orderedRows = [...frozen, ...nonFrozen]
+
+  let rowIndex = -1
+  let target: { schDepDtUtc: string | null } | undefined
+  for (let i = 0; i < orderedRows.length; i++) {
+    const hit = orderedRows[i].flights.find((f) => f.id === fltId)
+    if (hit) { rowIndex = i; target = hit; break }
+  }
+  if (rowIndex < 0 || !target?.schDepDtUtc) return null
+
+  const { pxPerHour } = useGanttViewStore.getState()
+  const rangeStartIso = usePaneStore.getState().dateRange.start.toISOString()
+  const rangeStartMs = new Date(rangeStartIso).getTime()
+  const dep = target.schDepDtUtc
+  const depMs = new Date(dep.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(dep) ? dep : dep + 'Z').getTime()
+  const contentX = (Math.trunc((depMs - rangeStartMs) / 60_000) / 60) * pxPerHour
+
+  // Land the puck ~150px from the left edge, the target row ~2 rows below the header. setScrollX /
+  // setViewport both CLAMP to the scrollable bounds, so read the APPLIED values back and derive the
+  // on-canvas coords from those — trusting the requested scroll would miss the puck (and hit a
+  // neighbour) whenever the range is wide enough that the clamp bites.
+  useGanttViewStore.getState().setScrollX(Math.max(0, Math.round(contentX - 150)))
+  const scrollX = useGanttViewStore.getState().scrollX
+
+  let flightPaneId: string | null = null
+  for (const p of useLayoutStore.getState().panes.values()) {
+    if (p.type === 'flight') { flightPaneId = p.id; break }
+  }
+  if (flightPaneId) useLayoutStore.getState().setViewport(flightPaneId, { scrollY: Math.max(0, rowIndex * ROW_HEIGHT - 2 * ROW_HEIGHT) })
+  const scrollY = flightPaneId ? (useLayoutStore.getState().panes.get(flightPaneId)?.viewport?.scrollY ?? 0) : 0
+
+  const x = contentX - scrollX + 6
+  const y = HEADER_HEIGHT + rowIndex * ROW_HEIGHT - scrollY + Math.floor(ROW_HEIGHT / 2)
+  return { id: fltId, x, y, rowIndex, scrollX, scrollY }
+}
+
+/**
+ * Test-only: bring ONE specific pairing segment into the pairing canvas viewport and return its
+ * on-canvas geometry — mirrors focusFlight, but pairingProbe only ever returns the first
+ * left-most segment, which is useless when a test must target one specific known segment (e.g.
+ * the delay-ghost test's pairings, which are far down the loaded/sorted list).
+ *
+ * Uses PairingPane's own published row order (pairingOrderByPane, via publishPairingOrder) —
+ * the actual post-filter/sort/frozen-reorder order drawn on screen — rather than recomputing
+ * from the raw store items, and pairing-renderer.ts's rowY geometry (PAIRING_HEADER_HEIGHT +
+ * rowIndex * PAIRING_ROW_HEIGHT).
+ */
+const focusPairingSegment = (segId: number): {
+  id: number; pairingId: number; x: number; y: number; rowIndex: number; scrollX: number; scrollY: number
+} | null => {
+  const pairingItems = usePairingStore.getState().items
+  if (!pairingItems.length) return null
+
+  let pairingId = -1
+  let target: { schStrDtUtc: string | null } | undefined
+  for (const item of pairingItems) {
+    const hit = item.segments.find((s) => s.id === segId)
+    if (hit) { pairingId = item.pairing.id; target = hit; break }
+  }
+  if (pairingId < 0 || !target?.schStrDtUtc) return null
+
+  // Row order must match what PairingPane actually drew (post client-side id/label/rank/
+  // coverage filter, sort, and frozen-row reorder) — not a recompute from the raw store
+  // items, which over-counts when a client-only filter (e.g. pairingIds) is narrowing what's
+  // on screen. See publishPairingOrder in pairing-pane.tsx.
+  const order = pairingOrderByPane.get('pairing') ?? []
+  if (!order.length) return null
+  const rowIndex = order.findIndex((r) => r.id === String(pairingId))
+  if (rowIndex < 0) return null
+
+  const { pxPerHour } = useGanttViewStore.getState()
+  const rangeStartIso = usePaneStore.getState().dateRange.start.toISOString()
+  const rangeStartMs = new Date(rangeStartIso).getTime()
+  const iso = target.schStrDtUtc
+  const ms = new Date(iso.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(iso) ? iso : iso + 'Z').getTime()
+  const contentX = (Math.trunc((ms - rangeStartMs) / 60_000) / 60) * pxPerHour
+
+  useGanttViewStore.getState().setScrollX(Math.max(0, Math.round(contentX - 150)))
+  const scrollX = useGanttViewStore.getState().scrollX
+
+  let pairingPaneId: string | null = null
+  for (const p of useLayoutStore.getState().panes.values()) {
+    if (p.type === 'pairing') { pairingPaneId = p.id; break }
+  }
+  if (pairingPaneId) {
+    useLayoutStore.getState().setViewport(pairingPaneId, { scrollY: Math.max(0, rowIndex * PAIRING_ROW_HEIGHT - 2 * PAIRING_ROW_HEIGHT) })
+  }
+  const scrollY = pairingPaneId ? (useLayoutStore.getState().panes.get(pairingPaneId)?.viewport?.scrollY ?? 0) : 0
+
+  const x = contentX - scrollX + 6
+  const y = PAIRING_HEADER_HEIGHT + rowIndex * PAIRING_ROW_HEIGHT - scrollY + Math.floor(PAIRING_ROW_HEIGHT / 2)
+  return { id: segId, pairingId, x, y, rowIndex, scrollX, scrollY }
+}
+
+/**
+ * Test-only: bring ONE specific roster_flight item into the roster canvas viewport and return
+ * its on-canvas geometry — mirrors focusFlight/focusPairingSegment; rosterProbe only ever
+ * returns the first visible flying puck on any crew.
+ *
+ * Replicates the roster-main crew row order already published to panelRowsByPane (the same
+ * order base-renderer drew) and base-renderer's rowY geometry (HEADER_HEIGHT + rowIndex *
+ * ROW_HEIGHT).
+ */
+const focusRosterItem = (itemId: number): {
+  id: number; pairingId: number | null; crewId: string; x: number; y: number; rowIndex: number; scrollX: number; scrollY: number
+} | null => {
+  const order = panelRowsByPane.get('roster-main') ?? []
+  if (!order.length) return null
+
+  const rosterItems = useRosterStore.getState().main.rosterItems
+  const target = rosterItems.find((it) => it.id === itemId)
+  if (!target?.schStrDtUtc) return null
+  const cid = String(target.crewId)
+
+  let rowIndex = -1
+  for (let i = 0; i < order.length; i++) {
+    if (String(order[i].crewId ?? '') === cid) { rowIndex = i; break }
+  }
+  if (rowIndex < 0) return null
+
+  const { pxPerHour } = useGanttViewStore.getState()
+  const rangeStartIso = usePaneStore.getState().dateRange.start.toISOString()
+  const rangeStartMs = new Date(rangeStartIso).getTime()
+  const iso = target.schStrDtUtc
+  const ms = new Date(iso.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(iso) ? iso : iso + 'Z').getTime()
+  const contentX = (Math.trunc((ms - rangeStartMs) / 60_000) / 60) * pxPerHour
+
+  useGanttViewStore.getState().setScrollX(Math.max(0, Math.round(contentX - 150)))
+  const scrollX = useGanttViewStore.getState().scrollX
+
+  let rosterPaneId: string | null = null
+  for (const p of useLayoutStore.getState().panes.values()) {
+    if (p.type === 'roster') { rosterPaneId = p.id; break }
+  }
+  if (rosterPaneId) {
+    useLayoutStore.getState().setViewport(rosterPaneId, { scrollY: Math.max(0, rowIndex * ROW_HEIGHT - 2 * ROW_HEIGHT) })
+  }
+  const scrollY = rosterPaneId ? (useLayoutStore.getState().panes.get(rosterPaneId)?.viewport?.scrollY ?? 0) : 0
+
+  const x = contentX - scrollX + 6
+  const y = HEADER_HEIGHT + rowIndex * ROW_HEIGHT - scrollY + Math.floor(ROW_HEIGHT / 2)
+  return { id: itemId, pairingId: target.pairingId, crewId: cid, x, y, rowIndex, scrollX, scrollY }
 }
 
 /** V4-P03: 指定 id 的 flight 是否在当前选中集合中（selectedTaskIds 为 flight 选中源）。 */
@@ -2182,6 +2387,7 @@ export const installGanttTestHook = (): void => {
     scenarioRange,
     rosterModelBuilds: rosterModelBuildCount,
     setScrollX,
+    setZoom,
     pairingJumpToDayScrollY: () => useUiStore.getState().contextMenuJumpToDayScrollY,
     timezone,
     hoverFlight,
@@ -2207,6 +2413,9 @@ export const installGanttTestHook = (): void => {
     paneScrollY,
     chromeCommits: () => Object.fromEntries(chromeCommits),
     flightProbe,
+    focusFlight,
+    focusPairingSegment,
+    focusRosterItem,
     isFlightSelected,
     rosterProbe,
     rosterProbeWithCredit,

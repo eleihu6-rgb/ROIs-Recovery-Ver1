@@ -394,7 +394,7 @@ export const flightService = {
         .from(flightComposition)
         .where(eq(flightComposition.fltId, id))
 
-      return { ...flightRow, compositions }
+      return { ...toFlightApi(flightRow as FlightRowDB), compositions }
     })
   },
 
@@ -413,11 +413,42 @@ export const flightService = {
       .set({ ...data, ...auditUpdate(username) })
       .where(eq(flight.id, id))
       .returning()
+    if (!row) return null
     await Promise.all([
       invalidate(fastify.redis, `${CACHE_PREFIX}:${id}`),
       invalidatePattern(fastify.redis, `${CACHE_PREFIX}:list:*`),
     ])
-    return row
+    return toFlightApi(row as FlightRowDB)
+  },
+
+  /** Mark a flight cancelled (fltSts = 'CX') — reuses the existing isCancelled derivation in toFlightApi. */
+  async cancel(fastify: FastifyInstance, id: number, username: string) {
+    const [row] = await fastify.db
+      .update(flight)
+      .set({ fltSts: 'CX', ...auditUpdate(username) })
+      .where(and(eq(flight.id, id), notDeleted(flight.isDeleted)))
+      .returning()
+    if (!row) return null
+    await Promise.all([
+      invalidate(fastify.redis, `${CACHE_PREFIX}:${id}`),
+      invalidatePattern(fastify.redis, `${CACHE_PREFIX}:list:*`),
+    ])
+    return toFlightApi(row as FlightRowDB)
+  },
+
+  /** Clear a flight's cancelled status (fltSts = null). */
+  async restore(fastify: FastifyInstance, id: number, username: string) {
+    const [row] = await fastify.db
+      .update(flight)
+      .set({ fltSts: null, ...auditUpdate(username) })
+      .where(and(eq(flight.id, id), notDeleted(flight.isDeleted)))
+      .returning()
+    if (!row) return null
+    await Promise.all([
+      invalidate(fastify.redis, `${CACHE_PREFIX}:${id}`),
+      invalidatePattern(fastify.redis, `${CACHE_PREFIX}:list:*`),
+    ])
+    return toFlightApi(row as FlightRowDB)
   },
 
   async remove(fastify: FastifyInstance, id: number, username: string) {

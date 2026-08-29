@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify'
 import { success, fail, error } from '../../utils/response.js'
 import { paginationQuerySchema } from '../../utils/pagination.js'
 import { pairingService } from '../../services/pairing/pairing-service.js'
+import { pairingBuildService } from '../../services/pairing/pairing-build-service.js'
 import { updateDutyNodes } from '../../services/pairing/pairing-duty-node-service.js'
 
 const doubleSchema = z.object({
@@ -37,7 +38,9 @@ export default async function pairingRoutes(fastify: FastifyInstance) {
       // Filter params
       label: z.string().max(50).optional(),
       fleet: z.string().max(20).optional(),
-      base: z.string().max(3).optional(),
+      // Base filter: comma-separated home-base codes (e.g. DXB,ADD) → OR match. A single value stays valid.
+      base: z.string().max(200).optional()
+        .transform((s) => (s ? s.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean) : undefined)),
       division: z.string().max(1).optional(),
       segFltNum: z.string().max(10).optional(),
       depArp: z.string().max(3).optional(),
@@ -208,6 +211,44 @@ export default async function pairingRoutes(fastify: FastifyInstance) {
       return success(reply, result)
     } catch (err) {
       return fail(reply, 400, (err as Error).message)
+    }
+  })
+
+  // POST /api/pairing/build — build a rules-aware pairing from selected flight sectors.
+  // Applies no-mix airline/fleet, home base by airline, check-in 2h / check-out 0,
+  // per-duty rest max(12h, DP), 8h multi-flight duty cap, composition by body type.
+  fastify.post('/build', async (request, reply) => {
+    const body = request.body as Record<string, unknown>
+    const flightIds = body.flightIds as number[]
+    if (!Array.isArray(flightIds) || flightIds.length === 0) {
+      return fail(reply, 400, 'flightIds array is required')
+    }
+    const username = request.authUser?.userCode ?? 'system'
+    try {
+      const result = await pairingBuildService.build(fastify, flightIds, username)
+      return success(reply, result)
+    } catch (err) {
+      return fail(reply, 400, (err as Error).message)
+    }
+  })
+
+  // POST /api/pairing/:id/remove-flight — remove one flight from a pairing
+  // (deletes the pairing if it was the last flight; recomputes duties/rest otherwise).
+  fastify.post('/:id/remove-flight', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const pairingId = Number(id)
+    if (Number.isNaN(pairingId)) return fail(reply, 400, 'Invalid pairing id')
+    const body = request.body as Record<string, unknown>
+    const fltId = Number(body.fltId)
+    if (Number.isNaN(fltId)) return fail(reply, 400, 'Invalid flight id')
+    const username = request.authUser?.userCode ?? 'system'
+    try {
+      const result = await pairingBuildService.removeFlight(fastify, pairingId, fltId, username)
+      return success(reply, result)
+    } catch (err) {
+      const e = err as Error & { statusCode?: number }
+      if (e.statusCode === 409) return fail(reply, 409, e.message)
+      return fail(reply, 400, e.message)
     }
   })
 

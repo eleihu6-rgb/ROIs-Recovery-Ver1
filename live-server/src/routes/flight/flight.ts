@@ -135,7 +135,8 @@ export default async function flightRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // PUT /api/flight/:id — update flight
+  // PUT /api/flight/:id — update a flight's scheduled/actual departure & arrival times
+  // (STD/STA/ATD/ATA) and, optionally, fleet/register, e.g. from the Gantt Flight Detail edit dialog.
   fastify.put('/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
     const numId = Number(id)
@@ -143,11 +144,77 @@ export default async function flightRoutes(fastify: FastifyInstance) {
       return fail(reply, 400, 'Invalid id')
     }
 
-    const body = request.body as Record<string, unknown>
-    const username = (body.username as string) ?? 'system'
+    const schema = z.object({
+      schDepDtUtc: z.string().datetime({ offset: true }),
+      schArvDtUtc: z.string().datetime({ offset: true }),
+      actDepDtUtc: z.string().datetime({ offset: true }),
+      actArvDtUtc: z.string().datetime({ offset: true }),
+      fleet: z.string().min(1).optional(),
+      register: z.string().min(1).nullable().optional(),
+    }).refine((d) => new Date(d.schArvDtUtc) > new Date(d.schDepDtUtc), {
+      message: 'schArvDtUtc must be after schDepDtUtc',
+    }).refine((d) => new Date(d.actArvDtUtc) > new Date(d.actDepDtUtc), {
+      message: 'actArvDtUtc must be after actDepDtUtc',
+    })
+    const parsed = schema.safeParse(request.body)
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.message)
+    }
+
+    const username = request.authUser?.userCode ?? 'system'
+    const { schDepDtUtc, schArvDtUtc, actDepDtUtc, actArvDtUtc, fleet, register } = parsed.data
 
     try {
-      const result = await flightService.update(fastify, numId, body as never, username)
+      const result = await flightService.update(fastify, numId, {
+        schDepDtUtc: new Date(schDepDtUtc),
+        schArvDtUtc: new Date(schArvDtUtc),
+        actDepDtUtc: new Date(actDepDtUtc),
+        actArvDtUtc: new Date(actArvDtUtc),
+        ...(fleet !== undefined ? { fleet } : {}),
+        ...(register !== undefined ? { register } : {}),
+      }, username)
+      if (!result) {
+        return fail(reply, 404, 'Flight not found')
+      }
+      return success(reply, result)
+    } catch (err) {
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // POST /api/flight/:id/cancel — mark a flight cancelled (fltSts = 'CX')
+  fastify.post('/:id/cancel', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const numId = Number(id)
+    if (Number.isNaN(numId)) {
+      return fail(reply, 400, 'Invalid id')
+    }
+
+    const username = request.authUser?.userCode ?? 'system'
+
+    try {
+      const result = await flightService.cancel(fastify, numId, username)
+      if (!result) {
+        return fail(reply, 404, 'Flight not found')
+      }
+      return success(reply, result)
+    } catch (err) {
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // POST /api/flight/:id/restore — clear a flight's cancelled status
+  fastify.post('/:id/restore', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const numId = Number(id)
+    if (Number.isNaN(numId)) {
+      return fail(reply, 400, 'Invalid id')
+    }
+
+    const username = request.authUser?.userCode ?? 'system'
+
+    try {
+      const result = await flightService.restore(fastify, numId, username)
       if (!result) {
         return fail(reply, 404, 'Flight not found')
       }

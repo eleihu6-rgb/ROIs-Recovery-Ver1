@@ -163,6 +163,7 @@
   letter-spacing: .06em;
 }
 .flight-detail-dialog-root .route-sub { font-size: 10px; color: var(--fdd-fg-dim); text-align: center }
+.flight-detail-dialog-root .route-sub-edit { display: flex; align-items: center; justify-content: center; gap: 6px }
 
 /* Times grid */
 .flight-detail-dialog-root .times-grid { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 0 }
@@ -186,6 +187,8 @@
   gap: 8px;
 }
 .flight-detail-dialog-root .time-row:hover { background: var(--fdd-row-hover) }
+.flight-detail-dialog-root .time-row.editing { height: 30px }
+.flight-detail-dialog-root .time-edit { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0 }
 .flight-detail-dialog-root .time-lbl {
   font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
   color: var(--fdd-label); width: 32px; flex-shrink: 0;

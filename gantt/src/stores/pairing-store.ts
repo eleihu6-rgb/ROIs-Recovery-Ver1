@@ -184,7 +184,7 @@ function mergeItems(existing: PairingItem[], newItems: PairingItem[]): PairingIt
  * silently dropped from one path — which surfaced wrong-division pairings in the pane.
  */
 export const pairingFilterToListParams = (filter: PairingFilter): Partial<PairingListQuery> => ({
-  ...(filter.bases[0] ? { base: filter.bases[0] } : {}),
+  ...(filter.bases.length ? { base: filter.bases.join(',') } : {}),
   ...(filter.fleets[0] ? { fleet: filter.fleets[0] } : {}),
   ...(filter.divisions[0] ? { division: filter.divisions[0] } : {}),
   ...(filter.depArps[0] ? { depArp: filter.depArps[0] } : {}),

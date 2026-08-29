@@ -41,4 +41,26 @@ export const flightApi = {
   async compositions(flightIds: number[]): Promise<FlightCompositionsResponse> {
     return api.post('/api/flight/compositions', { flightIds }) as Promise<FlightCompositionsResponse>
   },
+
+  /** Update a flight's scheduled/actual departure & arrival times (STD/STA/ATD/ATA), and optionally fleet/register. */
+  async updateTimes(id: number, payload: {
+    schDepDtUtc: string
+    schArvDtUtc: string
+    actDepDtUtc: string
+    actArvDtUtc: string
+    fleet?: string
+    register?: string | null
+  }): Promise<Flight> {
+    return api.put(`/api/flight/${id}`, payload) as Promise<Flight>
+  },
+
+  /** Mark a flight cancelled. */
+  async cancel(id: number): Promise<Flight> {
+    return api.post(`/api/flight/${id}/cancel`) as Promise<Flight>
+  },
+
+  /** Clear a flight's cancelled status. */
+  async restore(id: number): Promise<Flight> {
+    return api.post(`/api/flight/${id}/restore`) as Promise<Flight>
+  },
 }

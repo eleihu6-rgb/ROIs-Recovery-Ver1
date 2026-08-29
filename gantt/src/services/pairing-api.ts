@@ -147,4 +147,22 @@ export const pairingApi = {
   async createFromFlights(flightIds: number[], base?: string, division?: string): Promise<unknown> {
     return api.post('/api/pairing/create-from-flights', { flightIds, base, division }) as Promise<unknown>
   },
+
+  /** Build a rules-aware pairing from selected flight sectors (returns new pairing id) */
+  async build(flightIds: number[]): Promise<{ pairingId: number; label: string; dutyCount: number; segCount: number }> {
+    return api.post('/api/pairing/build', { flightIds }) as Promise<{
+      pairingId: number
+      label: string
+      dutyCount: number
+      segCount: number
+    }>
+  },
+
+  /** Remove one flight from a pairing (deletes pairing if it was the last flight) */
+  async removeFlight(pairingId: number, fltId: number): Promise<{ pairingId: number; deleted: boolean }> {
+    return api.post(`/api/pairing/${pairingId}/remove-flight`, { fltId }) as Promise<{
+      pairingId: number
+      deleted: boolean
+    }>
+  },
 }

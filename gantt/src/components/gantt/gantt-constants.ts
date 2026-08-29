@@ -296,6 +296,27 @@ export const FLIGHT_PUCK_AIRPORT_COLOR = '#93c5fd'
 /** Time color in puck left/right columns */
 export const FLIGHT_PUCK_TIME_COLOR = '#7dd3fc'
 
+// ─── Delay ghost bar (actual time differs from scheduled) ──────────────────
+// Hatched (diagonal-stripe) outline drawn at a flight's original scheduled
+// (STD/STA) position, BEFORE its solid puck once the puck itself moves to the
+// actual (ATD/ATA) position for a significant delay. Distinct from the
+// drag-preview "Ghost (drag preview)" constants above — do not conflate.
+// Same treatment applies to the flight's roster/pairing occurrences (Ryan
+// 2026-08-28: "same style" across Flight/Pairing/Roster).
+
+/** Minimum |actual - scheduled| minutes before a delay ghost bar is drawn */
+export const DELAY_GHOST_THRESHOLD_MIN = 5
+export const DELAY_GHOST_DASH = [4, 3]
+export const DELAY_GHOST_BORDER_COLOR = '#94a3b8'
+export const DELAY_GHOST_FILL_COLOR = 'rgba(148, 163, 184, 0.08)'
+/** Diagonal stripe line color + alpha inside the ghost box */
+export const DELAY_GHOST_HATCH_COLOR = '#94a3b8'
+export const DELAY_GHOST_HATCH_ALPHA = 0.35
+/** "HH:MM sched" label text color inside the ghost box */
+export const DELAY_GHOST_LABEL_COLOR = '#64748b'
+/** Solid puck's own dep/arv time text color when it has shifted to actual (ATD/ATA) */
+export const DELAY_GHOST_ACTUAL_TIME_COLOR = '#f59e0b'
+
 // ─── Segment Mode colors (Pairing/Roster) ────────────────────────────────────
 
 /** Brief bar color (amber) */

@@ -613,7 +613,7 @@ export const DEV_SKILLS: DevSkillEntry[] = [
     "title": "141 Crew Seed Generator",
     "description": "Generate a batch of synthetic F8 crew (pilots: CA/FO) for a new base/fleet/nationality — auto-creates the airport/fleet/rank reference rows if absent, inserts crew + crew_base + crew_fleet + crew_rank, and validates by query. Use when asked to \"add crew for a new country/base\", \"seed test crew\", or \"create N crew members\" with a given id prefix, base, fleet, and nationality.",
     "overview": "Idempotent generator for adding a themed batch of crew (new base + fleet + nationality) to the `crew` data model described in `docs/architecture/data-model.md`. Built for the 2026-08-27 request: 40 UAE crew (`K1001`-`K1040`, DXB, A380) + 40 Ethiopian crew (`T2001`-`T2040`, ADD, B787), on top of the existing Canadian (`YYZ`/`YVR`/... , 737) crew.",
-    "function": "Per group, in order: 1. `airport` — inserts the base airport if the code doesn't exist yet (IATA code, ICAO, city, `dir` D/I, IANA `zone_id`, `utc_standard_offset` minutes, ISO-2 `country`). 2. `fleet` — inserts the fleet code if absent (`display_order` auto-appended). 3. `rank` + `rank_position` — inserts CA/FO if absent (already present for F8 normally; the script is generic so a future country reusing this skill for a new division/rank still works). 4. `crew` — one row per crew member: `crew_id`, `first_name`, `last_name`, `gender`, `division='P'`, `empl_dt`, `nationality`, `filiale`, `status=0`. 5. `crew_base` (`is_prime_base=1...",
+    "function": "Per group, in order: 1. `airport` — inserts the base airport if the code doesn't exist yet (IATA code, ICAO, city, `dir` D/I, IANA `zone_id`, `utc_standard_offset` minutes, ISO-2 `country`). 2. `base` — inserts the crew-home-base reference row if absent (`filiale`, `base`, `name` = the 3-letter code per existing convention, `display_order` auto-appended). This is a **separate table from `airport`** — it's what the Gantt filter dialog's \"Base\" dropdown actually reads (`GET /api/base`, Redis-cached 24h). Skipping this step leaves the new base invisible in the UI dropdown even though the crew data is otherwise correct. 3. `fleet` — in...",
     "howToUse": "node ../.agents/skills/141-crew-seed-generator/scripts/seed-crew.mjs \\ ../.agents/skills/141-crew-seed-generator/fixtures/uae-dxb-a380.json --dry-run",
     "resources": [
       "dir:agents",
@@ -621,6 +621,22 @@ export const DEV_SKILLS: DevSkillEntry[] = [
       "dir:scripts"
     ],
     "sourcePath": ".agents/skills/141-crew-seed-generator/SKILL.md"
+  },
+  {
+    "name": "142-flight-schedule-seed-generator",
+    "folder": "142-flight-schedule-seed-generator",
+    "number": 142,
+    "title": "142 Flight Schedule Seed Generator",
+    "description": "Generate a themed batch of synthetic `flight` schedule rows (airline/fleet/route network over a date range), DST-aware local-to-UTC conversion, no real tail number (frontend groups by fleet). Use when asked to \"seed a flight schedule\", \"add EK/ET flights\", or \"populate flight data for a route/date range\" with a given airline, fleet, base, and routes.",
+    "overview": "Idempotent generator for adding a themed batch of `flight` rows (new airline/fleet/route network) to the data model described in `docs/architecture/data-model.md`. Built for the 2026-08-27 request: Emirates (`EK`) A380 flights out of DXB, and Ethiopian Airlines (`ET`) B787 + 737 flights out of ADD, for the full calendar range 2026-08-01 to 2026-09-30.",
+    "function": "Only the `flight` table. Reuses existing reference data (no new rows needed for this seed): `airport` (all 14 route endpoints already exist with `zone_id` populated), `fleet` (`A380`, `B787`, `737` already exist). Each fixture route generates two rows per date (outbound + inbound leg). Idempotent — the script checks `flight_key` (`{flt_num}-{date}-{dep_arp}`) first and skips rows that already exist, safe to re-run.",
+    "howToUse": "node ../.agents/skills/142-flight-schedule-seed-generator/scripts/seed-flights.mjs \\ ../.agents/skills/142-flight-schedule-seed-generator/fixtures/ek-dxb-a380.json --dry-run",
+    "resources": [
+      "dir:agents",
+      "dir:fixtures",
+      "dir:scripts"
+    ],
+    "sourcePath": ".agents/skills/142-flight-schedule-seed-generator/SKILL.md"
   },
   {
     "name": "portal-help-writing",

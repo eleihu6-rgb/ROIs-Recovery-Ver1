@@ -14,7 +14,8 @@ export type FlightOpsStatusResult = {
   unitColor?: string
 }
 
-const deltaMinutes = (actual: string | null | undefined, scheduled: string | null | undefined): number | null => {
+/** Minutes between an actual and scheduled UTC timestamp (positive = late, negative = early). */
+export const deltaMinutes = (actual: string | null | undefined, scheduled: string | null | undefined): number | null => {
   if (!actual || !scheduled) return null
   try {
     const a = parseISO(actual).getTime()

@@ -141,6 +141,10 @@ export default defineConfig(({ mode }) => {
     hmr,
     // 本地开发：与生产 nginx 一致的前缀，转发到本机后端（否则浏览器请求 Vite 会得到 404）
     proxy: {
+      "/api/mobile-roster": {
+        target: liveTarget,
+        changeOrigin: true,
+      },
       [`/${apiPrefix}/live`]: {
         target: liveTarget,
         changeOrigin: true,
@@ -170,6 +174,7 @@ export default defineConfig(({ mode }) => {
     host: true,
     allowedHosts: true,
     proxy: {
+      "/api/mobile-roster": { target: liveTarget, changeOrigin: true },
       [`/${apiPrefix}/live`]: { target: liveTarget, changeOrigin: true, rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/live`), ""), ws: true },
       [`/${apiPrefix}/rule`]: { target: ruleTarget, changeOrigin: true, rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/rule`), "") },
       [`/${apiPrefix}/ai`]: { target: aiTarget, changeOrigin: true, rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/ai`), "/ai") },

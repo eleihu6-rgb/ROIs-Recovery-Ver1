@@ -112,7 +112,7 @@ rois-ai/
 
 ### §Remote-DB-Only — 查询必须打远端库（强制）
 
-**本地开发用独立 `f8_dev_*` schema**（从 UAT 复制，含数据；详见 `docs/architecture/dev-db-schema-isolation.md`）。所有 SQL 查询、数据核查、业务逻辑验证，**必须通过各服务 `.env` 的 `DATABASE_URL`（search_path 已指向目标 schema）**，禁止用 localhost 之外的裸连接。
+**本地开发直接用 `f8_sit_live` / `f8_sit_scenario` / `f8_sit_pbs`（SIT schema）**，不再维护独立的 `f8_dev_*` 隔离 schema（`docs/architecture/dev-db-schema-isolation.md` 中的 DEV 隔离方案已废弃，historical-only）。所有 SQL 查询、数据核查、业务逻辑验证，**必须通过各服务 `.env` 的 `DATABASE_URL`（search_path 已指向目标 schema）**，禁止用 localhost 之外的裸连接。
 
 动态 SQL（模板字符串、条件片段、动态 filter/property/schema）必须遵守
 `docs/modules/database/generated-sql-safety-standard.md`：不能只靠 TypeScript build 或 mock/string
@@ -125,11 +125,10 @@ HTTP/文件入口 smoke。不得静默跳过失败条件。
 
 | 环境 | Live | Scenario | PBS |
 |------|------|----------|-----|
-| DEV（本地开发）| `f8_dev_live` | `f8_dev_scenario` | `f8_dev_pbs` |
-| SIT | `f8_sit_live` | `f8_sit_scenario` | `f8_sit_pbs` |
+| SIT（本地开发也用这套）| `f8_sit_live` | `f8_sit_scenario` | `f8_sit_pbs` |
 | UAT | `f8_uat_live` | `f8_uat_scenario` | `f8_uat_pbs` |
 
-**查询前先确认目标环境，再选对应 schema**（如本地开发 live = `f8_dev_live`，SIT = `f8_sit_live`）。连接串通过环境变量注入（本地开发用各服务 `.env` 的 `DATABASE_URL`，SIT/UAT 连接串向团队成员或密钥管理工具索取），**密码不得写入任何文档或代码**。**本地跑单元/集成/E2E 测试的写操作只落 `f8_dev_*`，不影响 SIT/UAT**。
+**本地开发一律使用 `f8_sit_live` / `f8_sit_scenario` / `f8_sit_pbs`**，与 SIT 环境共用同一份 schema（非隔离）。连接串通过环境变量注入（各服务 `.env` 的 `DATABASE_URL`，UAT 连接串向团队成员或密钥管理工具索取），**密码不得写入任何文档或代码**。**本地跑单元/集成/E2E 测试、seed、脚本的写操作都落在共享的 `f8_sit_live` 等 schema 上，会影响其他人正在跑的测试/演示数据——批量写入、delete、或改动特定日期范围的数据前，先确认没有其他 agent/测试依赖同一批数据（如约定好的日期/flight number 白名单），禁止无协调地覆盖。**
 
 ### 设计规范
 
@@ -289,7 +288,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
 ### §Playwright-Required — every feature and every bug fix ships with a Playwright test
 
-**Non-negotiable.** After implementing ANY feature OR fixing ANY bug that touches the UI (gantt / pbs-portal / pbs-app):
+**Non-negotiable.** After implementing ANY feature OR fixing ANY bug that touches the UI (gantt / pbs-portal / pbs-app) — see §User-Operation-Playwright-Required below for the broader rule covering changes that affect a user operation even when the change itself is backend-only, a script, or a raw SQL/migration:
 
 1. Write a Playwright e2e test in `e2e/gantt/` or `e2e/pbs-portal/` (Vitest unit test acceptable only for pure backend logic with no UI surface).
 2. Run it: `npx playwright test e2e/<module>/<your-test-file>.spec.ts --reporter=list`.
@@ -303,6 +302,7 @@ Minimum coverage per change type:
 | Bug fix | A regression test that would have caught the bug **before** the fix — not just a test that passes after it |
 | New API endpoint (with UI) | 200 response shape asserted via UI action; error path handled gracefully |
 | State / filter change | Correct items shown after filter; wrong items absent |
+| Any change affecting a user operation, regardless of layer (backend logic, data/permission change, script, **raw SQL/migration**) | Real UI simulation of that operation as the affected user(s); user-visible outcome asserted, not status codes/DB flags — see §User-Operation-Playwright-Required |
 
 Anti-patterns — do NOT write these:
 
@@ -315,6 +315,17 @@ Anti-patterns — do NOT write these:
 
 File naming: `e2e/<module>/<feature-name>.spec.ts`, named after the changed component or bug, e.g. `test('scenario list filters to PO only when PO sidebar item is active', ...)`.
 
+### §User-Operation-Playwright-Required — any change touching a user operation must be validated by Playwright as a real user
+
+**Non-negotiable, and scope is by effect, not by layer.** If a change affects anything a real user does or experiences in gantt / pbs-portal / pbs-app — logs in, clicks, filters, edits, assigns, gets a permission/role, hits a limit, sees data or an error — it must be validated end-to-end as that user, regardless of whether the change itself was frontend code, backend logic, a one-off script, or a raw SQL migration run directly against a database. "I only touched the DB / a script / the backend" is not an exemption.
+
+1. Identify the concrete user operation the change affects (e.g. "Tiao logs in and sees the Live nav", "dispatcher filters flights by fleet", "crew member is reassigned off a pairing").
+2. Write or extend a Playwright test that performs that operation through the **real UI** (§Simulate-User — real clicks/typing/navigation, no `request.post`/API-injection shortcut for the operation under test itself).
+3. Assert the outcome a real user would actually see (correct data, correct permissions/menus, correct error message) — never a 200 status, a DB flag, or "no error thrown".
+4. Run it and paste the PASS/FAIL result (§No-Illusion) before calling the change done.
+
+**Why:** a change can look correct at the code/DB/API level — status codes match, flags look right — while silently breaking for the actual user (a missing permission binding, a timezone-sensitive `eff_dt`/`exp_dt` column, a stale cache, a race in a multi-step flow). Only a Playwright run that behaves like the user is proof the change actually works, not just that it should.
+
 ### §Simulate-User — Playwright must drive the REAL UI
 
 **A Playwright run against gantt or pbs-portal exists for one reason: to reproduce the real user experience — click the actual buttons, menus, dialogs the product exposes and let the UI fire its own network calls. Nothing else counts.**
@@ -326,6 +337,15 @@ File naming: `e2e/<module>/<feature-name>.spec.ts`, named after the changed comp
 **Claims are worthless. The test output is the proof.** A feature is not working until a test proves it works; a bug is not fixed until a test proves it cannot recur. Never state "this should work" or "this looks correct" — run the test and paste the result.
 
 Required after every code change: write/update the test → run `npx playwright test e2e/<file>.spec.ts --reporter=list` → paste the PASS/FAIL summary → only then mark done. Forbidden: claiming "fixed"/"working" from code inspection alone, a test that always passes (`expect(true).toBe(true)`), or a test that only checks visibility instead of correct data.
+
+### §PW-Snapshot — every UI-related Playwright validation captures a screenshot, versioned per iteration
+
+**A passing test is not enough for a visual/UI change — capture a screenshot during the same Playwright run and keep it as the visible proof.** Pass/fail text alone doesn't show *what* rendered; a reviewer (or Ryan) needs to see the actual pixels.
+
+- Save under `docs/assets/screenshots/<module>/<feature-name>.png` (module = `gantt`/`pbs-portal`/`pbs-app`/etc., feature-name matches the changed component or spec).
+- **If the same feature/fix gets re-validated across multiple rounds** (a design tweak, a bug re-fix, feedback-driven iteration), do **not** overwrite the previous screenshot — suffix the filename with `-Ver<N>` (`Ver1`, `Ver2`, `Ver3`, ...), incrementing per round, so the sequence of screenshots documents visible progress across iterations. First capture of a feature may omit the suffix or start at `Ver1`; be consistent within one feature's history.
+- Capture via a Playwright script/test (`page.screenshot()` / `locator.screenshot()`), not a manual/out-of-band screenshot — it must come from the same automated run that proves the behavior, per §No-Illusion.
+- After capturing, verify the PNG visually with the Read tool before reporting done — a screenshot of the wrong element/state is worse than no screenshot.
 
 ### §Stale-Test — update it, never just report it
 
