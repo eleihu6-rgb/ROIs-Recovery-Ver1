@@ -326,6 +326,32 @@ File naming: `e2e/<module>/<feature-name>.spec.ts`, named after the changed comp
 
 **Why:** a change can look correct at the code/DB/API level — status codes match, flags look right — while silently breaking for the actual user (a missing permission binding, a timezone-sensitive `eff_dt`/`exp_dt` column, a stale cache, a race in a multi-step flow). Only a Playwright run that behaves like the user is proof the change actually works, not just that it should.
 
+### §Flight-Change-Ripple-Required — 航班时间变更必须验证对 pairing/roster 的连锁影响，禁止孤立处理（强制执行）
+
+**Non-negotiable.** 航班不是孤立实体：`pairing` 由多个 `pairing_segment` 组成，`roster_flight` 是机组 × 航段的执行记录。航班的计划/实际时间发生变化（延误、提前、改期、取消）时，**同一 pairing 内的所有下游元素**（换乘 connection、layover、机组 rest、返回 base 的 duty 时间/checkout）都必须重新计算，同时**受影响机组的 roster KPI**（Credit / DP / FDP / rest 等积分与限制指标，参见 [[pairing-build-fresh-pairing-kpis-not-computed]]）也必须相应更新——绝不能只验证被改动的这一条 flight/segment/roster_flight 记录本身正确，也不能把它当作与 KPI 无关的孤立事件。
+
+任何触碰航班时间变更的代码改动（延误录入、改期、取消、reschedule API、批量导入/seed 脚本、UI 拖拽调整时间）测试时必须：
+
+1. 不能只断言被改动的那一条 flight/pairing_segment/roster_flight 记录时间正确——必须同时检查同一 pairing 内**全部下游元素**（不止紧邻的下一条 leg）的 connection/layover/rest/duty end 是否符合预期。
+2. 必须检查受影响机组的 **roster KPI 是否同步更新**（Credit/DP/FDP 等）——若 KPI 因架构原因暂不随延误重算，测试要显式断言这一点并说明原因，而不是没测到。
+3. 若下游确实需要重算，必须有测试证明重算**发生**且数值正确；若产品设计上确认**不**自动重算（需要人工确认/手动改派），测试要显式断言"下游未变"，而不是干脆没测到——沉默的空白不等于已验证的设计决策。
+4. 新增/修改与航班时间相关的 Playwright/单元测试用例时，用例标题与断言范围要覆盖"对相邻 leg 与 KPI 的影响"，不能只孤立验证被改的那一条。
+
+**Why:** 航班延误只改动自身时间戳，不代表机组的后续行程（换乘、休息、返回基地）依然合法、也不代表 KPI 依然反映实际情况——如果测试只覆盖被改的单条记录，连锁影响类 bug（错误的换乘时间、法定休息不足、返回基地时间计算错误、KPI 与实际延误脱节）会逃过验证。
+
+### §Real-Business-Case-Test — 测试 fixture 必须是真实业务场景，禁止孤立/简化的合成数据（强制执行）
+
+**Non-negotiable.** Playwright / 单元测试里构造的 pairing、roster、flight 等 fixture，必须是这个业务在生产中真实会出现的形状，不能为了"少写几行 setup"而简化成不代表真实场景的合成数据。
+
+具体要求：
+
+1. **Pairing fixture 必须是真实结构**：至少覆盖同一 duty 内多个 leg（≥2 flights）、从 base 出发再回到 base 的完整往返，而不是单条 flight 硬凑出的"pairing"——单航段 pairing 在生产数据里几乎不存在，测出来的行为对真实场景没有代表性（`live-server`/`pbs-server` 的 pairing 建造逻辑允许单腿 pairing，但那是边界情况，不是典型 fixture）。
+2. **航班/机场/机型组合必须真实可信**：优先复用已在库里验证过的真实航班号、真实航线（同一 base 进出）、真实机型/airline 搭配，避免捏造不存在的航班号或不符合 home-base 规则的航线组合。新增 fixture 前，先用只读查询（或已有 dry-run 接口，如 `POST /api/pairing/build`）验证该组合在真实规则下是合法的，而不是假设它合法。
+3. **禁止为了让测试"更好写"而回避真实结构**：如果某个 cascade/规则本该在多航段 duty、跨 leg 影响下验证，就不能只用单航段简化掉这部分覆盖——单航段能测的东西，多航段测试大多数情况下也能覆盖，反过来不成立。
+4. 与 [[pairing-build-fresh-pairing-kpis-not-computed]] 和 §Flight-Change-Ripple-Required 配合：真实的多航段 pairing fixture 才能验证"未改动的相邻 leg 保持不变"这类关键断言——单航段 fixture 天然测不出这类边界。
+
+**Why:** 一个只有一条航班的"pairing"不是真实业务场景——生产环境的 pairing 几乎都是多航段、base 出发再回到 base 的结构。用简化 fixture 测出来的 PASS 只能证明代码在不真实的输入下工作，不能证明它在真实航班组合下正确；`flight-delay-pairing-roster-propagation.spec.ts` 的 Scenario 2 最初就是用单航段 pairing 写的，重写为 ET137/ET136（ADD→ASO→ADD 真实往返）之后才补出了"未改动的出港 leg 必须保持不变"这类原本测不到的断言。
+
 ### §Simulate-User — Playwright must drive the REAL UI
 
 **A Playwright run against gantt or pbs-portal exists for one reason: to reproduce the real user experience — click the actual buttons, menus, dialogs the product exposes and let the UI fire its own network calls. Nothing else counts.**

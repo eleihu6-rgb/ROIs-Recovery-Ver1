@@ -349,8 +349,11 @@ const drawSegmentRow = (
       if (Math.min(segStart, schStart) > canvasWidth || Math.max(segEnd, schEnd) < 0) continue
 
       if (hasDelayGhost) {
-        const schWidth = Math.max(schEnd - schStart, MIN_TASK_WIDTH)
-        if (schEnd >= 0 && schStart <= canvasWidth) {
+        // Ghost width = delay duration (schStart -> actual segStart), not scheduled flight
+        // duration — so the ghost's right edge always touches the solid puck's left edge,
+        // even when the delay exceeds the flight's own scheduled duration.
+        const schWidth = Math.max(segStart - schStart, MIN_TASK_WIDTH)
+        if (segStart >= 0 && schStart <= canvasWidth) {
           drawDelayGhost(ctx, seg.schStrDtUtc, schStart, flightY, schWidth, SEGMENT_FLIGHT_HEIGHT, timezone)
         }
       }
@@ -413,9 +416,13 @@ const drawSegmentRow = (
     }
 
     // Debrief bar (slate, aligned with puck bottom)
-    // Debrief starts at last flight's arrival time (schEndDtUtc) to ensure continuity
-    if (lastSeg.schEndDtUtc && lastSeg.debriefEndUtc) {
-      const dbStart = msToX(parseIsoMs(lastSeg.schEndDtUtc), rangeStartMs, pxPerHour) - scrollX  // use flight end time
+    // Debrief starts at the last flight's ARRIVAL time — debriefStartUtc already reflects
+    // actual arrival when delayed; schEndDtUtc (scheduled) is only a fallback for legacy rows
+    // that never had it live-joined. Using schEndDtUtc unconditionally made this bar start
+    // hours too early for a delayed flight, overlapping the still-in-progress delayed puck.
+    const dbStartIso = lastSeg.debriefStartUtc ?? lastSeg.schEndDtUtc
+    if (dbStartIso && lastSeg.debriefEndUtc) {
+      const dbStart = msToX(parseIsoMs(dbStartIso), rangeStartMs, pxPerHour) - scrollX
       const dbEnd = msToX(parseIsoMs(lastSeg.debriefEndUtc), rangeStartMs, pxPerHour) - scrollX
       const dbWidth = Math.max(dbEnd - dbStart, 1)
       ctx.fillStyle = SEGMENT_DEBRIEF_COLOR

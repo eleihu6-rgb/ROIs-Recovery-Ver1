@@ -532,14 +532,16 @@ export const pairingService = {
     const [rostered] = await fastify.db
       .select({ id: rosterFlight.id })
       .from(rosterFlight)
-      .where(eq(rosterFlight.pairingId, id))
+      .where(and(eq(rosterFlight.pairingId, id), notDeleted(rosterFlight.isDeleted)))
       .limit(1)
     if (rostered) {
       throw Object.assign(new Error('Pairing has rostered crew and cannot be deleted'), { statusCode: 409 })
     }
 
     // 事务：先删子表，再删父表（顺序与 FK RESTRICT 要求一致）
+    // roster_flight 可能残留 is_deleted=1 的软删行，仍持有 fk_rf_pairing，必须一并清除才能删父表
     await fastify.db.transaction(async (tx) => {
+      await tx.delete(rosterFlight).where(eq(rosterFlight.pairingId, id))
       await tx.delete(pairingComposition).where(eq(pairingComposition.pairingId, id))
       await tx.delete(pairingSegment).where(eq(pairingSegment.pairingId, id))
       await tx.delete(pairing).where(eq(pairing.id, id))

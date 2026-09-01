@@ -41,6 +41,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // solid puck" anchor-swap. This round restyles the ghost to the hatched gray "sched" box +
 // amber "→" departure flag, so it's versioned Ver3.
 const SNAPSHOT_PATH = path.resolve(__dirname, '../../../docs/assets/screenshots/gantt/flight-delay-ghost-bar-Ver3.png')
+// Ver4: fix for Ryan's 2026-08-29 report — ET168 (delayMin 240 > 85min duration) previously
+// left a visible gap between the ghost's end and the solid puck; the ghost now always spans
+// the full delay so it touches the puck with no gap.
+const SNAPSHOT_PATH_ET168 = path.resolve(__dirname, '../../../docs/assets/screenshots/gantt/flight-delay-ghost-bar-et168-Ver4.png')
 
 interface FlightRow {
   id: number
@@ -180,17 +184,18 @@ test.describe('Flight pane — delay ghost bar', () => {
       expect(Math.round((actArvMs - schArvMs) / 60_000), `${t.fltNum} arv delay minutes`).toBe(t.delayMin)
 
       // Visual-level proof: scroll the flight into view, compute the ghost's screen extent.
-      // The ghost is a full bar at the ORIGINAL SCHEDULED dep/arv time; the solid puck itself
-      // moves to the ACTUAL (delayed) dep/arv time — same duration, shifted right by delayMin —
-      // drawn ON TOP of (in front of) the ghost, so the ghost stays BEFORE the solid puck.
-      // Whether the ghost's end is hidden under the puck depends on delayMin vs. duration:
-      //   - delayMin < duration: the solid puck's start falls inside the ghost's span (hidden
-      //     tail); only a delayMin-wide HEAD before the puck's actual start is unobstructed
-      //     (e.g. EK001).
-      //   - delayMin >= duration: the puck starts at/after the ghost's own end — a gap, then
-      //     the ghost's full duration-wide span is unobstructed (e.g. ET168, 240min delay on an
-      //     85min flight).
-      // Either way, the guaranteed-unobstructed portion is [schedDep, min(schedArv, actDep)].
+      // The ghost's width is the DELAY DURATION (schedDep -> actDep), not the scheduled flight
+      // duration — its right edge always touches the solid puck's left edge, with no gap
+      // between them, regardless of whether the delay is shorter or longer than the flight's
+      // own scheduled duration (Ryan 2026-08-29, re ET168 240min delay on an 85min flight:
+      // "the ghost bar and solid bar are not connecting, the ghost bar stands for duration of
+      // delay"). So the full unobstructed ghost span is always [schedDep, actDep]:
+      //   - delayMin < duration: the solid puck's start falls inside the ghost's OLD
+      //     (scheduled-duration) span, but the ghost itself is only ever drawn delayMin wide,
+      //     so none of it is hidden (e.g. EK001).
+      //   - delayMin >= duration: previously left a gap between the ghost's end and the
+      //     puck's actual start (the bug); now the ghost is drawn the full delayMin wide,
+      //     reaching exactly to the puck (e.g. ET168).
       const focus = await focusFlight(page, t.id)
       expect(focus, `${t.fltNum} focusFlight found it in the loaded/sorted rows`).toBeTruthy()
       await settleFrame(page)
@@ -207,7 +212,9 @@ test.describe('Flight pane — delay ghost bar', () => {
       const shiftHours = t.delayMin / 60
       const actDepXLocal = schedDepXLocal + shiftHours * pxPerHour
 
-      const visibleGhostEndXLocal = Math.min(schedArvXLocal, actDepXLocal)
+      // The ghost is always drawn delayMin wide — [schedDep, actDep] — so its right edge sits
+      // exactly at the solid puck's actual start, regardless of how that compares to schedArv.
+      const visibleGhostEndXLocal = actDepXLocal
       const visibleGhostSpan = visibleGhostEndXLocal - schedDepXLocal
       // Clamp to stay on-canvas: a ghost head landing near the viewport's left edge could push
       // schedDep-30 negative, and sampling off-canvas returns a stray/inconsistent pixel instead
@@ -240,6 +247,27 @@ test.describe('Flight pane — delay ghost bar', () => {
         `${t.fltNum} ghost head region [${schedDepXLocal.toFixed(1)},${visibleGhostEndXLocal.toFixed(1)}]@${focus!.y} leans slate (b>r) relative to the just-before-ghost baseline (${beforeGhostX},${focus!.y}) — DELAY_GHOST_FILL_COLOR/HATCH/BORDER`,
       ).toBeGreaterThanOrEqual(1)
 
+      // Regression proof for Ryan's 2026-08-29 report ("ET168 ... ghost bar and solid bar are
+      // not connecting"): for a delayMin >= duration target, [schedArv, actDep] is exactly the
+      // span that used to be an unpainted gap under the old (scheduled-duration-wide) ghost. Only
+      // ET168 (240min delay, 85min duration) exercises this; skip targets where it doesn't apply.
+      if (actDepXLocal > schedArvXLocal + 1) {
+        const [gr, , gb, ga] = await sampleRegionAvg(
+          page,
+          'flight-canvas',
+          schedArvXLocal,
+          focus!.y - sampleH / 2,
+          actDepXLocal - schedArvXLocal,
+          sampleH,
+        )
+        expect(ga, `${t.fltNum} former-gap region [${schedArvXLocal.toFixed(1)},${actDepXLocal.toFixed(1)}]@${focus!.y} is on-canvas (has paint)`).toBeGreaterThan(0)
+        const gapSlateLean = (gb - gr) - (pb - pr)
+        expect(
+          gapSlateLean,
+          `${t.fltNum} former-gap region [${schedArvXLocal.toFixed(1)},${actDepXLocal.toFixed(1)}]@${focus!.y} now leans slate (ghost extends to touch the solid puck, no gap) relative to the just-before-ghost baseline`,
+        ).toBeGreaterThanOrEqual(1)
+      }
+
       // §PW-Snapshot: capture one representative screenshot (first target) in the same run
       // that proves the pixel-level assertion above, showing the hatched gray "sched" ghost
       // sitting BEFORE the solid puck, which itself flags its amber "→" actual departure time.
@@ -252,6 +280,28 @@ test.describe('Flight pane — delay ghost bar', () => {
           const clipEndLocal = Math.max(schedArvXLocal, actArvXLocal) + 20
           await page.screenshot({
             path: SNAPSHOT_PATH,
+            clip: {
+              x: Math.max(0, box.x + clipStartLocal),
+              y: Math.max(0, box.y + focus!.y - 35),
+              width: Math.min(clipEndLocal - clipStartLocal, box.width - clipStartLocal),
+              height: 85,
+            },
+          })
+        }
+      }
+
+      // §PW-Snapshot Ver4: ET168 specifically — proves the gap-closed fix visually (ghost's
+      // right edge now touches the solid puck's left edge with no gap), matching Ryan's
+      // reference screenshot of EK225.
+      if (t.id === TARGETS[3].id) {
+        const actArvXLocal = actDepXLocal + durationHours * pxPerHour
+        const canvas = page.locator('canvas[data-testid="flight-canvas"]')
+        const box = await canvas.boundingBox()
+        if (box) {
+          const clipStartLocal = Math.min(schedDepXLocal, actDepXLocal) - 20
+          const clipEndLocal = Math.max(schedArvXLocal, actArvXLocal) + 20
+          await page.screenshot({
+            path: SNAPSHOT_PATH_ET168,
             clip: {
               x: Math.max(0, box.x + clipStartLocal),
               y: Math.max(0, box.y + focus!.y - 35),

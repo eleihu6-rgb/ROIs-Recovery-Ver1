@@ -133,8 +133,11 @@ const drawFlightBlock = (
   // Delay ghost bar — hatched (diagonal-stripe) outline at the ORIGINAL SCHEDULED
   // position, drawn behind the solid actual-time puck, labeled "{depTime} sched".
   if (hasDelayGhost) {
-    const schWidth = Math.max(schEndX - schX, MIN_TASK_WIDTH)
-    if (schEndX >= 0 && schX <= canvasWidth) {
+    // Ghost width = delay duration (schX -> actual x), not scheduled flight duration — so
+    // the ghost's right edge always touches the solid puck's left edge, even when the delay
+    // exceeds the flight's own scheduled duration.
+    const schWidth = Math.max(x - schX, MIN_TASK_WIDTH)
+    if (x >= 0 && schX <= canvasWidth) {
       drawDelayGhost(ctx, flight.schDepDtUtc, schX, y, schWidth, TASK_HEIGHT, timezone)
     }
   }

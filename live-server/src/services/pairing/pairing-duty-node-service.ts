@@ -97,6 +97,17 @@ export async function updateDutyNodes(
 
       const audit = auditUpdate(username)
 
+      // Mark this duty as dispatcher-hand-edited on every segment (mirrors the
+      // duty_act_str_dt_utc/duty_act_end_dt_utc denormalisation pattern) — flight-time
+      // propagation reads this to skip re-deriving pickup/brief/debrief/dropoff for a duty
+      // a dispatcher already hand-tuned (see flight-delay-propagation-service.ts).
+      for (const s of segs) {
+        await tx
+          .update(pairingSegment)
+          .set({ dutyIsManualModify: 1, ...audit })
+          .where(eq(pairingSegment.id, s.id))
+      }
+
       // Write Block 1 first segment: pickup + brief
       await tx
         .update(pairingSegment)

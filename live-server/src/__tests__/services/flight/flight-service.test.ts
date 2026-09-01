@@ -32,7 +32,9 @@ const fullFlightRow = {
   flightFlag: '', blkMin: 120, fleet: '320', register: 'B-001', fltType: 'J', fltSts: 'OK', isDeleted: 0,
 }
 
-const toFlightApiExpected = (row: typeof fullFlightRow) => ({
+// fltSts widens to string | null: restore() clears it (see the restore test), so expected rows
+// legitimately carry fltSts: null even though the base fixture uses a concrete status.
+const toFlightApiExpected = (row: Omit<typeof fullFlightRow, 'fltSts'> & { fltSts: string | null }) => ({
   id: row.id,
   airline: row.airline,
   fltDt: row.fltDt,
@@ -70,7 +72,7 @@ const createChainableDb = () => {
     chain[m] = vi.fn(() => chain)
   }
   chain.returning = vi.fn().mockResolvedValue([])
-  chain.transaction = vi.fn()
+  chain.transaction = vi.fn(async (fn: (tx: typeof chain) => unknown) => fn(chain))
   // Make the chain thenable so `await db.select().from()...` resolves
   chain.then = vi.fn((resolve: any) => resolve([]))
   return chain
@@ -250,15 +252,27 @@ describe('flightService', () => {
   // ---------- update ----------
 
   describe('update', () => {
-    it('should update flight and invalidate caches', async () => {
+    it('should update flight and invalidate caches when actual times are unchanged', async () => {
       const updated = { ...fullFlightRow, fltNum: 'CA102' }
+      // Transaction's pre-update fetch (the "before" row) + the update's .returning().
+      fastify.db.then = vi.fn((resolve: (v: unknown) => unknown) => resolve([fullFlightRow]))
       fastify.db.returning.mockResolvedValue([updated])
 
       const result = await flightService.update(fastify, 1, { fltNum: 'CA102' } as any, 'admin')
 
-      expect(result).toEqual(toFlightApiExpected(updated))
+      expect(result?.flight).toEqual(toFlightApiExpected(updated))
+      expect(result?.affectedCrewIds).toEqual([])
+      expect(result?.affectedPairingIds).toEqual([])
       expect(invalidate).toHaveBeenCalledWith(fastify.redis, 'flight:1')
       expect(invalidatePattern).toHaveBeenCalledWith(fastify.redis, 'flight:list:*')
+    })
+
+    it('should return null when the flight does not exist', async () => {
+      fastify.db.then = vi.fn((resolve: (v: unknown) => unknown) => resolve([]))
+
+      const result = await flightService.update(fastify, 999, { fltNum: 'CA102' } as any, 'admin')
+
+      expect(result).toBeNull()
     })
   })
 

@@ -712,6 +712,17 @@ const roster = (): Array<Record<string, unknown>> =>
     end: i.schEndDtUtc,
     actStrDtUtc: i.actStrDtUtc,
     actEndDtUtc: i.actEndDtUtc,
+    pickupStartUtc: i.pickupStartUtc ?? null,
+    pickupEndUtc: i.pickupEndUtc ?? null,
+    briefStartUtc: i.briefStartUtc ?? null,
+    briefEndUtc: i.briefEndUtc ?? null,
+    debriefStartUtc: i.debriefStartUtc ?? null,
+    debriefEndUtc: i.debriefEndUtc ?? null,
+    dropoffStartUtc: i.dropoffStartUtc ?? null,
+    dropoffEndUtc: i.dropoffEndUtc ?? null,
+    dutySchRestMin: i.dutySchRestMin ?? null,
+    dutyActRestMin: i.dutyActRestMin ?? null,
+    actRestMin: i.actRestMin ?? null,
   }))
 
 const rosterKeys = (): string[] => {
@@ -1017,6 +1028,7 @@ const pairingSegments = (): Array<Record<string, unknown>> =>
       pickupStartUtc: (s as unknown as { pickupStartUtc?: string | null }).pickupStartUtc ?? null,
       dropoffEndUtc: (s as unknown as { dropoffEndUtc?: string | null }).dropoffEndUtc ?? null,
       dutySchRestMin: (s as unknown as { dutySchRestMin?: number | null }).dutySchRestMin ?? null,
+      dutyActRestMin: (s as unknown as { dutyActRestMin?: number | null }).dutyActRestMin ?? null,
       fltId: s.fltId, fltNum: s.fltNum, depArp: s.depArp, arvArp: s.arvArp,
       pairingCreditMin: sumPairingCreditMinutes(pi.segments ?? []),
     })))

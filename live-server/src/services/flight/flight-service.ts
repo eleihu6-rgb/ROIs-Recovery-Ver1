@@ -12,6 +12,7 @@ import { getOrSet, invalidate, invalidatePattern } from '../../utils/cache.js'
 import { auditCreate, auditUpdate } from '../../utils/audit.js'
 import { notDeleted } from '../../utils/db.js'
 import { rankService } from '../base/rank-service.js'
+import { propagateFlightActualTimeChange } from './flight-delay-propagation-service.js'
 
 const CACHE_PREFIX = 'flight'
 const CACHE_TTL = 600 // 10min
@@ -407,18 +408,57 @@ export const flightService = {
     return row
   },
 
+  /**
+   * Updates a flight row. When the incoming data changes actDepDtUtc/actArvDtUtc from
+   * their previous values, cascades that change into pairing_segment/roster_flight in
+   * the same transaction (see flight-delay-propagation-service.ts) so downstream
+   * ghost bars and KPI can be kept in sync by the caller (§Flight-Change-Ripple-Required).
+   */
   async update(fastify: FastifyInstance, id: number, data: Partial<typeof flight.$inferInsert>, username: string) {
-    const [row] = await fastify.db
-      .update(flight)
-      .set({ ...data, ...auditUpdate(username) })
-      .where(eq(flight.id, id))
-      .returning()
-    if (!row) return null
+    const result = await fastify.db.transaction(async (tx) => {
+      const [before] = await tx.select().from(flight).where(eq(flight.id, id))
+      if (!before) return null
+
+      const [row] = await tx
+        .update(flight)
+        .set({ ...data, ...auditUpdate(username) })
+        .where(eq(flight.id, id))
+        .returning()
+      if (!row) return null
+
+      let affectedCrewIds: string[] = []
+      let affectedPairingIds: number[] = []
+      const actDepChanged = data.actDepDtUtc != null && new Date(data.actDepDtUtc as Date).getTime() !== new Date((before as FlightRowDB).actDepDtUtc as Date).getTime()
+      const actArvChanged = data.actArvDtUtc != null && new Date(data.actArvDtUtc as Date).getTime() !== new Date((before as FlightRowDB).actArvDtUtc as Date).getTime()
+      if (actDepChanged || actArvChanged) {
+        const propagation = await propagateFlightActualTimeChange(
+          tx,
+          id,
+          row.actDepDtUtc as Date,
+          row.actArvDtUtc as Date,
+          username,
+        )
+        affectedCrewIds = propagation.affectedCrewIds
+        affectedPairingIds = propagation.affectedPairingIds
+      }
+
+      return { flight: toFlightApi(row as FlightRowDB), affectedCrewIds, affectedPairingIds }
+    })
+    if (!result) return null
+
     await Promise.all([
       invalidate(fastify.redis, `${CACHE_PREFIX}:${id}`),
       invalidatePattern(fastify.redis, `${CACHE_PREFIX}:list:*`),
+      ...(result.affectedPairingIds.length > 0
+        ? [
+          invalidatePattern(fastify.redis, 'pairing:list:*'),
+          ...result.affectedPairingIds.flatMap((pairingId) => [
+            invalidate(fastify.redis, `pairing:${pairingId}`, `pairing-segments:${pairingId}`),
+          ]),
+        ]
+        : []),
     ])
-    return toFlightApi(row as FlightRowDB)
+    return result
   },
 
   /** Mark a flight cancelled (fltSts = 'CX') — reuses the existing isCancelled derivation in toFlightApi. */

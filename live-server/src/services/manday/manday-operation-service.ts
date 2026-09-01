@@ -10,6 +10,7 @@ export interface MandayOperationInput {
   endDt: string | Date
   updatedBy: string
   notify?: boolean
+  pairingIds?: number[]
 }
 
 export interface MandayOperationResult {
@@ -23,6 +24,7 @@ export interface LiveMutationRefreshInput {
   startDt: string | Date
   endDt: string | Date
   updatedBy: string
+  pairingIds?: number[]
 }
 
 /**
@@ -43,6 +45,7 @@ export const refreshLiveLegalityAndManday = async (
       startDt: input.startDt,
       endDt: input.endDt,
       updatedBy: input.updatedBy,
+      pairingIds: input.pairingIds,
     }),
   ])
 }
@@ -66,6 +69,7 @@ export const recomputeMandayAndNotify = async (
     await notifyRosterTasksChanged(fastify, {
       schema: liveSchemaName(),
       crewIds,
+      pairingIds: input.pairingIds,
     })
   }
 

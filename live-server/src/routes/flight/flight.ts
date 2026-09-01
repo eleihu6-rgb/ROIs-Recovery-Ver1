@@ -2,6 +2,51 @@ import { z } from 'zod'
 import type { FastifyInstance } from 'fastify'
 import { success, fail, error } from '../../utils/response.js'
 import { flightService } from '../../services/flight/flight-service.js'
+import { refreshLiveLegalityAndManday } from '../../services/manday/manday-operation-service.js'
+import { mandayMutationWindow } from '../../services/manday/manday-mutation-window.js'
+import { notifyRosterTasksChanged } from '../../services/roster/roster-change-notifier.js'
+import { liveSchemaName } from '../../utils/db-schema.js'
+
+// Same padding as roster.ts's recomputeForMutation — kept in sync deliberately (§Minimal-First:
+// no shared constant exists yet for a single call site each; duplicating two numbers here is
+// cheaper than introducing a cross-route import for it).
+const MANDAY_BACK_DAYS = 2
+const MANDAY_FWD_DAYS = 10
+
+/**
+ * Mirrors roster.ts's recomputeForMutation for the flight-edit cascade: recomputes legality +
+ * Manday KPI for crews whose roster_flight rows were touched by propagateFlightActualTimeChange,
+ * then broadcasts manday-updated (refreshLiveLegalityAndManday's own recomputeMandayAndNotify
+ * already broadcasts roster-updated and bumps the roster chunk cache).
+ */
+const recomputeForFlightMutation = async (
+  fastify: FastifyInstance,
+  schema: string,
+  crewIds: string[],
+  refDates: Array<Date | string | null | undefined>,
+  username: string,
+  pairingIds: number[] = [],
+): Promise<void> => {
+  const ids = [...new Set(crewIds.filter((id) => !!id))]
+  const dates = refDates
+    .map((date) => date instanceof Date ? date : (date ? new Date(date) : null))
+    .filter((date): date is Date => !!date && !Number.isNaN(date.getTime()))
+  if (!ids.length || dates.length === 0) return
+  const window = await mandayMutationWindow(fastify, ids, dates, {
+    backDays: MANDAY_BACK_DAYS,
+    forwardDays: MANDAY_FWD_DAYS,
+  })
+  if (!window) return
+  await refreshLiveLegalityAndManday(fastify, {
+    crewIds: ids,
+    legalityDates: dates,
+    startDt: window.startDt,
+    endDt: window.endDt,
+    updatedBy: username,
+    pairingIds,
+  })
+  fastify.wsBroadcastAll(schema, { type: 'manday-updated', crewIds: ids })
+}
 
 export default async function flightRoutes(fastify: FastifyInstance) {
   // GET /api/flight — grouped list with pagination (FlightItem)
@@ -176,7 +221,30 @@ export default async function flightRoutes(fastify: FastifyInstance) {
       if (!result) {
         return fail(reply, 404, 'Flight not found')
       }
-      return success(reply, result)
+      if (result.affectedCrewIds.length > 0) {
+        const schemaName = request.authUser?.schema ?? liveSchemaName()
+        await recomputeForFlightMutation(
+          fastify,
+          schemaName,
+          result.affectedCrewIds,
+          [actDepDtUtc, actArvDtUtc],
+          username,
+          result.affectedPairingIds,
+        )
+      } else if (result.affectedPairingIds.length > 0) {
+        // Segments were touched on an OPEN pairing (no crew assigned yet) — nothing to
+        // recompute legality/KPI for, but the Pairing-pane ghost bar still needs a broadcast
+        // so already-open clients refetch (flight-service.ts's cache invalidation already
+        // busted pairing:*/pairing-segments:* unconditionally; this fires the missing
+        // notification half of that same cascade).
+        const schemaName = request.authUser?.schema ?? liveSchemaName()
+        await notifyRosterTasksChanged(fastify, {
+          schema: schemaName,
+          crewIds: [],
+          pairingIds: result.affectedPairingIds,
+        })
+      }
+      return success(reply, result.flight)
     } catch (err) {
       return error(reply, 500, (err as Error).message)
     }

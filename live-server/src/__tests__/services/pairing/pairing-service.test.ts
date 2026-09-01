@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { eq, and } from 'drizzle-orm'
 import { pairingService } from '../../../services/pairing/pairing-service.js'
+import { rosterFlight } from '../../../models/roster/roster-flight.js'
+import { notDeleted } from '../../../utils/db.js'
 
 vi.mock('../../../utils/cache.js', () => ({
   getOrSet: vi.fn((_redis, _key, _ttl, fetchFn) => fetchFn()),
@@ -281,6 +284,23 @@ describe('pairingService', () => {
       expect(fastify.db.transaction).toHaveBeenCalled()
       expect(invalidate).toHaveBeenCalledWith(fastify.redis, 'pairing:1')
       expect(invalidatePattern).toHaveBeenCalledWith(fastify.redis, 'pairing:list:*')
+    })
+
+    it('rostered-crew pre-check must exclude soft-deleted roster_flight rows (regression: unfiltered where let is_deleted=1 rows block delete forever)', async () => {
+      const whereMock = vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue([]),
+      })
+      fastify.db.select.mockReturnValue({
+        from: vi.fn().mockReturnValue({ where: whereMock }),
+      })
+      fastify.db.transaction = vi.fn().mockImplementation((cb: (tx: unknown) => Promise<void>) =>
+        cb({ delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }) }),
+      )
+
+      await pairingService.remove(fastify, 1)
+
+      const [whereArg] = whereMock.mock.calls[0]
+      expect(whereArg).toEqual(and(eq(rosterFlight.pairingId, 1), notDeleted(rosterFlight.isDeleted)))
     })
   })
 

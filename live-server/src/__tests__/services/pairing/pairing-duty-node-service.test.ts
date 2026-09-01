@@ -71,15 +71,20 @@ describe('updateDutyNodes', () => {
       double: undefined,
     }], 'admin')
 
-    // set was called twice: once for first seg, once for last seg
-    expect(fastify.db.set).toHaveBeenCalledTimes(2)
+    // set was called 4 times: dutyIsManualModify on each of the 2 segs, then once for
+    // first seg's pickup/brief, once for last seg's debrief/dropoff.
+    expect(fastify.db.set).toHaveBeenCalledTimes(4)
 
-    const firstCall = fastify.db.set.mock.calls[0][0]
+    const manualModifyCalls = fastify.db.set.mock.calls.slice(0, 2)
+    expect(manualModifyCalls[0][0].dutyIsManualModify).toBe(1)
+    expect(manualModifyCalls[1][0].dutyIsManualModify).toBe(1)
+
+    const firstCall = fastify.db.set.mock.calls[2][0]
     expect(firstCall.pickupStartUtc).toEqual(new Date('2026-03-01T08:30:00.000Z'))
     expect(firstCall.pickupEndUtc).toEqual(new Date('2026-03-01T09:00:00.000Z'))
     expect(firstCall.briefStartUtc).toEqual(new Date('2026-03-01T09:00:00.000Z'))
 
-    const lastCall = fastify.db.set.mock.calls[1][0]
+    const lastCall = fastify.db.set.mock.calls[3][0]
     expect(lastCall.debriefEndUtc).toEqual(new Date('2026-03-01T14:30:00.000Z'))
     expect(lastCall.dropoffStartUtc).toEqual(new Date('2026-03-01T14:30:00.000Z'))
     expect(lastCall.dropoffEndUtc).toEqual(new Date('2026-03-01T15:00:00.000Z'))
