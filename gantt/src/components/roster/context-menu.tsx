@@ -418,6 +418,9 @@ export const ContextMenu = () => {
               const res = await pairingApi.build(flightIds as number[])
               await bringPairingIdToTop(res.pairingId)
               notify.success(`Pairing ${res.label} created (${res.dutyCount} duty${res.dutyCount > 1 ? 's' : ''}, ${res.segCount} flight${res.segCount > 1 ? 's' : ''})`)
+              // Build-rule warnings (8h multi-seg block cap, base loop, continuity, overlap):
+              // the pairing IS created ("build as-is"), but each violation is surfaced immediately.
+              for (const w of res.warnings ?? []) notify.warning(`Build rule: ${w}`)
             } catch (e) {
               notify.error((e as Error).message || 'Failed to create pairing')
             }

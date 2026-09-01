@@ -148,13 +148,16 @@ export const pairingApi = {
     return api.post('/api/pairing/create-from-flights', { flightIds, base, division }) as Promise<unknown>
   },
 
-  /** Build a rules-aware pairing from selected flight sectors (returns new pairing id) */
-  async build(flightIds: number[]): Promise<{ pairingId: number; label: string; dutyCount: number; segCount: number }> {
+  /** Build a rules-aware pairing from selected flight sectors (returns new pairing id).
+   * `warnings` surfaces build-rule violations (8h multi-seg block cap, base loop, station
+   * continuity, time overlap) — the build itself never blocks ("build as-is, surface violations"). */
+  async build(flightIds: number[]): Promise<{ pairingId: number; label: string; dutyCount: number; segCount: number; warnings?: string[] }> {
     return api.post('/api/pairing/build', { flightIds }) as Promise<{
       pairingId: number
       label: string
       dutyCount: number
       segCount: number
+      warnings?: string[]
     }>
   },
 

@@ -15,16 +15,11 @@ const CACHE_PREFIX = 'pairing'
 // ─── Phase-1 pairing-build rules (temp constants) ────────────────────────────
 // TODO(param): these business constants should migrate to the `dictionary` table
 // (see CLAUDE.md §参数化). They are centralised here so the move is a one-file change.
-const CHECKIN_MIN = 60 // check-in: brief starts 60m before first departure (matches existing F8 pairing convention)
-const CHECKOUT_MIN = 0 // check-out: 0 buffer for duty accounting (duty ends at arrival)
-const DEBRIEF_MIN = 15 // debrief/dropoff timestamps sit 15m after last arrival (F8 render convention)
-const REST_FLOOR_MIN = 720 // post-duty rest floor: 12h
-const MAX_DUTY_BLOCK_MIN = 480 // multi-flight duty: total block time cap = 8h
-// A ground gap only starts a NEW duty when it is long enough to be a real rest/layover
-// (≥ the 12h rest floor). Shorter sits — even multi-hour connections at a hub — stay
-// within ONE duty, so the duty keeps a single check-in. A gap below this is never a
-// duty boundary because crew cannot legally rest in it.
-const LAYOVER_MIN = REST_FLOOR_MIN
+export const CHECKIN_MIN = 60 // check-in: brief starts 60m before first departure (matches existing F8 pairing convention)
+export const CHECKOUT_MIN = 0 // check-out: 0 buffer for duty accounting (duty ends at arrival)
+export const DEBRIEF_MIN = 15 // debrief/dropoff timestamps sit 15m after last arrival (F8 render convention)
+export const REST_FLOOR_MIN = 720 // post-duty rest floor / minimum rest: 12h. Also the duty boundary: a new duty only begins after a real rest of at least this long.
+export const MAX_DUTY_BLOCK_MIN = 480 // max total block for a duty with MORE THAN ONE segment: 8h (single-seg long-haul exempt — augmented crew). A VALIDATION rule, never a duty-splitter (see planDuties).
 const DIVISION_FLIGHT_CREW = 'P' // composition division for flight crew (CA/FO)
 
 /** Airline → home base. EK returns to DXB, ET to ADD. */
@@ -59,33 +54,73 @@ const bodyComposition = (fleet: string): { rank: string; plan: number }[] => {
 
 const homeBaseFor = (airline: string, fallback: string): string => AIRLINE_HOME_BASE[airline] ?? fallback
 
-const minutesBetween = (a: Date, b: Date): number => (b.getTime() - a.getTime()) / 60000
-const addMinutes = (d: Date, min: number): Date => new Date(d.getTime() + min * 60000)
+export const minutesBetween = (a: Date, b: Date): number => (b.getTime() - a.getTime()) / 60000
+export const addMinutes = (d: Date, min: number): Date => new Date(d.getTime() + min * 60000)
 
 /**
  * Split flights (already sorted by scheduled departure) into duties.
- * A new duty starts when the ground gap is a real rest/layover (≥ LAYOVER_MIN = 12h),
- * when adding the flight would exceed the 8h duty block cap, or when the previous
- * arrival station differs from the next departure station (station break). A multi-hour
- * hub connection below the rest floor stays in ONE duty (one check-in).
+ *
+ * A duty is a continuous run of flights separated only by short ground turns; a NEW duty
+ * begins ONLY after a real rest — a ground gap of at least the defined minimum rest
+ * (REST_FLOOR_MIN = 12h). A shorter sit stays inside ONE duty (one check-in), even a
+ * multi-hour hub connection or a same-flight-number tag stop (e.g. ET861 ADD-BZV-PNR-ADD's
+ * 60-min turn at PNR).
+ *
+ * The 8h block cap and station continuity are duty CONSTRAINTS, not duty-splitters — an
+ * over-block or discontinuous duty is a legality violation surfaced downstream ("build
+ * as-is, surface violations"). They must NEVER manufacture a duty boundary here, because a
+ * boundary stamps a max(12h, DP) post-duty rest (see dutyRestMin), and stamping that rest
+ * over a gap the crew can't rest in is a fiction. (Ryan: pairing #150707 recorded a 12h rest
+ * after duty 1 over PNR's 60-min turn — a rest the crew never actually got. The fix: only a
+ * ≥12h gap opens a new duty, so a fabricated rest can never sit over a short turn again.)
  */
-const planDuties = (flights: FlightRow[]): FlightRow[][] => {
+export const planDuties = (flights: FlightRow[]): FlightRow[][] => {
   const duties: FlightRow[][] = [[flights[0]]]
   for (let i = 1; i < flights.length; i++) {
     const prev = flights[i - 1]
     const cur = flights[i]
-    const curDuty = duties[duties.length - 1]
-    const dutyBlock = curDuty.reduce((s, f) => s + f.blkMin, 0)
     const gapMin = minutesBetween(prev.schArvDtUtc, cur.schDepDtUtc)
-    const wouldExceedBlock = dutyBlock + cur.blkMin > MAX_DUTY_BLOCK_MIN
-    const stationBreak = prev.arvArp !== cur.depArp
-    if (gapMin >= LAYOVER_MIN || wouldExceedBlock || stationBreak) {
+    if (gapMin >= REST_FLOOR_MIN) {
       duties.push([cur])
     } else {
-      curDuty.push(cur)
+      duties[duties.length - 1].push(cur)
     }
   }
   return duties
+}
+
+/**
+ * Validate a planned duty layout against the pairing build rules and return human-readable
+ * warnings. "Build as-is, surface violations" (Ryan, Option A 2026-08-31): the build NEVER
+ * blocks on these — the caller (UI toast, scripts) surfaces them so an over-cap same-day weld
+ * (#150717) or a stranded non-base chain (#150497) is visible the moment it is created,
+ * instead of sitting silently until the next audit run
+ * (live-server/scripts/audit-pairing-build-rules.mjs).
+ * The rest floor cannot be violated by construction — planDuties only splits on >= REST_FLOOR_MIN.
+ */
+export const validateBuildRules = (duties: FlightRow[][], base: string): string[] => {
+  const warnings: string[] = []
+  const firstLeg = duties[0][0]
+  const lastDuty = duties[duties.length - 1]
+  const lastLeg = lastDuty[lastDuty.length - 1]
+  if (firstLeg.depArp !== base || lastLeg.arvArp !== base) {
+    warnings.push(`not a ${base} base loop (starts at ${firstLeg.depArp}, ends at ${lastLeg.arvArp})`)
+  }
+  duties.forEach((duty, i) => {
+    const blk = duty.reduce((n, f) => n + (f.blkMin ?? minutesBetween(f.schDepDtUtc, f.schArvDtUtc)), 0)
+    if (duty.length > 1 && blk > MAX_DUTY_BLOCK_MIN) {
+      warnings.push(`duty ${i + 1}: ${duty.length} legs, ${Math.round(blk)}min block exceeds the ${MAX_DUTY_BLOCK_MIN}min multi-segment cap`)
+    }
+    for (let s = 1; s < duty.length; s++) {
+      if (duty[s].depArp !== duty[s - 1].arvArp) {
+        warnings.push(`duty ${i + 1}: station break — ${duty[s - 1].fltNum} arrives ${duty[s - 1].arvArp} but ${duty[s].fltNum} departs ${duty[s].depArp}`)
+      }
+      if (duty[s].schDepDtUtc < duty[s - 1].schArvDtUtc) {
+        warnings.push(`duty ${i + 1}: ${duty[s].fltNum} departs before ${duty[s - 1].fltNum} arrives (time overlap)`)
+      }
+    }
+  })
+  return warnings
 }
 
 /** Post-duty rest = max(12h, duty period). DP = duty check-in (dep−2h) → check-out (last arrival). */
@@ -300,7 +335,9 @@ export const pairingBuildService = {
         .where(eq(pairing.id, hdr.id))
 
       await refreshPairingTafb(tx, hdr.id, username)
-      return { pairingId: hdr.id, label, dutyCount: agg.dutyCount, segCount: agg.segCount, base, fleet, airline }
+      // Option A — surface (never block): rule warnings ride along in the response for the UI toast.
+      const warnings = validateBuildRules(planDuties(flights), base)
+      return { pairingId: hdr.id, label, dutyCount: agg.dutyCount, segCount: agg.segCount, base, fleet, airline, warnings }
     })
 
     await invalidatePairing(fastify.redis, result.pairingId)
