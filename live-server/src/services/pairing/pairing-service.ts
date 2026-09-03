@@ -460,7 +460,7 @@ export const pairingService = {
 
       if (!pairingRow) return null
 
-      const [segments, compositions, rosterDutyRefs] = await Promise.all([
+      const [segments, compositions] = await Promise.all([
         fastify.db
           .select()
           .from(pairingSegment)
@@ -470,7 +470,19 @@ export const pairingService = {
           .select()
           .from(pairingComposition)
           .where(and(eq(pairingComposition.pairingId, id), notDeleted(pairingComposition.isDeleted))),
-        fastify.db
+      ])
+
+      // Crew-specific Rule 7500 reference time zones are supplementary to the
+      // pairing detail. Do not make the Duty Node editor unavailable when old
+      // or partially migrated roster data cannot be read.
+      let rosterDutyRefs: Array<{
+        crewId: string
+        pairingId: number | null
+        dutySeq: number | null
+        dutyRefTz: number | null
+      }> = []
+      try {
+        rosterDutyRefs = await fastify.db
           .selectDistinctOn([rosterFlight.crewId, rosterFlight.dutySeq], {
             crewId: rosterFlight.crewId,
             pairingId: rosterFlight.pairingId,
@@ -483,8 +495,10 @@ export const pairingService = {
             notDeleted(rosterFlight.isDeleted),
             isNotNull(rosterFlight.dutySeq),
           ))
-          .orderBy(asc(rosterFlight.crewId), asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq)),
-      ])
+          .orderBy(asc(rosterFlight.crewId), asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
+      } catch (err) {
+        fastify.log.warn({ err, pairingId: id }, 'Failed to load optional roster duty refs')
+      }
 
       return { ...pairingRow, segments, compositions, rosterDutyRefs }
     })

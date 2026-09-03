@@ -88,8 +88,9 @@ export const pairingApi = {
 
   /** Get pairing detail with segments and compositions */
   async getDetail(pairingId: number): Promise<PairingDetailResponse> {
-    const response = await api.get(`/api/pairing/${pairingId}`)
-    const data = response.data ?? response
+    // The shared HTTP client unwraps the standard { code, data, message }
+    // envelope before returning, so this is already the detail payload.
+    const data = await api.get(`/api/pairing/${pairingId}`) as PairingDetailResponse
     const pairing = data as Pairing
     const compositions = (data as { compositions?: PairingCompositionRow[] }).compositions ?? []
     // The detail endpoint returns composition as separate rows (actingRank/plan/fill)
