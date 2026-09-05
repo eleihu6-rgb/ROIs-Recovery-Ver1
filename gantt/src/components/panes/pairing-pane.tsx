@@ -20,9 +20,9 @@ import { renderPairingTasks, buildPairingDutyBuckets } from '@/components/gantt/
 import type { PairingRenderContext } from '@/components/gantt/renderers/pairing-renderer'
 import { createPaneInteractionHandler } from '@/components/gantt/interactions/base-interaction'
 import type { HitTestResult, PaneInteractionCallbacks, RubberBandRect } from '@/components/gantt/interactions/base-interaction'
-import { timeToX, xToTime, formatBlockMinutes, parseIsoCached, buildCompositionString, buildCompositionSegments, sortPairingRows } from '@/components/gantt/gantt-utils'
-import { startOfDay } from 'date-fns'
+import { timeToX, xToTime, formatBlockMinutes, parseIsoCached, buildCompositionString, buildCompositionSegments, sortPairingRows, calendarDateInTimeZone } from '@/components/gantt/gantt-utils'
 import { findPairingStartingAtDay } from '@/utils/locate-today-pairing'
+import { resolveBaseTimezone } from '@/utils/base-timezone'
 import { publishPairingOrder } from '@/utils/gantt-test-hook'
 import { HEADER_HEIGHT, MIN_TASK_WIDTH, PAIRING_ROW_HEIGHT as SEGMENT_ROW_HEIGHT, PAIRING_HEADER_HEIGHT, SEGMENT_FLIGHT_HEIGHT, SPLITTER_WIDTH } from '@/components/gantt/gantt-constants'
 import { useGanttViewStore } from '@/stores/gantt-view-store'
@@ -398,6 +398,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
 
   // Timezone for time display
   const timezone = useTimezoneStore((s) => s.timezone)
+  const timezoneOptions = useTimezoneStore((s) => s.timezoneOptions)
 
   // Enhanced segment-hover flight info: reuse the Flight-pane formatter via shared stores.
   const flightItems = useFlightStore((s) => s.items)
@@ -743,11 +744,14 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
     },
     onItemRightClick: (hit, clientX, clientY) => {
       // Mirror SharedPairingPane: pre-compute the vertical-scroll target for the
-      // "Jump to this day's pairing" menu action. Converts the click's screen X to
-      // canvas-relative X, then to a local-day timestamp, then finds the matching
-      // pairing row (exact-midnight match, otherwise the latest-starting pairing of
-      // an earlier day up to 365 days back). See findPairingStartingAtDay.
+      // "Scroll to <Aug 04> pairings" menu action. Converts the click's screen X to
+      // canvas-relative X, then to a UTC instant, then finds the matching pairing
+      // row (Phase 1: earliest-starting pairing on the clicked airline-base-tz
+      // day; Phase 2: walk back day-by-day; Phase 3: forward scan). See
+      // findPairingStartingAtDay. The menu label date is computed in the same
+      // base tz so the label and the bucket match.
       let jumpToDayScrollY: number | null = null
+      let jumpToDayDate: string | null = null
       const canvas = canvasElementRef.current
       if (canvas) {
         const rect = canvas.getBoundingClientRect()
@@ -755,15 +759,18 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
         const { start: rangeStart } = usePaneStore.getState().dateRange
         const canvasX = clientX - rect.left
         const clickedTime = xToTime(canvasX + sx, rangeStart, pph)
-        const clickedDayMs = startOfDay(clickedTime).getTime()
         const items = itemsRef.current
-        const targetRowIndex = findPairingStartingAtDay(items, clickedDayMs)
+        const baseTz = resolveBaseTimezone(timezoneOptions, timezone)
+        const targetRowIndex = baseTz
+          ? findPairingStartingAtDay(items, clickedTime, baseTz)
+          : -1
         if (targetRowIndex >= 0) {
           const canvasH = rect.height
           const targetY = Math.max(0, targetRowIndex * SEGMENT_ROW_HEIGHT - PAIRING_HEADER_HEIGHT)
           const maxY = Math.max(0, items.length * SEGMENT_ROW_HEIGHT - canvasH + PAIRING_HEADER_HEIGHT)
           jumpToDayScrollY = Math.max(0, Math.min(maxY, targetY))
         }
+        if (baseTz) jumpToDayDate = calendarDateInTimeZone(clickedTime, baseTz)
       }
       if (hit.itemId !== null) {
         selectTask(hit.itemId)
@@ -776,10 +783,10 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
           findFltId: seg?.fltId ?? null,
           findTargetPane: targetRosterPaneRef.current,
         } as never
-        useUiStore.getState().openContextMenu(clientX, clientY, mockTask, legacyPaneType, hit.rowIndex, undefined, jumpToDayScrollY)
+        useUiStore.getState().openContextMenu(clientX, clientY, mockTask, legacyPaneType, hit.rowIndex, undefined, jumpToDayScrollY, jumpToDayDate)
       } else if (hit.rowIndex >= 0) {
         const mockTask = { id: -1 } as never
-        useUiStore.getState().openContextMenu(clientX, clientY, mockTask, legacyPaneType, hit.rowIndex, undefined, jumpToDayScrollY)
+        useUiStore.getState().openContextMenu(clientX, clientY, mockTask, legacyPaneType, hit.rowIndex, undefined, jumpToDayScrollY, jumpToDayDate)
       }
     },
     onItemHover: (hit, clientX, clientY) => {

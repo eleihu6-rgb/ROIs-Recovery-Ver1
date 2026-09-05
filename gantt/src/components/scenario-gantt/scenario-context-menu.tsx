@@ -16,6 +16,8 @@ import {
 } from '@/utils/scenario-find-helpers'
 import { buildScenarioRosterRemovePatch } from '@/utils/scenario-roster-edit'
 import { applyPairingPaneScrollY } from '@/utils/scroll-pairing-row'
+import { formatJumpDay } from '@/utils/format-jump-day'
+import { sortContextMenuItems, type ContextMenuItem } from '@/utils/sort-context-menu-items'
 
 /**
  * Scenario-specific right-click context menu.
@@ -51,6 +53,7 @@ export const ScenarioContextMenu = () => {
   const paneType   = useUiStore((s) => s.contextMenuPane)
   const scenarioId = useUiStore((s) => s.contextMenuScenarioId)
   const jumpToDayScrollY = useUiStore((s) => s.contextMenuJumpToDayScrollY)
+  const jumpToDayDate = useUiStore((s) => s.contextMenuJumpToDayDate)
   const closeContextMenu = useUiStore((s) => s.closeContextMenu)
 
   const menuRef = useRef<HTMLDivElement>(null)
@@ -108,7 +111,7 @@ export const ScenarioContextMenu = () => {
   // Flight id: the flight pane's puck id, or a roster/pairing segment's fltId.
   const fltId = paneType === 'flight' && ctx.id > 0 ? ctx.id : (ctx.findFltId ?? null)
 
-  const items: { icon: typeof Plane; label: string; onClick: () => void; danger?: boolean }[] = []
+  const items: ContextMenuItem[] = []
 
   // Pinning is a Scenario view aid, not an optimizer edit. It mirrors Live's
   // row-freeze affordance while writing only to scenario-layout local state.
@@ -310,14 +313,16 @@ export const ScenarioContextMenu = () => {
     })
   }
 
-  // Pairing pane → jump to the pairing matching the right-clicked local day (or the
-  // previous day's last pairing). Vertical scroll only — no horizontal scroll, no
+  // Pairing pane → jump to the pairing matching the right-clicked base-tz day (or the
+  // previous day's first pairing). Vertical scroll only — no horizontal scroll, no
   // zoom, no date range, no row selection. Pre-computed by SharedPairingPane.onItemRightClick
-  // and stashed on ui-store.contextMenuJumpToDayScrollY.
+  // and stashed on ui-store.contextMenuJumpToDayScrollY + .contextMenuJumpToDayDate.
   if (paneType === 'pairing' && jumpToDayScrollY != null) {
+    const day = jumpToDayDate ? formatJumpDay(jumpToDayDate) : null
     items.push({
       icon: CalendarArrowDown,
-      label: "Jump to this day's pairing",
+      label: day ? <>Scroll to <span className="font-medium text-primary">{day}</span> pairings</> : "Jump to this day's pairings",
+      sortKey: day ? `Scroll to ${day} pairings` : "Jump to this day's pairings",
       onClick: () => {
         applyPairingPaneScrollY('scenario', jumpToDayScrollY, scenarioId!)
         closeContextMenu()
@@ -351,12 +356,12 @@ export const ScenarioContextMenu = () => {
 
   if (items.length === 0) return null
 
-  // Alphabetical, case-sensitive sort of the final menu items.
-  items.sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0))
+  // Alphabetical sort of the final menu items (by sortKey, or string label).
+  const sortedItems = sortContextMenuItems(items)
 
   // Clamp position to the viewport.
   const menuW = 200
-  const menuH = items.length * 32 + 8
+  const menuH = sortedItems.length * 32 + 8
   const x = Math.min(position.x, window.innerWidth - menuW - 8)
   const y = Math.min(position.y, window.innerHeight - menuH - 8)
 
@@ -368,9 +373,9 @@ export const ScenarioContextMenu = () => {
       style={{ left: x, top: y }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {items.map((item) => (
+      {sortedItems.map((item, i) => (
         <button
-          key={item.label}
+          key={item.sortKey ?? (typeof item.label === 'string' ? item.label : i)}
           onMouseDown={(e) => e.stopPropagation()} // keep the document mousedown from closing the menu
           className={[
             'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-all duration-100 active:scale-95',

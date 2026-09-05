@@ -42,6 +42,12 @@ interface UiStore {
    * other context (roster pane, flight pane, non-pairing right-clicks).
    */
   contextMenuJumpToDayScrollY: number | null
+  /**
+   * Base-tz YYYY-MM-DD of the right-clicked day for the "Scroll to <date>
+   * pairings" menu label. Only set when contextMenuJumpToDayScrollY is set;
+   * rendered as "Aug 04" via `formatJumpDay`.
+   */
+  contextMenuJumpToDayDate: string | null
 
   /** Global loading overlay */
   globalLoading: boolean
@@ -167,7 +173,7 @@ interface UiStore {
   closeSwapDialog: () => void
 
   // Context menu
-  openContextMenu: (x: number, y: number, task: RosterItem, pane: PaneType, rowIndex?: number, scenarioId?: number, jumpToDayScrollY?: number | null) => void
+  openContextMenu: (x: number, y: number, task: RosterItem, pane: PaneType, rowIndex?: number, scenarioId?: number, jumpToDayScrollY?: number | null, jumpToDayDate?: string | null) => void
   closeContextMenu: () => void
 
   // Global loading
@@ -193,6 +199,7 @@ export const useUiStore = create<UiStore>((set) => ({
   contextMenuRowIndex: -1,
   contextMenuScenarioId: null,
   contextMenuJumpToDayScrollY: null,
+  contextMenuJumpToDayDate: null,
   globalLoading: false,
   statusBarText: '',
   addPaneMenuOpen: false,
@@ -225,7 +232,7 @@ export const useUiStore = create<UiStore>((set) => ({
   openSwapDialog: (task) => set({ swapDialogOpen: true, swapSourceTask: task }),
   closeSwapDialog: () => set({ swapDialogOpen: false, swapSourceTask: null }),
 
-  openContextMenu: (x, y, task, pane, rowIndex = -1, scenarioId, jumpToDayScrollY = null) =>
+  openContextMenu: (x, y, task, pane, rowIndex = -1, scenarioId, jumpToDayScrollY = null, jumpToDayDate = null) =>
     set({
       contextMenuOpen: true,
       contextMenuPosition: { x, y },
@@ -234,9 +241,10 @@ export const useUiStore = create<UiStore>((set) => ({
       contextMenuRowIndex: rowIndex,
       contextMenuScenarioId: scenarioId ?? null,
       contextMenuJumpToDayScrollY: jumpToDayScrollY ?? null,
+      contextMenuJumpToDayDate: jumpToDayDate ?? null,
     }),
   closeContextMenu: () =>
-    set({ contextMenuOpen: false, contextMenuTask: null, contextMenuPane: null, contextMenuRowIndex: -1, contextMenuScenarioId: null, contextMenuJumpToDayScrollY: null }),
+    set({ contextMenuOpen: false, contextMenuTask: null, contextMenuPane: null, contextMenuRowIndex: -1, contextMenuScenarioId: null, contextMenuJumpToDayScrollY: null, contextMenuJumpToDayDate: null }),
 
   setGlobalLoading: (loading) => set({ globalLoading: loading }),
   setStatusBarText: (text) => set({ statusBarText: text }),

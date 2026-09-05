@@ -12,6 +12,8 @@ import { findCrewToTop } from '@/utils/find-crew'
 import { bringPairingIdToTop, bringFlightIdToTop, findPairingsByFlight, liveHasFlightPaneOpen } from '@/utils/bring-matches-to-top'
 import { deletePairings, resolveSelectedPairingIds } from '@/utils/delete-gantt-selection'
 import { applyPairingPaneScrollY } from '@/utils/scroll-pairing-row'
+import { formatJumpDay } from '@/utils/format-jump-day'
+import { sortContextMenuItems, type ContextMenuItem } from '@/utils/sort-context-menu-items'
 
 /**
  * Canvas context menu — shown on right-click a task block.
@@ -49,6 +51,7 @@ export const ContextMenu = () => {
   const clearSelection = useGanttViewStore((s) => s.clearSelection)
   const setVisible = usePaneStore((s) => s.setVisible)
   const jumpToDayScrollY = useUiStore((s) => s.contextMenuJumpToDayScrollY)
+  const jumpToDayDate = useUiStore((s) => s.contextMenuJumpToDayDate)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Close on click outside or Escape
@@ -195,7 +198,7 @@ export const ContextMenu = () => {
   }
 
   // Build menu items based on context
-  const items: { icon: typeof Edit; label: string; shortcut?: string; onClick: () => void; danger?: boolean; disabled?: boolean }[] = []
+  const items: ContextMenuItem[] = []
 
   const hasTask = task.id > 0
 
@@ -306,13 +309,20 @@ export const ContextMenu = () => {
         },
       },
     )
-    // "Jump to this day's pairing" — only present when the right-click landed on a
+    // "Scroll to <Aug 04> pairings" — only present when the right-click landed on a
     // canvas pixel whose day resolved to a matching pairing (pre-computed by
-    // SharedPairingPane.onItemRightClick and stored on ui-store).
+    // SharedPairingPane.onItemRightClick and stored on ui-store as
+    // contextMenuJumpToDayScrollY + contextMenuJumpToDayDate). The date is
+    // shipped in YYYY-MM-DD form (calendarDateInTimeZone format) and rendered
+    // as "Aug 04" via formatJumpDay; the date portion is highlighted in
+    // text-primary so the user can see at a glance which day they're jumping
+    // to without scanning the rest of the label.
     if (jumpToDayScrollY != null) {
+      const day = jumpToDayDate ? formatJumpDay(jumpToDayDate) : null
       items.push({
         icon: CalendarArrowDown,
-        label: "Jump to this day's pairing",
+        label: day ? <>Scroll to <span className="font-medium text-primary">{day}</span> pairings</> : "Jump to this day's pairings",
+        sortKey: day ? `Scroll to ${day} pairings` : "Jump to this day's pairings",
         onClick: () => {
           applyPairingPaneScrollY('live', jumpToDayScrollY)
           closeContextMenu()
@@ -490,12 +500,12 @@ export const ContextMenu = () => {
 
   if (items.length === 0) return null
 
-  // Alphabetical, case-sensitive sort of the final menu items.
-  items.sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0))
+  // Alphabetical sort of the final menu items (by sortKey, or string label).
+  const sortedItems = sortContextMenuItems(items)
 
   // Clamp position to viewport
   const menuW = 200
-  const menuH = items.length * 32 + 8
+  const menuH = sortedItems.length * 32 + 8
   const x = Math.min(position.x, window.innerWidth - menuW - 8)
   const y = Math.min(position.y, window.innerHeight - menuH - 8)
 
@@ -507,9 +517,9 @@ export const ContextMenu = () => {
       style={{ left: x, top: y }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {items.map((item, i) => (
+      {sortedItems.map((item, i) => (
         <button
-          key={item.label}
+          key={item.sortKey ?? (typeof item.label === 'string' ? item.label : i)}
           disabled={item.disabled}
           onMouseDown={(e) => e.stopPropagation()} // Prevent document mousedown from closing menu
           className={[
