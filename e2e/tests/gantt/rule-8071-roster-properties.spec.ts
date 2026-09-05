@@ -137,7 +137,7 @@ test.describe('Rule 8071/001 — roster properties', () => {
         return t.liveViolations().filter((v) => v.ruleCode === '8071')
       })
       expect(rows.every((v) => v.pairingId > 0)).toBe(true)
-      expect(rows.some((v) => /matching rosters \(\d+\).*1CM window/.test(v.message))).toBe(true)
+      expect(rows.some((v) => /matching rosters \(\d+\).*outside the allowed range.*Roster Period/.test(v.message))).toBe(true)
 
       await page.getByTestId('violations-button').first().click()
       const dialog = page.getByTestId('violation-list-dialog')

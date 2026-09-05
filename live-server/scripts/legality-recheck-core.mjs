@@ -1062,7 +1062,7 @@ export async function rule8071(source, ctx) {
       actual_value: Number(actual),
       limit_value: over ? Number(maxTimes) : Number(minTimes),
       unit: 'COUNT',
-      message: withParamRowPrefix(m.rowIndex, `Roster Period [${new Date(Number(ws) * 1000).toISOString().slice(0, 10)}, ${new Date(Number(we) * 1000).toISOString().slice(0, 10)}]: The number of matching rosters (${Number(actual)}) does NOT meet the allowed range of [${minTimes}, ${maxTimes}]. Rule parameters: attribute=${rawOrStar(m.row[m.H('Attributes')])}, assignment group=${rawOrStar(m.row[m.H('Assignment Groups')])}, label=${rawOrStar(m.row[m.H('Labels')])}, qualifier=${rawOrStar(m.row[m.H('Qualifiers')])}, destination=${rawOrStar(m.row[m.H('Destinations')])}.`),
+      message: withParamRowPrefix(m.rowIndex, `The number of matching rosters (${Number(actual)}) is outside the allowed range of [${minTimes}, ${maxTimes}] in the Roster Period [${new Date(Number(ws) * 1000).toISOString().slice(0, 10)}, ${new Date(Number(we) * 1000).toISOString().slice(0, 10)}].`),
     })
   }
   return out

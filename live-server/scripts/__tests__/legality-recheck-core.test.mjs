@@ -846,7 +846,7 @@ test('rule8071 maps F8 default row into persisted 8071 violations', async () => 
   assert.equal(out[0].unit, 'COUNT')
   assert.match(
     out[0].message,
-    /^Row 1: Roster Period \[2026-06-01, 2026-06-30\]: The number of matching rosters \(12\) does NOT meet the allowed range of \[0, 11\]/,
+    /^Row 1: The number of matching rosters \(12\) is outside the allowed range of \[0, 11\] in the Roster Period \[2026-06-01, 2026-06-30\]/,
   )
 })
 
