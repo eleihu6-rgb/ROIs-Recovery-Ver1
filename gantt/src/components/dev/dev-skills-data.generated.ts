@@ -639,6 +639,18 @@ export const DEV_SKILLS: DevSkillEntry[] = [
     "sourcePath": ".agents/skills/142-flight-schedule-seed-generator/SKILL.md"
   },
   {
+    "name": "143-ek-et-roundtrip-pairing-build",
+    "folder": "143-ek-et-roundtrip-pairing-build",
+    "number": 143,
+    "title": "143 EK/ET Round-trip Pairing Build",
+    "description": "Build valid EK/ET crew pairings as home-base round trips (EK→DXB, ET→ADD) and repair invalid ones. A pairing MUST start and end at its home base; a rotation that never connects from base (e.g. #150497) is invalid and must be deleted and rebuilt. Use when asked to \"build EK/ET pairings\", \"fix invalid pairings\", \"re-segment stranded pairings\", or when a pairing's legs don't loop back to base.",
+    "overview": "Builds and repairs EK/ET crew pairings against the data model in `docs/architecture/data-model.md`. A pairing is a crew **rotation**: it must depart the airline's home base and eventually return to it. Anything else is invalid.",
+    "function": "Builds and repairs EK/ET crew pairings against the data model in `docs/architecture/data-model.md`. A pairing is a crew **rotation**: it must depart the airline's home base and eventually return to it. Anything else is invalid.",
+    "howToUse": "Build valid EK/ET crew pairings as home-base round trips (EK→DXB, ET→ADD) and repair invalid ones. A pairing MUST start and end at its home base; a rotation that never connects from base (e.g. #150497) is invalid and must be deleted and rebuilt. Use when asked to \"build EK/ET pairings\", \"fix invalid pairings\", \"re-segment stranded pairings\", or when a pairing's legs don't loop back to base.",
+    "resources": [],
+    "sourcePath": ".agents/skills/143-ek-et-roundtrip-pairing-build/SKILL.md"
+  },
+  {
     "name": "portal-help-writing",
     "folder": "portal-help-writing",
     "number": null,
