@@ -351,6 +351,9 @@ export const ScenarioContextMenu = () => {
 
   if (items.length === 0) return null
 
+  // Alphabetical, case-sensitive sort of the final menu items.
+  items.sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0))
+
   // Clamp position to the viewport.
   const menuW = 200
   const menuH = items.length * 32 + 8
