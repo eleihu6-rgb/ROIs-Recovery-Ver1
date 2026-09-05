@@ -343,7 +343,7 @@ export const ContextMenu = () => {
       }
       items.push({
         icon: Trash2,
-        label: 'Remove flight from pairing',
+        label: 'Delete flight from pairing',
         danger: true,
         onClick: () => {
           const fltId = findCtx.findFltId as number

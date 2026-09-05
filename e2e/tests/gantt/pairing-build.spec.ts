@@ -9,7 +9,7 @@
  *    to the top row of the Pairing pane.
  *  - Multi-selecting the EK001 (DXB→LHR) out + EK002 (LHR→DXB) back legs → "Create Pairing
  *    (2 flights)" builds a 2-duty overnight pairing (the LHR layover splits the duties).
- *  - Right-click a segment → "Remove flight from pairing" drops the flight (and deletes the
+ *  - Right-click a segment → "Delete flight from pairing" drops the flight (and deletes the
  *    pairing once its last flight is removed).
  *
  * Backend: POST /api/pairing/build, POST /api/pairing/:id/remove-flight
@@ -110,8 +110,8 @@ const removeFlightViaMenu = async (page: Page, dashboard: GanttDashboardPage, pa
   // drop it from its order list (renderRow -1) or repaint the row. So retry the whole hit-test —
   // re-scroll, re-derive the on-screen row (pairingVisibleSegments gives sort order, but a
   // freshly touched pairing floats to the top "found" tier, so the rendered pane order is the
-  // true row), right-click — until the Remove menu actually appears.
-  const remove = page.getByRole('button', { name: 'Remove flight from pairing', exact: true })
+  // true row), right-click — until the Delete menu actually appears.
+  const remove = page.getByRole('button', { name: 'Delete flight from pairing', exact: true })
   await expect(async () => {
     await setScrollX(page, Math.max(0, Math.round(contentX - 150)))
     const probe = (await pairingVisibleSegments(page)).find((p) => p.pairingId === pairingId && p.fltId === fltId)
