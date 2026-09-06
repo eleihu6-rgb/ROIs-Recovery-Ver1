@@ -679,10 +679,25 @@ export async function rule8002(source, ctx) {
 // (e.g. assignment FLY → assignment VAC, independent of the broad GRD bucket).
 const filterValues = (v) => String(v ?? '').split('|').map((s) => s.trim()).filter((s) => s && s !== '*')
 const isSet = (v) => { const t = String(v ?? '').trim(); return t !== '' && t !== '*' }
+const parseCountryFilter = (raw) => {
+  const text = String(raw ?? '').trim()
+  if (!text || text === '*') return { kind: 'disabled', values: [] }
+  const negate = text.startsWith('!(') && text.endsWith(')')
+  const body = negate ? text.slice(2, -1) : text
+  if (negate ? body.includes('(') || body.includes(')') : body.includes('!') || body.includes('(') || body.includes(')')) {
+    return { kind: 'invalid', raw: text, values: [] }
+  }
+  const separator = negate ? '+' : '|'
+  const values = body.split(separator).map((s) => s.trim().toUpperCase()).filter(Boolean)
+  if (!values.length || values.some((value) => !/^[A-Z]{2}$/.test(value))) {
+    return { kind: 'invalid', raw: text, values: [] }
+  }
+  return { kind: negate ? 'exclude' : 'include', values: [...new Set(values)] }
+}
 const HDR8071 = [
   'Bases', 'Ranks', 'Fleets', 'Crew Teams', 'Labels', 'Attributes', 'Override Duty Attributes',
-  'Assignment Groups', 'Qualifiers', 'Flights', 'Destinations', 'Positions',
-  'Period', 'Unit', 'Max Times', 'Min Times', 'Check Mode',
+  'Assignment Groups', 'Assignments', 'Qualifiers', 'Flights', 'Destinations', 'Countries',
+  'Positions', 'Period', 'Unit', 'Max Times', 'Min Times', 'Check Mode',
 ]
 const HDR8072 = [
   'Flight Fleets', 'Flight Assignment Groups', 'Crew Teams', 'Crew Nationality',
@@ -969,8 +984,25 @@ export async function rule8071(source, ctx) {
   const instances = ctx.instancesOf(8071)
   if (!instances.length) { ctx.log('8071: no instances in rule set — skipped'); return [] }
   const groupSet = new Set()
+  const assignmentSet = new Set()
   const flightSet = new Set()
   const destinationSet = new Set()
+  const countryIncludeSet = new Set()
+  let countryExcludeSet = null
+  let countryFilterInvalid = false
+  // SQL country prefilter is an optimization only when every param row agrees.
+  // If any row uses wildcard Countries while another row narrows countries, keep
+  // the full activity population for Rust per-row matching (8071/001 DOMO !(CA)
+  // + INB * must not drop CA destinations before the INB row runs).
+  let hasWildcardCountryRow = false
+  let countryPrefilterNarrowed = false
+  // SQL group/assignment prefilters are ANDed in rosterProperties. When one 8071 row
+  // narrows Assignment Groups (e.g. FLY) and another uses wildcard groups but narrows
+  // Assignments (e.g. PRAM/RES), the intersection drops RES rows before Rust runs.
+  let hasWildcardGroupRow = false
+  let groupPrefilterNarrowed = false
+  let hasWildcardAssignmentRow = false
+  let assignmentPrefilterNarrowed = false
   const positionSet = new Set()
   const ruleLines = []
   const meta = []
@@ -988,9 +1020,42 @@ export async function rule8071(source, ctx) {
         ctx.log(`skip 8071/${inst.instance}: missing Period/Unit/Max Times/Min Times`)
         continue
       }
-      for (const value of filterValues(row[H('Assignment Groups')])) groupSet.add(value)
+      const groupsRaw = String(row[H('Assignment Groups')] ?? '').trim()
+      if (!groupsRaw || groupsRaw === '*') {
+        hasWildcardGroupRow = true
+      } else {
+        groupPrefilterNarrowed = true
+        for (const value of filterValues(groupsRaw)) groupSet.add(value)
+      }
+      const assignmentsRaw = String(row[H('Assignments')] ?? '').trim()
+      if (!assignmentsRaw || assignmentsRaw === '*') {
+        hasWildcardAssignmentRow = true
+      } else {
+        assignmentPrefilterNarrowed = true
+        for (const value of filterValues(assignmentsRaw)) assignmentSet.add(value)
+      }
       for (const value of filterValues(row[H('Flights')])) flightSet.add(value)
       for (const value of filterValues(row[H('Destinations')])) destinationSet.add(value)
+      const countrySpec = parseCountryFilter(row[H('Countries')])
+      if (countrySpec.kind === 'disabled') {
+        hasWildcardCountryRow = true
+      } else if (countrySpec.kind === 'include') {
+        countryPrefilterNarrowed = true
+        for (const value of countrySpec.values) countryIncludeSet.add(value)
+      } else if (countrySpec.kind === 'exclude') {
+        countryPrefilterNarrowed = true
+        const next = countryExcludeSet == null ? new Set(countrySpec.values) : new Set()
+        if (countryExcludeSet == null) {
+          countryExcludeSet = next
+        } else {
+          for (const value of countrySpec.values) {
+            if (countryExcludeSet.has(value)) next.add(value)
+          }
+          countryExcludeSet = next
+        }
+      } else if (countrySpec.kind === 'invalid') {
+        countryFilterInvalid = true
+      }
       for (const value of filterValues(row[H('Positions')])) positionSet.add(value)
       const teams = rawOrStar(row[H('Crew Teams')])
       if (hasNonWildcard(teams)) {
@@ -1010,20 +1075,28 @@ export async function rule8071(source, ctx) {
       const idx = meta.length
       const modeRaw = String(row[H('Check Mode')] ?? '*').trim().toUpperCase()
       const mode = modeRaw === 'F' ? 'F' : modeRaw === 'D' ? 'D' : 'R'
-      const sk = `${period}${unit}:${rawOrStar(row[H('Flights')])}:${rawOrStar(row[H('Assignment Groups')])}:${mode}`.slice(0, 40)
+      const sk = `${period}${unit}:${rawOrStar(row[H('Flights')])}:${rawOrStar(row[H('Assignment Groups')])}:${rawOrStar(row[H('Assignments')])}:${rawOrStar(row[H('Countries')])}:${mode}`.slice(0, 40)
       meta.push({ inst, row, H, sk, period, unit, maxTimes, minTimes, mode, rowIndex })
       ruleLines.push(['R', idx, ...HDR8071.map((name) => rawOrStar(row[H(name)]))].join('\t'))
       if (minTimes > 0) requiresFullRosterPopulation = true
     }
   }
   if (!ruleLines.length) return []
+  const countrySqlPrefilter = !(hasWildcardCountryRow && countryPrefilterNarrowed)
+  const groupSqlPrefilter = !(hasWildcardGroupRow && groupPrefilterNarrowed)
+  const assignmentSqlPrefilter = !(hasWildcardAssignmentRow && assignmentPrefilterNarrowed)
+  const countries = !countrySqlPrefilter || countryFilterInvalid ? [] : [...countryIncludeSet]
+  const countryNot = !countrySqlPrefilter || countryFilterInvalid ? [] : [...(countryExcludeSet ?? [])]
   // Under-min rows must see crews with rosters that do NOT match the row's
   // property filters; otherwise source prefiltering turns "0 matching" into
   // "crew absent" before the Rust checker can count it.
   const rows = await source.rosterProperties({
-    groups: requiresFullRosterPopulation ? [] : [...groupSet],
+    groups: requiresFullRosterPopulation || !groupSqlPrefilter ? [] : [...groupSet],
+    assignments: requiresFullRosterPopulation || !assignmentSqlPrefilter ? [] : [...assignmentSet],
     flights: requiresFullRosterPopulation ? [] : [...flightSet],
     destinations: requiresFullRosterPopulation ? [] : [...destinationSet],
+    countries: requiresFullRosterPopulation ? [] : countries,
+    countryNot: requiresFullRosterPopulation ? [] : countryNot,
     positions: requiresFullRosterPopulation ? [] : [...positionSet],
   })
   const teamMap = needsTeams ? await source.crewTeams() : null
@@ -1033,12 +1106,15 @@ export async function rule8071(source, ctx) {
     r.bases ?? '*', r.ranks ?? '*', r.fleets ?? '*',
     needsTeams ? (teamMap.get(String(r.crew_id)) ?? []).join('|') : (r.teams ?? '*'),
     r.label ?? '*', r.attributes ?? '*', r.override_duty_attributes ?? '*',
-    r.assignment_group ?? '', r.qualifier ?? '*', r.flight_number ?? '',
-    r.destination ?? '', r.position ?? '',
+    r.assignment_group ?? '', r.assignment ?? '*', r.qualifier ?? '*', r.flight_number ?? '',
+    r.destination ?? '', r.destination_country ?? '', r.position ?? '',
   ].map((v) => String(v).replace(/[\t\n\r]/g, ' ')).join('\t'))
   const cLine = ['C', epochSec(`${ctx.dateFrom}T00:00:00Z`), epochSec(`${ctx.dateTo}T23:59:59Z`)].join('\t')
   const rpRows = needsRosterPeriods ? await source.rosterPeriods() : []
-  const pLines = rpRows.map((rp) => ['P', epochSec(rp.start + 'T00:00:00Z'), epochSec(rp.end + 'T00:00:00Z')].join('\t'))
+  // RP window is inclusive of the final calendar day: rp_end "2026-09-30" must map to
+  // 2026-09-30 23:59:59 so flights ON 09-30 land inside [rp_start, rp_end]. The previous
+  // T00:00:00Z made the window half-open, silently dropping late-window flights.
+  const pLines = rpRows.map((rp) => ['P', epochSec(rp.start + 'T00:00:00Z'), epochSec(rp.end + 'T23:59:59Z')].join('\t'))
   const out = []
   const binRunner = ctx.runBin ?? runBin
   for (const cols of await binRunner('check-8071', ['--emit-tsv'], [cLine, ...ruleLines, ...activityLines, ...pLines].join('\n'))) {

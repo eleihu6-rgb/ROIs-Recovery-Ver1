@@ -694,8 +694,11 @@ export function liveSource(db, fromIso, toExclusiveIso) {
     // ── rule 8071 — normalized roster-property activity rows ──
     async rosterProperties(filters = {}) {
       const groups = filters.groups?.length ? filters.groups : []
+      const assignments = filters.assignments?.length ? filters.assignments : []
       const flights = filters.flights?.length ? filters.flights : []
       const destinations = filters.destinations?.length ? filters.destinations : []
+      const countries = filters.countries?.length ? filters.countries : []
+      const countryNot = filters.countryNot?.length ? filters.countryNot : []
       const positions = filters.positions?.length ? filters.positions : []
       return (await db.query(
         `with crew_quals as (
@@ -723,10 +726,12 @@ export function liveSource(db, fromIso, toExclusiveIso) {
                 extract(epoch from rf.sch_end_dt_utc)::bigint as end_utc,
                 coalesce(nullif(rf.label, ''), nullif(p.pairing_label, ''), rf.assignment, rf.assignment_group, '') as label,
                 coalesce(nullif(rf.assignment_group, ''), p.assignment_group, '') as assignment_group,
+                coalesce(nullif(rf.assignment, ''), p.assignment, '') as assignment,
                 coalesce(nullif(rf.assignment, ''), p.assignment, '') as qualifier,
                 coalesce(nullif(f.flt_num, ''), nullif(ps.flt_num, ''), '') as flight_number,
                 coalesce(nullif(rf.arv_arp, ''), nullif(f.arv_arp, ''), nullif(ps.arv_arp, ''), '') as destination,
                 coalesce(nullif(rf.position, ''), '') as position,
+                coalesce(nullif(ap.country, ''), '') as destination_country,
                 coalesce(string_agg(distinct case when q.dim = 'B' then q.value end, '|' order by case when q.dim = 'B' then q.value end), '*') as bases,
                 coalesce(string_agg(distinct case when q.dim = 'R' then q.value end, '|' order by case when q.dim = 'R' then q.value end), '*') as ranks,
                 coalesce(string_agg(distinct case when q.dim = 'F' then q.value end, '|' order by case when q.dim = 'F' then q.value end), '*') as fleets,
@@ -738,19 +743,27 @@ export function liveSource(db, fromIso, toExclusiveIso) {
            left join flight f on f.id = rf.flt_id and f.is_deleted = 0
            left join pairing_segment ps on ps.pairing_id = rf.pairing_id
             and ps.duty_seq = rf.duty_seq and ps.seg_seq = rf.seg_seq and ps.is_deleted = 0
+           left join airport ap on ap.airport = coalesce(nullif(rf.arv_arp, ''), nullif(f.arv_arp, ''), nullif(ps.arv_arp, ''))
            left join crew_quals q on q.crew_id = rf.crew_id
           where rf.is_deleted = 0 and rf.sch_str_dt_utc >= $1 and rf.sch_str_dt_utc < $2
             and (cardinality($3::text[]) = 0 or coalesce(nullif(rf.assignment_group, ''), p.assignment_group, '') = any($3::text[]))
-            and (cardinality($4::text[]) = 0 or coalesce(nullif(f.flt_num, ''), nullif(ps.flt_num, ''), '') = any($4::text[]))
-            and (cardinality($5::text[]) = 0 or coalesce(nullif(rf.arv_arp, ''), nullif(f.arv_arp, ''), nullif(ps.arv_arp, ''), '') = any($5::text[]))
-            and (cardinality($6::text[]) = 0 or coalesce(nullif(rf.position, ''), '') = any($6::text[]))
+            and (cardinality($4::text[]) = 0 or coalesce(nullif(rf.assignment, ''), p.assignment, '') = any($4::text[]))
+            and (cardinality($5::text[]) = 0 or coalesce(nullif(f.flt_num, ''), nullif(ps.flt_num, ''), '') = any($5::text[]))
+            and (cardinality($6::text[]) = 0 or coalesce(nullif(rf.arv_arp, ''), nullif(f.arv_arp, ''), nullif(ps.arv_arp, ''), '') = any($6::text[]))
+            and (
+              (cardinality($7::text[]) = 0 and cardinality($8::text[]) = 0)
+              or nullif(ap.country, '') = any($7::text[])
+              or nullif(ap.country, '') <> all($8::text[])
+            )
+            and (cardinality($9::text[]) = 0 or coalesce(nullif(rf.position, ''), '') = any($9::text[]))
           group by rf.id, rf.crew_id, rf.pairing_id, rf.duty_seq, rf.flt_id, rf.sch_str_dt_utc,
                    rf.sch_end_dt_utc, rf.label, p.pairing_label, rf.assignment_group, p.assignment_group,
                    rf.assignment, p.assignment, f.flt_num, ps.flt_num, rf.arv_arp, f.arv_arp, ps.arv_arp,
+                   ap.country,
                    rf.seg_seq,
                    rf.position
           order by rf.crew_id, rf.sch_str_dt_utc, rf.pairing_id nulls last, rf.duty_seq, rf.seg_seq`,
-        [...P, groups, flights, destinations, positions])).rows
+        [...P, groups, assignments, flights, destinations, countries, countryNot, positions])).rows
     },
 
     // ── rule 8072 — crew-on-flight segment qualification rows ──
