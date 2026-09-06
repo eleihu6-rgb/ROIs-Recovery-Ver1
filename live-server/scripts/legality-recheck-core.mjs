@@ -2338,6 +2338,7 @@ export async function rule7508(source, ctx) {
       const unit = fieldRaw(row, H, 'Unit', 'RH').toUpperCase()
       const dutyReport = boolYN(fieldRaw(row, H, 'Duty Report', 'Y'), true)
       const dutyRelease = boolYN(fieldRaw(row, H, 'Duty Release', 'Y'), true)
+      const countLayover = boolYN(fieldRaw(row, H, 'Count Layover', 'N'), false)
       const bufferMin = hhmmToMin(fieldRaw(row, H, 'Duty End Buffer'))
       const minLimits = parseInt(row[H('Min Limits')], 10)
       if (!periodHours || !unit || Number.isNaN(bufferMin) || Number.isNaN(minLimits)) {
@@ -2373,6 +2374,7 @@ export async function rule7508(source, ctx) {
         unit,
         dutyReport,
         dutyRelease,
+        countLayover,
         bufferMin,
         minLimits,
       })
@@ -2389,8 +2391,8 @@ export async function rule7508(source, ctx) {
   const needsTeams = params.some(({ teams }) => hasNonWildcard(teams))
   const qualRows = needsQuals ? await source.crewQualEntries() : []
   const teamMap = needsTeams ? await source.crewTeams() : null
-  const lines = params.map(({ rowId, bases, ranks, fleets, teams, periodHours, unit, dutyReport, dutyRelease, bufferMin, minLimits }) => [
-    'R', rowId, bases, ranks, fleets, teams, periodHours, unit, dutyReport, dutyRelease, bufferMin, minLimits,
+  const lines = params.map(({ rowId, bases, ranks, fleets, teams, periodHours, unit, dutyReport, dutyRelease, countLayover, bufferMin, minLimits }) => [
+    'R', rowId, bases, ranks, fleets, teams, periodHours, unit, dutyReport, dutyRelease, bufferMin, minLimits, countLayover,
   ].map(cleanTsv).join('\t'))
 
   for (const r of [...duties, ...ground]) {
