@@ -6,6 +6,17 @@
  *   violations:{schema}:{groupCode}
  */
 
+/** Match live-server `redisKeyPrefix()` + prefixed client (`sit:`, `dev:`, …). */
+export function redisKeyPrefixSegment() {
+  const p = (process.env.REDIS_KEY_PREFIX ?? 'dev').trim()
+  return p ? `${p}:` : ''
+}
+
+/** Status / meta keys polled by GET /api/legality/recheck-status (prefixed Redis client). */
+export function legalityRecheckRedisKey(airline, groupCode, suffix) {
+  return `${redisKeyPrefixSegment()}legality:recheck:${airline}:${groupCode}:${suffix}`
+}
+
 /** Redis channel the live-server WS plugin pSubscribes. */
 export function violationsUpdatedChannel(schema, groupCode) {
   return `violations:${schema}:${groupCode}`

@@ -397,6 +397,15 @@ async function spawnLiveRecheckResolved(
         .catch((err) => {
           fastify.log.warn({ err, groupCode }, 'violations.updated publish after recheck failed')
         })
+      // Backstop: child script owns the string status key, but if it wrote an
+      // unprefixed key (pre-REDIS_KEY_PREFIX scripts) or crashed after DB commit,
+      // flip the prefixed status key so /recheck-status polling can settle.
+      void fastify.redis.get(statusKey).then(async (s) => {
+        if (s !== 'computing') return
+        const now = new Date().toISOString()
+        await fastify.redis.set(statusKey, 'done')
+        await fastify.redis.set(`legality:recheck:${filiale}:${groupCode}:last_checked_at`, now)
+      })
       return
     }
     void fastify.redis.get(statusKey).then((s) => {

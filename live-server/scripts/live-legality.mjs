@@ -36,7 +36,7 @@ import {
   firstFlightDepartureUtcExpr,
   lastFlightArrivalUtcExpr,
 } from './assignment-overlap-rest-sql.mjs'
-import { publishViolationsUpdated } from './live-legality-publish.mjs'
+import { publishViolationsUpdated, legalityRecheckRedisKey } from './live-legality-publish.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const IS_MAIN = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
@@ -100,7 +100,7 @@ const SCENARIO_SCHEMA = quoteIdent(readEnvDefault('SCENARIO_SCHEMA', 'scenario')
 export const applySchemas = (text) =>
   text.replaceAll('f8.', `${LIVE_SCHEMA}.`).replaceAll('scenario.', `${SCENARIO_SCHEMA}.`)
 const AIRLINE = arg('--airline', process.env.FILIALE || 'F8')
-const KEY = (s) => `legality:recheck:${AIRLINE}:${GROUP}:${s}`
+const KEY = (s) => legalityRecheckRedisKey(AIRLINE, GROUP, s)
 // DB/Redis clients + applySchemas wrapper only for CLI entrypoint execution. Library
 // importers (pbs-server rust-rule-runner, preview-draft) get liveSource etc. without
 // connecting to PG/Redis or requiring live-server/.env — those readEnv calls used to
