@@ -5,6 +5,8 @@ import {
   isFlyPairing,
   crewFlyTasksOverlappingWindow,
   crewTasksOverlappingWindow,
+  mark7504GapDutyPucks,
+  crew7504GapEndpointTasks,
 } from '../violation-puck-window'
 import type { RosterItem } from '@/types'
 
@@ -129,5 +131,62 @@ describe('crewTasksOverlappingWindow (7305 any-assignment)', () => {
       windowEndDt: '2026-09-10T19:00:00.000Z',
     })
     expect(out.map((t) => t.id)).toEqual([1, 2])
+  })
+})
+
+describe('mark7504GapDutyPucks', () => {
+  const flySeg = (
+    id: number,
+    pairingId: number,
+    dutySeq: number,
+    start: string,
+    end: string,
+  ): RosterItem => {
+    const row = task(id, pairingId, start, end, 'FLY')
+    row.crewId = '536'
+    row.dutySeq = dutySeq
+    return row
+  }
+
+  it('marks only the two WOCL duties inside one pairing, not the other duties', () => {
+    const pairingId = 62001
+    const crewTasks = [
+      flySeg(1, pairingId, 1, '2026-09-01T06:00:00.000Z', '2026-09-01T14:00:00.000Z'),
+      flySeg(2, pairingId, 2, '2026-09-02T06:00:00.000Z', '2026-09-02T14:00:00.000Z'),
+      flySeg(3, pairingId, 2, '2026-09-02T15:00:00.000Z', '2026-09-02T22:00:00.000Z'),
+      flySeg(4, pairingId, 3, '2026-09-03T08:00:00.000Z', '2026-09-03T16:00:00.000Z'),
+      flySeg(5, pairingId, 4, '2026-09-04T06:00:00.000Z', '2026-09-04T14:00:00.000Z'),
+    ]
+    const marked = new Map<number, number>()
+    const bump = (taskId: number, sev: number) => {
+      marked.set(taskId, Math.max(marked.get(taskId) ?? 0, sev))
+    }
+
+    mark7504GapDutyPucks(
+      {
+        startDt: '2026-09-02T22:00:00.000Z',
+        endDt: '2026-09-03T08:00:00.000Z',
+      },
+      '536',
+      2,
+      new Map([['536', crewTasks]]),
+      bump,
+    )
+
+    expect(marked.get(2)).toBe(2)
+    expect(marked.get(3)).toBe(2)
+    expect(marked.get(4)).toBe(2)
+    expect(marked.has(1)).toBe(false)
+    expect(marked.has(5)).toBe(false)
+  })
+
+  it('crew7504GapEndpointTasks resolves cross-pairing gap endpoints', () => {
+    const before = flySeg(10, 100, 1, '2026-09-10T10:00:00.000Z', '2026-09-10T18:00:00.000Z')
+    const after = flySeg(11, 200, 1, '2026-09-12T08:00:00.000Z', '2026-09-12T16:00:00.000Z')
+    const out = crew7504GapEndpointTasks(
+      { startDt: '2026-09-10T18:00:00.000Z', endDt: '2026-09-12T08:00:00.000Z' },
+      [before, after],
+    )
+    expect(out.map((t) => t.id)).toEqual([10, 11])
   })
 })

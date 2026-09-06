@@ -810,6 +810,12 @@ visible while pinned) and Scen-2034 (no-duty row can pin).
   resolves the hovered task from Scenario roster items instead of Live `useRosterStore`. Do not
   use a broad `v.crewId === task.crewId` match in task-puck mode; that belongs to crew-header bell
   hover and causes a puck to show unrelated violations from the same crew.
+- **7504 WOCL-spacing gap vs duty pucks (2026-09-05):** 7504 `startDt`/`endDt` are the rest GAP
+  between two consecutive WOCL FLY duties, not either duty’s own schedule. Segment-overlap paint
+  therefore misses both endpoints (crew 1015: before-duty ends before the gap starts). Paint via
+  `crew7504GapEndpointTasks` / `mark7504GapDutyPucks` (latest FLY duty ending at/before gap start +
+  earliest FLY duty starting at/after gap end) in Live, Scenario, and puck hover. Alert Center was
+  already correct. E2E: `rule-7504-gap-endpoint-pucks.spec.ts`.
 - **Zustand v5 fresh-snapshot trap** — a selector that builds a new array/object every call makes
   `useSyncExternalStore` see a new snapshot every render → `Maximum update depth exceeded` (manifests as
   "scenario-gantt-view never visible," not an obvious loop). Wrap such selectors in `useShallow`

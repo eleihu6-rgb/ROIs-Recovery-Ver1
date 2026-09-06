@@ -100,3 +100,97 @@ export const crewTasksOverlappingWindow = (
   }
   return out
 }
+
+const taskMs = (t: RosterItem): { ts: number; te: number } | null => {
+  if (!t.schStrDtUtc || !t.schEndDtUtc) return null
+  const ts = new Date(t.schStrDtUtc).getTime()
+  const te = new Date(t.schEndDtUtc).getTime()
+  if (!Number.isFinite(ts) || !Number.isFinite(te)) return null
+  return { ts, te }
+}
+
+type FlyDutyGroup = {
+  pairingId: number
+  dutySeq: number
+  tasks: RosterItem[]
+  startMs: number
+  endMs: number
+}
+
+const groupFlyDutyTasks = (crewTasks: RosterItem[]): FlyDutyGroup[] => {
+  const byKey = new Map<string, RosterItem[]>()
+  for (const task of crewTasks) {
+    if (task.pairingId == null || task.dutySeq == null) continue
+    if (task.assignmentGroup !== 'FLY') continue
+    const key = `${task.pairingId}:${task.dutySeq}`
+    const arr = byKey.get(key)
+    if (arr) arr.push(task)
+    else byKey.set(key, [task])
+  }
+
+  const out: FlyDutyGroup[] = []
+  for (const tasks of byKey.values()) {
+    let startMs = Infinity
+    let endMs = -Infinity
+    for (const task of tasks) {
+      const bounds = taskMs(task)
+      if (!bounds) continue
+      startMs = Math.min(startMs, bounds.ts)
+      endMs = Math.max(endMs, bounds.te)
+    }
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue
+    const head = tasks[0]
+    if (head.pairingId == null || head.dutySeq == null) continue
+    out.push({
+      pairingId: head.pairingId,
+      dutySeq: head.dutySeq,
+      tasks,
+      startMs,
+      endMs,
+    })
+  }
+  return out
+}
+
+/**
+ * Rule 7504 WOCL spacing: the violation window is the rest GAP between two consecutive
+ * WOCL flight duties (`startDt` = end of the before duty incl. rest, `endDt` = start of
+ * the after duty). Mark only those two duty pucks — including when both duties live inside
+ * the same pairing.
+ */
+export const crew7504GapEndpointTasks = (
+  violation: ViolationTimeWindow,
+  crewTasks: RosterItem[],
+): RosterItem[] => {
+  const win = resolveViolationPaintWindow(violation)
+  if (!win) return []
+
+  let before: FlyDutyGroup | null = null
+  let after: FlyDutyGroup | null = null
+  for (const duty of groupFlyDutyTasks(crewTasks)) {
+    if (duty.endMs <= win.startMs && (!before || duty.endMs > before.endMs)) {
+      before = duty
+    }
+    if (duty.startMs >= win.endMs && (!after || duty.startMs < after.startMs)) {
+      after = duty
+    }
+  }
+
+  const out: RosterItem[] = []
+  if (before) out.push(...before.tasks)
+  if (after && after !== before) out.push(...after.tasks)
+  return out
+}
+
+export const mark7504GapDutyPucks = (
+  violation: ViolationTimeWindow,
+  crewId: string | null | undefined,
+  severity: number,
+  itemsByCrew: Map<string, RosterItem[]>,
+  bump: (taskId: number, sev: number) => void,
+): void => {
+  if (!crewId) return
+  for (const task of crew7504GapEndpointTasks(violation, itemsByCrew.get(crewId) ?? [])) {
+    bump(task.id, severity)
+  }
+}

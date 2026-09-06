@@ -714,4 +714,60 @@ describe('effective-window violation severity maps', () => {
     const keyed = new Map<string, RuleViolation[]>()
     expect(buildScenarioCrewViolationSeverityMapForTest(keyed).get('1462')).toBeUndefined()
   })
+
+  it('lights 7504 on both gap-endpoint duties when segments do not overlap the rest gap (1015 shape)', () => {
+    const before = {
+      ...item(21, '1015', 16633),
+      dutySeq: 2,
+      schStrDtUtc: '2026-08-28T03:00:00.000Z',
+      schEndDtUtc: '2026-08-28T04:45:00.000Z',
+    }
+    const after = {
+      ...item(22, '1015', 16633),
+      dutySeq: 3,
+      schStrDtUtc: '2026-08-29T05:15:00.000Z',
+      schEndDtUtc: '2026-08-29T08:00:00.000Z',
+    }
+    const itemsByCrew = new Map<string, RosterItem[]>([['1015', [before, after]]])
+    const itemsByPairingId = new Map<number, RosterItem[]>([[16633, [before, after]]])
+    const displayViolations = new Map<number, DisplayViolation[]>([
+      [16633, [{
+        source: 'persisted',
+        crewId: '1015',
+        pairingId: 16633,
+        ruleCode: '7504',
+        ruleInstance: '001',
+        ruleName: '7504',
+        passed: false,
+        severity: 1,
+        actualValue: 22.83,
+        limitValue: 55,
+        unit: 'HOUR',
+        message: 'Rest between consecutive WOCL flight duties (2026-08-27, 2026-08-29) is 22:50 less than 55 RH.',
+        startDt: '2026-08-28T06:25:00.000Z',
+        endDt: '2026-08-29T05:15:00.000Z',
+      }]],
+    ])
+    const scenarioKeyed = new Map<string, RuleViolation[]>([
+      ['pairing:16633', [{
+        crewId: '1015',
+        targetType: 'pairing',
+        targetId: 16633,
+        ruleCode: '7504',
+        ruleName: '7504/001',
+        severity: 1,
+        canOverride: false,
+        message: 'Rest between consecutive WOCL flight duties (2026-08-27, 2026-08-29) is 22:50 less than 55 RH.',
+        windowStartDt: '2026-08-28T06:25:00.000Z',
+        windowEndDt: '2026-08-29T05:15:00.000Z',
+      }]],
+    ])
+
+    const liveMap = buildLiveViolationMapForTest(new Map(), displayViolations, itemsByPairingId, itemsByCrew)
+    const scenarioMap = buildScenarioViolationMapForTest(scenarioKeyed, itemsByCrew, itemsByPairingId)
+    expect(liveMap.get(21)).toBe(1)
+    expect(liveMap.get(22)).toBe(1)
+    expect(scenarioMap.get(21)).toBe(1)
+    expect(scenarioMap.get(22)).toBe(1)
+  })
 })

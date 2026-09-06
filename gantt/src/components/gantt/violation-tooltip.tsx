@@ -10,6 +10,7 @@ import { buildScenarioRosterItems } from '@/components/scenario-gantt/build-scen
 import { VIOLATION_SEVERITY_COLORS } from './gantt-constants'
 import { isCrewBellOnlyRule } from './crew-bell-only-rules'
 import {
+  crew7504GapEndpointTasks,
   crewFlyTasksOverlappingWindow,
   crewTasksOverlappingWindow,
   pairingTasksOverlapViolationWindow,
@@ -175,6 +176,18 @@ const collectViolationTooltipEntries = ({
       addEntry(v.ruleCode, v.ruleName, v.severity, v.message, v.ruleInstance, { skipCrewBellOnly: true })
     }
   }
+  // 7504: WOCL-spacing gap endpoints — the two WOCL duties straddle the gap, so an
+  // individual duty segment never overlaps the gap window; surface on the duties
+  // that bound it (mirrors mark7504GapDutyPucks).
+  for (const [, vs] of displayViolations) {
+    for (const v of vs) {
+      if (v.passed || v.ruleCode !== '7504') continue
+      if (v.crewId && v.crewId !== String(task.crewId)) continue
+      const gapTasks = crew7504GapEndpointTasks(v, crewTasks)
+      if (!gapTasks.some((t) => t.id === task.id)) continue
+      addEntry(v.ruleCode, v.ruleName, v.severity, v.message, v.ruleInstance, { skipCrewBellOnly: true })
+    }
+  }
   if (scenarioViolations) {
     for (const [, vs] of scenarioViolations) {
       for (const v of vs) {
@@ -207,6 +220,15 @@ const collectViolationTooltipEntries = ({
         if (!resolveViolationPaintWindow(v)) continue
         const paintable = crewTasksOverlappingWindow(crewTasks, v)
         if (!paintable.some((t) => t.id === task.id)) continue
+        addEntry(v.ruleCode, v.ruleName, v.severity, v.message, undefined, { skipCrewBellOnly: true })
+      }
+    }
+    for (const [, vs] of scenarioViolations) {
+      for (const v of vs) {
+        if (v.ruleCode !== '7504') continue
+        if (v.crewId && v.crewId !== String(task.crewId)) continue
+        const gapTasks = crew7504GapEndpointTasks(v, crewTasks)
+        if (!gapTasks.some((t) => t.id === task.id)) continue
         addEntry(v.ruleCode, v.ruleName, v.severity, v.message, undefined, { skipCrewBellOnly: true })
       }
     }

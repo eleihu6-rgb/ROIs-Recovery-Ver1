@@ -343,6 +343,108 @@ describe('ViolationTooltip aggregation', () => {
     expect(puckEntries.map((entry) => entry.ruleCode)).toEqual(['7501'])
   })
 
+  it('shows 7504 on both gap-endpoint WOCL duty pucks when segments straddle the gap (1015 shape)', () => {
+    const crewId = '1015'
+    const pairingId = 16633
+    const before = {
+      ...rosterItem(21, crewId, pairingId),
+      dutySeq: 2,
+      segSeq: 1,
+      schStrDtUtc: '2026-08-28T03:00:00.000Z',
+      schEndDtUtc: '2026-08-28T04:45:00.000Z',
+      assignmentGroup: 'FLY',
+    }
+    const after = {
+      ...rosterItem(22, crewId, pairingId),
+      dutySeq: 3,
+      segSeq: 1,
+      schStrDtUtc: '2026-08-29T05:15:00.000Z',
+      schEndDtUtc: '2026-08-29T08:00:00.000Z',
+      assignmentGroup: 'FLY',
+    }
+    const displayViolations = new Map<number, DisplayViolation[]>([
+      [pairingId, [{
+        source: 'persisted',
+        crewId,
+        pairingId,
+        ruleCode: '7504',
+        ruleName: '7504',
+        ruleInstance: '001',
+        passed: false,
+        severity: 1,
+        actualValue: 22.83,
+        limitValue: 55,
+        unit: 'HOUR',
+        message: 'Row 1: Rest between consecutive WOCL flight duties (2026-08-27, 2026-08-29) is 22:50 less than 55 RH.',
+        startDt: '2026-08-28T06:25:00.000Z',
+        endDt: '2026-08-29T05:15:00.000Z',
+      }]],
+    ])
+
+    const beforePuck = collectViolationTooltipEntriesForTest({
+      hoveredTaskId: 21,
+      hoveredCrewId: null,
+      violations: new Map(),
+      displayViolations,
+      items: [before, after],
+    })
+    expect(beforePuck.map((e) => e.ruleCode)).toEqual(['7504'])
+
+    const afterPuck = collectViolationTooltipEntriesForTest({
+      hoveredTaskId: 22,
+      hoveredCrewId: null,
+      violations: new Map(),
+      displayViolations,
+      items: [before, after],
+    })
+    expect(afterPuck.map((e) => e.ruleCode)).toEqual(['7504'])
+  })
+
+  it('shows 7504 on scenario gap-endpoint duty pucks via the scenario violation store', () => {
+    const crewId = '1015'
+    const pairingId = 16633
+    const before = {
+      ...rosterItem(31, crewId, pairingId),
+      dutySeq: 2,
+      segSeq: 1,
+      schStrDtUtc: '2026-08-28T03:00:00.000Z',
+      schEndDtUtc: '2026-08-28T04:45:00.000Z',
+      assignmentGroup: 'FLY',
+    }
+    const after = {
+      ...rosterItem(32, crewId, pairingId),
+      dutySeq: 3,
+      segSeq: 1,
+      schStrDtUtc: '2026-08-29T05:15:00.000Z',
+      schEndDtUtc: '2026-08-29T08:00:00.000Z',
+      assignmentGroup: 'FLY',
+    }
+    const scenarioViolations = new Map<string, RuleViolation[]>([
+      [`pairing:${pairingId}`, [{
+        ruleCode: '7504',
+        ruleName: '7504/001',
+        severity: 1,
+        canOverride: false,
+        message: 'Rest between consecutive WOCL flight duties (2026-08-27, 2026-08-29) is 22:50 less than 55 RH.',
+        targetType: 'pairing',
+        targetId: pairingId,
+        crewId,
+        windowStartDt: '2026-08-28T06:25:00.000Z',
+        windowEndDt: '2026-08-29T05:15:00.000Z',
+      }]],
+    ])
+
+    const beforePuck = collectViolationTooltipEntriesForTest({
+      hoveredTaskId: 31,
+      hoveredCrewId: null,
+      violations: new Map(),
+      displayViolations: new Map(),
+      scenarioViolations,
+      items: [before, after],
+    })
+    expect(beforePuck.map((e) => e.ruleCode)).toEqual(['7504'])
+  })
+
   it('omits 7501 from Aug puck hover when violation window is Sep (crew 923 shape)', () => {
     const augItem = {
       ...rosterItem(1006548, '923', 16693),
