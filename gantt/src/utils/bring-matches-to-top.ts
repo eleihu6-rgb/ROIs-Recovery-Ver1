@@ -163,9 +163,21 @@ export const bringPairingIdToTop = async (pairingId: number): Promise<void> => {
   useGanttViewStore.getState().markDirty()
 }
 
-/** True when the Live Flight pane is currently visible (Locate Flight menu gate). */
-export const liveHasFlightPaneOpen = (): boolean =>
-  usePaneStore.getState().panes.some((p) => p.type === 'flight' && p.visible)
+/**
+ * True when the Live Flight pane is currently visible (Locate Flight menu gate).
+ *
+ * Live chrome panes are owned by `layout-store` (toolbar Add Flight → `addPane('flight')`).
+ * The legacy `pane-store.flight.visible` flag is NOT updated by that path and defaults to
+ * false — checking only pane-store hides "Locate Flight" even when the Flight pane is open.
+ */
+export const liveHasFlightPaneOpen = (): boolean => {
+  const layoutPanes = useLayoutStore.getState().panes
+  for (const pane of layoutPanes.values()) {
+    if (pane.type === 'flight') return true
+  }
+  // Legacy fallback for older chrome that still toggles pane-store visibility.
+  return usePaneStore.getState().panes.some((p) => p.type === 'flight' && p.visible)
+}
 
 /**
  * Bring a single flight (by id) to the top of the Flight pane — backs "Locate Flight".
