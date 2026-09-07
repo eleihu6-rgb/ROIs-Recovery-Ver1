@@ -936,6 +936,9 @@ export class DataSaveService {
     const entityFamilies = new Set(changes.map((c) => c.entityId))
 
     const cachePatterns: Record<string, string[]> = {
+      // Data → Org & Base edits go through this generic save path; without this,
+      // baseService.list() keeps serving the 24h Redis snapshot (stale filiale etc.).
+      base: ['base:*'],
       rank: ['rank:*'],
       assignment: ['assignment:*'],
       assignment_group: ['assignment:*'],

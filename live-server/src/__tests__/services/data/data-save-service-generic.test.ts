@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSaveService } from '../../../services/data/data-save-service.js'
+import { invalidatePattern } from '../../../utils/cache.js'
 
 vi.mock('../../../services/data/data-validation-service.js', () => ({
   dataValidationService: { validate: vi.fn().mockResolvedValue([]) },
@@ -40,6 +41,10 @@ const queryText = (query: unknown): string => {
 }
 
 describe('DataSaveService generic Data entity save', () => {
+  beforeEach(() => {
+    vi.mocked(invalidatePattern).mockClear()
+  })
+
   it('creates a previously unsupported base entity with audit columns', async () => {
     const { fastify, tx } = createFastify()
     const service = new DataSaveService()
@@ -117,6 +122,21 @@ describe('DataSaveService generic Data entity save', () => {
     expect(query).toContain('display_order')
     expect(query).toContain('updated_by')
     expect(query).toContain('where id =')
+  })
+
+  it('invalidates base:* cache after saving a base entity', async () => {
+    const { fastify } = createFastify()
+    const service = new DataSaveService()
+
+    await service.save(fastify, [{
+      clientChangeId: 'update-base-filiale',
+      entityId: 'base',
+      action: 'update',
+      rowId: 11,
+      after: { filiale: 'ET' },
+    } as any], 'admin')
+
+    expect(invalidatePattern).toHaveBeenCalledWith(fastify.redis, 'base:*')
   })
 
   it('creates and deletes a registry Data entity that only uses generic support', async () => {
