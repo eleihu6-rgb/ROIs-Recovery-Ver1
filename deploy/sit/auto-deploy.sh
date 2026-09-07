@@ -1,26 +1,28 @@
 #!/usr/bin/env bash
 # deploy/sit/auto-deploy.sh
 #
-# 自动部署守护脚本 — 在本机运行，由 crontab 每 10 分钟调用。
+# 自动部署守护脚本 — 在本机（WebServer）运行，由 crontab 每 10 分钟调用。
 # 检测 GitHub main 是否有新提交，分析 diff 后只构建/推送受影响模块。
 # 防止并发：本机 deploy.lock 存在时跳过。
 #
 # crontab 配置（在本机执行 crontab -e 添加）：
-#   */10 * * * * /home/yuan.z/rois/rois-ai/deploy/sit/auto-deploy.sh >> /home/yuan.z/rois/rois-ai/deploy/sit/.pkghash/auto-deploy.log 2>&1
+#   */10 * * * * /home/yuan.z/dev/recovery/deploy/sit/auto-deploy.sh >> /home/yuan.z/dev/recovery/deploy/sit/.pkghash/auto-deploy.log 2>&1
 #
 # 模块 → 部署动作映射：
-#   live-server/**       → --live    （本机 build → push dist → 远程重启）
-#   rule-engine/**       → --live    （TS 包被 live-server import，触发重建）
-#   rule-engine-rs       → --live    （Rust 法规二进制 ruletool + check-* 重建推送）
-#   pbs-server/**        → --pbs-srv
-#   connector-server/**  → --connector
-#   engine-server/**     → --engine  （push 源码 → 远程重启，无 build）
-#   rois-rule-engine/**  → --engine  （Python 依赖变更，重启即可）
-#   pbs-engine/**        → --engine  （solver 源码推送依赖本机 submodule）
-#   packages/ui/**       → --ui-lib --gantt --pbs-ui
-#   gantt/**             → --gantt
-#   pbs-portal/**        → --pbs-ui
+#   live-server/**       → --live    （本机 build → push dist → Rust 法规二进制 → 远程重启）
+#   rule-engine/*         → --live    （TS 包被 live-server import，触发重建）
+#   rule-engine-rs        → --live    （Rust 法规二进制 ruletool + check-* 重建推送）
+#   engine-server/**      → --engine  （push 源码 → 远程重启，无 build）
+#   rois-rule-engine/**   → --engine  （Python 依赖变更，重启即可）
+#   packages/ui/**        → --gantt   （workspace 直接引用，gantt 重建即可）
+#   gantt/**              → --gantt
+#   packages/shared-rules / packages/contracts / packages/saml / packages/legality-messages
+#                         → 跟随 --live 自动推送（通过 deploy.sh push_contracts / push_shared_rules）
 #   docs / sql / e2e / *.md / deploy/** 等 → 仅静默 pull，不触发任何动作
+#
+# 本次范围外（不部署，仅静默 pull）：
+#   pbs-server / pbs-portal / connector-server / pbs-engine / pbs-optimization-report
+#   po-engine / ro-engine / ai-server / crewrule-dev / data-migration / pbs-app
 
 set -euo pipefail
 
@@ -30,7 +32,7 @@ HASH_DIR="$SCRIPT_DIR/.pkghash"
 LOCK_FILE="$HASH_DIR/deploy.lock"
 LOG_FILE="$HASH_DIR/auto-deploy.log"
 PENDING_FILE="$HASH_DIR/pending-deploy.args"
-CRON_LINE="*/10 * * * * $SCRIPT_DIR/auto-deploy.sh >> $HASH_DIR/auto-deploy.log 2>&1"
+CRON_LINE="*/10 * * * * $SCRIPT_DIR/auto-deploy.sh >> $LOG_FILE 2>&1"
 
 mkdir -p "$HASH_DIR"
 
@@ -79,11 +81,8 @@ esac
 set_need_from_arg() {
     case "$1" in
         --live)    NEED_LIVE=1 ;;
-        --pbs-srv) NEED_PBS_SRV=1 ;;
-        --connector) NEED_CONNECTOR=1 ;;
         --engine)  NEED_ENGINE=1 ;;
         --gantt)   NEED_GANTT=1 ;;
-        --pbs-ui)  NEED_PBS_UI=1 ;;
     esac
 }
 
@@ -105,12 +104,9 @@ build_deploy_args() {
     # `[ cond ] && append` returns 1 and aborts the whole auto-deploy
     # after git pull (so pending plan is never written and deploy never runs).
     DEPLOY_ARGS=()
-    if [ "$NEED_LIVE" -eq 1 ]; then DEPLOY_ARGS+=(--live); fi
-    if [ "$NEED_PBS_SRV" -eq 1 ]; then DEPLOY_ARGS+=(--pbs-srv); fi
-    if [ "$NEED_CONNECTOR" -eq 1 ]; then DEPLOY_ARGS+=(--connector); fi
+    if [ "$NEED_LIVE"   -eq 1 ]; then DEPLOY_ARGS+=(--live); fi
     if [ "$NEED_ENGINE" -eq 1 ]; then DEPLOY_ARGS+=(--engine); fi
-    if [ "$NEED_GANTT" -eq 1 ]; then DEPLOY_ARGS+=(--gantt); fi
-    if [ "$NEED_PBS_UI" -eq 1 ]; then DEPLOY_ARGS+=(--pbs-ui); fi
+    if [ "$NEED_GANTT"  -eq 1 ]; then DEPLOY_ARGS+=(--gantt); fi
 }
 
 write_pending_plan() {
@@ -146,7 +142,6 @@ ensure_submodule_ssh_url() {
 submodule_marker_ok() {
     local name="$1"
     case "$name" in
-        # pbs-engine)      [ -f "$name/run_solver.py" ] && [ -d "$name/ColumnModelSolver_python" ] ;;
         rule-engine-rs)  [ -f "$name/Cargo.toml" ] ;;
         *)               return 1 ;;
     esac
@@ -197,14 +192,11 @@ update_submodules() {
 
     # Deploy-key friendly SSH remotes (SIT cannot prompt for HTTPS credentials).
     local rs_url="git@github.com:yuanzhu-ai/rois-rule-engine-rs.git"
-    local pbs_url="git@github.com:yuapply/PBS_column_based_algorithm.git"
     ensure_submodule_ssh_url "rule-engine-rs" "$rs_url"
-    # ensure_submodule_ssh_url "pbs-engine" "$pbs_url"
 
     # rule-engine-rs: live-server legality binaries.
-    # pbs-engine 发布链已暂停：SIT solver 使用 /home/rois/PBS_column_based_algorithm-main。
+    # pbs-engine / pbs-optimization-report: 本次范围外，不同步。
     update_one_submodule "rule-engine-rs" "$rs_url" || true
-    # update_one_submodule "pbs-engine" "$pbs_url" || true
 }
 
 
@@ -234,7 +226,7 @@ fi
 echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
-# ── 检查新提交 / 恢复未完成部署计划 ───────────────────────────────
+# ── 检查新提交 / 恢复未完成部署计划 ──────────────────────────────
 cd "$ROIS_AI"
 discard_local_changes
 git fetch origin main --quiet
@@ -243,17 +235,14 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse origin/main)
 
 NEED_LIVE=0
-NEED_PBS_SRV=0
-NEED_CONNECTOR=0
 NEED_ENGINE=0
 NEED_GANTT=0
-NEED_PBS_UI=0
 
 load_pending_plan
 update_submodules
 
 if [ "$LOCAL" = "$REMOTE" ]; then
-    TOTAL=$((NEED_LIVE + NEED_PBS_SRV + NEED_CONNECTOR + NEED_ENGINE + NEED_GANTT + NEED_PBS_UI))
+    TOTAL=$((NEED_LIVE + NEED_ENGINE + NEED_GANTT))
     if [ $TOTAL -eq 0 ]; then
         log "无新提交 ($LOCAL)，跳过"
         exit 0
@@ -275,15 +264,15 @@ while IFS= read -r file; do
     case "$file" in
         live-server/*)                           NEED_LIVE=1 ;;
         rule-engine/*)                           NEED_LIVE=1 ;;
-        rule-engine-rs | rule-engine-rs/*)        NEED_LIVE=1 ;;
-        pbs-server/*)                            NEED_PBS_SRV=1 ;;
-        connector-server/*)                      NEED_CONNECTOR=1 ;;
+        rule-engine-rs | rule-engine-rs/*)       NEED_LIVE=1 ;;
         engine-server/* | rois-rule-engine/*)    NEED_ENGINE=1 ;;
-        pbs-engine | pbs-engine/*)               NEED_ENGINE=1 ;;
-        packages/ui/*)      NEED_GANTT=1; NEED_PBS_UI=1 ;;  # workspace 直接引用，gantt/pbs-portal 重建即可
+        packages/ui/*)                           NEED_GANTT=1 ;;  # workspace 直接引用，gantt 重建即可
         gantt/*)                                 NEED_GANTT=1 ;;
-        pbs-portal/*)                            NEED_PBS_UI=1 ;;
-        # 以下路径不触发部署
+        packages/shared-rules/*)                 NEED_LIVE=1 ;;  # live-server 运行时依赖
+        packages/contracts/*)                    NEED_LIVE=1 ;;
+        packages/saml/*)                         NEED_LIVE=1 ;;
+        packages/legality-messages/*)            NEED_LIVE=1 ;;
+        # 以下路径不触发部署（仅静默 pull）
         docs/* | sql/* | e2e/* | *.md | \
         .github/* | .claude/* | .agents/* | .plane/* | \
         scripts/* | monitoring/* | deploy/* | \
@@ -291,17 +280,18 @@ while IFS= read -r file; do
         po-engine/* | ro-engine/* | \
         ai-server/* | crewrule-dev/* | data-migration/* | \
         pbs-app/* | packages/rule-engine-rs/* | \
+        pbs-engine | pbs-engine/* | \
+        pbs-server/* | connector-server/* | pbs-portal/* | \
         pbs-optimization-report | pbs-optimization-report/*)
             ;;
         *)
-            log "  [?] 未知路径，保守触发全量检查: $file"
-            # 未识别路径不自动全量，仅记录
+            log "  [?] 未知路径，仅记录不自动触发: $file"
             ;;
     esac
 done <<< "$CHANGED_FILES"
 
 # ── 部署计划 ─────────────────────────────────────────────────────
-TOTAL=$((NEED_LIVE + NEED_PBS_SRV + NEED_CONNECTOR + NEED_ENGINE + NEED_GANTT + NEED_PBS_UI))
+TOTAL=$((NEED_LIVE + NEED_ENGINE + NEED_GANTT))
 
 if [ $TOTAL -eq 0 ]; then
     log "无需部署（仅文档/配置变更），静默 pull"
@@ -315,12 +305,9 @@ if [ $TOTAL -eq 0 ]; then
 fi
 
 log "部署计划："
-[ $NEED_LIVE    -eq 1 ] && log "  • live-server   → 本机 build + push dist + 远程重启"
-[ $NEED_PBS_SRV -eq 1 ] && log "  • pbs-server    → 本机 build + push dist + 远程重启"
-[ $NEED_CONNECTOR -eq 1 ] && log "  • connector-server → 本机 build + push dist + 远程重启"
-[ $NEED_ENGINE  -eq 1 ] && log "  • engine-server → push 源码 + 远程重启"
-[ $NEED_GANTT   -eq 1 ] && log "  • gantt         → 本机 build + 本地写入 /rois/sit/gantt/"
-[ $NEED_PBS_UI  -eq 1 ] && log "  • pbs-portal    → 本机 build + 本地写入 /rois/sit/pbs/"
+[ $NEED_LIVE   -eq 1 ] && log "  • live-server    → 本机 build + push dist + Rust 法规二进制 + 远程重启"
+[ $NEED_ENGINE -eq 1 ] && log "  • engine-server  → push 源码 + 远程重启 + JWT 探针"
+[ $NEED_GANTT  -eq 1 ] && log "  • gantt          → 本机 build + 写本地 /home/recovery/sit/gantt/"
 
 # ── 先 pull，再执行部署 ───────────────────────────────────────────
 if [ "$LOCAL" != "$REMOTE" ]; then
