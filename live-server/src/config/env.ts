@@ -32,6 +32,8 @@ const envSchema = z
     HOST: z.string().default('0.0.0.0'),
     PORT: z.coerce.number().default(3000),
     DATABASE_URL: z.string(),
+    // Local development can run the API without the optional Rust binaries.
+    SKIP_RUST_BINS: boolFromEnv(false),
     REDIS_URL: z.string().default('redis://localhost:6379'),
     BULLMQ_REDIS_URL: z.string().optional(),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
@@ -81,6 +83,13 @@ const envSchema = z
       .default('dev'),
   })
   .superRefine((val, ctx) => {
+    if (val.SKIP_RUST_BINS && isProdLike(val.APP_ENV)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['SKIP_RUST_BINS'],
+        message: 'SKIP_RUST_BINS is only allowed in development or test environments.',
+      })
+    }
     if (!isProdLike(val.APP_ENV)) return
     if (!val.JWT_SECRET || val.JWT_SECRET.length < 32 || val.JWT_SECRET === DEFAULT_DEV_JWT_SECRET) {
       ctx.addIssue({

@@ -51,6 +51,7 @@ export const PAGE_MENU: Record<string, string> = {
   'comp-load': 'LEGALITY_COMP_LOAD',
   // system
   scheduler: 'SYSTEM_SCHEDULER',
+  interface: 'SYSTEM_INTERFACE',
   'queue-tasks': 'SYSTEM_QUEUE_TASKS',
   grafana: 'SYSTEM_GRAFANA',
   prometheus: 'SYSTEM_PROMETHEUS',

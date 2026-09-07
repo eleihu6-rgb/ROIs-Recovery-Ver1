@@ -24,6 +24,10 @@ const SERVICES: Array<{ key: ScenarioRunServiceKey; label: string; url: string }
   { key: 'pbs', label: 'PBS Server', url: `${env.PBS_SERVER_URL}/api/health` },
 ]
 
+const HEALTH_CACHE_MS = 10_000
+let cachedHealth: { expiresAt: number; value: ScenarioRunHealth } | null = null
+let inFlightHealth: Promise<ScenarioRunHealth> | null = null
+
 async function checkService(
   key: ScenarioRunServiceKey,
   label: string,
@@ -55,13 +59,25 @@ async function checkService(
 }
 
 export async function getScenarioRunHealth(): Promise<ScenarioRunHealth> {
-  const services = await Promise.all(
-    SERVICES.map((s) => checkService(s.key, s.label, s.url)),
-  )
-  const overall = services.every((s) => s.healthy) ? 'healthy' : 'unhealthy'
-  return {
-    overall,
-    checkedAt: new Date().toISOString(),
-    services,
+  if (cachedHealth && cachedHealth.expiresAt > Date.now()) return cachedHealth.value
+  if (inFlightHealth) return inFlightHealth
+
+  inFlightHealth = (async () => {
+    const services = await Promise.all(
+      SERVICES.map((s) => checkService(s.key, s.label, s.url)),
+    )
+    const overall: ScenarioRunHealthOverall = services.every((s) => s.healthy) ? 'healthy' : 'unhealthy'
+    const value: ScenarioRunHealth = {
+      overall,
+      checkedAt: new Date().toISOString(),
+      services,
+    }
+    cachedHealth = { expiresAt: Date.now() + HEALTH_CACHE_MS, value }
+    return value
+  })()
+  try {
+    return await inFlightHealth
+  } finally {
+    inFlightHealth = null
   }
 }

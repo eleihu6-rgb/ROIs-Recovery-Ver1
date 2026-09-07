@@ -347,7 +347,7 @@ export const ScenarioListPanel = (): React.ReactNode => {
             </TooltipContent>
           </Tooltip>
 
-          <ScenarioRunHealthIndicator />
+          <ScenarioRunHealthIndicator active={activeModule === 'scenario'} />
         </div>
         </TooltipProvider>
       </div>

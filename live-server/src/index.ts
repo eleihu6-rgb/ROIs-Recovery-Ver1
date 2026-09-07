@@ -71,6 +71,7 @@ import pbsSimulatedCrewPortalAdminRoutes from './routes/admin/pbs-simulated-crew
 import crewMemoRoutes from './routes/crew-memo/index.js'
 import resPairingRoutes from './routes/res-pairing/res-pairing.js'
 import mobileRosterRoutes from './routes/mobile-roster/mobile-roster.js'
+import recoveryRoutes from './routes/recovery/recovery.js'
 import { bumpBackendVersion, formatAppVersion } from './utils/app-version.js'
 import { resolveFiliale } from './utils/filiale.js'
 import { flushRosterPublishAdjustBatches } from './services/roster/roster-publish-outbound-service.js'
@@ -215,6 +216,7 @@ const start = async () => {
     await server.register(rosterEventRoutes, { prefix: '/api' })
     await server.register(rosterPairingsByCrewRoutes, { prefix: '/api' })
     await server.register(rosterViolationsRoutes, { prefix: '/api' })
+    await server.register(recoveryRoutes, { prefix: '/api/recovery' })
     await server.register(pairingCompositionRefreshAdminRoutes, { prefix: '/api/admin' })
     await server.register(mandayCreditRefreshAdminRoutes, { prefix: '/api/admin' })
     await server.register(scenarioKpiBackfillRoutes, { prefix: '/api/admin' })
@@ -234,7 +236,11 @@ const start = async () => {
     const { assertRustReleaseBins } = await import(
       pathToFileURL(path.join(scriptsDir, 'assert-rust-bins.mjs')).href
     )
-    await assertRustReleaseBins()
+    if (env.SKIP_RUST_BINS) {
+      server.log.warn('SKIP_RUST_BINS is enabled; starting without Rust release binaries')
+    } else {
+      await assertRustReleaseBins()
+    }
 
     schedulerService.start()
 

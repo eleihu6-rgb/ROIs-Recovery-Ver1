@@ -3,7 +3,10 @@
 // cover the end-to-end recheck (§No-Illusion).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { epochSec, headerIndexer, scopeKeyOf, withParamRowPrefix, resolveDaysOffRpBounds, pickDaysOffAnchor, daysOffAnchorPairingId, rule8002, rule8004, rule8056, rule8071, rule8072, rule8030, rule7505, rule7507, rule7506, rule7501, rule7508, rule7503, rule7504 } from '../legality-recheck-core.mjs'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { epochSec, headerIndexer, scopeKeyOf, withParamRowPrefix, resolveDaysOffRpBounds, pickDaysOffAnchor, daysOffAnchorPairingId, rule8002, rule8004, rule8056, rule8071, rule8072, rule8030, rule7505, rule7507, rule7506, rule7501, rule7508, rule7503, rule7504, rustBinsSkipped } from '../legality-recheck-core.mjs'
 
 
 test('withParamRowPrefix prefixes 1-based Row N and is idempotent', () => {
@@ -661,6 +664,122 @@ test('rule8004 falls back to the UTC date when the crew has no known base timezo
   assert.equal(out.length, 1)
   assert.match(out[0].message, /^Row 1: /)
   assert.match(out[0].message, /\(2026-06-10\)/, 'falls back to the UTC date')
+})
+
+const HDR8004_FLEET = ['Base', 'Rank', 'Fleet', 'Type', 'Enable Check', 'Grace Period', 'Unit', 'Assignments']
+const make8004FleetSource = (fleetQuals) => ({
+  db: {},
+  async assignmentsRaw() {
+    return [{
+      crew_id: '1012', pairing_id: 135559, base: 'PVG',
+      start_date: '2026-09-06', end_date: '2026-09-10',
+      start_secs: epoch('2026-09-06T13:00:00Z'), end_secs: epoch('2026-09-10T18:00:00Z'),
+    }]
+  },
+  async baseQuals() {
+    return [{ crew_id: '1012', base: 'PVG', eff_date: '2020-01-01', exp_date: '2199-12-31' }]
+  },
+  async crewBaseTimezone() { return new Map([['1012', 'UTC']]) },
+  async fleetSegments() {
+    return [{
+      crew_id: '1012', pairing_id: 135559, assignment_group: 'FLY', fleet: '7M8',
+      start_secs: epoch('2026-09-07T05:40:00Z'), end_secs: epoch('2026-09-07T08:40:00Z'),
+    }]
+  },
+  async fleetQuals() { return fleetQuals },
+})
+
+test('rule8004 emits a Fleet violation for Crew 1012 on Pairing 135559', async () => {
+  const out = await rule8004(make8004FleetSource([]), {
+    log: () => {},
+    instancesOf: (fn) => fn === 8004
+      ? [{ instance: '002', header: HDR8004_FLEET, rows: [['*', '*', '*', 'FLEET', 'Y', '0', 'CD', 'FLY']] }]
+      : [],
+    runBin: async () => [],
+  })
+
+  assert.equal(out.length, 1)
+  assert.equal(out[0].crew_id, '1012')
+  assert.equal(out[0].pairing_id, 135559)
+  assert.equal(out[0].rule_code, '8004')
+  assert.match(out[0].message, /Crew fleet 7M8 is not a valid qualification/)
+})
+
+test('rule8004 does not emit a Fleet violation when Crew has an effective 7M8 qualification', async () => {
+  const out = await rule8004(make8004FleetSource([{
+    crew_id: '1012', value: '7M8', eff_date: '2026-01-01', exp_date: '2026-12-31',
+  }]), {
+    log: () => {},
+    instancesOf: (fn) => fn === 8004
+      ? [{ instance: '002', header: HDR8004_FLEET, rows: [['*', '*', '*', 'FLEET', 'Y', '0', 'CD', 'FLY']] }]
+      : [],
+    runBin: async () => [],
+  })
+
+  assert.deepEqual(out, [])
+})
+
+test('rule8004 respects Enable Check=N for Fleet rows', async () => {
+  const out = await rule8004(make8004FleetSource([]), {
+    log: () => {},
+    instancesOf: (fn) => fn === 8004
+      ? [{ instance: '002', header: HDR8004_FLEET, rows: [['*', '*', '*', 'FLEET', 'N', '0', 'CD', 'FLY']] }]
+      : [],
+    runBin: async () => [],
+  })
+
+  assert.deepEqual(out, [])
+})
+
+test('rule8004 regression: three unqualified pairings produce three 8004 violations', async () => {
+  const pairings = [135559, 135560, 135561]
+  const source = {
+    db: {},
+    async assignmentsRaw() {
+      return pairings.map((pairingId, index) => ({
+        crew_id: '1012', pairing_id: pairingId, base: 'YUL',
+        start_date: `2026-09-${String(6 + index).padStart(2, '0')}`,
+        end_date: `2026-09-${String(6 + index).padStart(2, '0')}`,
+        start_secs: epoch(`2026-09-${String(6 + index).padStart(2, '0')}T13:00:00Z`),
+        end_secs: epoch(`2026-09-${String(6 + index).padStart(2, '0')}T18:00:00Z`),
+      }))
+    },
+    async baseQuals() { return [{ crew_id: '1012', base: 'YUL', eff_date: '2020-01-01', exp_date: '2199-12-31' }] },
+    async crewBaseTimezone() { return new Map([['1012', 'UTC']]) },
+    async fleetSegments() {
+      return pairings.map((pairingId, index) => ({
+        crew_id: '1012', pairing_id: pairingId, assignment_group: 'FLY', fleet: '7M8',
+        start_secs: epoch(`2026-09-${String(6 + index).padStart(2, '0')}T14:00:00Z`),
+        end_secs: epoch(`2026-09-${String(6 + index).padStart(2, '0')}T16:00:00Z`),
+      }))
+    },
+    async fleetQuals() { return [] },
+  }
+  const out = await rule8004(source, {
+    log: () => {},
+    instancesOf: (fn) => fn === 8004
+      ? [{ instance: '002', header: HDR8004_FLEET, rows: [['*', '*', '*', 'FLEET', 'Y', '0', 'CD', 'FLY']] }]
+      : [],
+    runBin: async () => [],
+  })
+
+  assert.equal(out.length, 3)
+  assert.deepEqual(out.map((row) => [row.crew_id, row.pairing_id]), [
+    ['1012', 135559], ['1012', 135560], ['1012', 135561],
+  ])
+  assert.ok(out.every((row) => row.rule_code === '8004'))
+})
+
+test('rustBinsSkipped reads SKIP_RUST_BINS from a local env file when process env is unset', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), '8004-env-'))
+  const envFile = path.join(tempDir, '.env')
+  try {
+    fs.writeFileSync(envFile, 'APP_ENV=development\nSKIP_RUST_BINS=true\n')
+    assert.equal(rustBinsSkipped({ environment: {}, envFile }), true)
+    assert.equal(rustBinsSkipped({ environment: { SKIP_RUST_BINS: 'false' }, envFile }), false)
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  }
 })
 
 test('rule8002 emits nothing + logs when the function has no instances (no silent fallback)', async () => {

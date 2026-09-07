@@ -133,11 +133,14 @@ export function resolvePreviewRosterOverlay(
   afterItems: PreviewRosterItem[],
   focusPairingIds?: number[],
 ): PreviewRosterOverlay {
+  // Only persisted Pairing IDs are deletion targets. Negative IDs represent
+  // a Pairing created inside this preview; its rows still have to be inserted
+  // into the temp roster for rule evaluation.
   const pairingIds = [...new Set(
     (focusPairingIds ?? []).filter((id) => Number.isFinite(id) && id > 0),
   )]
   if (pairingIds.length > 0) {
-    const focus = new Set(pairingIds)
+    const focus = new Set((focusPairingIds ?? []).filter((id) => Number.isFinite(id) && id !== 0))
     return {
       mode: 'pairing',
       pairingIds,
@@ -188,6 +191,19 @@ const resolveWindow = (items: PreviewRosterItem[]) => {
     checkToExclusive: dateOnly(new Date(max + 31 * DAY_MS)),
   }
 }
+
+/**
+ * Source adapters can use only persisted Pairing IDs for SQL narrowing. A
+ * negative Pairing ID belongs exclusively to this preview, so its legality
+ * check must use the affected-Crew scope rather than omit the new temp rows.
+ */
+export const resolveRuleEngineFocusPairingIds = (
+  focusItems: PreviewRosterItem[],
+  focusPairingIds?: number[],
+): number[] =>
+  focusItems.some((item) => (item.pairingId ?? 0) < 0)
+    ? []
+    : focusPairingIds ?? []
 
 const defaultLiveRuleset = async (client: PoolClient): Promise<number> => {
   const result = await client.query<{ id: number }>(
@@ -729,10 +745,14 @@ export async function previewDraftLegality(
   const afterItems = normalizeItems(input.afterItems, affectedCrewIds)
   if (affectedCrewIds.length === 0 || afterItems.length === 0) return { allowed: true, violations: [] }
 
-  const focusIntervals = focusIntervalsFromPreviewItems(
-    selectPreviewFocusItems(afterItems, input.focusPairingIds),
-  )
+  const focusItems = selectPreviewFocusItems(afterItems, input.focusPairingIds)
+  const focusIntervals = focusIntervalsFromPreviewItems(focusItems)
   const rosterOverlay = resolvePreviewRosterOverlay(afterItems, input.focusPairingIds)
+  // Rule source adapters use positive Pairing IDs to narrow persisted Pairing
+  // queries. A newly-created preview Pairing has a negative synthetic ID, so
+  // passing its source Pairing ID would exclude the new temp rows. In that
+  // case query the affected Crew scope and retain focusIntervals for 8030.
+  const engineFocusPairingIds = resolveRuleEngineFocusPairingIds(focusItems, input.focusPairingIds)
   const { checkFrom, checkToExclusive } = resolveWindow(afterItems)
   const client = await fastify.pgPool.connect()
   try {
@@ -764,7 +784,7 @@ export async function previewDraftLegality(
         dateTo: checkToExclusive,
         preview: true,
         focusIntervals,
-        focusPairingIds: input.focusPairingIds ?? [],
+        focusPairingIds: engineFocusPairingIds,
         ...(input.rpFrom && input.rpTo ? { rpFrom: input.rpFrom, rpTo: input.rpTo } : {}),
       }
     } else {
@@ -797,7 +817,7 @@ export async function previewDraftLegality(
       const sourceCtx = {
         ...scenarioCtx,
         preview: true,
-        focusPairingIds: input.focusPairingIds ?? [],
+        focusPairingIds: engineFocusPairingIds,
       }
       source = scenarioModule.scenarioSource(db, input.scenarioId, sourceCtx)
       ctx = {

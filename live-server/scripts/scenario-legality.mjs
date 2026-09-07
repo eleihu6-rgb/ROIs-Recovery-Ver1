@@ -1174,12 +1174,70 @@ export function scenarioSource(db, scenarioId, ctx) {
            group by crew_id, pairing_id`, [scenarioId])).rows
     },
 
+    // ── rule 8004 — assigned flight fleet by segment ──
+    // Scenario segments are preferred; RO scenarios may retain the live segment
+    // rows, so fall back to f8.pairing_segment/flight when scenario data is absent.
+    async fleetSegments() {
+      return (await db.query(
+        `select rf.crew_id, rf.pairing_id, rf.duty_seq, rf.seg_seq,
+                coalesce(nullif(sps.fleet_seg, ''), nullif(lps.fleet_seg, ''),
+                         nullif(sf.fleet, ''), nullif(lf.fleet, ''), nullif(p.fleet, '')) as fleet,
+                coalesce(nullif(rf.assignment_group, ''), nullif(p.assignment_group, ''), '') as assignment_group,
+                coalesce(nullif(rf.assignment, ''), nullif(p.assignment, ''), '') as assignment,
+                extract(epoch from coalesce(rf.sch_str_dt_utc, sps.sch_str_dt_utc, lps.sch_str_dt_utc))::bigint as start_secs,
+                extract(epoch from coalesce(rf.sch_end_dt_utc, sps.sch_end_dt_utc, lps.sch_end_dt_utc))::bigint as end_secs
+           from scenario.roster_flight rf
+           left join scenario.pairing p
+             on p.scenario_id = rf.scenario_id and p.id = rf.pairing_id
+           left join scenario.pairing_segment sps
+             on sps.scenario_id = rf.scenario_id
+            and sps.pairing_id = rf.pairing_id
+            and coalesce(sps.is_deleted, 0) = 0
+            and sps.duty_seq = rf.duty_seq
+            and sps.seg_seq = rf.seg_seq
+           left join f8.pairing_segment lps
+             on lps.pairing_id = rf.pairing_id
+            and coalesce(lps.is_deleted, 0) = 0
+            and lps.duty_seq = rf.duty_seq
+            and lps.seg_seq = rf.seg_seq
+            and not exists (
+              select 1 from scenario.pairing_segment sps_fallback
+               where sps_fallback.scenario_id = rf.scenario_id
+                 and sps_fallback.pairing_id = rf.pairing_id
+                 and coalesce(sps_fallback.is_deleted, 0) = 0
+                 and sps_fallback.duty_seq = rf.duty_seq
+                 and sps_fallback.seg_seq = rf.seg_seq
+            )
+           left join scenario.flight sf
+             on sf.scenario_id = rf.scenario_id and sf.id = coalesce(sps.flt_id, rf.flt_id) and coalesce(sf.is_deleted, 0) = 0
+           left join f8.flight lf
+             on lf.id = coalesce(lps.flt_id, rf.flt_id) and coalesce(lf.is_deleted, 0) = 0
+          where rf.scenario_id = $1 and rf.is_deleted = 0 and rf.pairing_id is not null`, [scenarioId])).rows
+    },
+
     // ── rule 8004 — crew_base qualifications (Q rows) ──
     async baseQuals(crewIds) {
       return (await db.query(
         `select crew_id, base, to_char(coalesce(eff_dt_utc, eff_dt),'YYYY-MM-DD') as eff_date,
                 to_char(coalesce(exp_dt_utc, exp_dt),'YYYY-MM-DD') as exp_date
            from f8.crew_base where crew_id = any($1::varchar[])`, [crewIds])).rows
+    },
+
+    // ── rule 8004 — effective crew fleet qualifications ──
+    async fleetQuals(crewIds) {
+      return (await db.query(
+        `select crew_id, fleet_specific as value,
+                to_char(eff_dt, 'YYYY-MM-DD') as eff_date,
+                to_char(exp_dt, 'YYYY-MM-DD') as exp_date
+           from f8.crew_fleet where crew_id = any($1::varchar[]) and fleet_specific is not null and fleet_specific <> ''
+         union all
+         select crew_id, ac_type,
+                to_char(eff_dt, 'YYYY-MM-DD'), to_char(exp_dt, 'YYYY-MM-DD')
+           from f8.crew_fleet where crew_id = any($1::varchar[]) and ac_type is not null and ac_type <> ''
+         union all
+         select crew_id, fleet_grp,
+                to_char(eff_dt, 'YYYY-MM-DD'), to_char(exp_dt, 'YYYY-MM-DD')
+           from f8.crew_fleet where crew_id = any($1::varchar[]) and fleet_grp is not null and fleet_grp <> ''`, [crewIds])).rows
     },
 
     // ── rule 1001 — assignment overlap timeline (pairings + ground/leave duties) ──

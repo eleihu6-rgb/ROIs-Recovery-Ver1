@@ -16,6 +16,11 @@ const cacheMissTotal = getOrCreateCounter({
   labelNames: ['cache_group', 'mode'],
 })
 
+// A cache miss can be observed by several requests before the first database query
+// completes. Coalesce those identical fills so a page refresh cannot fan out into
+// duplicate full-range Pairing reads. Entries are always removed after settlement.
+const inFlightCacheFills = new Map<string, Promise<unknown>>()
+
 /** Low-cardinality cache group = the key prefix before the first ':' (entity name). */
 const cacheGroup = (key: string): string => key.split(':', 1)[0] || 'unknown'
 
@@ -40,16 +45,27 @@ export const getOrSet = async <T>(
     try { await redis.del(withPrefix(key)) } catch { /* ignore */ }
   }
 
+  const existingFill = inFlightCacheFills.get(key) as Promise<T> | undefined
+  if (existingFill) return existingFill
+
   // null cache, bad-key error, or parse miss all reach fetchFn → count one miss.
   cacheMissTotal.inc({ cache_group: group, mode: 'single' })
-  const data = await fetchFn()
-  // Backfill cache; don't let a Redis failure break the response
+  const fill = (async () => {
+    const data = await fetchFn()
+    // Backfill cache; don't let a Redis failure break the response
+    try {
+      await redis.set(withPrefix(key), JSON.stringify(data), { EX: ttlSeconds })
+    } catch {
+      // TTL will act as the safety net
+    }
+    return data
+  })()
+  inFlightCacheFills.set(key, fill)
   try {
-    await redis.set(withPrefix(key), JSON.stringify(data), { EX: ttlSeconds })
-  } catch {
-    // TTL will act as the safety net
+    return await fill
+  } finally {
+    inFlightCacheFills.delete(key)
   }
-  return data
 }
 
 /**

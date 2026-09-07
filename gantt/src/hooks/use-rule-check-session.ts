@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
-import { useRuleCheckStore } from '@/stores/rule-check-store'
+import { useLegalityStore } from '@/stores/legality-store'
 import { useSessionViolationStore } from '@/stores/session-violation-store'
 import { ruleSessionApi, type PairingPayload, type CrewPayload } from '@/services/rule-session-api'
 
@@ -16,7 +16,8 @@ export const useRuleCheckSession = () => {
   const user = useAuthStore((s) => s.user)
   // Live rule-check session follows the toolbar's active rule set (the single source of
   // truth for the live bell, now a RULE workset id) — Model B's rule-config store is gone.
-  const selectedGroupCode = useRuleCheckStore((s) => s.ruleGroupCode || 'ccar121_gantt')
+  const selectedRulesetId = useLegalityStore((s) => s.selectedId)
+  const selectedGroupCode = selectedRulesetId == null ? '' : String(selectedRulesetId)
   const setSessionViolations = useSessionViolationStore((s) => s.setSessionViolations)
   const clearSessionViolations = useSessionViolationStore((s) => s.clearSessionViolations)
 

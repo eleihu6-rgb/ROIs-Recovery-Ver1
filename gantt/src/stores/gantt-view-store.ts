@@ -648,13 +648,12 @@ export const useGanttViewStore = create<GanttViewStore>((set, get) => ({
     }
   },
 
-  // 单轮全量 roster 分批并发加载：按 crew 拆批，用 rosterApi.getView 并发拉取（不经
-  // appendRoster 的共享 abort/seq 机制——那为 loadMore 设计，并发会互相丢批），合并后
-  // 一次性 setMainRoster（replace，无重复）。每批完成更新 main.progress（0-100）。
+  // 单轮全量 roster 按 crew 有界分批加载。每批依次拉取，避免和 Pairing、Crew
+  // 的重查询竞争同一数据库连接池；合并后一次性 setMainRoster（replace，无重复）。
   loadRosterBatched: async (crewIds, dateRange, startProgress = 0) => {
-    // ~103 crew/batch keeps each response ~15-20MB — large batches (205 crew × wide
-    // range = ~35MB) time out/fail under concurrent axios requests, dropping whole crews.
-    const BATCH = 103
+    // 40 crews keeps individual Live reads bounded.  More importantly, requests are
+    // intentionally serial below: a timeout must not fan out into a retry storm.
+    const BATCH = 40
     const batches: string[][] = []
     for (let i = 0; i < crewIds.length; i += BATCH) batches.push(crewIds.slice(i, i + BATCH))
     if (batches.length === 0) {
@@ -673,34 +672,38 @@ export const useGanttViewStore = create<GanttViewStore>((set, get) => ({
     // Crew phase already advanced the bar to `startProgress` (0-15); roster batches push
     // it from there to 100 based on completed batches (proportional to crew count).
     markPhase('roster:first-request:start')
-    // Recursive half-split fallback: a batch that fails (large payload, transient network,
-    // server hiccup) is split in half and retried — never silently drop a whole crew set.
-    // Mirrors connector-server's upstream-fetch degradation (10-day windows → halve on error).
+    // A controlled retry is enough for a transient gateway/network interruption.
+    // Never recursively split on a timeout: every split duplicates an in-flight backend
+    // query and was the source of the large number of failed /api/roster requests.
     const fetchChunk = async (chunk: string[]): Promise<RosterItem[]> => {
-      try {
-        return await rosterApi.getView(chunk, startYmd, endYmd)
-      } catch (err) {
-        if (chunk.length <= 1) {
-          console.warn('[GanttView] roster chunk permanently failed:', err)
-          return []
+      let lastError: unknown
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          return await rosterApi.getView(chunk, startYmd, endYmd)
+        } catch (err) {
+          lastError = err
+          if (attempt === 0) await new Promise<void>((resolve) => setTimeout(resolve, 500))
         }
-        const mid = Math.ceil(chunk.length / 2)
-        const [left, right] = await Promise.all([fetchChunk(chunk.slice(0, mid)), fetchChunk(chunk.slice(mid))])
-        return [...left, ...right]
       }
+      throw lastError
     }
     let completed = 0
-    const settled = await Promise.allSettled(
-      batches.map(async (batch) => {
+    const settled: PromiseSettledResult<RosterItem[]>[] = []
+    for (const batch of batches) {
+      try {
         const items = await fetchChunk(batch)
-        // Monotonic progress: count completed batches (concurrent completion order
-        // varies, so indexing by batch would make the bar jump backwards).
+        settled.push({ status: 'fulfilled', value: items })
         completed += 1
         const pct = startProgress + (completed / batches.length) * (100 - startProgress)
         useRosterStore.setState((s) => ({ main: { ...s.main, progress: Math.round(pct) } }))
-        return items
-      }),
-    )
+      } catch (err) {
+        settled.push({ status: 'rejected', reason: err })
+        completed += 1
+        const pct = startProgress + (completed / batches.length) * (100 - startProgress)
+        useRosterStore.setState((s) => ({ main: { ...s.main, progress: Math.round(pct) } }))
+        console.warn('[GanttView] roster batch failed after one retry:', err)
+      }
+    }
     const merged = new Map<number, RosterItem>()
     for (const result of settled) {
       if (result.status === 'fulfilled') {

@@ -67,7 +67,10 @@ export const rosterApi = {
       startDate,
       endDate,
     }
-    return api.get('/api/roster', { params, signal }) as unknown as Promise<RosterItem[]>
+    // Live Gantt roster reads can legitimately return a sizeable response.  Keep this
+    // endpoint independent of the shared 30s UI timeout so a healthy, still-running
+    // server request is not cancelled and then multiplied by client retries.
+    return api.get('/api/roster', { params, signal, timeout: 120_000 }) as unknown as Promise<RosterItem[]>
   },
 
   /** Get single roster entry */

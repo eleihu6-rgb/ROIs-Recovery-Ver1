@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { useGanttViewStore } from '@/stores/gantt-view-store'
 import { useRuleCheckStore } from '@/stores/rule-check-store'
 import { useSessionViolationStore } from '@/stores/session-violation-store'
@@ -19,6 +20,7 @@ import { severityLabelFromNum } from '@/utils/severity-labels'
 import type { DisplayViolation } from '@/stores/session-violation-store'
 import type { RosterItem } from '@/types'
 import type { RuleViolation } from '@/types/rule-check'
+import { isRosterCompleted, type RecoveryAlertSnapshot } from '@/services/recovery-candidates'
 
 /** Delay before tooltip hides after mouse leaves the task (ms) */
 const HIDE_DELAY = 600
@@ -217,6 +219,35 @@ const collectViolationTooltipEntries = ({
 
 export const collectViolationTooltipEntriesForTest = collectViolationTooltipEntries
 
+const recoveryAlertForHoveredTask = (
+  task: RosterItem | undefined,
+  entries: ViolationTooltipEntry[],
+  items: RosterItem[],
+): RecoveryAlertSnapshot | null => {
+  if (!task || task.pairingId == null) return null
+  const violation = entries.find((entry) => entry.ruleCode.trim().toUpperCase() === '8004')
+  if (!violation || isRosterCompleted(items, task.crewId, task.pairingId)) return null
+  const pairingItems = items
+    .filter((item) => item.crewId === task.crewId && Number(item.pairingId) === Number(task.pairingId))
+    .sort((a, b) => new Date(a.schStrDtUtc ?? 0).getTime() - new Date(b.schStrDtUtc ?? 0).getTime())
+  const anchor = pairingItems[0] ?? task
+  const label = anchor.label ?? anchor.assignment ?? ''
+  return {
+    id: `hover-${anchor.crewId}-${anchor.pairingId}-${violation.ruleCode}`,
+    ruleCode: violation.ruleCode,
+    severity: violation.severity,
+    crewId: anchor.crewId,
+    pairingId: Number(anchor.pairingId),
+    flightDate: anchor.fltDt ?? anchor.schStrDtUtc?.slice(0, 10) ?? '—',
+    flightNumber: label.split(/\s+/)[0] || '—',
+    detail: violation.message,
+    fleet: anchor.fleetCode ?? null,
+    requiredRank: anchor.flightActingRank || null,
+  }
+}
+
+export const recoveryAlertForHoveredTaskForTest = recoveryAlertForHoveredTask
+
 interface ViolationTooltipProps {
   scenarioId?: number
 }
@@ -225,8 +256,8 @@ interface ViolationTooltipProps {
  * Floating tooltip that shows violation details when hovering over
  * a task that has rule violations.
  *
- * The tooltip is always pointer-events:none so it never intercepts
- * mouse clicks or drags on the canvas beneath it.
+ * The tooltip is interactive only while the pointer is not dragging, so the
+ * Recovery action can be clicked without interfering with Gantt drag behavior.
  */
 export const ViolationTooltip = ({ scenarioId }: ViolationTooltipProps = {}) => {
   const hoveredTaskId = useGanttViewStore((s) => s.hoveredTaskId)
@@ -259,6 +290,7 @@ export const ViolationTooltip = ({ scenarioId }: ViolationTooltipProps = {}) => 
   const [visible, setVisible] = useState(false)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(0)
   const posRef = useRef({ x: 0, y: 0 })
+  const anchorRef = useRef<string | null>(null)
 
   /** Collect violations for the currently hovered task or crew header */
   const taskViolations = useMemo(
@@ -272,17 +304,33 @@ export const ViolationTooltip = ({ scenarioId }: ViolationTooltipProps = {}) => 
     }),
     [hoveredTaskId, hoveredCrewId, violations, displayViolations, scenarioViolations, items],
   )
+  const hoveredTask = useMemo(() => items.find((item) => item.id === hoveredTaskId), [items, hoveredTaskId])
+  const recoveryAlert = useMemo(
+    () => scenarioId == null ? recoveryAlertForHoveredTask(hoveredTask, taskViolations, items) : null,
+    [scenarioId, hoveredTask, taskViolations, items],
+  )
 
   const hasTarget = hoveredTaskId !== null || hoveredCrewId !== null
   useEffect(() => {
     clearTimeout(hideTimerRef.current)
 
     if (hasTarget && taskViolations.length > 0) {
-      posRef.current = { x: hoverPosition.x, y: hoverPosition.y }
+      // Freeze the tooltip at the first anchor point. Once the pointer leaves
+      // the canvas for the tooltip action, the canvas hover position changes;
+      // following it makes the Recovery button move away from the pointer.
+      const targetKey = `${hoveredTaskId ?? ''}:${hoveredCrewId ?? ''}`
+      if (!visible || anchorRef.current !== targetKey) {
+        posRef.current = { x: hoverPosition.x, y: hoverPosition.y }
+        anchorRef.current = targetKey
+      }
       setVisible(true)
     } else if (!hasTarget && visible) {
-      hideTimerRef.current = setTimeout(() => setVisible(false), HIDE_DELAY)
+      hideTimerRef.current = setTimeout(() => {
+        anchorRef.current = null
+        setVisible(false)
+      }, HIDE_DELAY)
     } else if (hasTarget && taskViolations.length === 0) {
+      anchorRef.current = null
       setVisible(false)
     }
   }, [hasTarget, hoveredTaskId, hoveredCrewId, taskViolations.length, hoverPosition, visible])
@@ -324,7 +372,7 @@ export const ViolationTooltip = ({ scenarioId }: ViolationTooltipProps = {}) => 
   const tooltipW = compact ? 400 : 300
   // Height estimate: header (40px) + each group's header row + per-message rows
   const tooltipH = Math.min(
-    40 + groups.reduce((h, g) => h + (compact ? 28 + g.messages.length * 20 : 36 + g.messages.length * 30), 0),
+    40 + groups.reduce((h, g) => h + (compact ? 28 + g.messages.length * 20 : 36 + g.messages.length * 30), 0) + (recoveryAlert ? 48 : 0),
     compact ? 560 : 320,
   )
   const cx = posRef.current.x
@@ -336,11 +384,14 @@ export const ViolationTooltip = ({ scenarioId }: ViolationTooltipProps = {}) => 
     : Math.min(cy + 16, window.innerHeight - tooltipH - 8)
 
   return (
-    // pointer-events:none — tooltip is purely informational, never intercepts
-    // mouse clicks or drags on the canvas below it.
     <div
       className="fixed z-40 animate-in fade-in-0 zoom-in-95 duration-150"
-      style={{ left: x, top: y, width: tooltipW, pointerEvents: 'none' }}
+      style={{ left: x, top: y, width: tooltipW, pointerEvents: isDragging ? 'none' : 'auto' }}
+      onMouseEnter={() => clearTimeout(hideTimerRef.current)}
+      onMouseLeave={() => {
+        clearTimeout(hideTimerRef.current)
+        hideTimerRef.current = setTimeout(() => setVisible(false), HIDE_DELAY)
+      }}
     >
       <div className="overflow-hidden rounded-md border border-border/60 bg-popover/95 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
 
@@ -443,6 +494,25 @@ export const ViolationTooltip = ({ scenarioId }: ViolationTooltipProps = {}) => 
             )
           })}
         </div>
+        {recoveryAlert && (
+          <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-primary/[0.04] px-2.5 py-2">
+            <span className="text-2xs text-muted-foreground">8004 supports Crew Roster Recovery</span>
+            <button
+              type="button"
+              title="Recovery (Ctrl/Cmd+R)"
+              aria-keyshortcuts="Control+R Meta+R"
+              className="inline-flex h-7 shrink-0 items-center gap-1 rounded border border-primary/40 bg-primary/10 px-2 text-2xs font-semibold text-primary hover:bg-primary/20"
+              data-testid="violation-tooltip-recovery"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('recovery:open', { detail: recoveryAlert }))
+                anchorRef.current = null
+                setVisible(false)
+              }}
+            >
+              <ArrowRight className="h-3 w-3" /><span><span className="underline underline-offset-2">R</span>ecovery</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

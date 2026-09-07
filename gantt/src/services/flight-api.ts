@@ -1,10 +1,22 @@
 import { api } from './api'
 import type { Flight, FlightListQuery, FlightListResponse, FlightCrewResponse, FlightPairingsResponse, FlightNaviCountsResponse, FlightCompositionsResponse } from '@/types'
 
+export interface FlatFlightListResponse {
+  items: Flight[]
+  total: number
+  flightTotal: number
+  grouping: 'none'
+}
+
 export const flightApi = {
   /** Paginated flight list with date range and filters (returns grouped FlightItem) */
   async list(query: FlightListQuery): Promise<FlightListResponse> {
     return api.get('/api/flight', { params: query }) as Promise<FlightListResponse>
+  },
+
+  /** Flat operational flight rows for the OPS Interface page. */
+  async listFlat(query: FlightListQuery): Promise<FlatFlightListResponse> {
+    return api.get('/api/flight', { params: { ...query, grouping: 'none' } }) as Promise<FlatFlightListResponse>
   },
 
   /** Get flight detail by id (returns single Flight) */
@@ -42,12 +54,14 @@ export const flightApi = {
     return api.post('/api/flight/compositions', { flightIds }) as Promise<FlightCompositionsResponse>
   },
 
-  /** Update a flight's scheduled/actual departure & arrival times (STD/STA/ATD/ATA), and optionally fleet/register. */
+  /** Update a flight's operational timestamps (STD/STA/ETD/ETA/ATD/ATA), and optionally fleet/register. */
   async updateTimes(id: number, payload: {
     schDepDtUtc: string
     schArvDtUtc: string
     actDepDtUtc: string
     actArvDtUtc: string
+    estDepDtUtc?: string | null
+    estArvDtUtc?: string | null
     fleet?: string
     register?: string | null
   }): Promise<Flight> {

@@ -7,10 +7,12 @@ import { useMenuStore } from '@/stores/menu-store'
 import { DataQualityMonitor } from './data-quality-monitor'
 import { SchedulerView } from './scheduler-view'
 import { PermissionAdminPanel } from './permission-admin-panel'
+import { InterfaceFlightSimulation } from './interface-flight-simulation'
 
 const CUSTOM_COMPONENTS: Partial<Record<string, () => React.ReactNode>> = {
   'data-quality': () => <DataQualityMonitor />,
   scheduler: () => <SchedulerView />,
+  interface: () => <InterfaceFlightSimulation />,
 }
 
 // Items that route to the in-app permission admin panel rather than an

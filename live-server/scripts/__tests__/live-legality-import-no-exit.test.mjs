@@ -38,3 +38,11 @@ test('CLI entry still rejects missing/invalid --group', () => {
   assert.equal(res.status, 2)
   assert.match(res.stderr ?? '', /--group|invalid --group|usage:/)
 })
+
+test('detached live legality Redis status keys use the Live Server namespace', async () => {
+  const { prefixedDetachedRedisKey } = await import('../live-legality.mjs')
+  const key = 'legality:recheck:F8:1:status'
+  assert.equal(prefixedDetachedRedisKey(key, 'dev'), `dev:${key}`)
+  assert.equal(prefixedDetachedRedisKey(key, 'sit:'), `sit:${key}`)
+  assert.equal(prefixedDetachedRedisKey(key, ''), key)
+})

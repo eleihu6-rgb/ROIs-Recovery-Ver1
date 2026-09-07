@@ -31,6 +31,8 @@ export interface RosterItem {
   // Flight-specific
   fltId: number | null
   fltDt: string | null
+  /** Aircraft fleet for this segment (pairing_segment.fleet_seg / flight.fleet). */
+  fleetCode?: string | null
   dutySeq: number | null
   segSeq: number | null
   division: string | null
@@ -85,6 +87,14 @@ export interface RosterItem {
    *  by buildScenarioRosterItems; never set for Live items so the shared renderer can style
    *  pending Scenario edits without marking committed Live manual (MA) adds. */
   isPending?: boolean
+  /** Recovery sandbox / persisted marker for a retained SBY task used as a callout. */
+  isCalloutStandby?: boolean
+  /** Recovery preview marker for Roster items changed by the selected option. */
+  isRecoveryAffected?: boolean
+  /** Recovery preview marker for the original roster shown in a before/after comparison. */
+  isRecoveryBefore?: boolean
+  /** Recovery preview marker for the simulated roster overlaid in a before/after comparison. */
+  isRecoveryAfter?: boolean
 }
 
 /** Input for creating a new roster entry */

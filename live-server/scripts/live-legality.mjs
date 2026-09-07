@@ -26,6 +26,7 @@ import {
   asOfDateOnly,
   buildCrewBaseTimeline, resolveOffsetAtUtc, resolveBaseAt, resolveOffsetAt, midpointDateOnly,
   utcSecsToUtcDateOnly,
+  rustBinsSkipped,
 } from './legality-recheck-core.mjs'
 import {
   pairingEndRestSecsSql,
@@ -72,7 +73,13 @@ const FOCUS_END_SECS = Number(arg('--focus-end-secs'))
 const FOCUS_CREW_IDS = (arg('--focus-crew-ids', '') || '').split(',').map((s) => s.trim()).filter(Boolean)
 // Optional scoped recheck: only recompute (and only delete/rewrite) these rule codes.
 // Omit → whole group. Lets a single-rule param change skip the other 8 rules' (slow) recompute.
-const ONLY_CODES = (arg('--rules', '') || '').split(',').map((s) => s.trim()).filter(Boolean)
+const REQUESTED_CODES = (arg('--rules', '') || '').split(',').map((s) => s.trim()).filter(Boolean)
+// A development checkout may intentionally omit the private Rust release
+// artifacts. The JS 8004 fallback is complete enough to keep the local Live
+// alert path operational; do not let unrelated missing binaries turn the
+// startup result into an empty violation set. Explicit --rules remains
+// authoritative for diagnostics and targeted rechecks.
+const ONLY_CODES = REQUESTED_CODES.length || !rustBinsSkipped() ? REQUESTED_CODES : ['8004']
 const ACC_REF_BIN = path.resolve(__dirname, '../../rule-engine-rs/target/release/check-7500-ref')
 
 function readEnv(key) {
@@ -89,6 +96,18 @@ function readEnvDefault(key, fallback) {
     return fallback
   }
 }
+
+/**
+ * `live-legality` owns a raw Redis client, unlike the Fastify process whose
+ * client transparently prefixes data keys. Keep detached child status writes
+ * in the same namespace as `/api/legality/recheck-status`. Pub/sub channels
+ * intentionally stay unprefixed because the websocket subscriber duplicates
+ * the raw client and subscribes to those channel names directly.
+ */
+export const prefixedDetachedRedisKey = (key, prefix = readEnvDefault('REDIS_KEY_PREFIX', 'dev')) => {
+  const namespace = String(prefix ?? '').trim().replace(/:$/, '')
+  return namespace ? `${namespace}:${key}` : key
+}
 function quoteIdent(value) {
   if (!/^[a-z][a-z0-9_]*$/.test(value)) throw new Error(`invalid SQL identifier: ${value}`)
   return `"${value}"`
@@ -100,7 +119,7 @@ const SCENARIO_SCHEMA = quoteIdent(readEnvDefault('SCENARIO_SCHEMA', 'scenario')
 export const applySchemas = (text) =>
   text.replaceAll('f8.', `${LIVE_SCHEMA}.`).replaceAll('scenario.', `${SCENARIO_SCHEMA}.`)
 const AIRLINE = arg('--airline', process.env.FILIALE || 'F8')
-const KEY = (s) => `legality:recheck:${AIRLINE}:${GROUP}:${s}`
+const KEY = (s) => prefixedDetachedRedisKey(`legality:recheck:${AIRLINE}:${GROUP}:${s}`)
 // DB/Redis clients + applySchemas wrapper only for CLI entrypoint execution. Library
 // importers (pbs-server rust-rule-runner, preview-draft) get liveSource etc. without
 // connecting to PG/Redis or requiring live-server/.env — those readEnv calls used to
@@ -1162,12 +1181,55 @@ export function liveSource(db, fromIso, toExclusiveIso) {
            group by crew_id, pairing_id`, P)).rows
     },
 
+    // ── rule 8004 — assigned flight fleet by segment ──
+    // Pairing.fleet is only a roster-level fallback. The 8004 Fleet check must
+    // inspect pairing_segment.fleet_seg (then flight.fleet) for every flight.
+    async fleetSegments() {
+      return (await db.query(
+        `select rf.crew_id, rf.pairing_id, rf.duty_seq, rf.seg_seq,
+                coalesce(nullif(ps.fleet_seg, ''), nullif(f.fleet, ''), nullif(p.fleet, '')) as fleet,
+                coalesce(nullif(rf.assignment_group, ''), nullif(p.assignment_group, ''), '') as assignment_group,
+                coalesce(nullif(rf.assignment, ''), nullif(p.assignment, ''), '') as assignment,
+                extract(epoch from coalesce(rf.sch_str_dt_utc, ps.sch_str_dt_utc))::bigint as start_secs,
+                extract(epoch from coalesce(rf.sch_end_dt_utc, ps.sch_end_dt_utc))::bigint as end_secs
+           from roster_flight rf
+           left join pairing p
+             on p.id = rf.pairing_id and coalesce(p.is_deleted, 0) = 0
+           left join pairing_segment ps
+             on ps.pairing_id = rf.pairing_id
+            and coalesce(ps.is_deleted, 0) = 0
+            and ps.duty_seq = rf.duty_seq
+            and ps.seg_seq = rf.seg_seq
+           left join flight f
+             on f.id = coalesce(ps.flt_id, rf.flt_id)
+            and coalesce(f.is_deleted, 0) = 0
+          where rf.is_deleted=0 and rf.sch_str_dt_utc >= $1 and rf.sch_str_dt_utc < $2
+            and rf.pairing_id is not null`, P)).rows
+    },
+
     // ── rule 8004 — crew_base qualifications (Q rows) ──
     async baseQuals(crewIds) {
       return (await db.query(
         `select crew_id, base, to_char(coalesce(eff_dt_utc, eff_dt),'YYYY-MM-DD') as eff_date,
                 to_char(coalesce(exp_dt_utc, exp_dt),'YYYY-MM-DD') as exp_date
            from f8.crew_base where crew_id = any($1::varchar[])`, [crewIds])).rows
+    },
+
+    // ── rule 8004 — effective crew fleet qualifications ──
+    async fleetQuals(crewIds) {
+      return (await db.query(
+        `select crew_id, fleet_specific as value,
+                to_char(eff_dt, 'YYYY-MM-DD') as eff_date,
+                to_char(exp_dt, 'YYYY-MM-DD') as exp_date
+           from f8.crew_fleet where crew_id = any($1::varchar[]) and fleet_specific is not null and fleet_specific <> ''
+         union all
+         select crew_id, ac_type,
+                to_char(eff_dt, 'YYYY-MM-DD'), to_char(exp_dt, 'YYYY-MM-DD')
+           from f8.crew_fleet where crew_id = any($1::varchar[]) and ac_type is not null and ac_type <> ''
+         union all
+         select crew_id, fleet_grp,
+                to_char(eff_dt, 'YYYY-MM-DD'), to_char(exp_dt, 'YYYY-MM-DD')
+           from f8.crew_fleet where crew_id = any($1::varchar[]) and fleet_grp is not null and fleet_grp <> ''`, [crewIds])).rows
     },
 
     // ── rule 1001 — assignment overlap timeline (pairings + ground/leave duties) ──
@@ -1318,15 +1380,21 @@ async function main() {
   try {
     const toExclusive = new Date(new Date(TO + 'T00:00:00Z').getTime() + 86400000).toISOString().slice(0, 10)
     // Rule 7500 is a definition/state-builder, not a violation-producing rule. Rebuild its
-    // crew-specific Ref values on every live legality pass so roster mutations and parameter
-    // changes cannot leave Pairing Info behind. The source intentionally ignores FROM/TO:
-    // acclimatisation state is defined over each focused crew's complete chronological line.
-    const accRefRows = await loadLiveAccRefRows(db, FOCUS_CREW_IDS)
-    const accRefParams = await loadLiveAccRefParams(db, RULESET_ID)
-    const accRefUpdates = buildLiveAccRefUpdates(accRefRows, accRefParams)
-    await db.query('begin')
-    await persistLiveAccRef(db, accRefUpdates, FOCUS_CREW_IDS)
-    await db.query('commit')
+    // crew-specific Ref values on full rechecks and on rules that consume that state. A scoped
+    // 8004 recheck must not require the unrelated private check-7500-ref binary.
+    const needsAccRef = ONLY_CODES.length === 0 || ONLY_CODES.some((code) =>
+      ['7500', '7501', '7503', '7504', '7505', '7506', '7507', '7508', '7305'].includes(code))
+    let accRefRows = []
+    if (needsAccRef) {
+      // The source intentionally ignores FROM/TO: acclimatisation state is defined over each
+      // focused crew's complete chronological line.
+      accRefRows = await loadLiveAccRefRows(db, FOCUS_CREW_IDS)
+      const accRefParams = await loadLiveAccRefParams(db, RULESET_ID)
+      const accRefUpdates = buildLiveAccRefUpdates(accRefRows, accRefParams)
+      await db.query('begin')
+      await persistLiveAccRef(db, accRefUpdates, FOCUS_CREW_IDS)
+      await db.query('commit')
+    }
     const ctx = { ruleGroupCode: GROUP, rulesetId: RULESET_ID, dateFrom: FROM, dateTo: TO }
     if (Number.isFinite(FOCUS_START_SECS) && Number.isFinite(FOCUS_END_SECS)) {
       ctx.focusIntervals = [{ startSecs: FOCUS_START_SECS, endSecs: FOCUS_END_SECS }]

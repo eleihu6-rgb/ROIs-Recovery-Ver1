@@ -25,7 +25,7 @@ describe('pairing-store batched loading', () => {
     })
   })
 
-  it('uses the active sort after concurrent date windows finish out of order', async () => {
+  it('uses the active sort while loading date windows in a bounded sequence', async () => {
     list.mockImplementation((query: { startDate: string }) => new Promise((resolve) => {
       const laterWindow = query.startDate === '2026-10-01'
       setTimeout(() => resolve({
@@ -42,7 +42,8 @@ describe('pairing-store batched loading', () => {
     expect(list).toHaveBeenCalledWith(expect.objectContaining({
       sortBy: 'schStrDtUtc',
       sortOrder: 'asc',
-    }))
+    }), { timeout: 120_000 })
+    expect(list.mock.calls[1]?.[0]).toMatchObject({ startDate: '2026-10-01' })
     expect(usePairingStore.getState().items.map((item) => item.pairing.id)).toEqual([1, 2])
   })
 })

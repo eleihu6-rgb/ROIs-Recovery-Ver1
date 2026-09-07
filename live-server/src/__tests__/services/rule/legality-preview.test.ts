@@ -11,6 +11,7 @@ import {
   focusIntervalsFromPreviewItems,
   normalizePreviewViolations,
   resolvePreviewRosterOverlay,
+  resolveRuleEngineFocusPairingIds,
   selectPreviewFocusItems,
   type PreviewRosterItem,
 } from '../../../services/rule/legality-preview.js'
@@ -138,6 +139,29 @@ describe('resolvePreviewRosterOverlay', () => {
       expect(overlay.overlayFrom).toBe('2026-09-24')
       expect(overlay.overlayToExclusive).toBe('2026-09-26')
     }
+  })
+
+  it('deletes the persisted source Pairing and inserts a synthetic destination Pairing', () => {
+    const created = { ...cram(-3, -900001, '2026-09-25T11:00:00.000Z', '2026-09-25T23:00:00.000Z') }
+    const overlay = resolvePreviewRosterOverlay([created], [135559, -900001])
+
+    expect(overlay).toEqual({
+      mode: 'pairing',
+      pairingIds: [135559],
+      itemsToInsert: [created],
+    })
+  })
+})
+
+describe('resolveRuleEngineFocusPairingIds', () => {
+  it('uses affected-Crew scope when the focused result creates a synthetic Pairing', () => {
+    const created = { ...item(-5, '2026-09-25T11:00:00.000Z', '2026-09-25T23:00:00.000Z'), pairingId: -900001 }
+    expect(resolveRuleEngineFocusPairingIds([created], [135559, -900001])).toEqual([])
+  })
+
+  it('keeps persisted Pairing focus for ordinary recovery previews', () => {
+    const persisted = { ...item(-6, '2026-09-25T11:00:00.000Z', '2026-09-25T23:00:00.000Z'), pairingId: 135559 }
+    expect(resolveRuleEngineFocusPairingIds([persisted], [135559])).toEqual([135559])
   })
 })
 

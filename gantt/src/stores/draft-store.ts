@@ -8,10 +8,12 @@ import { usePairingStore } from './pairing-store'
 import { useFilterStore } from './filter-store'
 import { usePaneStore } from './pane-store'
 import { useRuleCheckStore } from './rule-check-store'
+import { useLegalityStore } from './legality-store'
 import { useSessionViolationStore } from './session-violation-store'
 import { promoteDraftBase, recomputeRosterItems } from './draft-roster-recompute'
 import type { RosterItem } from '@/types'
 import { notify } from '@/utils/notify'
+import { recoveryApi } from '@/services/recovery-api'
 
 const fireViolationsUpdated = (groupCode: string): void => {
   window.dispatchEvent(new CustomEvent('violations:updated', {
@@ -26,7 +28,9 @@ const fireViolationsUpdated = (groupCode: string): void => {
  * polling here — the push provides the final fresh refetch.
  */
 export const refreshViolationsAfterDraftCommit = (): void => {
-  const groupCode = useRuleCheckStore.getState().ruleGroupCode || '103'
+  const selectedRulesetId = useLegalityStore.getState().selectedId
+  const groupCode = selectedRulesetId == null ? useRuleCheckStore.getState().ruleGroupCode : String(selectedRulesetId)
+  if (!groupCode) return
   useSessionViolationStore.getState().clearSessionViolations()
   fireViolationsUpdated(groupCode)
 }
@@ -315,6 +319,30 @@ export const useDraftStore = create<DraftStore>((set, get) => ({
               crewReplacements.set(op.crewId!, created)
               break
             }
+            case 'cross-base-recovery': {
+              if (!op.crossBase) throw new Error('Cross-base recovery payload is missing')
+              const result = await recoveryApi.crossBase({
+                operation: op.crossBase.operation,
+                sourceCrewId: op.crossBase.sourceCrewId,
+                sourcePairingId: op.crossBase.sourcePairingId,
+                targetCrewId: op.crossBase.targetCrewId,
+                targetPairingId: op.crossBase.targetPairingId,
+                standbyTaskId: op.crossBase.standbyTaskId,
+                outboundFlightId: op.crossBase.outboundFlightId,
+                returnFlightId: op.crossBase.returnFlightId,
+                supportBase: op.crossBase.supportBase,
+                recoveryBase: op.crossBase.recoveryBase,
+                division: op.crossBase.division,
+                targetRosterActingRank: op.crossBase.rosterActingRank,
+                minFlightLeadHours: op.crossBase.minFlightLeadHours,
+                reserveBeforeHours: op.crossBase.reserveBeforeHours,
+                 returnAfterHours: op.crossBase.returnAfterHours,
+                 destinationSplit: op.crossBase.destinationSplit,
+              })
+              removedItemIds.push(...(op.mockItems ?? []).filter((item) => Number(item.id) > 0).map((item) => Number(item.id)))
+              void result
+              break
+            }
             case 'remove-pairing':
               for (const pairingId of pairingIdsFromRemoveOp(op)) {
                 await pairingApi.remove(pairingId)
@@ -457,6 +485,23 @@ export const useDraftStore = create<DraftStore>((set, get) => ({
             items = [...items, ...(op.tasks as unknown as RosterItem[])]
           }
           break
+
+        case 'cross-base-recovery': {
+          const crossBase = op.crossBase
+          if (!crossBase) break
+          const sourceIds = new Set(items.filter((item) => item.crewId === crossBase.sourceCrewId && item.pairingId === crossBase.sourcePairingId).map((item) => item.id))
+          const targetIds = crossBase.operation === 'swap' && crossBase.targetPairingId != null
+            ? new Set(items.filter((item) => item.crewId === crossBase.targetCrewId && item.pairingId === crossBase.targetPairingId).map((item) => item.id))
+            : new Set<number>()
+          items = items.filter((item) => !sourceIds.has(item.id) && !targetIds.has(item.id))
+          if (op.mockItems) items = [...items, ...(op.mockItems as unknown as RosterItem[])]
+          if (crossBase.operation === 'standby' && crossBase.standbyTaskId != null) {
+            items = items.map((item) => item.id === crossBase.standbyTaskId
+              ? { ...item, exceptionCode: 'CALLOUT_STANDBY', isCalloutStandby: true }
+              : item)
+          }
+          break
+        }
 
         case 'remove':
           items = items.filter((item) => item.id !== op.taskId)

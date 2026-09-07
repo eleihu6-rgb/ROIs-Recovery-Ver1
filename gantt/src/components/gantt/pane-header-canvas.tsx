@@ -48,6 +48,14 @@ export interface PanelRowData {
   sourceIndicator?: 'scenario' | 'live'
   /** Per-slot composition segments for mixed-color second-row rendering */
   compositionSegments?: Array<{ text: string; isRed: boolean }>
+  /** Recovery Preview state shown in the Pairing pane's two-line row. */
+  recoveryPreview?: {
+    status: 'modified' | 'created' | 'cancelled'
+    beforeLabel: string | null
+    afterLabel: string | null
+    beforeSummary?: string | null
+    afterSummary?: string | null
+  }
 }
 
 interface PaneHeaderCanvasProps {
@@ -782,6 +790,28 @@ const drawTwoLineRow = (
   ctx.fillStyle = getRowBackgroundColor(i, colors)
   ctx.fillRect(0, y, canvasWidth, PAIRING_ROW_HEIGHT)
 
+  // Recovery Preview tint keeps temporary Pairing changes visible even when the
+  // row is not selected. The content canvas uses the same status colors.
+  if (row.recoveryPreview) {
+    const previewColor = row.recoveryPreview.status === 'created'
+      ? 'rgba(16, 185, 129, 0.13)'
+      : row.recoveryPreview.status === 'cancelled'
+        ? 'rgba(244, 63, 94, 0.12)'
+        : 'rgba(14, 165, 233, 0.12)'
+    ctx.fillStyle = previewColor
+    ctx.fillRect(0, y, canvasWidth, PAIRING_ROW_HEIGHT)
+    ctx.strokeStyle = row.recoveryPreview.status === 'created'
+      ? 'rgba(16, 185, 129, 0.85)'
+      : row.recoveryPreview.status === 'cancelled'
+        ? 'rgba(244, 63, 94, 0.85)'
+        : 'rgba(14, 165, 233, 0.85)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(1, y + 1)
+    ctx.lineTo(1, y + PAIRING_ROW_HEIGHT - 1)
+    ctx.stroke()
+  }
+
   // Frozen row tint
   if (isPinned) {
     ctx.fillStyle = colors.rowFrozenColor
@@ -854,13 +884,40 @@ const drawTwoLineRow = (
     x += col.width
   }
 
-  // Bottom row: composition spanning full width, bold + vertically centered
+  // Bottom row: Recovery After label or composition spanning full width.
   const bottomRowY = y + PAIRING_TOP_ROW_HEIGHT + (PAIRING_ROW_HEIGHT - PAIRING_TOP_ROW_HEIGHT) / 2
   ctx.font = `bold 11px ${FONT_FAMILY}`
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
 
-  if (row.compositionSegments && row.compositionSegments.length > 0) {
+  if (row.recoveryPreview) {
+    const { status, beforeLabel, afterLabel, beforeSummary, afterSummary } = row.recoveryPreview
+    ctx.fillStyle = status === 'created'
+      ? 'rgba(5, 150, 105, 1)'
+      : status === 'cancelled'
+        ? 'rgba(225, 29, 72, 1)'
+        : 'rgba(2, 132, 199, 1)'
+    const phase = status === 'created' ? 'Created' : status === 'cancelled' ? 'Cancelled' : 'After'
+    const detail = afterSummary ?? afterLabel ?? '—'
+    ctx.fillText(`${phase} · ${detail}`, 8, bottomRowY)
+    // For an in-place Pairing modification the upper row is explicitly the
+    // before state and the lower row is the after state. Draw the full before
+    // description in the first column so an unchanged Pairing ID cannot hide
+    // a base/time/segment change.
+    if (status === 'modified' && beforeSummary) {
+      const beforeText = `Before · ${beforeSummary}`
+      ctx.save()
+      ctx.fillStyle = 'rgba(3, 105, 161, 1)'
+      ctx.font = `bold 10px ${FONT_FAMILY}`
+      ctx.textBaseline = 'middle'
+      ctx.beginPath()
+      const firstColumnWidth = columns[0]?.width ?? canvasWidth
+      ctx.rect(4, y, Math.max(0, firstColumnWidth - 8), topHeight)
+      ctx.clip()
+      ctx.fillText(beforeText, 8, y + topHeight / 2)
+      ctx.restore()
+    }
+  } else if (row.compositionSegments && row.compositionSegments.length > 0) {
     let segX = 8
     for (const seg of row.compositionSegments) {
       ctx.fillStyle = seg.isRed ? colors.textColorRed : colors.textColor

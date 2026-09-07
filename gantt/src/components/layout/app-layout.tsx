@@ -29,6 +29,7 @@ import { useGanttViewport } from '@/hooks/use-gantt-viewport'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useRuleCheck } from '@/hooks/use-rule-check'
 import { usePersistedViolations } from '@/hooks/use-persisted-violations'
+import { useRuleCheckWs } from '@/hooks/use-rule-check-ws'
 import { useLockStore } from '@/stores/lock-store'
 import { useDraftStore } from '@/stores/draft-store'
 import { usePaneStore } from '@/stores/pane-store'
@@ -47,6 +48,8 @@ import type { PaneType } from '@/types/pane'
 import type { RosterItem } from '@/types'
 import { isDeadheadSegAssignment } from '@/utils/puck-duty-color'
 import { differenceInHours } from 'date-fns'
+import { Eye, X } from 'lucide-react'
+import { useRecoveryPreviewStore } from '@/stores/recovery-preview-store'
 
 /** Render the appropriate pane component for a given pane type (used by FloatingPaneLayer) */
 const renderPaneContent = (type: PaneType) => {
@@ -93,6 +96,47 @@ const ResGenerateBanner = () => {
   )
 }
 
+/**
+ * Keep the recovery comparison state visible while the user works in Live Gantt.
+ * This is intentionally independent from the layout Reset action: clearing a preview
+ * restores live roster data without changing pane arrangement, filters, or zoom.
+ */
+const RecoveryPreviewBanner = () => {
+  const optionId = useRecoveryPreviewStore((s) => s.optionId)
+  const clearPreview = useRecoveryPreviewStore((s) => s.clear)
+  if (!optionId) return null
+
+  return (
+    <div
+      data-testid="recovery-preview-banner"
+      className="pointer-events-auto absolute right-4 top-3 z-40 flex max-w-[min(430px,calc(100vw-2rem))] items-center gap-3 rounded-md border-2 border-emerald-500/70 bg-background/95 px-3 py-2 shadow-lg backdrop-blur"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600" aria-hidden="true">
+        <Eye className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="flex items-center gap-2 text-xs font-bold text-foreground">
+          <span>Preview mode</span>
+          <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-2xs font-semibold text-emerald-700 dark:text-emerald-300">Before + After</span>
+        </span>
+        <span className="mt-0.5 block truncate text-2xs text-muted-foreground">Recovery Roster is simulated and not saved</span>
+      </span>
+      <button
+        type="button"
+        className="ml-auto inline-flex h-7 shrink-0 items-center gap-1.5 rounded border border-emerald-600/50 bg-emerald-600 px-2 text-2xs font-semibold text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
+        onClick={clearPreview}
+        data-testid="recovery-preview-clear"
+        title="Clear Recovery Preview"
+      >
+        <X className="h-3.5 w-3.5" />
+        Clear preview
+      </button>
+    </div>
+  )
+}
+
 /** Renders all currently-floating panes as fixed overlays via a portal */
 const FloatingPaneLayer = () => {
   const panes = usePaneStore((s) => s.panes)
@@ -129,6 +173,11 @@ export const AppLayout = () => {
 
   // Fetch persisted violations from rule_violation table; refreshes on violations:updated WS event
   usePersistedViolations()
+
+  // Subscribe the browser to the currently selected numeric Ruleset id. This is
+  // deliberately separate from the lock socket initialization because the active
+  // Ruleset is loaded asynchronously by the toolbar selector.
+  useRuleCheckWs()
 
   // Initialize WebSocket + lock sync
   const initLocks = useLockStore((s) => s.init)
@@ -427,7 +476,9 @@ export const AppLayout = () => {
     <DragProvider value={dragHandlerRef.current}>
       <GanttContextProvider contextId="live">
       <GanttSourceProvider value={liveSource}>
-      <div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
+      <div className="relative flex h-full flex-col overflow-hidden bg-background text-foreground">
+
+        <RecoveryPreviewBanner />
 
         {/* Multi-pane container: Roster Main/Sub, Pairing, Flight */}
         <LayoutGrid />

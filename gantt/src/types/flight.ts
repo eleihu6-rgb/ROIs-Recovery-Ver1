@@ -8,6 +8,8 @@ export interface Flight {
   arvArp: string
   schDepDtUtc: string
   schArvDtUtc: string
+  estDepDtUtc?: string
+  estArvDtUtc?: string
   actDepDtUtc: string
   actArvDtUtc: string
   actDepArp: string

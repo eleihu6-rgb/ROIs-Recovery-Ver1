@@ -100,6 +100,7 @@ export default async function legalityRoutes(fastify: FastifyInstance) {
       actEndDtUtc: z.string().nullable().optional(),
       fltId: z.number().int().nullable().optional(),
       fltDt: z.string().nullable().optional(),
+      fleetCode: z.string().nullable().optional(),
       dutySeq: z.number().int().nullable().optional(),
       segSeq: z.number().int().nullable().optional(),
       division: z.string().nullable().optional(),
@@ -120,7 +121,9 @@ export default async function legalityRoutes(fastify: FastifyInstance) {
       rulesetId: z.number().int().positive().optional(),
       affectedCrewIds: z.array(z.string().min(1)).min(1),
       afterItems: z.array(rosterItemSchema).min(1),
-      focusPairingIds: z.array(z.number().int().positive()).optional(),
+      // Negative IDs identify a Pairing created only inside a Draft preview.
+      // Zero is never a valid persisted or synthetic Pairing identity.
+      focusPairingIds: z.array(z.number().int().refine((value) => value !== 0)).optional(),
       // Inclusive Gantt RP calendar bounds for 7505/7507 (both or neither).
       rpFrom: ymd.optional(),
       rpTo: ymd.optional(),

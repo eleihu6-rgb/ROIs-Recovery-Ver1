@@ -63,6 +63,10 @@ export interface CrewQuals {
   airportQuals: string[]
 }
 
+// Live roster data uses FLY for an assigned flight duty; older imported and
+// engine-shaped data may use FLT. Keep both representations in the checker.
+const FLIGHT_ASSIGNMENT_GROUPS = new Set(['FLY', 'FLT', 'DHD'])
+
 /**
  * Group a crew's roster items by pairingId → dutySeq → segments,
  * then produce one CheckInput per pairing.
@@ -98,7 +102,7 @@ export const buildCheckInputs = (
 
   for (const [pairingId, pItems] of pairingMap) {
     // Must have at least one flight segment to be worth checking
-    const hasFlights = pItems.some((i) => i.assignmentGroup === 'FLT' || i.assignmentGroup === 'DHD')
+    const hasFlights = pItems.some((i) => FLIGHT_ASSIGNMENT_GROUPS.has(i.assignmentGroup))
     if (!hasFlights) continue
 
     // Group by dutySeq
@@ -128,7 +132,7 @@ export const buildCheckInputs = (
 
       // Build flight segments (only FLT/DHD assignment groups)
       const segments: FlightSegment[] = dutyItems
-        .filter((i) => i.assignmentGroup === 'FLT' || i.assignmentGroup === 'DHD')
+        .filter((i) => FLIGHT_ASSIGNMENT_GROUPS.has(i.assignmentGroup))
         .map((i) => {
           const startMs = new Date(i.schStrDtUtc!).getTime()
           const endMs = new Date(i.schEndDtUtc!).getTime()
@@ -148,6 +152,7 @@ export const buildCheckInputs = (
             staUtc: i.schEndDtUtc!,
             blockMinutes,
             isNight: false,
+            fleetCode: i.fleetCode ?? undefined,
             isDeadhead: i.assignmentGroup === 'DHD',
           }
         })
@@ -170,7 +175,7 @@ export const buildCheckInputs = (
     if (duties.length > 0) {
       const quals = qualsMap?.get(crewId)
       // seatPosition = the acting rank for this crew on this pairing
-      const seatPosition = pItems.find((i) => i.assignmentGroup === 'FLT' || i.assignmentGroup === 'DHD')?.flightActingRank ?? null
+      const seatPosition = pItems.find((i) => FLIGHT_ASSIGNMENT_GROUPS.has(i.assignmentGroup))?.flightActingRank ?? null
 
       inputs.push({
         ruleGroupCode,

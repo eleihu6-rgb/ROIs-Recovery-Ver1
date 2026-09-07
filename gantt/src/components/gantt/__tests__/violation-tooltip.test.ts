@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   collectViolationTooltipEntriesForTest,
   formatViolationRuleLabel,
+  recoveryAlertForHoveredTaskForTest,
 } from '../violation-tooltip'
 import type { DisplayViolation } from '@/stores/session-violation-store'
 import type { RosterItem } from '@/types'
@@ -506,5 +507,32 @@ describe('ViolationTooltip aggregation', () => {
       scenarioViolations,
       items,
     }).map((e) => e.ruleCode)).toEqual([])
+  })
+})
+
+describe('ViolationTooltip Recovery entry', () => {
+  it('builds an 8004 Recovery snapshot from the hovered loaded Roster', () => {
+    const task = {
+      ...rosterItem(10, '1464', 135559),
+      label: 'MU135559 PVG-PEK',
+      fltDt: '2099-06-20',
+      schStrDtUtc: '2099-06-20T10:00:00.000Z',
+      schEndDtUtc: '2099-06-20T12:00:00.000Z',
+      fleetCode: '7M8',
+    }
+    const snapshot = recoveryAlertForHoveredTaskForTest(task, [{
+      ruleCode: '8004',
+      ruleName: '8004',
+      severity: 3,
+      message: 'Fleet qualification mismatch',
+    }], [task])
+
+    expect(snapshot).toMatchObject({
+      ruleCode: '8004',
+      crewId: '1464',
+      pairingId: 135559,
+      flightNumber: 'MU135559',
+      fleet: '7M8',
+    })
   })
 })

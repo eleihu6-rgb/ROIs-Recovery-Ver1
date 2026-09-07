@@ -124,17 +124,18 @@ ON CONFLICT (parent_menu_code, menu_code) DO UPDATE SET
 -- System — 运营工具 + 管理页
 INSERT INTO system_menu (menu_code, menu_name, parent_menu_code, factory_name, system_type, idx, api_uris) VALUES
     ('SYSTEM_SCHEDULER',      'Scheduler',        'SYSTEM', 'scheduler',      'S', 1,  '/api/admin/scheduler*'),
-    ('SYSTEM_QUEUE_TASKS',    'Queue Tasks',  'SYSTEM', 'queue-tasks',    'S', 2,  null),
-    ('SYSTEM_GRAFANA',        'Grafana',          'SYSTEM', 'grafana',        'S', 3,  null),
-    ('SYSTEM_PROMETHEUS',     'Prometheus',       'SYSTEM', 'prometheus',     'S', 4,  null),
-    ('SYSTEM_WINDMILL',       'Windmill',       'SYSTEM', 'windmill',       'S', 5,  null),
-    ('SYSTEM_DATA_QUALITY',   'Data Quality', 'SYSTEM', 'data-quality',   'S', 6,  '/api/admin/data-quality'),
-    ('SYSTEM_USER_MGMT',      'Users',        'SYSTEM', 'user-mgmt',      'S', 7,  '/api/admin/users*'),
-    ('SYSTEM_PROFILE_MGMT',   'Roles',        'SYSTEM', 'profile-mgmt',   'S', 8,  '/api/admin/profiles*,/api/admin/menus*'),
-    ('SYSTEM_MENU_MGMT',      'Menus',        'SYSTEM', 'menu-mgmt',      'S', 9,  '/api/admin/menus*'),
-    ('SYSTEM_PBS_USER_MGMT',  'PBS Users',    'SYSTEM', 'pbs-user-mgmt',  'S', 10, '/api/admin/pbs-users*'),
-    ('SYSTEM_DEPT_MGMT',      'Departments',  'SYSTEM', 'dept-mgmt',      'S', 11, '/api/admin/departments*'),
-    ('MANDAY_REFRESH',        'Manday Refresh',    'SYSTEM', 'manday-refresh',   'S', 12, '/api/admin/manday-credit-refresh')
+    ('SYSTEM_INTERFACE',      'Interface',        'SYSTEM', 'interface',      'S', 2,  '/api/flight,/api/flight/*'),
+    ('SYSTEM_QUEUE_TASKS',    'Queue Tasks',  'SYSTEM', 'queue-tasks',    'S', 3,  null),
+    ('SYSTEM_GRAFANA',        'Grafana',          'SYSTEM', 'grafana',        'S', 4,  null),
+    ('SYSTEM_PROMETHEUS',     'Prometheus',       'SYSTEM', 'prometheus',     'S', 5,  null),
+    ('SYSTEM_WINDMILL',       'Windmill',       'SYSTEM', 'windmill',       'S', 6,  null),
+    ('SYSTEM_DATA_QUALITY',   'Data Quality', 'SYSTEM', 'data-quality',   'S', 7,  '/api/admin/data-quality'),
+    ('SYSTEM_USER_MGMT',      'Users',        'SYSTEM', 'user-mgmt',      'S', 8,  '/api/admin/users*'),
+    ('SYSTEM_PROFILE_MGMT',   'Roles',        'SYSTEM', 'profile-mgmt',   'S', 9,  '/api/admin/profiles*,/api/admin/menus*'),
+    ('SYSTEM_MENU_MGMT',      'Menus',        'SYSTEM', 'menu-mgmt',      'S', 10, '/api/admin/menus*'),
+    ('SYSTEM_PBS_USER_MGMT',  'PBS Users',    'SYSTEM', 'pbs-user-mgmt',  'S', 11, '/api/admin/pbs-users*'),
+    ('SYSTEM_DEPT_MGMT',      'Departments',  'SYSTEM', 'dept-mgmt',      'S', 12, '/api/admin/departments*'),
+    ('MANDAY_REFRESH',        'Manday Refresh',    'SYSTEM', 'manday-refresh',   'S', 13, '/api/admin/manday-credit-refresh')
 ON CONFLICT (parent_menu_code, menu_code) DO UPDATE SET
     menu_name    = EXCLUDED.menu_name,
     factory_name = EXCLUDED.factory_name,

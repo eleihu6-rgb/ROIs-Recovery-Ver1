@@ -5,6 +5,7 @@ import { rosterFlight } from '../../models/roster/roster-flight.js'
 import { pairing as pairingTable } from '../../models/pairing/pairing.js'
 import { pairingSegment } from '../../models/pairing/pairing-segment.js'
 import { flight as flightTable } from '../../models/flight/flight.js'
+import { crewBase } from '../../models/crew/crew-base.js'
 import { assignment as assignmentTable } from '../../models/base/assignment.js'
 import { pairingComposition } from '../../models/pairing/pairing-composition.js'
 import { refreshPairingCompositionFillBulk } from '../../utils/composition-fill.js'
@@ -115,6 +116,26 @@ const startMs = (v: unknown): number => {
   return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t
 }
 
+const endMs = (v: unknown): number => {
+  if (v == null) return Number.NEGATIVE_INFINITY
+  const t = new Date(v as string | Date).getTime()
+  return Number.isNaN(t) ? Number.NEGATIVE_INFINITY : t
+}
+
+const timeRangesOverlap = (startA: number, endA: number, startB: number, endB: number): boolean =>
+  startA < endB && endA > startB
+
+/**
+ * The original Pairing base belongs to the removed leading DHD. Destination
+ * recovery therefore derives a new base from the first retained segment.
+ */
+export const destinationAdjustedPairingBase = (
+  firstRetainedSegment: { depArp: string | null | undefined } | undefined,
+): string | null => {
+  const base = firstRetainedSegment?.depArp?.trim().toUpperCase()
+  return base || null
+}
+
 export const rosterService = {
   /**
    * Gantt chart data source: get all tasks assigned to specified crew within a date range.
@@ -168,6 +189,8 @@ export const rosterService = {
             activeRank: rosterFlight.activeRank,
             comments: rosterFlight.comments,
             source: rosterFlight.source,
+            tagSet: rosterFlight.tagSet,
+            exceptionCode: rosterFlight.exceptionCode,
             schStrDtUtc: rosterFlight.schStrDtUtc,
             schEndDtUtc: rosterFlight.schEndDtUtc,
             actStrDtUtc: rosterFlight.actStrDtUtc,
@@ -205,6 +228,7 @@ export const rosterService = {
           segFltNum: pairingSegment.fltNum,
           segDepArp: pairingSegment.depArp,
           segArvArp: pairingSegment.arvArp,
+          segFleet: pairingSegment.fleetSeg,
         })
         .from(rosterFlight)
         .leftJoin(
@@ -251,6 +275,7 @@ export const rosterService = {
           segSeq: roster.segSeq,
           fltId: roster.fltId ?? dutyFields.segFltId ?? null,
           fltDt: roster.fltDt ?? dutyFields.segFltDt ?? null,
+          fleetCode: dutyFields.segFleet ?? null,
           dutyRefTz: roster.dutyRefTz ?? null,
           // 展示
           base: roster.base,
@@ -268,6 +293,8 @@ export const rosterService = {
           activeRank: roster.activeRank,
           comments: roster.comments,
           source: roster.source,
+          tagSet: roster.tagSet,
+          exceptionCode: roster.exceptionCode,
           // 时间（带 pairing_segment 兜底）
           schStrDtUtc: roster.schStrDtUtc ?? dutyFields.segSchStrDtUtc ?? null,
           schEndDtUtc: roster.schEndDtUtc ?? dutyFields.segSchEndDtUtc ?? null,
@@ -676,6 +703,663 @@ export const rosterService = {
     // Expose the source crew so callers can recompute BOTH sides' CrewManday
     // (the source lost the task, the target gained it).
     return { ...result, sourceCrewId }
+  },
+
+  /**
+   * Apply a Crew Recovery operation at complete-Roster granularity.
+   * Existing move/swap endpoints intentionally operate on one roster_flight row;
+   * Recovery must deassign every segment first and then assign the complete pairing.
+   */
+  async recoverCompleteRoster(
+    fastify: FastifyInstance,
+    data: {
+      mode: 'transfer' | 'swap' | 'standby'
+      sourceCrewId: string
+      sourcePairingId: number
+      targetCrewId: string
+      targetPairingId?: number | null
+      standbyTaskId?: number | null
+      targetRosterActingRank?: string | null
+      username: string
+    },
+  ) {
+    const result = await fastify.db.transaction(async (tx) => {
+      const sourceRows = await tx
+        .select()
+        .from(rosterFlight)
+        .where(and(
+          eq(rosterFlight.crewId, data.sourceCrewId),
+          eq(rosterFlight.pairingId, data.sourcePairingId),
+          notDeleted(rosterFlight.isDeleted),
+        ))
+        .orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
+
+      if (sourceRows.length === 0) throw new Error(`Source Roster ${data.sourcePairingId} is not assigned to ${data.sourceCrewId}`)
+      if (sourceRows.some((row) => row.source === 'IMP')) {
+        throw Object.assign(new Error('Imported (IMP) Roster cannot be recovered'), { statusCode: 409 })
+      }
+
+      const targetPairingId = data.mode === 'swap' ? Number(data.targetPairingId) : data.sourcePairingId
+      if (!Number.isInteger(targetPairingId) || targetPairingId <= 0) {
+        throw new Error('A target Pairing is required for a complete Roster exchange')
+      }
+
+      const targetRows = data.mode === 'swap'
+        ? await tx
+          .select()
+          .from(rosterFlight)
+          .where(and(
+            eq(rosterFlight.crewId, data.targetCrewId),
+            eq(rosterFlight.pairingId, targetPairingId),
+            notDeleted(rosterFlight.isDeleted),
+          ))
+          .orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
+        : []
+      if (data.mode === 'swap' && targetRows.length === 0) throw new Error(`Target Roster ${targetPairingId} is not assigned to ${data.targetCrewId}`)
+      if (targetRows.some((row) => row.source === 'IMP')) {
+        throw Object.assign(new Error('Imported (IMP) target Roster cannot be recovered'), { statusCode: 409 })
+      }
+
+      if (data.sourceCrewId === data.targetCrewId) {
+        throw Object.assign(new Error('Source and target Crew must be different'), { statusCode: 400 })
+      }
+
+      const sourceStart = Math.min(...sourceRows.map((row) => startMs(row.schStrDtUtc)))
+      const sourceEnd = Math.max(...sourceRows.map((row) => endMs(row.schEndDtUtc)))
+      if (!Number.isFinite(sourceStart) || !Number.isFinite(sourceEnd) || sourceEnd <= sourceStart) {
+        throw Object.assign(new Error(`Source Roster ${data.sourcePairingId} has no valid schedule window`), { statusCode: 409 })
+      }
+
+      // The receiver must be free for the complete Roster. For a swap, the
+      // receiver's current Roster is moving away and is therefore excluded;
+      // all other tasks remain occupancy constraints. Callout Standby is the
+      // only operation that explicitly permits overlap with an SBY task.
+      const targetAssignedRows = await tx
+        .select({
+          id: rosterFlight.id,
+          pairingId: rosterFlight.pairingId,
+          assignmentGroup: rosterFlight.assignmentGroup,
+          schStrDtUtc: rosterFlight.schStrDtUtc,
+          schEndDtUtc: rosterFlight.schEndDtUtc,
+        })
+        .from(rosterFlight)
+        .where(and(eq(rosterFlight.crewId, data.targetCrewId), notDeleted(rosterFlight.isDeleted)))
+
+      const targetConflict = targetAssignedRows.find((row) => {
+        if (data.mode === 'swap' && row.pairingId === targetPairingId) return false
+        if (data.mode === 'standby' && row.assignmentGroup === 'SBY') return false
+        const rowStart = startMs(row.schStrDtUtc)
+        const rowEnd = endMs(row.schEndDtUtc)
+        return Number.isFinite(rowStart) && Number.isFinite(rowEnd)
+          && timeRangesOverlap(sourceStart, sourceEnd, rowStart, rowEnd)
+      })
+      if (targetConflict) {
+        throw Object.assign(
+          new Error(`Target Crew ${data.targetCrewId} is not available for the complete Roster time window`),
+          { statusCode: 409 },
+        )
+      }
+
+      if (data.mode === 'swap' && data.targetPairingId != null) {
+        const targetStart = Math.min(...targetRows.map((row) => startMs(row.schStrDtUtc)))
+        const targetEnd = Math.max(...targetRows.map((row) => endMs(row.schEndDtUtc)))
+        if (!Number.isFinite(targetStart) || !Number.isFinite(targetEnd) || targetEnd <= targetStart) {
+          throw Object.assign(new Error(`Target Roster ${data.targetPairingId} has no valid schedule window`), { statusCode: 409 })
+        }
+
+        const sourceOtherRows = await tx
+          .select({
+            pairingId: rosterFlight.pairingId,
+            schStrDtUtc: rosterFlight.schStrDtUtc,
+            schEndDtUtc: rosterFlight.schEndDtUtc,
+          })
+          .from(rosterFlight)
+          .where(and(eq(rosterFlight.crewId, data.sourceCrewId), notDeleted(rosterFlight.isDeleted)))
+        const sourceConflict = sourceOtherRows.find((row) => {
+          if (row.pairingId === data.sourcePairingId) return false
+          const rowStart = startMs(row.schStrDtUtc)
+          const rowEnd = endMs(row.schEndDtUtc)
+          return Number.isFinite(rowStart) && Number.isFinite(rowEnd)
+            && timeRangesOverlap(targetStart, targetEnd, rowStart, rowEnd)
+        })
+        if (sourceConflict) {
+          throw Object.assign(
+            new Error(`Source Crew ${data.sourceCrewId} is not available for the exchanged Roster time window`),
+            { statusCode: 409 },
+          )
+        }
+      }
+
+      if (data.mode === 'standby') {
+        if (data.standbyTaskId == null) {
+          throw Object.assign(new Error('standbyTaskId is required for Callout Standby'), { statusCode: 400 })
+        }
+        const standbyTask = targetAssignedRows.find((row) =>
+          row.id === data.standbyTaskId && row.pairingId == null && row.assignmentGroup === 'SBY',
+        )
+        if (!standbyTask) {
+          throw Object.assign(new Error(`Standby task ${data.standbyTaskId} is not assigned to ${data.targetCrewId}`), { statusCode: 409 })
+        }
+        const standbyStart = startMs(standbyTask.schStrDtUtc)
+        const standbyEnd = endMs(standbyTask.schEndDtUtc)
+        if (!Number.isFinite(standbyStart) || !Number.isFinite(standbyEnd) || sourceStart < standbyStart || sourceStart > standbyEnd) {
+          throw Object.assign(new Error(`Standby task ${data.standbyTaskId} does not cover the Roster start time`), { statusCode: 409 })
+        }
+      }
+
+      const allRows = [...sourceRows, ...targetRows]
+      const crewIds = [...new Set(allRows.map((row) => row.crewId))]
+      const pairingIds = [...new Set(allRows.map((row) => row.pairingId).filter((id): id is number => id != null))]
+      const dates = allRows.map((row) => row.schStrDtUtc).filter((date): date is Date => date != null)
+      const audit = auditUpdate(data.username)
+
+      await tx
+        .update(rosterFlight)
+        .set({ isDeleted: 1, ...audit })
+        .where(inArray(rosterFlight.id, allRows.map((row) => row.id)))
+
+      const assignPairing = async (pairingId: number, crewId: string, actingRank: string): Promise<typeof rosterFlight.$inferSelect[]> => {
+        const [pair] = await tx
+          .select()
+          .from(pairingTable)
+          .where(and(eq(pairingTable.id, pairingId), notDeleted(pairingTable.isDeleted)))
+        if (!pair) throw new Error(`Pairing #${pairingId} not found`)
+        const segments = await tx
+          .select()
+          .from(pairingSegment)
+          .where(and(eq(pairingSegment.pairingId, pairingId), notDeleted(pairingSegment.isDeleted)))
+          .orderBy(asc(pairingSegment.dutySeq), asc(pairingSegment.segSeq))
+        if (segments.length === 0) throw new Error(`Pairing #${pairingId} has no segments`)
+        return tx.insert(rosterFlight).values(segments.map((seg) => ({
+          crewId,
+          pairingId,
+          base: pair.base,
+          label: `${seg.fltNum} ${seg.depArp}-${seg.arvArp}`,
+          assignmentGroup: pair.assignmentGroup ?? 'FLT',
+          assignment: seg.segAssignment ?? pair.assignment,
+          role: 'CREW',
+          division: pair.division,
+          flightActingRank: actingRank,
+          rosterActingRank: actingRank,
+          fltId: seg.fltId,
+          fltDt: seg.fltDt,
+          dutySeq: seg.dutySeq,
+          segSeq: seg.segSeq,
+          schStrDtUtc: seg.schStrDtUtc,
+          schEndDtUtc: seg.schEndDtUtc,
+          actStrDtUtc: seg.actStrDtUtc,
+          actEndDtUtc: seg.actEndDtUtc,
+          schCreditedMinutes: seg.schCreditedMinutesSeg,
+          schFmCreditedMinutes: seg.schFmCreditedMinutesSeg,
+          actRestMin: seg.dutyActRestMin ?? null,
+          source: 'MA',
+          ...auditCreate(data.username),
+        }))).returning()
+      }
+
+      const sourceActingRank = sourceRows[0]?.rosterActingRank ?? sourceRows[0]?.flightActingRank ?? ''
+      const targetActingRank = data.targetRosterActingRank || targetRows[0]?.rosterActingRank || targetRows[0]?.flightActingRank || sourceActingRank
+      const created = data.mode === 'swap'
+        ? [
+            ...(await assignPairing(data.sourcePairingId, data.targetCrewId, targetActingRank)),
+            ...(await assignPairing(targetPairingId, data.sourceCrewId, sourceActingRank)),
+          ]
+        : await assignPairing(data.sourcePairingId, data.targetCrewId, targetActingRank)
+
+      if (data.mode === 'standby' && data.standbyTaskId != null) {
+        await tx
+          .update(rosterFlight)
+          .set({ exceptionCode: 'CALLOUT_STANDBY', ...audit })
+          .where(and(
+            eq(rosterFlight.id, data.standbyTaskId),
+            eq(rosterFlight.crewId, data.targetCrewId),
+            eq(rosterFlight.assignmentGroup, 'SBY'),
+            notDeleted(rosterFlight.isDeleted),
+          ))
+      }
+
+      return { created, deleted: allRows.length, deletedIds: allRows.map((row) => row.id), crewIds, pairingIds, dates }
+    })
+
+    await bumpCrewChunkVersions(fastify, result.crewIds)
+    await Promise.all([
+      ...result.deletedIds.map((id) => invalidate(fastify.redis, `${CACHE_PREFIX}:${id}`)),
+      ...result.created.map((row) => invalidate(fastify.redis, `${CACHE_PREFIX}:${row.id}`)),
+      ...result.pairingIds.map((id) => invalidate(fastify.redis, `pairing:${id}`, `pairing:comp:${id}`, `pairing:crewids:${id}`, `pairing:crewdetail:${id}`)),
+    ])
+    await refreshPairingCompositionFillBulk(fastify.db, result.pairingIds, data.username)
+      .catch((err) => fastify.log.error(err, 'refreshPairingCompositionFill failed after Recovery'))
+    return result
+  },
+
+  /**
+   * Recover a complete Roster with a Crew from another base. The two existing
+   * flights are wrapped in new, one-segment DHD Pairings and assigned to the
+   * receiving Crew in the same transaction as the Roster transfer/swap.
+   */
+  async recoverCrossBaseRoster(
+    fastify: FastifyInstance,
+    data: {
+      operation: 'standby' | 'swap'
+      sourceCrewId: string
+      sourcePairingId: number
+      targetCrewId: string
+      targetPairingId?: number | null
+      standbyTaskId?: number | null
+      outboundFlightId: number
+      returnFlightId: number
+      supportBase: string
+      recoveryBase: string
+      division: string
+      rosterActingRank: string
+      minFlightLeadHours: number
+      reserveBeforeHours: number
+      returnAfterHours: number
+      username: string
+    },
+  ) {
+    const result = await fastify.db.transaction(async (tx) => {
+      const sourceRows = await tx.select().from(rosterFlight).where(and(
+        eq(rosterFlight.crewId, data.sourceCrewId),
+        eq(rosterFlight.pairingId, data.sourcePairingId),
+        notDeleted(rosterFlight.isDeleted),
+      )).orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
+      if (sourceRows.length === 0) throw Object.assign(new Error(`Source Roster ${data.sourcePairingId} is not assigned to ${data.sourceCrewId}`), { statusCode: 409 })
+      if (sourceRows.some((row) => row.source === 'IMP')) throw Object.assign(new Error('Imported (IMP) Roster cannot be recovered'), { statusCode: 409 })
+      if (data.sourceCrewId === data.targetCrewId) throw Object.assign(new Error('Source and support Crew must be different'), { statusCode: 400 })
+      if (data.operation === 'swap' && data.targetPairingId == null) throw Object.assign(new Error('targetPairingId is required for a Cross-base Roster swap'), { statusCode: 400 })
+
+      const targetPairingId = data.operation === 'swap' ? Number(data.targetPairingId) : null
+      const targetRows = targetPairingId == null ? [] : await tx.select().from(rosterFlight).where(and(
+        eq(rosterFlight.crewId, data.targetCrewId),
+        eq(rosterFlight.pairingId, targetPairingId),
+        notDeleted(rosterFlight.isDeleted),
+      )).orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
+      if (targetPairingId != null && targetRows.length === 0) throw Object.assign(new Error(`Target Roster ${targetPairingId} is not assigned to ${data.targetCrewId}`), { statusCode: 409 })
+      if (targetRows.some((row) => row.source === 'IMP')) throw Object.assign(new Error('Imported (IMP) target Roster cannot be recovered'), { statusCode: 409 })
+
+      const sourceStart = Math.min(...sourceRows.map((row) => startMs(row.schStrDtUtc)))
+      const sourceEnd = Math.max(...sourceRows.map((row) => endMs(row.schEndDtUtc)))
+      if (!Number.isFinite(sourceStart) || !Number.isFinite(sourceEnd) || sourceEnd <= sourceStart) throw Object.assign(new Error('Source Roster has no valid schedule window'), { statusCode: 409 })
+      const sourceBase = sourceRows[0]?.base?.trim().toUpperCase()
+      if (!sourceBase || sourceBase !== data.recoveryBase.toUpperCase()) {
+        throw Object.assign(new Error(`Recovery base ${data.recoveryBase} does not match the source Roster base`), { statusCode: 409 })
+      }
+
+      const [outbound] = await tx.select().from(flightTable).where(and(eq(flightTable.id, data.outboundFlightId), notDeleted(flightTable.isDeleted)))
+      const [inbound] = await tx.select().from(flightTable).where(and(eq(flightTable.id, data.returnFlightId), notDeleted(flightTable.isDeleted)))
+      if (!outbound || !inbound) throw Object.assign(new Error('One or both Cross-base DHD flights are not available'), { statusCode: 409 })
+      const leadMs = data.minFlightLeadHours * 60 * 60 * 1000
+      const beforeMs = data.reserveBeforeHours * 60 * 60 * 1000
+      const afterMs = data.returnAfterHours * 60 * 60 * 1000
+      if (outbound.depArp.toUpperCase() !== data.supportBase.toUpperCase() || outbound.arvArp.toUpperCase() !== data.recoveryBase.toUpperCase()
+        || outbound.schDepDtUtc.getTime() < Date.now() + leadMs || outbound.schArvDtUtc.getTime() > sourceStart - beforeMs) {
+        throw Object.assign(new Error('Outbound DHD flight does not satisfy Cross-base airport or time conditions'), { statusCode: 409 })
+      }
+      if (inbound.id === outbound.id || inbound.depArp.toUpperCase() !== data.recoveryBase.toUpperCase() || inbound.arvArp.toUpperCase() !== data.supportBase.toUpperCase()
+        || inbound.schDepDtUtc.getTime() < sourceEnd + afterMs) {
+        throw Object.assign(new Error('Return DHD flight does not satisfy Cross-base airport or time conditions'), { statusCode: 409 })
+      }
+
+      const supportBaseRows = await tx.select().from(crewBase).where(eq(crewBase.crewId, data.targetCrewId)).orderBy(asc(crewBase.effDt))
+      const effectiveBase = supportBaseRows
+        .filter((row) => row.effDt.getTime() <= sourceStart && (row.expDt == null || row.expDt.getTime() > sourceStart))
+        .sort((a, b) => b.effDt.getTime() - a.effDt.getTime())[0]?.base
+      if (!effectiveBase || effectiveBase.toUpperCase() !== data.supportBase.toUpperCase()) throw Object.assign(new Error(`Support Crew ${data.targetCrewId} is not based at ${data.supportBase}`), { statusCode: 409 })
+
+      const positioningStart = outbound.schDepDtUtc.getTime()
+      const positioningEnd = inbound.schArvDtUtc.getTime()
+      const targetRowsForConflict = await tx.select({
+        id: rosterFlight.id,
+        pairingId: rosterFlight.pairingId,
+        assignmentGroup: rosterFlight.assignmentGroup,
+        schStrDtUtc: rosterFlight.schStrDtUtc,
+        schEndDtUtc: rosterFlight.schEndDtUtc,
+      }).from(rosterFlight).where(and(eq(rosterFlight.crewId, data.targetCrewId), notDeleted(rosterFlight.isDeleted)))
+      const conflict = targetRowsForConflict.find((row) => {
+        if (data.operation === 'swap' && row.pairingId === targetPairingId) return false
+        if (row.assignmentGroup?.toUpperCase() === 'SBY') return false
+        const rowStart = startMs(row.schStrDtUtc)
+        const rowEnd = endMs(row.schEndDtUtc)
+        return Number.isFinite(rowStart) && Number.isFinite(rowEnd) && timeRangesOverlap(positioningStart, positioningEnd, rowStart, rowEnd)
+      })
+      if (conflict) throw Object.assign(new Error(`Support Crew ${data.targetCrewId} has an existing Roster in the DHD positioning window`), { statusCode: 409 })
+
+      if (data.operation === 'standby') {
+        if (data.standbyTaskId == null) throw Object.assign(new Error('standbyTaskId is required for Cross-base Callout Standby'), { statusCode: 400 })
+        const standby = targetRowsForConflict.find((row) => row.id === data.standbyTaskId && row.pairingId == null && row.assignmentGroup?.toUpperCase() === 'SBY')
+        if (!standby || startMs(standby.schStrDtUtc) > sourceStart || endMs(standby.schEndDtUtc) < sourceStart) throw Object.assign(new Error('Standby task does not cover the recovered Roster start time'), { statusCode: 409 })
+      }
+
+      const allRows = [...sourceRows, ...targetRows]
+      const oldCrewIds = [...new Set(allRows.map((row) => row.crewId))]
+      const oldPairingIds = [...new Set(allRows.map((row) => row.pairingId).filter((id): id is number => id != null))]
+      await tx.update(rosterFlight).set({ isDeleted: 1, ...auditUpdate(data.username) }).where(inArray(rosterFlight.id, allRows.map((row) => row.id)))
+
+      const sourceRank = data.rosterActingRank || sourceRows[0]?.rosterActingRank || sourceRows[0]?.flightActingRank || 'CREW'
+      const targetRank = targetRows[0]?.rosterActingRank || targetRows[0]?.flightActingRank || sourceRank
+      const assignPairing = async (pairingId: number, crewId: string, actingRank: string) => {
+        const [pair] = await tx.select().from(pairingTable).where(and(eq(pairingTable.id, pairingId), notDeleted(pairingTable.isDeleted)))
+        if (!pair) throw new Error(`Pairing #${pairingId} not found`)
+        const segments = await tx.select().from(pairingSegment).where(and(eq(pairingSegment.pairingId, pairingId), notDeleted(pairingSegment.isDeleted))).orderBy(asc(pairingSegment.dutySeq), asc(pairingSegment.segSeq))
+        if (segments.length === 0) throw new Error(`Pairing #${pairingId} has no segments`)
+        return tx.insert(rosterFlight).values(segments.map((seg) => ({
+          crewId, pairingId, base: pair.base, label: `${seg.fltNum} ${seg.depArp}-${seg.arvArp}`,
+          assignmentGroup: pair.assignmentGroup ?? 'FLT', assignment: seg.segAssignment ?? pair.assignment, role: 'CREW', division: pair.division,
+          flightActingRank: actingRank, rosterActingRank: actingRank, fltId: seg.fltId, fltDt: seg.fltDt,
+          dutySeq: seg.dutySeq, segSeq: seg.segSeq, schStrDtUtc: seg.schStrDtUtc, schEndDtUtc: seg.schEndDtUtc,
+          actStrDtUtc: seg.actStrDtUtc, actEndDtUtc: seg.actEndDtUtc, schCreditedMinutes: seg.schCreditedMinutesSeg,
+          schFmCreditedMinutes: seg.schFmCreditedMinutesSeg, actRestMin: seg.dutyActRestMin ?? null, source: 'RECOVERY', ...auditCreate(data.username),
+        }))).returning()
+      }
+
+      const createdRoster = data.operation === 'swap'
+        ? [...await assignPairing(data.sourcePairingId, data.targetCrewId, targetRank), ...await assignPairing(targetPairingId!, data.sourceCrewId, sourceRank)]
+        : await assignPairing(data.sourcePairingId, data.targetCrewId, targetRank)
+
+      const createDhdPairing = async (flight: typeof flightTable.$inferSelect, label: string) => {
+        const audit = auditCreate(data.username)
+        const [pair] = await tx.insert(pairingTable).values({
+          pairingLabel: label, division: data.division, base: data.supportBase, fleet: flight.fleet,
+          assignmentGroup: 'DHD', assignment: 'DHD', schStrDtUtc: flight.schDepDtUtc, schEndDtUtc: flight.schArvDtUtc,
+          actStrDtUtc: flight.actDepDtUtc, actEndDtUtc: flight.actArvDtUtc, durationDays: 0, tafb: 1, dutyCount: 1, segCount: 1,
+          source: 'RECOVERY', comments: 'Cross-base Recovery DHD half-ring', ...audit,
+        }).returning()
+        const [segment] = await tx.insert(pairingSegment).values({
+          pairingId: pair.id, dutySeq: 1, segSeq: 1, dutyStrArp: flight.depArp, dutyEndArp: flight.arvArp,
+          dutySchStrDtUtc: flight.schDepDtUtc, dutySchEndDtUtc: flight.schArvDtUtc, dutyActStrDtUtc: flight.actDepDtUtc, dutyActEndDtUtc: flight.actArvDtUtc,
+          dutyAccState: 'D', fltId: flight.id, fltDt: flight.fltDt, fltNum: flight.fltNum, airline: flight.airline,
+          depArp: flight.depArp, arvArp: flight.arvArp, fleetSeg: flight.fleet, actStrDtUtc: flight.actDepDtUtc,
+          actEndDtUtc: flight.actArvDtUtc, schStrDtUtc: flight.schDepDtUtc, schEndDtUtc: flight.schArvDtUtc,
+          segAssignment: 'DHD', dutySchRestMin: 0, dutyActRestMin: 0, ...audit,
+        }).returning()
+        const [roster] = await tx.insert(rosterFlight).values({
+          crewId: data.targetCrewId, pairingId: pair.id, base: data.supportBase, label, assignmentGroup: 'DHD', assignment: 'DHD', role: 'CREW',
+          division: data.division, flightActingRank: sourceRank, rosterActingRank: sourceRank, fltId: flight.id, fltDt: flight.fltDt,
+          dutySeq: 1, segSeq: 1, schStrDtUtc: flight.schDepDtUtc, schEndDtUtc: flight.schArvDtUtc, actStrDtUtc: flight.actDepDtUtc,
+          actEndDtUtc: flight.actArvDtUtc, source: 'RECOVERY', ...audit,
+        }).returning()
+        return { pair, segment, roster }
+      }
+
+      const outboundDhd = await createDhdPairing(outbound, `DHD ${outbound.fltNum} ${outbound.depArp}-${outbound.arvArp}`)
+      const inboundDhd = await createDhdPairing(inbound, `DHD ${inbound.fltNum} ${inbound.depArp}-${inbound.arvArp}`)
+      if (data.operation === 'standby' && data.standbyTaskId != null) await tx.update(rosterFlight).set({ exceptionCode: 'CALLOUT_STANDBY', ...auditUpdate(data.username) }).where(and(eq(rosterFlight.id, data.standbyTaskId), eq(rosterFlight.crewId, data.targetCrewId), notDeleted(rosterFlight.isDeleted)))
+
+      const pairingIds = [...new Set([...oldPairingIds, outboundDhd.pair.id, inboundDhd.pair.id])]
+      const crewIds = [...new Set([...oldCrewIds, data.targetCrewId])]
+      const dates = [...sourceRows, ...targetRows, outboundDhd.roster, inboundDhd.roster].map((row) => row.schStrDtUtc).filter((value): value is Date => value != null)
+      return {
+        created: [...createdRoster, outboundDhd.roster, inboundDhd.roster], deleted: allRows.length, deletedIds: allRows.map((row) => row.id),
+        crewIds, pairingIds, dates, dhdPairingIds: [outboundDhd.pair.id, inboundDhd.pair.id],
+      }
+    })
+
+    await bumpCrewChunkVersions(fastify, result.crewIds)
+    await Promise.all([
+      ...result.deletedIds.map((id) => invalidate(fastify.redis, `${CACHE_PREFIX}:${id}`)),
+      ...result.created.map((row) => invalidate(fastify.redis, `${CACHE_PREFIX}:${row.id}`)),
+      ...result.pairingIds.map((id) => invalidate(fastify.redis, `pairing:${id}`, `pairing:comp:${id}`, `pairing:crewids:${id}`, `pairing:crewdetail:${id}`)),
+    ])
+    await refreshPairingCompositionFillBulk(fastify.db, result.pairingIds, data.username).catch((err) => fastify.log.error(err, 'refreshPairingCompositionFill failed after Cross-base Recovery'))
+    return result
+  },
+
+  /**
+   * Recover a Roster when its first and last segments are already DHD. The
+   * receiving Crew is based at the first DHD destination, so those two legs
+   * are removed instead of recreated as external positioning Pairings.
+   *
+   * With one position for the source Crew's Acting Rank, the original Pairing
+   * is edited in place. With more than one position, a new single-position
+   * Pairing is created from the middle operating flights.
+   */
+  async recoverDestinationBaseRoster(
+    fastify: FastifyInstance,
+    data: {
+      sourceCrewId: string
+      sourcePairingId: number
+      targetCrewId: string
+      recoveryBase: string
+      division: string
+      rosterActingRank: string
+      middleFlightIds: number[]
+      removedDhdFlightIds: number[]
+      createsPairing: boolean
+      username: string
+    },
+  ) {
+    const result = await fastify.db.transaction(async (tx) => {
+      const sourceRows = await tx.select().from(rosterFlight).where(and(
+        eq(rosterFlight.crewId, data.sourceCrewId),
+        eq(rosterFlight.pairingId, data.sourcePairingId),
+        notDeleted(rosterFlight.isDeleted),
+      )).orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
+      if (sourceRows.length === 0) throw Object.assign(new Error(`Source Roster ${data.sourcePairingId} is not assigned to ${data.sourceCrewId}`), { statusCode: 409 })
+      if (sourceRows.some((row) => row.source === 'IMP')) throw Object.assign(new Error('Imported (IMP) Roster cannot be recovered'), { statusCode: 409 })
+      if (data.sourceCrewId === data.targetCrewId) throw Object.assign(new Error('Source and destination Crew must be different'), { statusCode: 400 })
+
+      const [sourcePair] = await tx.select().from(pairingTable).where(and(
+        eq(pairingTable.id, data.sourcePairingId),
+        notDeleted(pairingTable.isDeleted),
+      ))
+      if (!sourcePair) throw Object.assign(new Error(`Pairing #${data.sourcePairingId} not found`), { statusCode: 409 })
+      const sourceSegments = await tx.select().from(pairingSegment).where(and(
+        eq(pairingSegment.pairingId, data.sourcePairingId),
+        notDeleted(pairingSegment.isDeleted),
+      )).orderBy(asc(pairingSegment.dutySeq), asc(pairingSegment.segSeq))
+      const first = sourceSegments[0]
+      const last = sourceSegments[sourceSegments.length - 1]
+      const isDhd = (value: string | null | undefined): boolean => value?.trim().toUpperCase() === 'DHD'
+      if (!first || !last || sourceSegments.length < 3 || !isDhd(first.segAssignment) || !isDhd(last.segAssignment)) {
+        throw Object.assign(new Error('Destination-base recovery requires DHD first and last Pairing segments'), { statusCode: 409 })
+      }
+      if (first.arvArp.toUpperCase() !== data.recoveryBase.toUpperCase()) {
+        throw Object.assign(new Error(`Recovery base ${data.recoveryBase} does not match the first DHD destination ${first.arvArp}`), { statusCode: 409 })
+      }
+      const middle = sourceSegments.slice(1, -1)
+      // After the leading DHD is removed, the destination-base Pairing starts
+      // at the first operating flight's departure airport. Keep this value as
+      // the single source of truth for both the Pairing and its Roster rows;
+      // the original Pairing object may still contain the pre-recovery base.
+      const adjustedPairingBase = destinationAdjustedPairingBase(middle[0])
+      if (!adjustedPairingBase) {
+        throw Object.assign(new Error('Destination-base recovery cannot determine the adjusted Pairing base'), { statusCode: 409 })
+      }
+      const middleIds = [...new Set(middle.map((segment) => segment.fltId).filter((id): id is number => id != null))]
+      if (middleIds.length === 0 || middleIds.some((id) => !data.middleFlightIds.includes(id))) {
+        throw Object.assign(new Error('Destination-base recovery middle flight set does not match the source Pairing'), { statusCode: 409 })
+      }
+      const removedIds = [first.fltId, last.fltId].filter((id): id is number => id != null)
+      if (removedIds.length !== 2 || removedIds.some((id) => !data.removedDhdFlightIds.includes(id))) {
+        throw Object.assign(new Error('Destination-base recovery must remove the source Pairing first and last DHD flights'), { statusCode: 409 })
+      }
+
+      const sourceRank = sourceRows[0]?.rosterActingRank || sourceRows[0]?.flightActingRank || ''
+      if (!sourceRank || sourceRank.toUpperCase() !== data.rosterActingRank.toUpperCase()) {
+        throw Object.assign(new Error(`Acting Rank must match source Crew ${data.sourceCrewId} on Pairing ${data.sourcePairingId}`), { statusCode: 409 })
+      }
+      const [composition] = await tx.select({ plan: pairingComposition.plan }).from(pairingComposition).where(and(
+        eq(pairingComposition.pairingId, data.sourcePairingId),
+        eq(pairingComposition.actingRank, data.rosterActingRank),
+        notDeleted(pairingComposition.isDeleted),
+      )).limit(1)
+      const expectedCreatesPairing = (composition?.plan ?? 2) !== 1
+      if (data.createsPairing !== expectedCreatesPairing) {
+        throw Object.assign(new Error(`Destination-base Pairing mode is inconsistent with ${data.rosterActingRank} composition plan`), { statusCode: 409 })
+      }
+
+      const targetBaseRows = await tx.select().from(crewBase).where(eq(crewBase.crewId, data.targetCrewId)).orderBy(asc(crewBase.effDt))
+      const sourceStart = middle[0].schStrDtUtc.getTime()
+      const targetBase = targetBaseRows
+        .filter((row) => row.effDt.getTime() <= sourceStart && (row.expDt == null || row.expDt.getTime() > sourceStart))
+        .sort((a, b) => b.effDt.getTime() - a.effDt.getTime())[0]?.base
+      if (!targetBase || targetBase.toUpperCase() !== data.recoveryBase.toUpperCase()) {
+        throw Object.assign(new Error(`Destination Crew ${data.targetCrewId} is not based at ${data.recoveryBase}`), { statusCode: 409 })
+      }
+
+      const middleStart = Math.min(...middle.map((segment) => segment.schStrDtUtc.getTime()))
+      const middleEnd = Math.max(...middle.map((segment) => segment.schEndDtUtc.getTime()))
+      const targetRows = await tx.select({
+        id: rosterFlight.id,
+        assignmentGroup: rosterFlight.assignmentGroup,
+        schStrDtUtc: rosterFlight.schStrDtUtc,
+        schEndDtUtc: rosterFlight.schEndDtUtc,
+      }).from(rosterFlight).where(and(eq(rosterFlight.crewId, data.targetCrewId), notDeleted(rosterFlight.isDeleted)))
+      const conflict = targetRows.find((row) => {
+        const start = startMs(row.schStrDtUtc)
+        const end = endMs(row.schEndDtUtc)
+        return Number.isFinite(start) && Number.isFinite(end) && timeRangesOverlap(middleStart, middleEnd, start, end)
+      })
+      if (conflict) throw Object.assign(new Error(`Destination Crew ${data.targetCrewId} has an existing task overlapping the split Roster`), { statusCode: 409 })
+
+      const audit = auditUpdate(data.username)
+      await tx.update(rosterFlight).set({ isDeleted: 1, ...audit }).where(inArray(rosterFlight.id, sourceRows.map((row) => row.id)))
+
+      const normalizeSegments = async (pairingId: number, segments: typeof sourceSegments): Promise<typeof sourceSegments> => {
+        const dutyMap = new Map<number, number>()
+        for (const segment of segments) {
+          if (!dutyMap.has(segment.dutySeq)) dutyMap.set(segment.dutySeq, dutyMap.size + 1)
+        }
+        const normalized: typeof sourceSegments = []
+        for (const [index, segment] of segments.entries()) {
+          const dutySeq = dutyMap.get(segment.dutySeq) ?? 1
+          const dutySegments = segments.filter((candidate) => candidate.dutySeq === segment.dutySeq)
+          const segSeq = dutySegments.indexOf(segment) + 1
+          const dutyFirst = dutySegments[0]
+          const dutyLast = dutySegments[dutySegments.length - 1]
+          const values = {
+            dutySeq,
+            segSeq,
+            dutyStrArp: dutyFirst.depArp,
+            dutyEndArp: dutyLast.arvArp,
+            dutySchStrDtUtc: dutyFirst.schStrDtUtc,
+            dutySchEndDtUtc: dutyLast.schEndDtUtc,
+            dutyActStrDtUtc: dutyFirst.actStrDtUtc,
+            dutyActEndDtUtc: dutyLast.actEndDtUtc,
+            pairingId,
+            ...auditCreate(data.username),
+          }
+          if (pairingId === data.sourcePairingId) {
+            await tx.update(pairingSegment).set(values).where(eq(pairingSegment.id, segment.id))
+            normalized.push({ ...segment, ...values } as typeof sourceSegments[number])
+          } else {
+            const { id: _id, pairingId: _oldPairingId, createdBy: _createdBy, createdAt: _createdAt, updatedBy: _updatedBy, updatedAt: _updatedAt, ...copy } = segment
+            const [created] = await tx.insert(pairingSegment).values({ ...copy, ...values, isDeleted: 0 } as never).returning()
+            normalized.push(created)
+          }
+          void index
+        }
+        return normalized
+      }
+
+      let targetPairingId = data.sourcePairingId
+      let targetPair: typeof sourcePair
+      let targetSegments: typeof sourceSegments
+      if (data.createsPairing) {
+        const middleFirst = middle[0]
+        const middleLast = middle[middle.length - 1]
+        const [createdPair] = await tx.insert(pairingTable).values({
+          pairingLabel: `${sourcePair.pairingLabel ?? `Pairing #${data.sourcePairingId}`} · Recovery`,
+          filiale: sourcePair.filiale,
+          division: data.division || sourcePair.division,
+          base: adjustedPairingBase,
+          fleet: middleFirst.fleetSeg,
+          assignmentGroup: sourcePair.assignmentGroup,
+          assignment: sourcePair.assignment,
+          schStrDtUtc: middleFirst.schStrDtUtc,
+          schEndDtUtc: middleLast.schEndDtUtc,
+          actStrDtUtc: middleFirst.actStrDtUtc,
+          actEndDtUtc: middleLast.actEndDtUtc,
+          durationDays: sourcePair.durationDays,
+          tafb: sourcePair.tafb,
+          dutyCount: new Set(middle.map((segment) => segment.dutySeq)).size,
+          segCount: middle.length,
+          source: 'RECOVERY',
+          comments: `Destination-base Recovery from Pairing #${data.sourcePairingId}`,
+          pairingDt: sourcePair.pairingDt,
+          ...auditCreate(data.username),
+        }).returning()
+        targetPairingId = createdPair.id
+        targetPair = createdPair
+        targetSegments = await normalizeSegments(targetPairingId, middle)
+        await tx.insert(pairingComposition).values({
+          pairingId: targetPairingId,
+          division: data.division || sourcePair.division,
+          actingRank: data.rosterActingRank,
+          plan: 1,
+          fill: 0,
+          isDeleted: 0,
+          ...auditCreate(data.username),
+        })
+      } else {
+        targetPair = sourcePair
+        await tx.delete(pairingSegment).where(inArray(pairingSegment.id, [first.id, last.id]))
+        targetSegments = await normalizeSegments(targetPairingId, middle)
+        await tx.update(pairingTable).set({
+          schStrDtUtc: middle[0].schStrDtUtc,
+          schEndDtUtc: middle[middle.length - 1].schEndDtUtc,
+          actStrDtUtc: middle[0].actStrDtUtc,
+          actEndDtUtc: middle[middle.length - 1].actEndDtUtc,
+          base: adjustedPairingBase,
+          segCount: middle.length,
+          dutyCount: new Set(middle.map((segment) => segment.dutySeq)).size,
+          updatedBy: data.username,
+          updatedAt: new Date(),
+        }).where(eq(pairingTable.id, targetPairingId))
+      }
+
+      const created = await tx.insert(rosterFlight).values(targetSegments.map((segment) => ({
+        crewId: data.targetCrewId,
+        pairingId: targetPairingId,
+        // `targetPair` is the pre-recovery row in the in-place modification
+        // branch, so never read its stale base here.
+        base: adjustedPairingBase,
+        label: `${segment.fltNum} ${segment.depArp}-${segment.arvArp}`,
+        assignmentGroup: targetPair.assignmentGroup,
+        assignment: segment.segAssignment,
+        role: 'CREW',
+        division: targetPair.division,
+        flightActingRank: data.rosterActingRank,
+        rosterActingRank: data.rosterActingRank,
+        fltId: segment.fltId,
+        fltDt: segment.fltDt,
+        dutySeq: segment.dutySeq,
+        segSeq: segment.segSeq,
+        schStrDtUtc: segment.schStrDtUtc,
+        schEndDtUtc: segment.schEndDtUtc,
+        actStrDtUtc: segment.actStrDtUtc,
+        actEndDtUtc: segment.actEndDtUtc,
+        schCreditedMinutes: segment.schCreditedMinutesSeg,
+        schFmCreditedMinutes: segment.schFmCreditedMinutesSeg,
+        actRestMin: segment.dutyActRestMin ?? null,
+        source: 'RECOVERY',
+        ...auditCreate(data.username),
+      }))).returning()
+
+      const crewIds = [data.sourceCrewId, data.targetCrewId]
+      const pairingIds = [...new Set([data.sourcePairingId, targetPairingId])]
+      const dates = [...sourceRows, ...created].map((row) => row.schStrDtUtc).filter((date): date is Date => date != null)
+      return {
+        created,
+        deleted: sourceRows.length,
+        deletedIds: sourceRows.map((row) => row.id),
+        crewIds,
+        pairingIds,
+        dates,
+        destinationPairingId: data.createsPairing ? targetPairingId : null,
+      }
+    })
+
+    await bumpCrewChunkVersions(fastify, result.crewIds)
+    await Promise.all([
+      ...result.deletedIds.map((id) => invalidate(fastify.redis, `${CACHE_PREFIX}:${id}`)),
+      ...result.created.map((row) => invalidate(fastify.redis, `${CACHE_PREFIX}:${row.id}`)),
+      ...result.pairingIds.map((id) => invalidate(fastify.redis, `pairing:${id}`, `pairing:comp:${id}`, `pairing:crewids:${id}`, `pairing:crewdetail:${id}`)),
+    ])
+    await refreshPairingCompositionFillBulk(fastify.db, result.pairingIds, data.username)
+      .catch((err) => fastify.log.error(err, 'refreshPairingCompositionFill failed after destination-base Recovery'))
+    return result
   },
 
   /**

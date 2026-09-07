@@ -9,7 +9,7 @@ export type ActiveModule = string
 export type ActiveLiveItem = 'roster' | 'pairing' | 'flight'
 export type ActiveScenarioItem = 'all' | 'po' | 'ro' | 'crew-bids'
 export type ActiveLegalityItem = 'rule-sets' | 'rule-instances' | 'composition' | 'comp-load'
-export type ActiveSystemItem = 'queue-tasks' | 'scheduler' | 'grafana' | 'prometheus' | 'windmill' | 'data-quality' | 'user-mgmt' | 'profile-mgmt' | 'menu-mgmt' | 'pbs-user-mgmt' | 'dept-mgmt'
+export type ActiveSystemItem = 'queue-tasks' | 'scheduler' | 'interface' | 'grafana' | 'prometheus' | 'windmill' | 'data-quality' | 'user-mgmt' | 'profile-mgmt' | 'menu-mgmt' | 'pbs-user-mgmt' | 'dept-mgmt'
 export type ActivePbsItem = 'period' | 'bid-definitions' | 'business-time' | 'admin-tools' | 'simulated-crew-portal'
 export type SidebarState = 'expanded' | 'collapsed' | 'hidden'
 export type FilterDialogTab = 'crew' | 'pairing' | 'flight'
@@ -21,6 +21,12 @@ export type FilterDialogTab = 'crew' | 'pairing' | 'flight'
  * `dashboard` so the user does not see a 403 toast.
  */
 export const ADMIN_ONLY_MODULES: ActiveModule[] = ['pbs', 'system']
+
+/** Modules removed from the navigation but still possible in old localStorage. */
+const RETIRED_MODULES: ActiveModule[] = ['recovery']
+
+const normalizeModule = (module: ActiveModule): ActiveModule =>
+  RETIRED_MODULES.includes(module) ? 'dashboard' : module
 
 interface ShellStore {
   activeModule: ActiveModule
@@ -134,6 +140,7 @@ export const useShellStore = create<ShellStore>((set, get) => ({
   filterDialogTab: null,
 
   setModule: (module) => {
+    module = normalizeModule(module)
     const { sidebarStatesByModule, openTabs, scenarioTabRefreshTokens } = get()
     // Open tab if not already open (keep insertion order)
     const nextTabs = openTabs.includes(module) ? openTabs : [...openTabs, module]
@@ -330,6 +337,7 @@ export const useShellStore = create<ShellStore>((set, get) => ({
       const userIsAdmin = useAuthStore.getState().user?.isAdmin === 1
       const { canAccessMenu, loaded: menusLoaded } = useMenuStore.getState()
       const isHidden = (m: ActiveModule): boolean => {
+        if (RETIRED_MODULES.includes(m)) return true
         if (menusLoaded) return !canAccessMenu(MODULE_MENU[m])
         // Menus still loading: admin short-circuit + the boot-only deny list
         // for non-admin (PBS / SYSTEM are strictly admin-only modules).
@@ -355,7 +363,7 @@ export const useShellStore = create<ShellStore>((set, get) => ({
         VALID_LEGALITY_ITEMS.includes(rawLegalityItem as ActiveLegalityItem)
           ? (rawLegalityItem as ActiveLegalityItem)
           : 'rule-sets'
-      const VALID_SYSTEM_ITEMS: ActiveSystemItem[] = ['queue-tasks', 'scheduler', 'grafana', 'prometheus', 'windmill', 'data-quality', 'user-mgmt', 'profile-mgmt', 'menu-mgmt', 'pbs-user-mgmt', 'dept-mgmt']
+      const VALID_SYSTEM_ITEMS: ActiveSystemItem[] = ['queue-tasks', 'scheduler', 'interface', 'grafana', 'prometheus', 'windmill', 'data-quality', 'user-mgmt', 'profile-mgmt', 'menu-mgmt', 'pbs-user-mgmt', 'dept-mgmt']
       const rawSystemItem = localStorage.getItem(KEYS.systemItem)
       const systemItem: ActiveSystemItem =
         VALID_SYSTEM_ITEMS.includes(rawSystemItem as ActiveSystemItem)

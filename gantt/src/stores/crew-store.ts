@@ -672,7 +672,12 @@ export const useCrewStore = create<CrewStore>((set, get) => ({
         dateRangeStart: dateRange.start.toISOString().slice(0, 10),
         dateRangeEnd: dateRange.end.toISOString().slice(0, 10),
       }
-      const result = await crewApi.list(params)
+      // The filter-apply path is the critical Roster loading path.  Its first
+      // response must be the compact Gantt representation so it completes
+      // within the shared HTTP timeout and promptly supplies selectedCrewIds
+      // to loadRosterBatched().  It still contains current quals/rank/base/fleet
+      // needed by rendering, Rule 8004 and Recovery candidate generation.
+      const result = await crewApi.list(params, 'gantt-panel')
       const session: CrewQuerySession = { id: 1, filters: {}, page: 1, total: result.total, exhausted: true }
       const items = mapCrews(result.items, [session.id])
       const crewIds = result.items.map((c) => c.crewId)

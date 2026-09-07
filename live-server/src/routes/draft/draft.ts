@@ -88,6 +88,35 @@ const addGroundTaskSchema = z.object({
   mockItems: z.array(z.record(z.unknown())).optional(),
 })
 
+const crossBaseRecoverySchema = z.object({
+  type: z.literal('cross-base-recovery'),
+  crossBase: z.object({
+    operation: z.enum(['swap', 'standby', 'destination']),
+    sourceCrewId: z.string().min(1),
+    sourcePairingId: z.number().int().positive(),
+    targetCrewId: z.string().min(1),
+    targetPairingId: z.number().int().positive().nullable().optional(),
+    standbyTaskId: z.number().int().positive().nullable().optional(),
+    outboundFlightId: z.number().int().positive().nullable().optional(),
+    returnFlightId: z.number().int().positive().nullable().optional(),
+    supportBase: z.string().trim().min(3).max(3),
+    recoveryBase: z.string().trim().min(3).max(3),
+    division: z.string().trim().min(1).max(2),
+    rosterActingRank: z.string().trim().min(1).max(32),
+    minFlightLeadHours: z.number().nonnegative(),
+    reserveBeforeHours: z.number().nonnegative(),
+    returnAfterHours: z.number().nonnegative(),
+    destinationSplit: z.object({
+      destinationBase: z.string().trim().min(3).max(3),
+      middleFlightIds: z.array(z.number().int().positive()).min(1),
+      removedDhdFlightIds: z.array(z.number().int().positive()).length(2),
+      actingRank: z.string().trim().min(1).max(32),
+      createsPairing: z.boolean(),
+    }).optional(),
+  }),
+  mockItems: z.array(z.record(z.unknown())).optional(),
+})
+
 const draftOpSchema = z.discriminatedUnion('type', [
   movePayloadSchema,
   swapPayloadSchema,
@@ -100,6 +129,7 @@ const draftOpSchema = z.discriminatedUnion('type', [
   updatePayloadSchema,
   assignPairingSchema,
   addGroundTaskSchema,
+  crossBaseRecoverySchema,
 ])
 
 const commitSchema = z.object({
@@ -187,6 +217,37 @@ export default async function draftRoutes(fastify: FastifyInstance) {
             case 'add-ground-task':
               collect(await rosterService.createGroundTask(fastify, op.groundTaskData, username))
               break
+            case 'cross-base-recovery': {
+              if (!op.crossBase) throw new Error('Cross-base recovery payload is missing')
+              if (op.crossBase.operation === 'destination') {
+                const split = op.crossBase.destinationSplit
+                if (!split) throw new Error('Destination-base recovery split payload is missing')
+                collect(await rosterService.recoverDestinationBaseRoster(fastify, {
+                  sourceCrewId: op.crossBase.sourceCrewId,
+                  sourcePairingId: op.crossBase.sourcePairingId,
+                  targetCrewId: op.crossBase.targetCrewId,
+                  recoveryBase: op.crossBase.recoveryBase,
+                  division: op.crossBase.division,
+                  rosterActingRank: split.actingRank,
+                  middleFlightIds: split.middleFlightIds,
+                  removedDhdFlightIds: split.removedDhdFlightIds,
+                  createsPairing: split.createsPairing,
+                  username,
+                }))
+              } else {
+                if (op.crossBase.outboundFlightId == null || op.crossBase.returnFlightId == null) throw new Error('Cross-base positioning flights are missing')
+                const { destinationSplit: _destinationSplit, ...positioning } = op.crossBase
+                collect(await rosterService.recoverCrossBaseRoster(fastify, {
+                  ...positioning,
+                  // Destination was handled by the preceding branch.
+                  operation: op.crossBase.operation === 'swap' ? 'swap' : 'standby',
+                  outboundFlightId: op.crossBase.outboundFlightId,
+                  returnFlightId: op.crossBase.returnFlightId,
+                  username,
+                }))
+              }
+              break
+            }
           }
         }
       })

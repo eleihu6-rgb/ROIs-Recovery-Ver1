@@ -194,6 +194,8 @@ export default async function flightRoutes(fastify: FastifyInstance) {
       schArvDtUtc: z.string().datetime({ offset: true }),
       actDepDtUtc: z.string().datetime({ offset: true }),
       actArvDtUtc: z.string().datetime({ offset: true }),
+      estDepDtUtc: z.string().datetime({ offset: true }).nullable().optional(),
+      estArvDtUtc: z.string().datetime({ offset: true }).nullable().optional(),
       fleet: z.string().min(1).optional(),
       register: z.string().min(1).nullable().optional(),
     }).refine((d) => new Date(d.schArvDtUtc) > new Date(d.schDepDtUtc), {
@@ -207,7 +209,7 @@ export default async function flightRoutes(fastify: FastifyInstance) {
     }
 
     const username = request.authUser?.userCode ?? 'system'
-    const { schDepDtUtc, schArvDtUtc, actDepDtUtc, actArvDtUtc, fleet, register } = parsed.data
+    const { schDepDtUtc, schArvDtUtc, actDepDtUtc, actArvDtUtc, estDepDtUtc, estArvDtUtc, fleet, register } = parsed.data
 
     try {
       const result = await flightService.update(fastify, numId, {
@@ -215,6 +217,8 @@ export default async function flightRoutes(fastify: FastifyInstance) {
         schArvDtUtc: new Date(schArvDtUtc),
         actDepDtUtc: new Date(actDepDtUtc),
         actArvDtUtc: new Date(actArvDtUtc),
+        ...(estDepDtUtc !== undefined ? { estDepDtUtc: estDepDtUtc ? new Date(estDepDtUtc) : null } : {}),
+        ...(estArvDtUtc !== undefined ? { estArvDtUtc: estArvDtUtc ? new Date(estArvDtUtc) : null } : {}),
         ...(fleet !== undefined ? { fleet } : {}),
         ...(register !== undefined ? { register } : {}),
       }, username)
@@ -227,7 +231,7 @@ export default async function flightRoutes(fastify: FastifyInstance) {
           fastify,
           schemaName,
           result.affectedCrewIds,
-          [actDepDtUtc, actArvDtUtc],
+          [...result.referenceDates],
           username,
           result.affectedPairingIds,
         )

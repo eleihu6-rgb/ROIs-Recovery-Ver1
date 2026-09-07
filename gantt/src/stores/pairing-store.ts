@@ -12,6 +12,17 @@ const PAGE_SIZE = 100
 /** Apply Filters: send pageSize=0 so server returns all matching records without LIMIT. */
 const ALL_DATA_PAGE_SIZE = 0
 
+/**
+ * Per-request timeout for pageSize=0 full-range pairing loads.
+ * /api/pairing?pageSize=0 can take several minutes on the production dataset
+ * (observed 6–73s per 30-day window, 175s for the last 2026-08-25..2026-10-07
+ * window — a 6-month pairing query is ~99MB and serial batches compound the
+ * wall time). Bumping axios above its 30s default is a temporary workaround
+ * so the Live Pairing pane can load; the real fix is to drop pageSize=0 in
+ * favour of paged queries + a default cap.
+ */
+const PAIRING_FULL_LOAD_TIMEOUT_MS = 300_000
+
 /** Session colors for visual indication (used by UI to show session tags) */
 export const SESSION_COLORS = [
   '#f97316', // 1 orange
@@ -30,6 +41,8 @@ interface PairingStore {
   loading: boolean
   /** Real load progress 0-100; null = not loading (drives PaneLoadingBar). */
   progress: number | null
+  /** Latest full-range load failure. Kept so an empty pane is never silent. */
+  loadError: string | null
   loadingMore: boolean
   /** True when more pairings are available on the server */
   hasMore: boolean
@@ -221,6 +234,7 @@ export const usePairingStore = create<PairingStore>((set, get) => ({
   unfilteredTotal: 0,
   loading: false,
   progress: null,
+  loadError: null,
   loadingMore: false,
   hasMore: false,
   queryMode: 'replace',
@@ -232,11 +246,11 @@ export const usePairingStore = create<PairingStore>((set, get) => ({
   compositionFilter: 'all',
   authoritativeComposition: new Map(),
 
-  // 单轮全量 pairing 分批并发：按 ~30 天（≈RP 周期）拆窗，并行拉取后按 id 合并，
+  // 单轮全量 pairing 分批加载：按 ~30 天（≈RP 周期）拆窗，依次拉取后按 id 合并，
   // 每批完成更新 progress（0-100）。避免单次全量请求过大超时（6 个月 pairing 约 99MB，
   // 会超过 30s HTTP timeout）。filter 维度全局生效，coverage 由调用方做 client overlay。
   fetchPairingsBatched: async (dateRange, filter) => {
-    set({ loading: true, progress: 0 })
+    set({ loading: true, progress: 0, loadError: null })
     clearPairingInfoCache()
     try {
       const startMs = dateRange.start.getTime()
@@ -251,8 +265,10 @@ export const usePairingStore = create<PairingStore>((set, get) => ({
       const mergedComposition = new Map<number, PairingItem['pairing']['composition']>()
       let total = 0
 
-      // Concurrently fetch each ~30d window; a window that fails (large payload,
-      // transient network) is split in half and retried — never drop a whole window.
+      // Windows are deliberately serial. Concurrent full-detail pairing reads compete
+      // with roster loading and can make otherwise valid API calls exceed the UI timeout.
+      // Failures are surfaced as a single load error; do not recursively split a failed
+      // range because that multiplied requests during a backend slowdown.
       const fetchWindow = async (
         winStart: number,
         winEnd: number,
@@ -266,37 +282,25 @@ export const usePairingStore = create<PairingStore>((set, get) => ({
             sortBy,
             sortOrder,
             ...filterParams,
-          })
+          }, { timeout: PAIRING_FULL_LOAD_TIMEOUT_MS })
           return { items: mapPairings(result.items, [1]), batchTotal: result.total }
         } catch (err) {
-          if (winEnd - winStart <= BATCH_DAYS * 86_400_000 / 2) {
-            console.warn('[PairingStore] window permanently failed:', err)
-            return { items: [], batchTotal: 0 }
-          }
-          const mid = winStart + Math.floor((winEnd - winStart) / 2)
-          const [left, right] = await Promise.all([fetchWindow(winStart, mid), fetchWindow(mid + 1, winEnd)])
-          return { items: [...left.items, ...right.items], batchTotal: left.batchTotal + right.batchTotal }
+          throw err
         }
       }
       let completed = 0
-      await Promise.allSettled(
-        Array.from({ length: batchCount }, (_, idx) =>
-          (async () => {
-            const winStart = startMs + idx * BATCH_DAYS * 86_400_000
-            const winEnd = Math.min(endMs + 86_400_000 - 1, startMs + (idx + 1) * BATCH_DAYS * 86_400_000 - 1)
-            const out = await fetchWindow(winStart, winEnd)
-            for (const it of out.items) {
-              mergedComposition.set(it.pairing.id, it.pairing.composition.map((slot) => ({ ...slot })))
-            }
-            total += out.batchTotal
-            mergedItems = mergeItems(mergedItems, out.items)
-            // Monotonic progress: count completed windows (concurrent order varies, so
-            // indexing by window would make the bar jump backwards).
-            completed += 1
-            set({ progress: Math.round((completed / batchCount) * 100) })
-          })(),
-        ),
-      )
+      for (let idx = 0; idx < batchCount; idx += 1) {
+        const winStart = startMs + idx * BATCH_DAYS * 86_400_000
+        const winEnd = Math.min(endMs + 86_400_000 - 1, startMs + (idx + 1) * BATCH_DAYS * 86_400_000 - 1)
+        const out = await fetchWindow(winStart, winEnd)
+        for (const it of out.items) {
+          mergedComposition.set(it.pairing.id, it.pairing.composition.map((slot) => ({ ...slot })))
+        }
+        total += out.batchTotal
+        mergedItems = mergeItems(mergedItems, out.items)
+        completed += 1
+        set({ progress: Math.round((completed / batchCount) * 100) })
+      }
 
       const hasFilter = filter ? hasPairingFilterValues(filter) : false
       // Windows finish in network order, which is unrelated to their date range.
@@ -327,7 +331,7 @@ export const usePairingStore = create<PairingStore>((set, get) => ({
       useGanttViewStore.getState().markDirty()
     } catch (err) {
       console.error('[PairingStore] fetch error:', err)
-      set({ loading: false })
+      set({ loading: false, loadError: err instanceof Error ? err.message : 'Pairing data could not be loaded.' })
     } finally {
       set({ progress: null })
     }
@@ -350,7 +354,12 @@ export const usePairingStore = create<PairingStore>((set, get) => ({
         sortOrder: get().sortOrder,
         ...(filter ? pairingFilterToListParams(filter) : {}),
       }
-      const result = await pairingApi.list(params)
+      // Apply the dedicated full-load budget to non-batched callers when they
+      // also default to pageSize=0; paged callers keep the standard 30s budget.
+      const result = await pairingApi.list(
+        params,
+        pageSize === ALL_DATA_PAGE_SIZE ? { timeout: PAIRING_FULL_LOAD_TIMEOUT_MS } : {},
+      )
       set({ progress: 100 })
       const session: QuerySession = {
         id: 1,

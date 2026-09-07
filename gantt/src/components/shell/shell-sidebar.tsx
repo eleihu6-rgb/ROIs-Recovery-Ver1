@@ -8,7 +8,7 @@ import {
   Building2, Award, Cpu, MapPin, ClipboardList,
   BookOpen, Search, BarChart2,
   BarChart3, Gauge,
-  Wrench, Scale, Timer, Clock3,
+  Wrench, Scale, Timer, Clock3, Plug,
   Settings2, UserCog,
 } from 'lucide-react'
 import { useShellStore } from '@/stores/shell-store'
@@ -73,6 +73,7 @@ interface SystemMenuItem {
 
 const SYSTEM_MENU: SystemMenuItem[] = [
   { item: 'scheduler', label: 'Scheduler', helpTopicSlug: 'system-scheduler', Icon: Timer },
+  { item: 'interface', label: 'Interface', helpTopicSlug: 'system-interface', Icon: Plug },
   { item: 'user-mgmt', label: 'Users', helpTopicSlug: 'system-users', Icon: Users },
   { item: 'profile-mgmt', label: 'Roles', helpTopicSlug: 'system-roles', Icon: Settings2 },
   { item: 'menu-mgmt', label: 'Menus', helpTopicSlug: 'system-menus', Icon: ListChecks },

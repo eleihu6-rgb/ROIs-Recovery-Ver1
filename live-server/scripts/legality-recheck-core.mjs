@@ -13,6 +13,8 @@
 //   pilotAge()                    -> per-flt_id crew-on-flight rows           [rule8030]
 //   assignmentsRaw()              -> raw roster assignment rows               [rule8004]
 //   baseQuals(crewIds)            -> base-qualification rows for crewIds      [rule8004]
+//   fleetSegments()               -> assigned flight segment fleet rows        [rule8004]
+//   fleetQuals(crewIds)           -> effective crew fleet qualification rows   [rule8004]
 //   assignmentOverlapRosters()    -> crew timelines (pairing report/release)  [rule1001]
 //   assignmentsAll()              -> all assignment rows (incl. ground/leave, pairing_id when present) [rule7505]
 //   rosterProperties(filters)     -> normalized roster-property rows         [rule8071]
@@ -44,6 +46,33 @@ const LEGALITY_MESSAGES = loadMessages()
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const BIN_DIR = path.resolve(__dirname, '../../rule-engine-rs/target/release')
 const SRC_DIR = path.resolve(__dirname, '../../rule-engine-rs/src')
+const LIVE_SERVER_ENV_FILE = path.resolve(__dirname, '../.env')
+
+const isTruthyEnvValue = (value) => ['true', '1'].includes(String(value ?? '').trim().toLowerCase())
+
+/**
+ * Read the local Rust-binary switch with dotenv's precedence rules.
+ *
+ * The API entrypoint loads dotenv before spawning live-legality, but the CLI is
+ * also invoked directly by restart scripts and diagnostics. Reading the local
+ * env file here keeps both entry paths consistent without making production
+ * deployments depend on a development-only fallback.
+ */
+export function rustBinsSkipped({ environment = process.env, envFile = LIVE_SERVER_ENV_FILE } = {}) {
+  if (Object.prototype.hasOwnProperty.call(environment, 'SKIP_RUST_BINS')) {
+    return isTruthyEnvValue(environment.SKIP_RUST_BINS)
+  }
+  try {
+    const line = fs.readFileSync(envFile, 'utf8')
+      .split(/\r?\n/)
+      .find((entry) => /^\s*SKIP_RUST_BINS\s*=/.test(entry) && !/^\s*#/.test(entry))
+    if (!line) return false
+    const raw = line.replace(/^\s*SKIP_RUST_BINS\s*=\s*/, '').trim().replace(/^(['"])(.*)\1$/, '$2')
+    return isTruthyEnvValue(raw)
+  } catch {
+    return false
+  }
+}
 
 // Staleness guard: the check-* binaries are BUILD ARTIFACTS (git-ignored), so a `git pull`
 // that changes rule-engine-rs/src leaves an out-of-date binary that silently produces WRONG
@@ -387,11 +416,68 @@ const releaseBinSlot = () => {
   else activeBins--
 }
 
+/**
+ * Local-development fallback for the base qualification checker.
+ *
+ * The Rust submodule is intentionally required in production. Some local
+ * checkouts omit that private submodule, though, while still setting
+ * SKIP_RUST_BINS=true to start the API. Keep the local roster preview usable
+ * for the 8004 rule without weakening production behavior; other binaries
+ * continue to fail loudly when their release artifact is unavailable.
+ */
+const runLocal8004Fallback = (args, tsv) => {
+  if (!rustBinsSkipped() || !args.includes('--emit-tsv')) return null
+  const graceArg = args.indexOf('--grace-days')
+  const graceDays = graceArg >= 0 ? Number(args[graceArg + 1]) || 0 : 0
+  const rosters = []
+  const qualifications = new Map()
+  for (const line of String(tsv).split(/\r?\n/).filter(Boolean)) {
+    const cells = line.split('\t')
+    if (cells[0] === 'R') {
+      rosters.push({ crew: cells[1], pairing: cells[2], base: cells[3], start: cells[4], end: cells[5] })
+    } else if (cells[0] === 'Q') {
+      const list = qualifications.get(cells[1]) ?? []
+      list.push({ base: cells[2], eff: cells[3], exp: cells[4] })
+      qualifications.set(cells[1], list)
+    }
+  }
+  const day = (value) => {
+    const t = Date.parse(`${String(value).slice(0, 10)}T00:00:00Z`)
+    return Number.isFinite(t) ? t : null
+  }
+  const graceMs = graceDays * DAY_MS
+  const output = []
+  for (const roster of rosters) {
+    if (!roster.base || roster.base === '*') continue
+    const start = day(roster.start)
+    const end = day(roster.end)
+    const valid = start != null && end != null && (qualifications.get(roster.crew) ?? []).some((qualification) => {
+      if (String(qualification.base).toUpperCase() !== String(roster.base).toUpperCase()) return false
+      const eff = qualification.eff === '-' ? null : day(qualification.eff)
+      const exp = qualification.exp === '-' ? null : day(qualification.exp)
+      return (eff == null || eff <= start) && (exp == null || end < exp + graceMs)
+    })
+    if (!valid) output.push([roster.crew, roster.pairing, roster.base])
+  }
+  return output
+}
+
 export async function runBin(bin, args, tsv) {
   await acquireBinSlot()
   const binPath = path.join(BIN_DIR, bin)
   try {
-    assertFresh(binPath, bin)
+    // Local checkouts may intentionally omit the private Rust submodule. The 8004
+    // checker has a JS fallback for that development configuration; keep the
+    // fallback reachable when the binary is missing before spawn() is attempted.
+    try {
+      assertFresh(binPath, bin)
+    } catch (error) {
+      if (bin === 'check-8004') {
+        const fallback = runLocal8004Fallback(args, tsv)
+        if (fallback != null) return fallback
+      }
+      throw error
+    }
     // Node 22 can leave stdin pipes open for stdin-to-EOF CLIs; feeding the child from
     // a real temp file keeps all rule binaries deterministic and avoids hung checks.
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rois-rule-'))
@@ -416,6 +502,12 @@ export async function runBin(bin, args, tsv) {
         })
       })
       return stdout.trim().split('\n').filter(Boolean).map((l) => l.split('\t'))
+    } catch (error) {
+      if (bin === 'check-8004' && error?.code === 'ENOENT') {
+        const fallback = runLocal8004Fallback(args, tsv)
+        if (fallback != null) return fallback
+      }
+      throw error
     } finally {
       if (fd != null) fs.closeSync(fd)
       try { fs.unlinkSync(tmpFile) } catch {}
@@ -1409,39 +1501,151 @@ export async function rule8030(source, ctx) {
   return out
 }
 
-// ── Rule 8004 — BASIC COMPETENCY (roster base must be a valid crew_base) ──────
-// Grace Period now comes from the rule set per instance (row 0), not a hardcoded 0.
+// ── Rule 8004 — BASIC COMPETENCY (base/rank/fleet) ─────────────────────────────
+// Base remains delegated to the Rust checker. Fleet is evaluated here because
+// the legacy checker input only contains roster base and cannot represent the
+// per-flight fleet required by the 8004 Fleet parameter row.
 export async function rule8004(source, ctx) {
   const instances = ctx.instancesOf(8004)
   if (!instances.length) { ctx.log('8004: no instances in rule set — skipped'); return [] }
   const rosters = await source.assignmentsRaw()
   const crewIds = [...new Set(rosters.map((r) => r.crew_id))]
-  const quals = await source.baseQuals(crewIds)
-  const tzMap = await source.crewBaseTimezone()
+  const quals = source.baseQuals ? await source.baseQuals(crewIds) : []
+  const tzMap = source.crewBaseTimezone ? await source.crewBaseTimezone() : new Map()
   const span = new Map(rosters.map((r) => [`${r.crew_id}:${r.pairing_id}`, { s: Number(r.start_secs), e: Number(r.end_secs) }]))
   const lines = []
   for (const r of rosters) lines.push(`R\t${r.crew_id}\t${r.pairing_id}\t${r.base ?? ''}\t${r.start_date}\t${r.end_date}`)
   for (const q of quals) lines.push(`Q\t${q.crew_id}\t${q.base}\t${q.eff_date ?? '-'}\t${q.exp_date ?? '-'}`)
   const tsv = lines.join('\n')
   const out = []
+  const binRunner = ctx.runBin ?? runBin
+  const add = (violation) => out.push(violation)
+
+  const valuesMatch = (filter, value) => {
+    const wanted = filterValues(filter)
+    if (wanted.length === 0) return true
+    const actual = String(value ?? '').trim().toUpperCase()
+    return actual !== '' && wanted.some((v) => String(v).trim().toUpperCase() === actual)
+  }
+  const enabled = (value) => ['Y', 'YES', 'TRUE', '1'].includes(String(value ?? '').trim().toUpperCase())
+  const dayMs = (value) => {
+    const raw = String(value ?? '').slice(0, 10)
+    const time = Date.parse(`${raw}T00:00:00Z`)
+    return Number.isFinite(time) ? time : null
+  }
+  const qualificationCovers = (qualification, day, graceDays) => {
+    const target = dayMs(day)
+    if (target == null) return false
+    const eff = qualification.eff_date ?? qualification.eff ?? null
+    const exp = qualification.exp_date ?? qualification.exp ?? null
+    const effMs = eff && eff !== '-' ? dayMs(eff) : null
+    const expMs = exp && exp !== '-' ? dayMs(exp) : null
+    const graceMs = Math.max(0, Number(graceDays) || 0) * DAY_MS
+    return (effMs == null || effMs <= target) && (expMs == null || target < expMs + graceMs + DAY_MS)
+  }
+  const rawFleetSegments = source.fleetSegments
+    ? await source.fleetSegments(crewIds)
+    : rosters.flatMap((r) => (r.segments ?? []).map((segment) => ({ ...segment, crew_id: r.crew_id, pairing_id: r.pairing_id })))
+  const fleetSegmentsByPairing = new Map()
+  for (const segment of rawFleetSegments ?? []) {
+    const key = `${segment.crew_id}:${segment.pairing_id}`
+    const list = fleetSegmentsByPairing.get(key) ?? []
+    list.push(segment)
+    fleetSegmentsByPairing.set(key, list)
+  }
+
+  let fleetQuals = []
+  if (instances.some((inst) => {
+    const H = headerIndexer(inst.header)
+    return (inst.rows ?? []).some((row) => String(row[H('Type')] ?? '').trim().toUpperCase() === 'FLEET' && enabled(row[H('Enable Check')]))
+  })) {
+    if (source.fleetQuals) fleetQuals = await source.fleetQuals(crewIds)
+    else if (source.crewQualEntries) fleetQuals = (await source.crewQualEntries()).filter((q) => ['F', 'FLEET'].includes(String(q.dim ?? q.dimension ?? '').trim().toUpperCase()))
+  }
+  const fleetQualsByCrew = new Map()
+  for (const qualification of fleetQuals ?? []) {
+    const key = String(qualification.crew_id ?? '').trim()
+    if (!key) continue
+    const list = fleetQualsByCrew.get(key) ?? []
+    list.push(qualification)
+    fleetQualsByCrew.set(key, list)
+  }
+
   for (const inst of instances) {
     const H = headerIndexer(inst.header)
-    const row0 = inst.rows[0]
+    const rows = inst.rows ?? []
+    const row0 = rows[0]
+    const typeIdx = H('Type')
+    const enableIdx = H('Enable Check')
+    const baseRows = rows
+      .map((row, rowIndex) => ({ row, rowIndex, type: typeIdx >= 0 ? String(row[typeIdx] ?? '').trim().toUpperCase() : 'BASE' }))
+      .filter(({ type }) => type === 'BASE' || (typeIdx < 0 && type === ''))
+    const fleetRows = rows
+      .map((row, rowIndex) => ({ row, rowIndex, type: typeIdx >= 0 ? String(row[typeIdx] ?? '').trim().toUpperCase() : '' }))
+      .filter(({ type, row }) => type === 'FLEET' && (enableIdx < 0 || enabled(row[enableIdx])))
     const gi = row0 ? H('Grace Period') : -1
     const graceDays = gi >= 0 ? (parseInt(row0[gi], 10) || 0) : 0
     const sk = scopeKeyOf(row0 ?? [], H)
-    for (const [crewId, pairingId, base] of await runBin('check-8004', ['--grace-days', String(graceDays), '--emit-tsv'], tsv)) {
-      const sp = span.get(`${crewId}:${pairingId}`) ?? { s: 0, e: 0 }
-      out.push({
-        crew_id: crewId, pairing_id: Number(pairingId), duty_seq: null,
-        rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
-        start_dt: new Date(sp.s * 1000).toISOString(), end_dt: new Date(sp.e * 1000).toISOString(), severity: 2,
-        actual_value: null, limit_value: null, unit: null,
-        message: withParamRowPrefix(0, `Crew base ${base} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}).`),
-      })
+    const baseEnabled = typeIdx < 0 || baseRows.some(({ row }) => enableIdx < 0 || enabled(row[enableIdx]))
+    if (baseEnabled) {
+      for (const [crewId, pairingId, base] of await binRunner('check-8004', ['--grace-days', String(graceDays), '--emit-tsv'], tsv)) {
+        const sp = span.get(`${crewId}:${pairingId}`) ?? { s: 0, e: 0 }
+        add({
+          crew_id: crewId, pairing_id: Number(pairingId), duty_seq: null,
+          rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
+          start_dt: new Date(sp.s * 1000).toISOString(), end_dt: new Date(sp.e * 1000).toISOString(), severity: 2,
+          actual_value: null, limit_value: null, unit: null,
+          message: withParamRowPrefix(0, `Crew base ${base} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}).`),
+        })
+      }
+    }
+
+    for (const { row, rowIndex } of fleetRows) {
+      const assignmentIdx = H('Assignments')
+      const assignmentFilter = assignmentIdx >= 0 ? row[assignmentIdx] : '*'
+      const invalidByPairing = new Map()
+      for (const roster of rosters) {
+        const key = `${roster.crew_id}:${roster.pairing_id}`
+        const segments = fleetSegmentsByPairing.get(key) ?? []
+        const invalid = new Set()
+        for (const segment of segments) {
+          const fleet = String(segment.fleet ?? segment.fleet_code ?? '').trim()
+          if (!fleet || !valuesMatch(assignmentFilter, segment.assignment_group ?? segment.assignment)) continue
+          const date = localDateOf(Number(segment.start_secs ?? roster.start_secs), tzMap.get(roster.crew_id))
+          const valid = (fleetQualsByCrew.get(String(roster.crew_id)) ?? []).some((qualification) =>
+            String(qualification.value ?? qualification.fleet_specific ?? qualification.ac_type ?? qualification.fleet_grp ?? '').trim().toUpperCase() === fleet.toUpperCase()
+            && qualificationCovers(qualification, date, graceDays))
+          if (!valid) invalid.add(fleet)
+        }
+        if (invalid.size > 0) invalidByPairing.set(key, [...invalid].sort())
+      }
+      for (const [key, fleets] of invalidByPairing) {
+        const [crewId, pairingIdRaw] = key.split(':')
+        const pairingId = Number(pairingIdRaw)
+        const sp = span.get(key) ?? { s: 0, e: 0 }
+        add({
+          crew_id: crewId, pairing_id: pairingId, duty_seq: null,
+          rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
+          start_dt: new Date(sp.s * 1000).toISOString(), end_dt: new Date(sp.e * 1000).toISOString(), severity: 2,
+          actual_value: null, limit_value: null, unit: null,
+          message: withParamRowPrefix(rowIndex, `Crew fleet ${fleets.join(', ')} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}).`),
+        })
+      }
     }
   }
-  return out
+  // Base and Fleet are two checks of the same 8004 instance. Persist one row per
+  // crew/pairing/instance/scope and retain both explanations when both fail.
+  const merged = new Map()
+  for (const violation of out) {
+    const key = `${violation.crew_id}:${violation.pairing_id}:${violation.rule_instance}:${violation.scope_key ?? ''}`
+    const existing = merged.get(key)
+    if (!existing) merged.set(key, violation)
+    else {
+      const body = String(violation.message).replace(/^Row \d+:\s*/, '')
+      if (!String(existing.message).includes(body)) existing.message = `${existing.message} ${body}`
+    }
+  }
+  return [...merged.values()]
 }
 
 // ── Rule 1001 — ASSIGNMENT OVERLAP (same Rust kernel as the solver gate) ─────

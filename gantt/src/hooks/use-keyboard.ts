@@ -97,6 +97,15 @@ export const useKeyboard = (contextIdOverride?: GanttContextId, enabled = true) 
         return
       }
 
+      // Open Crew Roster Recovery: Ctrl+R / Cmd+R. Live-only; prevent the
+      // browser reload so the shortcut remains safe in the Gantt workspace.
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        if (scenarioId != null) return
+        e.preventDefault()
+        window.dispatchEvent(new CustomEvent('recovery:shortcut'))
+        return
+      }
+
       // Undo: Ctrl+Z / Cmd+Z
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault()

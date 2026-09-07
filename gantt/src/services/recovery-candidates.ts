@@ -1,0 +1,1254 @@
+import type { RosterItem } from '@/types'
+import type { RecoveryOptionMode } from './recovery-api'
+import { CROSS_BASE_DHD_COST_PER_MINUTE, DEFAULT_CROSS_BASE_RECOVERY_CONFIG, type CrossBaseRecoveryConfig } from '@/config/recovery-cross-base'
+
+export interface RecoveryFlightSnapshot {
+  id: number
+  fltNum: string
+  depArp: string
+  arvArp: string
+  schDepDtUtc: string
+  schArvDtUtc: string
+  fleet: string
+  airline: string
+  blockMinutes: number
+}
+
+export interface RecoveryPositioning {
+  supportBase: string
+  recoveryBase: string
+  outbound: RecoveryFlightSnapshot
+  inbound: RecoveryFlightSnapshot
+  minFlightLeadHours: number
+  reserveBeforeHours: number
+  returnAfterHours: number
+  dhdFlightCost: number
+}
+
+/** A destination-base recovery derived from an existing Pairing's leading/trailing DHD legs. */
+export interface RecoveryDestinationSplit {
+  destinationBase: string
+  /** Pairing/Roster base after the leading DHD is removed. */
+  adjustedPairingBase: string
+  sourcePairingId: number
+  createdPairingId: number
+  /** False when the original Pairing has exactly one matching composition slot and is edited in place. */
+  createsPairing: boolean
+  actingRank: string
+  middleFlightIds: number[]
+  removedDhdFlightIds: number[]
+  dhdCostSavings: number
+}
+
+export interface RecoveryAlertSnapshot {
+  id: string
+  ruleCode: string
+  severity: number
+  crewId: string
+  pairingId: number
+  flightDate: string
+  flightNumber: string
+  detail: string
+  fleet?: string | null
+  requiredRank?: string | null
+}
+
+export interface RecoveryCrewSnapshot {
+  crewId: string
+  crewName: string
+  rank: string
+  base: string
+  division: string
+  annualFlightMinutes: number
+  fleetQuals: string[]
+}
+
+export interface RecoveryChange {
+  crewId: string
+  crewName: string
+  rosterId: string
+  pairingId: number | null
+  before: string
+  after: string
+  changeType: 'cancel' | 'add' | 'keep'
+}
+
+export interface RecoveryMetrics {
+  affectedCrewCount: number
+  cancelledRosterCount: number
+  addedRosterCount: number
+  changedRosterCount: number
+  followOnImpactCount: number
+  rosterStability: number
+  directCost: number
+  dhdFlightCost: number
+  /** Positive amount of DHD cost avoided by reusing the first DHD's destination base. */
+  dhdCostSavings?: number
+  virtualCost: number
+  virtualCostWeight: number
+  totalCost: number
+  currency: 'CNY'
+}
+
+export interface RecoveryOption {
+  id: string
+  mode: RecoveryOptionMode
+  title: string
+  targetCrewId: string
+  targetCrewName: string
+  sourceCrewId: string
+  sourcePairingId: number
+  targetPairingId: number | null
+  standbyTaskId: number | null
+  standbyWindow: string | null
+  timeDistanceMinutes: number | null
+  sameRank: boolean
+  sameBase: boolean
+  crossDivision: boolean
+  crossRole: boolean
+  localExecutable: boolean
+  reasons: string[]
+  beforeItems: RosterItem[]
+  afterItems: RosterItem[]
+  changes: RecoveryChange[]
+  metrics: RecoveryMetrics
+  ruleCheck: 'pending' | 'passed' | 'failed' | 'not-run'
+  ruleMessages: string[]
+  positioning: RecoveryPositioning | null
+  destinationSplit?: RecoveryDestinationSplit | null
+  /** Child recovery decisions for a multi-alert combination option. */
+  subOptions?: RecoveryOption[]
+}
+
+export interface RecoveryPreviewViolation {
+  crewId: string
+  pairingId: number | null
+  ruleCode: string
+  ruleInstance?: string | null
+  scopeKey?: string | null
+  message: string
+}
+
+export interface RecoveryPlanGroup {
+  id: 'roster' | 'standby' | 'cross-base'
+  title: string
+  description: string
+  options: RecoveryOption[]
+  /** Candidates removed after simulated Rule validation, retained for diagnostics. */
+  excludedOptions: RecoveryOption[]
+}
+
+export interface RecoveryPlans {
+  alert: RecoveryAlertSnapshot
+  /** All selected alerts represented by this plan. `alert` remains the first alert for compatibility. */
+  alerts: RecoveryAlertSnapshot[]
+  roster: RecoveryPlanGroup
+  standby: RecoveryPlanGroup
+  crossBase: RecoveryPlanGroup
+}
+
+export interface BuildRecoveryPlansInput {
+  items: RosterItem[]
+  crews: RecoveryCrewSnapshot[]
+  rankOrder: Map<string, number>
+  /** Flights from the currently loaded Pairing details only. */
+  flights?: RecoveryFlightSnapshot[]
+  pairingCompositions?: RecoveryPairingCompositionSnapshot[]
+  crossBaseConfig?: CrossBaseRecoveryConfig
+  /** Injectable clock for deterministic expiry checks; defaults to the current instant. */
+  now?: number
+}
+
+export interface RecoveryPairingCompositionSnapshot {
+  pairingId: number
+  actingRank: string
+  plan: number
+}
+
+export const ROSTER_STABILITY_FORMULA =
+  'round(max(0, min(100, 100 * (1 - (0.35*follow-on + 0.30*cancelled + 0.20*added + 0.15*changed) / max(1, loaded rosters)))), 2)'
+
+interface RosterGroup {
+  key: string
+  crewId: string
+  pairingId: number
+  items: RosterItem[]
+  start: number
+  end: number
+}
+
+const finiteTime = (value: string | null | undefined): number => {
+  const time = value ? new Date(value).getTime() : NaN
+  return Number.isFinite(time) ? time : 0
+}
+
+const groupKey = (crewId: string, pairingId: number): string => `${crewId}:${pairingId}`
+
+const rosterLabel = (items: RosterItem[]): string => {
+  const labels = [...new Set(items.map((item) => item.label || item.assignment || item.assignmentGroup).filter(Boolean))]
+  return labels.join(' / ') || `Pairing #${items[0]?.pairingId ?? '—'}`
+}
+
+const buildGroups = (items: RosterItem[]): RosterGroup[] => {
+  const map = new Map<string, RosterGroup>()
+  for (const item of items) {
+    if (item.pairingId == null || !item.schStrDtUtc || !item.schEndDtUtc) continue
+    const pairingId = Number(item.pairingId)
+    if (!Number.isFinite(pairingId) || pairingId <= 0) continue
+    const key = groupKey(String(item.crewId), pairingId)
+    const current = map.get(key)
+    if (current) {
+      current.items.push(item)
+      current.start = Math.min(current.start, finiteTime(item.schStrDtUtc))
+      current.end = Math.max(current.end, finiteTime(item.schEndDtUtc))
+    } else {
+      map.set(key, {
+        key,
+        crewId: String(item.crewId),
+        pairingId,
+        items: [item],
+        start: finiteTime(item.schStrDtUtc),
+        end: finiteTime(item.schEndDtUtc),
+      })
+    }
+  }
+  return [...map.values()]
+}
+
+/** A completed Roster is not a Recovery target once its latest task has ended. */
+export const isRosterCompleted = (
+  items: RosterItem[],
+  crewId: string,
+  pairingId: number,
+  now = Date.now(),
+): boolean => {
+  const group = buildGroups(items).find((candidate) => candidate.crewId === String(crewId) && candidate.pairingId === Number(pairingId))
+  return group != null && group.end < now
+}
+
+const overlaps = (a: RosterGroup, b: RosterGroup): boolean => a.start < b.end && a.end > b.start
+
+const itemOverlapsGroup = (item: RosterItem, group: RosterGroup): boolean => {
+  const start = finiteTime(item.schStrDtUtc)
+  const end = finiteTime(item.schEndDtUtc)
+  return start < group.end && end > group.start
+}
+
+/**
+ * Recovery must leave the received complete Roster conflict-free.  This deliberately
+ * evaluates every loaded Roster assignment (rather than only the closest one): the
+ * current Live data is the complete candidate scope for this release.
+ */
+const hasAnyOverlapExcept = (items: RosterItem[], group: RosterGroup, ignoredPairingIds: Set<number>): boolean =>
+  items.some((item) =>
+    (item.pairingId == null || !ignoredPairingIds.has(Number(item.pairingId))) && itemOverlapsGroup(item, group),
+  )
+
+const previewViolationKey = (violation: RecoveryPreviewViolation): string => [
+  violation.crewId,
+  violation.pairingId ?? '',
+  violation.ruleCode,
+  violation.ruleInstance ?? '',
+  violation.scopeKey ?? '',
+  violation.message,
+].join('|')
+
+/**
+ * A final Recovery candidate is valid only if it resolves the 8004 on every newly
+ * received complete Roster and introduces no new legality result for an affected Crew.
+ * Existing baseline violations are not relabelled as new, but an 8004 on a Roster that
+ * changed Crew is always rejected.
+ */
+export const recoveryRuleFailures = (input: {
+  option: Pick<RecoveryOption, 'mode' | 'sourceCrewId' | 'targetCrewId' | 'sourcePairingId' | 'targetPairingId' | 'destinationSplit'> & {
+    subOptions?: RecoveryOption[]
+  }
+  before: RecoveryPreviewViolation[]
+  after: RecoveryPreviewViolation[]
+}): string[] => {
+  const beforeKeys = new Set(input.before.map(previewViolationKey))
+  const newViolations = input.after.filter((violation) => !beforeKeys.has(previewViolationKey(violation)))
+  const options = input.option.subOptions?.length ? input.option.subOptions : [input.option]
+  const received = options.flatMap((option) => [
+    { crewId: option.targetCrewId, pairingId: option.destinationSplit?.createdPairingId ?? option.sourcePairingId },
+    ...((option.mode === 'swap' || option.mode === 'cross-base-swap') && option.targetPairingId != null
+      ? [{ crewId: option.sourceCrewId, pairingId: option.targetPairingId }]
+      : []),
+  ])
+  const unresolved8004 = input.after.filter((violation) =>
+    violation.ruleCode.trim().toUpperCase() === '8004' && received.some((assignment) =>
+      String(assignment.crewId) === String(violation.crewId) && String(assignment.pairingId) === String(violation.pairingId)),
+  )
+  const messages = new Set<string>()
+  for (const violation of newViolations) messages.add(`${violation.ruleCode}: ${violation.message}`)
+  for (const violation of unresolved8004) messages.add(`8004: Crew ${violation.crewId} remains unqualified for Pairing ${violation.pairingId}.`)
+  return [...messages]
+}
+
+const firstFollowingRoster = (groups: RosterGroup[], crewId: string, end: number, ignoredPairingIds: Set<number>): RosterGroup | null =>
+  groups
+    .filter((group) => group.crewId === crewId && !ignoredPairingIds.has(group.pairingId) && group.start >= end)
+    .sort((a, b) => a.start - b.start || a.pairingId - b.pairingId)[0] ?? null
+
+const affectsFirstFollowing = (groups: RosterGroup[], crewId: string, received: RosterGroup, ignoredPairingIds: Set<number>): boolean => {
+  const next = firstFollowingRoster(groups, crewId, received.end, ignoredPairingIds)
+  return next != null && overlaps(received, next)
+}
+
+const names = (crew: RecoveryCrewSnapshot | undefined, fallback: string): string => crew?.crewName || fallback
+
+const qualifiesForFleet = (crew: RecoveryCrewSnapshot, fleet: string | null | undefined): boolean => {
+  if (!fleet) return true
+  const wanted = fleet.trim().toUpperCase()
+  if (!wanted) return true
+  // Fleet values are codes. A substring match would incorrectly accept 7M as 7M8.
+  return crew.fleetQuals.some((value) => {
+    const normalized = value.trim().toUpperCase()
+    return normalized === wanted
+  })
+}
+
+const cloneForCrew = (items: RosterItem[], crewId: string, mode: RecoveryOptionMode): RosterItem[] =>
+  items.map((item) => ({
+    ...item,
+    crewId,
+    isPending: true,
+    isRecoveryAffected: true,
+    isSwapped: mode === 'swap' || mode === 'cross-base-swap' ? 1 : item.isSwapped,
+  }))
+
+const isDhdItem = (item: RosterItem): boolean =>
+  [item.assignmentGroup, item.assignment, item.segAssignment].some((value) => value?.trim().toUpperCase() === 'DHD')
+
+const splitSourceForDestination = (
+  source: RosterGroup,
+  targetCrew: RecoveryCrewSnapshot,
+  optionId: string,
+  sourceRankPlan: number | null,
+): RecoveryDestinationSplit | null => {
+  const ordered = [...source.items].sort((a, b) =>
+    (a.dutySeq ?? 0) - (b.dutySeq ?? 0) || (a.segSeq ?? 0) - (b.segSeq ?? 0) || finiteTime(a.schStrDtUtc) - finiteTime(b.schStrDtUtc))
+  const first = ordered[0]
+  const last = ordered[ordered.length - 1]
+  if (!first || !last || ordered.length < 3 || !isDhdItem(first) || !isDhdItem(last)) return null
+  const middle = ordered.slice(1, -1).filter((item) => !isDhdItem(item) && item.fltId != null)
+  const destinationBase = first.arvArp?.trim().toUpperCase() ?? ''
+  const adjustedPairingBase = middle[0]?.depArp?.trim().toUpperCase() ?? ''
+  if (!destinationBase || !adjustedPairingBase || targetCrew.base.trim().toUpperCase() !== destinationBase || middle.length === 0) return null
+  // Destination-base recovery must preserve the source Crew's actual Acting
+  // Rank. A missing source rank is not a valid recovery input.
+  const actingRank = first.rosterActingRank || first.flightActingRank || ''
+  if (!actingRank.trim()) return null
+  const dhdCostSavings = [first, last].reduce((total, item) => {
+    const duration = Math.max(0, Math.round((finiteTime(item.schEndDtUtc) - finiteTime(item.schStrDtUtc)) / 60000))
+    return total + duration * CROSS_BASE_DHD_COST_PER_MINUTE
+  }, 0)
+  return {
+    destinationBase,
+    adjustedPairingBase,
+    sourcePairingId: source.pairingId,
+    createdPairingId: sourceRankPlan === 1 ? source.pairingId : syntheticId(`${optionId}:destination-pairing`),
+    createsPairing: sourceRankPlan !== 1,
+    actingRank,
+    middleFlightIds: middle.map((item) => item.fltId!).filter((id, index, ids) => ids.indexOf(id) === index),
+    removedDhdFlightIds: [first.fltId, last.fltId].filter((id): id is number => id != null),
+    dhdCostSavings,
+  }
+}
+
+const cloneForDestination = (items: RosterItem[], crewId: string, pairingId: number, adjustedPairingBase: string): RosterItem[] =>
+  items.map((item, index) => ({
+    ...item,
+    id: syntheticId(`destination-task:${pairingId}:${item.id}:${index}`),
+    crewId,
+    pairingId,
+    pairingLabel: `Destination-base recovery from Pairing #${Math.abs(pairingId)}`,
+    // The original roster rows still carry the source Pairing base. Once the
+    // leading DHD is removed, every row in the recovered Pairing must use the
+    // adjusted Pairing base (the first operating flight's departure airport).
+    base: adjustedPairingBase,
+    isPending: true,
+    isRecoveryAffected: true,
+  }))
+
+const syntheticId = (key: string): number => {
+  let hash = 2166136261
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return -(Math.abs(hash) || 1)
+}
+
+const makeDhdItem = (
+  flight: RecoveryFlightSnapshot,
+  crewId: string,
+  base: string,
+  division: string,
+  actingRank: string,
+  pairingId: number,
+  optionId: string,
+): RosterItem => ({
+  id: syntheticId(`${optionId}:task:${flight.id}`),
+  crewId,
+  pairingId,
+  pairingLabel: `DHD ${flight.fltNum}`,
+  ver: 1,
+  base,
+  depArp: flight.depArp,
+  arvArp: flight.arvArp,
+  label: `${flight.fltNum} ${flight.depArp}-${flight.arvArp}`,
+  assignmentGroup: 'DHD',
+  assignment: 'DHD',
+  role: 'CREW',
+  subRole: null,
+  source: 'RECOVERY',
+  isRequested: 0,
+  isSwapped: 0,
+  preference: null,
+  comments: 'Cross-base Recovery positioning flight',
+  score: null,
+  workingHour: null,
+  schStrDtUtc: flight.schDepDtUtc,
+  schEndDtUtc: flight.schArvDtUtc,
+  actStrDtUtc: flight.schDepDtUtc,
+  actEndDtUtc: flight.schArvDtUtc,
+  fltId: flight.id,
+  fltDt: flight.schDepDtUtc.slice(0, 10),
+  fleetCode: flight.fleet,
+  dutySeq: 1,
+  segSeq: 1,
+  division,
+  flightActingRank: actingRank,
+  rosterActingRank: actingRank,
+  activeRank: actingRank,
+  position: null,
+  schCreditedMinutes: null,
+  actCreditedMinutes: null,
+  dpMin: null,
+  tagSet: null,
+  exceptionCode: null,
+  dutyActCreditedMinutes: null,
+  dutyRefTz: null,
+  actRestMin: null,
+  segAssignment: 'DHD',
+  ybh: null,
+  mbh: null,
+  yal: null,
+  mal: null,
+  ydo: null,
+  mdo: null,
+  mcred: null,
+  isPending: true,
+  isRecoveryAffected: true,
+})
+
+const makeDhdItems = (
+  positioning: RecoveryPositioning,
+  targetCrew: RecoveryCrewSnapshot,
+  actingRank: string,
+  optionId: string,
+): RosterItem[] => [
+  makeDhdItem(
+    positioning.outbound,
+    targetCrew.crewId,
+    positioning.supportBase,
+    targetCrew.division,
+    actingRank,
+    syntheticId(`${optionId}:pairing:outbound`),
+    optionId,
+  ),
+  makeDhdItem(
+    positioning.inbound,
+    targetCrew.crewId,
+    positioning.supportBase,
+    targetCrew.division,
+    actingRank,
+    syntheticId(`${optionId}:pairing:inbound`),
+    optionId,
+  ),
+]
+
+const buildAfterItems = (
+  allItems: RosterItem[],
+  source: RosterGroup,
+  target: RosterGroup | null,
+  targetCrewId: string,
+  targetCrew: RecoveryCrewSnapshot,
+  mode: RecoveryOptionMode,
+  standbyTaskId: number | null,
+  positioning: RecoveryPositioning | null,
+  destinationSplit: RecoveryDestinationSplit | null,
+  optionId: string,
+): RosterItem[] => {
+  const sourceIds = new Set(source.items.map((item) => item.id))
+  const targetIds = (mode === 'swap' || mode === 'cross-base-swap') ? new Set(target?.items.map((item) => item.id) ?? []) : new Set<number>()
+  const kept = allItems.filter((item) => !sourceIds.has(item.id) && !targetIds.has(item.id))
+  if (mode === 'cross-base-destination' && destinationSplit) {
+    const ordered = [...source.items].sort((a, b) =>
+      (a.dutySeq ?? 0) - (b.dutySeq ?? 0) || (a.segSeq ?? 0) - (b.segSeq ?? 0) || finiteTime(a.schStrDtUtc) - finiteTime(b.schStrDtUtc))
+    const middle = ordered.slice(1, -1).filter((item) => !isDhdItem(item))
+    const moved = cloneForDestination(
+      middle,
+      targetCrewId,
+      destinationSplit.createdPairingId,
+      destinationSplit.adjustedPairingBase,
+    )
+    return [...kept, ...moved]
+  }
+  if ((mode === 'swap' || mode === 'cross-base-swap') && target) {
+    // A Roster keeps the Pairing's operating base when its Crew changes. Only
+    // the synthetic DHD items use the support Crew's base.
+    const moved = cloneForCrew(source.items, targetCrewId, mode)
+    const returned = cloneForCrew(target.items, source.crewId, mode)
+    const dhdItems = positioning ? makeDhdItems(positioning, targetCrew, source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || 'CREW', optionId) : []
+    return [...kept, ...moved, ...returned, ...dhdItems]
+  }
+  const moved = cloneForCrew(source.items, targetCrewId, mode)
+  const dhdItems = positioning ? makeDhdItems(positioning, targetCrew, source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || 'CREW', optionId) : []
+  return kept.map((item) =>
+    item.crewId === targetCrewId && item.pairingId == null && item.id === standbyTaskId
+      ? { ...item, isCalloutStandby: true }
+      : item,
+  ).concat(moved, dhdItems)
+}
+
+const buildChanges = (
+  source: RosterGroup,
+  target: RosterGroup | null,
+  crewsById: Map<string, RecoveryCrewSnapshot>,
+  targetCrewId: string,
+  mode: RecoveryOptionMode,
+  positioning: RecoveryPositioning | null,
+  destinationSplit: RecoveryDestinationSplit | null,
+): RecoveryChange[] => {
+  const sourceName = names(crewsById.get(source.crewId), source.crewId)
+  const targetName = names(crewsById.get(targetCrewId), targetCrewId)
+  const sourceBefore = rosterLabel(source.items)
+  const sourceAfter = target ? rosterLabel(target.items) : 'Released / no assigned Roster'
+  const isSwap = mode === 'swap' || mode === 'cross-base-swap'
+  if (mode === 'cross-base-destination' && destinationSplit) {
+    return [{
+      crewId: source.crewId,
+      crewName: sourceName,
+      rosterId: `R${source.pairingId}`,
+      pairingId: source.pairingId,
+      before: sourceBefore,
+      after: destinationSplit.createsPairing
+        ? `Released · first/last DHD split to new Pairing #${Math.abs(destinationSplit.createdPairingId)}`
+        : 'Released · first/last DHD removed from original Pairing',
+      changeType: 'cancel',
+    }, {
+      crewId: targetCrewId,
+      crewName: targetName,
+      rosterId: `R${Math.abs(destinationSplit.createdPairingId)}`,
+      pairingId: destinationSplit.createdPairingId,
+      before: 'No assigned Roster in loaded data',
+      after: `${rosterLabel(source.items.slice(1, -1).filter((item) => !isDhdItem(item)))} · Acting Rank ${destinationSplit.actingRank}${destinationSplit.createsPairing ? ' · new Pairing' : ' · original Pairing modified'}`,
+      changeType: 'add',
+    }]
+  }
+  const changes: RecoveryChange[] = [{
+    crewId: source.crewId,
+    crewName: sourceName,
+    rosterId: `R${source.pairingId}`,
+    pairingId: source.pairingId,
+    before: sourceBefore,
+    after: isSwap && target ? sourceAfter : 'Released / no assigned Roster',
+    changeType: 'cancel',
+  }, {
+    crewId: targetCrewId,
+    crewName: targetName,
+    rosterId: `R${source.pairingId}`,
+    pairingId: source.pairingId,
+    before: target ? rosterLabel(target.items) : 'No assigned Roster in loaded data',
+    after: sourceBefore,
+    changeType: 'add',
+  }]
+  if (isSwap && target) {
+    changes.push({
+      crewId: targetCrewId,
+      crewName: targetName,
+      rosterId: `R${target.pairingId}`,
+      pairingId: target.pairingId,
+      before: rosterLabel(target.items),
+      after: sourceBefore,
+      changeType: 'cancel',
+    }, {
+      crewId: source.crewId,
+      crewName: sourceName,
+      rosterId: `R${target.pairingId}`,
+      pairingId: target.pairingId,
+      before: sourceAfter,
+      after: rosterLabel(target.items),
+      changeType: 'add',
+    })
+  }
+  if ((mode === 'cross-base-standby' || mode === 'cross-base-swap') && positioning) {
+    changes.push({
+      crewId: targetCrewId,
+      crewName: targetName,
+      rosterId: `DHD-${positioning.outbound.fltNum}`,
+      pairingId: null,
+      before: 'No positioning Roster',
+      after: `${positioning.outbound.fltNum} ${positioning.outbound.depArp}-${positioning.outbound.arvArp} · DHD`,
+      changeType: 'add',
+    }, {
+      crewId: targetCrewId,
+      crewName: targetName,
+      rosterId: `DHD-${positioning.inbound.fltNum}`,
+      pairingId: null,
+      before: 'No positioning Roster',
+      after: `${positioning.inbound.fltNum} ${positioning.inbound.depArp}-${positioning.inbound.arvArp} · DHD`,
+      changeType: 'add',
+    })
+  }
+  return changes
+}
+
+const buildMetrics = (
+  source: RosterGroup,
+  target: RosterGroup | null,
+  allGroups: RosterGroup[],
+  targetCrew: RecoveryCrewSnapshot,
+  sourceCrew: RecoveryCrewSnapshot,
+  mode: RecoveryOptionMode,
+  positioning: RecoveryPositioning | null,
+  destinationSplit: RecoveryDestinationSplit | null,
+): RecoveryMetrics => {
+  const changed = mode === 'swap' || mode === 'cross-base-swap' ? 2 : 1
+  const affectedCrewCount = 2
+  const destinationItems = mode === 'cross-base-destination'
+    ? source.items.filter((item) => !isDhdItem(item))
+    : source.items
+  const received = {
+    ...source,
+    items: destinationItems,
+    start: Math.min(...destinationItems.map((item) => finiteTime(item.schStrDtUtc))),
+    end: Math.max(...destinationItems.map((item) => finiteTime(item.schEndDtUtc))),
+  }
+  const followOnImpactCount =
+    (affectsFirstFollowing(allGroups, targetCrew.crewId, received, new Set([source.pairingId, ...(target ? [target.pairingId] : [])])) ? 1 : 0) +
+    ((mode === 'swap' || mode === 'cross-base-swap') && target && affectsFirstFollowing(allGroups, sourceCrew.crewId, target, new Set([source.pairingId, target.pairingId])) ? 1 : 0)
+  const crossBase = sourceCrew.base && targetCrew.base && sourceCrew.base !== targetCrew.base ? 1 : 0
+  const crossDivision = sourceCrew.division && targetCrew.division && sourceCrew.division !== targetCrew.division ? 1 : 0
+  const crossRole = sourceCrew.rank !== targetCrew.rank ? 1 : 0
+  const dhdFlightCost = positioning?.dhdFlightCost ?? 0
+  const dhdCostSavings = destinationSplit?.dhdCostSavings ?? 0
+  const directCost = (mode === 'standby' || mode === 'cross-base-standby' ? 3200 : mode === 'swap' || mode === 'cross-base-swap' ? 1500 : 900) + crossBase * 1600 + crossDivision * 2200 + crossRole * 1200 + dhdFlightCost - dhdCostSavings
+  const virtualCost = changed * 260 + followOnImpactCount * 1800 + (mode === 'standby' || mode === 'cross-base-standby' ? 700 : 0)
+  const virtualCostWeight = 1
+  const loadedRosterCount = Math.max(1, allGroups.length)
+  // Keep the score aligned with the documented weighted model. Each count is
+  // measured against the same loaded-Roster evaluation scope for comparison.
+  const penalty =
+    (0.30 * changed) +
+    (0.20 * changed) +
+    (0.15 * changed) +
+    (0.35 * followOnImpactCount)
+  const rosterStability = Math.max(0, Math.min(100, 100 - (100 * penalty) / loadedRosterCount))
+  return {
+    affectedCrewCount,
+    cancelledRosterCount: changed,
+    addedRosterCount: changed,
+    changedRosterCount: changed,
+    followOnImpactCount,
+    rosterStability: Math.round(rosterStability * 100) / 100,
+    directCost,
+    dhdFlightCost,
+    dhdCostSavings,
+    virtualCost,
+    virtualCostWeight,
+    totalCost: directCost + virtualCost * virtualCostWeight,
+    currency: 'CNY',
+  }
+}
+
+const makeOption = (
+  input: {
+    allItems: RosterItem[]
+    allGroups: RosterGroup[]
+    source: RosterGroup
+    target: RosterGroup | null
+    targetCrew: RecoveryCrewSnapshot
+    sourceCrew: RecoveryCrewSnapshot
+    mode: RecoveryOptionMode
+    standbyTaskId: number | null
+    standbyWindow: string | null
+    timeDistanceMinutes: number | null
+    sameRank: boolean
+    sameBase: boolean
+    crossDivision: boolean
+    crossRole: boolean
+    reasons: string[]
+    positioning: RecoveryPositioning | null
+    destinationSplit: RecoveryDestinationSplit | null
+  },
+): RecoveryOption => {
+  const { source, target, targetCrew, sourceCrew, mode } = input
+  const isSwap = mode === 'swap' || mode === 'cross-base-swap'
+  const optionId = `${mode}-${source.pairingId}-${targetCrew.crewId}-${target?.pairingId ?? input.standbyTaskId ?? 'none'}`
+  const afterItems = buildAfterItems(input.allItems, source, target, targetCrew.crewId, targetCrew, mode, input.standbyTaskId, input.positioning, input.destinationSplit, optionId)
+  const affectedItemIds = new Set([
+    ...source.items.map((item) => item.id),
+    ...(target?.items.map((item) => item.id) ?? []),
+    ...(input.standbyTaskId != null ? [input.standbyTaskId] : []),
+  ])
+  const beforeItems = input.allItems.map((item) => affectedItemIds.has(item.id) ? { ...item, isRecoveryAffected: true } : item)
+  const crewsById = new Map<string, RecoveryCrewSnapshot>([[sourceCrew.crewId, sourceCrew], [targetCrew.crewId, targetCrew]])
+  return {
+    id: `${mode}-${source.pairingId}-${targetCrew.crewId}-${target?.pairingId ?? input.standbyTaskId ?? 'none'}`,
+    mode,
+    title: mode === 'standby' ? `Callout ${targetCrew.crewId}` : mode === 'swap' ? `Swap with ${targetCrew.crewId}` : mode === 'cross-base-standby' ? `Cross-base Callout ${targetCrew.crewId}` : mode === 'cross-base-swap' ? `Cross-base Swap ${targetCrew.crewId}` : mode === 'cross-base-destination' ? `Destination-base Split ${targetCrew.crewId}` : `Transfer to ${targetCrew.crewId}`,
+    targetCrewId: targetCrew.crewId,
+    targetCrewName: targetCrew.crewName,
+    sourceCrewId: sourceCrew.crewId,
+    sourcePairingId: source.pairingId,
+    targetPairingId: isSwap ? (target?.pairingId ?? null) : null,
+    standbyTaskId: input.standbyTaskId,
+    standbyWindow: input.standbyWindow,
+    timeDistanceMinutes: input.timeDistanceMinutes,
+    sameRank: input.sameRank,
+    sameBase: input.sameBase,
+    crossDivision: input.crossDivision,
+    crossRole: input.crossRole,
+    localExecutable: input.reasons.length === 0,
+    reasons: input.reasons,
+    beforeItems,
+    afterItems,
+    changes: buildChanges(source, target, crewsById, targetCrew.crewId, mode, input.positioning, input.destinationSplit),
+    metrics: buildMetrics(source, target, input.allGroups, targetCrew, sourceCrew, mode, input.positioning, input.destinationSplit),
+    ruleCheck: input.reasons.length === 0 ? 'pending' : 'not-run',
+    ruleMessages: [],
+    positioning: input.positioning,
+    destinationSplit: input.destinationSplit,
+  }
+}
+
+const sortedCrewCandidates = (
+  candidates: RecoveryOption[],
+  crewsById: Map<string, RecoveryCrewSnapshot>,
+  sourceCrew: RecoveryCrewSnapshot,
+): RecoveryOption[] => [...candidates].sort((a, b) => {
+  const ar = crewsById.get(a.targetCrewId)
+  const br = crewsById.get(b.targetCrewId)
+  const rank = Number(a.sameRank) - Number(b.sameRank)
+  if (rank !== 0) return -rank
+  const base = Number(a.sameBase) - Number(b.sameBase)
+  if (base !== 0) return -base
+  const follow = a.metrics.followOnImpactCount - b.metrics.followOnImpactCount
+  if (follow !== 0) return follow
+  const hours = (ar?.annualFlightMinutes ?? 0) - (br?.annualFlightMinutes ?? 0)
+  if (hours !== 0) return hours
+  const distance = (a.timeDistanceMinutes ?? Number.MAX_SAFE_INTEGER) - (b.timeDistanceMinutes ?? Number.MAX_SAFE_INTEGER)
+  if (distance !== 0) return distance
+  return a.targetCrewId.localeCompare(b.targetCrewId) || sourceCrew.crewId.localeCompare(a.sourceCrewId)
+})
+
+const snapshotFlightsFromItems = (items: RosterItem[]): RecoveryFlightSnapshot[] => {
+  const seen = new Set<number>()
+  return items.flatMap((item) => {
+    if (item.fltId == null || seen.has(item.fltId) || !item.schStrDtUtc || !item.schEndDtUtc) return []
+    seen.add(item.fltId)
+    return [{
+      id: item.fltId,
+      fltNum: (item.label || item.assignment || `FLT-${item.fltId}`).split(/\s+/)[0],
+      depArp: item.depArp || '',
+      arvArp: item.arvArp || '',
+      schDepDtUtc: item.schStrDtUtc,
+      schArvDtUtc: item.schEndDtUtc,
+      fleet: item.fleetCode || '',
+      airline: '',
+      blockMinutes: Math.max(0, Math.round((finiteTime(item.schEndDtUtc) - finiteTime(item.schStrDtUtc)) / 60000)),
+    }]
+  }).filter((flight) => flight.depArp && flight.arvArp)
+}
+
+const positioningFor = (
+  flights: RecoveryFlightSnapshot[],
+  source: RosterGroup,
+  supportBase: string,
+  recoveryBase: string,
+  now: number,
+  config: CrossBaseRecoveryConfig,
+): RecoveryPositioning | null => {
+  const outbound = flights
+    .filter((flight) => flight.depArp.toUpperCase() === supportBase.toUpperCase()
+      && flight.arvArp.toUpperCase() === recoveryBase.toUpperCase()
+      && finiteTime(flight.schDepDtUtc) >= now + config.minFlightLeadHours * 3600000
+      && finiteTime(flight.schArvDtUtc) <= source.start - config.reserveBeforeHours * 3600000)
+    .sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))[0]
+  if (!outbound) return null
+  const inbound = flights
+    .filter((flight) => flight.id !== outbound.id
+      && flight.depArp.toUpperCase() === recoveryBase.toUpperCase()
+      && flight.arvArp.toUpperCase() === supportBase.toUpperCase()
+      && finiteTime(flight.schDepDtUtc) >= source.end + config.returnAfterHours * 3600000)
+    .sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))[0]
+  if (!inbound) return null
+  return {
+    supportBase,
+    recoveryBase,
+    outbound,
+    inbound,
+    minFlightLeadHours: config.minFlightLeadHours,
+    reserveBeforeHours: config.reserveBeforeHours,
+    returnAfterHours: config.returnAfterHours,
+    dhdFlightCost: (outbound.blockMinutes + inbound.blockMinutes) * CROSS_BASE_DHD_COST_PER_MINUTE,
+  }
+}
+
+const crewFreeForPositioning = (
+  items: RosterItem[],
+  crewId: string,
+  positioning: RecoveryPositioning,
+  excludedPairingId: number | null,
+): boolean => {
+  const start = finiteTime(positioning.outbound.schDepDtUtc)
+  const end = finiteTime(positioning.inbound.schArvDtUtc)
+  return !items.some((item) => item.crewId === crewId
+    && (item.pairingId == null || Number(item.pairingId) !== excludedPairingId)
+    && item.assignmentGroup?.toUpperCase() !== 'SBY'
+    && finiteTime(item.schStrDtUtc) < end
+    && finiteTime(item.schEndDtUtc) > start)
+}
+
+const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: RecoveryAlertSnapshot }): RecoveryPlans => {
+  const groups = buildGroups(input.items)
+  const now = input.now ?? Date.now()
+  const activeGroups = groups.filter((group) => group.end >= now)
+  const source = activeGroups.find((group) => group.crewId === input.alert.crewId && group.pairingId === input.alert.pairingId)
+  const sourceCrew = input.crews.find((crew) => crew.crewId === input.alert.crewId) ?? {
+    crewId: input.alert.crewId, crewName: input.alert.crewId, rank: '', base: '', division: '', annualFlightMinutes: 0, fleetQuals: [],
+  }
+  if (!source) {
+    const completed = groups.some((group) => group.crewId === input.alert.crewId && group.pairingId === input.alert.pairingId && group.end < now)
+    const description = completed
+      ? 'The affected Roster has ended and does not require recovery.'
+      : 'The affected complete Roster is not present in the currently loaded Live data.'
+    const empty = (id: 'roster' | 'standby' | 'cross-base', title: string): RecoveryPlanGroup => ({ id, title, description, options: [], excludedOptions: [] })
+    return { alert: input.alert, alerts: [input.alert], roster: empty('roster', 'Roster transfer or exchange'), standby: empty('standby', 'Standby Crew callout'), crossBase: empty('cross-base', 'Cross-base positioning') }
+  }
+
+  const crewsById = new Map(input.crews.map((crew) => [crew.crewId, crew]))
+  const requiredOrder = input.rankOrder.get((input.alert.requiredRank || source.items[0]?.flightActingRank || '').toUpperCase())
+  const requiredFleets = [...new Set([
+    input.alert.fleet,
+    ...source.items.map((item) => item.fleetCode),
+  ].map((value) => value?.trim().toUpperCase()).filter((value): value is string => Boolean(value)))]
+  const rosterOptions: RecoveryOption[] = []
+  const targetCrews = input.crews.filter((crew) => crew.crewId !== source.crewId)
+  const targetGroups = activeGroups.filter((group) => group.crewId !== source.crewId && group.pairingId !== source.pairingId)
+
+  for (const targetCrew of targetCrews) {
+    const targetGroupsForCrew = targetGroups.filter((group) => group.crewId === targetCrew.crewId)
+    const targetRoster = targetGroupsForCrew.sort((a, b) => Math.abs(a.start - source.start) - Math.abs(b.start - source.start))[0] ?? null
+    const sameRank = !!sourceCrew.rank && sourceCrew.rank.toUpperCase() === targetCrew.rank.toUpperCase()
+    const sameBase = !!sourceCrew.base && sourceCrew.base.toUpperCase() === targetCrew.base.toUpperCase()
+    const crossDivision = !!sourceCrew.division && !!targetCrew.division && sourceCrew.division !== targetCrew.division
+    const crossRole = !!sourceCrew.rank && !!targetCrew.rank && sourceCrew.rank !== targetCrew.rank
+    const targetOrder = input.rankOrder.get(targetCrew.rank.toUpperCase())
+    const targetItems = input.items.filter((item) => item.crewId === targetCrew.crewId)
+    const baseReasons: string[] = []
+    if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) baseReasons.push('Target Crew Rank is lower than the required Rank or has no rank mapping.')
+    const missingFleet = requiredFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
+    if (missingFleet) baseReasons.push(`Target Crew is not qualified for fleet ${missingFleet}.`)
+
+    // Direct transfer retains all target Crew Roster assignments, so none may overlap
+    // the received Roster. Invalid candidates are excluded instead of presented as plans.
+    if (baseReasons.length === 0 && !hasAnyOverlapExcept(targetItems, source, new Set())) {
+      rosterOptions.push(makeOption({
+        allItems: input.items, allGroups: activeGroups, source, target: targetRoster, targetCrew, sourceCrew, mode: 'transfer', standbyTaskId: null,
+        standbyWindow: null, timeDistanceMinutes: targetRoster ? Math.round(Math.abs(targetRoster.start - source.start) / 60000) : null,
+        sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning: null, destinationSplit: null,
+      }))
+    }
+
+    if (targetRoster) {
+      const targetHasConflict = hasAnyOverlapExcept(targetItems, source, new Set([targetRoster.pairingId]))
+      const sourceHasConflict = hasAnyOverlapExcept(
+        input.items.filter((item) => item.crewId === source.crewId),
+        targetRoster,
+        new Set([source.pairingId]),
+      )
+      if (baseReasons.length === 0 && !targetHasConflict && !sourceHasConflict) {
+        rosterOptions.push(makeOption({
+          allItems: input.items, allGroups: activeGroups, source, target: targetRoster, targetCrew, sourceCrew, mode: 'swap', standbyTaskId: null,
+          standbyWindow: null, timeDistanceMinutes: Math.round(Math.abs(targetRoster.start - source.start) / 60000),
+          sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning: null, destinationSplit: null,
+        }))
+      }
+    }
+  }
+
+  const standbyOptions: RecoveryOption[] = []
+  const sourceStart = source.start
+  const standbyByCrew = new Map<string, RosterItem>()
+  for (const item of input.items) {
+    if (item.assignmentGroup?.toUpperCase() !== 'SBY' || item.crewId === source.crewId) continue
+    const start = finiteTime(item.schStrDtUtc)
+    const end = finiteTime(item.schEndDtUtc)
+    if (start <= sourceStart && sourceStart <= end) {
+      const previous = standbyByCrew.get(item.crewId)
+      if (!previous || finiteTime(previous.schStrDtUtc) > start) standbyByCrew.set(item.crewId, item)
+    }
+  }
+  for (const [targetCrewId, standbyTask] of standbyByCrew) {
+    const targetCrew = crewsById.get(targetCrewId)
+    if (!targetCrew) continue
+    const sameRank = !!sourceCrew.rank && sourceCrew.rank.toUpperCase() === targetCrew.rank.toUpperCase()
+    const sameBase = !!sourceCrew.base && sourceCrew.base.toUpperCase() === targetCrew.base.toUpperCase()
+    const crossDivision = !!sourceCrew.division && !!targetCrew.division && sourceCrew.division !== targetCrew.division
+    const crossRole = !!sourceCrew.rank && !!targetCrew.rank && sourceCrew.rank !== targetCrew.rank
+    const targetOrder = input.rankOrder.get(targetCrew.rank.toUpperCase())
+    const reasons: string[] = []
+    if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) reasons.push('Standby Crew Rank is lower than the required Rank or has no rank mapping.')
+    const missingFleet = requiredFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
+    if (missingFleet) reasons.push(`Standby Crew is not qualified for fleet ${missingFleet}.`)
+    // The one explicit overlap exception is the SBY task selected for this callout.
+    // A second SBY task, ground task, or any Roster that overlaps remains disqualifying.
+    const otherTasks = input.items.filter((item) => item.crewId === targetCrewId && item.id !== standbyTask.id)
+    if (otherTasks.some((item) => itemOverlapsGroup(item, source))) reasons.push('Standby Crew has another loaded task overlapping the recovery Roster.')
+    if (reasons.length === 0) {
+      standbyOptions.push(makeOption({
+        allItems: input.items, allGroups: activeGroups, source, target: null, targetCrew, sourceCrew, mode: 'standby', standbyTaskId: standbyTask.id,
+        standbyWindow: `${standbyTask.schStrDtUtc ?? ''} - ${standbyTask.schEndDtUtc ?? ''}`,
+        timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning: null, destinationSplit: null,
+      }))
+    }
+  }
+
+  const crossBaseOptions: RecoveryOption[] = []
+  const crossBaseConfig = input.crossBaseConfig ?? DEFAULT_CROSS_BASE_RECOVERY_CONFIG
+  const loadedFlights = input.flights ?? snapshotFlightsFromItems(input.items)
+  const recoveryBase = (source.items.find((item) => item.base)?.base || sourceCrew.base || '').trim()
+
+  // Destination-base recovery uses DHD legs already present at the edges of the
+  // affected Pairing. The receiving Crew only receives the middle operating legs,
+  // so qualification and occupancy are checked against that reduced Roster window.
+  const sourceActingRank = source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || ''
+  const sourceRankPlan = input.pairingCompositions
+    ?.find((composition) => composition.pairingId === source.pairingId
+      && composition.actingRank.trim().toUpperCase() === sourceActingRank.trim().toUpperCase())?.plan ?? null
+  for (const targetCrew of targetCrews) {
+    const optionId = `cross-base-destination-${source.pairingId}-${targetCrew.crewId}`
+    const destinationSplit = splitSourceForDestination(source, targetCrew, optionId, sourceRankPlan)
+    if (!destinationSplit) continue
+    const destinationItems = [...source.items]
+      .sort((a, b) => (a.dutySeq ?? 0) - (b.dutySeq ?? 0) || (a.segSeq ?? 0) - (b.segSeq ?? 0))
+      .slice(1, -1)
+      .filter((item) => !isDhdItem(item))
+    const destinationGroup: RosterGroup = {
+      key: groupKey(targetCrew.crewId, destinationSplit.createdPairingId),
+      crewId: targetCrew.crewId,
+      pairingId: destinationSplit.createdPairingId,
+      items: destinationItems,
+      start: Math.min(...destinationItems.map((item) => finiteTime(item.schStrDtUtc))),
+      end: Math.max(...destinationItems.map((item) => finiteTime(item.schEndDtUtc))),
+    }
+    const targetItems = input.items.filter((item) => item.crewId === targetCrew.crewId)
+    const targetOrder = input.rankOrder.get(targetCrew.rank.toUpperCase())
+    const sameRank = !!sourceCrew.rank && sourceCrew.rank.toUpperCase() === targetCrew.rank.toUpperCase()
+    const crossDivision = !!sourceCrew.division && !!targetCrew.division && sourceCrew.division !== targetCrew.division
+    const crossRole = !!sourceCrew.rank && !!targetCrew.rank && sourceCrew.rank !== targetCrew.rank
+    const reasons: string[] = []
+    if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) reasons.push('Destination Crew Rank is lower than the required Rank or has no rank mapping.')
+    const destinationFleets = [...new Set(destinationItems.map((item) => item.fleetCode?.trim().toUpperCase()).filter((fleet): fleet is string => Boolean(fleet)))]
+    const missingFleet = destinationFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
+    if (missingFleet) reasons.push(`Destination Crew is not qualified for fleet ${missingFleet}.`)
+    if (hasAnyOverlapExcept(targetItems, destinationGroup, new Set())) reasons.push('Destination Crew has an existing task overlapping the split Roster.')
+    if (reasons.length > 0) continue
+    crossBaseOptions.push(makeOption({
+      allItems: input.items,
+      allGroups: activeGroups,
+      source,
+      target: null,
+      targetCrew,
+      sourceCrew,
+      mode: 'cross-base-destination',
+      standbyTaskId: null,
+      standbyWindow: null,
+      timeDistanceMinutes: null,
+      sameRank,
+      sameBase: false,
+      crossDivision,
+      crossRole,
+      reasons,
+      positioning: null,
+      destinationSplit,
+    }))
+  }
+
+  if (recoveryBase) {
+    for (const targetCrew of targetCrews) {
+      const supportBase = (targetCrew.base || '').trim()
+      if (!supportBase || supportBase.toUpperCase() === recoveryBase.toUpperCase()) continue
+      const baseReasons: string[] = []
+      const targetOrder = input.rankOrder.get(targetCrew.rank.toUpperCase())
+      if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) baseReasons.push('Support Crew Rank is lower than the required Rank or has no rank mapping.')
+      const missingFleet = requiredFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
+      if (missingFleet) baseReasons.push(`Support Crew is not qualified for fleet ${missingFleet}.`)
+      if (baseReasons.length > 0) continue
+
+      const positioning = positioningFor(loadedFlights, source, supportBase, recoveryBase, now, crossBaseConfig)
+      if (!positioning) continue
+      const sameRank = !!sourceCrew.rank && sourceCrew.rank.toUpperCase() === targetCrew.rank.toUpperCase()
+      const sameBase = false
+      const crossDivision = !!sourceCrew.division && !!targetCrew.division && sourceCrew.division !== targetCrew.division
+      const crossRole = !!sourceCrew.rank && !!targetCrew.rank && sourceCrew.rank !== targetCrew.rank
+      const targetItems = input.items.filter((item) => item.crewId === targetCrew.crewId)
+      const standbyTasks = targetItems.filter((item) => item.pairingId == null && item.assignmentGroup?.toUpperCase() === 'SBY'
+        && finiteTime(item.schStrDtUtc) <= source.start && source.start <= finiteTime(item.schEndDtUtc))
+      const targetGroupsForCrew = activeGroups.filter((group) => group.crewId === targetCrew.crewId)
+
+      // Cross-base Callout SBY: SBY remains assigned and may overlap the DHD/Roster window.
+      if (standbyTasks.length > 0 && crewFreeForPositioning(input.items, targetCrew.crewId, positioning, null)) {
+        crossBaseOptions.push(makeOption({
+          allItems: input.items, allGroups: activeGroups, source, target: null, targetCrew, sourceCrew,
+          mode: 'cross-base-standby', standbyTaskId: standbyTasks[0].id,
+           standbyWindow: `${standbyTasks[0].schStrDtUtc ?? ''} - ${standbyTasks[0].schEndDtUtc ?? ''}`,
+           timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning, destinationSplit: null,
+        }))
+      }
+
+      // Cross-base Swap: each loaded complete Roster is a separate option. Its
+      // Roster is removed from the support Crew before occupancy is checked.
+      for (const targetRoster of targetGroupsForCrew) {
+        if (!crewFreeForPositioning(input.items, targetCrew.crewId, positioning, targetRoster.pairingId)) continue
+        const targetHasConflict = hasAnyOverlapExcept(targetItems, source, new Set([targetRoster.pairingId]))
+        const sourceHasConflict = hasAnyOverlapExcept(input.items.filter((item) => item.crewId === source.crewId), targetRoster, new Set([source.pairingId]))
+        if (targetHasConflict || sourceHasConflict) continue
+        crossBaseOptions.push(makeOption({
+          allItems: input.items, allGroups: activeGroups, source, target: targetRoster, targetCrew, sourceCrew,
+           mode: 'cross-base-swap', standbyTaskId: null, standbyWindow: null,
+           timeDistanceMinutes: Math.round(Math.abs(targetRoster.start - source.start) / 60000),
+           sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning, destinationSplit: null,
+        }))
+      }
+    }
+  }
+
+  return {
+    alert: input.alert,
+    alerts: [input.alert],
+    roster: {
+      id: 'roster',
+      title: 'Roster transfer or exchange',
+      description: 'Complete Roster transfer is preferred; exchange candidates are ordered by rank, base, next-task impact, annual flight time and start-time proximity.',
+      options: sortedCrewCandidates(rosterOptions, crewsById, sourceCrew),
+      excludedOptions: [],
+    },
+    standby: {
+      id: 'standby',
+      title: 'Standby Crew callout',
+      description: 'The original SBY ground task is retained. A matching SBY task is marked Callout Standby in the preview.',
+      options: sortedCrewCandidates(standbyOptions, crewsById, sourceCrew),
+      excludedOptions: [],
+    },
+    crossBase: {
+      id: 'cross-base',
+      title: 'Cross-base positioning',
+      description: 'Use a qualified Crew from another base and add outbound and return DHD half-ring Pairings around the recovered Roster.',
+      options: sortedCrewCandidates(crossBaseOptions, crewsById, sourceCrew),
+      excludedOptions: [],
+    },
+  }
+}
+
+const recoveryOptionRosterKeys = (option: RecoveryOption): string[] => [
+  `${option.sourceCrewId}:${option.sourcePairingId}`,
+  ...((option.mode === 'swap' || option.mode === 'cross-base-swap') && option.targetPairingId != null
+    ? [`${option.targetCrewId}:${option.targetPairingId}`]
+    : []),
+]
+
+const recoveryChangedItems = (option: RecoveryOption): RosterItem[] => option.afterItems.filter((item) =>
+  item.isRecoveryAffected === true || (item.id === option.standbyTaskId && item.isCalloutStandby === true),
+)
+
+/** Merge independent single-alert snapshots without letting one child erase another. */
+const mergeRecoveryAfterItems = (baseline: RosterItem[], options: RecoveryOption[]): RosterItem[] => {
+  const merged = new Map(baseline.map((item) => [item.id, item]))
+  for (const option of options) {
+    const beforeIds = option.beforeItems
+      .filter((item) => item.isRecoveryAffected === true || item.id === option.standbyTaskId)
+      .map((item) => item.id)
+    for (const id of beforeIds) merged.delete(id)
+    for (const item of recoveryChangedItems(option)) merged.set(item.id, item)
+  }
+  return [...merged.values()]
+}
+
+const mergeRecoveryBeforeItems = (baseline: RosterItem[], options: RecoveryOption[]): RosterItem[] => {
+  const affectedIds = new Set(options.flatMap((option) => option.beforeItems
+    .filter((item) => item.isRecoveryAffected === true || item.id === option.standbyTaskId)
+    .map((item) => item.id)))
+  return baseline.map((item) => affectedIds.has(item.id) ? { ...item, isRecoveryAffected: true } : item)
+}
+
+const recoveryRosterOverlap = (items: RosterItem[]): boolean => {
+  const groups = new Map<string, Array<{ pairingId: number; start: number; end: number }>>()
+  for (const item of items) {
+    if (item.pairingId == null || item.assignmentGroup?.toUpperCase() === 'SBY') continue
+    const start = finiteTime(item.schStrDtUtc)
+    const end = finiteTime(item.schEndDtUtc)
+    if (end <= start) continue
+    const key = `${item.crewId}:${item.pairingId}`
+    const current = groups.get(key)
+    if (current) {
+      current[0].start = Math.min(current[0].start, start)
+      current[0].end = Math.max(current[0].end, end)
+    } else {
+      groups.set(key, [{ pairingId: Number(item.pairingId), start, end }])
+    }
+  }
+  const byCrew = new Map<string, Array<{ pairingId: number; start: number; end: number }>>()
+  for (const [key, values] of groups) {
+    const crewId = key.slice(0, key.lastIndexOf(':'))
+    const value = values[0]
+    const current = byCrew.get(crewId)
+    if (current) current.push(value)
+    else byCrew.set(crewId, [value])
+  }
+  for (const values of byCrew.values()) {
+    values.sort((a, b) => a.start - b.start || a.pairingId - b.pairingId)
+    for (let index = 1; index < values.length; index += 1) {
+      if (values[index - 1].end > values[index].start) return true
+    }
+  }
+  return false
+}
+
+const receivedItemsForOption = (option: RecoveryOption): RosterItem[] => {
+  const assignments = [
+    { crewId: option.targetCrewId, pairingId: option.destinationSplit?.createdPairingId ?? option.sourcePairingId },
+    ...((option.mode === 'swap' || option.mode === 'cross-base-swap') && option.targetPairingId != null
+      ? [{ crewId: option.sourceCrewId, pairingId: option.targetPairingId }]
+      : []),
+  ]
+  return option.afterItems.filter((item) => assignments.some((assignment) =>
+    item.crewId === assignment.crewId && Number(item.pairingId) === assignment.pairingId))
+}
+
+const combinationConflicts = (options: RecoveryOption[]): string[] => {
+  const reasons: string[] = []
+  const rosterOwners = new Set<string>()
+  for (const option of options) {
+    for (const key of recoveryOptionRosterKeys(option)) {
+      if (rosterOwners.has(key)) reasons.push(`Roster ${key.split(':')[1]} is selected by more than one recovery decision.`)
+      rosterOwners.add(key)
+    }
+  }
+  if (recoveryRosterOverlap(options.flatMap(receivedItemsForOption))) reasons.push('The combined option assigns overlapping Rosters to the same Crew.')
+  return [...new Set(reasons)]
+}
+
+const combineRecoveryMetrics = (options: RecoveryOption[], loadedRosterCount: number): RecoveryMetrics => {
+  const affectedCrewCount = new Set(options.flatMap((option) => [option.sourceCrewId, option.targetCrewId])).size
+  const cancelledRosterCount = options.reduce((sum, option) => sum + option.metrics.cancelledRosterCount, 0)
+  const addedRosterCount = options.reduce((sum, option) => sum + option.metrics.addedRosterCount, 0)
+  const changedRosterCount = options.reduce((sum, option) => sum + option.metrics.changedRosterCount, 0)
+  const followOnImpactCount = options.reduce((sum, option) => sum + option.metrics.followOnImpactCount, 0)
+  const directCost = options.reduce((sum, option) => sum + option.metrics.directCost, 0)
+  const dhdFlightCost = options.reduce((sum, option) => sum + option.metrics.dhdFlightCost, 0)
+  const dhdCostSavings = options.reduce((sum, option) => sum + (option.metrics.dhdCostSavings ?? 0), 0)
+  const virtualCost = options.reduce((sum, option) => sum + option.metrics.virtualCost, 0)
+  const virtualCostWeight = options.length === 0
+    ? 1
+    : options.reduce((sum, option) => sum + option.metrics.virtualCostWeight, 0) / options.length
+  const penalty = 0.30 * cancelledRosterCount + 0.20 * addedRosterCount + 0.15 * changedRosterCount + 0.35 * followOnImpactCount
+  const rosterStability = Math.round(Math.max(0, Math.min(100, 100 - (100 * penalty) / Math.max(1, loadedRosterCount))) * 100) / 100
+  return {
+    affectedCrewCount,
+    cancelledRosterCount,
+    addedRosterCount,
+    changedRosterCount,
+    followOnImpactCount,
+    rosterStability,
+    directCost,
+    dhdFlightCost,
+    dhdCostSavings,
+    virtualCost,
+    virtualCostWeight,
+    totalCost: directCost + virtualCost * virtualCostWeight,
+    currency: 'CNY',
+  }
+}
+
+const combineRecoveryOptions = (
+  groups: RecoveryPlanGroup[],
+  baselineItems: RosterItem[],
+): RecoveryOption[] => {
+  if (groups.some((group) => group.options.length === 0)) return []
+  const combinations: RecoveryOption[][] = [[]]
+  // Keep the Cartesian expansion bounded; every option is still built from
+  // complete child choices and the UI reports no partial combination as valid.
+  for (const group of groups) {
+    const next: RecoveryOption[][] = []
+    for (const partial of combinations) {
+      for (const option of group.options) {
+        const candidate = [...partial, option]
+        if (combinationConflicts(candidate).length === 0) next.push(candidate)
+        if (next.length >= 500) break
+      }
+      if (next.length >= 500) break
+    }
+    combinations.splice(0, combinations.length, ...next)
+  }
+  const loadedRosterCount = new Set(baselineItems
+    .filter((item) => item.pairingId != null && item.assignmentGroup?.toUpperCase() !== 'SBY')
+    .map((item) => `${item.crewId}:${item.pairingId}`)).size
+  return combinations.map((children) => {
+    const first = children[0]
+    const afterItems = mergeRecoveryAfterItems(baselineItems, children)
+    const reasons = combinationConflicts(children)
+    const executable = children.every((option) => option.localExecutable && option.ruleCheck !== 'failed') && reasons.length === 0
+    return {
+      ...first,
+      id: `combined-${groups[0].id}-${children.map((option) => option.id).join('__')}`,
+      title: `Combined recovery · ${children.map((option) => `${option.sourceCrewId} → ${option.targetCrewId}`).join(' · ')}`,
+      localExecutable: executable,
+      reasons,
+      beforeItems: mergeRecoveryBeforeItems(baselineItems, children),
+      afterItems,
+      changes: children.flatMap((option) => option.changes),
+      metrics: combineRecoveryMetrics(children, loadedRosterCount),
+      ruleCheck: executable ? 'pending' : 'not-run',
+      ruleMessages: reasons,
+      positioning: null,
+      destinationSplit: null,
+      subOptions: children,
+    }
+  })
+}
+
+/**
+ * Build one recovery plan for one or more loaded alerts. Single-alert calls
+ * retain the existing candidate shape; multi-alert calls add a combination
+ * layer whose options are complete child decisions.
+ */
+export const buildRecoveryPlans = (input: BuildRecoveryPlansInput & {
+  alert?: RecoveryAlertSnapshot
+  alerts?: RecoveryAlertSnapshot[]
+}): RecoveryPlans => {
+  const alerts = [...new Map((input.alerts?.length ? input.alerts : input.alert ? [input.alert] : [])
+    .map((alert) => [`${alert.crewId}:${alert.pairingId}:${alert.ruleCode}:${alert.id}`, alert] as const)).values()]
+  if (alerts.length === 0) throw new Error('At least one recovery alert is required.')
+  if (alerts.length === 1) return buildSingleRecoveryPlans({ ...input, alert: alerts[0] })
+
+  const childPlans = alerts.map((alert) => buildSingleRecoveryPlans({ ...input, alert }))
+  const makeGroup = (id: RecoveryPlanGroup['id'], key: 'roster' | 'standby' | 'crossBase', title: string, description: string): RecoveryPlanGroup => ({
+    id,
+    title,
+    description: `${description} Combined across ${alerts.length} selected alerts.`,
+    options: combineRecoveryOptions(childPlans.map((plan) => plan[key]), input.items),
+    excludedOptions: [],
+  })
+  return {
+    alert: alerts[0],
+    alerts,
+    roster: makeGroup('roster', 'roster', 'Roster transfer or exchange', 'Each option contains one complete recovery decision per selected alert.'),
+    standby: makeGroup('standby', 'standby', 'Standby Crew callout', 'Each option contains one complete recovery decision per selected alert.'),
+    crossBase: makeGroup('cross-base', 'crossBase', 'Cross-base positioning', 'Each option contains one complete recovery decision per selected alert.'),
+  }
+}
