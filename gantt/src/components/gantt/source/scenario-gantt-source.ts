@@ -13,6 +13,7 @@ import { isCrewBellOnlyRule } from '@/components/gantt/crew-bell-only-rules'
 import {
   crewFlyTasksOverlappingWindow,
   crewTasksOverlappingWindow,
+  mark7504GapDutyPucks,
   pairingTasksOverlapViolationWindow,
   resolveViolationPaintWindow,
 } from '@/utils/violation-puck-window'
@@ -1268,6 +1269,9 @@ function buildViolationMap(
             if (!pairingTasksOverlapViolationWindow([it], v)) continue
             bump(it.id, v.severity)
           }
+        }
+        if (v.ruleCode === '7504') {
+          mark7504GapDutyPucks(v, v.crewId, v.severity, itemsByCrew, bump)
         }
         if (v.ruleCode === '7501' && v.crewId && resolveViolationPaintWindow(v)) {
           for (const it of crewFlyTasksOverlappingWindow(itemsByCrew.get(v.crewId) ?? [], v)) {

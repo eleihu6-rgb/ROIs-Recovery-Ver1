@@ -95,8 +95,14 @@ const HDR7507 = [
 ]
 const HDR8071 = [
   'Bases', 'Ranks', 'Fleets', 'Crew Teams', 'Labels', 'Attributes', 'Override Duty Attributes',
-  'Assignment Groups', 'Qualifiers', 'Flights', 'Destinations', 'Positions',
+  'Assignment Groups', 'Qualifiers', 'Flights', 'Destinations', 'Countries', 'Positions',
   'Period', 'Unit', 'Max Times', 'Min Times', 'Check Mode',
+]
+const HDR8071_COUNTRIES = HDR8071
+const HDR8071_ASSIGNMENTS = [
+  'Bases', 'Ranks', 'Fleets', 'Crew Teams', 'Labels', 'Attributes', 'Override Duty Attributes',
+  'Assignment Groups', 'Assignments', 'Qualifiers', 'Flights', 'Destinations', 'Countries',
+  'Positions', 'Period', 'Unit', 'Max Times', 'Min Times', 'Check Mode',
 ]
 const HDR8072 = [
   'Flight Fleets', 'Flight Assignment Groups', 'Crew Teams', 'Crew Nationality',
@@ -105,6 +111,7 @@ const HDR8072 = [
 ]
 const CTX_DATES = { dateFrom: '2026-06-01', dateTo: '2026-06-30' }
 const epoch = (iso) => Math.floor(new Date(iso).getTime() / 1000)
+
 
 test('rule7504 builds structured row fields for assignment and attribute filters', async () => {
   let captured
@@ -780,6 +787,43 @@ test('rustBinsSkipped reads SKIP_RUST_BINS from a local env file when process en
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true })
   }
+// Closed-loop location-continuity exemption (crew 295 / pairing 155089 regression).
+test('rule8004 suppresses YYZ-base roster when activity chain closes back to qualified YVR', async () => {
+  const yvrYyzStart = Math.floor(Date.parse('2026-09-13T19:50:00Z') / 1000)
+  const yvrYyzEnd = Math.floor(Date.parse('2026-09-14T00:30:00Z') / 1000)
+  const sim1Start = Math.floor(Date.parse('2026-09-14T13:00:00Z') / 1000)
+  const sim1End = Math.floor(Date.parse('2026-09-14T19:15:00Z') / 1000)
+  const sim2Start = Math.floor(Date.parse('2026-09-15T17:30:00Z') / 1000)
+  const sim2End = Math.floor(Date.parse('2026-09-15T23:30:00Z') / 1000)
+  const yyzYvrStart = Math.floor(Date.parse('2026-09-16T13:40:00Z') / 1000)
+  const yyzYvrEnd = Math.floor(Date.parse('2026-09-16T18:50:00Z') / 1000)
+  const source = {
+    db: {},
+    async assignmentsRaw() {
+      return [
+        { crew_id: '295', pairing_id: 155083, base: 'YVR', start_date: '2026-09-13', end_date: '2026-09-14', start_secs: yvrYyzStart, end_secs: yvrYyzEnd },
+        { crew_id: '295', pairing_id: 155089, base: 'YYZ', start_date: '2026-09-16', end_date: '2026-09-16', start_secs: yyzYvrStart, end_secs: yyzYvrEnd },
+      ]
+    },
+    async baseQuals() {
+      return [{ crew_id: '295', base: 'YVR', eff_date: '2021-12-15', exp_date: '-' }]
+    },
+    async baseActivities() {
+      return [
+        { crew_id: '295', pairing_id: 155083, start_utc: yvrYyzStart, end_utc: yvrYyzEnd, start_station: 'YVR', end_station: 'YYZ' },
+        { crew_id: '295', pairing_id: null, start_utc: sim1Start, end_utc: sim1End, start_station: 'YYZ', end_station: 'YYZ' },
+        { crew_id: '295', pairing_id: null, start_utc: sim2Start, end_utc: sim2End, start_station: 'YYZ', end_station: 'YYZ' },
+        { crew_id: '295', pairing_id: 155089, start_utc: yyzYvrStart, end_utc: yyzYvrEnd, start_station: 'YYZ', end_station: 'YVR' },
+      ]
+    },
+    async crewBaseTimezone() { return new Map([['295', 'America/Vancouver']]) },
+  }
+  const ctx = {
+    log: () => {},
+    instancesOf: (fn) => fn === 8004 ? [{ instance: '001', header: ['Grace Period'], rows: [['0']] }] : [],
+  }
+  const out = await rule8004(source, ctx)
+  assert.deepEqual(out, [], 'closed loop back to YVR must not emit 8004 for pairing 155089')
 })
 
 test('rule8002 emits nothing + logs when the function has no instances (no silent fallback)', async () => {
@@ -950,22 +994,24 @@ test('rule8071 maps F8 default row into persisted 8071 violations', async () => 
     dateTo: '2026-06-30',
     log: () => {},
     instancesOf: (fn) => fn === 8071
-      ? [{ instance: '001', header: HDR8071, rows: [['*', '*', '*', '*', '*', '*', '*', 'FLY', '*', '*', '*', '*', '1', 'CM', '11', '0', '*']] }]
+      ? [{ instance: '001', header: HDR8071, rows: [['*', '*', '*', '*', '*', '*', '*', 'FLY', '*', '*', '*', '*', '*', '1', 'CM', '11', '0', '*']] }]
       : [],
   }
   const out = await rule8071(source, ctx)
   assert.equal(receivedFilters.groups[0], 'FLY')
   assert.deepEqual(receivedFilters.flights, [], 'Flights=* must not restrict source rows')
+  assert.deepEqual(receivedFilters.countries, [], 'Countries=* must not restrict source rows')
+  assert.deepEqual(receivedFilters.countryNot, [], 'Countries=* must not exclude source rows')
   assert.equal(out.length, 1)
   assert.equal(out[0].rule_code, '8071')
   assert.equal(out[0].rule_instance, '001')
-  assert.equal(out[0].scope_key, '1CM:*:FLY:R')
+  assert.equal(out[0].scope_key, '1CM:*:FLY:*:*:R')
   assert.equal(out[0].actual_value, 12)
   assert.equal(out[0].limit_value, 11)
   assert.equal(out[0].unit, 'COUNT')
   assert.match(
     out[0].message,
-    /^Row 1: Roster Period \[2026-06-01, 2026-06-30\]: The number of matching rosters \(12\) does NOT meet the allowed range of \[0, 11\]/,
+    /^Row 1: The number of matching rosters \(12\) is outside the allowed range of \[0, 11\] in the Roster Period \[2026-06-01, 2026-06-30\]\.$/,
   )
 })
 
@@ -994,6 +1040,7 @@ test('rule8071 forwards all rule fields, crew teams, and RP periods', async () =
         qualifier: 'QUAL',
         flight_number: '0031',
         destination: 'YVR',
+        destination_country: 'CA',
         position: 'CA',
       }]
     },
@@ -1009,7 +1056,7 @@ test('rule8071 forwards all rule fields, crew teams, and RP periods', async () =
     instancesOf: (fn) => fn === 8071
       ? [{ instance: '001', header: HDR8071, rows: [[
           'YYZ', 'CA', '777', 'TEAM1', 'LABEL', 'ATTR', 'OVR',
-          'FLY', 'QUAL', '0031', 'YVR', 'CA', '1', 'RP', '11', '2', 'R',
+          'FLY', 'QUAL', '0031', 'YVR', '*', 'CA', '1', 'RP', '11', '2', 'R',
         ]] }]
       : [],
   }
@@ -1018,17 +1065,326 @@ test('rule8071 forwards all rule fields, crew teams, and RP periods', async () =
 
   assert.equal(captured.bin, 'check-8071')
   assert.ok(captured.input.includes(
-    'R\t0\tYYZ\tCA\t777\tTEAM1\tLABEL\tATTR\tOVR\tFLY\tQUAL\t0031\tYVR\tCA\t1\tRP\t11\t2\tR',
+    'R\t0\tYYZ\tCA\t777\tTEAM1\tLABEL\tATTR\tOVR\tFLY\t*\tQUAL\t0031\tYVR\t*\tCA\t1\tRP\t11\t2\tR',
   ), captured.input)
   assert.ok(captured.input.includes(
     'A\tC1\t700\t1\t7001\t' +
-    `${S}\t${S + 3600}\tYYZ\tCA\t777\tTEAM1\tLABEL\tATTR\tOVR\tFLY\tQUAL\t0031\tYVR\tCA`,
+    `${S}\t${S + 3600}\tYYZ\tCA\t777\tTEAM1\tLABEL\tATTR\tOVR\tFLY\t*\tQUAL\t0031\tYVR\tCA\tCA`,
   ), captured.input)
   // 8071 P lines are roster-period bounds in epoch seconds (not day_ord).
+  // The RP window is INCLUSIVE of the final calendar day: rp_end "2026-06-30" maps to
+  // 2026-06-30 23:59:59 so flights ON 06-30 land inside the [start, end] window.
   assert.ok(
-    captured.input.includes(`P\t${epochSec('2026-06-01T00:00:00Z')}\t${epochSec('2026-06-30T00:00:00Z')}`),
+    captured.input.includes(`P\t${epochSec('2026-06-01T00:00:00Z')}\t${epochSec('2026-06-30T23:59:59Z')}`),
     captured.input,
   )
+})
+
+test('rule8071 forwards assignments as independent filters and TSV fields', async () => {
+  const S = Math.floor(Date.UTC(2026, 5, 1, 0, 0, 0) / 1000)
+  let captured = null
+  let receivedFilters = null
+  const source = {
+    async rosterProperties(filters) {
+      receivedFilters = filters
+      return [{
+        crew_id: 'C1',
+        pairing_id: 700,
+        duty_seq: 1,
+        segment_id: 7001,
+        start_utc: S,
+        end_utc: S + 3600,
+        bases: 'YYZ',
+        ranks: 'CA',
+        fleets: '777',
+        teams: '*',
+        label: 'LABEL',
+        attributes: 'ATTR',
+        override_duty_attributes: 'OVR',
+        assignment_group: 'FLY',
+        assignment: 'FLT',
+        qualifier: 'QUAL',
+        flight_number: '0031',
+        destination: 'YVR',
+        destination_country: 'CA',
+        position: 'CA',
+      }]
+    },
+  }
+  const ctx = {
+    dateFrom: '2026-06-01',
+    dateTo: '2026-06-30',
+    log: () => {},
+    runBin(bin, args, input) {
+      captured = { bin, args, input }
+      return []
+    },
+    instancesOf: (fn) => fn === 8071
+      ? [{ instance: '001', header: HDR8071_ASSIGNMENTS, rows: [[
+          'YYZ', 'CA', '777', '*', 'LABEL', 'ATTR', 'OVR',
+          'FLY', 'FLT', 'QUAL', '0031', 'YVR', '*', 'CA', '31', 'CD', '11', '0', 'R',
+        ]] }]
+      : [],
+  }
+
+  await rule8071(source, ctx)
+
+  assert.deepEqual(receivedFilters.assignments, ['FLT'])
+  assert.ok(captured.input.includes(
+    'R\t0\tYYZ\tCA\t777\t*\tLABEL\tATTR\tOVR\tFLY\tFLT\tQUAL\t0031\tYVR\t*\tCA\t31\tCD\t11\t0\tR',
+  ), captured.input)
+  assert.ok(captured.input.includes(
+    `A\tC1\t700\t1\t7001\t${S}\t${S + 3600}\tYYZ\tCA\t777\t*\tLABEL\tATTR\tOVR\tFLY\tFLT\tQUAL\t0031\tYVR\tCA\tCA`,
+  ), captured.input)
+})
+
+test('rule8071 forwards countries between destinations and positions', async () => {
+  let captured = null
+  const source = {
+    async rosterPeriods() { return [{ start: '2026-06-01', end: '2026-06-30' }] },
+    async rosterProperties() {
+      return [{
+        crew_id: 'C1',
+        pairing_id: 700,
+        duty_seq: 1,
+        segment_id: 7001,
+        start_utc: 1_780_272_000,
+        end_utc: 1_780_275_600,
+        bases: 'YYZ',
+        ranks: 'CA',
+        fleets: '777',
+        teams: '*',
+        label: 'LABEL',
+        attributes: 'ATTR',
+        override_duty_attributes: 'OVR',
+        assignment_group: 'FLY',
+        qualifier: 'QUAL',
+        flight_number: '0031',
+        destination: 'YVR',
+        destination_country: 'CA',
+        position: 'CA',
+      }]
+    },
+  }
+  const ctx = {
+    dateFrom: '2026-06-01',
+    dateTo: '2026-06-30',
+    log: () => {},
+    runBin(bin, args, input) {
+      captured = { bin, args, input }
+      return []
+    },
+    instancesOf: (fn) => fn === 8071
+      ? [{ instance: '001', header: HDR8071_COUNTRIES, rows: [[
+          '*', '*', '*', '*', '*', '*', '*', 'FLY', '*', '*', 'YVR', 'CA|US', '*',
+          '1', 'RP', '11', '0', '*',
+        ]] }]
+      : [],
+  }
+
+  await rule8071(source, ctx)
+
+  assert.ok(captured.input.includes(
+    'R\t0\t*\t*\t*\t*\t*\t*\t*\tFLY\t*\t*\t*\tYVR\tCA|US\t*\t1\tRP\t11\t0\t*',
+  ), captured.input)
+  assert.ok(captured.input.includes(
+    'A\tC1\t700\t1\t7001\t1780272000\t1780275600\tYYZ\tCA\t777\t*\tLABEL\tATTR\tOVR\tFLY\t*\tQUAL\t0031\tYVR\tCA\tCA',
+  ), captured.input)
+})
+
+test('rule8071 forwards negative country filters', async () => {
+  let receivedFilters = null
+  const source = {
+    async rosterProperties(filters) {
+      receivedFilters = filters
+      return []
+    },
+  }
+  const ctx = {
+    dateFrom: '2026-06-01',
+    dateTo: '2026-06-30',
+    log: () => {},
+    instancesOf: (fn) => fn === 8071
+      ? [{ instance: '001', header: HDR8071_COUNTRIES, rows: [
+        ['*', '*', '*', '*', '*', '*', '*', 'FLY', '*', '*', 'YVR', '!(CA+US)', '*', '1', 'CM', '11', '0', '*'],
+      ] }]
+      : [],
+  }
+
+  await rule8071(source, ctx)
+
+  assert.deepEqual(receivedFilters.countries, [], 'negative country syntax must not use the positive include filter')
+  assert.deepEqual(receivedFilters.countryNot, ['CA', 'US'], 'negative country syntax should surface the excluded set')
+})
+
+test('rule8071 skips SQL country prefilter when one row is wildcard and another narrows countries', async () => {
+  let receivedFilters = null
+  let captured = null
+  const source = {
+    async rosterPeriods() { return [{ start: '2026-07-01', end: '2026-07-31' }] },
+    async crewTeams() { return new Map([['0227', ['INB']]]) },
+    async rosterProperties(filters) {
+      receivedFilters = filters
+      return [{
+        crew_id: '0227',
+        pairing_id: 130776,
+        duty_seq: 1,
+        segment_id: 9001,
+        start_utc: 1_781_222_400,
+        end_utc: 1_781_265_600,
+        bases: 'YVR',
+        ranks: 'CA',
+        fleets: '737',
+        teams: '*',
+        label: 'PRAM',
+        attributes: '*',
+        override_duty_attributes: '*',
+        assignment_group: 'RES',
+        assignment: 'PRAM',
+        qualifier: 'PRAM',
+        flight_number: '',
+        destination: 'YVR',
+        destination_country: 'CA',
+        position: 'CA',
+      }]
+    },
+  }
+  const ctx = {
+    dateFrom: '2026-06-01',
+    dateTo: '2026-08-01',
+    log: () => {},
+    runBin(bin, args, input) {
+      captured = { bin, args, input }
+      return [['V', '0227', '1', '130776', '1780272000', '1782863999', '1', '0', '0', 'R', '1']]
+    },
+    instancesOf: (fn) => fn === 8071
+      ? [{ instance: '001', header: HDR8071_ASSIGNMENTS, rows: [
+        ['*', '*', '*', 'DOMO', '*', '*', '*', 'FLY', '*', '*', '*', '*', '!(CA)', '*', '1', 'RP', '0', '0', '*'],
+        ['*', '*', '*', 'INB', '*', '*', '*', 'FLY|RES', '*', '*', '*', '*', '*', '*', '1', 'RP', '0', '0', '*'],
+      ] }]
+      : [],
+  }
+
+  const out = await rule8071(source, ctx)
+
+  assert.deepEqual(receivedFilters?.countries, [], 'wildcard INB row must not inherit DOMO country include filter')
+  assert.deepEqual(receivedFilters?.countryNot, [], 'wildcard INB row must not inherit DOMO !(CA) SQL exclude filter')
+  assert.ok(captured?.input.includes('\t130776\t'), captured?.input)
+  assert.equal(out.length, 1)
+  assert.equal(out[0]?.crew_id, '0227')
+  assert.equal(out[0]?.pairing_id, 130776)
+  assert.equal(out[0]?.rule_code, '8071')
+})
+
+test('rule8071 skips SQL country prefilter regardless of wildcard/narrowed row order', async () => {
+  let receivedFilters = null
+  const source = {
+    async rosterPeriods() { return [{ start: '2026-07-01', end: '2026-07-31' }] },
+    async crewTeams() { return new Map([['0227', ['INB']]]) },
+    async rosterProperties(filters) {
+      receivedFilters = filters
+      return []
+    },
+  }
+  const ctx = {
+    dateFrom: '2026-06-01',
+    dateTo: '2026-08-01',
+    log: () => {},
+    instancesOf: (fn) => fn === 8071
+      ? [{ instance: '001', header: HDR8071_ASSIGNMENTS, rows: [
+        ['*', '*', '*', 'INB', '*', '*', '*', 'FLY|RES', '*', '*', '*', '*', '*', '*', '1', 'RP', '0', '0', '*'],
+        ['*', '*', '*', 'DOMO', '*', '*', '*', 'FLY', '*', '*', '*', '*', '!(CA)', '*', '1', 'RP', '0', '0', '*'],
+      ] }]
+      : [],
+  }
+
+  await rule8071(source, ctx)
+
+  assert.deepEqual(receivedFilters?.countries, [])
+  assert.deepEqual(receivedFilters?.countryNot, [])
+})
+
+test('rule8071 skips SQL group/assignment prefilter when rows mix wildcard and narrowed dimensions', async () => {
+  let receivedFilters = null
+  let captured = null
+  const source = {
+    async rosterPeriods() { return [{ start: '2026-07-01', end: '2026-07-31' }] },
+    async crewTeams() { return new Map([['0227', ['INB']]]) },
+    async rosterProperties(filters) {
+      receivedFilters = filters
+      return [{
+        crew_id: '0227',
+        pairing_id: 130776,
+        duty_seq: 1,
+        segment_id: 9001,
+        start_utc: 1_781_222_400,
+        end_utc: 1_781_265_600,
+        bases: 'YVR',
+        ranks: 'CA',
+        fleets: '737',
+        teams: '*',
+        label: 'PRAM',
+        attributes: '*',
+        override_duty_attributes: '*',
+        assignment_group: 'RES',
+        assignment: 'PRAM',
+        qualifier: 'PRAM',
+        flight_number: '',
+        destination: 'YVR',
+        destination_country: 'CA',
+        position: 'CA',
+      }]
+    },
+  }
+  const ctx = {
+    dateFrom: '2026-06-01',
+    dateTo: '2026-08-01',
+    log: () => {},
+    runBin(bin, args, input) {
+      captured = { bin, args, input }
+      return [['V', '0227', '1', '130776', '1780272000', '1782863999', '1', '0', '0', 'R', '1']]
+    },
+    instancesOf: (fn) => fn === 8071
+      ? [{ instance: '001', header: HDR8071_ASSIGNMENTS, rows: [
+        ['*', '*', '*', 'DOMO', '*', '*', '*', 'FLY', '*', '*', '*', '*', '!(CA)', '*', '1', 'RP', '0', '0', '*'],
+        ['*', '*', '*', 'INB', '*', '*', '*', '*', 'PRAM', '*', '*', '*', '*', '*', '1', 'RP', '0', '0', '*'],
+      ] }]
+      : [],
+  }
+
+  const out = await rule8071(source, ctx)
+
+  assert.deepEqual(receivedFilters?.groups, [], 'FLY row + wildcard-groups INB/PRAM row must not AND-filter RES out')
+  assert.deepEqual(receivedFilters?.assignments, [], 'wildcard-assignments DOMO row must not AND-filter PRAM out')
+  assert.ok(captured?.input.includes('\t130776\t'), captured?.input)
+  assert.equal(out.length, 1)
+  assert.equal(out[0]?.crew_id, '0227')
+  assert.equal(out[0]?.pairing_id, 130776)
+})
+
+test('rule8071 disables invalid country filtering', async () => {
+  let receivedFilters = null
+  const source = {
+    async rosterProperties(filters) {
+      receivedFilters = filters
+      return []
+    },
+  }
+  const ctx = {
+    dateFrom: '2026-06-01',
+    dateTo: '2026-06-30',
+    log: () => {},
+    instancesOf: (fn) => fn === 8071
+      ? [{ instance: '001', header: HDR8071_COUNTRIES, rows: [
+        ['*', '*', '*', '*', '*', '*', '*', 'FLY', '*', '*', 'YVR', 'CA+US', '*', '1', 'CM', '11', '0', '*'],
+      ] }]
+      : [],
+  }
+
+  await rule8071(source, ctx)
+
+  assert.deepEqual(receivedFilters.countries, [], 'invalid country syntax must not use the positive include filter')
+  assert.deepEqual(receivedFilters.countryNot, [], 'invalid country syntax must not use the negative exclude filter')
 })
 
 test('rule8071 skips team-gated and RP rows when required sources are missing', async () => {
@@ -1044,8 +1400,8 @@ test('rule8071 skips team-gated and RP rows when required sources are missing', 
     runBin() { ran = true; return [] },
     instancesOf: (fn) => fn === 8071
       ? [{ instance: '001', header: HDR8071, rows: [
-          ['*', '*', '*', 'TEAM1', '*', '*', '*', '*', '*', '*', '*', '*', '1', 'CD', '1', '0', 'R'],
-          ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '1', 'RP', '1', '0', 'R'],
+          ['*', '*', '*', 'TEAM1', '*', '*', '*', '*', '*', '*', '*', '*', '*', '1', 'CD', '1', '0', 'R'],
+          ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '1', 'RP', '1', '0', 'R'],
         ] }]
       : [],
   }
@@ -1091,7 +1447,7 @@ test('rule8071 keeps nonmatching roster rows available for editor under-min chec
     dateTo: '2026-06-30',
     log: () => {},
     instancesOf: (fn) => fn === 8071
-      ? [{ instance: '001', header: HDR8071, rows: [['*', '*', '*', '*', '*', '*', '*', 'FLY', '*', '*', '*', '*', '1', 'CM', '99', '1', '*']] }]
+      ? [{ instance: '001', header: HDR8071, rows: [['*', '*', '*', '*', '*', '*', '*', 'FLY', '*', '*', '*', '*', '*', '1', 'CM', '99', '1', '*']] }]
       : [],
   }
 
@@ -1654,7 +2010,7 @@ test('rule7508 uses duty-level rows and persists the configured instance', async
 
   assert.equal(captured.bin, 'check-7508')
   assert.ok(captured.args.includes('--checked-start-secs'))
-  assert.ok(captured.input.includes(`R\t0\t*\t*\t*\t*\t168\tRH\tN\tY\t90\t1`))
+  assert.ok(captured.input.includes(`R\t0\t*\t*\t*\t*\t168\tRH\tN\tY\t90\t1\tN`))
   assert.ok(captured.input.includes(`D\tC1\t100\t${start + 6 * 3600}\t${start + 12 * 3600}\t${start + 7 * 3600}\t${start + 11 * 3600}\t-420\t-420\t-420\t0\t1`))
   assert.ok(captured.input.includes(`D\tC1\t0\t${start + 24 * 3600}\t${start + 48 * 3600}\t${start + 24 * 3600}\t${start + 48 * 3600}\t-420\t-420\t-420\t1\t1`))
   assert.equal(out[0].rule_code, '7508')
@@ -1695,7 +2051,43 @@ test('rule7508 defaults missing Duty Report and Duty Release to Y', async () => 
     },
   })
 
-  assert.ok(captured.includes('R\t0\t*\t*\t*\t*\t168\tRH\tY\tY\t0\t1'))
+  assert.ok(captured.includes('R\t0\t*\t*\t*\t*\t168\tRH\tY\tY\t0\t1\tN'))
+})
+
+test('rule7508 passes explicit Count Layover=N through to the Rust kernel', async () => {
+  const start = epoch('2026-06-10T00:00:00Z')
+  let captured = null
+  const source = {
+    async crewOffsets() { return new Map([['C1', -420]]) },
+    async flyDuties() {
+      return [{
+        crew_id: 'C1',
+        pairing_id: 100,
+        start_secs: start + 6 * 3600,
+        end_secs: start + 12 * 3600,
+        first_flight_departure_secs: start + 7 * 3600,
+        last_flight_arrival_secs: start + 11 * 3600,
+        offset_min: -420,
+        end_offset_min: -420,
+      }]
+    },
+    async groundWork() { return [] },
+  }
+  await rule7508(source, {
+    ...CTX_DATES,
+    instancesOf: (fn) => {
+      if (fn === 2014) return [{ instance: '001', header: ['Local Night Start', 'Local Night End', 'Min Interval Hours'], rows: [['22:30', '09:30', '09:00']] }]
+      if (fn === 7508) return [{ instance: '001', header: ['Period', 'Unit', 'Count Layover', 'Duty End Buffer', 'Min Limits'], rows: [['168', 'RH', 'N', '00:00', '1']] }]
+      return []
+    },
+    log: () => {},
+    runBin(bin, args, input) {
+      captured = input
+      return []
+    },
+  })
+
+  assert.ok(captured.includes('R\t0\t*\t*\t*\t*\t168\tRH\tY\tY\t0\t1\tN'))
 })
 
 test('rule7503 skips when 2014 Local Night is missing before querying source', async () => {

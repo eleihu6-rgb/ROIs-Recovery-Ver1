@@ -1,26 +1,28 @@
 #!/usr/bin/env bash
 # deploy/sit/service.sh
 #
-# SIT 环境后端服务管理 — 部署到 PortalServer (10.15.12.4) 后由 deploy.sh 远程调用。
-# 运行产物来自 /home/rois/sit/ 各子目录，不需要 git 仓库。
+# SIT 环境后端服务管理 — 部署到 PortalServer (10.16.11.18, ecs-user) 后由 deploy.sh 远程调用。
+# 运行产物来自 /home/ecs-user/sit/ 各子目录，不需要 git 仓库。
 #
 # 配置契约（deploy/sit/CONFIG.md）：
 #   - 环境私有配置只在 $DEV_DIR/env/*.env，deploy 永不覆盖该目录
 #   - engine-server 的 JWT_SECRET 必须与 live-server 相同（见 ensure_engine_jwt_secret）
 #
+# DB + Redis 与本服务同机（10.16.11.18 本机 Docker），通过 localhost 暴露。
+#
 # 用法（在 PortalServer 上）：
-#   bash service.sh start  [all|live-server|pbs-server|engine-server|connector-server]
+#   bash service.sh start  [all|live-server|engine-server]
 #   bash service.sh stop   [all|...]
 #   bash service.sh restart [all|...]
 #   bash service.sh status
 #   bash service.sh logs   [服务名]
 #
 # 由 deploy.sh 通过 SSH 远程调用：
-#   ssh portal "bash /home/rois/sit/service.sh restart live-server"
+#   ssh ecs-user@10.16.11.18 "bash /home/ecs-user/sit/service.sh restart live-server"
 
 set -euo pipefail
 
-DEV_DIR="/home/rois/sit"
+DEV_DIR="/home/ecs-user/sit"
 LOG_DIR="$DEV_DIR/logs"
 RUN_DIR="$DEV_DIR/run"
 ENV_DIR="$DEV_DIR/env"
@@ -54,9 +56,7 @@ is_listening() {
 service_port() {
     case "$1" in
         live-server)   echo 3000 ;;
-        pbs-server)    echo 3002 ;;
         engine-server) echo 3003 ;;
-        connector-server) echo 3004 ;;
         *)             echo "" ;;
     esac
 }
@@ -153,13 +153,12 @@ ensure_engine_jwt_secret() {
     if [ -z "$secret" ]; then
         secret=$(read_env_value "$eng_env" "JWT_SECRET")
     fi
-    if [ -z "$secret" ] || [ "$secret" = 'your_jwt_secret_here' ] || [ "$secret" = 'replace-with-same-value-as-live-server-jwt-secret' ] || [ "$secret" = '${JWT_SECRET}' ]; then
+    if [ -z "$secret" ] || [ "$secret" = 'your_jwt_secret_here' ] || [ "$secret" = 'replace-with-same-value-as-live-server-jwt-secret' ] || [ "$secret" = 'replace-with-32-plus-char-random-secret' ] || [ "$secret" = '${JWT_SECRET}' ]; then
         if [ -n "$live_secret" ] && [ "$live_secret" != 'your_jwt_secret_here' ]; then
             secret="$live_secret"
             log "engine-server JWT_SECRET 未配置或为占位符，已从 live-server.env 继承"
             if [ -f "$eng_env" ]; then
                 if grep -qE '^JWT_SECRET=' "$eng_env"; then
-                    # Rewrite placeholder / empty assignment to the shared live secret.
                     local tmp
                     tmp=$(mktemp)
                     while IFS= read -r line || [ -n "$line" ]; do
@@ -181,7 +180,7 @@ ensure_engine_jwt_secret() {
         warn "engine-server JWT_SECRET 与 live-server.env 不一致 — /optimize/start 可能 401（见 CONFIG.md）"
     fi
 
-    if [ -z "$secret" ] || [ "$secret" = 'your_jwt_secret_here' ] || [ "$secret" = 'replace-with-same-value-as-live-server-jwt-secret' ] || [ "$secret" = '${JWT_SECRET}' ]; then
+    if [ -z "$secret" ] || [ "$secret" = 'your_jwt_secret_here' ] || [ "$secret" = 'replace-with-same-value-as-live-server-jwt-secret' ] || [ "$secret" = 'replace-with-32-plus-char-random-secret' ] || [ "$secret" = '${JWT_SECRET}' ]; then
         err "engine-server 缺少有效 JWT_SECRET（须与 live-server 相同）。"
         err "请在 $eng_env 设置 JWT_SECRET=... 后重试。参见 deploy/sit/CONFIG.md"
         exit 1
@@ -189,59 +188,9 @@ ensure_engine_jwt_secret() {
     export JWT_SECRET="$secret"
 }
 
-# ── SSH 隧道（CoreServer Redis/DB 访问）────────────────────────────
-# CoreServer Redis 只绑定 127.0.0.1，需要通过 SSH 隧道从 PortalServer 访问。
-# 本地端口 16379 → CoreServer:127.0.0.1:6379
-# 本地端口 15432 → CoreServer:127.0.0.1:5432（备用，DB 通常可直连）
-CORE_SSH="yuan.z@10.15.12.3"
-TUNNEL_PID_FILE="$RUN_DIR/ssh-tunnel.pid"
-TUNNEL_LOCAL_REDIS_PORT=16379
-
-start_tunnel() {
-    if [ -f "$TUNNEL_PID_FILE" ]; then
-        local pid
-        pid=$(cat "$TUNNEL_PID_FILE")
-        if kill -0 "$pid" 2>/dev/null; then
-            log "SSH 隧道已在运行 (pid $pid)"
-            return
-        fi
-        rm -f "$TUNNEL_PID_FILE"
-    fi
-    log "建立 SSH 隧道 → CoreServer Redis (127.0.0.1:$TUNNEL_LOCAL_REDIS_PORT → $CORE_SSH:6379)..."
-    ssh -fN \
-        -o StrictHostKeyChecking=no \
-        -o ServerAliveInterval=30 \
-        -o ServerAliveCountMax=3 \
-        -o ExitOnForwardFailure=yes \
-        -L "127.0.0.1:${TUNNEL_LOCAL_REDIS_PORT}:127.0.0.1:6379" \
-        "$CORE_SSH" 2>>"$LOG_DIR/ssh-tunnel.log"
-    # 找到刚启动的 ssh 进程 PID
-    sleep 1
-    local tpid
-    tpid=$(pgrep -f "ssh -fN.*${TUNNEL_LOCAL_REDIS_PORT}:127.0.0.1:6379" 2>/dev/null | head -1 || echo "")
-    if [ -n "$tpid" ]; then
-        echo "$tpid" > "$TUNNEL_PID_FILE"
-        ok "SSH 隧道已建立 (pid $tpid)"
-    else
-        err "SSH 隧道启动失败，查看日志: $LOG_DIR/ssh-tunnel.log"
-        exit 1
-    fi
-}
-
-stop_tunnel() {
-    if [ -f "$TUNNEL_PID_FILE" ]; then
-        local pid
-        pid=$(cat "$TUNNEL_PID_FILE")
-        kill "$pid" 2>/dev/null || true
-        rm -f "$TUNNEL_PID_FILE"
-        ok "SSH 隧道已停止"
-    fi
-}
-
 # ── 启动函数 ──────────────────────────────────────────────────────
 start_live_server() {
     if is_running "live-server"; then warn "live-server 已在运行 (pid $(get_pid live-server))"; return; fi
-    start_tunnel
     log "启动 live-server (port 3000)..."
     local svc_dir="$DEV_DIR/live-server"
     [ -f "$svc_dir/dist/index.js" ] || { err "$svc_dir/dist/index.js 不存在，请先 deploy --live"; exit 1; }
@@ -261,30 +210,6 @@ start_live_server() {
     done
     err "live-server 启动失败，查看日志: $LOG_DIR/live-server.log"
     tail -20 "$LOG_DIR/live-server.log" >&2
-    exit 1
-}
-
-start_pbs_server() {
-    if is_running "pbs-server"; then warn "pbs-server 已在运行 (pid $(get_pid pbs-server))"; return; fi
-    start_tunnel
-    log "启动 pbs-server (port 3002)..."
-    local svc_dir="$DEV_DIR/pbs-server"
-    [ -f "$svc_dir/dist/index.js" ] || { err "$svc_dir/dist/index.js 不存在，请先 deploy --pbs-srv"; exit 1; }
-    load_env "pbs-server"
-    cd "$svc_dir"
-    nohup node dist/index.js >> "$LOG_DIR/pbs-server.log" 2>&1 &
-    save_pid "pbs-server"
-    local i=0
-    while [ $i -lt 15 ]; do
-        if is_running "pbs-server" && is_listening "pbs-server"; then
-            ok "pbs-server 已启动 (pid $(get_pid pbs-server))"
-            return
-        fi
-        sleep 0.5
-        i=$((i + 1))
-    done
-    err "pbs-server 启动失败，查看日志: $LOG_DIR/pbs-server.log"
-    tail -20 "$LOG_DIR/pbs-server.log" >&2
     exit 1
 }
 
@@ -320,43 +245,17 @@ start_engine_server() {
     exit 1
 }
 
-start_connector_server() {
-    if is_running "connector-server"; then warn "connector-server 已在运行 (pid $(get_pid connector-server))"; return; fi
-    start_tunnel
-    log "启动 connector-server (port 3004)..."
-    local svc_dir="$DEV_DIR/connector-server"
-    [ -f "$svc_dir/dist/index.js" ] || { err "$svc_dir/dist/index.js 不存在，请先 deploy --connector"; exit 1; }
-    load_env "connector-server"
-    cd "$svc_dir"
-    nohup node dist/index.js >> "$LOG_DIR/connector-server.log" 2>&1 &
-    save_pid "connector-server"
-    local i=0
-    while [ $i -lt 15 ]; do
-        if is_running "connector-server" && is_listening "connector-server"; then
-            ok "connector-server 已启动 (pid $(get_pid connector-server))"
-            return
-        fi
-        sleep 0.5
-        i=$((i + 1))
-    done
-    err "connector-server 启动失败，查看日志: $LOG_DIR/connector-server.log"
-    tail -20 "$LOG_DIR/connector-server.log" >&2
-    exit 1
-}
-
 # ── 状态显示 ──────────────────────────────────────────────────────
 show_status() {
     echo ""
     printf "┌──────────────────────┬────────┬──────────────────────────────┐\n"
     printf "│ 服务                 │ Port   │ 状态                         │\n"
     printf "├──────────────────────┼────────┼──────────────────────────────┤\n"
-    for svc in live-server pbs-server engine-server connector-server; do
+    for svc in live-server engine-server; do
         local port=""
         case "$svc" in
             live-server)   port=3000 ;;
-            pbs-server)    port=3002 ;;
             engine-server) port=3003 ;;
-            connector-server) port=3004 ;;
         esac
         if is_running "$svc"; then
             status="running  pid=$(get_pid $svc)"
@@ -374,16 +273,14 @@ show_status() {
 CMD="${1:-status}"
 TARGET="${2:-all}"
 
-SERVICES=(live-server pbs-server engine-server connector-server)
+SERVICES=(live-server engine-server)
 
 case "$CMD" in
     start)
         case "$TARGET" in
             all)           for s in "${SERVICES[@]}"; do "start_${s//-/_}"; done ;;
             live-server)   start_live_server ;;
-            pbs-server)    start_pbs_server ;;
             engine-server) start_engine_server ;;
-            connector-server) start_connector_server ;;
             *) err "未知服务: $TARGET"; exit 1 ;;
         esac
         ;;
@@ -401,9 +298,7 @@ case "$CMD" in
                 for s in "${SERVICES[@]}"; do "start_${s//-/_}"; done
                 ;;
             live-server)   stop_one live-server;   sleep 1; start_live_server ;;
-            pbs-server)    stop_one pbs-server;    sleep 1; start_pbs_server ;;
             engine-server) stop_one engine-server; sleep 1; start_engine_server ;;
-            connector-server) stop_one connector-server; sleep 1; start_connector_server ;;
             *) err "未知服务: $TARGET"; exit 1 ;;
         esac
         ;;
@@ -420,7 +315,7 @@ case "$CMD" in
         fi
         ;;
     *)
-        echo "用法: $0 [start|stop|restart|status|logs] [all|live-server|pbs-server|engine-server|connector-server]"
+        echo "用法: $0 [start|stop|restart|status|logs] [all|live-server|engine-server]"
         exit 1
         ;;
 esac

@@ -1,6 +1,32 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { publishViolationsUpdated, violationsUpdatedChannel } from '../live-legality-publish.mjs'
+import {
+  publishViolationsUpdated,
+  violationsUpdatedChannel,
+  legalityRecheckRedisKey,
+  redisKeyPrefixSegment,
+} from '../live-legality-publish.mjs'
+
+test('redisKeyPrefixSegment mirrors live-server prefixed client', () => {
+  const prev = process.env.REDIS_KEY_PREFIX
+  process.env.REDIS_KEY_PREFIX = 'sit'
+  assert.equal(redisKeyPrefixSegment(), 'sit:')
+  process.env.REDIS_KEY_PREFIX = ''
+  assert.equal(redisKeyPrefixSegment(), '')
+  if (prev === undefined) delete process.env.REDIS_KEY_PREFIX
+  else process.env.REDIS_KEY_PREFIX = prev
+})
+
+test('legalityRecheckRedisKey matches GET /recheck-status polling key', () => {
+  const prev = process.env.REDIS_KEY_PREFIX
+  process.env.REDIS_KEY_PREFIX = 'sit'
+  assert.equal(
+    legalityRecheckRedisKey('F8', '103', 'status'),
+    'sit:legality:recheck:F8:103:status',
+  )
+  if (prev === undefined) delete process.env.REDIS_KEY_PREFIX
+  else process.env.REDIS_KEY_PREFIX = prev
+})
 
 test('violationsUpdatedChannel matches WS pSubscribe layout', () => {
   assert.equal(
