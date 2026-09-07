@@ -1,26 +1,30 @@
 #!/usr/bin/env bash
 # deploy/sit/deploy.sh
 #
-# SIT 环境部署脚本 — 在本机（= WebServer 10.15.12.2）运行。
+# SIT 环境部署脚本 — 在本机（= WebServer / dev 工作站）运行。
 #
 # 架构：
-#   本机 = WebServer (10.15.12.2): git 仓库 + 构建环境 + 前端静态文件直接写本地
-#   PortalServer    (10.15.12.4): 只运行已编译的产物，无需 git/build 工具
+#   本机 (WebServer): git 仓库 ~/dev/recovery/ + 构建环境 + gantt 静态产物直写本地
+#                     /home/recovery/sit/gantt/，由本地 nginx (1.26.2) 通过
+#                     /etc/nginx/conf.d/recovery-sit.conf 提供 /altair/。
+#   PortalServer (10.16.11.18, ecs-user + sudo NOPASSWD): 服务 + DB + Redis 同机。
+#                     live-server(:3000) / engine-server(:3003) /
+#                     postgres:17-alpine(:5432) / redis:7-alpine(:6379)
+#                     全部跑在该机；无 SSH 隧道。
 #
 # 配置契约（详见 deploy/sit/CONFIG.md）：
 #   - 可被本脚本覆盖：代码 / dist / 模板 config.yaml / service.sh
 #   - 永不覆盖：PortalServer 上 $PORTAL_DEV/env/*.env（环境私有密钥与连接串）
 #   - 密钥只写 env，config.yaml 只允许 ${ENV} 引用
 #
+# 部署范围（裁剪版）：
+#   live-server / engine-server / rule-engine-rs / packages/* / gantt
+#
 # 用法:
 #   ./deploy.sh --all                   # 全量
-#   ./deploy.sh --live                  # build live-server + push + 远程重启
-#   ./deploy.sh --pbs-srv               # build pbs-server  + push + 远程重启
-#   ./deploy.sh --connector             # build connector-server + push + 远程重启
-#   ./deploy.sh --engine                # push engine-server 源码 + 远程重启
-#   ./deploy.sh --ui-lib                # build @rois/ui（前端构建依赖，不推送）
-#   ./deploy.sh --gantt                 # build gantt + push 到 WebServer
-#   ./deploy.sh --pbs-ui                # build pbs-portal + push 到 WebServer
+#   ./deploy.sh --live                  # build live-server + push dist + Rust 法规二进制 + 远程重启
+#   ./deploy.sh --engine                # push engine-server 源码 + 远程重启 + JWT 探针
+#   ./deploy.sh --gantt                 # build gantt + 写到本机 /home/recovery/sit/gantt/
 #   ./deploy.sh --live --gantt          # 组合模式
 
 set -euo pipefail
@@ -32,11 +36,11 @@ ENV_DIR="$SCRIPT_DIR/env"
 HASH_DIR="$SCRIPT_DIR/.pkghash"   # 记录已推送的 package-lock 哈希
 
 # ── 远端配置 ──────────────────────────────────────────────────────
-PORTAL="yuan.z@10.15.12.4"
-PORTAL_DEV="/home/rois/sit"
+PORTAL="ecs-user@10.16.11.18"
+PORTAL_DEV="/home/ecs-user/sit"
 
-# 本机 = WebServer，前端直接写本地路径，无需 SSH/SCP
-LOCAL_WEB_DEV="/home/rois/sit"
+# 本机 = WebServer，gantt 前端直接写本地路径，无需 SSH/SCP
+LOCAL_WEB_DEV="/home/recovery/sit"
 
 DEPLOY_LOG="${HASH_DIR}/../deploy.log"
 
@@ -87,9 +91,6 @@ pkgjson_changed() {
 }
 
 # 安装/推送成功后记录哈希，供下次跳过检测。
-# package.json 哈希 → 本机构建依赖跳过检测（ensure_local_node_build_deps）。
-# lock 哈希 → PortalServer 生产依赖推送检测（push_pbs_srv），与前者分开记录，
-# 否则 ensure 记录 lock 会让 push_pbs_srv 误判「lock 未变」而跳过 portal 安装。
 record_pkgjson_hash() {
     local module="$1"
     sha256sum "$ROIS_AI/$module/package.json" | cut -d' ' -f1 > "$HASH_DIR/${module}.package-json.pkghash"
@@ -107,17 +108,15 @@ ensure_local_node_build_deps() {
     local module_dir="$ROIS_AI/$module"
 
     # A tool binary being present does NOT mean a newly added dependency is installed —
-    # package.json can grow a dep the deploy never reinstalls (@tanstack/react-virtual
-    # incident on gantt). Reinstall whenever package.json changed. lock 哈希归
-    # push_pbs_srv 管理（portal 生产依赖），本函数只检测 package.json 变更。
+    # package.json can grow a dep the deploy never reinstalls. Reinstall whenever
+    # package.json changed. lock 哈希归 push_live 管理（portal 生产依赖），
+    # 本函数只检测 package.json 变更。
     if [ -x "$module_dir/node_modules/.bin/$tool" ] \
         && ! pkgjson_changed "$module"; then
         return
     fi
 
     log "[$module] 同步本机构建依赖..."
-    # 用 npm install 而非 npm ci：package.json 新增依赖时陈旧 lock 会导致 npm ci EUSAGE，
-    # npm install 会同步 lock。安装成功后 record_pkgjson_hash 才记录哈希（失败则下次重试）。
     (cd "$module_dir" && npm install --include=dev --legacy-peer-deps --prefer-offline) >>"$DEPLOY_LOG" 2>&1
 
     if [ ! -x "$module_dir/node_modules/.bin/$tool" ]; then
@@ -160,282 +159,7 @@ ENGINE_RSYNC_EXCLUDES=(
     --exclude='config.yaml.bak*'
 )
 
-# PBS solver（源码部分）变化检测 — 基于本地 pyproject.toml 哈希。
-# 注意：只有推送成功后才写 hash，避免失败后下次误判为“未变化”。
-solver_hash() {
-    local pyproject="$ROIS_AI/pbs-engine/pyproject.toml"
-    sha256sum "$pyproject" 2>/dev/null | cut -d' ' -f1
-}
-
-solver_changed() {
-    local cur_hash
-    cur_hash=$(solver_hash)
-    local last_hash
-    last_hash=$(cat "$HASH_DIR/ro-solver.pkghash" 2>/dev/null || echo "")
-    [ -z "$cur_hash" ] || [ "$cur_hash" != "$last_hash" ]
-}
-
-mark_solver_synced() {
-    local cur_hash
-    cur_hash=$(solver_hash)
-    [ -n "$cur_hash" ] && echo "$cur_hash" > "$HASH_DIR/ro-solver.pkghash"
-}
-
-# Rust wheel（rois_rule_engine_rs）变化检测 — 基于 rule-engine-rs/py/Cargo.toml 哈希
-rust_wheel_changed() {
-    local cargo="$ROIS_AI/rule-engine-rs/py/Cargo.toml"
-    local hash_file="$HASH_DIR/rust-wheel.pkghash"
-    local cur_hash
-    cur_hash=$(sha256sum "$cargo" 2>/dev/null | cut -d' ' -f1)
-    local last_hash
-    last_hash=$(cat "$hash_file" 2>/dev/null || echo "")
-    if [ "$cur_hash" != "$last_hash" ] || [ -z "$cur_hash" ]; then
-        [ -n "$cur_hash" ] && echo "$cur_hash" > "$hash_file"
-        return 0
-    fi
-    return 1
-}
-
-ensure_rule_engine_rs_submodule_ssh() {
-    local rs_url="git@github.com:yuanzhu-ai/rois-rule-engine-rs.git"
-    git -C "$ROIS_AI" config "submodule.rule-engine-rs.url" "$rs_url"
-    if [ -d "$ROIS_AI/rule-engine-rs/.git" ] || [ -f "$ROIS_AI/rule-engine-rs/.git" ]; then
-        git -C "$ROIS_AI/rule-engine-rs" remote set-url origin "$rs_url" 2>/dev/null || true
-    fi
-}
-
-ensure_local_maturin() {
-    if python3 -m maturin --version >/dev/null 2>&1; then
-        return
-    fi
-    log "[ro-solver] 本机缺少 maturin，安装到 user site..."
-    python3 -m pip install --user maturin -q >>"$DEPLOY_LOG" 2>&1
-    if ! python3 -m maturin --version >/dev/null 2>&1; then
-        fail "[ro-solver] maturin 安装后仍不可用"
-    fi
-    ok "[ro-solver] maturin 已就绪"
-}
-
-# Rust 法规二进制变化检测 — 基于 rule-engine-rs 当前源码/提交状态。
-# 只有编译和推送成功后才写 hash，避免失败后下次误判为“未变化”。
-rust_bins_hash() {
-    (
-        cd "$ROIS_AI/rule-engine-rs"
-        git rev-parse HEAD 2>/dev/null || true
-        git status --short --untracked-files=no 2>/dev/null || true
-        git ls-files -z 2>/dev/null | xargs -0 sha256sum 2>/dev/null || true
-    ) | sha256sum | cut -d' ' -f1
-}
-
-rust_bins_changed() {
-    local cur_hash
-    cur_hash=$(rust_bins_hash)
-    local last_hash
-    last_hash=$(cat "$HASH_DIR/ruletool.pkghash" 2>/dev/null || echo "")
-    [ -z "$cur_hash" ] || [ "$cur_hash" != "$last_hash" ]
-}
-
-mark_rust_bins_synced() {
-    local cur_hash
-    cur_hash=$(rust_bins_hash)
-    [ -n "$cur_hash" ] && echo "$cur_hash" > "$HASH_DIR/ruletool.pkghash"
-}
-
-# ── ro-engine PBS solver ──────────────────────────────────────────
-# 流程：
-#   1. solver 源码（不含 .venv）从本地 rsync → PortalServer
-#   2. Rust wheel（rule-engine-rs/py）在本机编译 → scp → PortalServer 安装进 solver .venv
-#   3. solver .venv 不存在时在 PortalServer 上用 requirements.txt 初始化
-#
-# 完整性门禁：SIT 曾出现远端只剩 .venv、无 run_solver.py / ColumnModelSolver_python，
-# 导致 ro_rust 秒失败 ModuleNotFoundError 而部署仍标绿。push 后必须能 import。
-remote_solver_source_ok() {
-    local dest_dir="$PORTAL_DEV/pbs-engine"
-    ssh "$PORTAL" "
-        test -f '$dest_dir/run_solver.py' &&
-        test -f '$dest_dir/pyproject.toml' &&
-        test -d '$dest_dir/ColumnModelSolver_python'
-    " 2>/dev/null
-}
-
-verify_remote_solver_imports() {
-    local dest_dir="$PORTAL_DEV/pbs-engine"
-    local solver_py="$dest_dir/.venv/bin/python3"
-    log "[ro-solver] 远端 import 探针（ColumnModelSolver_python + rois_rule_engine_rs）..."
-    # Avoid nested heredoc inside $(...) — bash treats that as unterminated.
-    # Write a temp remote script, pipe it to ssh bash -s.
-    local probe_script result
-    probe_script=$(mktemp)
-    cat > "$probe_script" <<'REMOTE'
-set -euo pipefail
-DEST="$1"
-PY="$2"
-if [ ! -x "$PY" ]; then
-    if command -v python3 >/dev/null 2>&1; then
-        PY=$(command -v python3)
-    else
-        echo 'FAIL:python:missing'
-        exit 0
-    fi
-fi
-cd "$DEST"
-"$PY" -c '
-import sys
-sys.path.insert(0, ".")
-try:
-    from ColumnModelSolver_python.io.loader import load_from_ro_input  # noqa: F401
-except Exception as e:
-    print("FAIL:ColumnModelSolver_python:%s" % type(e).__name__)
-    raise SystemExit(0)
-try:
-    import rois_rule_engine_rs  # noqa: F401
-except Exception as e:
-    print("FAIL:rois_rule_engine_rs:%s" % type(e).__name__)
-    raise SystemExit(0)
-print("OK")
-'
-REMOTE
-    result=$(ssh "$PORTAL" bash -s -- "$dest_dir" "$solver_py" < "$probe_script" 2>&1) || true
-    rm -f "$probe_script"
-    # Keep only the last non-empty line (ignore ssh/banner noise).
-    result=$(printf '%s\n' "$result" | awk 'NF { line=$0 } END { print line }')
-    case "$result" in
-        OK)
-            ok "[ro-solver] 远端 import 探针通过"
-            ;;
-        FAIL:*)
-            fail "[ro-solver] 远端 import 探针失败: $result — LegacyRO/ro_rust 会秒失败"
-            ;;
-        *)
-            fail "[ro-solver] 远端 import 探针无结果: ${result:-empty}"
-            ;;
-    esac
-}
-
-# 确保本机 pbs-engine submodule 已 checkout。SIT 上 .gitmodules 默认 https URL
-# 无法非交互拉取；强制用 SSH（与 auto-deploy.sh 一致）。
-ensure_local_pbs_engine() {
-    local solver_src="$ROIS_AI/pbs-engine"
-    if [ -f "$solver_src/run_solver.py" ] && [ -d "$solver_src/ColumnModelSolver_python" ]; then
-        return 0
-    fi
-
-    log "[ro-solver] 本机 pbs-engine 不完整，尝试 submodule 初始化（SSH）..."
-    local pbs_ssh="git@github.com:yuapply/PBS_column_based_algorithm.git"
-    # sync copies .gitmodules https URL into .git/config — re-pin SSH after sync.
-    git -C "$ROIS_AI" submodule sync --quiet pbs-engine || true
-    git -C "$ROIS_AI" config submodule.pbs-engine.url "$pbs_ssh"
-    if ! git -C "$ROIS_AI" submodule update --init --recursive pbs-engine >>"$DEPLOY_LOG" 2>&1; then
-        fail "[ro-solver] pbs-engine submodule 初始化失败（检查 10.15.12.2 对 $pbs_ssh 的 SSH 权限）"
-    fi
-    if [ ! -f "$solver_src/run_solver.py" ] || [ ! -d "$solver_src/ColumnModelSolver_python" ]; then
-        fail "[ro-solver] submodule 初始化后仍缺 run_solver.py / ColumnModelSolver_python"
-    fi
-    ok "[ro-solver] pbs-engine submodule 已就绪"
-}
-
-push_ro_solver() {
-    local solver_src="$ROIS_AI/pbs-engine"
-    local dest_dir="$PORTAL_DEV/pbs-engine"
-    local solver_py="$dest_dir/.venv/bin/python3"
-
-    ensure_local_pbs_engine
-
-    if [ ! -f "$solver_src/run_solver.py" ] || [ ! -d "$solver_src/ColumnModelSolver_python" ]; then
-        fail "[ro-solver] 本机 pbs-engine 源码不完整（缺 run_solver.py 或 ColumnModelSolver_python）"
-    fi
-    if [ ! -f "$solver_src/requirements.txt" ] && [ ! -f "$solver_src/pyproject.toml" ]; then
-        fail "[ro-solver] 本机 pbs-engine 缺少 requirements.txt / pyproject.toml"
-    fi
-
-    # ── 1. 推送 solver 源码（排除 .venv，避免覆盖已安装环境）──────
-    # 远端缺关键文件时强制重推，即使本地 pyproject 哈希未变（防“只剩 .venv”）。
-    if solver_changed || ! remote_solver_source_ok; then
-        log "[ro-solver] 推送 solver 源码 → PortalServer..."
-        ssh "$PORTAL" "mkdir -p '$dest_dir'"
-        rsync -az --delete \
-            --exclude='.venv/' \
-            --exclude='__pycache__/' \
-            --exclude='*.pyc' \
-            --exclude='.pytest_cache/' \
-            --exclude='.git/' \
-            --exclude='rois-rule-engine-rs/' \
-            "$solver_src/" \
-            "$PORTAL:$dest_dir/" >>"$DEPLOY_LOG" 2>&1
-        if ! remote_solver_source_ok; then
-            fail "[ro-solver] 推送后远端仍缺 run_solver.py / ColumnModelSolver_python"
-        fi
-        mark_solver_synced
-        ok "[ro-solver] solver 源码推送完成"
-    else
-        ok "[ro-solver] solver 源码未变化且远端完整，跳过"
-    fi
-
-    # ── 2. 初始化 solver .venv（首次或 .venv 缺失时）─────────────
-    local has_venv
-    has_venv=$(ssh "$PORTAL" "[ -f '$solver_py' ] && echo yes || echo no" 2>/dev/null)
-    if [ "$has_venv" = "no" ]; then
-        log "[ro-solver] 初始化 solver .venv..."
-        ssh "$PORTAL" "
-            cd '$dest_dir'
-            python3 -m venv .venv
-            if [ -f requirements.txt ]; then
-                .venv/bin/pip install -r requirements.txt -q
-            elif [ -f pyproject.toml ]; then
-                .venv/bin/pip install -e . -q
-            else
-                echo 'missing pbs-engine requirements.txt or pyproject.toml' >&2
-                exit 1
-            fi
-        " >>"$DEPLOY_LOG" 2>&1
-        ok "[ro-solver] solver .venv 初始化完成"
-    fi
-
-    # ── 3. 编译并安装 Rust wheel（rule-engine-rs 变化或 wheel 未安装时）──
-    local wheel_installed
-    wheel_installed=$(ssh "$PORTAL" "'$solver_py' -c 'import rois_rule_engine_rs' 2>/dev/null && echo yes || echo no")
-    if rust_wheel_changed || [ "$wheel_installed" = "no" ]; then
-        log "[ro-solver] 本机编译 Rust wheel（rois_rule_engine_rs）..."
-        ensure_local_maturin
-        local wheel_dir="$HASH_DIR/wheel"
-        mkdir -p "$wheel_dir"
-        # 清旧 wheel，避免版本混淆
-        rm -f "$wheel_dir"/*.whl
-        (
-            source "$HOME/.cargo/env"
-            cd "$ROIS_AI/rule-engine-rs/py"
-            python3 -m maturin build --release --out "$wheel_dir" --quiet
-        ) >>"$DEPLOY_LOG" 2>&1
-        local wheel_file
-        wheel_file=$(ls "$wheel_dir"/*.whl 2>/dev/null | head -1)
-        if [ -z "$wheel_file" ]; then
-            fail "[ro-solver] Rust wheel 编译失败，查看日志: $DEPLOY_LOG"
-        fi
-        ok "[ro-solver] Rust wheel 编译完成: $(basename "$wheel_file")"
-        log "[ro-solver] 推送 wheel → PortalServer 并安装..."
-        scp "$wheel_file" "$PORTAL:/tmp/" >>"$DEPLOY_LOG" 2>&1
-        # Install into the SOLVER env explicitly — NEVER `pip install --user`. A
-        # user-site copy (~/.local/lib/pythonX.Y/site-packages) shadows the solver env
-        # on the next run (Python prefers user site) and breaks rust-hybrid in
-        # load_scenario with an obscure:
-        #   TypeError: Engine.__new__() got an unexpected keyword argument '...'
-        # Purge any stray user-site wheel left from earlier --user installs first.
-        ssh "$PORTAL" "rm -rf \$HOME/.local/lib/python3.*/site-packages/rois_rule_engine_rs*" \
-            >>"$DEPLOY_LOG" 2>&1 || true
-        ssh "$PORTAL" "'$solver_py' -m pip install --force-reinstall '/tmp/$(basename "$wheel_file")' -q" \
-            >>"$DEPLOY_LOG" 2>&1
-        ok "[ro-solver] Rust wheel 安装完成"
-        # 更新哈希，避免下次无谓重编
-        local cargo="$ROIS_AI/rule-engine-rs/py/Cargo.toml"
-        sha256sum "$cargo" | cut -d' ' -f1 > "$HASH_DIR/rust-wheel.pkghash"
-    else
-        ok "[ro-solver] Rust wheel 未变化，跳过"
-    fi
-
-    verify_remote_solver_imports
-}
-
-# ── shared packages（live-server 和 pbs-server 运行时共享依赖）──────────────
+# ── shared packages（live-server 运行时共享依赖）──────────────────────
 build_shared_rules() {
     local package_dir="$ROIS_AI/packages/shared-rules"
     local tsc="$ROIS_AI/live-server/node_modules/.bin/tsc"
@@ -473,18 +197,18 @@ push_contracts() {
         "$ROIS_AI/packages/contracts/" \
         "$PORTAL:$PORTAL_DEV/packages/contracts/" \
         >>"$DEPLOY_LOG" 2>&1
-    # packages/saml: Azure SSO 共享 helper，live/pbs dist 通过相对路径 require
+    # packages/saml: Azure SSO 共享 helper，live dist 通过相对路径 require
     ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/packages/saml'"
     rsync -az --delete \
         "$ROIS_AI/packages/saml/" \
         "$PORTAL:$PORTAL_DEV/packages/saml/" \
         >>"$DEPLOY_LOG" 2>&1
     # packages/saml 运行时依赖 @node-saml/node-saml：在 SIT packages 层装一次，
-    # 使其能被 packages/saml/dist 的相对路径 require 解析到（否则 live/pbs 启动 MODULE_NOT_FOUND）
+    # 使其能被 packages/saml/dist 的相对路径 require 解析到
     ssh "$PORTAL" "cd '$PORTAL_DEV/packages' && { [ -f package.json ] || printf '%s\n' '{\"name\":\"sit-packages\",\"private\":true}' > package.json; } && npm install @node-saml/node-saml@5.1.0 --no-save --legacy-peer-deps --prefer-offline" >>"$DEPLOY_LOG" 2>&1
     # packages/legality-messages: live-server scripts (scenario-legality / legality-recheck-core)
     # resolve via file:../packages/legality-messages symlink — must exist on Portal or
-    # Recheck Legality exits 1 with ERR_MODULE_NOT_FOUND and the UI spins forever.
+    # Recheck Legality exits 1 with ERR_MODULE_NOT_FOUND.
     ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/packages/legality-messages'"
     rsync -az --delete \
         "$ROIS_AI/packages/legality-messages/" \
@@ -497,7 +221,6 @@ push_contracts() {
 # ── version.tmp ───────────────────────────────────────────────────
 # Runtime version is read from live-server/version.tmp on PortalServer.
 # Build only bumps the webserver checkout; without this push SIT never moves.
-# Merge max(local, remote) so a higher SIT-only counter never regresses.
 sync_version_tmp() {
     local local_path="$ROIS_AI/live-server/version.tmp"
     local remote_path="$PORTAL_DEV/live-server/version.tmp"
@@ -536,11 +259,11 @@ if deployed_at:
     merged["deployedAt"] = deployed_at
 path.write_text(json.dumps(merged, indent=2) + "\n")
 suffix = f" @{merged['gitCommitShort']}" if merged.get("gitCommitShort") else ""
-print("Ver:B{backend}/F{frontend}/R{rule}{suffix} PBS:B{pbsBackend}/F{pbsFrontend}".format(**merged, suffix=suffix))
+print("Ver:B{backend}/F{frontend}/R{rule}{suffix}".format(**merged, suffix=suffix))
 PY
     ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/live-server'"
     scp "$local_path" "$PORTAL:$remote_path" >>"$DEPLOY_LOG" 2>&1
-    ok "[version] 已同步 version.tmp → PortalServer ($(python3 -c "import json;print(json.load(open('$local_path')))" 2>/dev/null || cat "$local_path" | tr -d '\n'))"
+    ok "[version] 已同步 version.tmp → PortalServer"
 }
 
 # ── live-server ───────────────────────────────────────────────────
@@ -555,7 +278,7 @@ build_live() {
 push_live() {
     generate_rust_bins_manifest
     log "[live-server] 推送 dist → PortalServer..."
-    ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/live-server/dist' '/home/yuan.z/rois/packages'"
+    ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/live-server/dist' '$PORTAL_DEV/packages'"
     # 推送编译产物
     rsync -az --delete \
         "$ROIS_AI/live-server/dist/" \
@@ -579,6 +302,7 @@ push_live() {
             "$PORTAL:$PORTAL_DEV/live-server/" >>"$DEPLOY_LOG" 2>&1
         ssh "$PORTAL" "cd '$PORTAL_DEV/live-server' && npm ci --omit=dev --legacy-peer-deps --prefer-offline" \
             >>"$DEPLOY_LOG" 2>&1
+        record_pkglock_hash "live-server"
         ok "[live-server] 生产依赖安装完成"
     fi
     ok "[live-server] 推送完成"
@@ -590,9 +314,10 @@ restart_live() {
     ok "[live-server] 重启完成"
 }
 
-# Rust 法规引擎二进制 — ruletool + check-* 来自 rule-engine-rs/Cargo.toml [[bin]]（单一来源：
-# deploy/common/list-rule-engine-bins.mjs）。一次 `cargo build --release` 编译全部目标，本机编译后
-# 逐个推送到 PortalServer 同名路径。
+# ── rule-engine-rs（Rust 法规二进制）──────────────────────────────
+# ruletool + check-* 来自 rule-engine-rs/Cargo.toml [[bin]]（单一来源：
+# deploy/common/list-rule-engine-bins.mjs）。一次 `cargo build --release` 编译全部目标，
+# 本机编译后逐个推送到 PortalServer 同名路径。
 
 # Populate RUST_BINS from rule-engine-rs/Cargo.toml [[bin]] (single source of truth).
 generate_rust_bins_manifest() {
@@ -613,11 +338,33 @@ load_rust_bins() {
     fi
 }
 
+# Rust 法规二进制变化检测 — 基于 rule-engine-rs 当前源码/提交状态。
+rust_bins_hash() {
+    (
+        cd "$ROIS_AI/rule-engine-rs"
+        git rev-parse HEAD 2>/dev/null || true
+        git status --short --untracked-files=no 2>/dev/null || true
+        git ls-files -z 2>/dev/null | xargs -0 sha256sum 2>/dev/null || true
+    ) | sha256sum | cut -d' ' -f1
+}
+
+rust_bins_changed() {
+    local cur_hash
+    cur_hash=$(rust_bins_hash)
+    local last_hash
+    last_hash=$(cat "$HASH_DIR/ruletool.pkghash" 2>/dev/null || echo "")
+    [ -z "$cur_hash" ] || [ "$cur_hash" != "$last_hash" ]
+}
+
+mark_rust_bins_synced() {
+    local cur_hash
+    cur_hash=$(rust_bins_hash)
+    [ -n "$cur_hash" ] && echo "$cur_hash" > "$HASH_DIR/ruletool.pkghash"
+}
+
 push_rust_bins() {
     local remote_dir="$PORTAL_DEV/rule-engine-rs/target/release"
     load_rust_bins
-    ensure_rule_engine_rs_submodule_ssh
-    git -C "$ROIS_AI" submodule update --init --recursive rule-engine-rs >>"$DEPLOY_LOG" 2>&1
     local missing=0
     for bin in "${RUST_BINS[@]}"; do
         if ! ssh "$PORTAL" "[ -f '$remote_dir/$bin' ]" 2>/dev/null; then missing=1; break; fi
@@ -625,7 +372,6 @@ push_rust_bins() {
     if rust_bins_changed || [ "$missing" -eq 1 ]; then
         log "[rust-bins] 本机编译全部法规引擎二进制 (ruletool + check-*)..."
         (
-            source "$HOME/.cargo/env"
             cd "$ROIS_AI/rule-engine-rs"
             cargo build --release --quiet
         ) >>"$DEPLOY_LOG" 2>&1
@@ -647,112 +393,6 @@ push_rust_bins() {
     fi
 }
 
-# ── pbs-server ────────────────────────────────────────────────────
-build_pbs_srv() {
-    log "[pbs-server] 本机构建..."
-    ensure_local_node_build_deps "pbs-server" "tsc"
-    cd "$ROIS_AI/pbs-server" && npm run build >>"$DEPLOY_LOG" 2>&1
-    ok "[pbs-server] 构建完成"
-}
-
-# pbs-server 的 rust-rule-runner 会动态 import live-server 的合法性 core
-# (legality-recheck-core.mjs / live-legality.mjs / legality-rp-window.mjs) 并 spawn
-# rule-engine-rs 的 check-* 二进制。若远程缺失这些（例如只部署 pbs-server 而未部署
-# live-server），Bid Feedback 的 eligibility 会静默降级 unknown。校验存在性，缺失则
-# fail 并提示先部署 live-server。
-ensure_pbs_rust_deps() {
-    local core_scripts=(legality-recheck-core.mjs live-legality.mjs legality-rp-window.mjs)
-    local missing_scripts=""
-    for f in "${core_scripts[@]}"; do
-        if ! ssh "$PORTAL" "[ -f '$PORTAL_DEV/live-server/scripts/$f' ]" 2>/dev/null; then
-            missing_scripts="$missing_scripts $f"
-        fi
-    done
-    if [ -n "$missing_scripts" ]; then
-        fail "[pbs-server] RUST 依赖缺失：远程 live-server/scripts 缺少:$missing_scripts。请先执行 live-server 部署（推送 scripts + RUST 二进制）后再部署 pbs-server。"
-    fi
-    local remote_dir="$PORTAL_DEV/rule-engine-rs/target/release"
-    load_rust_bins
-    local missing=0
-    for bin in "${RUST_BINS[@]}"; do
-        if ! ssh "$PORTAL" "[ -f '$remote_dir/$bin' ]" 2>/dev/null; then missing=1; break; fi
-    done
-    if [ "$missing" -eq 1 ]; then
-        fail "[pbs-server] RUST 二进制缺失于 $remote_dir。请先执行 live-server 部署或 rust-bins 推送。"
-    fi
-    ok "[pbs-server] RUST 法规依赖校验通过（live core scripts + check-* 二进制就位）"
-}
-
-push_pbs_srv() {
-    log "[pbs-server] 推送 dist → PortalServer..."
-    ensure_pbs_rust_deps
-    ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/pbs-server/dist'"
-    rsync -az --delete \
-        "$ROIS_AI/pbs-server/dist/" \
-        "$PORTAL:$PORTAL_DEV/pbs-server/dist/" \
-        >>"$DEPLOY_LOG" 2>&1
-    # PBS backend/frontend counters live in the same live-server/version.tmp file.
-    sync_version_tmp
-    push_contracts
-    if pkglock_changed "pbs-server"; then
-        log "[pbs-server] package-lock 有变化，推送并安装生产依赖..."
-        scp "$ROIS_AI/pbs-server/package.json" \
-            "$ROIS_AI/pbs-server/package-lock.json" \
-            "$PORTAL:$PORTAL_DEV/pbs-server/" >>"$DEPLOY_LOG" 2>&1
-        ssh "$PORTAL" "cd '$PORTAL_DEV/pbs-server' && npm ci --omit=dev --legacy-peer-deps --prefer-offline" \
-            >>"$DEPLOY_LOG" 2>&1
-        ok "[pbs-server] 生产依赖安装完成"
-        record_pkglock_hash "pbs-server"
-    fi
-    ok "[pbs-server] 推送完成"
-}
-
-restart_pbs_srv() {
-    log "[pbs-server] 远程重启..."
-    ssh "$PORTAL" "bash '$PORTAL_DEV/service.sh' restart pbs-server"
-    ok "[pbs-server] 重启完成"
-}
-
-# ── connector-server ──────────────────────────────────────────────
-build_connector() {
-    log "[connector-server] 本机构建..."
-    ensure_local_node_build_deps "connector-server" "tsc"
-    cd "$ROIS_AI/connector-server" && npm run build >>"$DEPLOY_LOG" 2>&1
-    ok "[connector-server] 构建完成"
-}
-
-push_connector() {
-    log "[connector-server] 推送 dist → PortalServer..."
-    ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/connector-server/dist'"
-    rsync -az --delete \
-        "$ROIS_AI/connector-server/dist/" \
-        "$PORTAL:$PORTAL_DEV/connector-server/dist/" \
-        >>"$DEPLOY_LOG" 2>&1
-    if [ -f "$ROIS_AI/connector-server/package-lock.json" ] && pkglock_changed "connector-server"; then
-        log "[connector-server] package-lock 有变化，推送并安装生产依赖..."
-        scp "$ROIS_AI/connector-server/package.json" \
-            "$ROIS_AI/connector-server/package-lock.json" \
-            "$PORTAL:$PORTAL_DEV/connector-server/" >>"$DEPLOY_LOG" 2>&1
-        ssh "$PORTAL" "cd '$PORTAL_DEV/connector-server' && npm ci --omit=dev --legacy-peer-deps --prefer-offline" \
-            >>"$DEPLOY_LOG" 2>&1
-        ok "[connector-server] 生产依赖安装完成"
-    elif [ ! -f "$ROIS_AI/connector-server/package-lock.json" ] && pkgjson_changed "connector-server"; then
-        log "[connector-server] package.json 有变化（无 package-lock），推送并安装生产依赖..."
-        scp "$ROIS_AI/connector-server/package.json" \
-            "$PORTAL:$PORTAL_DEV/connector-server/" >>"$DEPLOY_LOG" 2>&1
-        ssh "$PORTAL" "cd '$PORTAL_DEV/connector-server' && npm install --omit=dev --legacy-peer-deps --prefer-offline" \
-            >>"$DEPLOY_LOG" 2>&1
-        ok "[connector-server] 生产依赖安装完成"
-    fi
-    ok "[connector-server] 推送完成"
-}
-
-restart_connector() {
-    log "[connector-server] 远程重启..."
-    ssh "$PORTAL" "bash '$PORTAL_DEV/service.sh' restart connector-server"
-    ok "[connector-server] 重启完成"
-}
-
 # ── engine-server（Python，无 TS 构建，推送源码）─────────────────
 # 推送边界：
 #   - 推：源码、模板 config.yaml（仅 ${ENV} 引用，不含真密钥）
@@ -767,7 +407,7 @@ push_engine() {
         "$ROIS_AI/engine-server/" \
         "$PORTAL:$PORTAL_DEV/engine-server/" \
         >>"$DEPLOY_LOG" 2>&1
-    # 保证所有 shell 脚本可执行（无论推送者是 yuan.z 还是 root）
+    # 保证所有 shell 脚本可执行
     ssh "$PORTAL" "find '$PORTAL_DEV/engine-server' -name '*.sh' | xargs chmod +x" >>"$DEPLOY_LOG" 2>&1
     local has_venv
     has_venv=$(ssh "$PORTAL" "[ -d '$PORTAL_DEV/engine-server/venv' ] && echo yes || echo no" 2>/dev/null)
@@ -783,16 +423,17 @@ push_engine() {
     fi
     # F8 运行时资产（gitignore 排除，从本机直接推送）
     log "[engine-server] 同步 F8 aux 文件（tzdata / Database_connection.txt）..."
+    ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/engine-server/F8/tzdata'"
     rsync -az \
         "$ROIS_AI/engine-server/F8/tzdata/" \
-        "$PORTAL:$PORTAL_DEV/engine-server/F8/tzdata/" >>"$DEPLOY_LOG" 2>&1
-    rsync -az \
-        "$ROIS_AI/engine-server/F8/Database_connection.txt" \
-        "$PORTAL:$PORTAL_DEV/engine-server/F8/Database_connection.txt" >>"$DEPLOY_LOG" 2>&1
+        "$PORTAL:$PORTAL_DEV/engine-server/F8/tzdata/" >>"$DEPLOY_LOG" 2>&1 || true
+    if [ -f "$ROIS_AI/engine-server/F8/Database_connection.txt" ]; then
+        rsync -az \
+            "$ROIS_AI/engine-server/F8/Database_connection.txt" \
+            "$PORTAL:$PORTAL_DEV/engine-server/F8/Database_connection.txt" >>"$DEPLOY_LOG" 2>&1 || true
+    fi
     log "[engine-server] 校验远端源码已与本机同步..."
     local drift
-    # 过滤 metadata-only 行（以 '.' 开头，如目录/文件 mtime 变化 `.d..t......`）——
-    # 这些不是内容差异（venv 在远端创建会改父目录 mtime，误报会导致部署中止）
     drift=$(rsync -azcni --no-perms --delete \
         "${ENGINE_RSYNC_EXCLUDES[@]}" \
         "$ROIS_AI/engine-server/" \
@@ -818,7 +459,7 @@ verify_engine_jwt_auth() {
     local result
     result=$(ssh "$PORTAL" "bash -s" <<'REMOTE'
 set -euo pipefail
-ENV_DIR=/home/rois/sit/env
+ENV_DIR=/home/ecs-user/sit/env
 LIVE_ENV="$ENV_DIR/live-server.env"
 ENG_ENV="$ENV_DIR/engine-server.env"
 
@@ -842,8 +483,7 @@ if [ "$live" != "$eng" ]; then
     exit 0
 fi
 
-# Prefer engine venv (PyJWT); fall back to system python3.
-PY=/home/rois/sit/engine-server/venv/bin/python3
+PY=/home/ecs-user/sit/engine-server/venv/bin/python3
 [ -x "$PY" ] || PY=python3
 
 "$PY" - <<'PY'
@@ -856,7 +496,7 @@ def read_secret(path: str) -> str:
             return line.split("=", 1)[1].strip().strip('"').strip("'")
     raise SystemExit("FAIL:JWT_SECRET not found")
 
-secret = read_secret("/home/rois/sit/env/live-server.env")
+secret = read_secret("/home/ecs-user/sit/env/live-server.env")
 try:
     import jwt
 except ImportError:
@@ -889,7 +529,6 @@ try:
     with urllib.request.urlopen(req, timeout=20) as resp:
         print(f"OK:{resp.status}")
 except urllib.error.HTTPError as e:
-    # 401 = auth still broken; any other HTTP status means JWT was accepted.
     if e.code == 401:
         print("FAIL:401 Invalid authentication credentials")
     else:
@@ -913,33 +552,6 @@ REMOTE
     esac
 }
 
-# ── PBS 列生成优化引擎验证 ────────────────────────────────────────
-# run_pipeline.sh 预装于 PortalServer /home/rois/，无需从本机推送。
-# 部署时仅验证可执行性；缺失时尝试 chmod，仍失败则警告（不阻断部署）。
-verify_pbs_pipeline() {
-    local script="/home/rois/PBS_column_based_algorithm-main/run_pipeline.sh"
-    log "[pbs-pipeline] 验证 run_pipeline.sh..."
-    local status
-    status=$(ssh "$PORTAL" "[ -x '$script' ] && echo ok || ([ -f '$script' ] && echo noexec || echo missing)" 2>/dev/null)
-    case "$status" in
-        ok)
-            ok "[pbs-pipeline] run_pipeline.sh 已就绪"
-            ;;
-        noexec)
-            log "[pbs-pipeline] 文件存在但不可执行，尝试 chmod +x..."
-            ssh "$PORTAL" "chmod +x '$script'" >>"$DEPLOY_LOG" 2>&1 || true
-            if ssh "$PORTAL" "[ -x '$script' ]" 2>/dev/null; then
-                ok "[pbs-pipeline] chmod 成功，run_pipeline.sh 已就绪"
-            else
-                warn "[pbs-pipeline] chmod 失败（权限不足），engine-server 调用时将报错"
-            fi
-            ;;
-        *)
-            warn "[pbs-pipeline] $script 不存在于 PortalServer — engine-server 调用 PBS 优化时将失败"
-            ;;
-    esac
-}
-
 # ── gantt 前端 ────────────────────────────────────────────────────
 build_gantt() {
     log "[gantt] 本机构建（base=/altair/ prefix=）..."
@@ -951,24 +563,9 @@ build_gantt() {
 }
 
 push_gantt() {
+    # gantt dist 写到本机，由本地 nginx 提供 /altair/
     atomic_local_copy "$ROIS_AI/gantt/dist" "$LOCAL_WEB_DEV/gantt" "gantt"
     # Frontend counter is bumped on gantt build; UI reads it from live-server version API.
-    sync_version_tmp
-}
-
-# ── pbs-portal 前端 ──────────────────────────────────────────────
-build_pbs_ui() {
-    log "[pbs-portal] 本机构建（base=/pbs/ api=/pbs/api）..."
-    cd "$ROIS_AI/pbs-portal"
-    # Use vite build directly — tsc type-check includes test files with missing peer deps
-    env $(grep -v '^#' "$ENV_DIR/pbs-portal.build.env" | grep -v '^$' | xargs) \
-        npx vite build >>"$DEPLOY_LOG" 2>&1
-    ok "[pbs-portal] 构建完成"
-}
-
-push_pbs_ui() {
-    atomic_local_copy "$ROIS_AI/pbs-portal/dist" "$LOCAL_WEB_DEV/pbs" "pbs-portal"
-    # PBS frontend counter is bumped on portal build; shared version.tmp still lives under live-server.
     sync_version_tmp
 }
 
@@ -979,8 +576,7 @@ sync_service_sh() {
 }
 
 # ── 解析参数 & 执行 ───────────────────────────────────────────────
-DO_LIVE=0 DO_PBS_SRV=0 DO_CONNECTOR=0 DO_ENGINE=0
-DO_GANTT=0 DO_PBS_UI=0
+DO_LIVE=0 DO_ENGINE=0 DO_GANTT=0
 DO_ALL=0
 
 if [ $# -eq 0 ]; then DO_ALL=1; fi
@@ -988,19 +584,15 @@ if [ $# -eq 0 ]; then DO_ALL=1; fi
 for arg in "$@"; do
     case "$arg" in
         --live)    DO_LIVE=1 ;;
-        --pbs-srv) DO_PBS_SRV=1 ;;
-        --connector) DO_CONNECTOR=1 ;;
         --engine)  DO_ENGINE=1 ;;
         --gantt)   DO_GANTT=1 ;;
-        --pbs-ui)  DO_PBS_UI=1 ;;
         --all)     DO_ALL=1 ;;
         *) echo "未知参数: $arg"; exit 1 ;;
     esac
 done
 
 if [ $DO_ALL -eq 1 ]; then
-    DO_LIVE=1; DO_PBS_SRV=1; DO_CONNECTOR=1; DO_ENGINE=1
-    DO_GANTT=1; DO_PBS_UI=1
+    DO_LIVE=1; DO_ENGINE=1; DO_GANTT=1
 fi
 
 # 每次推送前同步 service.sh（轻量，<1KB）
@@ -1008,31 +600,22 @@ sync_service_sh
 
 # 构建阶段（本机，串行以保持日志清晰）
 if [ $DO_LIVE    -eq 1 ]; then build_live;    fi
-if [ $DO_PBS_SRV -eq 1 ]; then build_pbs_srv; fi
-if [ $DO_CONNECTOR -eq 1 ]; then build_connector; fi
 if [ $DO_GANTT   -eq 1 ]; then build_gantt;   fi
-if [ $DO_PBS_UI  -eq 1 ]; then build_pbs_ui;  fi
 
 # 推送 + 重启阶段（依赖构建结果）
 # Publish local static frontends before backend post-deploy probes. The frontends
 # only copy to this WebServer; they should not be blocked by later Portal/Rust
 # steps such as rule-engine-rs binary sync.
 if [ $DO_GANTT   -eq 1 ]; then push_gantt;   fi
-if [ $DO_PBS_UI  -eq 1 ]; then push_pbs_ui;  fi
 
 if [ $DO_LIVE    -eq 1 ]; then push_live;    push_rust_bins;    restart_live; fi
-if [ $DO_PBS_SRV -eq 1 ]; then push_pbs_srv; restart_pbs_srv; fi
-if [ $DO_CONNECTOR -eq 1 ]; then push_connector; restart_connector; fi
-# solver 必须在 engine 重启前就绪，否则重启窗口内 Run 会秒失败 ModuleNotFoundError
 if [ $DO_ENGINE  -eq 1 ]; then
     push_engine
-    # push_ro_solver
     restart_engine
     verify_engine_jwt_auth
-    verify_pbs_pipeline
 fi
 
 # Any ai-rois module deployment should refresh the runtime git version shown by the UI.
-if [ $((DO_LIVE + DO_PBS_SRV + DO_CONNECTOR + DO_ENGINE + DO_GANTT + DO_PBS_UI)) -gt 0 ]; then
+if [ $((DO_LIVE + DO_ENGINE + DO_GANTT)) -gt 0 ]; then
     sync_version_tmp
 fi
