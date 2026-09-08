@@ -827,7 +827,7 @@ const positioningFor = (
     .filter((flight) => flight.depArp.toUpperCase() === supportBase.toUpperCase()
       && flight.arvArp.toUpperCase() === recoveryBase.toUpperCase()
       && finiteTime(flight.schDepDtUtc) >= now + minLeadMs
-      && finiteTime(flight.schDepDtUtc) <= source.start - maxLeadMs
+      && finiteTime(flight.schDepDtUtc) >= source.start - maxLeadMs
       && finiteTime(flight.schArvDtUtc) <= source.start - config.reserveBeforeHours * 3600000)
     .sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))[0]
   if (!outbound) return null

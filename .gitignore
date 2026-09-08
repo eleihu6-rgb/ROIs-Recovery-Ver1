@@ -279,3 +279,8 @@ deploy/uat/.pkghash/
 
 # Redis runtime snapshot (contains crew PII) — never commit
 dump.rdb
+
+# Local dev scratch (not for commit)
+.dev-logs/
+.local/
+

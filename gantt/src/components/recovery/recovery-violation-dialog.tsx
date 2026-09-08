@@ -14,6 +14,7 @@ import { useFilterStore } from '@/stores/filter-store'
 import { useDraftStore } from '@/stores/draft-store'
 import { useLockStore } from '@/stores/lock-store'
 import { legalityPreviewApi } from '@/services/legality-preview-api'
+import { flightApi } from '@/services/flight-api'
 import { buildRecoveryDraftPlan } from '@/services/recovery-draft'
 import { buildRecoveryPlans, isRosterCompleted, recoveryRuleFailures, ROSTER_STABILITY_FORMULA, type RecoveryAlertSnapshot, type RecoveryFlightSnapshot, type RecoveryOption, type RecoveryPlans } from '@/services/recovery-candidates'
 import { notify } from '@/utils/notify'
@@ -231,6 +232,81 @@ const planTone = (planType: RecoveryPlanType) => planType === 'roster'
       selectedRow: 'bg-teal-500/[0.12]',
     }
 
+/**
+ * Fetch candidate DHD flights for Cross-base positioning from the `flight` table.
+ *
+ * The source Pairing's loaded list view does NOT carry segments, so we cannot
+ * derive DHD candidates from `pairing-store`. Instead we query the
+ * `/api/flight` (flat / `grouping: 'none'`) endpoint for the date window that
+ * covers every source Roster ± 1 day (the 2-6h positioning lead allowed by
+ * `crossBaseConfig.maxFlightLeadHours` is well within a 24h buffer).
+ *
+ * The user-supplied domain correction: DHD candidates are flights the support
+ * crew would take AS PASSENGERS, so they do NOT need to come from a roster
+ * assignment of another Crew, and they do NOT need to match the recovered
+ * Pairing's fleet. Only the route (depArp -> arvArp) and the scheduled time
+ * window are constrained.
+ */
+async function fetchRecoveryFlights(
+  selected: ViolationRow[],
+  items: RosterItem[],
+  dateRange: { start: Date; end: Date },
+): Promise<RecoveryFlightSnapshot[]> {
+  const targetPairingIds = new Set(selected.map((row) => Number(row.pairingId)).filter((value) => Number.isFinite(value)))
+  if (targetPairingIds.size === 0) return []
+
+  // Compute the date window from the source Roster items. The 1-day buffer
+  // covers the 2-6h positioning lead (maxFlightLeadHours).
+  const sourceStarts: number[] = []
+  const sourceEnds: number[] = []
+  for (const item of items) {
+    if (item.pairingId == null || !targetPairingIds.has(Number(item.pairingId))) continue
+    const start = item.schStrDtUtc ? new Date(item.schStrDtUtc).getTime() : NaN
+    const end = item.schEndDtUtc ? new Date(item.schEndDtUtc).getTime() : NaN
+    if (Number.isFinite(start)) sourceStarts.push(start)
+    if (Number.isFinite(end)) sourceEnds.push(end)
+  }
+  if (sourceStarts.length === 0 || sourceEnds.length === 0) return []
+
+  const oneDayMs = 24 * 3600 * 1000
+  const earliest = new Date(Math.min(...sourceStarts) - oneDayMs)
+  const latest = new Date(Math.max(...sourceEnds) + oneDayMs)
+  // Clamp the window to the loaded Live date range so a stale source roster
+  // date does not blow out the query to a multi-week window.
+  const windowStart = new Date(Math.max(earliest.getTime(), dateRange.start.getTime()))
+  const windowEnd = new Date(Math.min(latest.getTime(), dateRange.end.getTime() + oneDayMs))
+  if (windowEnd.getTime() <= windowStart.getTime()) return []
+
+  const startDate = windowStart.toISOString().slice(0, 10)
+  const endDate = windowEnd.toISOString().slice(0, 10)
+
+  try {
+    const response = await flightApi.listFlat({
+      startDate,
+      endDate,
+      pageSize: 10000,
+    })
+    return response.items
+      .filter((flight) => !flight.isCancelled && flight.depArp && flight.arvArp)
+      .map((flight) => ({
+        id: flight.id,
+        fltNum: flight.fltNum,
+        depArp: flight.depArp,
+        arvArp: flight.arvArp,
+        schDepDtUtc: flight.schDepDtUtc,
+        schArvDtUtc: flight.schArvDtUtc,
+        fleet: flight.fleet ?? '',
+        airline: flight.airline ?? '',
+        blockMinutes: flight.blkMin ?? 0,
+      }))
+  } catch (err) {
+    // Best-effort: a failed flight fetch must not block Roster / Standby plans
+    // from being generated. Cross-base options simply fall back to no candidates.
+    notify.warning(`Failed to load DHD candidate flights: ${err instanceof Error ? err.message : 'unknown error'}. Cross-base options will be unavailable for this plan.`)
+    return []
+  }
+}
+
 export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) => {
   const mainItems = useRosterStore((s) => s.main.rosterItems)
   const subItems = useRosterStore((s) => s.sub.rosterItems)
@@ -298,7 +374,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     }
   }, [recoveryPreviewOptionId])
 
-  const buildPlans = (selectedRows: ViolationRow[]) => {
+  const buildPlans = async (selectedRows: ViolationRow[]) => {
     const selected = selectedRows.filter((row) => row.ruleCode === '8004' && row.pairingId != null && row.canRecover)
     if (selected.length === 0) {
       notify.info('Select at least one active 8004 alert to generate recovery options.')
@@ -319,22 +395,19 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
         annualFlightMinutes: crewStatsMap.get(entry.crew.crewId)?.ybh ?? items.find((item) => item.crewId === entry.crew.crewId)?.ybh ?? 0,
         fleetQuals: currentFleetQuals(entry.crew),
       }))
-    const loadedFlights: RecoveryFlightSnapshot[] = pairings.flatMap((entry) => entry.segments ?? []).map((segment) => ({
-      id: segment.fltId ?? -1,
-      fltNum: segment.fltNum,
-      depArp: segment.depArp,
-      arvArp: segment.arvArp,
-      schDepDtUtc: segment.schStrDtUtc,
-      schArvDtUtc: segment.schEndDtUtc,
-      fleet: '',
-      airline: segment.airline,
-      blockMinutes: Math.max(0, Math.round((new Date(segment.schEndDtUtc).getTime() - new Date(segment.schStrDtUtc).getTime()) / 60000)),
-    })).filter((flight) => flight.id > 0)
+    // Cross-base positioning inserts DHD flights into the source Pairing duties, so
+    // it needs candidate DHD legs from the `flight` table (NOT from the loaded
+    // Pairing list, which doesn't carry segments). Query a window covering the
+    // source Roster ± 1 day to cover the 2-6h positioning lead allowed by the
+    // cross-base config. Fleet is intentionally NOT filtered — the DHD crew is
+    // travelling as a passenger, the leg is a flight-level attribute and the crew
+    // is not required to hold that fleet qualification for a DHD seat.
+    const recoveryFlights = await fetchRecoveryFlights(selected, items, dateRange)
     const buildInput = {
       items,
       crews: crewSnapshots,
       rankOrder,
-      flights: loadedFlights,
+      flights: recoveryFlights,
       pairingCompositions: pairings.flatMap((entry) => (entry.pairing.composition ?? []).map((composition) => ({
         pairingId: entry.pairing.id,
         actingRank: composition.rank,
@@ -357,7 +430,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
 
   useEffect(() => {
     if (!open || selectedAlerts.length === 0) return
-    buildPlans(selectedAlerts.map((selectedAlert) => ({ ...selectedAlert, canRecover: true })))
+    void buildPlans(selectedAlerts.map((selectedAlert) => ({ ...selectedAlert, canRecover: true })))
   }, [open, selectedAlerts])
 
   const selectOption = (option: RecoveryOption) => {
@@ -566,7 +639,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
               <table className="w-full border-collapse text-2xs" data-testid="recovery-violation-table">
                 <thead className="sticky top-0 z-10 bg-muted/95"><tr className="border-b border-border text-left text-3xs uppercase tracking-wide text-muted-foreground"><th className="px-2 py-2">Rule ID</th><th className="px-2 py-2">CrewID</th><th className="px-2 py-2">PairingID</th><th className="px-2 py-2">Flight date</th><th className="px-2 py-2">Flight</th><th className="px-2 py-2">Detail</th><th className="px-2 py-2">Recovery</th></tr></thead>
                 <tbody>{rows.map((row) => <tr key={`${row.id}-${row.crewId}-${row.pairingId}`} className={["border-b border-border/50 align-top", selectedRow?.id === row.id ? 'bg-primary/10' : 'hover:bg-accent/40'].join(' ')}>
-                  <td className="whitespace-nowrap px-2 py-2 font-mono font-semibold">{row.ruleCode}</td><td className="whitespace-nowrap px-2 py-2 font-mono">{row.crewId}</td><td className="whitespace-nowrap px-2 py-2 font-mono">{row.pairingId}</td><td className="whitespace-nowrap px-2 py-2">{row.flightDate}</td><td className="whitespace-nowrap px-2 py-2 font-medium">{row.flightNumber}</td><td className="min-w-0 px-2 py-2 text-muted-foreground"><span className="line-clamp-3">{row.detail}</span></td><td className="px-2 py-2">{row.canRecover ? <button type="button" title="Recovery (Ctrl/Cmd+R)" aria-keyshortcuts="Control+R Meta+R" className="inline-flex items-center gap-1 rounded bg-primary px-2 py-1 text-2xs font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => buildPlans([row])} data-testid="recovery-button"><ArrowRight className="h-3 w-3" /><span><span className="underline underline-offset-2">R</span>ecovery</span></button> : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="whitespace-nowrap px-2 py-2 font-mono font-semibold">{row.ruleCode}</td><td className="whitespace-nowrap px-2 py-2 font-mono">{row.crewId}</td><td className="whitespace-nowrap px-2 py-2 font-mono">{row.pairingId}</td><td className="whitespace-nowrap px-2 py-2">{row.flightDate}</td><td className="whitespace-nowrap px-2 py-2 font-medium">{row.flightNumber}</td><td className="min-w-0 px-2 py-2 text-muted-foreground"><span className="line-clamp-3">{row.detail}</span></td><td className="px-2 py-2">{row.canRecover ? <button type="button" title="Recovery (Ctrl/Cmd+R)" aria-keyshortcuts="Control+R Meta+R" className="inline-flex items-center gap-1 rounded bg-primary px-2 py-1 text-2xs font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void buildPlans([row])} data-testid="recovery-button"><ArrowRight className="h-3 w-3" /><span><span className="underline underline-offset-2">R</span>ecovery</span></button> : <span className="text-muted-foreground">—</span>}</td>
                 </tr>)}</tbody>
               </table>
             )}
