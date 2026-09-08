@@ -144,6 +144,46 @@ export interface RecoveryPlanGroup {
   excludedOptions: RecoveryOption[]
 }
 
+/**
+ * Per-candidate diagnostic explaining why a cross-base option did or did not
+ * surface. Always populated when buildRecoveryPlans runs (cheap), regardless of
+ * whether the option ends up in crossBase.options. Used by the Alert Center
+ * Recovery dialog to log structured traces for offline analysis of empty
+ * crossBase groups.
+ */
+export interface CrossBaseCandidateTrace {
+  crewId: string
+  crewName: string
+  supportBase: string
+  /** Rejected before the positioning search (e.g. rank/fleet/base mismatch). */
+  hardRejection: string | null
+  /** Number of DHD candidate flights seen from the `flight` table for the supportBase -> recoveryBase route in the loaded window. */
+  candidateFlightCount: number
+  /** Earliest candidate departure (UTC ISO) found in the loaded window for the outbound route. null when no candidate was visible. */
+  earliestOutboundDep: string | null
+  /** Latest candidate arrival (UTC ISO) found in the loaded window for the outbound route. null when no candidate was visible. */
+  latestOutboundArv: string | null
+  /** Positioning window the source Roster imposed on the outbound leg. */
+  outboundWindow: { earliestDepUtc: string; latestDepUtc: string; latestArvUtc: string } | null
+  /** Outbound filter outcomes (which constraint was the deal-breaker). */
+  outboundFilterResult: 'matched' | 'no-candidate' | 'too-early' | 'too-late' | 'arrives-too-late'
+  /** Outbound flight picked when matched. */
+  outbound: RecoveryFlightSnapshot | null
+  /** Inbound filter outcomes. */
+  inboundFilterResult: 'matched' | 'no-candidate' | 'too-early' | 'too-late'
+  inbound: RecoveryFlightSnapshot | null
+  /** Cross-base positioning result (null if no positioning could be assembled). */
+  positioningResult: 'ok' | 'no-outbound' | 'no-inbound'
+  /** True when the candidate is free for the DHD positioning window (no overlap with loaded items, excluding the optional excludedPairingId). */
+  freeForPositioning: boolean | null
+  /** Loaded item count for this candidate (informational). */
+  loadedItemCount: number
+  /** True if the candidate was ultimately surfaced (crossBase.options includes them). */
+  surfaced: boolean
+  /** Mode(s) the candidate was surfaced under. */
+  surfacedModes: ('cross-base-standby' | 'cross-base-swap' | 'cross-base-destination')[]
+}
+
 export interface RecoveryPlans {
   alert: RecoveryAlertSnapshot
   /** All selected alerts represented by this plan. `alert` remains the first alert for compatibility. */
@@ -151,7 +191,21 @@ export interface RecoveryPlans {
   roster: RecoveryPlanGroup
   standby: RecoveryPlanGroup
   crossBase: RecoveryPlanGroup
+  /** Per-candidate trace for the cross-base plan, always populated when buildRecoveryPlans runs. */
+  crossBaseTrace: CrossBaseCandidateTrace[]
+  /** Diagnostic context the cross-base trace was built against. */
+  crossBaseContext: {
+    sourceCrewId: string
+    sourcePairingId: number | null
+    recoveryBase: string | null
+    requiredFleets: string[]
+    sourceStartUtc: string | null
+    sourceEndUtc: string | null
+    loadedFlightCount: number
+    loadedFlightWindow: { startDate: string; endDate: string } | null
+  }
 }
+
 
 export interface BuildRecoveryPlansInput {
   items: RosterItem[]
@@ -808,6 +862,160 @@ const snapshotFlightsFromItems = (items: RosterItem[]): RecoveryFlightSnapshot[]
   }).filter((flight) => flight.depArp && flight.arvArp)
 }
 
+interface PositioningTrace {
+  /** All loaded flights matching the supportBase -> recoveryBase route (no time filter). */
+  routeCandidates: RecoveryFlightSnapshot[]
+  /** Earliest candidate departure (UTC ISO) found in the loaded flights for the outbound route. */
+  earliestOutboundDep: string | null
+  /** Latest candidate arrival (UTC ISO) found in the loaded flights for the outbound route. */
+  latestOutboundArv: string | null
+  /** The exact window the outbound filter applied (informational). */
+  outboundWindow: { earliestDepUtc: string; latestDepUtc: string; latestArvUtc: string }
+  /** Why the outbound filter rejected (or 'matched'). */
+  outboundResult: 'matched' | 'no-candidate' | 'too-early' | 'too-late' | 'arrives-too-late'
+  /** The picked outbound flight, when matched. */
+  outbound: RecoveryFlightSnapshot | null
+  /** Why the inbound filter rejected (or 'matched'). */
+  inboundResult: 'matched' | 'no-candidate' | 'too-early' | 'too-late'
+  /** The picked inbound flight, when matched. */
+  inbound: RecoveryFlightSnapshot | null
+}
+
+interface PositioningOutcome {
+  positioning: RecoveryPositioning | null
+  trace: PositioningTrace
+}
+
+/**
+ * Compute the DHD positioning (outbound + inbound) for a support crew, and
+ * capture a trace explaining why the candidate did or did not match. The trace
+ * is always populated, even when no positioning is found, so empty crossBase
+ * groups can be diagnosed offline.
+ */
+const positioningForWithTrace = (
+  flights: RecoveryFlightSnapshot[],
+  source: RosterGroup,
+  supportBase: string,
+  recoveryBase: string,
+  now: number,
+  config: CrossBaseRecoveryConfig,
+): PositioningOutcome => {
+  const minLeadMs = config.minFlightLeadHours * 3600000
+  const maxLeadMs = config.maxFlightLeadHours * 3600000
+  const outboundWindow = {
+    earliestDepUtc: new Date(Math.max(now + minLeadMs, source.start - maxLeadMs)).toISOString(),
+    latestDepUtc: new Date(source.start - maxLeadMs).toISOString(),
+    latestArvUtc: new Date(source.start - config.reserveBeforeHours * 3600000).toISOString(),
+  }
+  // All loaded flights on the supportBase -> recoveryBase route, regardless of time.
+  const routeCandidates = flights
+    .filter((flight) => flight.depArp.toUpperCase() === supportBase.toUpperCase()
+      && flight.arvArp.toUpperCase() === recoveryBase.toUpperCase())
+  const earliestOutboundDep = routeCandidates.length
+    ? routeCandidates.reduce((acc, f) => (finiteTime(f.schDepDtUtc) < finiteTime(acc.schDepDtUtc) ? f : acc)).schDepDtUtc
+    : null
+  const latestOutboundArv = routeCandidates.length
+    ? routeCandidates.reduce((acc, f) => (finiteTime(f.schArvDtUtc) > finiteTime(acc.schArvDtUtc) ? f : acc)).schArvDtUtc
+    : null
+
+  // Outbound: the support crew must arrive at recoveryBase BEFORE the source
+  // Roster starts (with reserveBeforeHours buffer), and the flight must depart
+  // within the lead window (between minLeadHours from now and maxLeadHours
+  // before the source Roster start).
+  const matchingOutbound = flights
+    .filter((flight) => flight.depArp.toUpperCase() === supportBase.toUpperCase()
+      && flight.arvArp.toUpperCase() === recoveryBase.toUpperCase()
+      && finiteTime(flight.schDepDtUtc) >= now + minLeadMs
+      && finiteTime(flight.schDepDtUtc) >= source.start - maxLeadMs
+      && finiteTime(flight.schArvDtUtc) <= source.start - config.reserveBeforeHours * 3600000)
+    .sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))
+  const outbound = matchingOutbound[0] ?? null
+
+  let outboundResult: PositioningTrace['outboundResult'] = 'matched'
+  if (!outbound) {
+    if (routeCandidates.length === 0) {
+      outboundResult = 'no-candidate'
+    } else {
+      // Classify the closest candidate so the trace tells the user WHY.
+      const byDep = [...routeCandidates].sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))
+      const earliest = byDep[0]
+      const latestArvOk = byDep.some((f) => finiteTime(f.schArvDtUtc) <= source.start - config.reserveBeforeHours * 3600000)
+      if (!latestArvOk) {
+        // All candidates arrive after the latest acceptable arrival window.
+        outboundResult = 'arrives-too-late'
+      } else if (finiteTime(earliest.schDepDtUtc) > source.start - maxLeadMs) {
+        // Earliest candidate is later than the maxLead window => it leaves too late.
+        outboundResult = 'too-late'
+      } else if (finiteTime(earliest.schDepDtUtc) < now + minLeadMs) {
+        // Earliest candidate leaves sooner than the minLead window (and the next ones leave even later) => too early.
+        outboundResult = 'too-early'
+      } else {
+        outboundResult = 'no-candidate'
+      }
+    }
+  }
+
+  // Inbound: only meaningful when an outbound was found.
+  let inbound: RecoveryFlightSnapshot | null = null
+  let inboundResult: PositioningTrace['inboundResult'] = 'no-candidate'
+  if (outbound) {
+    const inboundCandidates = flights
+      .filter((flight) => flight.id !== outbound.id
+        && flight.depArp.toUpperCase() === recoveryBase.toUpperCase()
+        && flight.arvArp.toUpperCase() === supportBase.toUpperCase())
+    const matchingInbound = inboundCandidates
+      .filter((flight) => finiteTime(flight.schDepDtUtc) >= source.end + config.returnAfterHours * 3600000
+        && finiteTime(flight.schDepDtUtc) <= source.end + maxLeadMs)
+      .sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))
+    inbound = matchingInbound[0] ?? null
+    if (inbound) {
+      inboundResult = 'matched'
+    } else if (inboundCandidates.length === 0) {
+      inboundResult = 'no-candidate'
+    } else {
+      const byDep = [...inboundCandidates].sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))
+      const earliest = byDep[0]
+      if (finiteTime(earliest.schDepDtUtc) < source.end + config.returnAfterHours * 3600000) {
+        inboundResult = 'too-early'
+      } else if (finiteTime(earliest.schDepDtUtc) > source.end + maxLeadMs) {
+        inboundResult = 'too-late'
+      } else {
+        inboundResult = 'no-candidate'
+      }
+    }
+  }
+
+  const trace: PositioningTrace = {
+    routeCandidates,
+    earliestOutboundDep,
+    latestOutboundArv,
+    outboundWindow,
+    outboundResult,
+    outbound,
+    inboundResult,
+    inbound,
+  }
+  if (!outbound || !inbound) {
+    return { positioning: null, trace }
+  }
+  return {
+    positioning: {
+      supportBase,
+      recoveryBase,
+      outbound,
+      inbound,
+      minFlightLeadHours: config.minFlightLeadHours,
+      maxFlightLeadHours: config.maxFlightLeadHours,
+      reserveBeforeHours: config.reserveBeforeHours,
+      returnAfterHours: config.returnAfterHours,
+      dhdFlightCost: (outbound.blockMinutes + inbound.blockMinutes) * CROSS_BASE_DHD_COST_PER_MINUTE,
+    },
+    trace,
+  }
+}
+
+// Back-compat wrapper used by the cross-base loop. Always use the trace variant
+// (`positioningForWithTrace`) directly so the per-candidate trace is captured.
 const positioningFor = (
   flights: RecoveryFlightSnapshot[],
   source: RosterGroup,
@@ -815,44 +1023,9 @@ const positioningFor = (
   recoveryBase: string,
   now: number,
   config: CrossBaseRecoveryConfig,
-): RecoveryPositioning | null => {
-  // Cap the outbound positioning window: the outbound DHD must depart at
-  // least `minFlightLeadHours` from now AND at most `maxFlightLeadHours`
-  // before the source Roster start. This enforces the 2-6h lead window
-  // documented for Cross-base positioning and prevents the support Crew
-  // from being sent on stand-by for an unbounded amount of time.
-  const minLeadMs = config.minFlightLeadHours * 3600000
-  const maxLeadMs = config.maxFlightLeadHours * 3600000
-  const outbound = flights
-    .filter((flight) => flight.depArp.toUpperCase() === supportBase.toUpperCase()
-      && flight.arvArp.toUpperCase() === recoveryBase.toUpperCase()
-      && finiteTime(flight.schDepDtUtc) >= now + minLeadMs
-      && finiteTime(flight.schDepDtUtc) >= source.start - maxLeadMs
-      && finiteTime(flight.schArvDtUtc) <= source.start - config.reserveBeforeHours * 3600000)
-    .sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))[0]
-  if (!outbound) return null
-  // Inbound lead is symmetric: depart at least `returnAfterHours` after
-  // the Roster end and at most `maxFlightLeadHours` after it.
-  const inbound = flights
-    .filter((flight) => flight.id !== outbound.id
-      && flight.depArp.toUpperCase() === recoveryBase.toUpperCase()
-      && flight.arvArp.toUpperCase() === supportBase.toUpperCase()
-      && finiteTime(flight.schDepDtUtc) >= source.end + config.returnAfterHours * 3600000
-      && finiteTime(flight.schDepDtUtc) <= source.end + maxLeadMs)
-    .sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))[0]
-  if (!inbound) return null
-  return {
-    supportBase,
-    recoveryBase,
-    outbound,
-    inbound,
-    minFlightLeadHours: config.minFlightLeadHours,
-    maxFlightLeadHours: config.maxFlightLeadHours,
-    reserveBeforeHours: config.reserveBeforeHours,
-    returnAfterHours: config.returnAfterHours,
-    dhdFlightCost: (outbound.blockMinutes + inbound.blockMinutes) * CROSS_BASE_DHD_COST_PER_MINUTE,
-  }
-}
+): RecoveryPositioning | null =>
+  positioningForWithTrace(flights, source, supportBase, recoveryBase, now, config).positioning
+
 
 const crewFreeForPositioning = (
   items: RosterItem[],
@@ -883,7 +1056,24 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       ? 'The affected Roster has ended and does not require recovery.'
       : 'The affected complete Roster is not present in the currently loaded Live data.'
     const empty = (id: 'roster' | 'standby' | 'cross-base', title: string): RecoveryPlanGroup => ({ id, title, description, options: [], excludedOptions: [] })
-    return { alert: input.alert, alerts: [input.alert], roster: empty('roster', 'Roster transfer or exchange'), standby: empty('standby', 'Standby Crew callout'), crossBase: empty('cross-base', 'Cross-base positioning') }
+    return {
+      alert: input.alert,
+      alerts: [input.alert],
+      roster: empty('roster', 'Roster transfer or exchange'),
+      standby: empty('standby', 'Standby Crew callout'),
+      crossBase: empty('cross-base', 'Cross-base positioning'),
+      crossBaseTrace: [],
+      crossBaseContext: {
+        sourceCrewId: input.alert.crewId,
+        sourcePairingId: input.alert.pairingId,
+        recoveryBase: null,
+        requiredFleets: input.alert.fleet ? [input.alert.fleet] : [],
+        sourceStartUtc: null,
+        sourceEndUtc: null,
+        loadedFlightCount: 0,
+        loadedFlightWindow: null,
+      },
+    }
   }
 
   // TODO(decision-C): Rank downgrade as soft filter + KPI penalty.
@@ -986,6 +1176,9 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
   const crossBaseConfig = input.crossBaseConfig ?? DEFAULT_CROSS_BASE_RECOVERY_CONFIG
   const loadedFlights = input.flights ?? snapshotFlightsFromItems(input.items)
   const recoveryBase = (source.items.find((item) => item.base)?.base || sourceCrew.base || '').trim()
+  const crossBaseTrace: CrossBaseCandidateTrace[] = []
+  const sourceStartUtc = source.start ? new Date(source.start).toISOString() : null
+  const sourceEndUtc = source.end ? new Date(source.end).toISOString() : null
 
   // Destination-base recovery uses DHD legs already present at the edges of the
   // affected Pairing. The receiving Crew only receives the middle operating legs,
@@ -1046,16 +1239,53 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
   if (recoveryBase) {
     for (const targetCrew of targetCrews) {
       const supportBase = (targetCrew.base || '').trim()
-      if (!supportBase || supportBase.toUpperCase() === recoveryBase.toUpperCase()) continue
+      const trace: CrossBaseCandidateTrace = {
+        crewId: targetCrew.crewId,
+        crewName: targetCrew.crewName,
+        supportBase,
+        hardRejection: null,
+        candidateFlightCount: 0,
+        earliestOutboundDep: null,
+        latestOutboundArv: null,
+        outboundWindow: null,
+        outboundFilterResult: 'no-candidate',
+        outbound: null,
+        inboundFilterResult: 'no-candidate',
+        inbound: null,
+        positioningResult: 'no-outbound',
+        freeForPositioning: null,
+        loadedItemCount: input.items.filter((item) => item.crewId === targetCrew.crewId).length,
+        surfaced: false,
+        surfacedModes: [],
+      }
+      if (!supportBase) { trace.hardRejection = 'empty-base'; crossBaseTrace.push(trace); continue }
+      if (supportBase.toUpperCase() === recoveryBase.toUpperCase()) { trace.hardRejection = 'same-base-as-source'; crossBaseTrace.push(trace); continue }
       const baseReasons: string[] = []
       const targetOrder = input.rankOrder.get(targetCrew.rank.toUpperCase())
-      if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) baseReasons.push('Support Crew Rank is lower than the required Rank or has no rank mapping.')
+      if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) {
+        baseReasons.push('Support Crew Rank is lower than the required Rank or has no rank mapping.')
+      }
       const missingFleet = requiredFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
       if (missingFleet) baseReasons.push(`Support Crew is not qualified for fleet ${missingFleet}.`)
-      if (baseReasons.length > 0) continue
+      if (baseReasons.length > 0) {
+        trace.hardRejection = baseReasons.join(' | ')
+        crossBaseTrace.push(trace)
+        continue
+      }
 
-      const positioning = positioningFor(loadedFlights, source, supportBase, recoveryBase, now, crossBaseConfig)
-      if (!positioning) continue
+      const outcome = positioningForWithTrace(loadedFlights, source, supportBase, recoveryBase, now, crossBaseConfig)
+      const { positioning } = outcome
+      const { trace: pt } = outcome
+      trace.candidateFlightCount = pt.routeCandidates.length
+      trace.earliestOutboundDep = pt.earliestOutboundDep
+      trace.latestOutboundArv = pt.latestOutboundArv
+      trace.outboundWindow = pt.outboundWindow
+      trace.outboundFilterResult = pt.outboundResult
+      trace.outbound = pt.outbound
+      trace.inboundFilterResult = pt.inboundResult
+      trace.inbound = pt.inbound
+      trace.positioningResult = positioning ? 'ok' : (!pt.outbound ? 'no-outbound' : 'no-inbound')
+      if (!positioning) { crossBaseTrace.push(trace); continue }
       const sameRank = !!sourceCrew.rank && sourceCrew.rank.toUpperCase() === targetCrew.rank.toUpperCase()
       const sameBase = false
       const crossDivision = !!sourceCrew.division && !!targetCrew.division && sourceCrew.division !== targetCrew.division
@@ -1066,19 +1296,22 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       const targetGroupsForCrew = activeGroups.filter((group) => group.crewId === targetCrew.crewId)
 
       // Cross-base Callout SBY: SBY remains assigned and may overlap the DHD/Roster window.
-      if (standbyTasks.length > 0 && crewFreeForPositioning(input.items, targetCrew.crewId, positioning, null)) {
+      const freeCallout = crewFreeForPositioning(input.items, targetCrew.crewId, positioning, null)
+      if (standbyTasks.length > 0 && freeCallout) {
         crossBaseOptions.push(makeOption({
           allItems: input.items, allGroups: activeGroups, source, target: null, targetCrew, sourceCrew,
           mode: 'cross-base-standby', standbyTaskId: standbyTasks[0].id,
            standbyWindow: `${standbyTasks[0].schStrDtUtc ?? ''} - ${standbyTasks[0].schEndDtUtc ?? ''}`,
            timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning, destinationSplit: null,
         }))
+        trace.surfacedModes.push('cross-base-standby')
       }
 
       // Cross-base Swap: each loaded complete Roster is a separate option. Its
       // Roster is removed from the support Crew before occupancy is checked.
       for (const targetRoster of targetGroupsForCrew) {
-        if (!crewFreeForPositioning(input.items, targetCrew.crewId, positioning, targetRoster.pairingId)) continue
+        const freeForSwap = crewFreeForPositioning(input.items, targetCrew.crewId, positioning, targetRoster.pairingId)
+        if (!freeForSwap) continue
         const targetHasConflict = hasAnyOverlapExcept(targetItems, source, new Set([targetRoster.pairingId]))
         const sourceHasConflict = hasAnyOverlapExcept(input.items.filter((item) => item.crewId === source.crewId), targetRoster, new Set([source.pairingId]))
         if (targetHasConflict || sourceHasConflict) continue
@@ -1088,8 +1321,29 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
            timeDistanceMinutes: Math.round(Math.abs(targetRoster.start - source.start) / 60000),
            sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning, destinationSplit: null,
         }))
+        trace.surfacedModes.push('cross-base-swap')
       }
+      // Record the callout free-state; swap can have multiple per-roster values; report true if any surfaced.
+      trace.freeForPositioning = trace.surfacedModes.length > 0
+      trace.surfaced = trace.surfacedModes.length > 0
+      crossBaseTrace.push(trace)
     }
+  }
+
+  const crossBaseContext = {
+    sourceCrewId: source.crewId,
+    sourcePairingId: source.pairingId,
+    recoveryBase: recoveryBase || null,
+    requiredFleets: [...requiredFleets],
+    sourceStartUtc,
+    sourceEndUtc,
+    loadedFlightCount: loadedFlights.length,
+    loadedFlightWindow: loadedFlights.length > 0
+      ? {
+          startDate: new Date(Math.min(...loadedFlights.map((f) => finiteTime(f.schDepDtUtc)))).toISOString(),
+          endDate: new Date(Math.max(...loadedFlights.map((f) => finiteTime(f.schDepDtUtc)))).toISOString(),
+        }
+      : null,
   }
 
   return {
@@ -1116,6 +1370,8 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       options: sortedCrewCandidates(crossBaseOptions, crewsById, sourceCrew),
       excludedOptions: [],
     },
+    crossBaseTrace,
+    crossBaseContext,
   }
 }
 

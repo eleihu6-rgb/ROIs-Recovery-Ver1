@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
+import { appendFile, mkdir } from 'node:fs/promises'
+import path from 'node:path'
 import { z } from 'zod'
 import { rosterService } from '../../services/roster/roster-service.js'
 import { recheckLiveRosterMutation } from '../../services/rule/legality-recheck.js'
@@ -311,4 +313,33 @@ export default async function recoveryRoutes(fastify: FastifyInstance) {
 
     return reply.send({ code: 200, data: session, message: 'Recovery plan applied' })
   })
-}
+
+
+  /**
+   * POST /api/recovery/debug-trace — append a single cross-base diagnostic
+   * record to .dev-logs/recovery-cross-base-trace.jsonl. Used by the gantt
+   * Recovery dialog to record WHY a 8004 alert's cross-base plan ended up
+   * empty (or short) so an offline analysis can pinpoint the failing filter
+   * (rank/fleet/positioning window/freedom-from-overlap/...).
+   *
+   * Schema is intentionally loose; the gantt owns the truth and may add new
+   * fields without a server-side schema bump.
+   */
+  fastify.post('/debug-trace', async (request, reply) => {
+    const body = (request.body ?? {}) as Record<string, unknown>
+    const projectRoot = process.cwd()
+    const logDir = path.resolve(projectRoot, '..', '.dev-logs')
+    const logPath = path.join(logDir, 'recovery-cross-base-trace.jsonl')
+    const record = {
+      receivedAt: new Date().toISOString(),
+      ...body,
+    }
+    try {
+      await mkdir(logDir, { recursive: true })
+      await appendFile(logPath, JSON.stringify(record) + '\n', 'utf8')
+      return reply.send({ code: 200, data: { ok: true, logPath }, message: 'ok' })
+    } catch (err) {
+      fastify.log.warn({ err }, 'failed to write recovery cross-base trace')
+      return reply.status(500).send({ code: 500, data: null, message: (err as Error).message })
+    }
+  })}

@@ -16,7 +16,7 @@ import { useLockStore } from '@/stores/lock-store'
 import { legalityPreviewApi } from '@/services/legality-preview-api'
 import { flightApi } from '@/services/flight-api'
 import { buildRecoveryDraftPlan } from '@/services/recovery-draft'
-import { buildRecoveryPlans, isRosterCompleted, recoveryRuleFailures, ROSTER_STABILITY_FORMULA, type RecoveryAlertSnapshot, type RecoveryFlightSnapshot, type RecoveryOption, type RecoveryPlans } from '@/services/recovery-candidates'
+import { buildRecoveryPlans, isRosterCompleted, recoveryRuleFailures, ROSTER_STABILITY_FORMULA, type CrossBaseCandidateTrace, type RecoveryAlertSnapshot, type RecoveryFlightSnapshot, type RecoveryOption, type RecoveryPlans } from '@/services/recovery-candidates'
 import { notify } from '@/utils/notify'
 import { bringCrewIdsToTop } from '@/utils/bring-matches-to-top'
 
@@ -307,6 +307,83 @@ async function fetchRecoveryFlights(
   }
 }
 
+
+/**
+ * Persist the cross-base diagnostic record to .dev-logs/recovery-cross-base-trace.jsonl
+ * via the live-server /api/recovery/debug-trace endpoint. Used to analyse WHY
+ * a 8004 alert's cross-base plan ended up empty. Failure is logged to console
+ * but must not block the UI.
+ */
+async function logCrossBaseTrace(
+  plans: RecoveryPlans,
+  selected: ViolationRow[],
+  loadedCrewCount: number,
+  loadedFlightCount: number,
+  loadedItemCount: number,
+): Promise<void> {
+  if (selected.length === 0) return
+  const firstAlert = plans.alert
+  const crossBaseContext = plans.crossBaseContext
+  const crossBaseOptions = plans.crossBase.options
+  // Strip heavy fields (routeCandidates on each trace can be 100s of flights)
+  // before posting — keep only the diagnostic primitives.
+  const trace = plans.crossBaseTrace.map((entry) => ({
+    crewId: entry.crewId,
+    crewName: entry.crewName,
+    supportBase: entry.supportBase,
+    hardRejection: entry.hardRejection,
+    candidateFlightCount: entry.candidateFlightCount,
+    earliestOutboundDep: entry.earliestOutboundDep,
+    latestOutboundArv: entry.latestOutboundArv,
+    outboundWindow: entry.outboundWindow,
+    outboundFilterResult: entry.outboundFilterResult,
+    outboundFlight: entry.outbound
+      ? { id: entry.outbound.id, fltNum: entry.outbound.fltNum, depArp: entry.outbound.depArp, arvArp: entry.outbound.arvArp, schDepDtUtc: entry.outbound.schDepDtUtc, schArvDtUtc: entry.outbound.schArvDtUtc, fleet: entry.outbound.fleet, blockMinutes: entry.outbound.blockMinutes }
+      : null,
+    inboundFilterResult: entry.inboundFilterResult,
+    inboundFlight: entry.inbound
+      ? { id: entry.inbound.id, fltNum: entry.inbound.fltNum, depArp: entry.inbound.depArp, arvArp: entry.inbound.arvArp, schDepDtUtc: entry.inbound.schDepDtUtc, schArvDtUtc: entry.inbound.schArvDtUtc, fleet: entry.inbound.fleet, blockMinutes: entry.inbound.blockMinutes }
+      : null,
+    positioningResult: entry.positioningResult,
+    freeForPositioning: entry.freeForPositioning,
+    loadedItemCount: entry.loadedItemCount,
+    surfaced: entry.surfaced,
+    surfacedModes: entry.surfacedModes,
+  }))
+  const record = {
+    source: 'gantt-recovery-dialog',
+    alert: {
+      ruleCode: firstAlert.ruleCode,
+      crewId: firstAlert.crewId,
+      pairingId: firstAlert.pairingId,
+      flightDate: firstAlert.flightDate,
+      fleet: firstAlert.fleet,
+      requiredRank: firstAlert.requiredRank,
+    },
+    selectedAlertCount: selected.length,
+    loadedCrewCount,
+    loadedFlightCount,
+    loadedItemCount,
+    crossBaseContext,
+    crossBaseOptionCount: crossBaseOptions.length,
+    crossBaseOptionModes: crossBaseOptions.map((option) => option.mode),
+    crossBaseTrace: trace,
+  }
+  try {
+    const res = await fetch('/api/recovery/debug-trace', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record),
+      // Don't await credentials — we just want best-effort logging.
+      credentials: 'include',
+    })
+    if (!res.ok) {
+      console.warn('[recovery] cross-base trace POST failed', res.status, await res.text())
+    }
+  } catch (err) {
+    console.warn('[recovery] cross-base trace POST error', err)
+  }
+}
 export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) => {
   const mainItems = useRosterStore((s) => s.main.rosterItems)
   const subItems = useRosterStore((s) => s.sub.rosterItems)
@@ -383,9 +460,15 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     setBuilding(true)
     setSelectedOptionId(null)
     setExecutionOptionId(null)
-    const loadedCrewIds = new Set(items.map((item) => item.crewId))
+    // Cross-base positioning needs candidates from ANY base - a YEG-based
+    // support crew typically has NO items in the current 7d Live window, but
+    // they are still valid as an inbound-DHD candidate (their
+    // crewFreeForPositioning check returns true with an empty overlap set).
+    // Pass the full loaded crew list; per-plan-type scoping happens inside
+    // buildRecoveryPlans.
+    const sourceCrewIds = new Set(selected.map((row) => row.crewId))
     const crewSnapshots = crews
-      .filter((entry) => loadedCrewIds.has(entry.crew.crewId))
+      .filter((entry) => !sourceCrewIds.has(entry.crew.crewId))
       .map((entry) => ({
         crewId: entry.crew.crewId,
         crewName: crewNameOf(entry.crew.crewId, crews),
@@ -418,6 +501,13 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
       ? buildRecoveryPlans({ ...buildInput, alert: selected[0] })
       : buildRecoveryPlans({ ...buildInput, alerts: selected })
     setPlans(next)
+
+    // Persist the cross-base diagnostic to .dev-logs/recovery-cross-base-trace.jsonl
+    // (via the live-server /api/recovery/debug-trace endpoint) so an empty
+    // cross-base group can be analysed offline. Fire-and-forget - failure to log
+    // must NOT block the UI. The trace is always populated by buildRecoveryPlans,
+    // so even successful cross-base options are recorded for tuning.
+    void logCrossBaseTrace(next, selected, crewSnapshots.length, recoveryFlights.length, items.length)
     const initialPlan = next.roster.options.length > 0 ? next.roster : next.standby.options.length > 0 ? next.standby : next.crossBase
     setSelectedPlanType(initialPlan.id)
     const first = initialPlan.options.find((option) => option.localExecutable) ?? initialPlan.options[0]
