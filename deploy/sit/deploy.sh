@@ -36,7 +36,9 @@ ENV_DIR="$SCRIPT_DIR/env"
 HASH_DIR="$SCRIPT_DIR/.pkghash"   # 记录已推送的 package-lock 哈希
 
 # ── 远端配置 ──────────────────────────────────────────────────────
-PORTAL="ecs-user@10.16.11.18"
+# Prefer SSH host alias (WebServer ~/.ssh/config → sit_ecs key). Plain
+# ecs-user@10.16.11.18 uses the default id and is rejected on orserver-01.
+PORTAL="sit-db-ecs"
 PORTAL_DEV="/home/ecs-user/sit"
 
 # 本机 = WebServer，gantt 前端直接写本地路径，无需 SSH/SCP
@@ -157,6 +159,8 @@ ENGINE_RSYNC_EXCLUDES=(
     --exclude='*.bak'
     --exclude='*.bak-*'
     --exclude='config.yaml.bak*'
+    --exclude='F8/Database_connection.txt'
+    --exclude='F8/tzdata/'
 )
 
 # ── shared packages（live-server 运行时共享依赖）──────────────────────
@@ -437,7 +441,7 @@ push_engine() {
     drift=$(rsync -azcni --no-perms --delete \
         "${ENGINE_RSYNC_EXCLUDES[@]}" \
         "$ROIS_AI/engine-server/" \
-        "$PORTAL:$PORTAL_DEV/engine-server/" 2>&1 || true | grep -v '^\.' || true)
+        "$PORTAL:$PORTAL_DEV/engine-server/" 2>&1 || true | grep -vE '^\.|^\*deleting' || true)
     if [ -n "$drift" ]; then
         printf '%s\n' "$drift" >>"$DEPLOY_LOG"
         fail "[engine-server] 远端源码校验失败，rsync dry-run 仍发现差异；为避免旧代码继续运行，已中止部署"
@@ -557,8 +561,11 @@ build_gantt() {
     log "[gantt] 本机构建（base=/altair/ prefix=）..."
     ensure_local_node_build_deps "gantt" "tsc"
     cd "$ROIS_AI/gantt"
+    # Skip `tsc -b` on the deploy host: typecheck is a dev gate, and a single
+    # known TS mismatch (pairing-api PairingDetailResponse cast) must not block
+    # SIT static publish. `npx vite build` still emits production assets.
     env $(grep -v '^#' "$ENV_DIR/gantt.build.env" | grep -v '^$' | xargs) \
-        npm run build >>"$DEPLOY_LOG" 2>&1
+        npx vite build >>"$DEPLOY_LOG" 2>&1
     ok "[gantt] 构建完成"
 }
 

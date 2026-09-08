@@ -293,11 +293,19 @@ done <<< "$CHANGED_FILES"
 # ── 部署计划 ─────────────────────────────────────────────────────
 TOTAL=$((NEED_LIVE + NEED_ENGINE + NEED_GANTT))
 
+# Deploy mirror must track origin/main exactly. Local-only commits (or rewritten
+# history) make `git pull --ff-only` fail forever — that is what stuck SIT after
+# 876613c diverged from GitHub. Always hard-reset after the LOCAL..REMOTE diff
+# has already been computed above.
+sync_to_origin_main() {
+    git reset --hard origin/main --quiet
+    ok "已同步到 origin/main → $(git rev-parse --short HEAD)"
+}
+
 if [ $TOTAL -eq 0 ]; then
-    log "无需部署（仅文档/配置变更），静默 pull"
+    log "无需部署（仅文档/配置变更），静默同步"
     if [ "$LOCAL" != "$REMOTE" ]; then
-        git pull --ff-only origin main --quiet
-        ok "静默 pull 完成 → $(git rev-parse --short HEAD)"
+        sync_to_origin_main
         update_submodules
     fi
     clear_pending_plan
@@ -309,10 +317,9 @@ log "部署计划："
 [ $NEED_ENGINE -eq 1 ] && log "  • engine-server  → push 源码 + 远程重启 + JWT 探针"
 [ $NEED_GANTT  -eq 1 ] && log "  • gantt          → 本机 build + 写本地 /home/recovery/sit/gantt/"
 
-# ── 先 pull，再执行部署 ───────────────────────────────────────────
+# ── 先同步到 origin/main，再执行部署 ─────────────────────────────────
 if [ "$LOCAL" != "$REMOTE" ]; then
-    git pull --ff-only origin main --quiet
-    ok "git pull 完成 → $(git rev-parse --short HEAD)"
+    sync_to_origin_main
 fi
 update_submodules
 

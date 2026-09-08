@@ -36,7 +36,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HASH_DIR="$SCRIPT_DIR/.pkghash"
 
 # 远端 = 10.16.11.18 (ecs-user, sudo NOPASSWD)；通过 ~/.ssh/config 别名 sit-db-ecs 复用专用 key
-PORTAL="ecs-user@10.16.11.18"
+PORTAL="sit-db-ecs"
 PORTAL_DEV="/home/ecs-user/sit"
 
 # 本机 = WebServer，gantt dist 直接写本地路径
