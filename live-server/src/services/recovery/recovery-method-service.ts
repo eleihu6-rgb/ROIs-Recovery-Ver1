@@ -23,7 +23,7 @@ export const recoveryMethodCatalog = [
   {
     id: 'cross-base',
     title: 'Cross-base positioning',
-    operations: ['cross-base-standby', 'cross-base-swap', 'cross-base-destination'],
+    operations: ['cross-base-standby', 'cross-base-swap', 'cross-base-destination', 'cross-base-direct'],
     description: 'Use a qualified Crew from another base with DHD positioning or reuse a leading DHD destination base.',
   },
 ] as const
@@ -67,7 +67,7 @@ export const calloutStandbySchema = z.object({
 })
 
 export const crossBaseRecoverySchema = z.object({
-  operation: z.enum(['standby', 'swap', 'destination']),
+  operation: z.enum(['standby', 'swap', 'destination', 'direct']),
   sourceCrewId: crewId,
   sourcePairingId: pairingId,
   targetCrewId: crewId,
@@ -106,7 +106,7 @@ export type CompleteRosterMutation = Awaited<ReturnType<typeof rosterService.rec
 
 export type RecoveryMethodResult = CompleteRosterMutation & {
   method: RecoveryMethodId
-  operation: RosterAssignmentOperation | 'callout-standby' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination'
+  operation: RosterAssignmentOperation | 'callout-standby' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
 }
 
 const rejectAssignment = (crewIdValue: string, pairingIdValue: number, message: string): never => {
@@ -221,7 +221,7 @@ export const executeCrossBaseRecovery = async (
     ...request,
     // `destination` returned above. Make the remaining contract explicit for
     // both TypeScript and the roster mutation boundary.
-    operation: request.operation === 'swap' ? 'swap' : 'standby',
+    operation: request.operation === 'swap' ? 'swap' : request.operation === 'direct' ? 'direct' : 'standby',
     outboundFlightId: request.outboundFlightId!,
     returnFlightId: request.returnFlightId!,
     supportBase: request.supportBase.toUpperCase(),
@@ -233,6 +233,6 @@ export const executeCrossBaseRecovery = async (
   return {
     ...result,
     method: 'cross-base',
-    operation: request.operation === 'swap' ? 'cross-base-swap' : 'cross-base-standby',
+    operation: request.operation === 'swap' ? 'cross-base-swap' : request.operation === 'direct' ? 'cross-base-direct' : 'cross-base-standby',
   }
 }

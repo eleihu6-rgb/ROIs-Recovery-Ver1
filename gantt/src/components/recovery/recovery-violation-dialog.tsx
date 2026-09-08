@@ -537,7 +537,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
       return
     }
     setExecutionOptionId(option.id)
-    setSelectedPlanType(option.mode === 'standby' ? 'standby' : option.mode === 'cross-base-standby' || option.mode === 'cross-base-swap' || option.mode === 'cross-base-destination' ? 'cross-base' : 'roster')
+    setSelectedPlanType(option.mode === 'standby' ? 'standby' : option.mode === 'cross-base-standby' || option.mode === 'cross-base-swap' || option.mode === 'cross-base-destination' || option.mode === 'cross-base-direct' ? 'cross-base' : 'roster')
     selectOption(option)
   }
 
@@ -803,7 +803,7 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
               <div className="text-2xs font-semibold text-foreground">Crew decisions in this combined option</div>
               {option.subOptions.map((child) => <div key={child.id} className="grid gap-1 border-t border-border/50 pt-1 text-2xs sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
                 <span className="font-mono text-foreground">{child.sourceCrewId} → {child.targetCrewId}</span>
-                <span className="text-muted-foreground">{child.mode === 'standby' || child.mode === 'cross-base-standby' ? 'Callout SBY' : child.mode === 'swap' || child.mode === 'cross-base-swap' ? 'Roster swap' : child.mode === 'cross-base-destination' ? 'Destination-base pairing' : 'Roster transfer'}</span>
+                <span className="text-muted-foreground">{child.mode === 'standby' || child.mode === 'cross-base-standby' ? 'Callout SBY' : child.mode === 'swap' || child.mode === 'cross-base-swap' ? 'Roster swap' : child.mode === 'cross-base-destination' ? 'Destination-base pairing' : child.mode === 'cross-base-direct' ? 'Cross-base direct' : 'Roster transfer'}</span>
                 <span className="text-right tabular-nums text-muted-foreground">Cancel {child.metrics.cancelledRosterCount} · Add {child.metrics.addedRosterCount} · {money(child.metrics.totalCost)}</span>
               </div>)}
             </div>}

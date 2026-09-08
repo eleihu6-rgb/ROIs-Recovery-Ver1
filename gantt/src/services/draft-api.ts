@@ -33,7 +33,7 @@ export interface DraftOp {
   }
   mockItems?: Record<string, unknown>[]
   crossBase?: {
-    operation: 'swap' | 'standby' | 'destination'
+    operation: 'swap' | 'standby' | 'destination' | 'direct'
     sourceCrewId: string
     sourcePairingId: number
     targetCrewId: string

@@ -846,6 +846,9 @@ export const rosterService = {
           throw Object.assign(new Error(`Standby task ${data.standbyTaskId} does not cover the Roster start time`), { statusCode: 409 })
         }
       }
+      // Cross-base direct: same DHD positioning + conflict contract as standby,
+      // but no SBY task to validate and no standby exception marker to write.
+
 
       const allRows = [...sourceRows, ...targetRows]
       const crewIds = [...new Set(allRows.map((row) => row.crewId))]
@@ -940,7 +943,7 @@ export const rosterService = {
   async recoverCrossBaseRoster(
     fastify: FastifyInstance,
     data: {
-      operation: 'standby' | 'swap'
+      operation: 'standby' | 'swap' | 'direct'
       sourceCrewId: string
       sourcePairingId: number
       targetCrewId: string

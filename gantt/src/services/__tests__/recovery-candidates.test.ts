@@ -504,4 +504,55 @@ describe('buildRecoveryPlans', () => {
     expect(combined.roster.options.some((option) => option.subOptions?.some((child) => child.id === firstSwap?.id)
       && option.subOptions?.some((child) => child.id === secondSwap?.id))).toBe(false)
   })
+
+  it('generates a cross-base Direct option when candidate is free in the positioning window but has no active roster or SBY task', () => {
+    // Source crew A is on Pairing 100 in PVG. Candidate crew D is BJS-based,
+    // has the A320 fleet qualification, but has NO active FLY roster and NO SBY
+    // task overlapping the source window. The Direct path should still emit
+    // a cross-base option via DHD positioning.
+    const plans = buildRecoveryPlans({
+      alert,
+      items: [
+        item(1, 'A', 100, '2026-09-05T12:00:00.000Z', '2026-09-05T14:00:00.000Z', { base: 'PVG', fleetCode: 'A320' }),
+        // Candidate D has only an unrelated historical pairing far in the past.
+        item(2, 'D', 500, '2025-01-01T08:00:00.000Z', '2025-01-01T09:00:00.000Z', { base: 'BJS', fleetCode: 'A320' }),
+      ],
+      crews: [crew('A', { base: 'PVG' }), crew('D', { base: 'BJS' })],
+      rankOrder: new Map([['CA', 1]]),
+      now: Date.parse('2026-09-05T06:00:00.000Z'),
+      flights: [
+        { id: 701, fltNum: 'D701', depArp: 'BJS', arvArp: 'PVG', schDepDtUtc: '2026-09-05T08:00:00.000Z', schArvDtUtc: '2026-09-05T10:00:00.000Z', fleet: 'A320', airline: 'MU', blockMinutes: 120 },
+        { id: 702, fltNum: 'D702', depArp: 'PVG', arvArp: 'BJS', schDepDtUtc: '2026-09-05T15:00:00.000Z', schArvDtUtc: '2026-09-05T17:00:00.000Z', fleet: 'A320', airline: 'MU', blockMinutes: 120 },
+      ],
+    })
+
+    const direct = plans.crossBase.options.find((candidate) => candidate.mode === 'cross-base-direct' && candidate.targetCrewId === 'D')
+    expect(direct).toBeDefined()
+    expect(direct?.positioning).toMatchObject({ supportBase: 'BJS', recoveryBase: 'PVG' })
+    expect(direct?.afterItems.filter((entry) => entry.assignmentGroup === 'DHD')).toHaveLength(2)
+  })
+
+  it('does NOT emit cross-base Direct when candidate has an existing Roster conflict in the positioning window', () => {
+    const plans = buildRecoveryPlans({
+      alert,
+      items: [
+        item(1, 'A', 100, '2026-09-05T12:00:00.000Z', '2026-09-05T14:00:00.000Z', { base: 'PVG', fleetCode: 'A320' }),
+        // Candidate D has a non-SBY item overlapping the positioning window.
+        item(2, 'D', 600, '2026-09-05T10:00:00.000Z', '2026-09-05T11:00:00.000Z', { base: 'BJS', fleetCode: 'A320' }),
+      ],
+      crews: [crew('A', { base: 'PVG' }), crew('D', { base: 'BJS' })],
+      rankOrder: new Map([['CA', 1]]),
+      now: Date.parse('2026-09-05T06:00:00.000Z'),
+      flights: [
+        { id: 801, fltNum: 'D801', depArp: 'BJS', arvArp: 'PVG', schDepDtUtc: '2026-09-05T08:00:00.000Z', schArvDtUtc: '2026-09-05T10:00:00.000Z', fleet: 'A320', airline: 'MU', blockMinutes: 120 },
+        { id: 802, fltNum: 'D802', depArp: 'PVG', arvArp: 'BJS', schDepDtUtc: '2026-09-05T15:00:00.000Z', schArvDtUtc: '2026-09-05T17:00:00.000Z', fleet: 'A320', airline: 'MU', blockMinutes: 120 },
+      ],
+    })
+
+    const direct = plans.crossBase.options.find((candidate) => candidate.mode === 'cross-base-direct' && candidate.targetCrewId === 'D')
+    expect(direct).toBeUndefined()
+    const trace = plans.crossBaseTrace.find((entry) => entry.crewId === 'D')
+    expect(trace?.surfacedModes).not.toContain('cross-base-direct')
+  })
+
 })

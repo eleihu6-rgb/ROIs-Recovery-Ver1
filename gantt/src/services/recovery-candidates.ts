@@ -181,7 +181,7 @@ export interface CrossBaseCandidateTrace {
   /** True if the candidate was ultimately surfaced (crossBase.options includes them). */
   surfaced: boolean
   /** Mode(s) the candidate was surfaced under. */
-  surfacedModes: ('cross-base-standby' | 'cross-base-swap' | 'cross-base-destination')[]
+  surfacedModes: ('cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct')[]
 }
 
 export interface RecoveryPlans {
@@ -792,7 +792,7 @@ const makeOption = (
   return {
     id: `${mode}-${source.pairingId}-${targetCrew.crewId}-${target?.pairingId ?? input.standbyTaskId ?? 'none'}`,
     mode,
-    title: mode === 'standby' ? `Callout ${targetCrew.crewId}` : mode === 'swap' ? `Swap with ${targetCrew.crewId}` : mode === 'cross-base-standby' ? `Cross-base Callout ${targetCrew.crewId}` : mode === 'cross-base-swap' ? `Cross-base Swap ${targetCrew.crewId}` : mode === 'cross-base-destination' ? `Destination-base Split ${targetCrew.crewId}` : `Transfer to ${targetCrew.crewId}`,
+    title: mode === 'standby' ? `Callout ${targetCrew.crewId}` : mode === 'swap' ? `Swap with ${targetCrew.crewId}` : mode === 'cross-base-standby' ? `Cross-base Callout ${targetCrew.crewId}` : mode === 'cross-base-swap' ? `Cross-base Swap ${targetCrew.crewId}` : mode === 'cross-base-destination' ? `Destination-base Split ${targetCrew.crewId}` : mode === 'cross-base-direct' ? `Cross-base Direct Assign ${targetCrew.crewId}` : `Transfer to ${targetCrew.crewId}`,
     targetCrewId: targetCrew.crewId,
     targetCrewName: targetCrew.crewName,
     sourceCrewId: sourceCrew.crewId,
@@ -1338,8 +1338,49 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         }))
         trace.surfacedModes.push('cross-base-swap')
       }
-      // Record the callout free-state; swap can have multiple per-roster values; report true if any surfaced.
-      trace.freeForPositioning = trace.surfacedModes.length > 0
+
+      // Cross-base Direct: candidate has no active FLY roster and no SBY task,
+      // but is free in the positioning window. Send DHD in, execute the source
+      // Pairing's operating legs, DHD back. This is the only path that surfaces
+      // a cross-base option for crews whose future is currently empty (e.g.
+      // 1568/247 on 9.10-9.16 — no FLY pairings after 6.22, only GRD days).
+      if (trace.surfacedModes.length === 0) {
+        // Fleet check: the source Pairing's fleet (which the candidate will fly
+        // during the operating legs) must be in their qualification list.
+        const sourceFleets = [...new Set(source.items
+          .map((item) => item.fleetCode?.trim().toUpperCase())
+          .filter((fleet): fleet is string => Boolean(fleet)))]
+        const missingSourceFleet = sourceFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
+        if (missingSourceFleet) {
+          trace.hardRejection = trace.hardRejection
+            ? trace.hardRejection + ' | Direct: not qualified for source fleet ' + missingSourceFleet
+            : 'Direct: not qualified for source fleet ' + missingSourceFleet
+        } else {
+          // Conflict re-check (same window, no exclusion since the candidate has
+          // no active roster to swap out anyway).
+          const directFree = crewFreeForPositioning(input.items, targetCrew.crewId, positioning, null)
+          if (directFree) {
+            crossBaseOptions.push(makeOption({
+              allItems: input.items, allGroups: activeGroups, source, target: null, targetCrew, sourceCrew,
+              mode: 'cross-base-direct', standbyTaskId: null, standbyWindow: null,
+              timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning, destinationSplit: null,
+            }))
+            trace.surfacedModes.push('cross-base-direct')
+          } else {
+            trace.hardRejection = trace.hardRejection
+              ? trace.hardRejection + ' | Direct: positioning window conflicts with existing Roster'
+              : 'Direct: positioning window conflicts with existing Roster'
+          }
+        }
+      }
+      // Record actual positioning-window freedom (not just "any mode surfaced").
+      // The "no mode available" case (no SBY, no active roster) is now distinct
+      // from "conflicts in the positioning window" — surfacedModes only counts
+      // when a real option was emitted.
+      const positioningFree = positioning
+        ? crewFreeForPositioning(input.items, targetCrew.crewId, positioning, null)
+        : null
+      trace.freeForPositioning = positioningFree
       trace.surfaced = trace.surfacedModes.length > 0
       crossBaseTrace.push(trace)
     }

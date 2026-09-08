@@ -89,7 +89,7 @@ export const buildRecoveryDraftPlan = (option: RecoveryOption, items: RosterItem
     return { operations, affectedCrewIds, affectedPairingIds }
   }
 
-  if ((option.mode === 'cross-base-standby' || option.mode === 'cross-base-swap') && option.positioning) {
+  if ((option.mode === 'cross-base-standby' || option.mode === 'cross-base-swap' || option.mode === 'cross-base-direct') && option.positioning) {
     const afterItems = option.afterItems
       .filter((item) => item.assignmentGroup?.toUpperCase() !== 'SBY'
         && (item.pairingId === option.sourcePairingId
@@ -102,7 +102,7 @@ export const buildRecoveryDraftPlan = (option: RecoveryOption, items: RosterItem
     operations.push({
       type: 'cross-base-recovery',
       crossBase: {
-        operation: option.mode === 'cross-base-swap' ? 'swap' : 'standby',
+        operation: option.mode === 'cross-base-swap' ? 'swap' : option.mode === 'cross-base-direct' ? 'direct' : 'standby',
         sourceCrewId: option.sourceCrewId,
         sourcePairingId: option.sourcePairingId,
         targetCrewId: option.targetCrewId,

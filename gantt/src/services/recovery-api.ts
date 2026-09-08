@@ -44,7 +44,7 @@ export const recoveryTraceApi = {
 
 export type RecoveryPlanId = 'standby' | 'swap' | 'cross-base'
 
-export type RecoveryOptionMode = 'transfer' | 'swap' | 'standby' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination'
+export type RecoveryOptionMode = 'transfer' | 'swap' | 'standby' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
 
 export interface RecoveryApplyOption {
   mode: RecoveryOptionMode
@@ -78,7 +78,7 @@ export interface CalloutStandbyRecoveryRequest {
 }
 
 export interface CrossBaseRecoveryRequest {
-  operation: 'swap' | 'standby' | 'destination'
+  operation: 'swap' | 'standby' | 'destination' | 'direct'
   sourceCrewId: string
   sourcePairingId: number
   targetCrewId: string
@@ -170,7 +170,7 @@ export interface FlightChangeInput {
 }
 
 const applyOption = (input: RecoveryApplyOption): Promise<RecoveryMethodMutation> => {
-  if (input.mode === 'cross-base-standby' || input.mode === 'cross-base-swap' || input.mode === 'cross-base-destination') {
+  if (input.mode === 'cross-base-standby' || input.mode === 'cross-base-swap' || input.mode === 'cross-base-destination' || input.mode === 'cross-base-direct') {
     return Promise.reject(new Error('Cross-base recovery requires positioning flight details; use recoveryApi.crossBase().'))
   }
   if (input.mode === 'standby') {

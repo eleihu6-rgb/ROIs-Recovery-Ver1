@@ -38,7 +38,7 @@ describe('recovery routes', () => {
     expect(body.data).toEqual([
       expect.objectContaining({ id: 'roster-assignment', operations: ['transfer', 'swap'] }),
       expect.objectContaining({ id: 'callout-standby', operations: ['callout-standby'] }),
-      expect.objectContaining({ id: 'cross-base', operations: ['cross-base-standby', 'cross-base-swap'] }),
+      expect.objectContaining({ id: 'cross-base', operations: ['cross-base-standby', 'cross-base-swap', 'cross-base-destination', 'cross-base-direct'] }),
     ])
     await app.close()
   })
