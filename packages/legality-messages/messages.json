@@ -9,9 +9,6 @@
     },
     "7509": {
       "body": "Crew {crew_id} and {paired_crew_id} are co-paired on flight {flight_label}."
-    },
-    "3007": {
-      "body": "Flight duty period ({fdp}) is more than the limitation ({max_fdp})."
     }
   }
 }

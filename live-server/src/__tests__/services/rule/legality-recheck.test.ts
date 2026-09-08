@@ -122,18 +122,6 @@ describe('affectedRuleCodes', () => {
 
     await expect(affectedRuleCodes(pool, 7509001)).resolves.toEqual(['7509'])
   })
-
-  it('scopes Rule 3007 / 2107 parameter edits to the 3007 engine', async () => {
-    const pool3007 = {
-      query: vi.fn(async () => ({ rows: [{ function: 3007 }] })),
-    } as unknown as Pick<Pool, 'query'>
-    await expect(affectedRuleCodes(pool3007, 3007001)).resolves.toEqual(['3007'])
-
-    const pool2107 = {
-      query: vi.fn(async () => ({ rows: [{ function: 2107 }] })),
-    } as unknown as Pick<Pool, 'query'>
-    await expect(affectedRuleCodes(pool2107, 2107001)).resolves.toEqual(['3007'])
-  })
 })
 
 describe('recheckLiveRosterMutation window', () => {

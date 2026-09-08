@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { flight as flightTable } from '../../../models/flight/flight.js'
-import { planDuties, validateBuildRules, dutySchFdpMinForDuty, MAX_DUTY_BLOCK_MIN, REST_FLOOR_MIN } from '../../../services/pairing/pairing-build-service.js'
+import { planDuties, validateBuildRules, MAX_DUTY_BLOCK_MIN, REST_FLOOR_MIN } from '../../../services/pairing/pairing-build-service.js'
 
 type FlightRow = typeof flightTable.$inferSelect
 
@@ -132,31 +132,5 @@ describe('validateBuildRules — surface violations, never block (Option A)', ()
       leg('2026-08-31T08:30:00Z', '2026-08-31T10:30:00Z', 'MQX', 'ADD'), // departs before prev arrives
     ])
     expect(validateBuildRules(overlapping, 'ADD').some((w) => w.includes('time overlap'))).toBe(true)
-  })
-})
-
-describe('dutySchFdpMinForDuty — Rust compute-fdp minutes on a 2-leg round trip', () => {
-  const flyLeg = (id: number, dep: string, arv: string, depArp: string, arvArp: string): FlightRow => {
-    const row = leg(dep, arv, depArp, arvArp)
-    return {
-      ...row,
-      id,
-      actDepDtUtc: row.schDepDtUtc,
-      actArvDtUtc: row.schArvDtUtc,
-      flightAssignment: 'FLY',
-      fleet: 'B737',
-    }
-  }
-
-  it('stamps a non-null FDP that matches the Rust compute-fdp minutes', () => {
-    const duty = [
-      flyLeg(1, '2026-09-01T06:00:00Z', '2026-09-01T08:00:00Z', 'ADD', 'DXB'),
-      flyLeg(2, '2026-09-01T09:00:00Z', '2026-09-01T11:00:00Z', 'DXB', 'ADD'),
-    ]
-    const minutes = dutySchFdpMinForDuty(duty)
-    expect(minutes, 'compute-fdp binary must be built (cargo build --release --bin compute-fdp)').not.toBeNull()
-    expect(minutes).toBeGreaterThan(0)
-    // INCLUDE CI=Y, INCLUDE CO=N: brief 05:00 → last operating arrival 11:00 = 360 min
-    expect(minutes).toBe(360)
   })
 })
