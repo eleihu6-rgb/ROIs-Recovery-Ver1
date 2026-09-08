@@ -881,6 +881,14 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
     return { alert: input.alert, alerts: [input.alert], roster: empty('roster', 'Roster transfer or exchange'), standby: empty('standby', 'Standby Crew callout'), crossBase: empty('cross-base', 'Cross-base positioning') }
   }
 
+  // TODO(decision-C): Rank downgrade as soft filter + KPI penalty.
+  // Currently every recovery mode (transfer / swap / standby / destination /
+  // cross-base) hard-skips a target Crew whose rank is below requiredOrder or
+  // has no rank mapping (see reasons.push('... Rank is lower than the required
+  // Rank or has no rank mapping.')). The refactor prompt suggests a softer
+  // policy: keep the candidate, surface it in the plan list, and apply a
+  // rankGap-based penalty in metrics.directCost so KPI ranking can still
+  // prefer rank-matched crews. Defer until the wider ranking rework lands.
   const crewsById = new Map(input.crews.map((crew) => [crew.crewId, crew]))
   const requiredOrder = input.rankOrder.get((input.alert.requiredRank || source.items[0]?.flightActingRank || '').toUpperCase())
   const requiredFleets = [...new Set([
