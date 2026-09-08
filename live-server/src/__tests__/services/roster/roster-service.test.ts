@@ -781,7 +781,7 @@ describe('rosterService', () => {
       const mockPair = {
         id: pairingId,
         base: 'PEK',
-        assignmentGroup: 'FLT',
+        assignmentGroup: null,
         assignment: 'FLT',
         division: 'INTL',
         source: 'IMPORT',
@@ -852,6 +852,7 @@ describe('rosterService', () => {
       expect(Array.isArray(insertedValues)).toBe(true)
       expect(insertedValues).toHaveLength(2)
       expect(insertedValues[0]).toMatchObject({ crewId, pairingId, fltId: 1001, base: 'PEK', rosterActingRank: 'CA' })
+      expect(insertedValues[0].assignmentGroup).toBe('FLY')
       expect(insertedValues[1]).toMatchObject({ fltId: 1002 })
 
       // Duty-level fields are merged back onto the correct returned row (index-aligned).

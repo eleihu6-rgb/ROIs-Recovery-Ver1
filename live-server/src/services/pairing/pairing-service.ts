@@ -734,8 +734,8 @@ export const pairingService = {
           division,
           base,
           fleet: firstFlt.fleet,
-          assignmentGroup: 'FLT',
-          assignment: 'FLT',
+          assignmentGroup: 'FLY',
+          assignment: 'FLY',
           schStrDtUtc: firstFlt.schDepDtUtc,
           schEndDtUtc: lastFlt.schArvDtUtc,
           actStrDtUtc: firstFlt.actDepDtUtc,
@@ -791,7 +791,7 @@ export const pairingService = {
             fleetSeg: flt.fleet,
             schStrDtUtc: flt.schDepDtUtc, schEndDtUtc: flt.schArvDtUtc,
             actStrDtUtc: flt.actDepDtUtc, actEndDtUtc: flt.actArvDtUtc,
-            segAssignment: flt.flightAssignment ?? 'FLT',
+            segAssignment: flt.flightAssignment ?? 'FLY',
             // Duty-level pickup/brief: only on first segment
             pickupStartUtc: pickupStart,
             pickupEndUtc: pickupEnd,
@@ -935,7 +935,7 @@ export const pairingService = {
           schEndDtUtc: flt.schArvDtUtc,
           actStrDtUtc: flt.actDepDtUtc,
           actEndDtUtc: flt.actArvDtUtc,
-          segAssignment: flt.flightAssignment ?? 'FLT',
+          segAssignment: flt.flightAssignment ?? 'FLY',
           // Duty-level pickup/brief: only on first segment (reuse or create)
           pickupStartUtc: pickupStart,
           pickupEndUtc: pickupEnd,

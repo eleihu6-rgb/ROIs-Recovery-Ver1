@@ -730,7 +730,7 @@ export const rosterService = {
         pairingId,
         base: pair.base,
         label: `${seg.fltNum} ${seg.depArp}-${seg.arvArp}`,
-        assignmentGroup: pair.assignmentGroup ?? 'FLT',
+        assignmentGroup: pair.assignmentGroup ?? 'FLY',
         assignment: seg.segAssignment ?? pair.assignment,
         role: 'CREW',
         division: pair.division,
@@ -830,7 +830,7 @@ export const rosterService = {
           pairingId: null,         // standalone flight, no pairing (NULL, not 0)
           base: flt.depArp,      // use departure airport as base
           label,
-          assignmentGroup: 'FLT',
+          assignmentGroup: 'FLY',
           assignment: flt.fltNum,
           role: 'CREW',
           division: null,
