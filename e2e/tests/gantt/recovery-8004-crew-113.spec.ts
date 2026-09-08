@@ -35,6 +35,7 @@ const SOURCE_PAIRING_ID = '135905'
 const TARGET_CREW_ID = '529'
 
 test('Live 8004 — Crew 113 / Pairing 135905 → Crew 529 is the top executable Roster option', async ({ page, request }) => {
+  test.setTimeout(180_000)
   await seedGanttAuth(page, request)
   await page.goto('/altair/', { waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => typeof window.__ganttTest !== 'undefined', undefined, {
@@ -59,7 +60,12 @@ test('Live 8004 — Crew 113 / Pairing 135905 → Crew 529 is the top executable
   // Worst-case: bootstrap 90s + fallback fetchCrews 30s + buffer → 270s total.
   await expect(emptyState).not.toBeVisible({ timeout: 270_000 })
 
-  // Step 1: let the Rust cold-start recheck settle before reading the Alert
+  // Narrow the Live date range to the 9.8-9.18 window around the alert. The full
+  // default 9.1-10.31 window has each /api/crew?crewIds= page take 10-20s under
+  // load; 9.8-9.18 still covers 9.12 but cuts crew/roster rows by ~3x.
+  await page.getByTestId('date-range-to').fill('2026-09-18')
+  await page.getByTestId('date-range-from').fill('2026-09-08')
+  // Step 1: let the Rust cold-start recheck settle (date range already narrowed in setup)
   // Center. The bell / violation data source is updated by the live legality
   // recheck worker; without this wait, 8004 rows may still be in the "stale
   // before recheck" state. 30 s matches the manual user flow.
