@@ -97,6 +97,15 @@ const newestSrcMtime = () => {
   return _srcNewest
 }
 const REBUILD_HINT = 'Rebuild: cargo build --release --manifest-path rule-engine-rs/Cargo.toml'
+const resolveBinPath = (bin) => {
+  const candidates = process.platform === 'win32' && !bin.endsWith('.exe')
+    ? [path.join(BIN_DIR, bin), path.join(BIN_DIR, bin + '.exe')]
+    : [path.join(BIN_DIR, bin)]
+  for (const candidate of candidates) {
+    try { fs.accessSync(candidate, fs.constants.X_OK); return candidate } catch { /* try next */ }
+  }
+  return candidates[0]
+}
 const assertFresh = (binPath, bin) => {
   const src = newestSrcMtime()
   if (src == null) return // no source tree to compare against (deployed binary-only) → trust it
@@ -464,7 +473,7 @@ const runLocal8004Fallback = (args, tsv) => {
 
 export async function runBin(bin, args, tsv) {
   await acquireBinSlot()
-  const binPath = path.join(BIN_DIR, bin)
+  const binPath = resolveBinPath(bin)
   try {
     // Local checkouts may intentionally omit the private Rust submodule. The 8004
     // checker has a JS fallback for that development configuration; keep the
