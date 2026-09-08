@@ -335,6 +335,7 @@ export const useDraftStore = create<DraftStore>((set, get) => ({
                 division: op.crossBase.division,
                 targetRosterActingRank: op.crossBase.rosterActingRank,
                 minFlightLeadHours: op.crossBase.minFlightLeadHours,
+                maxFlightLeadHours: op.crossBase.maxFlightLeadHours,
                 reserveBeforeHours: op.crossBase.reserveBeforeHours,
                  returnAfterHours: op.crossBase.returnAfterHours,
                  destinationSplit: op.crossBase.destinationSplit,

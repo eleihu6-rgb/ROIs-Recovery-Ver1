@@ -80,6 +80,7 @@ export const crossBaseRecoverySchema = z.object({
   division: z.string().trim().min(1).max(2),
   targetRosterActingRank: rank,
   minFlightLeadHours: z.number().nonnegative(),
+  maxFlightLeadHours: z.number().nonnegative(),
   reserveBeforeHours: z.number().nonnegative(),
   returnAfterHours: z.number().nonnegative(),
   destinationSplit: z.object({

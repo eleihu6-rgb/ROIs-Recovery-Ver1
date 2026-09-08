@@ -73,6 +73,7 @@ export const buildRecoveryDraftPlan = (option: RecoveryOption, items: RosterItem
         division: items.find((item) => item.pairingId === option.sourcePairingId)?.division || '',
         rosterActingRank: option.destinationSplit.actingRank,
         minFlightLeadHours: 0,
+        maxFlightLeadHours: 0,
         reserveBeforeHours: 0,
         returnAfterHours: 0,
         destinationSplit: {
@@ -114,6 +115,7 @@ export const buildRecoveryDraftPlan = (option: RecoveryOption, items: RosterItem
         division: items.find((item) => item.pairingId === option.sourcePairingId)?.division || '',
         rosterActingRank: actingRankFor(items, option.sourceCrewId, option.sourcePairingId),
         minFlightLeadHours: option.positioning.minFlightLeadHours,
+        maxFlightLeadHours: option.positioning.maxFlightLeadHours,
         reserveBeforeHours: option.positioning.reserveBeforeHours,
         returnAfterHours: option.positioning.returnAfterHours,
       },

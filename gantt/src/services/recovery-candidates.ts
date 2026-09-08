@@ -20,6 +20,12 @@ export interface RecoveryPositioning {
   outbound: RecoveryFlightSnapshot
   inbound: RecoveryFlightSnapshot
   minFlightLeadHours: number
+  /**
+   * Upper bound on the positioning window (hours). The outbound DHD
+   * departs at most this many hours before the Roster start, and the
+   * inbound DHD departs at most this many hours after the Roster end.
+   */
+  maxFlightLeadHours: number
   reserveBeforeHours: number
   returnAfterHours: number
   dhdFlightCost: number
@@ -805,18 +811,29 @@ const positioningFor = (
   now: number,
   config: CrossBaseRecoveryConfig,
 ): RecoveryPositioning | null => {
+  // Cap the outbound positioning window: the outbound DHD must depart at
+  // least `minFlightLeadHours` from now AND at most `maxFlightLeadHours`
+  // before the source Roster start. This enforces the 2-6h lead window
+  // documented for Cross-base positioning and prevents the support Crew
+  // from being sent on stand-by for an unbounded amount of time.
+  const minLeadMs = config.minFlightLeadHours * 3600000
+  const maxLeadMs = config.maxFlightLeadHours * 3600000
   const outbound = flights
     .filter((flight) => flight.depArp.toUpperCase() === supportBase.toUpperCase()
       && flight.arvArp.toUpperCase() === recoveryBase.toUpperCase()
-      && finiteTime(flight.schDepDtUtc) >= now + config.minFlightLeadHours * 3600000
+      && finiteTime(flight.schDepDtUtc) >= now + minLeadMs
+      && finiteTime(flight.schDepDtUtc) <= source.start - maxLeadMs
       && finiteTime(flight.schArvDtUtc) <= source.start - config.reserveBeforeHours * 3600000)
     .sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))[0]
   if (!outbound) return null
+  // Inbound lead is symmetric: depart at least `returnAfterHours` after
+  // the Roster end and at most `maxFlightLeadHours` after it.
   const inbound = flights
     .filter((flight) => flight.id !== outbound.id
       && flight.depArp.toUpperCase() === recoveryBase.toUpperCase()
       && flight.arvArp.toUpperCase() === supportBase.toUpperCase()
-      && finiteTime(flight.schDepDtUtc) >= source.end + config.returnAfterHours * 3600000)
+      && finiteTime(flight.schDepDtUtc) >= source.end + config.returnAfterHours * 3600000
+      && finiteTime(flight.schDepDtUtc) <= source.end + maxLeadMs)
     .sort((a, b) => finiteTime(a.schDepDtUtc) - finiteTime(b.schDepDtUtc))[0]
   if (!inbound) return null
   return {
@@ -825,6 +842,7 @@ const positioningFor = (
     outbound,
     inbound,
     minFlightLeadHours: config.minFlightLeadHours,
+    maxFlightLeadHours: config.maxFlightLeadHours,
     reserveBeforeHours: config.reserveBeforeHours,
     returnAfterHours: config.returnAfterHours,
     dhdFlightCost: (outbound.blockMinutes + inbound.blockMinutes) * CROSS_BASE_DHD_COST_PER_MINUTE,

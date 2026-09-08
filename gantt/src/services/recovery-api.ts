@@ -49,6 +49,7 @@ export interface CrossBaseRecoveryRequest {
   division: string
   targetRosterActingRank?: string | null
   minFlightLeadHours: number
+  maxFlightLeadHours: number
   reserveBeforeHours: number
   returnAfterHours: number
   destinationSplit?: {

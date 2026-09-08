@@ -48,6 +48,7 @@ export interface DraftOp {
     division: string
     rosterActingRank: string
     minFlightLeadHours: number
+    maxFlightLeadHours: number
     reserveBeforeHours: number
     returnAfterHours: number
     destinationSplit?: {

@@ -953,6 +953,7 @@ export const rosterService = {
       division: string
       rosterActingRank: string
       minFlightLeadHours: number
+      maxFlightLeadHours: number
       reserveBeforeHours: number
       returnAfterHours: number
       username: string
@@ -990,14 +991,16 @@ export const rosterService = {
       const [inbound] = await tx.select().from(flightTable).where(and(eq(flightTable.id, data.returnFlightId), notDeleted(flightTable.isDeleted)))
       if (!outbound || !inbound) throw Object.assign(new Error('One or both Cross-base DHD flights are not available'), { statusCode: 409 })
       const leadMs = data.minFlightLeadHours * 60 * 60 * 1000
+      const maxLeadMs = data.maxFlightLeadHours * 60 * 60 * 1000
       const beforeMs = data.reserveBeforeHours * 60 * 60 * 1000
       const afterMs = data.returnAfterHours * 60 * 60 * 1000
       if (outbound.depArp.toUpperCase() !== data.supportBase.toUpperCase() || outbound.arvArp.toUpperCase() !== data.recoveryBase.toUpperCase()
-        || outbound.schDepDtUtc.getTime() < Date.now() + leadMs || outbound.schArvDtUtc.getTime() > sourceStart - beforeMs) {
+        || outbound.schDepDtUtc.getTime() < Date.now() + leadMs || outbound.schDepDtUtc.getTime() > sourceStart - maxLeadMs
+        || outbound.schArvDtUtc.getTime() > sourceStart - beforeMs) {
         throw Object.assign(new Error('Outbound DHD flight does not satisfy Cross-base airport or time conditions'), { statusCode: 409 })
       }
       if (inbound.id === outbound.id || inbound.depArp.toUpperCase() !== data.recoveryBase.toUpperCase() || inbound.arvArp.toUpperCase() !== data.supportBase.toUpperCase()
-        || inbound.schDepDtUtc.getTime() < sourceEnd + afterMs) {
+        || inbound.schDepDtUtc.getTime() < sourceEnd + afterMs || inbound.schDepDtUtc.getTime() > sourceEnd + maxLeadMs) {
         throw Object.assign(new Error('Return DHD flight does not satisfy Cross-base airport or time conditions'), { statusCode: 409 })
       }
 

@@ -104,6 +104,7 @@ const crossBaseRecoverySchema = z.object({
     division: z.string().trim().min(1).max(2),
     rosterActingRank: z.string().trim().min(1).max(32),
     minFlightLeadHours: z.number().nonnegative(),
+    maxFlightLeadHours: z.number().nonnegative(),
     reserveBeforeHours: z.number().nonnegative(),
     returnAfterHours: z.number().nonnegative(),
     destinationSplit: z.object({
