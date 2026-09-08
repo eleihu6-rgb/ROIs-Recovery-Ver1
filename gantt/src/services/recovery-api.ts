@@ -1,4 +1,46 @@
+import axios from 'axios'
+import { LIVE_API_BASE } from '@/config/api-paths'
 import { api } from './api'
+
+/**
+ * Dedicated axios instance for diagnostic POSTs that must NOT trigger the
+ * `onUnauthorized` logout cascade (used by the auth-store to drop the session
+ * on a 401). Used by the cross-base recovery trace POST, which is purely
+ * best-effort and must never log the user out if the token is mid-refresh.
+ *
+ * Forwards the Bearer token from the shared `api` instance via a request
+ * interceptor so the live-server auth hook still accepts the call.
+ */
+const recoveryTraceClient = axios.create({
+  baseURL: LIVE_API_BASE,
+  timeout: 15000,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+recoveryTraceClient.interceptors.request.use((config) => {
+  const auth = api.defaults.headers.common['Authorization']
+  if (auth) config.headers['Authorization'] = auth
+  return config
+})
+
+recoveryTraceClient.interceptors.response.use(
+  (response) => {
+    const body = response.data
+    if (body && typeof body === 'object' && 'code' in body && body.code === 200) {
+      return body.data
+    }
+    return body
+  },
+  (error) => {
+    return Promise.reject(error)
+  },
+)
+
+export const recoveryTraceApi = {
+  post: <T>(url: string, body: unknown): Promise<T> =>
+    recoveryTraceClient.post(url, body) as Promise<T>,
+}
+
 
 export type RecoveryPlanId = 'standby' | 'swap' | 'cross-base'
 

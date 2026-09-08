@@ -16,6 +16,7 @@ import { useLockStore } from '@/stores/lock-store'
 import { legalityPreviewApi } from '@/services/legality-preview-api'
 import { flightApi } from '@/services/flight-api'
 import { buildRecoveryDraftPlan } from '@/services/recovery-draft'
+import { recoveryTraceApi } from '@/services/recovery-api'
 import { buildRecoveryPlans, isRosterCompleted, recoveryRuleFailures, ROSTER_STABILITY_FORMULA, type CrossBaseCandidateTrace, type RecoveryAlertSnapshot, type RecoveryFlightSnapshot, type RecoveryOption, type RecoveryPlans } from '@/services/recovery-candidates'
 import { notify } from '@/utils/notify'
 import { bringCrewIdsToTop } from '@/utils/bring-matches-to-top'
@@ -370,16 +371,11 @@ async function logCrossBaseTrace(
     crossBaseTrace: trace,
   }
   try {
-    const res = await fetch('/api/recovery/debug-trace', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(record),
-      // Don't await credentials — we just want best-effort logging.
-      credentials: 'include',
-    })
-    if (!res.ok) {
-      console.warn('[recovery] cross-base trace POST failed', res.status, await res.text())
-    }
+    // Use a dedicated client (recoveryTraceApi) that forwards the Bearer token
+    // from the shared `api` instance but does NOT call `onUnauthorized`. The
+    // trace POST is best-effort: a 401 or 5xx must never trigger a logout or block
+    // the recovery UI; it only causes this diagnostic to be skipped.
+    await recoveryTraceApi.post('/api/recovery/debug-trace', record)
   } catch (err) {
     console.warn('[recovery] cross-base trace POST error', err)
   }
