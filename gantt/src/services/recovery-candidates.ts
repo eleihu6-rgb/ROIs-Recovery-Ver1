@@ -769,6 +769,11 @@ const sortedCrewCandidates = (
   crewsById: Map<string, RecoveryCrewSnapshot>,
   sourceCrew: RecoveryCrewSnapshot,
 ): RecoveryOption[] => [...candidates].sort((a, b) => {
+  // KPI ranking from docs/requirements/recovery-refactor-prompt.md §2.11:
+  // cost → stability → follow-on impact → annual flight minutes → time distance.
+  // Lower directCost sorts first; ties break on the next documented criterion.
+  const directCost = a.metrics.directCost - b.metrics.directCost
+  if (directCost !== 0) return directCost
   const ar = crewsById.get(a.targetCrewId)
   const br = crewsById.get(b.targetCrewId)
   const rank = Number(a.sameRank) - Number(b.sameRank)

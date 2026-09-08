@@ -136,7 +136,7 @@
 |---|---|---|
 | 顶层 Option = 完整 Crew 组合 | `recovery-candidates.ts:1183-1233` `combineRecoveryOptions` + `combineRecoveryMetrics` | **OK**（实现存在） |
 | 同一 (源 Roster, 目标 Crew) Option 内唯一 | 需 verify `combineRecoveryOptions` 逻辑 | **TODO** |
-| KPI 排序（成本→稳定性→后续任务→年度飞时） | 需 verify `combineRecoveryOptions` 排序逻辑 | **TODO** |
+| KPI 排序（成本→稳定性→后续任务→年度飞时） | `recovery-candidates.ts:767` `sortedCrewCandidates` 排序键：`directCost → sameRank → sameBase → followOnImpactCount → annualFlightMinutes → timeDistanceMinutes`（升序最便宜的排前，rank 优先 stable cost 平衡，决策 D1 已补 directCost） | **OK** |
 | 子方案仅作明细 | `recovery-violation-dialog.tsx:405-407` `subOptions?.length ? subOptions : [executionOption]` —— Apply 时递归子方案 | **OK** |
 | Draft 递归覆盖全部子方案 | `recovery-draft.ts:24-32` `option.subOptions?.length` 递归 | **OK** |
 
