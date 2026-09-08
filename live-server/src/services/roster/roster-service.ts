@@ -1057,41 +1057,51 @@ export const rosterService = {
         ? [...await assignPairing(data.sourcePairingId, data.targetCrewId, targetRank), ...await assignPairing(targetPairingId!, data.sourceCrewId, sourceRank)]
         : await assignPairing(data.sourcePairingId, data.targetCrewId, targetRank)
 
-      const createDhdPairing = async (flight: typeof flightTable.$inferSelect, label: string) => {
-        const audit = auditCreate(data.username)
-        const [pair] = await tx.insert(pairingTable).values({
-          pairingLabel: label, division: data.division, base: data.supportBase, fleet: flight.fleet,
-          assignmentGroup: 'DHD', assignment: 'DHD', schStrDtUtc: flight.schDepDtUtc, schEndDtUtc: flight.schArvDtUtc,
-          actStrDtUtc: flight.actDepDtUtc, actEndDtUtc: flight.actArvDtUtc, durationDays: 0, tafb: 1, dutyCount: 1, segCount: 1,
-          source: 'RECOVERY', comments: 'Cross-base Recovery DHD half-ring', ...audit,
-        }).returning()
-        const [segment] = await tx.insert(pairingSegment).values({
-          pairingId: pair.id, dutySeq: 1, segSeq: 1, dutyStrArp: flight.depArp, dutyEndArp: flight.arvArp,
-          dutySchStrDtUtc: flight.schDepDtUtc, dutySchEndDtUtc: flight.schArvDtUtc, dutyActStrDtUtc: flight.actDepDtUtc, dutyActEndDtUtc: flight.actArvDtUtc,
-          dutyAccState: 'D', fltId: flight.id, fltDt: flight.fltDt, fltNum: flight.fltNum, airline: flight.airline,
-          depArp: flight.depArp, arvArp: flight.arvArp, fleetSeg: flight.fleet, actStrDtUtc: flight.actDepDtUtc,
-          actEndDtUtc: flight.actArvDtUtc, schStrDtUtc: flight.schDepDtUtc, schEndDtUtc: flight.schArvDtUtc,
-          segAssignment: 'DHD', dutySchRestMin: 0, dutyActRestMin: 0, ...audit,
-        }).returning()
-        const [roster] = await tx.insert(rosterFlight).values({
-          crewId: data.targetCrewId, pairingId: pair.id, base: data.supportBase, label, assignmentGroup: 'DHD', assignment: 'DHD', role: 'CREW',
-          division: data.division, flightActingRank: sourceRank, rosterActingRank: sourceRank, fltId: flight.id, fltDt: flight.fltDt,
-          dutySeq: 1, segSeq: 1, schStrDtUtc: flight.schDepDtUtc, schEndDtUtc: flight.schArvDtUtc, actStrDtUtc: flight.actDepDtUtc,
-          actEndDtUtc: flight.actArvDtUtc, source: 'RECOVERY', ...audit,
-        }).returning()
-        return { pair, segment, roster }
+      // DHD segments are inserted directly into the source Pairing roster_flight
+      // (Duty-inserted DHD refactor). They no longer synthesize standalone
+      // half-ring Pairings. The duty boundary is derived from the source
+      // Pairing's existing roster_flight rows: outbound goes BEFORE the first
+      // duty (min-1), inbound goes AFTER the last duty (max+1).
+      const computeDutyBoundary = async (mode: 'outbound' | 'inbound') => {
+        const rows = await tx.select({ dutySeq: rosterFlight.dutySeq }).from(rosterFlight).where(and(
+          eq(rosterFlight.crewId, data.targetCrewId),
+          eq(rosterFlight.pairingId, data.sourcePairingId),
+          notDeleted(rosterFlight.isDeleted),
+        )).orderBy(asc(rosterFlight.dutySeq))
+        if (rows.length === 0) return mode === 'outbound' ? 0 : 1
+        const seqs = rows.map((row) => row.dutySeq).filter((value): value is number => typeof value === 'number')
+        if (seqs.length === 0) return mode === 'outbound' ? 0 : 1
+        const min = Math.min(...seqs)
+        const max = Math.max(...seqs)
+        return mode === 'outbound' ? min - 1 : max + 1
       }
 
-      const outboundDhd = await createDhdPairing(outbound, `DHD ${outbound.fltNum} ${outbound.depArp}-${outbound.arvArp}`)
-      const inboundDhd = await createDhdPairing(inbound, `DHD ${inbound.fltNum} ${inbound.depArp}-${inbound.arvArp}`)
+      const createDhdRosterRow = async (flight: typeof flightTable.$inferSelect, dutySeq: number) => {
+        const audit = auditCreate(data.username)
+        const label = `DHD ${flight.fltNum} ${flight.depArp}-${flight.arvArp}`
+        const [roster] = await tx.insert(rosterFlight).values({
+          crewId: data.targetCrewId, pairingId: data.sourcePairingId, base: data.supportBase, label,
+          assignmentGroup: 'DHD', assignment: 'DHD', role: 'CREW', division: data.division,
+          flightActingRank: sourceRank, rosterActingRank: sourceRank, fltId: flight.id, fltDt: flight.fltDt,
+          dutySeq, segSeq: 1, schStrDtUtc: flight.schDepDtUtc, schEndDtUtc: flight.schArvDtUtc,
+          actStrDtUtc: flight.actDepDtUtc, actEndDtUtc: flight.actArvDtUtc,
+          source: 'RECOVERY', comments: 'Cross-base Recovery DHD inserted into Duty boundary', ...audit,
+        }).returning()
+        return roster
+      }
+
+      const outboundDutySeq = await computeDutyBoundary('outbound')
+      const inboundDutySeq = await computeDutyBoundary('inbound')
+      const outboundDhd = await createDhdRosterRow(outbound, outboundDutySeq)
+      const inboundDhd = await createDhdRosterRow(inbound, inboundDutySeq)
       if (data.operation === 'standby' && data.standbyTaskId != null) await tx.update(rosterFlight).set({ exceptionCode: 'CALLOUT_STANDBY', ...auditUpdate(data.username) }).where(and(eq(rosterFlight.id, data.standbyTaskId), eq(rosterFlight.crewId, data.targetCrewId), notDeleted(rosterFlight.isDeleted)))
 
-      const pairingIds = [...new Set([...oldPairingIds, outboundDhd.pair.id, inboundDhd.pair.id])]
+      const pairingIds = [...new Set([...oldPairingIds, data.sourcePairingId])]
       const crewIds = [...new Set([...oldCrewIds, data.targetCrewId])]
-      const dates = [...sourceRows, ...targetRows, outboundDhd.roster, inboundDhd.roster].map((row) => row.schStrDtUtc).filter((value): value is Date => value != null)
+      const dates = [...sourceRows, ...targetRows, outboundDhd, inboundDhd].map((row) => row.schStrDtUtc).filter((value): value is Date => value != null)
       return {
-        created: [...createdRoster, outboundDhd.roster, inboundDhd.roster], deleted: allRows.length, deletedIds: allRows.map((row) => row.id),
-        crewIds, pairingIds, dates, dhdPairingIds: [outboundDhd.pair.id, inboundDhd.pair.id],
+        created: [...createdRoster, outboundDhd, inboundDhd], deleted: allRows.length, deletedIds: allRows.map((row) => row.id),
+        crewIds, pairingIds, dates, dhdPairingIds: [],
       }
     })
 

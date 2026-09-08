@@ -384,7 +384,6 @@ const syntheticId = (key: string): number => {
   }
   return -(Math.abs(hash) || 1)
 }
-
 const makeDhdItem = (
   flight: RecoveryFlightSnapshot,
   crewId: string,
@@ -393,6 +392,8 @@ const makeDhdItem = (
   actingRank: string,
   pairingId: number,
   optionId: string,
+  dutySeq: number,
+  segSeq: number,
 ): RosterItem => ({
   id: syntheticId(`${optionId}:task:${flight.id}`),
   crewId,
@@ -411,7 +412,7 @@ const makeDhdItem = (
   isRequested: 0,
   isSwapped: 0,
   preference: null,
-  comments: 'Cross-base Recovery positioning flight',
+  comments: 'Cross-base Recovery DHD inserted into Duty boundary',
   score: null,
   workingHour: null,
   schStrDtUtc: flight.schDepDtUtc,
@@ -421,8 +422,8 @@ const makeDhdItem = (
   fltId: flight.id,
   fltDt: flight.schDepDtUtc.slice(0, 10),
   fleetCode: flight.fleet,
-  dutySeq: 1,
-  segSeq: 1,
+  dutySeq,
+  segSeq,
   division,
   flightActingRank: actingRank,
   rosterActingRank: actingRank,
@@ -448,31 +449,58 @@ const makeDhdItem = (
   isRecoveryAffected: true,
 })
 
+/**
+ * Build the inbound/outbound DHD Roster items for a Cross-base positioning option.
+ *
+ * Refactor (Duty-inserted DHD):
+ *   - DHD rows belong to the source Pairing (`sourcePairingId`) instead of
+ *     synthesized half-ring Pairings. The receiving Crew inherits the
+ *     positioning via the source Pairing roster_flight rows.
+ *   - dutySeq is computed from the source roster's existing duty boundary:
+ *       outbound => min(dutySeq) - 1   (or 0 when the source has no rows)
+ *       inbound  => max(dutySeq) + 1
+ *     This keeps the positioning flights visually attached to the Pairing's
+ *     first/last duty in the Gantt while the row identity remains stable.
+ */
 const makeDhdItems = (
   positioning: RecoveryPositioning,
   targetCrew: RecoveryCrewSnapshot,
   actingRank: string,
   optionId: string,
-): RosterItem[] => [
-  makeDhdItem(
-    positioning.outbound,
-    targetCrew.crewId,
-    positioning.supportBase,
-    targetCrew.division,
-    actingRank,
-    syntheticId(`${optionId}:pairing:outbound`),
-    optionId,
-  ),
-  makeDhdItem(
-    positioning.inbound,
-    targetCrew.crewId,
-    positioning.supportBase,
-    targetCrew.division,
-    actingRank,
-    syntheticId(`${optionId}:pairing:inbound`),
-    optionId,
-  ),
-]
+  sourcePairingId: number,
+  sourceItems: RosterItem[],
+): RosterItem[] => {
+  const sorted = [...sourceItems].sort((a, b) =>
+    (a.dutySeq ?? 0) - (b.dutySeq ?? 0) || (a.segSeq ?? 0) - (b.segSeq ?? 0))
+  const firstDuty = sorted[0]?.dutySeq
+  const lastDuty = sorted[sorted.length - 1]?.dutySeq
+  const outboundDutySeq = typeof firstDuty === 'number' ? firstDuty - 1 : 0
+  const inboundDutySeq = typeof lastDuty === 'number' ? lastDuty + 1 : (outboundDutySeq + 1)
+  return [
+    makeDhdItem(
+      positioning.outbound,
+      targetCrew.crewId,
+      positioning.supportBase,
+      targetCrew.division,
+      actingRank,
+      sourcePairingId,
+      optionId,
+      outboundDutySeq,
+      1,
+    ),
+    makeDhdItem(
+      positioning.inbound,
+      targetCrew.crewId,
+      positioning.supportBase,
+      targetCrew.division,
+      actingRank,
+      sourcePairingId,
+      optionId,
+      inboundDutySeq,
+      1,
+    ),
+  ]
+}
 
 const buildAfterItems = (
   allItems: RosterItem[],
@@ -506,11 +534,11 @@ const buildAfterItems = (
     // the synthetic DHD items use the support Crew's base.
     const moved = cloneForCrew(source.items, targetCrewId, mode)
     const returned = cloneForCrew(target.items, source.crewId, mode)
-    const dhdItems = positioning ? makeDhdItems(positioning, targetCrew, source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || 'CREW', optionId) : []
+    const dhdItems = positioning ? makeDhdItems(positioning, targetCrew, source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || 'CREW', optionId, source.pairingId, source.items) : []
     return [...kept, ...moved, ...returned, ...dhdItems]
   }
   const moved = cloneForCrew(source.items, targetCrewId, mode)
-  const dhdItems = positioning ? makeDhdItems(positioning, targetCrew, source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || 'CREW', optionId) : []
+  const dhdItems = positioning ? makeDhdItems(positioning, targetCrew, source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || 'CREW', optionId, source.pairingId, source.items) : []
   return kept.map((item) =>
     item.crewId === targetCrewId && item.pairingId == null && item.id === standbyTaskId
       ? { ...item, isCalloutStandby: true }
