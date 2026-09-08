@@ -496,7 +496,7 @@ export async function runBin(bin, args, tsv) {
       fs.writeFileSync(tmpFile, tsv, 'utf-8')
       fd = fs.openSync(tmpFile, 'r')
       const { stdout, stderr } = await new Promise((resolve, reject) => {
-        const child = spawn(binPath, args, { stdio: [fd, 'pipe', 'pipe'] })
+        const child = spawn(binPath, args, { stdio: [fd, 'pipe', 'pipe'], windowsHide: true })
         let out = ''
         let err = ''
         let settled = false
