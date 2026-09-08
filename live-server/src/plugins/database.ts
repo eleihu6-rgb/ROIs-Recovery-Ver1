@@ -62,11 +62,18 @@ export default fp(async (fastify: FastifyInstance) => {
   const warmupCount = Math.min(Math.ceil(poolMax / 2), 8)
   const warmupClients: pg.PoolClient[] = []
   try {
+    // Parallel warm-up: serial `await` of 8 handshakes to a slow remote PG
+    // can take 9-10s and trip the fastify plugin timeout. `Promise.all` keeps
+    // the cold-start budget at ~1s.
+    const warmupTasks: Array<Promise<void>> = []
     for (let i = 0; i < warmupCount; i += 1) {
-      const c = await pool.connect()
-      await c.query('SELECT 1')
-      warmupClients.push(c)
+      warmupTasks.push((async () => {
+        const c = await pool.connect()
+        await c.query('SELECT 1')
+        warmupClients.push(c)
+      })())
     }
+    await Promise.all(warmupTasks)
     fastify.log.info(
       { warmup: warmupClients.length, max: poolMax },
       'Database pool warmed',

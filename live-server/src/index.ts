@@ -82,6 +82,12 @@ const server = Fastify({
   logger: {
     level: env.LOG_LEVEL,
   },
+  // The default fastify plugin timeout is 10s. The database plugin does a
+  // best-effort parallel pool warm-up after the initial SELECT current_schema()
+  // probe; on a slow remote handshake we still want a few extra seconds of headroom
+  // before fastify tears the plugin down. 30s comfortably covers the worst case while
+  // still failing fast on a real misconfiguration.
+  pluginTimeout: 30_000,
 })
 
 const start = async () => {

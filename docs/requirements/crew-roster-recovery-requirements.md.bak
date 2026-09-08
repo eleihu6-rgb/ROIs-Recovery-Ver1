@@ -2,8 +2,8 @@
 
 > 项目：ROIS Recovery
 > 文档状态：需求基线，供后续手工优化
-> 版本：3.7
-> 日期：2026-09-07
+> 版本：2.5
+> 日期：2026-09-06
 
 ---
 
@@ -45,11 +45,10 @@
 - OPS 航班计划模拟查询和编辑。
 - 航班运营字段变化后的关联对象同步。
 - 机型资格不合规等 Rule 告警。
-- Roster Pane 的 `Alert Center` 告警入口；废弃 Live 顶层 Violation 入口。
+- Roster Pane 的 Alert Center 告警入口；废弃 Live 顶层 Violation 入口。
 - Rule 8004 告警的 Roster 交换和 Standby Crew 替换。
 - Standby Crew 替换方案。
 - Crew 之间交换任务方案。
-- Cross-base Recovery（7.3.1）：跨基地 Standby、跨基地 Swap、跨基地 Destination 三类子选项；与基础方案（方案一/方案二）并列筛选，不归入“方案一/方案二”编号。
 - 方案前后差异、成本和影响数量展示。
 - 方案确认、保存、生效和再次检查。
 - 本期具备应用权限的用户确认方案后可直接生效，不需要主管审批。
@@ -70,9 +69,9 @@
 - 删除或替代现有 Rule Engine。
 - 独立的顶层 `Recovery` 菜单。
 
-机组恢复能力统一通过 Roster Pane 的 `Alert Center` 告警入口和 Live Gantt Roster 告警浮显进入；`System → Interface` 当前仅进入 OPS Flight Schedule Simulation（5.1），不作为 Recovery 入口；独立顶层 `Recovery` 菜单已废弃（4.2 / 14.6）。
+机组恢复能力统一通过 `System → Interface`、Live 告警和 Live Gantt 等工作流进入。
 
-### 4.3 本期规则恢复范围
+## 4.3 本期规则恢复范围
 
 本期从 Live 告警进入 Recovery 时，只有告警来源为 Rule ID `8004` 的记录进入已定义的自动恢复流程。
 
@@ -244,7 +243,7 @@ Live Roster Pane 的条件工具栏提供唯一的 `Alert Center` 入口。用�
 - 用户可从告警定位到对应 Crew、Pairing、Roster 或航班上下文。
 - 恢复成功后，告警列表应刷新；已解决告警不应继续显示为待处理状态。
 
-#### 6.4.1 综合恢复选择
+#### 6.3.1 综合恢复选择
 
 Alert Center 不再以单条告警作为 Recovery 的唯一入口，而是支持在当前已加载的告警列表中同时选择多条可恢复的 Rule `8004` 告警，并通过 `Recovery selected` 一次性生成综合恢复方案。选择范围严格限定为当前已经加载并显示的告警，不得因批量操作扩展到数据库全量数据。
 
@@ -254,7 +253,7 @@ Alert Center 不再以单条告警作为 Recovery 的唯一入口，而是支持
 - `Ctrl/Cmd+R` 在 Live 页面打开当前已加载的全部可恢复 `8004` 告警的综合 Recovery 工作流；用户可在生成前返回 Alert Center 调整选择。
 - 从 Roster 告警浮显进入 Recovery 时仍保持单告警上下文，这是定位入口；用户进入工作流后可返回 Alert Center 追加其他已加载告警。
 
-#### 6.4.2 Roster 告警悬浮入口
+#### 6.4.1 Roster 告警悬浮入口
 
 当用户将鼠标悬浮到 Live Gantt 中带有告警的 Roster 时，现有告警浮显必须提供 `Recovery` 入口。该入口只对支持恢复策略的 Rule `8004` 显示，并使用与 Alert Center 行按钮相同的 Recovery 工作流、当前已加载数据范围和候选约束；不得在浮显中实现第二套恢复逻辑。已完成 Roster 不显示可执行 Recovery 入口。
 
@@ -322,7 +321,7 @@ Roster 交换的最小粒度为完整 Roster，不允许只交换单个 Duty 或
 最终候选过滤要求：
 
 - 目标 Crew 必须对待恢复完整 Roster 中所有已加载航段的机型具备精确资格；不能用任意字符串包含关系替代机型代码匹配，例如仅具备 `7M` 资格不得视为具备 `7M8` 资格。
-- 直接转移、双向交换和 Callout Standby 均必须检查恢复后目标 Crew 的完整 Roster 规则结果。Live 8004 适配器必须同时提供 `pairing_segment.fleet_seg`（含既有回退链）与 `crew_fleet.{fleet_specific, ac_type, fleet_grp}` 有效期资格输入；详见 15.8。
+- 直接转移、双向交换和 Callout Standby 均必须检查恢复后目标 Crew 的完整 Roster 规则结果。
 - 模拟 Rule 检查失败的候选不得继续显示为可选择或可执行项；界面可在方案汇总中显示“已过滤”数量，并展示失败原因。
 
 时间相邻的计算方式：
@@ -458,7 +457,7 @@ Recovery
 
 方案类型必须可交互选择。用户点击方案一或方案二所在的方案行后，具体恢复选项列表只展示当前选中的方案类型；不得将两类方案选项混在同一个列表中。切换方案类型时，系统应自动选中该类型下首个可执行恢复选项；若该类型没有可执行选项但存在候选，则选中首个候选并保留不可执行原因。
 
-方案类型选择器必须使用整块可点击的方案卡，而不是仅依赖方案名称文字作为点击入口。此处"方案卡"即 14.4 中"方法选择区域"，二者为同一 UI 元素：承担按方案类型（方案一/方案二/Cross-base 子选项）过滤候选的职责，候选区单独展示具体 Crew 恢复选项，二者职责不重叠。每张卡应展示方案名称、方案说明、候选数量、可执行数量和代表性成本，并通过方案专属色带、边框、底色以及明确的 `Selected` 状态标识当前方案。点击卡片任意主要区域都应切换方案，并立即刷新下方候选列表；切换过程中应显示稳定的选中反馈，不得出现点击命中区域过小或点击后无可见变化的情况。
+方案类型选择器必须使用整块可点击的方案卡，而不是仅依赖方案名称文字作为点击入口。每张卡应展示方案名称、方案说明、候选数量、可执行数量和代表性成本，并通过方案专属色带、边框、底色以及明确的 `Selected` 状态标识当前方案。点击卡片任意主要区域都应切换方案，并立即刷新下方候选列表；切换过程中应显示稳定的选中反馈，不得出现点击命中区域过小或点击后无可见变化的情况。
 
 “原 Roster”和“新 Roster”必须以可比较的对象标识展示，至少包含 RosterID、CrewID、日期、开始结束时间、PairingID 和主要航段；无法匹配原新对象时，应明确标识为取消或新增。
 
@@ -549,8 +548,6 @@ Detail 表格必须使用固定且可识别的颜色区分前后状态：Before 
 4. 允许用户返回方案比较或切换其他恢复选项。
 5. 明确提示该操作仅为前端或会话级预览，不提交数据库、不更新正式 Roster、Pairing、Duty 或 Crew 数据。
 6. 在用户点击正式应用前，不触发不可逆的排班变更或外部接口写入。
-
-7.7 节内 Detail 内的“在 Live Gantt 中预览”按钮和方案列表/方案卡的 Preview 按钮入口等价：两者均调用同一会话级 Preview 渲染器，共享 Crew 置顶、双态叠加、Before/After 颜色与 Pairing 同行的语义；不得在两条路径上分别维护两套 Preview 状态。Detail 入口还附带明细表格的当前选项上下文。
 
 告警浮显交互要求：
 
@@ -701,7 +698,7 @@ Pairing Preview 与 Roster Preview 采用相同的前后态原则：
 
 本节定义本期 Recovery 代码的接口、校验、异常、安全、日志和测试约束。它们是实现约束，不改变既有候选排序、稳定性公式、成本模型或接口成功响应字段。
 
-### 9.2 接口契约
+### 17.1 接口契约
 
 Recovery 方法服务按 Rule 无关的恢复能力提供接口；调用方可以来自 8004，也可以来自后续其他 Rule：
 
@@ -721,7 +718,7 @@ Recovery 方法服务按 Rule 无关的恢复能力提供接口；调用方可�
 
 成功结果统一返回方法类型、操作类型、受影响 Crew/Pairing、删除数量和新增数量；正式保存后的 Rule 重检与 Manday 重算仍是既有异步后置流程。错误响应保留现有 `code/data/message` 包装，不向客户端返回数据库堆栈或凭据。
 
-### 9.3 参数校验和防御逻辑
+### 17.2 参数校验和防御逻辑
 
 - 前后端均使用结构化 Schema 校验字符串长度、Crew/Pairing/Flight ID 类型、基地代码长度、时间参数非负和操作所需字段；不能用字符串拼接 SQL 或依赖前端禁用按钮保证安全。
 - 服务端在事务中重新读取源 Roster、源 Pairing、Pairing Segment、Composition、Crew 生效基地和目标 Crew 占用任务；客户端的 `mockItems` 只用于 Draft/Preview 展示，不能作为正式写库依据。
@@ -732,7 +729,7 @@ Recovery 方法服务按 Rule 无关的恢复能力提供接口；调用方可�
 - Preview 临时 PairingID 使用负数，仅允许存在于会话/临时规则检查数据中；正式数据库 PairingID 必须由数据库生成，接口不得接受负数持久化 PairingID。
 - 新建临时 Pairing 进入规则预览时，规则引擎不使用正数 Pairing 限定过滤该临时对象，而使用受影响 Crew 范围并保留聚焦时间区间，避免漏检新 Pairing 的告警。
 
-### 9.4 异常处理、事务和状态
+### 17.3 异常处理、事务和状态
 
 | 场景 | 服务行为 | 前端行为 |
 |---|---|---|
@@ -745,7 +742,7 @@ Recovery 方法服务按 Rule 无关的恢复能力提供接口；调用方可�
 
 跨 Crew、Pairing 和 Roster Flight 的正式修改必须在同一数据库事务中完成；事务外的缓存失效、Composition fill 刷新、Rule 重检和 Manday 重算失败不能反写已提交数据，必须记录日志并通过刷新/重试机制收敛到实际数据库状态。本期不提供 Recovery 专用回滚接口。
 
-### 9.5 安全和权限
+### 17.4 安全和权限
 
 - 所有正式 Recovery 接口必须经过现有认证上下文，操作人从认证用户取得；客户端提交的用户名不能替代认证身份。
 - 查看、Preview、Apply、Soft Rule 覆盖和 Hard Rule 覆盖使用独立权限；Hard Rule 覆盖默认阻断，具体 Role 编码和覆盖原因字段仍按 16.2 待确认项处理。
@@ -753,20 +750,20 @@ Recovery 方法服务按 Rule 无关的恢复能力提供接口；调用方可�
 - 查询使用参数化 ORM/SQL；基地、Crew、Pairing、Flight 和 Ruleset 参数必须经过 Schema 约束，日志不得写入密码、Token 或完整敏感人员资料。
 - 所有恢复写入必须保留 `created_by/created_at/updated_by/updated_at` 等现有审计字段；Recovery 专用审计实体、覆盖原因和版本签名属于后续生产化完善项。
 
-### 9.6 结构化日志和可诊断性
+### 17.5 结构化日志和可诊断性
 
 Recovery 日志使用结构化字段记录 `requestId`、认证操作人、method、operation、sourceCrewId、targetCrewId、sourcePairingId、targetPairingId、目标临时/正式 Pairing 模式和结果状态。成功日志只记录对象摘要和数量；拒绝日志记录校验失败类别和安全可公开的原因；异常日志包含错误对象和事务阶段，但不包含凭据或完整 Crew 数据。
 
 日志至少覆盖：Schema 拒绝、候选/Apply 业务冲突、事务失败、缓存失效失败、Pairing Composition 刷新失败、Rule 重检失败和 Manday 重算失败。日志不是前端成功状态的替代，页面必须根据接口结果和后续刷新显示状态。
 
-### 9.7 自动化测试和代码注释
+### 17.6 自动化测试和代码注释
 
 - 前端 Recovery 单元测试覆盖完整转移、完整交换、Callout SBY、跨基地 DHD、动态 Acting Rank、`plan=1` 原 Pairing 修改、`plan>1` 新 Pairing `plan=1`、DHD 成本节省、资格过滤、重叠过滤、已完成 Roster 过滤、Draft 编码和唯一候选选择。
 - Rule Preview 单元测试覆盖正数 Pairing 的局部叠加、负数临时 Pairing 的插入、规则查询焦点降级到受影响 Crew 范围和预览告警归一化。
 - 代码注释只解释事务边界、临时 ID、Rule 查询焦点、动态 Rank 继承和异常例外等非显而易见的约束，不重复描述普通赋值逻辑。
 - 生产联调前必须补充带数据库事务的服务集成测试：首尾 DHD 校验、源 Rank 不一致、Composition 计划不一致、目标基地变化、并发修改和事务回滚；这些测试需要稳定的隔离数据库夹具，当前列为技术补充项而不改变本期业务计算结果。
 
-### 9.8 当前技术待完善项
+### 17.7 当前技术待完善项
 
 以下事项不影响本期已确认的业务计算逻辑和成功输出，但在生产化前必须补齐：Recovery 专用审计实体和版本签名、Hard/Soft Rule 覆盖接口、完整数据库集成测试、后置 Rule/Manday 状态模型、并发冲突提示、真实 CC/FD `blh` 查询统一、Callout SBY 例外传入 Rule Engine，以及 Redis/外部依赖的部署健康检查。
 
@@ -854,7 +851,7 @@ Roster 分配和改派接口（已根据代码定位）：
 - 当前代码未发现名称为 `deassign` 的独立路由或服务方法；现有删除能力由 `remove` 及其路由提供，是否可作为完整 Roster Deassign 的底层能力需由包装层进一步编排和验证。
 - Live Gantt 的 Roster 拖拽改派路径使用 `/api/roster/move`；该接口当前是单任务改派，不等同于 Recovery 要求的完整 Roster 转移。
 
-当前 Recovery 已通过 Alert Center 工作流接入：候选生成严格使用当前已加载的 Live 数据，前端支持完整 Roster 转移、双向交换、Standby Callout、方案级比较、Detail 表格和 Live Gantt 前后预览。本期 `Apply` 的真实路径由 `recovery-violation-dialog.tsx` 的 `apply()` 构造 `RecoveryDraftPlan` 并调用 `addDraftOp`，将恢复方案写入当前 Live Gantt 的未保存 Draft；正式落库复用 Gantt 既有 `Save`/`Ctrl+S` 链路（锁、Rule 预检、事务提交、缓存刷新），不再由前端逐行直接写入 `roster_flight`。`POST /api/recovery/apply-option`、`POST /api/recovery/methods/{roster-assignment,callout-standby,cross-base}` 等后端接口作为面向后续 Rule 和独立后端执行链路的前向兼容入口存在于 `live-server/src/routes/recovery/recovery.ts`，本期前端 `Apply` 不调用这些接口；旧的 `simulate-flight-change` 演示接口和内存 Session 接口仅保留在 OPS 模拟页面，不代表 Live Recovery 的正式执行链路。
+当前 Recovery 已通过 Live Violation 工作流接入：候选生成严格使用当前已加载的 Live 数据，前端支持完整 Roster 转移、双向交换、Standby Callout、方案级比较、Detail 表格和 Live Gantt 前后预览。正式执行由 `POST /api/recovery/apply-option` 调用后端完整 Roster 编排，不再由前端逐行写入；后端事务执行原 Roster 软删除并按 Pairing Segment 创建目标 Crew 的完整 Roster，随后刷新 Pairing、Crew、Manday 缓存并触发 Live Rule 检查。旧的演示接口 `simulate-flight-change` 和内存 Session 接口仍保留用于 OPS 模拟页面，不代表 Live Recovery 的正式执行链路。
 
 当前 Cross-base 已扩展为三个独立操作：`cross-base-standby`、`cross-base-swap` 和 `cross-base-destination`。Destination 模式由前端从首尾 DHD 航段和已加载 Pairing Composition 推导候选，服务端在同一数据库事务中重新读取源 Pairing、源 Crew Acting Rank、首尾 DHD、目标 Crew 生效基地和 Composition `plan`，拒绝不一致的客户端参数；`plan=1` 修改原 Pairing，其他情况创建新的单配比 Pairing，并写入动态继承的 Acting Rank 与 `plan=1`。临时负数 PairingID 只属于 Preview，规则预览在检测到该 ID 时改用受影响 Crew 范围，避免新 Pairing 被规则查询过滤。
 
@@ -894,7 +891,7 @@ Recovery API 当前保留在后端，独立顶层菜单入口已移除。后续�
 ### 14.4 8004 Recovery 方案
 
 - 系统自动查询其他 Crew，并生成直接转移和双向交换候选。
-- 系统自动生成方案一（直接转移/双向交换）和方案二（当前基地 Standby Crew 替换）两类基础方案，并在每个方案下列出不同候选 Crew 对应的恢复选项。Cross-base Recovery（7.3.1）作为本期纳入的扩展恢复能力独立展示于方案比较区，其三类子选项（Callout Standby / Swap / Destination）与基础方案并列筛选；不归入“方案一/方案二”编号。
+- 系统自动生成方案一和方案二，并在每个方案下列出不同候选 Crew 对应的恢复选项。
 - 每个恢复选项均展示 CrewID、原 Roster、新 Roster、取消 Roster、新增 Roster 和变化 Roster 的明细。
 - Roster 交换按完整 Roster 执行，不允许只交换 Duty、航段或拆分给多个 Crew。
 - 直接转移候选的目标 Crew 具备执行待恢复 Roster 的资质，且模拟后不产生任何新增告警。
@@ -1201,8 +1198,6 @@ OPS 航班模拟变更
 
 ### 16.2 待确认事项
 
-1. **（编号占位/历史首条）** 当前文档不保留旧版本 Q1 文本；如需追溯，参考版本记录 0.1 / 0.2 / 0.3 中曾列出的初始待确认项。本节自 Q2 起为当前有效待确认事项。
-
 2. **后续第一个任务的定义：** 如果多个任务拥有相同开始时间，如何确定“第一个任务”？是否按任务类型、原始排序或任务ID决定？取消/结束/休假等非执行任务是否计入第一个任务？
 3. **Rank 与岗位资格映射：** `requiredRankOrder` 从哪个对象读取？如果 Roster、Duty、Pairing 或岗位数据的 Rank 要求不一致，采用哪一个？缺少 Rank 或岗位资格数据时，候选是排除还是进入人工确认？
 4. **跨基地、跨岗位、跨机组类型的成本：** 各类跨范围附加成本如何计算，是否允许不同类型叠加？成本由固定值、距离/时长或其他业务数据决定？
@@ -1251,7 +1246,7 @@ OPS 航班模拟变更
 | 1.1 | 2026-09-05 | 增加开发启动评审，区分可立即开发内容、正式执行前置条件、临时开发假设和开发门槛 |
 | 1.2 | 2026-09-05 | 确认 Swap、Assign、Deassign 的完整 Roster 业务语义，定位现有代码接口并明确单任务接口到完整 Roster 包装层的实现差距 |
 | 1.3 | 2026-09-05 | 更新代码开发基线，记录 Live Recovery 正式执行链路、方案级比较、前后 Gantt 预览和初始成本权重实现 |
-| 1.4 | 2026-09-05 | 根据代码开发复核新增实现边界和待澄清项，补充 Violation 数据完整性、Roster 身份、服务端校验、异步结果、时间/飞时口径、旧 Demo 链路及 Redis 运行前提（注：v1.4 是 v1.0 的实现复核而非替代，v1.0 确认的 CC/FD Manday `blh` 口径为业务基线，v1.4 揭示的 `ybh` 偏差属于待解决的实现 bug） |
+| 1.4 | 2026-09-05 | 根据代码开发复核新增实现边界和待澄清项，补充 Violation 数据完整性、Roster 身份、服务端校验、异步结果、时间/飞时口径、旧 Demo 链路及 Redis 运行前提 |
 | 1.5 | 2026-09-05 | 明确恢复方案类型可点击过滤具体恢复选项，并明确 Detail 中 Before/After 及取消、新增、保留状态的颜色区分和图例要求 |
 | 1.6 | 2026-09-05 | 移除 Violation 页固定红色 8004 标签；增加方案和候选的蓝色/琥珀色区分、唯一 Crew 勾选执行机制，以及 Show in Live 的 Crew 置顶和受影响 Roster 橙色高亮要求 |
 | 1.7 | 2026-09-05 | 补充 Live Roster 加载完整性要求：Crew 完整历史不得阻塞 Roster 首屏；筛选成功后必须以已加载 Crew ID 请求 Roster，并增加自动化回归保护。 |
@@ -1275,4 +1270,3 @@ OPS 航班模拟变更
 | 3.5 | 2026-09-07 | 增加独立 `test:8004-regression` 回归命令，固定验证 Crew `1012` 执行 Pairing `135559` 且无 `7M8` 资格必须产生 `8004`，并验证补充有效资格后告警消失；后续涉及规则、告警查询、Ruleset 选择或 Live 数据加载的代码修改必须先通过该用例。 |
 | 3.6 | 2026-09-07 | 修复本地开发环境反复出现的告警缺失：`SKIP_RUST_BINS=true` 时跳过仅用于构建 7500 状态的 `check-7500-ref` 预处理，并将未指定规则范围的 Live 冷启动限定为继续执行可用的 8004 JavaScript 检查；避免每次服务重启因缺少 7500 二进制提前失败、Alert Center 只显示旧告警。显式指定 `--rules` 的行为不改变，生产环境仍必须提供完整 Rust 二进制。 |
 | 3.7 | 2026-09-07 | 修复 Live 8004 适配器缺失：补充按航段读取 `pairing_segment.fleet_seg`/航班机型，以及读取 `crew_fleet` 的 `fleet_specific`、`ac_type`、`fleet_grp` 有效期资格；修复多表查询 `is_deleted` 歧义；增加 Live 适配器 SQL 回归测试。真实重算已验证 Crew `1012` / Pairing `135559` 生成 `8004` Fleet 告警。 |
-| 3.8 | 2026-09-07 | 重构需求文档一致性：4.1 本期范围补充 Cross-base Recovery（跨基地 Standby/Swap/Destination 三类子选项，与基础方案并列筛选）；编号修订（`## 4.3`→`### 4.3`、`#### 6.3.1`→`#### 6.4.1`、`#### 6.4.1`→`#### 6.4.2`、`### 17.1~17.7`→`### 9.2~9.8`、header 版本 `2.5`→`3.7`）；语义修订（13 章 Apply 路径由后端 `apply-option` 改为前端 `apply()` 写 Draft + Gantt Save 落库；4.1 之后入口路径明确为 `Alert Center` + Roster 浮显，`System → Interface` 仅进入 OPS 模拟；14.4 14.4 增补 Cross-base 与基础方案并列筛选关系；7.1 增补 `pairing_segment.fleet_seg`/`crew_fleet` 适配器交叉引用至 15.8；7.7 增补 Detail 内"在 Live Gantt 中预览"与方案卡 `Preview` 入口等价说明；7.4 增补"方案卡"与 14.4"方法选择区域"为同一 UI 元素说明）；追溯修复（16.2 增加 Q1 编号占位；版本表 v1.4 标注为 v1.0 实现复核）。仅修改本文件，未触及目录内其他文档。 |

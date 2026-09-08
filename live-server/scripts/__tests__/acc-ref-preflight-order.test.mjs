@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { buildAccRefUpdates } from '../acc-ref-tz.mjs'
+import { resolveLiveRecomputeCodes, shouldRefreshLiveAccRef } from '../live-legality.mjs'
 
 const read = (name) => fs.readFileSync(path.resolve(import.meta.dirname, '..', name), 'utf8')
 
@@ -42,4 +43,12 @@ test('shared 7500 preflight preserves different refs for crews sharing one pairi
     ['C1', 700, 1, -240, -240],
     ['C2', 700, 1, 60, 60],
   ])
+})
+
+test('local SKIP_RUST_BINS mode skips optional 7500 and keeps the 8004 fallback in scope', () => {
+  assert.deepEqual(resolveLiveRecomputeCodes([], true), ['8004'])
+  assert.deepEqual(resolveLiveRecomputeCodes(['8004'], true), ['8004'])
+  assert.deepEqual(resolveLiveRecomputeCodes(['1001'], true), ['1001'])
+  assert.equal(shouldRefreshLiveAccRef(true), false)
+  assert.equal(shouldRefreshLiveAccRef(false), true)
 })

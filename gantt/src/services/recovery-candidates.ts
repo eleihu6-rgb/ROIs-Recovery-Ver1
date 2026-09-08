@@ -266,8 +266,9 @@ export const recoveryRuleFailures = (input: {
   before: RecoveryPreviewViolation[]
   after: RecoveryPreviewViolation[]
 }): string[] => {
-  const beforeKeys = new Set(input.before.map(previewViolationKey))
-  const newViolations = input.after.filter((violation) => !beforeKeys.has(previewViolationKey(violation)))
+  // Anchor "new violation" detection to the (crewId, pairingId) tuples this option
+  // actually receives. Alerts on a different Crew or a different Pairing are not
+  // introduced by this Recovery and must not filter the option out.
   const options = input.option.subOptions?.length ? input.option.subOptions : [input.option]
   const received = options.flatMap((option) => [
     { crewId: option.targetCrewId, pairingId: option.destinationSplit?.createdPairingId ?? option.sourcePairingId },
@@ -275,6 +276,10 @@ export const recoveryRuleFailures = (input: {
       ? [{ crewId: option.sourceCrewId, pairingId: option.targetPairingId }]
       : []),
   ])
+  const receivedKeys = new Set(received.map((a) => `${a.crewId}|${a.pairingId ?? ''}`))
+  const onReceivedAfter = input.after.filter((violation) => receivedKeys.has(`${violation.crewId}|${violation.pairingId ?? ''}`))
+  const beforeKeys = new Set(input.before.map(previewViolationKey))
+  const newViolations = onReceivedAfter.filter((violation) => !beforeKeys.has(previewViolationKey(violation)))
   const unresolved8004 = input.after.filter((violation) =>
     violation.ruleCode.trim().toUpperCase() === '8004' && received.some((assignment) =>
       String(assignment.crewId) === String(violation.crewId) && String(assignment.pairingId) === String(violation.pairingId)),

@@ -286,12 +286,93 @@ describe('buildRecoveryPlans', () => {
       before: [{ crewId: 'A', pairingId: 100, ruleCode: '8004', message: 'A is not qualified' }],
       after: [
         { crewId: 'B', pairingId: 100, ruleCode: '8004', message: 'B is not qualified' },
-        { crewId: 'B', pairingId: 100, ruleCode: '7501', message: 'New rest violation' },
+        { crewId: 'B', pairingId: 100, ruleCode: '7001', message: 'New rest violation' },
       ],
     })
 
     expect(failures).toContain('8004: Crew B remains unqualified for Pairing 100.')
-    expect(failures).toContain('7501: New rest violation')
+    expect(failures).toContain('7001: New rest violation')
+  })
+
+  it('does not treat a new violation on an unrelated Crew/Pairing as introduced by Recovery', () => {
+    // option transfers Pairing 100 from Crew A to Crew B. (B, 100) is the received anchor.
+    // After the simulated transfer:
+    //   - an 8004 on (B, 100) keeps failing -> must surface as unresolved8004.
+    //   - a 7001 on (B, 100) is a NEW violation on the anchor -> must surface.
+    //   - a 7001 on (B, 999) is a NEW violation but on a different Pairing -> must NOT surface,
+    //     because the recovery did not introduce it; it is an unrelated baseline alert.
+    //   - a 7001 on (C, 100) is a NEW violation but on a different Crew -> must NOT surface,
+    //     because the recovery did not introduce it; it is an unrelated baseline alert.
+    const option = {
+      mode: 'transfer' as const,
+      sourceCrewId: 'A',
+      targetCrewId: 'B',
+      sourcePairingId: 100,
+      targetPairingId: null,
+    }
+    const failures = recoveryRuleFailures({
+      option,
+      before: [
+        { crewId: 'A', pairingId: 100, ruleCode: '8004', message: 'A is not qualified' },
+      ],
+      after: [
+        { crewId: 'B', pairingId: 100, ruleCode: '8004', message: 'B is not qualified' },
+        { crewId: 'B', pairingId: 100, ruleCode: '7001', message: 'Anchor rest violation' },
+        { crewId: 'B', pairingId: 999, ruleCode: '7001', message: 'Unrelated rest violation on another Pairing' },
+        { crewId: 'C', pairingId: 100, ruleCode: '7001', message: 'Unrelated rest violation on another Crew' },
+      ],
+    })
+
+    expect(failures).toContain('8004: Crew B remains unqualified for Pairing 100.')
+    expect(failures).toContain('7001: Anchor rest violation')
+    expect(failures).not.toContain('7001: Unrelated rest violation on another Pairing')
+    expect(failures).not.toContain('7001: Unrelated rest violation on another Crew')
+
+  })
+  it('treats any ruleCode (not just 8004) the same way on the received anchor - no ruleCode hardcoding in filter', () => {
+    // Sanity check: the filter must depend on (crewId, pairingId) anchor and the before/after diff,
+    // NOT on a hardcoded list of rule codes. Simulate violations using placeholder rule codes that
+    // are not present in any real ruleset (7001/8002/8056/9123) and assert the same behaviour.
+    const option = {
+      mode: 'transfer' as const,
+      sourceCrewId: 'A',
+      targetCrewId: 'B',
+      sourcePairingId: 100,
+      targetPairingId: null,
+    }
+    const baseline = (ruleCode: string, crewId: string, pairingId: number, message: string) => ({
+      crewId, pairingId, ruleCode, message,
+    })
+    const failures = recoveryRuleFailures({
+      option,
+      before: [
+        baseline('8004', 'A', 100, 'A is not qualified'),
+      ],
+      after: [
+        baseline('8004', 'B', 100, 'B is not qualified'),
+        // Any ruleCode on the anchor -> must surface as new violation.
+        baseline('7001', 'B', 100, 'placeholder 1 on anchor'),
+        baseline('8002', 'B', 100, 'placeholder 2 on anchor'),
+        baseline('8056', 'B', 100, 'placeholder 3 on anchor'),
+        baseline('9123', 'B', 100, 'placeholder 4 on anchor'),
+        // Any ruleCode off the anchor (other Crew or other Pairing) -> must NOT surface.
+        baseline('7001', 'B', 999, 'placeholder off-anchor pairing'),
+        baseline('7001', 'C', 100, 'placeholder off-anchor crew'),
+        baseline('9123', 'C', 999, 'placeholder off-anchor both'),
+      ],
+    })
+
+    // 8004 still surfaces as unresolved (business rule, not a hardcoded filter).
+    expect(failures).toContain('8004: Crew B remains unqualified for Pairing 100.')
+    // All anchor ruleCodes surface as new violations, regardless of their numeric value.
+    expect(failures).toContain('7001: placeholder 1 on anchor')
+    expect(failures).toContain('8002: placeholder 2 on anchor')
+    expect(failures).toContain('8056: placeholder 3 on anchor')
+    expect(failures).toContain('9123: placeholder 4 on anchor')
+    // Off-anchor ruleCodes never surface, regardless of their numeric value.
+    expect(failures).not.toContain('7001: placeholder off-anchor pairing')
+    expect(failures).not.toContain('7001: placeholder off-anchor crew')
+    expect(failures).not.toContain('9123: placeholder off-anchor both')
   })
 
   it('does not treat a partial fleet code as a qualification', () => {

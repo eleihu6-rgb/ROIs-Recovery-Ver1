@@ -250,7 +250,7 @@ export const SharedRosterPane = ({
     if (!isLive || livePaneType !== 'roster-main' || !alertCenter) return
     const onRecoveryShortcut = () => {
       const recoverableRows = alertCenter.rows.filter((candidate) =>
-        candidate.ruleCode === '8004' && candidate.pairingId != null && candidate.canRecover !== false,
+        candidate.ruleCode === '8004' && candidate.pairingId != null && candidate.canRecover === true,
       )
       if (recoverableRows.length === 0) {
         notify.info('No recoverable 8004 alert in the loaded Live data.')
@@ -405,7 +405,7 @@ export const SharedRosterPane = ({
   const handleSortOpen = useCallback(() => setSortDialogOpen(true), [])
   const handleAlertCenterOpen = useCallback(() => setAlertCenterOpen(true), [])
   const handleRecovery = useCallback((rows: CrewViolationRow[]) => {
-    const selected = rows.filter((row) => row.ruleCode === '8004' && row.pairingId != null && row.canRecover !== false)
+    const selected = rows.filter((row) => row.ruleCode === '8004' && row.pairingId != null && row.canRecover === true)
     if (selected.length === 0) return
     setAlertCenterOpen(false)
     setCrewBellCrewId(null)
