@@ -29,8 +29,11 @@ if str(_F8_DIR) not in sys.path:
     sys.path.insert(0, str(_F8_DIR))
 
 from rust_legality_extras import (  # noqa: E402
+    _engine_from_checker,
     align_store_for_rust_checker,
+    apply_fdp_3007,
     build_engine_extras,
+    make_fdp_3007_tsv,
 )
 
 from ColumnModelSolver_python.io.ro_input_parser import parse_ro_input  # noqa: E402
@@ -65,11 +68,17 @@ _ORIG_BIND = _rust_checker_mod.RustRuleChecker.bind_problem
 
 
 def _bind_problem_with_extras(self, problem):
-    """Build F8 extras on the filtered problem.crews, then set_next before Engine."""
+    """Build F8 extras on the filtered problem.crews, then set_next before Engine.
+
+    After bind, load 3007 FDP TSV via set_fdp_3007 (pairing_id = Engine dense index).
+    """
     crews, pairings, crew_bases = align_store_for_rust_checker(problem, RO_INPUT)
     extras = build_engine_extras(crews, pairings, _SECTIONS, crew_bases)
     rre.set_next_engine_extras(**extras)
-    return _ORIG_BIND(self, problem)
+    tsv = make_fdp_3007_tsv(pairings, _SECTIONS)
+    result = _ORIG_BIND(self, problem)
+    apply_fdp_3007(_engine_from_checker(self), tsv)
+    return result
 
 
 _rust_checker_mod.RustRuleChecker.bind_problem = _bind_problem_with_extras  # type: ignore[method-assign]

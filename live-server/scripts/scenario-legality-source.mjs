@@ -1088,6 +1088,60 @@ export function buildSeedSource(db, scenarioId, ctx) {
       )).rows
     },
 
+    async fdpDuties() {
+      const ids = await crewIds()
+      if (ids.length === 0) return []
+      const pairs = await pairingIds()
+      if (pairs.length === 0) return []
+      return (await db.query(
+        `select rf.crew_id, rf.pairing_id, rf.duty_seq,
+                coalesce(nullif(rf.assignment_group, ''), p.assignment_group, 'FLY') as assignment_group,
+                ps.flt_id, ps.seg_seq, coalesce(nullif(ps.seg_assignment, ''), 'FLY') as seg_assignment,
+                extract(epoch from coalesce(ps.act_str_dt_utc, ps.sch_str_dt_utc))::bigint as start_act,
+                extract(epoch from coalesce(ps.act_end_dt_utc, ps.sch_end_dt_utc))::bigint as end_act,
+                extract(epoch from ps.sch_str_dt_utc)::bigint as start_sch,
+                extract(epoch from ps.sch_end_dt_utc)::bigint as end_sch,
+                ps.duty_sch_fdp_min,
+                coalesce(ps.duty_is_manual_modify, 0) as duty_is_manual_modify,
+                extract(epoch from ps.brief_start_utc)::bigint as brief_start,
+                extract(epoch from ps.brief_end_utc)::bigint as brief_end,
+                extract(epoch from ps.debrief_start_utc)::bigint as debrief_start,
+                extract(epoch from ps.debrief_end_utc)::bigint as debrief_end,
+                extract(epoch from ps.pickup_start_utc)::bigint as pickup_start,
+                extract(epoch from ps.pickup_end_utc)::bigint as pickup_end,
+                extract(epoch from ps.dropoff_start_utc)::bigint as dropoff_start,
+                extract(epoch from ps.dropoff_end_utc)::bigint as dropoff_end,
+                ps.dep_arp, ps.arv_arp, ps.fleet_seg,
+                coalesce(ps.duty_fdp_discretion_min, 0) as duty_fdp_discretion_min
+           from f8.roster_flight rf
+           join f8.pairing_segment ps
+             on ps.pairing_id = rf.pairing_id and ps.duty_seq = rf.duty_seq and coalesce(ps.is_deleted, 0) = 0
+           left join f8.pairing p on p.id = rf.pairing_id and p.is_deleted = 0
+          where rf.crew_id = any($1::varchar[]) and rf.is_deleted=0 and rf.assignment_group='FLY'
+            and rf.pairing_id = any($2::bigint[])
+          order by rf.crew_id, rf.pairing_id, rf.duty_seq, ps.seg_seq`,
+        [ids, pairs],
+      )).rows
+    },
+
+    async persistDutyFdp(updates) {
+      for (const u of updates ?? []) {
+        const pairingId = Number(u.pairing_id)
+        const dutySeq = Number(u.duty_seq)
+        const fdpMin = Number(u.fdp_min)
+        if (!Number.isFinite(pairingId) || !Number.isFinite(dutySeq) || !Number.isFinite(fdpMin)) continue
+        await db.query(
+          `update f8.pairing_segment
+              set duty_sch_fdp_min = $3, updated_by = 'legality_recheck', updated_at = now()
+            where pairing_id = $1 and duty_seq = $2
+              and coalesce(is_deleted, 0) = 0
+              and duty_sch_fdp_min is null
+              and coalesce(duty_is_manual_modify, 0) <> 1`,
+          [pairingId, dutySeq, fdpMin],
+        )
+      }
+    },
+
     async groundWork(includeRest = false) {
       const ids = await crewIds()
       if (ids.length === 0) return []

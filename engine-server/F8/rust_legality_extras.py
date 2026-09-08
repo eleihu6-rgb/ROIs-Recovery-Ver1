@@ -1,4 +1,4 @@
-"""F8 Rust legality Engine extras (manday / duty / segment / ground is_rest).
+"""F8 Rust legality Engine extras (manday / duty / segment / ground is_rest / 3007).
 
 Shared by:
   - engine-server/F8/ro_solver_wrapper.py  (formal scenario RO)
@@ -7,11 +7,15 @@ Shared by:
 Injected via rois_rule_engine_rs.set_next_engine_extras(**extras) before
 RustRuleChecker / Engine construction. PyO3 fills only empty constructor fields.
 
+Rule 3007 (FDP) is not an Engine constructor kwarg — call ``apply_fdp_3007``
+after bind so ``Engine.set_fdp_3007(tsv)`` sees the dense pairing array.
+
 Does not live in pbs-engine: solver keeps base (rules.rust); this module is
 the outer complement.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -307,6 +311,362 @@ def make_ground_is_rest_params(crews, sections: dict) -> dict:
             ]
         )
     return {"crew_ground_is_rest": is_rest}
+
+
+def _id_str(val: Any) -> str:
+    if val is None:
+        return ""
+    try:
+        import pandas as pd
+
+        if pd.isna(val):
+            return ""
+    except Exception:
+        pass
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
+    text = str(val).strip()
+    if text.endswith(".0") and text[:-2].isdigit():
+        return text[:-2]
+    return text
+
+
+def _cell(val: Any) -> str:
+    return _id_str(val).replace("\t", " ").replace("\n", " ")
+
+
+def _header_index(header: list[str], *names: str) -> int:
+    upper = [h.strip().upper() for h in header]
+    for name in names:
+        needle = name.strip().upper()
+        if needle in upper:
+            return upper.index(needle)
+    return -1
+
+
+def _active_rule_ids(sections: dict) -> set[str]:
+    frame = sections.get("RuleSet")
+    if frame is None or getattr(frame, "empty", True) or "ruleId" not in getattr(frame, "columns", []):
+        return set()
+    return {_id_str(val) for val in frame["ruleId"] if _id_str(val)}
+
+
+def _rule_ids_for_function(sections: dict, function: str) -> list[str]:
+    frame = sections.get("Rule")
+    if frame is None or getattr(frame, "empty", True):
+        return []
+    if "id" not in frame.columns or "function" not in frame.columns:
+        return []
+    wanted = str(function).strip()
+    ids: list[str] = []
+    for _, row in frame.iterrows():
+        fn = _id_str(row.get("function"))
+        if fn != wanted:
+            continue
+        rid = _id_str(row.get("id"))
+        if rid:
+            ids.append(rid)
+    active = _active_rule_ids(sections)
+    if active:
+        ids = [rid for rid in ids if rid in active]
+    return ids
+
+
+def _param_table(sections: dict, rule_id: str) -> tuple[list[str], list[list[str]]]:
+    frame = sections.get("RuleParameter")
+    if frame is None or getattr(frame, "empty", True):
+        return [], []
+    if "ruleId" not in frame.columns:
+        return [], []
+    header: list[str] = []
+    indexed: list[tuple[int, list[str]]] = []
+    for _, row in frame.iterrows():
+        if _id_str(row.get("ruleId")) != rule_id:
+            continue
+        pname = str(row.get("paramNames") or "").strip()
+        pvals = [part.strip() for part in str(row.get("paramValues") or "").split(",")]
+        if pname.endswith("Header"):
+            header = pvals
+        elif "Row" in pname:
+            match = re.search(r"Row(\d+)$", pname)
+            idx = int(match.group(1)) if match else len(indexed) + 1
+            indexed.append((idx, pvals))
+    indexed.sort(key=lambda item: item[0])
+    return header, [vals for _, vals in indexed]
+
+
+def _utc_secs(val: Any) -> int | None:
+    if val is None or val == "":
+        return None
+    try:
+        import pandas as pd
+
+        ts = pd.to_datetime(val, errors="coerce", utc=True)
+        if pd.isna(ts):
+            return None
+        return int(ts.timestamp())
+    except Exception:
+        return None
+
+
+def _fdp_cell(val: Any) -> str:
+    if val is None or val == "":
+        return ""
+    try:
+        import pandas as pd
+
+        if pd.isna(val):
+            return ""
+    except Exception:
+        pass
+    try:
+        return str(int(float(val)))
+    except (TypeError, ValueError):
+        return ""
+
+
+def _is_yes(val: Any) -> bool:
+    return str(val or "").strip().lower() in ("1", "true", "y", "yes")
+
+
+def _field(header: list[str], row: list[str], name: str, default: str = "") -> str:
+    idx = _header_index(header, name)
+    if idx < 0 or idx >= len(row):
+        return default
+    text = row[idx].strip()
+    return text if text else default
+
+
+def make_fdp_3007_tsv(pairings, sections: dict) -> str:
+    """Tagged TSV for ``Engine.set_fdp_3007``. ``D.pairing_id`` = Engine dense index.
+
+    Empty string when the active RuleSet has no 3007 param rows (do not enable 3007).
+    """
+    headers_rows: list[tuple[list[str], list[list[str]]]] = []
+    for rid in _rule_ids_for_function(sections, "3007"):
+        header, rows = _param_table(sections, rid)
+        if header and _header_index(header, "MAX FDP") >= 0 and rows:
+            headers_rows.append((header, rows))
+    if not headers_rows:
+        return ""
+
+    lines: list[str] = [
+        "B\tINCLUDE CHECK IN\tY",
+        "B\tINCLUDE CHECK OUT\tN",
+    ]
+    for rid in _rule_ids_for_function(sections, "2107"):
+        header, rows = _param_table(sections, rid)
+        def_i = _header_index(header, "DEFINITION")
+        val_i = _header_index(header, "VALUE")
+        if def_i < 0 or val_i < 0:
+            continue
+        for row in rows:
+            definition = row[def_i].strip() if def_i < len(row) else ""
+            value = row[val_i].strip() if val_i < len(row) else ""
+            if definition:
+                lines.append(f"B\t{_cell(definition)}\t{_cell(value)}")
+
+    cio = False
+    for rid in _rule_ids_for_function(sections, "3010"):
+        header, rows = _param_table(sections, rid)
+        if not rows:
+            continue
+        brief = _field(header, rows[0], "BRIEF", "60")
+        debrief = _field(header, rows[0], "DEBRIEF", "15")
+        lines.append(f"C\t{_cell(brief)}\t{_cell(debrief)}")
+        cio = True
+        break
+    if not cio:
+        lines.append("C\t60\t15")
+
+    for rid in _rule_ids_for_function(sections, "2102"):
+        header, rows = _param_table(sections, rid)
+        for row in rows:
+            lines.append(
+                "\t".join(
+                    [
+                        "T",
+                        _cell(_field(header, row, "INBOUND", "*")),
+                        _cell(_field(header, row, "OUTBOUND", "*")),
+                        _cell(_field(header, row, "AIRPORT", "*")),
+                        _cell(_field(header, row, "FLEETS", "*")),
+                        _cell(_field(header, row, "MAX TURNTIME", "02:00")),
+                        _cell(_field(header, row, "PSEUDO BRIEF", "00:20")),
+                        _cell(_field(header, row, "PSEUDO DEBRIEF", "00:15")),
+                        _cell(_field(header, row, "PSEUDO PICK UP", "00:00")),
+                        _cell(_field(header, row, "PSEUDO DROP OFF", "00:00")),
+                        _cell(_field(header, row, "IS SPLIT DUTY", "Y")),
+                    ]
+                )
+            )
+
+    asg_codes: set[str] = set()
+    for section_name in ("Assignment", "Assignment(Read)"):
+        frame = sections.get(section_name)
+        if frame is None or getattr(frame, "empty", True):
+            continue
+        code_col = "assignment" if "assignment" in frame.columns else None
+        pct_col = "fdpPct" if "fdpPct" in frame.columns else None
+        if not code_col or not pct_col:
+            continue
+        for _, row in frame.iterrows():
+            code = str(row.get(code_col) or "").strip().upper()
+            raw = str(row.get(pct_col) or "").strip()
+            if not code or not raw:
+                continue
+            try:
+                pct = float(raw)
+            except (TypeError, ValueError):
+                continue
+            asg_codes.add(code)
+            lines.append(f"A\t{_cell(code)}\t{pct}\t{_cell(code)}")
+    if "FLY" not in asg_codes:
+        lines.append("A\tFLY\t1.0\tFLY")
+
+    for header, rows in headers_rows:
+        lines.append("\t".join(["H", *(_cell(h) for h in header)]))
+        for row_index, row in enumerate(rows):
+            lines.append("\t".join(["R", str(row_index), *(_cell(v) for v in row)]))
+
+    pairing_idx = {
+        str(getattr(pairing, "original_pairing_id", None) or pairing.id): i
+        for i, pairing in enumerate(pairings)
+    }
+    pairing_group = {
+        str(getattr(pairing, "original_pairing_id", None) or pairing.id): str(
+            getattr(pairing, "assignment_group", None)
+            or getattr(pairing, "assignment", "")
+            or "FLY"
+        ).strip()
+        or "FLY"
+        for pairing in pairings
+    }
+
+    duty_df = sections.get("PairingDuty")
+    seg_df = sections.get("PairingDutySegment")
+    if (
+        duty_df is None
+        or getattr(duty_df, "empty", True)
+        or "pairingId" not in duty_df.columns
+        or seg_df is None
+        or getattr(seg_df, "empty", True)
+        or "pairingId" not in seg_df.columns
+    ):
+        return "\n".join(lines) + "\n"
+
+    duties = duty_df.copy()
+    segs = seg_df.copy()
+    if "isDeleted" in duties.columns:
+        duties = duties[duties["isDeleted"].astype(str).str.lower() != "true"]
+    if "isDeleted" in segs.columns:
+        segs = segs[segs["isDeleted"].astype(str).str.lower() != "true"]
+
+    segs_by_duty: dict[tuple[str, int], list] = {}
+    for _, row in segs.iterrows():
+        pid = _id_str(row.get("pairingId"))
+        try:
+            duty_seq = int(row.get("dutySeq") or 0)
+            seg_seq = int(row.get("segSeq") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not pid or duty_seq <= 0:
+            continue
+        segs_by_duty.setdefault((pid, duty_seq), []).append((seg_seq, row))
+
+    for _, row in duties.iterrows():
+        pid = _id_str(row.get("pairingId"))
+        idx = pairing_idx.get(pid)
+        if idx is None:
+            continue
+        try:
+            duty_seq = int(row.get("dutySeq") or 0)
+        except (TypeError, ValueError):
+            continue
+        duty_segs = [item[1] for item in sorted(segs_by_duty.get((pid, duty_seq), []), key=lambda x: x[0])]
+        if not duty_segs:
+            continue
+        first = duty_segs[0]
+        last = duty_segs[-1]
+        start_act = _utc_secs(first.get("actStrDtUtc") if "actStrDtUtc" in first.index else first.get("actStartDtUtc"))
+        end_act = _utc_secs(last.get("actEndDtUtc"))
+        if start_act is None or end_act is None:
+            continue
+        group = str(row.get("assignment") or "").strip().upper()
+        if group not in ("FLY", "RES", "GRD"):
+            group = pairing_group.get(pid, "FLY")
+        key = f"{idx}:{duty_seq}"
+        lines.append(
+            "\t".join(
+                [
+                    "D",
+                    key,
+                    "",
+                    str(idx),
+                    str(duty_seq),
+                    group or "FLY",
+                    _fdp_cell(row.get("planFdpMinutes")),
+                    "0",
+                    "",
+                    "",
+                    str(start_act),
+                    str(start_act),
+                    str(start_act),
+                    str(end_act),
+                    "Y" if _is_yes(row.get("isManualModify")) else "N",
+                    _fdp_cell(row.get("fdpDiscretionMin")) or "0",
+                ]
+            )
+        )
+        for seg in duty_segs:
+            seg_start = _utc_secs(seg.get("actStrDtUtc") if "actStrDtUtc" in seg.index else seg.get("actStartDtUtc"))
+            seg_end = _utc_secs(seg.get("actEndDtUtc"))
+            if seg_start is None or seg_end is None:
+                continue
+            sch_start = _utc_secs(seg.get("schStartDtUtc")) or seg_start
+            sch_end = _utc_secs(seg.get("schEndDtUtc")) or seg_end
+            asg = str(seg.get("assignment") or "FLY").strip() or "FLY"
+            lines.append(
+                "\t".join(
+                    [
+                        "S",
+                        key,
+                        _cell(seg.get("fltId") or 0),
+                        _cell(asg),
+                        str(seg_start),
+                        str(seg_end),
+                        str(sch_start),
+                        str(sch_end),
+                        "0",
+                        "Y",
+                        "",
+                        _cell(seg.get("depArp") or seg.get("depStation") or ""),
+                        _cell(seg.get("arvArp") or seg.get("arvStation") or ""),
+                        _cell(seg.get("fleet") or ""),
+                        "",
+                        "*",
+                    ]
+                )
+            )
+
+    return "\n".join(lines) + "\n"
+
+
+def apply_fdp_3007(engine, tsv: str) -> None:
+    """Load 3007 after Engine construction. No-op when TSV is empty."""
+    if not (tsv or "").strip():
+        return
+    if engine is None:
+        raise RuntimeError("set_fdp_3007: Engine missing after bind_problem")
+    setter = getattr(engine, "set_fdp_3007", None)
+    if setter is None:
+        raise AttributeError(
+            "rois_rule_engine_rs.Engine.set_fdp_3007 is missing; rebuild the PyO3 wheel"
+        )
+    setter(tsv)
+
+
+def _engine_from_checker(checker):
+    return getattr(checker, "_engine", None) or getattr(checker, "engine", None)
 
 
 def align_store_for_rust_checker(problem, ro_input_path) -> tuple[list, list, list[str]]:

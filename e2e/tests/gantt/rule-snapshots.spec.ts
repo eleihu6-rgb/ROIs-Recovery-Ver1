@@ -30,6 +30,7 @@ const FIRING = [
   { id: '7506/001', dir: '7506' },
   { id: '8030/001', dir: '8030' },
   { id: '8004/001', dir: '8004' },
+  { id: '3007/001', dir: '3007' },
 ]
 
 // Legality-tab param proofs: the CALC rules (no violations) + 7503 (its live alert rows

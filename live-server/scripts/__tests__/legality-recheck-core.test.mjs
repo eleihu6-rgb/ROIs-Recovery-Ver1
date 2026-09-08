@@ -3,7 +3,7 @@
 // cover the end-to-end recheck (§No-Illusion).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { epochSec, headerIndexer, scopeKeyOf, withParamRowPrefix, resolveDaysOffRpBounds, pickDaysOffAnchor, daysOffAnchorPairingId, rule8002, rule8004, rule8056, rule8071, rule8072, rule8030, rule7505, rule7507, rule7506, rule7501, rule7508, rule7503, rule7504 } from '../legality-recheck-core.mjs'
+import { epochSec, headerIndexer, scopeKeyOf, withParamRowPrefix, resolveDaysOffRpBounds, pickDaysOffAnchor, daysOffAnchorPairingId, rule8002, rule8004, rule8056, rule8071, rule8072, rule8030, rule7505, rule7507, rule7506, rule7501, rule7508, rule7503, rule7504, rule3007 } from '../legality-recheck-core.mjs'
 
 
 test('withParamRowPrefix prefixes 1-based Row N and is idempotent', () => {
@@ -2681,4 +2681,84 @@ test('rule7507 still runs for CRAM-only months with pairing_id null', async () =
   assert.equal(out[0].rule_code, '7507')
   assert.equal(out[0].pairing_id, null)
   assert.match(out[0].message, /days off\(9\) must be at least 10/)
+})
+
+const HDR3007 = [
+  'COMPOSITION', 'RPT START', 'RPT END', 'LANDING LOWER', 'LANDINGS UPPER',
+  'REST FACILITY', 'MAX FDP', 'MAX EXTENSION', 'ISAUGMENT',
+  'DEPARTURE START', 'DEPARTURE END', 'DUTY TYPE', 'DUTY FLEET',
+]
+
+test('rule3007 skips when source has no fdpDuties()', async () => {
+  const logs = []
+  const out = await rule3007({ async flyDuties() { return [] } }, {
+    ...CTX_DATES,
+    instancesOf: (fn) => fn === 3007
+      ? [{ instance: '001', header: HDR3007, rows: [['*', '00:00', '23:59', '0', '99', '*', '16:00', '', 'N', '00:00', '23:59', '*', '*']] }]
+      : [],
+    log: (m) => logs.push(m),
+    runBin() { throw new Error('must not spawn') },
+  })
+  assert.deepEqual(out, [])
+  assert.ok(logs.some((m) => /does not provide fdpDuties/i.test(m)), logs.join('\n'))
+})
+
+test('rule3007 maps check-3007 V rows and persists skipped=N FDP minutes', async () => {
+  const persist = []
+  let captured
+  const source = {
+    async fdpDuties() {
+      return [{
+        crew_id: 'K1002',
+        pairing_id: 150398,
+        duty_seq: 1,
+        assignment_group: 'FLY',
+        flt_id: 145625,
+        seg_seq: 1,
+        seg_assignment: 'FLY',
+        start_act: 1717228800,
+        end_act: 1717236000,
+        start_sch: 1717228800,
+        end_sch: 1717236000,
+        duty_sch_fdp_min: null,
+        duty_is_manual_modify: 0,
+        brief_start: 1717225200,
+        brief_end: 1717228800,
+        debrief_start: 1717236000,
+        debrief_end: 1717236900,
+        dep_arp: 'DXB',
+        arv_arp: 'LHR',
+        fleet_seg: 'B777',
+        duty_fdp_discretion_min: 0,
+      }]
+    },
+    async persistDutyFdp(rows) { persist.push(...rows) },
+  }
+  const out = await rule3007(source, {
+    ...CTX_DATES,
+    instancesOf: (fn) => fn === 3007
+      ? [{ instance: '001', header: HDR3007, rows: [['*', '00:00', '23:59', '0', '99', '*', '01:00', '', 'N', '00:00', '23:59', '*', '*']] }]
+      : [],
+    log: () => {},
+    runBin(bin, args, tsv) {
+      captured = { bin, args, tsv }
+      return [
+        ['F', 'K1002\t150398\t1', '150398', '1', '420', 'N'],
+        ['F', 'skip', '150398', '2', '0', 'Y'],
+        ['V', 'K1002\t150398\t1', 'K1002', '150398', '1', '3007.1', '420', '60', '1717225200', '1717236000', 'Flight duty period (07:00) is more than the limitation (01:00).'],
+      ]
+    },
+  })
+  assert.equal(captured.bin, 'check-3007')
+  assert.ok(captured.args.includes('--emit-tsv'))
+  assert.match(captured.tsv, /^H\tCOMPOSITION\t/m)
+  assert.match(captured.tsv, /^D\t/m)
+  assert.equal(persist.length, 1)
+  assert.deepEqual(persist[0], { pairing_id: 150398, duty_seq: 1, fdp_min: 420 })
+  assert.equal(out.length, 1)
+  assert.equal(out[0].rule_code, '3007')
+  assert.equal(out[0].crew_id, 'K1002')
+  assert.equal(out[0].pairing_id, 150398)
+  assert.equal(out[0].scope_key, '3007.1')
+  assert.match(out[0].message, /Flight duty period/)
 })
