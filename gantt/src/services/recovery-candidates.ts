@@ -1083,6 +1083,21 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
   // Rank or has no rank mapping.')). The refactor prompt suggests a softer
   // policy: keep the candidate, surface it in the plan list, and apply a
   // rankGap-based penalty in metrics.directCost so KPI ranking can still
+  // Build a per-Crew index of items so the per-target hot loop does
+  // not run an O(N) filter over the loaded roster for every candidate (the
+  // dialog loads ~1500-2000 items; without this, 150 candidates x 4 filters
+  // = ~900k comparisons vs ~150 x 6 items per crew). Hoist source items too
+  // so source-crew and target-crew lookups share the same map.
+  const itemsByCrew = new Map<string, RosterItem[]>()
+  const sourceItems: RosterItem[] = []
+  for (const item of input.items) {
+    const crewId = String(item.crewId)
+    if (crewId === String(source.crewId)) sourceItems.push(item)
+    const list = itemsByCrew.get(crewId)
+    if (list) list.push(item)
+    else itemsByCrew.set(crewId, [item])
+  }
+  const itemsOf = (crewId: string): RosterItem[] => itemsByCrew.get(crewId) ?? []
   // prefer rank-matched crews. Defer until the wider ranking rework lands.
   const crewsById = new Map(input.crews.map((crew) => [crew.crewId, crew]))
   const requiredOrder = input.rankOrder.get((input.alert.requiredRank || source.items[0]?.flightActingRank || '').toUpperCase())
@@ -1102,7 +1117,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
     const crossDivision = !!sourceCrew.division && !!targetCrew.division && sourceCrew.division !== targetCrew.division
     const crossRole = !!sourceCrew.rank && !!targetCrew.rank && sourceCrew.rank !== targetCrew.rank
     const targetOrder = input.rankOrder.get(targetCrew.rank.toUpperCase())
-    const targetItems = input.items.filter((item) => item.crewId === targetCrew.crewId)
+    const targetItems = itemsOf(targetCrew.crewId)
     const baseReasons: string[] = []
     if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) baseReasons.push('Target Crew Rank is lower than the required Rank or has no rank mapping.')
     const missingFleet = requiredFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
@@ -1121,7 +1136,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
     if (targetRoster) {
       const targetHasConflict = hasAnyOverlapExcept(targetItems, source, new Set([targetRoster.pairingId]))
       const sourceHasConflict = hasAnyOverlapExcept(
-        input.items.filter((item) => item.crewId === source.crewId),
+        sourceItems,
         targetRoster,
         new Set([source.pairingId]),
       )
@@ -1161,7 +1176,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
     if (missingFleet) reasons.push(`Standby Crew is not qualified for fleet ${missingFleet}.`)
     // The one explicit overlap exception is the SBY task selected for this callout.
     // A second SBY task, ground task, or any Roster that overlaps remains disqualifying.
-    const otherTasks = input.items.filter((item) => item.crewId === targetCrewId && item.id !== standbyTask.id)
+    const otherTasks = itemsOf(targetCrewId).filter((item) => item.id !== standbyTask.id)
     if (otherTasks.some((item) => itemOverlapsGroup(item, source))) reasons.push('Standby Crew has another loaded task overlapping the recovery Roster.')
     if (reasons.length === 0) {
       standbyOptions.push(makeOption({
@@ -1203,7 +1218,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       start: Math.min(...destinationItems.map((item) => finiteTime(item.schStrDtUtc))),
       end: Math.max(...destinationItems.map((item) => finiteTime(item.schEndDtUtc))),
     }
-    const targetItems = input.items.filter((item) => item.crewId === targetCrew.crewId)
+    const targetItems = itemsOf(targetCrew.crewId)
     const targetOrder = input.rankOrder.get(targetCrew.rank.toUpperCase())
     const sameRank = !!sourceCrew.rank && sourceCrew.rank.toUpperCase() === targetCrew.rank.toUpperCase()
     const crossDivision = !!sourceCrew.division && !!targetCrew.division && sourceCrew.division !== targetCrew.division
@@ -1254,7 +1269,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         inbound: null,
         positioningResult: 'no-outbound',
         freeForPositioning: null,
-        loadedItemCount: input.items.filter((item) => item.crewId === targetCrew.crewId).length,
+        loadedItemCount: itemsOf(targetCrew.crewId).length,
         surfaced: false,
         surfacedModes: [],
       }
@@ -1290,7 +1305,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       const sameBase = false
       const crossDivision = !!sourceCrew.division && !!targetCrew.division && sourceCrew.division !== targetCrew.division
       const crossRole = !!sourceCrew.rank && !!targetCrew.rank && sourceCrew.rank !== targetCrew.rank
-      const targetItems = input.items.filter((item) => item.crewId === targetCrew.crewId)
+      const targetItems = itemsOf(targetCrew.crewId)
       const standbyTasks = targetItems.filter((item) => item.pairingId == null && item.assignmentGroup?.toUpperCase() === 'SBY'
         && finiteTime(item.schStrDtUtc) <= source.start && source.start <= finiteTime(item.schEndDtUtc))
       const targetGroupsForCrew = activeGroups.filter((group) => group.crewId === targetCrew.crewId)
@@ -1313,7 +1328,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         const freeForSwap = crewFreeForPositioning(input.items, targetCrew.crewId, positioning, targetRoster.pairingId)
         if (!freeForSwap) continue
         const targetHasConflict = hasAnyOverlapExcept(targetItems, source, new Set([targetRoster.pairingId]))
-        const sourceHasConflict = hasAnyOverlapExcept(input.items.filter((item) => item.crewId === source.crewId), targetRoster, new Set([source.pairingId]))
+        const sourceHasConflict = hasAnyOverlapExcept(sourceItems, targetRoster, new Set([source.pairingId]))
         if (targetHasConflict || sourceHasConflict) continue
         crossBaseOptions.push(makeOption({
           allItems: input.items, allGroups: activeGroups, source, target: targetRoster, targetCrew, sourceCrew,
@@ -1570,5 +1585,18 @@ export const buildRecoveryPlans = (input: BuildRecoveryPlansInput & {
     roster: makeGroup('roster', 'roster', 'Roster transfer or exchange', 'Each option contains one complete recovery decision per selected alert.'),
     standby: makeGroup('standby', 'standby', 'Standby Crew callout', 'Each option contains one complete recovery decision per selected alert.'),
     crossBase: makeGroup('cross-base', 'crossBase', 'Cross-base positioning', 'Each option contains one complete recovery decision per selected alert.'),
+      // Multi-alert combined plans are not a single cross-base group; aggregate the per-alert
+    // traces so the Recovery dialog can still log a cross-base trace for the combined flow.
+    crossBaseTrace: childPlans.flatMap((plan) => plan.crossBaseTrace),
+    crossBaseContext: {
+      sourceCrewId: alerts[0].crewId,
+      sourcePairingId: alerts[0].pairingId,
+      recoveryBase: childPlans[0]?.crossBaseContext.recoveryBase ?? null,
+      requiredFleets: [...new Set(childPlans.flatMap((plan) => plan.crossBaseContext.requiredFleets))],
+      sourceStartUtc: childPlans[0]?.crossBaseContext.sourceStartUtc ?? null,
+      sourceEndUtc: childPlans[0]?.crossBaseContext.sourceEndUtc ?? null,
+      loadedFlightCount: childPlans.reduce((acc, plan) => acc + plan.crossBaseContext.loadedFlightCount, 0),
+      loadedFlightWindow: childPlans[0]?.crossBaseContext.loadedFlightWindow ?? null,
+    },
   }
 }

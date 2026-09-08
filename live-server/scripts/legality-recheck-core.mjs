@@ -2975,13 +2975,19 @@ export async function computeViolations(source, ctx, onlyCodes) {
   ctx.log = ctx.log ?? ((m) => console.error(`[recheck] ${m}`))
   const all = []
   const profile = !!process.env.RECHECK_PROFILE
-  for (const rule of rules) {
+  // Run every rule fn in parallel. memoizeSource() above already de-duplicates
+  // source-adapter reads across rules, and runBin() caps Rust binary spawns at
+  // MAX_CONCURRENT_BINS, so this is the cheapest way to overlap the per-rule
+  // Rust checker wall time. (Previously a sequential for-await let the slowest
+  // single rule determine the whole compute — preview-draft paths took 14-22s
+  // end-to-end when the full group ran against a busy 4-month window.)
+  const collected = await Promise.all(rules.map(async (rule) => {
     const t0 = profile ? Date.now() : 0
     const rows = await rule(source, ctx)
     if (profile) console.error(`[recheck-profile] ${rule.name}: ${Date.now() - t0}ms, ${rows.length} rows`)
-    // all.push(...rows) overflows the call stack when a rule returns >~125k rows (spread
-    // creates one call argument per element — rule1001 can emit 100k+ overlap rows on a
-    // busy 4-month window). Append with a loop so large result sets never blow the stack.
+    return rows
+  }))
+  for (const rows of collected) {
     for (const r of rows) all.push(r)
   }
   return applyRulesetSeverity(all, setRules)
