@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, Eye, Loader2, Maximize2, Minimize2, ShieldAlert, Users } from 'lucide-react'
-import { AppDialog, Button } from '@rois/ui'
+import { AppDialog, Button, Popover, PopoverContent, PopoverTrigger } from '@rois/ui'
 import type { RosterItem } from '@/types'
 import { useRosterStore } from '@/stores/roster-store'
 import { usePairingStore } from '@/stores/pairing-store'
@@ -714,18 +714,18 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
         </div>
         <Button variant="ghost" className="mt-3 h-7 gap-1 px-2 text-2xs" onClick={() => setPreviewCollapsed(false)} data-testid="recovery-expand-options"><Minimize2 className="h-3.5 w-3.5" />Return to recovery options</Button>
       </div> : <div className={alert
-        ? 'flex h-[min(78vh,780px)] min-h-0 flex-1 flex-col'
-        : 'grid h-[min(78vh,780px)] min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(180px,0.7fr)_minmax(0,1.3fr)] lg:min-h-[580px] lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.65fr)] lg:grid-rows-1'}>
+        ? 'flex h-[min(92vh,920px)] min-h-0 flex-1 flex-col'
+        : 'grid h-[min(92vh,920px)] min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(150px,0.4fr)_minmax(0,1.6fr)] lg:min-h-[680px] lg:grid-cols-[minmax(0,0.45fr)_minmax(0,1.85fr)] lg:grid-rows-1'}>
         {!alert && <section className="flex min-h-0 min-w-0 flex-col border-b border-border lg:border-b-0 lg:border-r">
-          <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+          <div className="flex items-center justify-between border-b border-border px-2.5 py-1.5">
             <div><div className="text-xs font-semibold text-foreground">Loaded violations</div><div className="text-2xs text-muted-foreground">{rows.length} item{rows.length === 1 ? '' : 's'}</div></div>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {rows.length === 0 ? <div className="flex h-48 items-center justify-center px-6 text-center text-xs text-muted-foreground">No violations in the currently loaded Live data.</div> : (
               <table className="w-full border-collapse text-2xs" data-testid="recovery-violation-table">
-                <thead className="sticky top-0 z-10 bg-muted/95"><tr className="border-b border-border text-left text-3xs uppercase tracking-wide text-muted-foreground"><th className="px-2 py-2">Rule ID</th><th className="px-2 py-2">CrewID</th><th className="px-2 py-2">PairingID</th><th className="px-2 py-2">Flight date</th><th className="px-2 py-2">Flight</th><th className="px-2 py-2">Detail</th><th className="px-2 py-2">Recovery</th></tr></thead>
+                <thead className="sticky top-0 z-10 bg-muted/95"><tr className="border-b border-border text-left text-3xs uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1">Rule ID</th><th className="px-2 py-1">CrewID</th><th className="px-2 py-1">PairingID</th><th className="px-2 py-1">Flight date</th><th className="px-2 py-1">Flight</th><th className="px-2 py-1">Detail</th><th className="px-2 py-1">Recovery</th></tr></thead>
                 <tbody>{rows.map((row) => <tr key={`${row.id}-${row.crewId}-${row.pairingId}`} className={["border-b border-border/50 align-top", selectedRow?.id === row.id ? 'bg-primary/10' : 'hover:bg-accent/40'].join(' ')}>
-                  <td className="whitespace-nowrap px-2 py-2 font-mono font-semibold">{row.ruleCode}</td><td className="whitespace-nowrap px-2 py-2 font-mono">{row.crewId}</td><td className="whitespace-nowrap px-2 py-2 font-mono">{row.pairingId}</td><td className="whitespace-nowrap px-2 py-2">{row.flightDate}</td><td className="whitespace-nowrap px-2 py-2 font-medium">{row.flightNumber}</td><td className="min-w-0 px-2 py-2 text-muted-foreground"><span className="line-clamp-3">{row.detail}</span></td><td className="px-2 py-2">{row.canRecover ? <button type="button" title="Recovery (Ctrl/Cmd+R)" aria-keyshortcuts="Control+R Meta+R" className="inline-flex items-center gap-1 rounded bg-primary px-2 py-1 text-2xs font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void buildPlans([row])} data-testid="recovery-button"><ArrowRight className="h-3 w-3" /><span><span className="underline underline-offset-2">R</span>ecovery</span></button> : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="whitespace-nowrap px-2 py-1 font-mono font-semibold">{row.ruleCode}</td><td className="whitespace-nowrap px-2 py-1 font-mono">{row.crewId}</td><td className="whitespace-nowrap px-2 py-1 font-mono">{row.pairingId}</td><td className="whitespace-nowrap px-2 py-1">{row.flightDate}</td><td className="whitespace-nowrap px-2 py-1 font-medium">{row.flightNumber}</td><td className="min-w-0 px-2 py-1 text-muted-foreground"><span className="line-clamp-2">{row.detail}</span></td><td className="px-2 py-1">{row.canRecover ? <button type="button" title="Recovery (Ctrl/Cmd+R)" aria-keyshortcuts="Control+R Meta+R" className="inline-flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-3xs font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void buildPlans([row])} data-testid="recovery-button"><ArrowRight className="h-3 w-3" /><span><span className="underline underline-offset-2">R</span>ecovery</span></button> : <span className="text-muted-foreground">—</span>}</td>
                 </tr>)}</tbody>
               </table>
             )}
@@ -735,11 +735,11 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
         <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {!plans && <div className="flex h-full min-h-[480px] items-center justify-center px-10 text-center text-xs text-muted-foreground"><div><AlertTriangle className="mx-auto mb-2 h-5 w-5 text-muted-foreground/60" />Select an 8004 violation to generate complete-Roster recovery options.</div></div>}
           {building && <div className="flex h-full items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Generating recovery options...</div>}
-          {plans && !building && <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3">
-            <div className="border border-destructive/30 bg-destructive/[0.035] p-3"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-xs font-semibold">{plans.alerts.length > 1 ? `${plans.alerts.length} selected alerts · combined recovery` : `Rule ${plans.alert.ruleCode} · ${plans.alert.flightNumber}`}<span className="font-mono text-2xs font-normal text-muted-foreground">{[...new Set(plans.alerts.map((entry) => entry.crewId))].length} Crew · {[...new Set(plans.alerts.map((entry) => entry.pairingId))].length} Roster</span></div><div className="mt-1 text-2xs leading-4 text-muted-foreground">{plans.alerts.length > 1 ? 'Each option contains one complete recovery decision for every selected alert. Conflicting Crew/Roster assignments are filtered out.' : plans.alert.detail}</div></div></div></div>
+          {plans && !building && <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden p-2">
+            <div className="border border-destructive/30 bg-destructive/[0.035] p-2"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-xs font-semibold">{plans.alerts.length > 1 ? `${plans.alerts.length} selected alerts · combined recovery` : `Rule ${plans.alert.ruleCode} · ${plans.alert.flightNumber}`}<span className="font-mono text-2xs font-normal text-muted-foreground">{[...new Set(plans.alerts.map((entry) => entry.crewId))].length} Crew · {[...new Set(plans.alerts.map((entry) => entry.pairingId))].length} Roster</span></div><div className="mt-0.5 text-3xs leading-3 text-muted-foreground line-clamp-1">{plans.alerts.length > 1 ? 'Each option contains one complete recovery decision for every selected alert. Conflicting Crew/Roster assignments are filtered out.' : plans.alert.detail}</div></div></div></div>
             <PlanComparison plans={plans} selectedPlanType={selectedPlanType} onSelect={selectPlanType} />
             {selectedPlan && <PlanGroup group={selectedPlan} selectedOptionId={selectedOptionId} executionOptionId={executionOptionId} onSelect={selectOption} onToggleExecution={selectExecutionOption} onDetail={(option) => { selectOption(option); setDetailOpen(true) }} onPreview={previewInLive} />}
-             <div className="shrink-0 border-t border-border pt-2 text-2xs text-muted-foreground">Roster stability formula: <span className="font-mono text-foreground/80">{ROSTER_STABILITY_FORMULA}</span></div>
+             <div className="shrink-0 text-3xs text-muted-foreground/60">Stability: <span className="font-mono">{ROSTER_STABILITY_FORMULA}</span></div>
           </div>}
         </section>
       </div>}
@@ -754,48 +754,89 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
 const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onToggleExecution, onDetail, onPreview }: { group: RecoveryPlans['roster']; selectedOptionId: string | null; executionOptionId: string | null; onSelect: (option: RecoveryOption) => void; onToggleExecution: (option: RecoveryOption, checked: boolean) => void; onDetail: (option: RecoveryOption) => void; onPreview: (option: RecoveryOption) => void }) => {
   const tone = planTone(group.id)
   const excludedCount = group.excludedOptions.length
+  const isExecutable = (option: RecoveryOption): boolean => option.localExecutable && option.ruleCheck === 'passed'
+  const executableOptions = group.options.filter(isExecutable)
+  const [filter, setFilter] = useState<'all' | 'executable' | 'filtered'>('all')
+  // Reset to 'all' when the user switches between Roster / Standby / Cross-base methods
+  // so they always start by seeing the full candidate set.
+  useEffect(() => { setFilter('all') }, [group.id])
+  const visibleOptions: RecoveryOption[] = filter === 'all'
+    ? group.options
+    : filter === 'executable'
+      ? executableOptions
+      : []
+  const visibleFiltered: RecoveryOption[] = filter === 'filtered' ? group.excludedOptions : []
+  const isFilteredTab = filter === 'filtered'
   return (
     <section className={["flex min-h-0 min-w-0 flex-1 flex-col border border-l-4 bg-card", tone.section].join(' ')} data-testid={`recovery-options-${group.id}`}>
-      <div className={['shrink-0 border-b border-border px-3 py-2', tone.header].join(' ')}>
+      <div className={['shrink-0 border-b border-border px-2.5 py-1.5', tone.header].join(' ')}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-xs font-semibold text-foreground"><span className={['h-2 w-2 rounded-full', tone.dot].join(' ')} />{group.title}</div>
           <span className="text-2xs tabular-nums text-muted-foreground">{group.options.length} available · {excludedCount} filtered</span>
         </div>
         <div className="mt-0.5 text-2xs text-muted-foreground">{group.description}</div>
+        <div className="mt-1.5 inline-flex h-6 items-center gap-0.5 rounded border border-border bg-background p-0.5" data-testid={`recovery-options-filter-${group.id}`} role="tablist" aria-label="Option filter">
+          {([
+            { key: 'all', label: `All (${group.options.length})` },
+            { key: 'executable', label: `Executable (${executableOptions.length})` },
+            { key: 'filtered', label: `Filtered (${excludedCount})` },
+          ] as const).map((entry) => {
+            const active = filter === entry.key
+            const toneClass = active
+              ? `${tone.badge} shadow-sm`
+              : 'text-muted-foreground hover:text-foreground'
+            return (
+              <button
+                key={entry.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-pressed={active}
+                onClick={() => setFilter(entry.key)}
+                data-testid={`recovery-options-filter-${group.id}-${entry.key}`}
+                className={['inline-flex h-5 items-center rounded px-1.5 text-3xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60', toneClass].join(' ')}
+              >
+                {entry.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
-      {group.options.length === 0 ? <div className="min-h-0 flex-1 px-3 py-5 text-xs text-muted-foreground">No executable candidates in the current loaded data range.</div> : <div className="min-h-0 flex-1 overflow-auto">
+      {visibleOptions.length === 0 && !isFilteredTab ? <div className="min-h-0 flex-1 px-3 py-3 text-xs text-muted-foreground">{filter === 'executable' ? 'No executable Crew in this plan. Try a different recovery method or check the Filtered tab.' : 'No executable candidates in the current loaded data range.'}</div> : null}
+      {isFilteredTab && visibleFiltered.length === 0 ? <div className="min-h-0 flex-1 px-3 py-3 text-xs text-muted-foreground">No options were filtered out by Rule check. Every candidate in this plan is potentially executable.</div> : null}
+      {(visibleOptions.length > 0 || (isFilteredTab && visibleFiltered.length > 0)) && <div className="min-h-0 flex-1 overflow-auto">
         <div className="sticky top-0 z-10 hidden grid-cols-[minmax(220px,1fr)_72px_72px_92px_110px_154px] gap-2 border-b border-border bg-background/95 px-3 py-1.5 text-3xs uppercase tracking-wide text-muted-foreground backdrop-blur sm:grid">
           <span className="border-r border-border/60 pr-2">Crew / option</span><span className="text-right">Cancel</span><span className="text-right">Add</span><span className="text-right">Stability</span><span className="text-right">Cost</span><span className="text-right">Actions</span>
         </div>
-        <div className="divide-y divide-border/70">{group.options.map((option) => {
+        <div className="divide-y divide-border/70">{visibleOptions.map((option) => {
           const selected = selectedOptionId === option.id
           const executionSelected = executionOptionId === option.id
-          const executable = option.localExecutable && option.ruleCheck === 'passed'
+          const executable = isExecutable(option)
           return <div key={option.id} className={["border-l-2 p-3", tone.section, selected ? tone.selectedRow : tone.row].join(' ')}>
-            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_72px_72px_92px_110px_154px] sm:items-center">
+            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_56px_56px_72px_88px_120px] sm:items-center">
               <div className="flex min-w-0 items-start gap-2">
                 <label className="mt-0.5 flex shrink-0 items-center text-2xs text-muted-foreground" title="Select this Crew for execution">
                   <input type="checkbox" checked={executionSelected} disabled={!executable} onChange={(event) => onToggleExecution(option, event.target.checked)} aria-label={`Execute recovery with Crew ${option.targetCrewId}`} data-testid={`recovery-crew-checkbox-${option.targetCrewId}`} className="h-3.5 w-3.5 accent-primary" />
                   <span className="sr-only">Execute with Crew {option.targetCrewId}</span>
                 </label>
                 <button type="button" className="min-w-0 text-left" onClick={() => onSelect(option)}>
-                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-foreground"><span>{option.title}</span><span className={["rounded px-1.5 py-0.5 text-2xs", executable ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : option.ruleCheck === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'].join(' ')}>{optionBadge(option)}</span></div>
-                  <div className="mt-1 text-2xs text-muted-foreground">{option.targetCrewId} · {option.sameRank ? 'same rank' : 'rank adjustment'} · {option.sameBase ? 'same base' : 'cross base'}{option.timeDistanceMinutes != null ? ` · ${option.timeDistanceMinutes} min start gap` : ''}</div>
+                  <div className="flex flex-wrap items-center gap-1.5 text-2xs font-semibold text-foreground"><span>{option.title}</span><span className={["rounded px-1.5 py-0.5 text-2xs", executable ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : option.ruleCheck === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'].join(' ')}>{optionBadge(option)}</span></div>
+                  <div className="mt-0.5 text-3xs text-muted-foreground">{option.targetCrewId} · {option.sameRank ? 'same rank' : 'rank adjustment'} · {option.sameBase ? 'same base' : 'cross base'}{option.timeDistanceMinutes != null ? ` · ${option.timeDistanceMinutes} min start gap` : ''}</div>
                 </button>
               </div>
-              <div className="grid grid-cols-4 gap-2 border-t border-border/60 pt-2 sm:contents sm:border-0 sm:pt-0">
+              <div className="grid grid-cols-4 gap-1.5 border-t border-border/60 pt-1 sm:contents sm:border-0 sm:pt-0">
                 <span className="sm:hidden text-2xs text-muted-foreground">Cancel <b className="text-foreground">{option.metrics.cancelledRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Cost <b className="text-foreground">{money(option.metrics.totalCost)}</b></span>
-                <span className="hidden border-l border-border/50 pl-2 text-right text-xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
-                <span className="hidden border-l border-border/50 pl-2 text-right text-xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
-                <span className="hidden border-l border-border/50 pl-2 text-right text-xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
-                <span className="hidden border-l border-border/50 pl-2 text-right text-xs font-semibold tabular-nums sm:block">{money(option.metrics.totalCost)}</span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{money(option.metrics.totalCost)}</span>
               </div>
-              <div className="flex shrink-0 items-center justify-end gap-1.5 border-t border-border/60 pt-2 sm:border-0 sm:pt-0">
-                <button type="button" className="inline-flex h-7 items-center gap-1 rounded border border-border px-2 text-2xs font-medium text-foreground hover:bg-accent" onClick={() => onPreview(option)} data-testid={`recovery-preview-${option.id}`}><Eye className="h-3.5 w-3.5" />Preview</button>
-                <button type="button" className="inline-flex h-7 items-center gap-1 rounded border border-border px-2 text-2xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid="recovery-detail"><Eye className="h-3.5 w-3.5" />Detail</button>
+              <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
+                <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onPreview(option)} data-testid={`recovery-preview-${option.id}`}><Eye className="h-3.5 w-3.5" />Preview</button>
+                <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid="recovery-detail"><Eye className="h-3.5 w-3.5" />Detail</button>
                 <span className={selected ? ['h-2 w-2 rounded-full', tone.dot].join(' ') : 'h-2 w-2 rounded-full bg-border'} aria-hidden="true" />
               </div>
             </div>
@@ -818,17 +859,89 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
               <span>DHD: <b>{option.positioning.outbound.fltNum}</b> outbound / <b>{option.positioning.inbound.fltNum}</b> return · {money(option.metrics.dhdFlightCost)}</span>
             </div>}
           </div>
-        })}</div>
+        })}
+        {visibleFiltered.map((option) => {
+          const selected = selectedOptionId === option.id
+          return <div key={option.id} className={["border-l-2 p-3 opacity-95", tone.section, selected ? tone.selectedRow : tone.row].join(' ')} data-testid={`recovery-filtered-row-${option.id}`}>
+            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_56px_56px_72px_88px_120px] sm:items-center">
+              <div className="flex min-w-0 items-start gap-2">
+                <span className="mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-rose-500" title="Filtered by Rule check (cannot be applied)">
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                </span>
+                <button type="button" className="min-w-0 text-left" onClick={() => onSelect(option)}>
+                  <div className="flex flex-wrap items-center gap-1.5 text-2xs font-semibold text-foreground"><span>{option.title}</span><span className={['rounded px-1.5 py-0.5 text-2xs', option.ruleCheck === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'].join(' ')}>{optionBadge(option)}</span></div>
+                  <div className="mt-0.5 text-3xs text-muted-foreground">{option.targetCrewId} · {option.sameRank ? 'same rank' : 'rank adjustment'} · {option.sameBase ? 'same base' : 'cross base'}{option.timeDistanceMinutes != null ? ` · ${option.timeDistanceMinutes} min start gap` : ''}</div>
+                </button>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5 border-t border-border/60 pt-1 sm:contents sm:border-0 sm:pt-0">
+                <span className="sm:hidden text-2xs text-muted-foreground">Cancel <b className="text-foreground">{option.metrics.cancelledRosterCount}</b></span>
+                <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
+                <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
+                <span className="sm:hidden text-2xs text-muted-foreground">Cost <b className="text-foreground">{money(option.metrics.totalCost)}</b></span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{money(option.metrics.totalCost)}</span>
+              </div>
+              <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
+                <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid={`recovery-detail`}><Eye className="h-3.5 w-3.5" />Detail</button>
+                <span className={selected ? ['h-2 w-2 rounded-full', tone.dot].join(' ') : 'h-2 w-2 rounded-full bg-border'} aria-hidden="true" />
+              </div>
+            </div>
+            {option.ruleMessages.length > 0 && <div className="mt-2 flex items-start gap-1.5 text-2xs text-destructive"><ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{option.ruleMessages.join(' ')}</span></div>}
+          </div>
+        })}
+        </div>
       </div>}
-      {excludedCount > 0 && <div className="border-t border-rose-500/20 bg-rose-500/[0.045] px-3 py-2 text-2xs" data-testid={`recovery-filtered-${group.id}`}>
-        <div className="font-semibold text-rose-700 dark:text-rose-300">Filtered after Rule check: {excludedCount}</div>
-        <div className="mt-1 space-y-1 text-muted-foreground">{group.excludedOptions.map((option) => <div key={option.id}><span className="font-mono text-foreground">{option.targetCrewId}</span>: {option.ruleMessages.join(' ') || 'Rule check failed'}</div>)}</div>
-      </div>}
+      {excludedCount > 0 && !isFilteredTab && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="absolute right-2 top-2 z-20 inline-flex h-6 items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/10 px-2 text-2xs font-semibold text-rose-700 hover:bg-rose-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/60 dark:text-rose-300"
+              data-testid={`recovery-filtered-trigger-${group.id}`}
+              aria-label={`Show ${excludedCount} options filtered by rule check`}
+            >
+              <ShieldAlert className="h-3 w-3" />
+              Filtered: {excludedCount}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            side="bottom"
+            align="end"
+            sideOffset={6}
+            className="w-[min(420px,90vw)] p-0"
+            data-testid={`recovery-filtered-${group.id}`}
+          >
+            <div className="border-b border-rose-500/20 bg-rose-500/[0.08] px-3 py-2">
+              <div className="flex items-center gap-1.5 text-2xs font-semibold text-rose-700 dark:text-rose-300">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Filtered after Rule check: {excludedCount}
+              </div>
+              <div className="mt-0.5 text-2xs text-muted-foreground">Tip: switch to the Filtered tab above to inspect each filtered option in the main list.</div>
+            </div>
+            <div className="max-h-72 overflow-auto px-3 py-2 text-2xs">
+              {group.excludedOptions.map((option) => (
+                <div key={option.id} className="border-b border-border/40 py-1.5 last:border-b-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-foreground">{option.targetCrewId}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-muted-foreground">{option.title}</span>
+                  </div>
+                  <div className="mt-0.5 text-rose-700 dark:text-rose-300">
+                    {option.ruleMessages.join(' ') || 'Rule check failed'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </section>
   )
 }
 
-  const changeTypeLabel = (changeType: RecoveryOption['changes'][number]['changeType']): string => {
+const changeTypeLabel = (changeType: RecoveryOption['changes'][number]['changeType']): string => {
   if (changeType === 'cancel') return 'Cancelled'
   if (changeType === 'add') return 'Added'
   return 'Kept'
