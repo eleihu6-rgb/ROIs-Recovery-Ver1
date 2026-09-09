@@ -374,13 +374,25 @@ const qualifiesForFleet = (crew: RecoveryCrewSnapshot, fleet: string | null | un
   })
 }
 
-const cloneForCrew = (items: RosterItem[], crewId: string, mode: RecoveryOptionMode): RosterItem[] =>
+const cloneForCrew = (
+  items: RosterItem[],
+  crewId: string,
+  mode: RecoveryOptionMode,
+  rebaseBase?: string | null,
+): RosterItem[] =>
   items.map((item) => ({
     ...item,
     crewId,
     isPending: true,
     isRecoveryAffected: true,
     isSwapped: mode === 'swap' || mode === 'cross-base-swap' ? 1 : item.isSwapped,
+    // Cross-base (standby/swap/direct) and destination-base both re-base the
+    // source Pairing to the new first/last airports after DHD positioning is
+    // inserted. The recovered operating legs must therefore carry the
+    // adjusted base, not the original Pairing base (which the source item
+    // inherits from PG). Without this rewrite, the 8004 rule preview sees the
+    // stale YVR base and rejects the option before the user can apply it.
+    base: rebaseBase ?? item.base,
   }))
 
 const isDhdItem = (item: RosterItem): boolean =>
@@ -593,12 +605,22 @@ const buildAfterItems = (
   if ((mode === 'swap' || mode === 'cross-base-swap') && target) {
     // A Roster keeps the Pairing's operating base when its Crew changes. Only
     // the synthetic DHD items use the support Crew's base.
-    const moved = cloneForCrew(source.items, targetCrewId, mode)
+    // Cross-base-swap also re-bases the source Pairing to the support Base,
+    // so the moved source items get the adjusted base too. The returned target
+    // items keep their own Pairing base (target Pairing.base is not changed).
+    const movedBase = positioning?.outbound?.depArp?.trim().toUpperCase() || null
+    const moved = cloneForCrew(source.items, targetCrewId, mode, movedBase)
     const returned = cloneForCrew(target.items, source.crewId, mode)
     const dhdItems = positioning ? makeDhdItems(positioning, targetCrew, source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || 'CREW', optionId, source.pairingId, source.items) : []
     return [...kept, ...moved, ...returned, ...dhdItems]
   }
-  const moved = cloneForCrew(source.items, targetCrewId, mode)
+  // Cross-base standby/direct: source Pairing is re-based to the support Base
+  // (the outbound DHD's departure airport) because the candidate Crew is
+  // based there, not at the original Pairing base. The 8004 rule preview
+  // reads roster_flight.base directly, so we must reflect the rebased value
+  // in the afterItems passed to /api/legality/preview-draft.
+  const movedBase = positioning?.outbound?.depArp?.trim().toUpperCase() || null
+  const moved = cloneForCrew(source.items, targetCrewId, mode, movedBase)
   const dhdItems = positioning ? makeDhdItems(positioning, targetCrew, source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || 'CREW', optionId, source.pairingId, source.items) : []
   return kept.map((item) =>
     item.crewId === targetCrewId && item.pairingId == null && item.id === standbyTaskId
