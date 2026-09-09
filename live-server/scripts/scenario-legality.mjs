@@ -1181,11 +1181,17 @@ export function scenarioSource(db, scenarioId, ctx) {
     // ── rule 8004 — roster spans (R rows) ──
     async assignmentsRaw() {
       return (await db.query(
-        `select crew_id, pairing_id, max(base) as base,
-                to_char(min(sch_str_dt_utc),'YYYY-MM-DD') as start_date, to_char(max(sch_end_dt_utc),'YYYY-MM-DD') as end_date,
-                extract(epoch from min(sch_str_dt_utc))::bigint as start_secs, extract(epoch from max(sch_end_dt_utc))::bigint as end_secs
-           from scenario.roster_flight where scenario_id=$1 and is_deleted=0 and pairing_id is not null
-           group by crew_id, pairing_id`, [scenarioId])).rows
+        `select rf.crew_id, rf.pairing_id, max(rf.base) as base,
+                to_char(min(rf.sch_str_dt_utc),'YYYY-MM-DD') as start_date, to_char(max(rf.sch_end_dt_utc),'YYYY-MM-DD') as end_date,
+                extract(epoch from min(rf.sch_str_dt_utc))::bigint as start_secs, extract(epoch from max(rf.sch_end_dt_utc))::bigint as end_secs,
+                extract(epoch from min(coalesce(ps.brief_start_utc, ps.duty_sch_str_dt_utc, ps.sch_str_dt_utc)))::bigint as report_secs,
+                (array_agg(coalesce(nullif(dep_ap.zone_id, ''), 'UTC') order by ps.duty_seq, ps.seg_seq))[1] as dep_zone_id
+           from scenario.roster_flight rf
+           join scenario.pairing_segment ps
+             on ps.scenario_id = rf.scenario_id and ps.pairing_id = rf.pairing_id and ps.duty_seq = rf.duty_seq and coalesce(ps.is_deleted, 0) = 0
+           left join airport dep_ap on dep_ap.airport = ps.dep_arp
+          where rf.scenario_id=$1 and rf.is_deleted=0 and rf.pairing_id is not null
+           group by rf.crew_id, rf.pairing_id`, [scenarioId])).rows
     },
 
     // ── rule 8004 — crew_base qualifications (Q rows) ──

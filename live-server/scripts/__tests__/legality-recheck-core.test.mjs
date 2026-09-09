@@ -3,7 +3,7 @@
 // cover the end-to-end recheck (§No-Illusion).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { epochSec, headerIndexer, scopeKeyOf, withParamRowPrefix, resolveDaysOffRpBounds, pickDaysOffAnchor, daysOffAnchorPairingId, rule8002, rule8004, rule8056, rule8071, rule8072, rule8030, rule7505, rule7507, rule7506, rule7501, rule7508, rule7503, rule7504, rule3007 } from '../legality-recheck-core.mjs'
+import { epochSec, headerIndexer, scopeKeyOf, withParamRowPrefix, resolveDaysOffRpBounds, pickDaysOffAnchor, daysOffAnchorPairingId, validCompetencyValuesForFlight, format8004ViolationMessage, rule8002, rule8004, rule8056, rule8071, rule8072, rule8030, rule7505, rule7507, rule7506, rule7501, rule7508, rule7503, rule7504, rule3007 } from '../legality-recheck-core.mjs'
 
 
 test('withParamRowPrefix prefixes 1-based Row N and is idempotent', () => {
@@ -621,19 +621,18 @@ test('rule8002 Min Limits under-min fires with the generic message', async () =>
 })
 
 // rule8004 end-to-end (real check-8004 binary). Proves the message embeds the
-// roster's start date converted to the CREW-BASE local timezone, not the raw
-// UTC date — the roster starts 2026-06-10T02:00:00Z, which in America/Vancouver
-// (UTC-7) is still 2026-06-09 local. An unqualified base (no matching Q row)
-// must fire; the message must show the Vancouver date, never the UTC one.
-test('rule8004 message embeds the roster start date in the crew base local timezone', async () => {
+// pairing report date in the pairing start-station timezone, not crew-base tz.
+test('rule8004 message embeds pairing report date in start-station local timezone', async () => {
   const startSecs = Math.floor(Date.UTC(2026, 5, 10, 2, 0, 0) / 1000) // 2026-06-10T02:00:00Z
   const source = {
     db: {},
     async assignmentsRaw() {
-      return [{ crew_id: 'C1', pairing_id: 500, base: 'YYZ', start_date: '2026-06-10', end_date: '2026-06-10', start_secs: startSecs, end_secs: startSecs + 3600 }]
+      return [{
+        crew_id: 'C1', pairing_id: 500, base: 'YYZ', start_date: '2026-06-10', end_date: '2026-06-10',
+        start_secs: startSecs, end_secs: startSecs + 3600, report_secs: startSecs, dep_zone_id: 'America/Vancouver',
+      }]
     },
-    async baseQuals() { return [] }, // no qualification anywhere → base is invalid
-    async crewBaseTimezone() { return new Map([['C1', 'America/Vancouver']]) },
+    async baseQuals() { return [] },
   }
   const HDR = ['Grace Period']
   const ctx = {
@@ -643,22 +642,22 @@ test('rule8004 message embeds the roster start date in the crew base local timez
   const out = await rule8004(source, ctx)
   assert.equal(out.length, 1)
   assert.equal(out[0].rule_code, '8004')
-  assert.match(out[0].message, /^Row 1: /, 'message starts with Row 1: for the sole param row')
-  assert.match(out[0].message, /\(2026-06-09\)/, 'message uses the Vancouver LOCAL date, not the UTC date (2026-06-10)')
+  assert.match(out[0].message, /^Row 1: Crew base  is invalid for this pairing \(YYZ\) on 2026-06-09\./)
   assert.ok(!out[0].message.includes('2026-06-10'), 'the raw UTC date must not leak into the message')
 })
 
-// Crew with no timezone on record (crewBaseTimezone() misses it) must degrade
-// to the UTC date instead of throwing.
-test('rule8004 falls back to the UTC date when the crew has no known base timezone', async () => {
+// Missing start-station timezone falls back to UTC for the pairing report date.
+test('rule8004 falls back to UTC when pairing start-station timezone is unknown', async () => {
   const startSecs = Math.floor(Date.UTC(2026, 5, 10, 2, 0, 0) / 1000)
   const source = {
     db: {},
     async assignmentsRaw() {
-      return [{ crew_id: 'C2', pairing_id: 501, base: 'YYZ', start_date: '2026-06-10', end_date: '2026-06-10', start_secs: startSecs, end_secs: startSecs + 3600 }]
+      return [{
+        crew_id: 'C2', pairing_id: 501, base: 'YYZ', start_date: '2026-06-10', end_date: '2026-06-10',
+        start_secs: startSecs, end_secs: startSecs + 3600, report_secs: startSecs,
+      }]
     },
     async baseQuals() { return [] },
-    async crewBaseTimezone() { return new Map() }, // C2 not found
   }
   const ctx = {
     log: () => {},
@@ -666,8 +665,7 @@ test('rule8004 falls back to the UTC date when the crew has no known base timezo
   }
   const out = await rule8004(source, ctx)
   assert.equal(out.length, 1)
-  assert.match(out[0].message, /^Row 1: /)
-  assert.match(out[0].message, /\(2026-06-10\)/, 'falls back to the UTC date')
+  assert.match(out[0].message, /^Row 1: Crew base  is invalid for this pairing \(YYZ\) on 2026-06-10\./)
 })
 
 // Closed-loop location-continuity exemption (crew 295 / pairing 155089 regression).
@@ -716,7 +714,7 @@ test('rule8004 checks enabled RANK/FLEET rows with assignment and crew scope fil
   const source = {
     db: {},
     async assignmentsRaw() {
-      return [{ crew_id: 'C3', pairing_id: 700, base: 'YYZ', start_date: '2026-06-10', end_date: '2026-06-10', start_secs: plannedStart, end_secs: actualEnd }]
+      return [{ crew_id: 'C3', pairing_id: 700, base: 'YYZ', start_date: '2026-06-10', end_date: '2026-06-10', start_secs: plannedStart, end_secs: actualEnd, report_secs: actualStart, dep_zone_id: 'UTC' }]
     },
     async baseQuals() { return [{ crew_id: 'C3', base: 'YYZ', eff_date: '-', exp_date: '-' }] },
     async crewBaseTimezone() { return new Map([['C3', 'UTC']]) },
@@ -750,8 +748,26 @@ test('rule8004 checks enabled RANK/FLEET rows with assignment and crew scope fil
   assert.equal(out.length, 1, 'only the operating 7M8 flight should violate FLEET')
   assert.equal(out[0].duty_seq, 2)
   assert.equal(out[0].rule_instance, '001')
-  assert.equal(out[0].actual_value, '7M8')
-  assert.match(out[0].message, /fleet 7M8/)
+  assert.equal(out[0].actual_value, null)
+  assert.match(out[0].message, /^Row 2: Crew fleet 737 is invalid for this pairing \(7M8\) on 2026-06-10\./)
+})
+
+test('format8004ViolationMessage uses the unified BASE/RANK/FLEET template', () => {
+  assert.equal(
+    format8004ViolationMessage({ label: 'fleet', validValues: '738|756|777', assignmentValue: '7M8', reportDate: '2026-09-01' }),
+    'Crew fleet 738|756|777 is invalid for this pairing (7M8) on 2026-09-01.',
+  )
+})
+
+test('validCompetencyValuesForFlight joins multiple valid FLEET quals with pipe', () => {
+  const flight = { start_date: '2026-06-10', end_date: '2026-06-10' }
+  const quals = [
+    { crew_id: 'C9', dimension: 'FLEET', value: '777', eff_date: '-', exp_date: '-' },
+    { crew_id: 'C9', dimension: 'FLEET', value: '738', eff_date: '-', exp_date: '-' },
+    { crew_id: 'C9', dimension: 'FLEET', value: '756', eff_date: '2026-06-01', exp_date: '2026-06-15' },
+    { crew_id: 'C9', dimension: 'FLEET', value: '320', eff_date: '-', exp_date: '2026-06-09' },
+  ]
+  assert.equal(validCompetencyValuesForFlight(quals, 'C9', 'FLEET', flight, 0), '738|756|777')
 })
 
 test('rule8002 emits nothing + logs when the function has no instances (no silent fallback)', async () => {

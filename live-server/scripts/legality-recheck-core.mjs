@@ -1488,6 +1488,58 @@ export async function rule8030(source, ctx) {
   return out
 }
 
+const openCompetencyDate = (value) => {
+  const s = String(value ?? '').trim()
+  return !s || s === '-'
+}
+
+/** Mirror Rust `competency_qual_is_valid` using calendar-day ordinals + CD grace. */
+export const competencyQualCoversInterval = (qual, startDate, endDate, graceDays = 0) => {
+  const startOrd = Number(dateOrdOrMinusOne(String(startDate ?? '').slice(0, 10)))
+  const endOrd = Number(dateOrdOrMinusOne(String(endDate ?? startDate ?? '').slice(0, 10)))
+  if (!Number.isFinite(startOrd) || startOrd < 0 || !Number.isFinite(endOrd) || endOrd < 0) return false
+  const effRaw = qual.eff_date ?? qual.eff
+  const expRaw = qual.exp_date ?? qual.exp
+  const effOk = openCompetencyDate(effRaw) || Number(dateOrdOrMinusOne(effRaw)) <= startOrd
+  const expOrd = openCompetencyDate(expRaw)
+    ? Number.MAX_SAFE_INTEGER
+    : Number(dateOrdOrMinusOne(expRaw)) + Math.max(0, Number(graceDays) || 0)
+  return effOk && expOrd > endOrd
+}
+
+/** Valid crew competency values across a calendar-day interval; multiple values joined with "|". */
+export const validCompetencyValuesForInterval = (quals, crewId, dimension, startDate, endDate, graceDays = 0) => {
+  const start = String(startDate ?? '').slice(0, 10)
+  const end = String(endDate ?? start).slice(0, 10)
+  const seen = new Set()
+  const values = []
+  for (const q of quals ?? []) {
+    if (String(q.crew_id) !== String(crewId)) continue
+    if (String(q.dimension ?? '').toUpperCase() !== String(dimension).toUpperCase()) continue
+    if (!competencyQualCoversInterval(q, start, end, graceDays)) continue
+    const value = String(q.value ?? '').trim()
+    if (!value) continue
+    const key = value.toUpperCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    values.push(value)
+  }
+  return values.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).join('|')
+}
+
+export const validCompetencyValuesForFlight = (quals, crewId, dimension, flight, graceDays = 0) =>
+  validCompetencyValuesForInterval(quals, crewId, dimension, flight?.start_date, flight?.end_date ?? flight?.start_date, graceDays)
+
+/** Unified 8004 violation message for BASE / RANK / FLEET. */
+export const format8004ViolationMessage = ({ label, validValues, assignmentValue, reportDate }) =>
+  `Crew ${label} ${validValues} is invalid for this pairing (${assignmentValue}) on ${reportDate}.`
+
+const pairingReportDate = (roster, fallbackSecs = 0) => {
+  const reportSecs = Number(roster?.report_secs ?? roster?.start_secs ?? fallbackSecs)
+  const depZone = String(roster?.dep_zone_id ?? 'UTC').trim() || 'UTC'
+  return localDateOf(reportSecs, depZone)
+}
+
 // ── Rule 8004 — BASIC COMPETENCY (roster base must be a valid crew_base) ──────
 // Grace Period now comes from the rule set per instance (row 0), not a hardcoded 0.
 export async function rule8004(source, ctx) {
@@ -1496,7 +1548,7 @@ export async function rule8004(source, ctx) {
   const rosters = await source.assignmentsRaw()
   const crewIds = [...new Set(rosters.map((r) => r.crew_id))]
   const quals = await source.baseQuals(crewIds)
-  const tzMap = await source.crewBaseTimezone()
+  const rosterByKey = new Map(rosters.map((r) => [`${r.crew_id}:${r.pairing_id}`, r]))
   const span = new Map(rosters.map((r) => [`${r.crew_id}:${r.pairing_id}`, { s: Number(r.start_secs), e: Number(r.end_secs) }]))
   const lines = []
   for (const r of rosters) lines.push(`R\t${r.crew_id}\t${r.pairing_id}\t${r.base ?? ''}\t${r.start_date}\t${r.end_date}`)
@@ -1564,24 +1616,71 @@ export async function rule8004(source, ctx) {
       const args = ['--grace-days', String(graceDays), '--emit-tsv', '--dimension', type]
       if (assignments && assignments !== '*') args.push('--assignments', assignments)
       const emitted = await runBin('check-8004', args, scopedTsv)
+      const dimensionLabel = type === 'BASE' ? 'base' : type === 'RANK' ? 'rank' : 'fleet'
+      const grouped = new Map()
       for (const values of emitted) {
         const crewId = values[0]
         const pairingId = Number(values[1])
+        const key = `${crewId}:${pairingId}`
+        const roster = rosterByKey.get(key)
         if (type === 'BASE') {
-          const base = values[2]
-          const sp = span.get(`${crewId}:${pairingId}`) ?? { s: 0, e: 0 }
-          out.push({ crew_id: crewId, pairing_id: pairingId, duty_seq: null, rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
-            start_dt: new Date(sp.s * 1000).toISOString(), end_dt: new Date(sp.e * 1000).toISOString(), severity: 2, actual_value: null, limit_value: null, unit: null,
-            message: withParamRowPrefix(rowIndex, `Crew base ${base} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}).`) })
-        } else {
-          const dutySeq = Number(values[2]); const segSeq = Number(values[3]); const value = values[5]
-          const flight = flights.find((f) => String(f.crew_id) === crewId && Number(f.pairing_id) === pairingId && Number(f.duty_seq) === dutySeq && Number(f.seg_seq) === segSeq)
-          const start = Number(flight?.start_secs ?? 0); const end = Number(flight?.end_secs ?? start)
-          const label = type === 'RANK' ? 'rank' : 'fleet'
-          out.push({ crew_id: crewId, pairing_id: pairingId, duty_seq: dutySeq, rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
-            start_dt: new Date(start * 1000).toISOString(), end_dt: new Date(end * 1000).toISOString(), severity: 2, actual_value: null, limit_value: null, unit: null,
-            message: withParamRowPrefix(rowIndex, `Crew ${label} ${value} is not a valid qualification for the roster flight.`), operation_result: { Type: value, strType: type } })
+          const pairingBase = String(values[2] ?? roster?.base ?? '').trim()
+          const sp = span.get(key) ?? { s: 0, e: 0 }
+          const validValues = validCompetencyValuesForInterval(
+            competencyQuals, crewId, 'BASE', roster?.start_date, roster?.end_date ?? roster?.start_date, graceDays,
+          )
+          grouped.set(key, {
+            crew_id: crewId, pairing_id: pairingId, duty_seq: null,
+            start_dt: new Date(sp.s * 1000).toISOString(), end_dt: new Date(sp.e * 1000).toISOString(),
+            assignmentValue: pairingBase, validValues, operation_result: { Type: pairingBase, strType: type },
+          })
+          continue
         }
+        const dutySeq = Number(values[2]); const segSeq = Number(values[3]); const rustValue = String(values[5] ?? '').trim()
+        const flight = flights.find((f) => String(f.crew_id) === crewId && Number(f.pairing_id) === pairingId && Number(f.duty_seq) === dutySeq && Number(f.seg_seq) === segSeq)
+        const start = Number(flight?.start_secs ?? 0); const end = Number(flight?.end_secs ?? start)
+        const item = {
+          crew_id: crewId, pairing_id: pairingId, duty_seq: dutySeq, seg_seq: segSeq,
+          start_dt: new Date(start * 1000).toISOString(), end_dt: new Date(end * 1000).toISOString(),
+          assignmentValue: rustValue, flight, operation_result: { Type: rustValue, strType: type },
+        }
+        const list = grouped.get(key) ?? []
+        list.push(item)
+        grouped.set(key, list)
+      }
+      for (const [key, entry] of grouped) {
+        if (type === 'BASE') {
+          const roster = rosterByKey.get(key)
+          out.push({
+            crew_id: entry.crew_id, pairing_id: entry.pairing_id, duty_seq: null,
+            rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
+            start_dt: entry.start_dt, end_dt: entry.end_dt, severity: 2, actual_value: null, limit_value: null, unit: null,
+            message: withParamRowPrefix(rowIndex, format8004ViolationMessage({
+              label: dimensionLabel,
+              validValues: entry.validValues,
+              assignmentValue: entry.assignmentValue,
+              reportDate: pairingReportDate(roster, span.get(key)?.s ?? 0),
+            })),
+            operation_result: entry.operation_result,
+          })
+          continue
+        }
+        const items = [...entry].sort((a, b) => a.duty_seq - b.duty_seq || a.seg_seq - b.seg_seq)
+        const first = items[0]
+        const roster = rosterByKey.get(key)
+        const validValues = validCompetencyValuesForFlight(competencyQuals, first.crew_id, type, first.flight, graceDays)
+        out.push({
+          crew_id: first.crew_id, pairing_id: first.pairing_id, duty_seq: first.duty_seq,
+          rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
+          start_dt: first.start_dt, end_dt: first.end_dt, severity: 2, actual_value: null, limit_value: null, unit: null,
+          message: withParamRowPrefix(rowIndex, format8004ViolationMessage({
+            label: dimensionLabel,
+            validValues,
+            assignmentValue: first.assignmentValue,
+            reportDate: pairingReportDate(roster, span.get(key)?.s ?? 0),
+          })),
+          operation_result: first.operation_result,
+        })
       }
     }
   }
