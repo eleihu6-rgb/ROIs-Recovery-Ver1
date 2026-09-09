@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "rois-rule-engine-rs"
+version = "0.1.0"
+description = "PyO3 connector exposing the ROIS Rust rule engine to the PBS solver."
+requires-python = ">=3.11"
+classifiers = ["Programming Language :: Rust"]
+
+[tool.maturin]
+# The cdylib `[lib].name` is the imported module: `rois_rule_engine_rs`.
+manifest-path = "Cargo.toml"

@@ -1,0 +1,189 @@
+# Workspace root. The pure rule-engine rlib + CLIs live here (dependency-free,
+# std-only). The PyO3 connector that the PBS solver loads is the `py/` member —
+# it depends on this rlib and is the only crate that pulls in pyo3.
+[workspace]
+members = ["py"]
+# Plain `cargo build`/`cargo test` at the root touch only the pure engine crate.
+# The `py/` connector is a PyO3 cdylib built via maturin (it needs the venv's
+# interpreter), so it is excluded from default member commands on purpose.
+default-members = ["."]
+resolver = "2"
+
+[package]
+name = "rois-rule-engine"
+version = "0.1.0"
+edition = "2021"
+description = "ROIS crew-rostering rule engine (Rust). First rule: 8002 MAX_CUM_BLOCK, ported from the proven C++ crewrule-dev engine."
+
+[lib]
+name = "rois_rule_engine"
+path = "src/lib.rs"
+
+# Live check CLI: reads TSV (crew_id<TAB>YYYY-MM-DD<TAB>block_minutes) on stdin,
+# applies rule 8002 over a rolling calendar-day window. Dependency-free (std only).
+[[bin]]
+name = "check-8002"
+path = "src/bin/check_8002.rs"
+
+# Full-port 8002 CLI (rule8002::check_max_cumulative_row): tagged multi-section
+# TSV on stdin (C config, U param rows, Q crew quals, M daily metrics, P roster
+# periods), V violation rows out. Qualification matching, all window units,
+# min limits, BH/DP/FT/CH. Dependency-free (std only).
+[[bin]]
+name = "check-8002-full"
+path = "src/bin/check_8002_full.rs"
+
+# Live check CLI for rule 8056 ROSTER SPACING: reads TSV
+# (crew_id<TAB>pairing_id<TAB>start_utc_secs<TAB>end_utc_secs<TAB>label) on stdin,
+# flags consecutive duties whose gap is below SPACE. Dependency-free (std only).
+[[bin]]
+name = "check-8056"
+path = "src/bin/check_8056.rs"
+
+# Live check CLI for rule 8071 MAX ROSTER PROPERTIES: reads tagged TSV
+# (C config, R rule rows, A activities, P roster periods), counts matching
+# roster/duty/flight rows per crew and emits violation TSV. Dependency-free.
+[[bin]]
+name = "check-8071"
+path = "src/bin/check_8071.rs"
+
+# Live check CLI for rule 8072 MIN_QAL_PER_FLEET_RANK: reads tagged TSV
+# (R rule rows, S segment rows, C crew-on-segment rows), counts qualified crew
+# by segment and emits violation TSV. Dependency-free.
+[[bin]]
+name = "check-8072"
+path = "src/bin/check_8072.rs"
+
+# Credit-hours calculator for rule 7502: reads TSV
+# (crew_id<TAB>assignment_group<TAB>blk_minutes<TAB>dp_minutes) on stdin, computes
+# per-crew credit hours. A CALC rule — reports totals, emits no violations.
+[[bin]]
+name = "check-7502"
+path = "src/bin/check_7502.rs"
+
+# 8002/006 standalone CREDIT-HOUR BAND (Type=CH, 1 CM): reads TSV
+# (crew_id<TAB>assignment_group<TAB>blk_minutes<TAB>YYYY-MM-DD) on stdin, sums monthly
+# credit itself and warns when outside the prorated [min,max] band. Dependency-free.
+[[bin]]
+name = "check-8002-credit"
+path = "src/bin/check_8002_credit.rs"
+
+# Live check CLI for rule 8030 PILOT AGE: reads TSV
+# (pairing_id<TAB>start_date<TAB>crew_id<TAB>division<TAB>birth_date) on stdin, flags
+# flights carrying more than MAX division crew aged ≥ AGE_DEFINE. Dependency-free.
+[[bin]]
+name = "check-8030"
+path = "src/bin/check_8030.rs"
+
+# Live check CLI for rule 8004 BASIC COMPETENCY (BASE): reads R/Q/A TSV rows on stdin,
+# flags rosters whose base is not a valid crew_base during the roster span (with the
+# location-continuity closed-loop exemption when A activity rows are supplied). Dependency-free.
+[[bin]]
+name = "check-8004"
+path = "src/bin/check_8004.rs"
+
+# Live check CLI for rule 1001 ASSIGNMENT OVERLAP: reads rule rows plus normalized
+# roster rows on stdin and emits disallowed overlaps. Dependency-free.
+[[bin]]
+name = "check-1001"
+path = "src/bin/check_1001.rs"
+
+# Live check CLI for rule 7501 SINGLE DAY FREE FROM DUTY: reads work-period TSV
+# (crew_id<TAB>pairing_id|''<TAB>start_secs<TAB>end_secs<TAB>offset_min) on stdin, counts
+# fully-contained SDFDs in each rolling PERIOD-hour window and flags crew whose worst
+# window is below MIN LIMITS. Local-night band is parameterized (rule 2014). Dependency-free.
+[[bin]]
+name = "check-7501"
+path = "src/bin/check_7501.rs"
+
+# Live check CLI for rule 7508 F8 calendar-day SDFD variant. Reads structured
+# R/D/Q/T TSV with rest-ground markers and emits worst local-day window rows.
+[[bin]]
+name = "check-7508"
+path = "src/bin/check_7508.rs"
+
+# Live check CLI for rule 7503 LIMITS OF CONSECUTIVE WOCLs: reads work-period TSV
+# (crew<TAB>pairing|''<TAB>start<TAB>end<TAB>offset_min<TAB>is_ground) on stdin, flags runs
+# of consecutive WOCL duties exceeding MAX. Consumes rule 7500's ref TZ (base TZ live) +
+# rule 2014's local-night band. Dependency-free.
+[[bin]]
+name = "check-7503"
+path = "src/bin/check_7503.rs"
+
+# Live check CLI for rule 7504 SPACING RULE - WOCL: reads flight-duty TSV
+# (crew<TAB>pairing<TAB>start<TAB>end<TAB>offset_min) on stdin, flags consecutive WOCL
+# flight-duty pairs whose rest gap is below MIN PERIOD RH. WOCL window evaluated in
+# crew-base-local time. Dependency-free.
+[[bin]]
+name = "check-7504"
+path = "src/bin/check_7504.rs"
+
+[[bin]]
+name = "check-7305"
+path = "src/bin/check_7305.rs"
+
+# Live check CLI for rule 7505 MIN # GDOs IN A RP: reads R (band rows) + A (activities)
+# TSV on stdin, picks the band row matching RP length + leave-day count, flags crew whose
+# days off (DO / blank / layover days) fall below the row's MIN DO. Dependency-free.
+[[bin]]
+name = "check-7505"
+path = "src/bin/check_7505.rs"
+
+# Live check CLI for rule 7507 (7505 + fly/reserve day filters). Same R/A/Q/T
+# contract as check-7505, with optional extended R columns for the new filters.
+[[bin]]
+name = "check-7507"
+path = "src/bin/check_7507.rs"
+
+# Live check CLI for rule 7506 ONE CHECKIN PER DAY: reads roster TSV
+# (crew <TAB> duty <TAB> start_secs <TAB> rest_start_secs <TAB> end_offset_min) on stdin,
+# flags two consecutive checked (FLY) rosters that start the same crew-local calendar day.
+# Dependency-free.
+[[bin]]
+name = "check-7506"
+path = "src/bin/check_7506.rs"
+
+# Live/Scenario batch checker for rule 7509 AVOID CO-PAIRING.
+[[bin]]
+name = "check-7509"
+path = "src/bin/check_7509.rs"
+
+# Live/Scenario/PBS batch checker for rule 7510 GREEN-ON-GREEN.
+[[bin]]
+name = "check-7510"
+path = "src/bin/check_7510.rs"
+
+# Duty FDP calculator (2107/3010/2102). Writes minutes for pairing_segment.duty_sch_fdp_min.
+[[bin]]
+name = "compute-fdp"
+path = "src/bin/compute_fdp.rs"
+
+# Live check CLI for rule 3007 MAX FDP PER DUTY.
+[[bin]]
+name = "check-3007"
+path = "src/bin/check_3007.rs"
+
+# Live calculator CLI for rule 7272 CALCULATE DP OF THE RESERVES (CALC/Definition): reads
+# reserve-roster TSV (crew <TAB> qualifier <TAB> start <TAB> rest_start <TAB> notification
+# <TAB> next_report) on stdin, computes each standby DP (rate·duration), reports totals,
+# emits NO violations. Dependency-free.
+[[bin]]
+name = "check-7272"
+path = "src/bin/check_7272.rs"
+
+# ruletool — populate scenario crew_manday_* tables from a solver result. Reads per-crew
+# activity TSV (crew<TAB>division<TAB>date<TAB>kind<TAB>a1<TAB>a2<TAB>a3<TAB>flag) on stdin,
+# aggregates daily→monthly→yearly credited time via the 7502/8002 credit model + 8002 band,
+# emits D/M/Y TSV rows for upsert. Dependency-free.
+[[bin]]
+name = "ruletool"
+path = "src/bin/ruletool.rs"
+
+# Live 7500 Ref timezone calculator: reads one TSV duty per line on stdin and emits one
+# TSV result per line. The core and CLI remain dependency-free.
+[[bin]]
+name = "check-7500-ref"
+path = "src/bin/check_7500_ref.rs"
+
+[profile.release]
+opt-level = 3

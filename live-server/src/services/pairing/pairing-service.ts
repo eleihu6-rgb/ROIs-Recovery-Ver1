@@ -23,9 +23,66 @@ import { crewBase } from '../../models/crew/crew-base.js'
 import { refreshFlightCompositionFill } from '../../utils/composition-fill.js'
 import { classifyCoverage, isCoverageMet } from './coverage.js'
 import { refreshPairingTafb } from './pairing-tafb-service.js'
+import { computeDutyFdpMin } from './pairing-fdp.js'
 
 const CACHE_PREFIX = 'pairing'
 const CACHE_TTL = 600 // 10min
+
+type DrizzleTx = Parameters<Parameters<FastifyInstance['db']['transaction']>[0]>[0]
+
+const stampDutyFdpMin = async (
+  tx: DrizzleTx,
+  pairingId: number,
+  dutySeq: number,
+  username: string,
+): Promise<void> => {
+  const segs = await tx
+    .select()
+    .from(pairingSegment)
+    .where(and(
+      eq(pairingSegment.pairingId, pairingId),
+      eq(pairingSegment.dutySeq, dutySeq),
+      notDeleted(pairingSegment.isDeleted),
+    ))
+    .orderBy(asc(pairingSegment.segSeq))
+  if (segs.length === 0) return
+  const first = segs[0]
+  const last = segs[segs.length - 1]
+  const minutes = computeDutyFdpMin({
+    assignmentGroup: 'FLY',
+    pairingId,
+    dutySeq,
+    segments: segs.map((s) => ({
+      dbId: s.fltId ?? s.id,
+      assignment: s.segAssignment ?? 'FLY',
+      startAct: s.actStrDtUtc,
+      endAct: s.actEndDtUtc,
+      startSch: s.schStrDtUtc,
+      endSch: s.schEndDtUtc,
+      dep: s.depArp,
+      arr: s.arvArp,
+      fleet: s.fleetSeg ?? '',
+    })),
+    briefStart: first.briefStartUtc,
+    briefEnd: first.briefEndUtc,
+    debriefStart: last.debriefStartUtc,
+    debriefEnd: last.debriefEndUtc,
+    pickupStart: first.pickupStartUtc,
+    pickupEnd: first.pickupEndUtc,
+    dropoffStart: last.dropoffStartUtc,
+    dropoffEnd: last.dropoffEndUtc,
+  })
+  if (minutes == null) return
+  await tx
+    .update(pairingSegment)
+    .set({ dutySchFdpMin: minutes, ...auditUpdate(username) })
+    .where(and(
+      eq(pairingSegment.pairingId, pairingId),
+      eq(pairingSegment.dutySeq, dutySeq),
+      notDeleted(pairingSegment.isDeleted),
+      sql`coalesce(${pairingSegment.dutyIsManualModify}, 0) <> 1`,
+    ))
+}
 
 /**
  * Escape SQL LIKE wildcard characters to prevent pattern manipulation
@@ -816,6 +873,7 @@ export const pairingService = {
         segments.push(seg)
       }
 
+      await stampDutyFdpMin(tx, newPairing.id, 1, username)
       await refreshPairingTafb(tx, newPairing.id, username)
 
       return { pairing: newPairing, segments }
@@ -984,6 +1042,7 @@ export const pairingService = {
         })
         .where(eq(pairing.id, pairingId))
 
+      await stampDutyFdpMin(tx, pairingId, dutySeq, username)
       await refreshPairingTafb(tx, pairingId, username)
 
       return created

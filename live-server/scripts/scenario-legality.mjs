@@ -1375,6 +1375,69 @@ export function scenarioSource(db, scenarioId, ctx) {
           group by ${grp}`, [scenarioId])).rows
     },
 
+    async fdpDuties() {
+      return (await db.query(
+        `select rf.crew_id, rf.pairing_id, rf.duty_seq,
+                coalesce(nullif(rf.assignment_group, ''), p.assignment_group, 'FLY') as assignment_group,
+                coalesce(ps.flt_id, lps.flt_id) as flt_id,
+                coalesce(ps.seg_seq, lps.seg_seq) as seg_seq,
+                coalesce(nullif(ps.seg_assignment, ''), nullif(lps.seg_assignment, ''), 'FLY') as seg_assignment,
+                extract(epoch from coalesce(ps.act_str_dt_utc, ps.sch_str_dt_utc, lps.act_str_dt_utc, lps.sch_str_dt_utc))::bigint as start_act,
+                extract(epoch from coalesce(ps.act_end_dt_utc, ps.sch_end_dt_utc, lps.act_end_dt_utc, lps.sch_end_dt_utc))::bigint as end_act,
+                extract(epoch from coalesce(ps.sch_str_dt_utc, lps.sch_str_dt_utc))::bigint as start_sch,
+                extract(epoch from coalesce(ps.sch_end_dt_utc, lps.sch_end_dt_utc))::bigint as end_sch,
+                coalesce(ps.duty_sch_fdp_min, lps.duty_sch_fdp_min) as duty_sch_fdp_min,
+                coalesce(ps.duty_is_manual_modify, lps.duty_is_manual_modify, 0) as duty_is_manual_modify,
+                extract(epoch from coalesce(ps.brief_start_utc, lps.brief_start_utc))::bigint as brief_start,
+                extract(epoch from coalesce(ps.brief_end_utc, lps.brief_end_utc))::bigint as brief_end,
+                extract(epoch from coalesce(ps.debrief_start_utc, lps.debrief_start_utc))::bigint as debrief_start,
+                extract(epoch from coalesce(ps.debrief_end_utc, lps.debrief_end_utc))::bigint as debrief_end,
+                extract(epoch from coalesce(ps.pickup_start_utc, lps.pickup_start_utc))::bigint as pickup_start,
+                extract(epoch from coalesce(ps.pickup_end_utc, lps.pickup_end_utc))::bigint as pickup_end,
+                extract(epoch from coalesce(ps.dropoff_start_utc, lps.dropoff_start_utc))::bigint as dropoff_start,
+                extract(epoch from coalesce(ps.dropoff_end_utc, lps.dropoff_end_utc))::bigint as dropoff_end,
+                coalesce(ps.dep_arp, lps.dep_arp) as dep_arp,
+                coalesce(ps.arv_arp, lps.arv_arp) as arv_arp,
+                coalesce(ps.fleet_seg, lps.fleet_seg) as fleet_seg,
+                coalesce(ps.duty_fdp_discretion_min, lps.duty_fdp_discretion_min, 0) as duty_fdp_discretion_min
+           from scenario.roster_flight rf
+           left join scenario.pairing p on p.scenario_id = rf.scenario_id and p.id = rf.pairing_id
+           left join scenario.pairing_segment ps
+             on ps.scenario_id = rf.scenario_id and ps.pairing_id = rf.pairing_id
+            and coalesce(ps.is_deleted, 0) = 0 and ps.duty_seq = rf.duty_seq
+           left join f8.pairing_segment lps
+             on lps.pairing_id = rf.pairing_id
+            and coalesce(lps.is_deleted, 0) = 0
+            and lps.duty_seq = rf.duty_seq
+            and not exists (
+              select 1 from scenario.pairing_segment ps_fallback
+               where ps_fallback.scenario_id = rf.scenario_id
+                 and ps_fallback.pairing_id = rf.pairing_id
+                 and coalesce(ps_fallback.is_deleted, 0) = 0
+                 and ps_fallback.duty_seq = rf.duty_seq
+            )
+          where rf.scenario_id=$1 and rf.is_deleted=0 and rf.assignment_group='FLY' and rf.pairing_id is not null
+          order by rf.crew_id, rf.pairing_id, rf.duty_seq, coalesce(ps.seg_seq, lps.seg_seq)`, [scenarioId])).rows
+    },
+
+    async persistDutyFdp(updates) {
+      for (const u of updates ?? []) {
+        const pairingId = Number(u.pairing_id)
+        const dutySeq = Number(u.duty_seq)
+        const fdpMin = Number(u.fdp_min)
+        if (!Number.isFinite(pairingId) || !Number.isFinite(dutySeq) || !Number.isFinite(fdpMin)) continue
+        await db.query(
+          `update scenario.pairing_segment
+              set duty_sch_fdp_min = $4, updated_by = 'legality_recheck', updated_at = now()
+            where scenario_id = $1 and pairing_id = $2 and duty_seq = $3
+              and coalesce(is_deleted, 0) = 0
+              and duty_sch_fdp_min is null
+              and coalesce(duty_is_manual_modify, 0) <> 1`,
+          [scenarioId, pairingId, dutySeq, fdpMin],
+        )
+      }
+    },
+
     // ── rules 7501/7503 — non-rest ground work periods ──
     async groundWork(includeRest = false) {
       return (await db.query(

@@ -1,0 +1,7 @@
+/ro_input.txt
+/crew.txt
+/pairing.txt
+/assignments.txt
+*.svg
+__pycache__/
+*.pyc

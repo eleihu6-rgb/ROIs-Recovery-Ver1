@@ -9,6 +9,7 @@ import { auditCreate } from '../../utils/audit.js'
 import { invalidate, invalidatePattern } from '../../utils/cache.js'
 import { notDeleted } from '../../utils/db.js'
 import { refreshPairingTafb } from './pairing-tafb-service.js'
+import { computeDutyFdpMin } from './pairing-fdp.js'
 
 const CACHE_PREFIX = 'pairing'
 
@@ -56,6 +57,31 @@ const homeBaseFor = (airline: string, fallback: string): string => AIRLINE_HOME_
 
 export const minutesBetween = (a: Date, b: Date): number => (b.getTime() - a.getTime()) / 60000
 export const addMinutes = (d: Date, min: number): Date => new Date(d.getTime() + min * 60000)
+
+/** Rust `calculateDutyFdp` minutes for one planned duty (NULL when the binary is missing). */
+export const dutySchFdpMinForDuty = (duty: FlightRow[]): number | null => {
+  if (duty.length === 0) return null
+  const dutyFirst = duty[0]
+  const dutyLast = duty[duty.length - 1]
+  return computeDutyFdpMin({
+    assignmentGroup: 'FLY',
+    segments: duty.map((flt) => ({
+      dbId: flt.id,
+      assignment: flt.flightAssignment ?? 'FLY',
+      startAct: flt.actDepDtUtc ?? flt.schDepDtUtc,
+      endAct: flt.actArvDtUtc ?? flt.schArvDtUtc,
+      startSch: flt.schDepDtUtc,
+      endSch: flt.schArvDtUtc,
+      dep: flt.depArp,
+      arr: flt.arvArp,
+      fleet: flt.fleet,
+    })),
+    briefStart: addMinutes(dutyFirst.schDepDtUtc, -CHECKIN_MIN),
+    briefEnd: dutyFirst.schDepDtUtc,
+    debriefStart: dutyLast.schArvDtUtc,
+    debriefEnd: addMinutes(dutyLast.schArvDtUtc, DEBRIEF_MIN),
+  })
+}
 
 /**
  * Split flights (already sorted by scheduled departure) into duties.
@@ -173,6 +199,7 @@ const writePairingContents = async (
     const dutyBriefEnd = dutyFirst.schDepDtUtc
     const dutyDebriefStart = dutyLast.schArvDtUtc
     const dutyDebriefEnd = addMinutes(dutyLast.schArvDtUtc, DEBRIEF_MIN)
+    const dutySchFdpMin = dutySchFdpMinForDuty(duty)
     // A duty with a layover after it carries one overnight night; the final duty (back at base) 0.
     const layoverNits = isFinalDuty ? 0 : 1
 
@@ -215,6 +242,7 @@ const writePairingContents = async (
         dropoffEndUtc: dutyDebriefEnd,
         // Post-duty rest + overnight nights — denormalised onto every seg of the duty (F8
         // convention). Mid-rotation duty = layover puck; final duty = back-to-base REST puck.
+        dutySchFdpMin,
         dutySchRestMin: restMin,
         dutyActRestMin: restMin,
         dutyLayoverNits: layoverNits,

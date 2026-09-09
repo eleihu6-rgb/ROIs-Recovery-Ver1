@@ -1,0 +1,15 @@
+[package]
+name = "rois-rule-engine-py"
+version = "0.1.0"
+edition = "2021"
+description = "PyO3 connector exposing the ROIS Rust rule engine to the PBS solver as an in-process Engine."
+
+[lib]
+# Extension module name imported from Python. Deliberately suffixed `_rs` to
+# stay unambiguous against the existing Python pip package `rois_rule_engine`.
+name = "rois_rule_engine_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+rois-rule-engine = { path = ".." }
+pyo3 = { version = "0.22", features = ["extension-module"] }
