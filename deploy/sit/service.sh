@@ -188,6 +188,23 @@ ensure_engine_jwt_secret() {
     export JWT_SECRET="$secret"
 }
 
+# live-server dist (CJS) requires() packages/contracts/*.js (ESM). Node 18 rejects
+# that at startup; prefer a portable Node 22+ if ops installed one under ~/.local/.
+resolve_live_server_node() {
+    local candidates=(
+        "$HOME/.local/node-v22.12.0-linux-x64/bin/node"
+        "$HOME/.local/node-v22/bin/node"
+    )
+    local candidate
+    for candidate in "${candidates[@]}"; do
+        if [ -x "$candidate" ]; then
+            echo "$candidate"
+            return
+        fi
+    done
+    command -v node
+}
+
 # ── 启动函数 ──────────────────────────────────────────────────────
 start_live_server() {
     if is_running "live-server"; then warn "live-server 已在运行 (pid $(get_pid live-server))"; return; fi
@@ -195,8 +212,10 @@ start_live_server() {
     local svc_dir="$DEV_DIR/live-server"
     [ -f "$svc_dir/dist/index.js" ] || { err "$svc_dir/dist/index.js 不存在，请先 deploy --live"; exit 1; }
     load_env "live-server"
+    local node_bin
+    node_bin=$(resolve_live_server_node)
     cd "$svc_dir"
-    nohup node dist/index.js >> "$LOG_DIR/live-server.log" 2>&1 &
+    nohup "$node_bin" dist/index.js >> "$LOG_DIR/live-server.log" 2>&1 &
     save_pid "live-server"
     # Cold start can exceed 1s under load; poll instead of single sleep.
     local i=0
