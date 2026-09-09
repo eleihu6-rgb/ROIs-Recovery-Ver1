@@ -16,7 +16,7 @@ const CACHE_PREFIX = 'pairing'
 // ─── Phase-1 pairing-build rules (temp constants) ────────────────────────────
 // TODO(param): these business constants should migrate to the `dictionary` table
 // (see CLAUDE.md §参数化). They are centralised here so the move is a one-file change.
-export const CHECKIN_MIN = 60 // check-in: brief starts 60m before first departure (matches existing F8 pairing convention)
+export const CHECKIN_MIN = 120 // check-in: brief starts 120m (2h) before first departure (Ryan 2026-09-09; aligns with the "check-in (dep−2h)" duty-period convention)
 export const CHECKOUT_MIN = 0 // check-out: 0 buffer for duty accounting (duty ends at arrival)
 export const DEBRIEF_MIN = 15 // debrief/dropoff timestamps sit 15m after last arrival (F8 render convention)
 export const REST_FLOOR_MIN = 720 // post-duty rest floor / minimum rest: 12h. Also the duty boundary: a new duty only begins after a real rest of at least this long.

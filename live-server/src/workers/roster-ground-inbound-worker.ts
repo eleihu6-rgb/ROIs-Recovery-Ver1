@@ -24,7 +24,7 @@ interface RosterGroundJobResult {
   errors: Array<{ id: string; reason: string }>
 }
 
-const SINGLE_LEG_CHECKIN_MIN = 60 // 1-hour check-in (brief) before departure
+const SINGLE_LEG_CHECKIN_MIN = 120 // 2-hour check-in (brief) before departure (Ryan 2026-09-09, was 60 — keep aligned with CHECKIN_MIN in pairing-build-service)
 
 // No rank in rosterGround payload: P→CA, else FA.
 const divisionDefaultRank = (division: string): string =>

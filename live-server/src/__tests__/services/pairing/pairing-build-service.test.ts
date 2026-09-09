@@ -156,7 +156,8 @@ describe('dutySchFdpMinForDuty — Rust compute-fdp minutes on a 2-leg round tri
     const minutes = dutySchFdpMinForDuty(duty)
     expect(minutes, 'compute-fdp binary must be built (cargo build --release --bin compute-fdp)').not.toBeNull()
     expect(minutes).toBeGreaterThan(0)
-    // INCLUDE CI=Y, INCLUDE CO=N: brief 05:00 → last operating arrival 11:00 = 360 min
-    expect(minutes).toBe(360)
+    // INCLUDE CI=Y, INCLUDE CO=N with CHECKIN_MIN=120 (2h, Ryan 2026-09-09):
+    // brief 04:00 → last operating arrival 11:00 = 420 min
+    expect(minutes).toBe(420)
   })
 })

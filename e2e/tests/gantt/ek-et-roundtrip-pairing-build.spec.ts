@@ -55,7 +55,7 @@ const expectedBase = (airline: string | null): string => (airline === 'EK' ? 'DX
 // Duty-split thresholds mirror pairing-build-service.ts.
 const REST_MS = 720 * 60_000 // 12h rest floor → new duty
 const MAX_BLK = 480 // 8h max block per duty
-const CHECKIN_MIN = 60 // brief starts 60m before first departure (matches CHECKIN_MIN in the service + existing F8)
+const CHECKIN_MIN = 120 // brief starts 120m (2h) before first departure (matches CHECKIN_MIN in the service; Ryan 2026-09-09)
 const MINCONN_MS = 45 * 60_000
 const RETMAX_MS = 48 * 60 * 60_000 // longest layover we'll reach for a rest-legal return (daily long-haul ≈24h)
 

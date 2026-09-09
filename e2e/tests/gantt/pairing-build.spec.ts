@@ -334,8 +334,14 @@ test.describe('Phase-1 pairing build (right-click create / remove)', () => {
     expect(segs.length, 'pairing carries both short legs').toBe(2)
     expect(new Set(segs.map((s) => s.fltId)), 'covers ET100 + ET101').toEqual(new Set([out!.id, back!.id]))
     expect(new Set(segs.map((s) => s.dutySeq)).size, 'short turnaround stays a single duty').toBe(1)
-    // A single duty carries exactly ONE check-in (brief) — on its first segment only.
-    expect(segs.filter((s) => s.briefStartUtc != null).length, 'single duty has exactly one check-in').toBe(1)
+    // Duty-level check-in is denormalised onto EVERY segment (F8 convention) — "one check-in
+    // per duty" therefore means one DISTINCT brief anchor across the duty's segments.
+    const briefs = new Set(segs.map((s) => s.briefStartUtc).filter((b): b is string => b != null))
+    expect(briefs.size, 'single duty has exactly one distinct check-in anchor').toBe(1)
+    // Check-in = 120 min (2h, Ryan 2026-09-09): brief starts exactly CHECKIN_MIN before the
+    // duty's first departure — the user-visible proof the 2h check-in convention is live.
+    expect(isoMs([...briefs][0]), 'brief starts 2h (120min) before first departure')
+      .toBe(isoMs(out!.start!) - 120 * 60_000)
 
     // Clean up through the UI.
     await removeFlightViaMenu(page, dashboard, built!.id, back!.id)
@@ -391,7 +397,8 @@ test.describe('Phase-1 pairing build (right-click create / remove)', () => {
     const segs = (await segsNow(page)).filter((s) => s.pairingId === built!.id)
     expect(segs.length, 'both legs on the pairing').toBe(2)
     expect(new Set(segs.map((s) => s.dutySeq)).size, '4.2h sit does NOT split the duty').toBe(1)
-    expect(segs.filter((s) => s.briefStartUtc != null).length, 'exactly one check-in for the single duty').toBe(1)
+    // Brief anchors are denormalised onto every seg (F8 convention): assert ONE distinct value.
+    expect(new Set(segs.map((s) => s.briefStartUtc).filter((b) => b != null)).size, 'exactly one distinct check-in anchor for the single duty').toBe(1)
 
     // Clean up through the UI.
     await removeFlightViaMenu(page, dashboard, built!.id, back!.id)

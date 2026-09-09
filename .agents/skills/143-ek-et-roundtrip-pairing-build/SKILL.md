@@ -95,11 +95,11 @@ that gets this right is the round-trip cover in
 - the build loop asserts, per pairing, `rot[0].depArp === base && rotLast.arvArp === base`
   (the regression guard that stops a #150497-style pairing from ever being rebuilt).
 
-Service constants (mirror in any builder): `CHECKIN_MIN=60`, `DEBRIEF_MIN=15`,
-`REST_FLOOR_MIN=720` (12h — the duty boundary AND the post-duty rest floor). The old
-`MAX_DUTY_BLOCK_MIN=480` was **removed as a duty splitter** — the 8h block cap is a downstream
-legality check, never a reason to cut a duty. Narrow body (`/^73/`, `/7M/`) → CA1/FO1; wide
-(A380/788/789) → CA2/FO2.
+Service constants (mirror in any builder): `CHECKIN_MIN=120` (2h — Ryan 2026-09-09, was 60),
+`DEBRIEF_MIN=15`, `REST_FLOOR_MIN=720` (12h — the duty boundary AND the post-duty rest floor),
+`MAX_DUTY_BLOCK_MIN=480` (VALIDATION constant only — powers `validateBuildRules` warnings and
+the audit; it is never a duty splitter, the 8h block cap is a downstream legality check).
+Narrow body (`/^73/`, `/7M/`) → CA1/FO1; wide (A380/788/789) → CA2/FO2.
 
 ## Repair procedure: delete the invalid, then rebuild them
 
