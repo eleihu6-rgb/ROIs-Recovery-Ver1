@@ -77,8 +77,9 @@ export interface RecoveryChange {
   before: string
   after: string
   changeType: 'cancel' | 'add' | 'keep'
+  /** Optional sort key for Detail-dialog ordering. UTC ms since epoch, or null when unknown. */
+  startTimeMs?: number | null
 }
-
 export interface RecoveryMetrics {
   affectedCrewCount: number
   cancelledRosterCount: number
@@ -606,6 +607,33 @@ const buildAfterItems = (
   ).concat(moved, dhdItems)
 }
 
+const firstItemStartMs = (items: RosterItem[]): number | null => {
+  for (const item of items) {
+    const ms = finiteTime(item.schStrDtUtc)
+    if (Number.isFinite(ms)) return ms
+  }
+  return null
+}
+
+/**
+ * Sort the change list for the Detail dialog table by start time. Entries with
+ * unknown start time fall back to the original push order (stable). This makes
+ * the Before/After read chronologically: DHD-out -> operating leg(s) -> DHD-in.
+ */
+const sortChangesByStartTime = (changes: RecoveryChange[]): RecoveryChange[] => {
+  const indexed = changes.map((change, originalIndex) => ({ change, originalIndex }))
+  indexed.sort((a, b) => {
+    const aMs = a.change.startTimeMs
+    const bMs = b.change.startTimeMs
+    if (aMs == null && bMs == null) return a.originalIndex - b.originalIndex
+    if (aMs == null) return 1
+    if (bMs == null) return -1
+    if (aMs !== bMs) return aMs - bMs
+    return a.originalIndex - b.originalIndex
+  })
+  return indexed.map((entry) => entry.change)
+}
+
 const buildChanges = (
   source: RosterGroup,
   target: RosterGroup | null,
@@ -619,9 +647,11 @@ const buildChanges = (
   const targetName = names(crewsById.get(targetCrewId), targetCrewId)
   const sourceBefore = rosterLabel(source.items)
   const sourceAfter = target ? rosterLabel(target.items) : 'Released / no assigned Roster'
+  const sourceStartMs = firstItemStartMs(source.items)
+  const targetStartMs = target ? firstItemStartMs(target.items) : null
   const isSwap = mode === 'swap' || mode === 'cross-base-swap'
   if (mode === 'cross-base-destination' && destinationSplit) {
-    return [{
+    return sortChangesByStartTime([{
       crewId: source.crewId,
       crewName: sourceName,
       rosterId: `R${source.pairingId}`,
@@ -631,6 +661,7 @@ const buildChanges = (
         ? `Released · first/last DHD split to new Pairing #${Math.abs(destinationSplit.createdPairingId)}`
         : 'Released · first/last DHD removed from original Pairing',
       changeType: 'cancel',
+      startTimeMs: sourceStartMs,
     }, {
       crewId: targetCrewId,
       crewName: targetName,
@@ -639,7 +670,8 @@ const buildChanges = (
       before: 'No assigned Roster in loaded data',
       after: `${rosterLabel(source.items.slice(1, -1).filter((item) => !isDhdItem(item)))} · Acting Rank ${destinationSplit.actingRank}${destinationSplit.createsPairing ? ' · new Pairing' : ' · original Pairing modified'}`,
       changeType: 'add',
-    }]
+      startTimeMs: targetStartMs,
+    }])
   }
   const changes: RecoveryChange[] = [{
     crewId: source.crewId,
@@ -649,6 +681,7 @@ const buildChanges = (
     before: sourceBefore,
     after: isSwap && target ? sourceAfter : 'Released / no assigned Roster',
     changeType: 'cancel',
+    startTimeMs: sourceStartMs,
   }, {
     crewId: targetCrewId,
     crewName: targetName,
@@ -657,6 +690,7 @@ const buildChanges = (
     before: target ? rosterLabel(target.items) : 'No assigned Roster in loaded data',
     after: sourceBefore,
     changeType: 'add',
+    startTimeMs: sourceStartMs,
   }]
   if (isSwap && target) {
     changes.push({
@@ -667,6 +701,7 @@ const buildChanges = (
       before: rosterLabel(target.items),
       after: sourceBefore,
       changeType: 'cancel',
+      startTimeMs: targetStartMs,
     }, {
       crewId: source.crewId,
       crewName: sourceName,
@@ -675,6 +710,7 @@ const buildChanges = (
       before: sourceAfter,
       after: rosterLabel(target.items),
       changeType: 'add',
+      startTimeMs: targetStartMs,
     })
   }
   if ((mode === 'cross-base-standby' || mode === 'cross-base-swap' || mode === 'cross-base-direct') && positioning) {
@@ -686,6 +722,7 @@ const buildChanges = (
       before: 'No positioning Roster',
       after: `${positioning.outbound.fltNum} ${positioning.outbound.depArp}-${positioning.outbound.arvArp} · DHD`,
       changeType: 'add',
+      startTimeMs: finiteTime(positioning.outbound.schDepDtUtc) || null,
     }, {
       crewId: targetCrewId,
       crewName: targetName,
@@ -694,11 +731,11 @@ const buildChanges = (
       before: 'No positioning Roster',
       after: `${positioning.inbound.fltNum} ${positioning.inbound.depArp}-${positioning.inbound.arvArp} · DHD`,
       changeType: 'add',
+      startTimeMs: finiteTime(positioning.inbound.schDepDtUtc) || null,
     })
   }
-  return changes
+  return sortChangesByStartTime(changes)
 }
-
 const buildMetrics = (
   source: RosterGroup,
   target: RosterGroup | null,
