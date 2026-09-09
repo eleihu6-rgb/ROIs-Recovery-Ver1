@@ -9,6 +9,7 @@
 //! See `tests/rule_8002_cpp_replica.rs`.
 
 pub mod engine;
+pub mod fdp;
 pub mod rule7510;
 pub mod rule8002;
 pub mod rule8071;

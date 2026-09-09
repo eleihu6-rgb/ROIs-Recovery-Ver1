@@ -152,6 +152,16 @@ path = "src/bin/check_7509.rs"
 name = "check-7510"
 path = "src/bin/check_7510.rs"
 
+# Duty FDP calculator (2107/3010/2102). Writes minutes for pairing_segment.duty_sch_fdp_min.
+[[bin]]
+name = "compute-fdp"
+path = "src/bin/compute_fdp.rs"
+
+# Live check CLI for rule 3007 MAX FDP PER DUTY.
+[[bin]]
+name = "check-3007"
+path = "src/bin/check_3007.rs"
+
 # Live calculator CLI for rule 7272 CALCULATE DP OF THE RESERVES (CALC/Definition): reads
 # reserve-roster TSV (crew <TAB> qualifier <TAB> start <TAB> rest_start <TAB> notification
 # <TAB> next_report) on stdin, computes each standby DP (rate·duration), reports totals,
