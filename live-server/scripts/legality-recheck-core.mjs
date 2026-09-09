@@ -13,6 +13,9 @@
 //   pilotAge()                    -> per-flt_id crew-on-flight rows           [rule8030]
 //   assignmentsRaw()              -> raw roster assignment rows               [rule8004]
 //   baseQuals(crewIds)            -> base-qualification rows for crewIds      [rule8004]
+//   baseActivities?(crewIds)       -> chronological activity chain for 8004 BASE continuity
+//   competencyFlights?(crewIds)   -> per-segment flight rows for 8004 RANK/FLEET checks
+//   competencyQuals?(crewIds)     -> effective-dated BASE/RANK/FLEET quals for 8004
 //   assignmentOverlapRosters()    -> crew timelines (pairing report/release)  [rule1001]
 //   assignmentsAll()              -> all assignment rows (incl. ground/leave, pairing_id when present) [rule7505]
 //   rosterProperties(filters)     -> normalized roster-property rows         [rule8071]
@@ -1576,7 +1579,7 @@ export async function rule8004(source, ctx) {
           const start = Number(flight?.start_secs ?? 0); const end = Number(flight?.end_secs ?? start)
           const label = type === 'RANK' ? 'rank' : 'fleet'
           out.push({ crew_id: crewId, pairing_id: pairingId, duty_seq: dutySeq, rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
-            start_dt: new Date(start * 1000).toISOString(), end_dt: new Date(end * 1000).toISOString(), severity: 2, actual_value: value, limit_value: null, unit: null,
+            start_dt: new Date(start * 1000).toISOString(), end_dt: new Date(end * 1000).toISOString(), severity: 2, actual_value: null, limit_value: null, unit: null,
             message: withParamRowPrefix(rowIndex, `Crew ${label} ${value} is not a valid qualification for the roster flight.`), operation_result: { Type: value, strType: type } })
         }
       }

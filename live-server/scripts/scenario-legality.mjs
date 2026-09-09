@@ -1200,6 +1200,8 @@ export function scenarioSource(db, scenarioId, ctx) {
     // rows are authoritative; live rows are intentionally not mixed into this chain.
     async baseActivities(crewIds = []) {
       if (!crewIds.length) return []
+      const overlapFrom = new Date(new Date(`${ctx.dateFrom}T00:00:00Z`).getTime() - 86_400_000).toISOString()
+      const overlapTo = new Date(new Date(`${ctx.dateTo}T00:00:00Z`).getTime() + 86_400_000).toISOString()
       return (await db.query(
         `with pairing_rows as (
            select rf.crew_id, rf.pairing_id,
@@ -1228,7 +1230,7 @@ export function scenarioSource(db, scenarioId, ctx) {
          union all
          select crew_id, pairing_id, start_utc, end_utc, start_station, end_station
            from ground_rows
-          order by crew_id, start_utc, end_utc`, [scenarioId, crewIds, dateSql(ctx.dateFrom), dateSql(ctx.dateTo)])).rows
+          order by crew_id, start_utc, end_utc`, [scenarioId, crewIds, overlapFrom, overlapTo])).rows
     },
 
     async competencyFlights() {

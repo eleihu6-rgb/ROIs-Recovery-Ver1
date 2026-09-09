@@ -1237,7 +1237,8 @@ export function liveSource(db, fromIso, toExclusiveIso) {
            left join pairing p on p.id = rf.pairing_id and coalesce(p.is_deleted, 0) = 0
            left join pairing_segment ps on ps.pairing_id = rf.pairing_id and ps.duty_seq = rf.duty_seq
              and ps.seg_seq = rf.seg_seq and coalesce(ps.is_deleted, 0) = 0
-          where ${W} and rf.pairing_id is not null and rf.flt_id is not null${crewFilter}`, values)).rows
+          where rf.is_deleted=0 and rf.sch_str_dt_utc >= $1 and rf.sch_str_dt_utc < $2
+            and rf.pairing_id is not null and rf.flt_id is not null${crewFilter}`, values)).rows
     },
 
     async competencyQuals(crewIds) {
