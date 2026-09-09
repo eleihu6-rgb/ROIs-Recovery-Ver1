@@ -39,8 +39,8 @@ test('8072 / 7506 / 7509 golden bodies from messages.json', () => {
     'Crew 1256 and 1435 are co-paired on flight 822.',
   )
   assert.equal(
-    renderRuleBody(messages, '3007', { fdp: '15:30', max_fdp: '16:00' }),
-    'Flight duty period (15:30) is more than the limitation (16:00).',
+    renderRuleBody(messages, '3007', { fdp: '15:30', max_fdp: '16:00', duty_date: '2026-09-01' }),
+    'Flight duty period (15:30) exceeds the limitation (16:00) on 2026-09-01.',
   )
 })
 

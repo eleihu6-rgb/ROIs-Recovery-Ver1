@@ -1462,6 +1462,7 @@ export function scenarioSource(db, scenarioId, ctx) {
                 coalesce(ps.dep_arp, lps.dep_arp) as dep_arp,
                 coalesce(ps.arv_arp, lps.arv_arp) as arv_arp,
                 coalesce(ps.fleet_seg, lps.fleet_seg) as fleet_seg,
+                coalesce(nullif(dep_ap.zone_id, ''), 'UTC') as dep_zone_id,
                 coalesce(ps.duty_fdp_discretion_min, lps.duty_fdp_discretion_min, 0) as duty_fdp_discretion_min
            from scenario.roster_flight rf
            left join scenario.pairing p on p.scenario_id = rf.scenario_id and p.id = rf.pairing_id
@@ -1479,6 +1480,7 @@ export function scenarioSource(db, scenarioId, ctx) {
                  and coalesce(ps_fallback.is_deleted, 0) = 0
                  and ps_fallback.duty_seq = rf.duty_seq
             )
+           left join f8.airport dep_ap on dep_ap.airport = coalesce(ps.dep_arp, lps.dep_arp)
           where rf.scenario_id=$1 and rf.is_deleted=0 and rf.assignment_group='FLY' and rf.pairing_id is not null
           order by rf.crew_id, rf.pairing_id, rf.duty_seq, coalesce(ps.seg_seq, lps.seg_seq)`, [scenarioId])).rows
     },

@@ -1386,10 +1386,12 @@ export function liveSource(db, fromIso, toExclusiveIso) {
                 extract(epoch from ps.dropoff_start_utc)::bigint as dropoff_start,
                 extract(epoch from ps.dropoff_end_utc)::bigint as dropoff_end,
                 ps.dep_arp, ps.arv_arp, ps.fleet_seg,
+                coalesce(nullif(dep_ap.zone_id, ''), 'UTC') as dep_zone_id,
                 coalesce(ps.duty_fdp_discretion_min, 0) as duty_fdp_discretion_min
            from roster_flight rf
            join pairing_segment ps
              on ps.pairing_id = rf.pairing_id and ps.duty_seq = rf.duty_seq and coalesce(ps.is_deleted, 0) = 0
+           left join airport dep_ap on dep_ap.airport = ps.dep_arp
            left join pairing p on p.id = rf.pairing_id and p.is_deleted = 0
           where rf.is_deleted=0 and rf.sch_str_dt_utc >= $1 and rf.sch_str_dt_utc < $2
             and rf.assignment_group='FLY' and rf.pairing_id is not null

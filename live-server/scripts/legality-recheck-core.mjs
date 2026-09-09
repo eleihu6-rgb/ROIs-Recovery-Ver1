@@ -2887,13 +2887,24 @@ export async function rule3007(source, ctx) {
         manual: Number(r.duty_is_manual_modify) === 1,
         discretion: Number(r.duty_fdp_discretion_min) || 0,
         segs: [],
+        reportSecs: null,
+        depZoneId: 'UTC',
       })
     }
     duties.get(key).segs.push(r)
   }
 
-  for (const [key, duty] of duties) {
+  for (const duty of duties.values()) {
     const segsSorted = [...duty.segs].sort((a, b) => Number(a.seg_seq) - Number(b.seg_seq))
+    duty.segs = segsSorted
+    const first = segsSorted[0]
+    const reportSecs = Number(first?.brief_start ?? first?.start_act)
+    duty.reportSecs = Number.isFinite(reportSecs) ? reportSecs : null
+    duty.depZoneId = String(first?.dep_zone_id ?? 'UTC').trim() || 'UTC'
+  }
+
+  for (const [key, duty] of duties) {
+    const segsSorted = duty.segs
     const first = segsSorted[0]
     const last = segsSorted[segsSorted.length - 1]
     const fdpCell = duty.fdpMin == null || duty.fdpMin === '' ? '' : String(duty.fdpMin)
@@ -2948,12 +2959,20 @@ export async function rule3007(source, ctx) {
     const maxFdpMin = Number(cols[7])
     const startUtc = Number(cols[8])
     const endUtc = Number(cols[9])
-    const message = cols.slice(10).join('\t')
     const matched = valid[0]
+    const dutyKey = `${crewId}\t${pairingId}\t${dutySeq}`
+    const dutyMeta = duties.get(dutyKey)
+    const reportSecs = Number(dutyMeta?.reportSecs)
+    const depZoneId = dutyMeta?.depZoneId ?? 'UTC'
+    const dutyDate = Number.isFinite(reportSecs)
+      ? localDateOf(reportSecs, depZoneId)
+      : (Number.isFinite(startUtc) ? localDateOf(startUtc, depZoneId) : String(ctx.dateFrom ?? '').slice(0, 10))
     const body3007 = renderRuleBody(LEGALITY_MESSAGES, '3007', {
       fdp: formatMinutesHHMM(fdpMin),
       max_fdp: formatMinutesHHMM(maxFdpMin),
+      duty_date: dutyDate,
     })
+    const fallbackBody = `Flight duty period (${formatMinutesHHMM(fdpMin)}) exceeds the limitation (${formatMinutesHHMM(maxFdpMin)}) on ${dutyDate}.`
     out.push({
       crew_id: crewId,
       pairing_id: pairingId,
@@ -2967,7 +2986,7 @@ export async function rule3007(source, ctx) {
       actual_value: Math.round((fdpMin / 60) * 100) / 100,
       limit_value: Math.round((maxFdpMin / 60) * 100) / 100,
       unit: 'HOUR',
-      message: withParamRowPrefix(matched?.rowIndex ?? 0, body3007 || message || `Flight duty period exceeds Max FDP (${ruleId}).`),
+      message: withParamRowPrefix(matched?.rowIndex ?? 0, body3007 || fallbackBody),
     })
   }
   if (persist.length && typeof source.persistDutyFdp === 'function') {

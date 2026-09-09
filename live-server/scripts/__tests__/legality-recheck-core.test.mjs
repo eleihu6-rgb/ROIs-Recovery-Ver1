@@ -2774,6 +2774,7 @@ test('rule3007 maps check-3007 V rows and persists skipped=N FDP minutes', async
         dep_arp: 'DXB',
         arv_arp: 'LHR',
         fleet_seg: 'B777',
+        dep_zone_id: 'Asia/Dubai',
         duty_fdp_discretion_min: 0,
       }]
     },
@@ -2805,5 +2806,5 @@ test('rule3007 maps check-3007 V rows and persists skipped=N FDP minutes', async
   assert.equal(out[0].crew_id, 'K1002')
   assert.equal(out[0].pairing_id, 150398)
   assert.equal(out[0].scope_key, '3007.1')
-  assert.match(out[0].message, /Flight duty period/)
+  assert.match(out[0].message, /^Row 1: Flight duty period \(07:00\) exceeds the limitation \(01:00\) on 2024-06-01\.$/)
 })
