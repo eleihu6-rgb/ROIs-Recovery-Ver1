@@ -1498,23 +1498,88 @@ export async function rule8004(source, ctx) {
   const lines = []
   for (const r of rosters) lines.push(`R\t${r.crew_id}\t${r.pairing_id}\t${r.base ?? ''}\t${r.start_date}\t${r.end_date}`)
   for (const q of quals) lines.push(`Q\t${q.crew_id}\t${q.base}\t${q.eff_date ?? '-'}\t${q.exp_date ?? '-'}`)
+  // BASE's location-continuity exemption needs the crew's complete chronological
+  // activity chain, including ground/SIM rows and pairings outside the R rows.
+  const activities = source.baseActivities ? await source.baseActivities(crewIds) : []
+  for (const a of activities) {
+    lines.push(['A', a.crew_id, a.pairing_id ?? '-', a.start_utc, a.end_utc,
+      a.start_station ?? '', a.end_station ?? ''].join('\t'))
+  }
+  const flights = source.competencyFlights ? await source.competencyFlights(crewIds) : []
+  const competencyQuals = source.competencyQuals ? await source.competencyQuals(crewIds) : []
+  for (const f of flights) {
+    lines.push(['F', f.crew_id, f.pairing_id, f.duty_seq ?? 0, f.seg_seq ?? 0, f.assignment ?? '', f.rank ?? '', f.fleet ?? '',
+      f.start_secs, f.end_secs, f.start_date, f.end_date, f.deadhead ? '1' : '0', f.ferry ? '1' : '0'].join('\t'))
+  }
+  for (const q of competencyQuals) lines.push(['K', q.crew_id, q.dimension, q.value, q.eff_date ?? '-', q.exp_date ?? '-'].join('\t'))
   const tsv = lines.join('\n')
   const out = []
   for (const inst of instances) {
     const H = headerIndexer(inst.header)
-    const row0 = inst.rows[0]
-    const gi = row0 ? H('Grace Period') : -1
-    const graceDays = gi >= 0 ? (parseInt(row0[gi], 10) || 0) : 0
-    const sk = scopeKeyOf(row0 ?? [], H)
-    for (const [crewId, pairingId, base] of await runBin('check-8004', ['--grace-days', String(graceDays), '--emit-tsv'], tsv)) {
-      const sp = span.get(`${crewId}:${pairingId}`) ?? { s: 0, e: 0 }
-      out.push({
-        crew_id: crewId, pairing_id: Number(pairingId), duty_seq: null,
-        rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
-        start_dt: new Date(sp.s * 1000).toISOString(), end_dt: new Date(sp.e * 1000).toISOString(), severity: 2,
-        actual_value: null, limit_value: null, unit: null,
-        message: withParamRowPrefix(0, `Crew base ${base} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}).`),
-      })
+    for (const [rowIndex, row] of (inst.rows ?? []).entries()) {
+      const type = fieldRaw(row, H, 'Type', 'BASE').toUpperCase()
+      if (!['BASE', 'RANK', 'FLEET'].includes(type)) {
+        ctx.log(`8004/${inst.instance} row ${rowIndex + 1}: unsupported Type=${type}; skipped`)
+        continue
+      }
+      const enabled = H('Enable Check') < 0 && type === 'BASE'
+        ? true
+        : boolYN(fieldRaw(row, H, 'Enable Check', 'N')) === 'Y'
+      if (!enabled) continue
+      const graceRaw = Number.parseInt(fieldRaw(row, H, 'Grace Period', '0'), 10)
+      const unit = fieldRaw(row, H, 'Unit', 'CD').toUpperCase()
+      const graceDays = unit === 'CD' && Number.isFinite(graceRaw) && graceRaw >= 0 ? graceRaw : 0
+      if (unit && unit !== 'CD') ctx.log(`8004/${inst.instance} row ${rowIndex + 1}: unsupported Unit=${unit}; using zero grace`)
+      const assignments = fieldRaw(row, H, 'Assignments', '*')
+      const sk = scopeKeyOf(row, H) || `${type}:${assignments}`
+      const scopeValues = { BASE: fieldOrStar(row, H, 'Base'), RANK: fieldOrStar(row, H, 'Rank'), FLEET: fieldOrStar(row, H, 'Fleet') }
+      const qualsByCrew = new Map()
+      for (const q of competencyQuals) {
+        const key = String(q.crew_id)
+        const list = qualsByCrew.get(key) ?? []
+        list.push(q)
+        qualsByCrew.set(key, list)
+      }
+      const scopeMatch = (flight) => {
+        const qualsForCrew = qualsByCrew.get(String(flight.crew_id)) ?? []
+        const valueAt = (dimension, date) => new Set(qualsForCrew.filter((q) => String(q.dimension).toUpperCase() === dimension &&
+          (!q.eff_date || String(q.eff_date).trim() === '-' || String(q.eff_date) <= date) &&
+          (!q.exp_date || String(q.exp_date).trim() === '-' || String(q.exp_date) > date)).map((q) => String(q.value).toUpperCase()))
+        return ['BASE', 'RANK', 'FLEET'].every((dimension) => {
+          const filter = scopeValues[dimension]
+          if (!hasNonWildcard(filter)) return true
+          const date = String(flight.start_date ?? '').slice(0, 10)
+          const values = valueAt(dimension, date)
+          return filterValues(filter).some((value) => values.has(value.toUpperCase()))
+        })
+      }
+      const scopedTsv = type === 'BASE' ? tsv : [
+        ...lines.filter((line) => line.startsWith('R\t') || line.startsWith('Q\t')),
+        ...flights.filter(scopeMatch).map((f) => ['F', f.crew_id, f.pairing_id, f.duty_seq ?? 0, f.seg_seq ?? 0, f.assignment ?? '', f.rank ?? '', f.fleet ?? '', f.start_secs, f.end_secs, f.start_date, f.end_date, f.deadhead ? '1' : '0', f.ferry ? '1' : '0'].join('\t')),
+        ...competencyQuals.map((q) => ['K', q.crew_id, q.dimension, q.value, q.eff_date ?? '-', q.exp_date ?? '-'].join('\t')),
+      ].join('\n')
+      const args = ['--grace-days', String(graceDays), '--emit-tsv', '--dimension', type]
+      if (assignments && assignments !== '*') args.push('--assignments', assignments)
+      const emitted = await runBin('check-8004', args, scopedTsv)
+      for (const values of emitted) {
+        const crewId = values[0]
+        const pairingId = Number(values[1])
+        if (type === 'BASE') {
+          const base = values[2]
+          const sp = span.get(`${crewId}:${pairingId}`) ?? { s: 0, e: 0 }
+          out.push({ crew_id: crewId, pairing_id: pairingId, duty_seq: null, rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
+            start_dt: new Date(sp.s * 1000).toISOString(), end_dt: new Date(sp.e * 1000).toISOString(), severity: 2, actual_value: null, limit_value: null, unit: null,
+            message: withParamRowPrefix(rowIndex, `Crew base ${base} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}).`) })
+        } else {
+          const dutySeq = Number(values[2]); const segSeq = Number(values[3]); const value = values[5]
+          const flight = flights.find((f) => String(f.crew_id) === crewId && Number(f.pairing_id) === pairingId && Number(f.duty_seq) === dutySeq && Number(f.seg_seq) === segSeq)
+          const start = Number(flight?.start_secs ?? 0); const end = Number(flight?.end_secs ?? start)
+          const label = type === 'RANK' ? 'rank' : 'fleet'
+          out.push({ crew_id: crewId, pairing_id: pairingId, duty_seq: dutySeq, rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
+            start_dt: new Date(start * 1000).toISOString(), end_dt: new Date(end * 1000).toISOString(), severity: 2, actual_value: value, limit_value: null, unit: null,
+            message: withParamRowPrefix(rowIndex, `Crew ${label} ${value} is not a valid qualification for the roster flight.`), operation_result: { Type: value, strType: type } })
+        }
+      }
     }
   }
   return out

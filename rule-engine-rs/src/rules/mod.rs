@@ -2,7 +2,6 @@
 
 pub mod crew_scope;
 pub mod rule1001;
-pub mod rule3007;
 pub mod rule7272;
 pub mod rule7305;
 pub mod rule7501;

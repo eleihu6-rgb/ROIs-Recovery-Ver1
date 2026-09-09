@@ -1183,6 +1183,70 @@ export function liveSource(db, fromIso, toExclusiveIso) {
            from f8.crew_base where crew_id = any($1::varchar[])`, [crewIds])).rows
     },
 
+    // Full activity chain for 8004 BASE's closed-loop location exemption. Pairings
+    // are collapsed to one activity (first departure to last arrival); ground/SIM
+    // rows remain individual activities so station continuity is preserved.
+    async baseActivities(crewIds = []) {
+      if (!crewIds.length) return []
+      return (await db.query(
+        `with pairing_rows as (
+           select rf.crew_id, rf.pairing_id,
+                  extract(epoch from min(coalesce(rf.act_str_dt_utc, rf.sch_str_dt_utc)))::bigint as start_utc,
+                  extract(epoch from max(coalesce(rf.act_end_dt_utc, rf.sch_end_dt_utc)))::bigint as end_utc,
+                  (array_agg(coalesce(nullif(rf.dep_arp, ''), nullif(rf.base, ''), '') order by coalesce(rf.act_str_dt_utc, rf.sch_str_dt_utc), rf.seg_seq))[1] as start_station,
+                  (array_agg(coalesce(nullif(rf.arv_arp, ''), nullif(rf.dep_arp, ''), nullif(rf.base, ''), '') order by coalesce(rf.act_end_dt_utc, rf.sch_end_dt_utc) desc, rf.seg_seq desc))[1] as end_station
+             from f8.roster_flight rf
+            where rf.crew_id = any($1::varchar[]) and rf.is_deleted = 0
+              and rf.sch_end_dt_utc > $2::timestamp and rf.sch_str_dt_utc < $3::timestamp
+              and rf.pairing_id is not null
+            group by rf.crew_id, rf.pairing_id
+         ), ground_rows as (
+           select rf.crew_id, null::bigint as pairing_id,
+                  extract(epoch from coalesce(rf.act_str_dt_utc, rf.sch_str_dt_utc))::bigint as start_utc,
+                  extract(epoch from coalesce(rf.act_end_dt_utc, rf.sch_end_dt_utc))::bigint as end_utc,
+                  coalesce(nullif(rf.dep_arp, ''), nullif(rf.base, ''), '') as start_station,
+                  coalesce(nullif(rf.arv_arp, ''), nullif(rf.dep_arp, ''), nullif(rf.base, ''), '') as end_station
+             from f8.roster_flight rf
+            where rf.crew_id = any($1::varchar[]) and rf.is_deleted = 0
+              and rf.sch_end_dt_utc > $2::timestamp and rf.sch_str_dt_utc < $3::timestamp
+              and rf.pairing_id is null
+         )
+         select crew_id, pairing_id, start_utc, end_utc, start_station, end_station
+           from pairing_rows
+         union all
+         select crew_id, pairing_id, start_utc, end_utc, start_station, end_station
+           from ground_rows
+          order by crew_id, start_utc, end_utc`, [crewIds, lowerBoundIso, upperBoundIso])).rows
+    },
+
+    async competencyFlights(crewIds = []) {
+      const crewFilter = crewIds.length ? ' and rf.crew_id = any($3::varchar[])' : ''
+      const values = crewIds.length ? [...P, crewIds] : P
+      return (await db.query(
+        `select rf.crew_id, rf.pairing_id, rf.duty_seq, rf.seg_seq,
+                coalesce(nullif(rf.assignment, ''), nullif(rf.assignment_group, ''), 'FLY') as assignment,
+                coalesce(nullif(rf.flight_acting_rank, ''), nullif(rf.roster_acting_rank, ''), '') as rank,
+                coalesce(nullif(ps.fleet_seg, ''), nullif(p.fleet, ''), '') as fleet,
+                extract(epoch from coalesce(rf.act_str_dt_utc, rf.sch_str_dt_utc))::bigint as start_secs,
+                extract(epoch from coalesce(rf.act_end_dt_utc, rf.sch_end_dt_utc))::bigint as end_secs,
+                to_char(coalesce(rf.act_str_dt_utc, rf.sch_str_dt_utc), 'YYYY-MM-DD') as start_date,
+                to_char(coalesce(rf.act_end_dt_utc, rf.sch_end_dt_utc), 'YYYY-MM-DD') as end_date,
+                coalesce(ps.seg_assignment, '') in ('DHD', 'TVL') as deadhead,
+                coalesce(ps.seg_assignment, '') in ('TRAIN', 'BUS', 'PNC') as ferry
+           from roster_flight rf
+           left join pairing p on p.id = rf.pairing_id and coalesce(p.is_deleted, 0) = 0
+           left join pairing_segment ps on ps.pairing_id = rf.pairing_id and ps.duty_seq = rf.duty_seq
+             and ps.seg_seq = rf.seg_seq and coalesce(ps.is_deleted, 0) = 0
+          where ${W} and rf.pairing_id is not null and rf.flt_id is not null${crewFilter}`, values)).rows
+    },
+
+    async competencyQuals(crewIds) {
+      return (await db.query(
+        `select crew_id, 'BASE' as dimension, base as value, to_char(coalesce(eff_dt_utc, eff_dt), 'YYYY-MM-DD') as eff_date, to_char(coalesce(exp_dt_utc, exp_dt), 'YYYY-MM-DD') as exp_date from f8.crew_base where crew_id = any($1::varchar[])
+         union all select crew_id, 'RANK', rank, to_char(eff_dt, 'YYYY-MM-DD'), to_char(exp_dt, 'YYYY-MM-DD') from f8.crew_rank where crew_id = any($1::varchar[])
+         union all select crew_id, 'FLEET', fleet_specific, to_char(eff_dt, 'YYYY-MM-DD'), to_char(exp_dt, 'YYYY-MM-DD') from f8.crew_fleet where crew_id = any($1::varchar[])`, [crewIds])).rows
+    },
+
     // ── rule 1001 — assignment overlap timeline (pairings + ground/leave duties) ──
     async assignmentOverlapRosters() {
       const dutyBoundOpts = { rosterAlias: 'rf', segmentAlias: 'ps' }

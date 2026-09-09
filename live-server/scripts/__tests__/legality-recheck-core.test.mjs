@@ -709,6 +709,51 @@ test('rule8004 suppresses YYZ-base roster when activity chain closes back to qua
   assert.deepEqual(out, [], 'closed loop back to YVR must not emit 8004 for pairing 155089')
 })
 
+test('rule8004 checks enabled RANK/FLEET rows with assignment and crew scope filters', async () => {
+  const plannedStart = epochSec('2026-06-10T10:00:00Z')
+  const actualStart = epochSec('2026-06-10T12:00:00Z')
+  const actualEnd = epochSec('2026-06-10T14:00:00Z')
+  const source = {
+    db: {},
+    async assignmentsRaw() {
+      return [{ crew_id: 'C3', pairing_id: 700, base: 'YYZ', start_date: '2026-06-10', end_date: '2026-06-10', start_secs: plannedStart, end_secs: actualEnd }]
+    },
+    async baseQuals() { return [{ crew_id: 'C3', base: 'YYZ', eff_date: '-', exp_date: '-' }] },
+    async crewBaseTimezone() { return new Map([['C3', 'UTC']]) },
+    async baseActivities() { return [] },
+    async competencyFlights() {
+      return [
+        // Actual interval is used by the adapter; the rank qual ends after actualEnd
+        // but before the planned end, so a planned-time implementation would fail.
+        { crew_id: 'C3', pairing_id: 700, duty_seq: 2, seg_seq: 3, assignment: 'FLY', rank: 'CA', fleet: '7M8', start_secs: actualStart, end_secs: actualEnd, start_date: '2026-06-10', end_date: '2026-06-10', deadhead: false, ferry: false },
+        // DHD is excluded from FLEET even though the crew lacks a 737 qualification.
+        { crew_id: 'C3', pairing_id: 700, duty_seq: 2, seg_seq: 4, assignment: 'DHD', rank: '', fleet: '737', start_secs: actualEnd, end_secs: actualEnd + 3600, start_date: '2026-06-10', end_date: '2026-06-10', deadhead: true, ferry: false },
+      ]
+    },
+    async competencyQuals() {
+      return [
+        { crew_id: 'C3', dimension: 'BASE', value: 'YYZ', eff_date: '-', exp_date: '-' },
+        { crew_id: 'C3', dimension: 'RANK', value: 'CA', eff_date: '-', exp_date: '2026-06-11' },
+        { crew_id: 'C3', dimension: 'FLEET', value: '737', eff_date: '-', exp_date: '-' },
+      ]
+    },
+  }
+  const ctx = {
+    log: () => {},
+    instancesOf: (fn) => fn === 8004 ? [{ instance: '001', header: ['Base', 'Rank', 'Fleet', 'Type', 'Enable Check', 'Grace Period', 'Assignments'], rows: [
+      ['*', '*', '*', 'RANK', 'Y', '0', 'FLY'],
+      ['*', '*', '*', 'FLEET', 'Y', '0', 'FLY'],
+      ['*', '*', '*', 'FLEET', 'N', '0', 'FLY'],
+    ] }] : [],
+  }
+  const out = await rule8004(source, ctx)
+  assert.equal(out.length, 1, 'only the operating 7M8 flight should violate FLEET')
+  assert.equal(out[0].duty_seq, 2)
+  assert.equal(out[0].rule_instance, '001')
+  assert.equal(out[0].actual_value, '7M8')
+  assert.match(out[0].message, /fleet 7M8/)
+})
+
 test('rule8002 emits nothing + logs when the function has no instances (no silent fallback)', async () => {
   const logs = []
   const out = await rule8002({ db: {}, async blockByDay() { return [] }, async firstPairingSpanByCrew() { return new Map() }, async crewBaseTimezone() { return new Map() } },

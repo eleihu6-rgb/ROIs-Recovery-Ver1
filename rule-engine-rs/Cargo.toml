@@ -75,9 +75,8 @@ path = "src/bin/check_8002_credit.rs"
 name = "check-8030"
 path = "src/bin/check_8030.rs"
 
-# Live check CLI for rule 8004 BASIC COMPETENCY (BASE): reads R/Q/A TSV rows on stdin,
-# flags rosters whose base is not a valid crew_base during the roster span (with the
-# location-continuity closed-loop exemption when A activity rows are supplied). Dependency-free.
+# Live check CLI for rule 8004 BASIC COMPETENCY (BASE/RANK/FLEET): reads tagged R/Q/A/F/K
+# TSV rows on stdin, flags invalid roster bases and flight qualifications. Dependency-free.
 [[bin]]
 name = "check-8004"
 path = "src/bin/check_8004.rs"
@@ -152,16 +151,6 @@ path = "src/bin/check_7509.rs"
 [[bin]]
 name = "check-7510"
 path = "src/bin/check_7510.rs"
-
-# Duty FDP calculator (2107/3010/2102). Writes minutes for pairing_segment.duty_sch_fdp_min.
-[[bin]]
-name = "compute-fdp"
-path = "src/bin/compute_fdp.rs"
-
-# Live check CLI for rule 3007 MAX FDP PER DUTY.
-[[bin]]
-name = "check-3007"
-path = "src/bin/check_3007.rs"
 
 # Live calculator CLI for rule 7272 CALCULATE DP OF THE RESERVES (CALC/Definition): reads
 # reserve-roster TSV (crew <TAB> qualifier <TAB> start <TAB> rest_start <TAB> notification

@@ -9,7 +9,6 @@
 //! See `tests/rule_8002_cpp_replica.rs`.
 
 pub mod engine;
-pub mod fdp;
 pub mod rule7510;
 pub mod rule8002;
 pub mod rule8071;
@@ -1257,6 +1256,102 @@ pub struct CompetencyViolation {
     pub crew_id: String,
     pub pairing_id: i64,
     pub base: String,
+}
+
+/// One roster-flight segment used by the RANK/FLEET dimensions of 8004.
+/// Timestamps are UTC seconds; ordinals are UTC calendar days.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompetencyFlight {
+    pub pairing_id: i64,
+    pub duty_seq: i64,
+    pub seg_seq: i64,
+    pub assignment: String,
+    pub rank: String,
+    pub fleet: String,
+    pub start_utc: i64,
+    pub end_utc: i64,
+    pub start_ord: i64,
+    pub end_ord: i64,
+    pub deadhead: bool,
+    pub ferry: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompetencyQual {
+    pub value: String,
+    pub eff_ord: Option<i64>,
+    pub exp_ord: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DimensionCompetencyViolation {
+    pub crew_id: String,
+    pub pairing_id: i64,
+    pub duty_seq: i64,
+    pub seg_seq: i64,
+    pub dimension: String,
+    pub value: String,
+}
+
+fn competency_assignment_matches(assignment: &str, assignments: &[String]) -> bool {
+    assignments.is_empty()
+        || assignments.iter().any(|a| a == "*" || a.eq_ignore_ascii_case(assignment))
+}
+
+fn competency_qual_is_valid(q: &CompetencyQual, start_ord: i64, end_ord: i64, grace_days: i64) -> bool {
+    let eff_ok = q.eff_ord.map_or(true, |eff| eff <= start_ord);
+    let exp = q.exp_ord.map_or(i64::MAX, |exp| exp.saturating_add(grace_days));
+    eff_ok && exp > end_ord
+}
+
+/// Check 8004 RANK. A rank qualification must cover the complete normalized
+/// flight interval. Empty ranks and non-flight rows are ignored by the caller.
+pub fn check_rank_competency(
+    crew_id: &str,
+    flights: &[CompetencyFlight],
+    quals: &[CompetencyQual],
+    assignments: &[String],
+    grace_days: i64,
+) -> Vec<DimensionCompetencyViolation> {
+    flights.iter().filter_map(|f| {
+        if f.rank.trim().is_empty() || !competency_assignment_matches(&f.assignment, assignments) {
+            return None;
+        }
+        let valid = quals.iter().any(|q| {
+            q.value.eq_ignore_ascii_case(&f.rank)
+                && competency_qual_is_valid(q, f.start_ord, f.end_ord, grace_days)
+        });
+        (!valid).then(|| DimensionCompetencyViolation {
+            crew_id: crew_id.to_string(), pairing_id: f.pairing_id, duty_seq: f.duty_seq,
+            seg_seq: f.seg_seq, dimension: "RANK".to_string(), value: f.rank.clone(),
+        })
+    }).collect()
+}
+
+/// Check 8004 FLEET. Fleet qualification is evaluated at normalized departure
+/// (the qualification need not cover landing). Deadhead/ferry segments are not
+/// operating fleet work and are excluded.
+pub fn check_fleet_competency(
+    crew_id: &str,
+    flights: &[CompetencyFlight],
+    quals: &[CompetencyQual],
+    assignments: &[String],
+    grace_days: i64,
+) -> Vec<DimensionCompetencyViolation> {
+    flights.iter().filter_map(|f| {
+        if f.fleet.trim().is_empty() || f.deadhead || f.ferry
+            || !competency_assignment_matches(&f.assignment, assignments) {
+            return None;
+        }
+        let valid = quals.iter().any(|q| {
+            q.value.eq_ignore_ascii_case(&f.fleet)
+                && competency_qual_is_valid(q, f.start_ord, f.start_ord, grace_days)
+        });
+        (!valid).then(|| DimensionCompetencyViolation {
+            crew_id: crew_id.to_string(), pairing_id: f.pairing_id, duty_seq: f.duty_seq,
+            seg_seq: f.seg_seq, dimension: "FLEET".to_string(), value: f.fleet.clone(),
+        })
+    }).collect()
 }
 
 impl CompetencyViolation {

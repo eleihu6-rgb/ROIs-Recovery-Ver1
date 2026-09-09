@@ -23,6 +23,41 @@ use rois_rule_engine::{
     parse_utc_seconds, Application, BaseActivity, BaseQual, BaseRoster,
 };
 
+#[test]
+fn rank_and_fleet_competency_use_actual_interval_and_departure() {
+    use rois_rule_engine::{check_fleet_competency, check_rank_competency, CompetencyFlight, CompetencyQual};
+    let flight = CompetencyFlight { pairing_id: 7, duty_seq: 1, seg_seq: 1, assignment: "FLY".into(), rank: "CA".into(), fleet: "7M8".into(), start_utc: 0, end_utc: 7200, start_ord: 20000, end_ord: 20000, deadhead: false, ferry: false };
+    let rank = CompetencyQual { value: "CA".into(), eff_ord: Some(19999), exp_ord: Some(20001) };
+    let fleet = CompetencyQual { value: "7M8".into(), eff_ord: Some(19999), exp_ord: Some(20001) };
+    assert!(check_rank_competency("C", std::slice::from_ref(&flight), &[rank], &["FLY".into()], 0).is_empty());
+    assert!(check_fleet_competency("C", std::slice::from_ref(&flight), &[fleet], &["FLY".into()], 0).is_empty());
+    let no_fleet = CompetencyQual { value: "737".into(), eff_ord: None, exp_ord: None };
+    assert_eq!(check_fleet_competency("C", std::slice::from_ref(&flight), &[no_fleet], &[], 0)[0].value, "7M8");
+}
+
+#[test]
+fn fleet_expiry_after_departure_before_landing_remains_legal() {
+    use rois_rule_engine::{check_fleet_competency, check_rank_competency, CompetencyFlight, CompetencyQual};
+    let flight = CompetencyFlight {
+        pairing_id: 9, duty_seq: 1, seg_seq: 1, assignment: "FLY".into(), rank: "CA".into(), fleet: "7M8".into(),
+        start_utc: 0, end_utc: 86_400, start_ord: 20_000, end_ord: 20_001, deadhead: false, ferry: false,
+    };
+    let expiring = CompetencyQual { value: "7M8".into(), eff_ord: Some(19_000), exp_ord: Some(20_001) };
+    assert!(check_fleet_competency("C", std::slice::from_ref(&flight), &[expiring], &[], 0).is_empty());
+    let rank = CompetencyQual { value: "CA".into(), eff_ord: Some(19_000), exp_ord: Some(20_001) };
+    assert_eq!(check_rank_competency("C", &[flight], &[rank], &[], 0).len(), 1);
+}
+
+#[test]
+fn fleet_skips_deadhead_and_assignment_filter_is_case_insensitive() {
+    use rois_rule_engine::{check_fleet_competency, CompetencyFlight, CompetencyQual};
+    let flight = CompetencyFlight { pairing_id: 8, duty_seq: 1, seg_seq: 1, assignment: "fly".into(), rank: "".into(), fleet: "7M8".into(), start_utc: 0, end_utc: 1, start_ord: 20000, end_ord: 20000, deadhead: true, ferry: false };
+    let q = CompetencyQual { value: "737".into(), eff_ord: None, exp_ord: None };
+    assert!(check_fleet_competency("C", std::slice::from_ref(&flight), &[q.clone()], &["FLY".into()], 0).is_empty());
+    let mut operating = flight; operating.deadhead = false;
+    assert_eq!(check_fleet_competency("C", &[operating], &[q], &["FLY".into()], 0).len(), 1);
+}
+
 fn qual(base: &str, eff: Option<&str>, exp: Option<&str>) -> BaseQual {
     BaseQual {
         base: base.to_string(),
