@@ -196,11 +196,25 @@ push_shared_rules() {
 
 # ── packages/contracts + packages/saml + shared-rules + legality-messages ──
 push_contracts() {
+    # packages/contracts 源码是 ESM（export const ...），live-server 是 CommonJS，
+    # require 时 Node 直接 SyntaxError。在 rsync 前用 staging dir 一次性 ESM→CJS 转换，
+    # 避免污染源码树（避免下次 discard_local_changes / 本地 dev 看到 CJS）。
+    contracts_stage=$(mktemp -d)
+
+    cp -r "$ROIS_AI/packages/contracts/." "$contracts_stage/"
+    if ! bash "$SCRIPT_DIR/esm2cjs.sh" "$contracts_stage" >>"$DEPLOY_LOG" 2>&1; then
+        rm -rf "$contracts_stage"
+        fail "[contracts] ESM→CJS 转换失败，部署中止"
+    fi
+    ok "[contracts] ESM→CJS 转换完成"
+
     ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/packages/contracts'"
     rsync -az --delete \
-        "$ROIS_AI/packages/contracts/" \
+        "$contracts_stage/" \
         "$PORTAL:$PORTAL_DEV/packages/contracts/" \
         >>"$DEPLOY_LOG" 2>&1
+    rm -rf "$contracts_stage"
+
     # packages/saml: Azure SSO 共享 helper，live dist 通过相对路径 require
     ssh "$PORTAL" "mkdir -p '$PORTAL_DEV/packages/saml'"
     rsync -az --delete \
