@@ -113,9 +113,10 @@ build_connector() {
 # rule-engine Rust 二进制（live-server ruletool / check-*，从部署根解析）
 build_rust_bins() {
     log "[rust-bins] 本机编译法规引擎二进制..."
+    [ -f "$ROIS_AI/rule-engine-rs/Cargo.toml" ] \
+        || fail "[rust-bins] 缺少 rule-engine-rs/Cargo.toml（vendored 目录应随主仓库同步）"
     (
         source "$HOME/.cargo/env" 2>/dev/null || true
-        git -C "$ROIS_AI" submodule update --init --recursive rule-engine-rs >>"$DEPLOY_LOG" 2>&1 || true
         cd "$ROIS_AI/rule-engine-rs"
         cargo build --release --quiet
     ) >>"$DEPLOY_LOG" 2>&1

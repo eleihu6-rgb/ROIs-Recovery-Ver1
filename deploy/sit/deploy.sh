@@ -342,13 +342,13 @@ load_rust_bins() {
     fi
 }
 
-# Rust 法规二进制变化检测 — 基于 rule-engine-rs 当前源码/提交状态。
+# Rust 法规二进制变化检测 — 基于主仓库 tracked 的 rule-engine-rs/ 树。
 rust_bins_hash() {
     (
-        cd "$ROIS_AI/rule-engine-rs"
-        git rev-parse HEAD 2>/dev/null || true
-        git status --short --untracked-files=no 2>/dev/null || true
-        git ls-files -z 2>/dev/null | xargs -0 sha256sum 2>/dev/null || true
+        cd "$ROIS_AI"
+        git ls-files -z -- rule-engine-rs/ \
+            | xargs -0 sha256sum 2>/dev/null \
+            || true
     ) | sha256sum | cut -d' ' -f1
 }
 
@@ -367,6 +367,8 @@ mark_rust_bins_synced() {
 }
 
 push_rust_bins() {
+    [ -f "$ROIS_AI/rule-engine-rs/Cargo.toml" ] \
+        || fail "[rust-bins] 缺少 rule-engine-rs/Cargo.toml（vendored 目录应随主仓库同步）"
     local remote_dir="$PORTAL_DEV/rule-engine-rs/target/release"
     load_rust_bins
     local missing=0
@@ -381,7 +383,7 @@ push_rust_bins() {
         ) >>"$DEPLOY_LOG" 2>&1
         for bin in "${RUST_BINS[@]}"; do
             if [ ! -x "$ROIS_AI/rule-engine-rs/target/release/$bin" ]; then
-                fail "[rust-bins] 构建后缺少 $bin；请检查 rule-engine-rs submodule 是否包含对应 [[bin]] 目标"
+                fail "[rust-bins] 构建后缺少 $bin；请检查 rule-engine-rs/Cargo.toml [[bin]] 是否包含该目标"
             fi
         done
         log "[rust-bins] 推送二进制 → PortalServer..."

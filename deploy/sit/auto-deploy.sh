@@ -11,7 +11,7 @@
 # 模块 → 部署动作映射：
 #   live-server/**       → --live    （本机 build → push dist → Rust 法规二进制 → 远程重启）
 #   rule-engine/*         → --live    （TS 包被 live-server import，触发重建）
-#   rule-engine-rs        → --live    （Rust 法规二进制 ruletool + check-* 重建推送）
+#   rule-engine-rs/**     → --live    （vendored Rust 源码；ruletool + check-* 重建推送）
 #   engine-server/**      → --engine  （push 源码 → 远程重启，无 build）
 #   rois-rule-engine/**   → --engine  （Python 依赖变更，重启即可）
 #   packages/ui/**        → --gantt   （workspace 直接引用，gantt 重建即可）
@@ -121,84 +121,15 @@ clear_pending_plan() {
     rm -f "$PENDING_FILE"
 }
 
-# SIT 机器对部分 GitHub 仓库只有 deploy key / SSH 访问；.gitmodules 里的 https
-# URL 会在 git submodule update 时要求交互账号密码并失败。对已知需要 SSH 的
-# submodule 强制改写 url（不改 .gitmodules 文件，避免污染部署镜像工作树）。
-ensure_submodule_ssh_url() {
-    local name="$1"
-    local ssh_url="$2"
-    local current
-    current=$(git config -f .gitmodules --get "submodule.${name}.url" 2>/dev/null || true)
-    if [ -z "$current" ]; then
-        return
+# rule-engine-rs is vendored in the main repo (not a submodule). git pull / reset
+# already brings the tree; verify Cargo.toml before deploy/build steps run.
+ensure_rule_engine_rs() {
+    if [ -f "$ROIS_AI/rule-engine-rs/Cargo.toml" ]; then
+        return 0
     fi
-    # Always pin the runtime config to SSH so both init and subsequent updates work.
-    git config "submodule.${name}.url" "$ssh_url"
-    if [ -d "$name/.git" ] || [ -f "$name/.git" ]; then
-        git -C "$name" remote set-url origin "$ssh_url" 2>/dev/null || true
-    fi
+    log "✗ rule-engine-rs/Cargo.toml 缺失 — 主仓库应包含 vendored rule-engine-rs/ 目录"
+    return 1
 }
-
-submodule_marker_ok() {
-    local name="$1"
-    case "$name" in
-        rule-engine-rs)  [ -f "$name/Cargo.toml" ] ;;
-        *)               return 1 ;;
-    esac
-}
-
-update_one_submodule() {
-    local name="$1"
-    local ssh_url="${2:-}"
-
-    if ! git config -f .gitmodules --get "submodule.${name}.path" >/dev/null 2>&1; then
-        return
-    fi
-
-    local needs=0
-    # Missing checkout ("-"), diverged ("+"), or merge conflict ("U").
-    if git submodule status "$name" 2>/dev/null | grep -q '^[+-U]'; then
-        needs=1
-    elif ! submodule_marker_ok "$name"; then
-        # Empty dir / failed prior init with a "clean-looking" status still needs recovery.
-        needs=1
-    fi
-
-    if [ "$needs" -eq 0 ]; then
-        return
-    fi
-
-    log "同步 ${name} submodule 到当前提交记录..."
-    # sync copies .gitmodules → .git/config (often https); re-pin SSH afterwards.
-    git submodule sync --quiet "$name" || true
-    if [ -n "$ssh_url" ]; then
-        git config "submodule.${name}.url" "$ssh_url"
-    fi
-    if ! git submodule update --init --recursive --quiet "$name"; then
-        log "✗ ${name} submodule 同步失败（检查 SSH 访问 / 子模块 URL）"
-        return 1
-    fi
-    if ! submodule_marker_ok "$name"; then
-        log "✗ ${name} submodule 同步后仍缺关键文件"
-        return 1
-    fi
-    ok "${name} submodule 已同步"
-}
-
-update_submodules() {
-    if [ ! -f .gitmodules ]; then
-        return
-    fi
-
-    # Deploy-key friendly SSH remotes (SIT cannot prompt for HTTPS credentials).
-    local rs_url="git@github.com:yuanzhu-ai/rois-rule-engine-rs.git"
-    ensure_submodule_ssh_url "rule-engine-rs" "$rs_url"
-
-    # rule-engine-rs: live-server legality binaries.
-    # pbs-engine / pbs-optimization-report: 本次范围外，不同步。
-    update_one_submodule "rule-engine-rs" "$rs_url" || true
-}
-
 
 discard_local_changes() {
     local dirty
@@ -239,7 +170,7 @@ NEED_ENGINE=0
 NEED_GANTT=0
 
 load_pending_plan
-update_submodules
+ensure_rule_engine_rs || true
 
 if [ "$LOCAL" = "$REMOTE" ]; then
     TOTAL=$((NEED_LIVE + NEED_ENGINE + NEED_GANTT))
@@ -279,7 +210,7 @@ while IFS= read -r file; do
         .gitignore | .gitmodules | \
         po-engine/* | ro-engine/* | \
         ai-server/* | crewrule-dev/* | data-migration/* | \
-        pbs-app/* | packages/rule-engine-rs/* | \
+        pbs-app/* | \
         pbs-engine | pbs-engine/* | \
         pbs-server/* | connector-server/* | pbs-portal/* | \
         pbs-optimization-report | pbs-optimization-report/*)
@@ -306,7 +237,7 @@ if [ $TOTAL -eq 0 ]; then
     log "无需部署（仅文档/配置变更），静默同步"
     if [ "$LOCAL" != "$REMOTE" ]; then
         sync_to_origin_main
-        update_submodules
+        ensure_rule_engine_rs || true
     fi
     clear_pending_plan
     exit 0
@@ -321,7 +252,7 @@ log "部署计划："
 if [ "$LOCAL" != "$REMOTE" ]; then
     sync_to_origin_main
 fi
-update_submodules
+ensure_rule_engine_rs || exit 1
 
 # 先持久化计划：若 deploy.sh 中途失败，下次 cron 即使无新提交也会补跑。
 write_pending_plan

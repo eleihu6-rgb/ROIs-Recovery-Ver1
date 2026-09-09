@@ -20,7 +20,7 @@
 |--------|----------|
 | live-server | pbs-server |
 | engine-server | pbs-portal |
-| rule-engine-rs (Rust 法规二进制) | connector-server |
+| rule-engine-rs (vendored Rust 法规源码 + 二进制) | connector-server |
 | packages/shared-rules / saml / contracts / legality-messages | pbs-engine (已暂停，见下) |
 | gantt (前端 SPA) | pbs-optimization-report |
 | | ai-server / po-engine / ro-engine / crewrule-dev / data-migration / pbs-app |
