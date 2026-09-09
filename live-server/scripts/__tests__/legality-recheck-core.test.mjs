@@ -642,7 +642,7 @@ test('rule8004 message embeds pairing report date in start-station local timezon
   const out = await rule8004(source, ctx)
   assert.equal(out.length, 1)
   assert.equal(out[0].rule_code, '8004')
-  assert.match(out[0].message, /^Row 1: Crew base \(\) is invalid for this pairing \(YYZ\) on 2026-06-09\./)
+  assert.match(out[0].message, /^Row 1: Crew base \(\) is invalid for the pairing \(YYZ\) on 2026-06-09\./)
   assert.ok(!out[0].message.includes('2026-06-10'), 'the raw UTC date must not leak into the message')
 })
 
@@ -665,7 +665,7 @@ test('rule8004 falls back to UTC when pairing start-station timezone is unknown'
   }
   const out = await rule8004(source, ctx)
   assert.equal(out.length, 1)
-  assert.match(out[0].message, /^Row 1: Crew base \(\) is invalid for this pairing \(YYZ\) on 2026-06-10\./)
+  assert.match(out[0].message, /^Row 1: Crew base \(\) is invalid for the pairing \(YYZ\) on 2026-06-10\./)
 })
 
 // Closed-loop location-continuity exemption (crew 295 / pairing 155089 regression).
@@ -749,13 +749,13 @@ test('rule8004 checks enabled RANK/FLEET rows with assignment and crew scope fil
   assert.equal(out[0].duty_seq, 2)
   assert.equal(out[0].rule_instance, '001')
   assert.equal(out[0].actual_value, null)
-  assert.match(out[0].message, /^Row 2: Crew fleet \(737\) is invalid for this pairing \(7M8\) on 2026-06-10\./)
+  assert.match(out[0].message, /^Row 2: Crew fleet \(737\) is invalid for the pairing \(7M8\) on 2026-06-10\./)
 })
 
 test('format8004ViolationMessage uses the unified BASE/RANK/FLEET template', () => {
   assert.equal(
     format8004ViolationMessage({ label: 'fleet', validValues: '738|756|777', assignmentValue: '7M8', reportDate: '2026-09-01' }),
-    'Crew fleet (738|756|777) is invalid for this pairing (7M8) on 2026-09-01.',
+    'Crew fleet (738|756|777) is invalid for the pairing (7M8) on 2026-09-01.',
   )
 })
 

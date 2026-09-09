@@ -1532,7 +1532,7 @@ export const validCompetencyValuesForFlight = (quals, crewId, dimension, flight,
 
 /** Unified 8004 violation message for BASE / RANK / FLEET. */
 export const format8004ViolationMessage = ({ label, validValues, assignmentValue, reportDate }) =>
-  `Crew ${label} (${validValues}) is invalid for this pairing (${assignmentValue}) on ${reportDate}.`
+  `Crew ${label} (${validValues}) is invalid for the pairing (${assignmentValue}) on ${reportDate}.`
 
 const pairingReportDate = (roster, fallbackSecs = 0) => {
   const reportSecs = Number(roster?.report_secs ?? roster?.start_secs ?? fallbackSecs)
