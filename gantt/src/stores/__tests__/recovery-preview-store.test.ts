@@ -266,4 +266,146 @@ describe('recovery preview comparison', () => {
 
     expect(buildRecoveryPairingPreview(combined, []).length).toBe(2)
   })
+
+  it('builds a source Pairing previewItem that includes DHD for cross-base-direct (handoff refactor)', () => {
+    const sourceFlight = item(20, '113', 135905, {
+      base: 'YVR',
+      fleetCode: '7M8',
+      depArp: 'YVR',
+      arvArp: 'YVR',
+      schStrDtUtc: '2026-09-12T07:10:00Z',
+      schEndDtUtc: '2026-09-12T15:00:00Z',
+      isRecoveryAffected: true,
+    })
+    const outboundDhd = item(21, '1568', 135905, {
+      assignmentGroup: 'DHD',
+      assignment: 'DHD',
+      segAssignment: 'DHD',
+      base: 'YEG',
+      depArp: 'YEG',
+      arvArp: 'YVR',
+      label: '825 YEG-YVR',
+      fltId: 77722,
+      schStrDtUtc: '2026-09-12T03:00:00Z',
+      schEndDtUtc: '2026-09-12T04:45:00Z',
+      isRecoveryAffected: true,
+    })
+    const inboundDhd = item(22, '1568', 135905, {
+      assignmentGroup: 'DHD',
+      assignment: 'DHD',
+      segAssignment: 'DHD',
+      base: 'YEG',
+      depArp: 'YVR',
+      arvArp: 'YEG',
+      label: '824 YVR-YEG',
+      fltId: 77981,
+      schStrDtUtc: '2026-09-15T00:40:00Z',
+      schEndDtUtc: '2026-09-15T02:15:00Z',
+      isRecoveryAffected: true,
+    })
+    const option = {
+      id: 'cross-base-direct-135905-1568',
+      mode: 'cross-base-direct',
+      title: 'Cross-base Direct Assign 1568',
+      targetCrewId: '1568',
+      targetCrewName: 'Crew 1568',
+      sourceCrewId: '113',
+      sourcePairingId: 135905,
+      targetPairingId: null,
+      standbyTaskId: null,
+      standbyWindow: null,
+      timeDistanceMinutes: null,
+      sameRank: true,
+      sameBase: false,
+      crossDivision: false,
+      crossRole: false,
+      localExecutable: true,
+      reasons: [],
+      beforeItems: [sourceFlight],
+      afterItems: [outboundDhd, sourceFlight, inboundDhd],
+      changes: [],
+      metrics: {},
+      ruleCheck: 'passed',
+      ruleMessages: [],
+      positioning: null,
+    } as RecoveryOption
+
+    const originalPairing = {
+      pairing: {
+        id: 135905,
+        pairingLabel: '135905',
+        base: 'YVR',
+        segCount: 1,
+        schStrDtUtc: '2026-09-12T07:10:00Z',
+        schEndDtUtc: '2026-09-12T15:00:00Z',
+        composition: [],
+      },
+      segments: [],
+      flights: [],
+      sessionTags: [],
+    } as unknown as import('@/types/pairing').PairingItem
+
+    const [change] = buildRecoveryPairingPreview(option, [originalPairing])
+
+    // One source Pairing row, status=modified, with the full after structure
+    // (DHD + operating) surfaced as previewItem so the Live Gantt shows the
+    // complete recovery result rather than the original Pairing only.
+    expect(change.status).toBe('modified')
+    expect(change.beforeCrewId).toBe('113')
+    expect(change.afterCrewId).toBe('1568')
+    expect(change.previewItem?.pairing.id).toBe(135905)
+    expect(change.previewItem?.pairing.segments).toHaveLength(3)
+    expect(change.previewItem?.pairing.segments?.[0]?.depArp).toBe('YEG')
+    expect(change.previewItem?.pairing.segments?.[0]?.arvArp).toBe('YVR')
+    expect(change.previewItem?.pairing.segments?.[1]?.depArp).toBe('YVR')
+    expect(change.previewItem?.pairing.segments?.[2]?.depArp).toBe('YVR')
+    expect(change.previewItem?.pairing.segments?.[2]?.arvArp).toBe('YEG')
+    expect(change.afterSummary).toContain('3 seg')
+  })
+
+  it('does not duplicate DHD into a separate created synthetic Pairing for cross-base-direct', () => {
+    // Regression: the legacy "created" half-ring DHD Pairing path should not
+    // run when DHD flights belong to the source Pairing (handoff refactor).
+    const sourceFlight = item(30, '113', 135905, { isRecoveryAffected: true })
+    const dhd = item(31, '1568', 135905, {
+      assignmentGroup: 'DHD',
+      assignment: 'DHD',
+      label: '825 YEG-YVR',
+      isRecoveryAffected: true,
+    })
+    const option = {
+      id: 'cross-base-direct-135905-1568-b',
+      mode: 'cross-base-direct',
+      title: 'Cross-base Direct Assign 1568',
+      targetCrewId: '1568',
+      targetCrewName: 'Crew 1568',
+      sourceCrewId: '113',
+      sourcePairingId: 135905,
+      targetPairingId: null,
+      standbyTaskId: null,
+      standbyWindow: null,
+      timeDistanceMinutes: null,
+      sameRank: true,
+      sameBase: false,
+      crossDivision: false,
+      crossRole: false,
+      localExecutable: true,
+      reasons: [],
+      beforeItems: [sourceFlight],
+      afterItems: [dhd],
+      changes: [],
+      metrics: {},
+      ruleCheck: 'passed',
+      ruleMessages: [],
+      positioning: null,
+    } as RecoveryOption
+
+    const changes = buildRecoveryPairingPreview(option, [])
+
+    // Only one change row, the modified source Pairing. No synthetic created Pairing.
+    expect(changes).toHaveLength(1)
+    expect(changes[0].status).toBe('modified')
+    expect(changes[0].pairingId).toBe(135905)
+  })
 })
+

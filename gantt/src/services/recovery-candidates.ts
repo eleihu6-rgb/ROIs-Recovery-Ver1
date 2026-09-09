@@ -677,7 +677,7 @@ const buildChanges = (
       changeType: 'add',
     })
   }
-  if ((mode === 'cross-base-standby' || mode === 'cross-base-swap') && positioning) {
+  if ((mode === 'cross-base-standby' || mode === 'cross-base-swap' || mode === 'cross-base-direct') && positioning) {
     changes.push({
       crewId: targetCrewId,
       crewName: targetName,

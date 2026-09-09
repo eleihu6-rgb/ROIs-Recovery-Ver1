@@ -346,6 +346,22 @@ export const buildRecoveryPairingPreview = (
     }
     return changes
   }
+  // For non-destination cross-base modes, DHD flights are inserted directly into
+  // the source Pairing's duty boundary (handoff refactor: pairingId === sourcePairingId).
+  // Surface the source Pairing's after structure (DHD + operating legs) as previewItem
+  // so the Live Gantt shows the full recovery result, not just the original Pairing.
+  const isNonDestinationCrossBase = (option.mode === 'cross-base-standby'
+    || option.mode === 'cross-base-swap'
+    || option.mode === 'cross-base-direct')
+  const sourceAfterItems = isNonDestinationCrossBase
+    ? option.afterItems.filter((item) => Number(item.pairingId) === option.sourcePairingId)
+    : []
+  const sourcePairingItem = pairings.find((entry) => entry.pairing.id === option.sourcePairingId)
+  const firstSourceAfter = sourceAfterItems[0]
+  const lastSourceAfter = sourceAfterItems[sourceAfterItems.length - 1]
+  const sourceBeforeItems = option.beforeItems.filter((item) => Number(item.pairingId) === option.sourcePairingId)
+  const firstSourceBefore = sourceBeforeItems[0]
+  const lastSourceBefore = sourceBeforeItems[sourceBeforeItems.length - 1]
   changes.push({
     id: `pairing:${option.sourcePairingId}:source`,
     pairingId: option.sourcePairingId,
@@ -355,7 +371,22 @@ export const buildRecoveryPairingPreview = (
     afterLabel: crewPairingLabel(sourceLabel, option.targetCrewId),
     beforeCrewId: option.sourceCrewId,
     afterCrewId: option.targetCrewId,
+    beforeSummary: sourceBeforeItems.length > 0 ? pairingSummary({
+      base: sourcePairingItem?.pairing.base ?? firstSourceBefore?.base,
+      start: sourcePairingItem?.pairing.schStrDtUtc ?? firstSourceBefore?.schStrDtUtc,
+      end: sourcePairingItem?.pairing.schEndDtUtc ?? lastSourceBefore?.schEndDtUtc,
+      segmentCount: sourceBeforeItems.length,
+    }) : null,
+    afterSummary: isNonDestinationCrossBase && sourceAfterItems.length > 0 ? pairingSummary({
+      base: sourcePairingItem?.pairing.base ?? firstSourceAfter?.base,
+      start: firstSourceAfter?.schStrDtUtc,
+      end: lastSourceAfter?.schEndDtUtc,
+      segmentCount: sourceAfterItems.length,
+    }) : null,
     isSynthetic: false,
+    previewItem: isNonDestinationCrossBase && sourceAfterItems.length > 0
+      ? makeModifiedPairingItem(option.sourcePairingId, sourceAfterItems, sourceLabel, sourcePairingItem)
+      : undefined,
   })
 
   const isSwap = option.mode === 'swap' || option.mode === 'cross-base-swap'
@@ -374,11 +405,17 @@ export const buildRecoveryPairingPreview = (
     })
   }
 
+  // For non-destination cross-base modes, DHD flights now live on the source Pairing
+  // (handoff refactor); the source Pairing's previewItem above already includes them.
+  // The created-synthetic-Pairing path below only applies to legacy DHD entries that
+  // still use a negative synthetic pairingId, plus destination-base created Pairings.
   const dhdByPairing = new Map<number, RosterItem[]>()
   for (const item of option.afterItems) {
     const destinationCreated = option.destinationSplit?.createsPairing
       && item.pairingId === option.destinationSplit.createdPairingId
-    if ((!destinationCreated && item.assignmentGroup?.toUpperCase() !== 'DHD') || item.pairingId == null || item.pairingId >= 0) continue
+    const isLegacyDhd = item.assignmentGroup?.toUpperCase() === 'DHD' && (item.pairingId == null || Number(item.pairingId) < 0)
+    if (!isLegacyDhd && !destinationCreated) continue
+    if (item.pairingId == null) continue
     const current = dhdByPairing.get(Number(item.pairingId))
     if (current) current.push(item)
     else dhdByPairing.set(Number(item.pairingId), [item])
