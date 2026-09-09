@@ -7,6 +7,7 @@ import { pairingSegment } from '../../models/pairing/pairing-segment.js'
 import { flight as flightTable } from '../../models/flight/flight.js'
 import { crewBase } from '../../models/crew/crew-base.js'
 import { assignment as assignmentTable } from '../../models/base/assignment.js'
+import { base as baseTable } from '../../models/base/base.js'
 import { pairingComposition } from '../../models/pairing/pairing-composition.js'
 import { refreshPairingCompositionFillBulk } from '../../utils/composition-fill.js'
 import { getOrSet, getOrSetChunks, invalidate, invalidatePattern } from '../../utils/cache.js'
@@ -135,6 +136,40 @@ export const destinationAdjustedPairingBase = (
   const base = firstRetainedSegment?.depArp?.trim().toUpperCase()
   return base || null
 }
+
+/**
+ * Cross-base pairing base re-computation.
+ * After DHD positioning legs are inserted into the source Pairing, the
+ * first/last airports change. New rule (per user spec):
+ *   - If the first airport (outbound DHD dep) is in the static `base` config
+ *     set, use it.
+ *   - Else if the last airport (inbound DHD arv) is in the static `base`
+ *     config set, use it.
+ *   - Else: fall back to the original pairing base.
+ * If both qualify and differ, pick one at random. The recovered Pairing and
+ * Roster rows are recomputed from the new first/last airports because the
+ * inserted DHDs replace the original YVR (or other) starting/ending airports.
+ */
+export const crossBaseAdjustedPairingBase = (
+   firstAirport: string | null | undefined,
+   lastAirport: string | null | undefined,
+   originalBase: string | null | undefined,
+   baseConfigAirports: ReadonlySet<string>,
+ ): string => {
+   const first = firstAirport?.trim().toUpperCase()
+   const last = lastAirport?.trim().toUpperCase()
+   const original = originalBase?.trim().toUpperCase() ?? ''
+   const firstValid = first && baseConfigAirports.has(first) ? first : null
+   const lastValid = last && baseConfigAirports.has(last) ? last : null
+   if (firstValid && lastValid) {
+     if (firstValid === lastValid) return firstValid
+     // Both qualify, differ → random pick
+     return Math.random() < 0.5 ? firstValid : lastValid
+   }
+   if (firstValid) return firstValid
+   if (lastValid) return lastValid
+   return original
+ }
 
 export const rosterService = {
   /**
@@ -1007,6 +1042,22 @@ export const rosterService = {
         throw Object.assign(new Error('Return DHD flight does not satisfy Cross-base airport or time conditions'), { statusCode: 409 })
       }
 
+      // Load the static `base` config so we can re-compute the Pairing base from
+      // the new first/last airports (after the DHD positioning legs are
+      // inserted). The user spec: "If the Pairing's first airport or last
+      // airport belongs to the base config data, update to that base. If
+      // multiple match, pick one randomly. The recovered Pairing and roster
+      // data already include the DHD, so it's no longer the original YVR
+      // base."
+      const baseConfigRows = await tx.select({ base: baseTable.base }).from(baseTable)
+      const baseConfigAirports = new Set(baseConfigRows.map((r) => r.base.trim().toUpperCase()))
+      const adjustedPairingBase = crossBaseAdjustedPairingBase(
+        outbound.depArp,
+        inbound.arvArp,
+        sourceBase,
+        baseConfigAirports,
+      )
+
       const supportBaseRows = await tx.select().from(crewBase).where(eq(crewBase.crewId, data.targetCrewId)).orderBy(asc(crewBase.effDt))
       const effectiveBase = supportBaseRows
         .filter((row) => row.effDt.getTime() <= sourceStart && (row.expDt == null || row.expDt.getTime() > sourceStart))
@@ -1050,7 +1101,7 @@ export const rosterService = {
         const segments = await tx.select().from(pairingSegment).where(and(eq(pairingSegment.pairingId, pairingId), notDeleted(pairingSegment.isDeleted))).orderBy(asc(pairingSegment.dutySeq), asc(pairingSegment.segSeq))
         if (segments.length === 0) throw new Error(`Pairing #${pairingId} has no segments`)
         return tx.insert(rosterFlight).values(segments.map((seg) => ({
-          crewId, pairingId, base: pair.base, label: `${seg.fltNum} ${seg.depArp}-${seg.arvArp}`,
+          crewId, pairingId, base: adjustedPairingBase, label: `${seg.fltNum} ${seg.depArp}-${seg.arvArp}`,
           assignmentGroup: pair.assignmentGroup ?? 'FLT', assignment: seg.segAssignment ?? pair.assignment, role: 'CREW', division: pair.division,
           flightActingRank: actingRank, rosterActingRank: actingRank, fltId: seg.fltId, fltDt: seg.fltDt,
           dutySeq: seg.dutySeq, segSeq: seg.segSeq, schStrDtUtc: seg.schStrDtUtc, schEndDtUtc: seg.schEndDtUtc,
@@ -1086,7 +1137,7 @@ export const rosterService = {
         const audit = auditCreate(data.username)
         const label = `DHD ${flight.fltNum} ${flight.depArp}-${flight.arvArp}`
         const [roster] = await tx.insert(rosterFlight).values({
-          crewId: data.targetCrewId, pairingId: data.sourcePairingId, base: data.supportBase, label,
+          crewId: data.targetCrewId, pairingId: data.sourcePairingId, base: adjustedPairingBase, label,
           assignmentGroup: 'DHD', assignment: 'DHD', role: 'CREW', division: data.division,
           flightActingRank: sourceRank, rosterActingRank: sourceRank, fltId: flight.id, fltDt: flight.fltDt,
           dutySeq, segSeq: 1, schStrDtUtc: flight.schDepDtUtc, schEndDtUtc: flight.schArvDtUtc,
@@ -1101,6 +1152,14 @@ export const rosterService = {
       const outboundDhd = await createDhdRosterRow(outbound, outboundDutySeq)
       const inboundDhd = await createDhdRosterRow(inbound, inboundDutySeq)
       if (data.operation === 'standby' && data.standbyTaskId != null) await tx.update(rosterFlight).set({ exceptionCode: 'CALLOUT_STANDBY', ...auditUpdate(data.username) }).where(and(eq(rosterFlight.id, data.standbyTaskId), eq(rosterFlight.crewId, data.targetCrewId), notDeleted(rosterFlight.isDeleted)))
+
+      // Re-base the source Pairing to match the new first/last airports. This
+      // is required so that downstream reads (composition fill, freshness
+      // checks, and the rule engine) see the post-DHD Pairing path, not the
+      // pre-recovery YVR base.
+      if (adjustedPairingBase) {
+        await tx.update(pairingTable).set({ base: adjustedPairingBase, ...auditUpdate(data.username) }).where(and(eq(pairingTable.id, data.sourcePairingId), notDeleted(pairingTable.isDeleted)))
+      }
 
       const pairingIds = [...new Set([...oldPairingIds, data.sourcePairingId])]
       const crewIds = [...new Set([...oldCrewIds, data.targetCrewId])]
