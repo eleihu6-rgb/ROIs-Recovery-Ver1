@@ -1177,7 +1177,8 @@ export function liveSource(db, fromIso, toExclusiveIso) {
            join pairing_segment ps
              on ps.pairing_id = rf.pairing_id and ps.duty_seq = rf.duty_seq and coalesce(ps.is_deleted, 0) = 0
            left join airport dep_ap on dep_ap.airport = ps.dep_arp
-          where ${W} and rf.pairing_id is not null
+          where rf.is_deleted=0 and rf.sch_str_dt_utc >= $1 and rf.sch_str_dt_utc < $2
+            and rf.pairing_id is not null
            group by rf.crew_id, rf.pairing_id`, P)).rows
     },
 
