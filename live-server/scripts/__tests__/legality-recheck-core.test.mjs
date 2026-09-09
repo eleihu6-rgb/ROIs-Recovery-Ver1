@@ -649,6 +649,7 @@ test('rule8004 message embeds the roster start date in the crew base local timez
   assert.match(out[0].message, /^Row 1: /, 'message starts with Row 1: for the sole param row')
   assert.match(out[0].message, /\(2026-06-09\)/, 'message uses the Vancouver LOCAL date, not the UTC date (2026-06-10)')
   assert.ok(!out[0].message.includes('2026-06-10'), 'the raw UTC date must not leak into the message')
+  assert.match(out[0].message, /\(Pairing 500\)\./, 'message ends with the offending Pairing id so the Alert Center can disambiguate per-row')
 })
 
 // Crew with no timezone on record (crewBaseTimezone() misses it) must degrade
@@ -710,6 +711,7 @@ test('rule8004 emits a Fleet violation for Crew 1012 on Pairing 135559', async (
   assert.equal(out[0].pairing_id, 135559)
   assert.equal(out[0].rule_code, '8004')
   assert.match(out[0].message, /Crew fleet 7M8 is not a valid qualification/)
+  assert.match(out[0].message, /\(Pairing 135559\)\./, 'message ends with the offending Pairing id so the Alert Center can disambiguate per-row')
 })
 
 test('rule8004 does not emit a Fleet violation when Crew has an effective 7M8 qualification', async () => {

@@ -71,6 +71,7 @@ test('Crew 1012 executing Pairing 135559 without 7M8 qualification emits 8004', 
     ['1012', 135559, '8004'],
   )
   assert.match(violations[0].message, /Crew fleet 7M8 is not a valid qualification/)
+  assert.match(violations[0].message, /\(Pairing 135559\)\./, 'message ends with the offending Pairing id so the Alert Center can disambiguate per-row')
 })
 
 test('the same case is clear only after an effective 7M8 qualification is present', async () => {

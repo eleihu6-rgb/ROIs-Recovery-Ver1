@@ -1680,7 +1680,7 @@ export async function rule8004(source, ctx) {
           rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
           start_dt: new Date(sp.s * 1000).toISOString(), end_dt: new Date(sp.e * 1000).toISOString(), severity: 2,
           actual_value: null, limit_value: null, unit: null,
-          message: withParamRowPrefix(0, `Crew base ${base} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}).`),
+          message: withParamRowPrefix(0, `Crew base ${base} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}) (Pairing ${pairingId}).`),
         })
       }
     }
@@ -1713,7 +1713,7 @@ export async function rule8004(source, ctx) {
           rule_code: '8004', rule_instance: inst.instance, scope_key: sk,
           start_dt: new Date(sp.s * 1000).toISOString(), end_dt: new Date(sp.e * 1000).toISOString(), severity: 2,
           actual_value: null, limit_value: null, unit: null,
-          message: withParamRowPrefix(rowIndex, `Crew fleet ${fleets.join(', ')} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}).`),
+          message: withParamRowPrefix(rowIndex, `Crew fleet ${fleets.join(', ')} is not a valid qualification for the roster (${localDateOf(sp.s, tzMap.get(crewId))}) (Pairing ${pairingId}).`),
         })
       }
     }
