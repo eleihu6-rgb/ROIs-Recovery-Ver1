@@ -199,8 +199,10 @@ const currentFleetQuals = (crew: ReturnType<typeof useCrewStore.getState>['items
 
 type RecoveryPlanType = RecoveryPlans['roster']['id']
 
-const planForType = (plans: RecoveryPlans, planType: RecoveryPlanType): RecoveryPlans['roster'] =>
-  planType === 'cross-base' ? plans.crossBase : plans[planType]
+const planForType = (plans: RecoveryPlans, planType: RecoveryPlanType): RecoveryPlans['roster'] => {
+  if (planType === 'mixed') return plans.mixed
+  return planType === 'cross-base' ? plans.crossBase : plans[planType]
+}
 
 const allOptions = (plans: RecoveryPlans): RecoveryOption[] => [
   ...plans.roster.options,
@@ -224,7 +226,18 @@ const planTone = (planType: RecoveryPlanType) => planType === 'roster'
       dot: 'bg-amber-500',
       row: 'bg-amber-500/[0.045]',
       selectedRow: 'bg-amber-500/[0.12]',
-    } : {
+    }
+  : planType === 'mixed' ? {
+      // Mixed (best-per-alert) recovery uses an indigo/violet tone to
+      // visually distinguish it from the three single-method groups.
+      section: 'border-indigo-500/55',
+      header: 'bg-indigo-500/[0.08]',
+      badge: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300',
+      dot: 'bg-indigo-500',
+      row: 'bg-indigo-500/[0.045]',
+      selectedRow: 'bg-indigo-500/[0.12]',
+    }
+  : {
       section: 'border-teal-500/55',
       header: 'bg-teal-500/[0.08]',
       badge: 'bg-teal-500/15 text-teal-700 dark:text-teal-300',
@@ -417,9 +430,13 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   // ── Tree highlight: the plan group with the lowest minimum total cost.
   // Surfaced as "★" in both the PlanTree (left rail) and PlanSummary (top
   // of right column) so the user always knows which method is the cheapest.
+  // Mixed is included in the comparison only when it's visible (alerts > 1)
+  // so single-alert flows don't get a misleading "mixed is cheapest" hint.
   const bestGroupId = useMemo<RecoveryPlans['roster']['id'] | null>(() => {
     if (!plans) return null
-    const rows = [plans.roster, plans.standby, plans.crossBase]
+    const rows = plans.alerts.length > 1
+      ? [plans.roster, plans.standby, plans.crossBase, plans.mixed]
+      : [plans.roster, plans.standby, plans.crossBase]
     let bestId: RecoveryPlans['roster']['id'] | null = null
     let bestCost = Number.POSITIVE_INFINITY
     for (const group of rows) {
@@ -1017,7 +1034,13 @@ const PlanTree = ({
   bestGroupId: RecoveryPlans['roster']['id'] | null
   onSelect: (planType: RecoveryPlans['roster']['id']) => void
 }) => {
-  const rows = [plans.roster, plans.standby, plans.crossBase]
+  // Mixed recovery is only meaningful for multi-alert plans (one alert
+  // always trivially picks itself). Hide the leaf in the tree when
+  // alerts.length <= 1 so single-alert flows (right-click → Recovery, single
+  // Alert Center row) never expose a no-op entry.
+  const rows = plans.alerts.length > 1
+    ? [plans.roster, plans.standby, plans.crossBase, plans.mixed]
+    : [plans.roster, plans.standby, plans.crossBase]
   const costTiers = useMemo(() => {
     const tiers = [
       { key: 'free', label: '¥0', test: (cost: number) => cost === 0 },
@@ -1136,7 +1159,9 @@ const PlanSummary = ({
   selectedPlanType: RecoveryPlans['roster']['id']
   bestGroupId: RecoveryPlans['roster']['id'] | null
 }) => {
-  const rows = [plans.roster, plans.standby, plans.crossBase]
+  const rows = plans.alerts.length > 1
+    ? [plans.roster, plans.standby, plans.crossBase, plans.mixed]
+    : [plans.roster, plans.standby, plans.crossBase]
   const group = rows.find((g) => g.id === selectedPlanType) ?? rows[0]
   const selected = selectedPlanType === group.id
   const tone = planTone(group.id)

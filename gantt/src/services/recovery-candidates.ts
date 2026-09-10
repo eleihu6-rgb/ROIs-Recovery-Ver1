@@ -137,7 +137,7 @@ export interface RecoveryPreviewViolation {
 }
 
 export interface RecoveryPlanGroup {
-  id: 'roster' | 'standby' | 'cross-base'
+  id: 'roster' | 'standby' | 'cross-base' | 'mixed'
   title: string
   description: string
   options: RecoveryOption[]
@@ -192,6 +192,14 @@ export interface RecoveryPlans {
   roster: RecoveryPlanGroup
   standby: RecoveryPlanGroup
   crossBase: RecoveryPlanGroup
+  /**
+   * Mixed (best-per-alert) plan — only populated when `alerts.length > 1`. For
+   * each selected alert we independently pick the cheapest executable option
+   * across roster / standby / cross-base (each alert may use a different
+   * method) and bundle the per-alert decisions into a single combined option
+   * via `subOptions`. Single-alert plans always leave this empty.
+   */
+  mixed: RecoveryPlanGroup
   /** Per-candidate trace for the cross-base plan, always populated when buildRecoveryPlans runs. */
   crossBaseTrace: CrossBaseCandidateTrace[]
   /** Diagnostic context the cross-base trace was built against. */
@@ -1121,6 +1129,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       roster: empty('roster', 'Roster transfer or exchange'),
       standby: empty('standby', 'Standby Crew callout'),
       crossBase: empty('cross-base', 'Cross-base positioning'),
+      mixed: emptyMixedGroup(),
       crossBaseTrace: [],
       crossBaseContext: {
         sourceCrewId: input.alert.crewId,
@@ -1485,6 +1494,9 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       options: sortedCrewCandidates(crossBaseOptions, crewsById, sourceCrew),
       excludedOptions: [],
     },
+    // Single-alert plans never surface mixed recovery (one alert trivially
+    // picks itself) — leave it empty so the UI hides the leaf in the tree.
+    mixed: emptyMixedGroup(),
     crossBaseTrace,
     crossBaseContext,
   }
@@ -1669,7 +1681,10 @@ export const buildRecoveryPlans = (input: BuildRecoveryPlansInput & {
   const alerts = [...new Map((input.alerts?.length ? input.alerts : input.alert ? [input.alert] : [])
     .map((alert) => [`${alert.crewId}:${alert.pairingId}:${alert.ruleCode}:${alert.id}`, alert] as const)).values()]
   if (alerts.length === 0) throw new Error('At least one recovery alert is required.')
-  if (alerts.length === 1) return buildSingleRecoveryPlans({ ...input, alert: alerts[0] })
+  if (alerts.length === 1) {
+    const single = buildSingleRecoveryPlans({ ...input, alert: alerts[0] })
+    return { ...single, mixed: emptyMixedGroup() }
+  }
 
   const childPlans = alerts.map((alert) => buildSingleRecoveryPlans({ ...input, alert }))
   const makeGroup = (id: RecoveryPlanGroup['id'], key: 'roster' | 'standby' | 'crossBase', title: string, description: string): RecoveryPlanGroup => ({
@@ -1685,6 +1700,9 @@ export const buildRecoveryPlans = (input: BuildRecoveryPlansInput & {
     roster: makeGroup('roster', 'roster', 'Roster transfer or exchange', 'Each option contains one complete recovery decision per selected alert.'),
     standby: makeGroup('standby', 'standby', 'Standby Crew callout', 'Each option contains one complete recovery decision per selected alert.'),
     crossBase: makeGroup('cross-base', 'crossBase', 'Cross-base positioning', 'Each option contains one complete recovery decision per selected alert.'),
+    // Mixed (best-per-alert) — each alert independently picks the cheapest
+    // executable option across roster / standby / cross-base.
+    mixed: buildMixedGroup(alerts, childPlans, input.items),
       // Multi-alert combined plans are not a single cross-base group; aggregate the per-alert
     // traces so the Recovery dialog can still log a cross-base trace for the combined flow.
     crossBaseTrace: childPlans.flatMap((plan) => plan.crossBaseTrace),
@@ -1698,5 +1716,121 @@ export const buildRecoveryPlans = (input: BuildRecoveryPlansInput & {
       loadedFlightCount: childPlans.reduce((acc, plan) => acc + plan.crossBaseContext.loadedFlightCount, 0),
       loadedFlightWindow: childPlans[0]?.crossBaseContext.loadedFlightWindow ?? null,
     },
+  }
+}
+
+/** Empty mixed group — populated only when alerts.length > 1. */
+const emptyMixedGroup = (): RecoveryPlanGroup => ({
+  id: 'mixed',
+  title: 'Mixed recovery (best per alert)',
+  description: 'Each selected alert independently picks its cheapest executable option.',
+  options: [],
+  excludedOptions: [],
+})
+
+/**
+ * Mixed recovery — best-per-alert combination.
+ *
+ * For each selected alert, independently pick the lowest-total-cost
+ * executable option across roster / standby / cross-base. Different alerts
+ * are allowed to use different methods (e.g. alert A uses roster transfer,
+ * alert B uses standby callout) — that's the whole point. Bundle the
+ * per-alert choices into a single combined option via `subOptions` so the
+ * UI can render it like other combined plans.
+ *
+ * Conflict filtering: if any picked option conflicts (overlapping Roster
+ * assignment, same target Crew) with another, the mixed option is marked
+ * non-executable and its ruleMessages list the conflicts. Diagnostics for
+ * each alert's chosen method are preserved in `subOptions[*].metrics`.
+ */
+const buildMixedGroup = (
+  alerts: RecoveryAlertSnapshot[],
+  childPlans: RecoveryPlans[],
+  baselineItems: RosterItem[],
+): RecoveryPlanGroup => {
+  const picks: RecoveryOption[] = []
+  const missingAlertIndices: number[] = []
+  alerts.forEach((alert, index) => {
+    const plan = childPlans[index]
+    if (!plan) { missingAlertIndices.push(index); return }
+    const candidates = [
+      ...plan.roster.options,
+      ...plan.standby.options,
+      ...plan.crossBase.options,
+    ]
+    const executable = candidates.filter(
+      (option) => option.localExecutable && option.ruleCheck !== 'failed' && option.ruleCheck !== 'not-run',
+    )
+    if (executable.length === 0) {
+      // Fall back to any non-failed option so the user still sees why no
+      // fully-executable mixed plan exists for this alert.
+      const fallback = candidates
+        .filter((option) => option.ruleCheck !== 'failed')
+        .sort((a, b) => pickCost(a) - pickCost(b))[0]
+      if (fallback) picks.push({ ...fallback, id: `mixed-${index}-${fallback.id}` })
+      else missingAlertIndices.push(index)
+      return
+    }
+    const best = [...executable].sort((a, b) => pickCost(a) - pickCost(b))[0]
+    picks.push({ ...best, id: `mixed-${index}-${best.id}` })
+  })
+  if (picks.length === 0) {
+    return {
+      ...emptyMixedGroup(),
+      description: missingAlertIndices.length === alerts.length
+        ? 'No alert has any executable option yet. Recheck Legality and retry.'
+        : `Mixed recovery requires every alert to surface at least one option; ${missingAlertIndices.length} alert(s) have none.`,
+    }
+  }
+  const loadedRosterCount = new Set(baselineItems
+    .filter((item) => item.pairingId != null && item.assignmentGroup?.toUpperCase() !== 'SBY')
+    .map((item) => `${item.crewId}:${item.pairingId}`)).size
+  const reasons = combinationConflicts(picks)
+  const executable = picks.every((option) => option.localExecutable && option.ruleCheck !== 'failed') && reasons.length === 0
+  const mixed: RecoveryOption = {
+    ...picks[0],
+    id: `mixed-${picks.map((option) => option.id).join('__')}`,
+    title: `Mixed recovery · ${picks.map((option) => `${option.sourceCrewId} → ${option.targetCrewId} (${describeMethod(option)})`).join(' · ')}`,
+    localExecutable: executable,
+    reasons,
+    beforeItems: mergeRecoveryBeforeItems(baselineItems, picks),
+    afterItems: mergeRecoveryAfterItems(baselineItems, picks),
+    changes: picks.flatMap((option) => option.changes),
+    metrics: combineRecoveryMetrics(picks, loadedRosterCount),
+    ruleCheck: executable ? 'pending' : 'not-run',
+    ruleMessages: reasons,
+    positioning: null,
+    destinationSplit: null,
+    subOptions: picks,
+  }
+  return {
+    id: 'mixed',
+    title: 'Mixed recovery (best per alert)',
+    description: executable
+      ? `Each alert picks its cheapest executable option independently — ${picks.length}/${alerts.length} alerts covered${missingAlertIndices.length ? `, ${missingAlertIndices.length} skipped` : ''}.`
+      : `Mixed plan not executable: ${reasons[0] ?? 'option conflicts'}${missingAlertIndices.length ? ` (${missingAlertIndices.length} alert(s) had no executable option)` : ''}.`,
+    options: [mixed],
+    excludedOptions: [],
+  }
+}
+
+const pickCost = (option: RecoveryOption): number => {
+  const cost = option.metrics?.totalCost
+  return typeof cost === 'number' && Number.isFinite(cost) ? cost : Number.POSITIVE_INFINITY
+}
+
+const describeMethod = (option: RecoveryOption): string => {
+  switch (option.mode) {
+    case 'standby':
+      return 'Standby callout'
+    case 'cross-base-standby':
+    case 'cross-base-swap':
+    case 'cross-base-destination':
+    case 'cross-base-direct':
+      return 'Cross-base'
+    case 'transfer':
+    case 'swap':
+    default:
+      return 'Roster transfer'
   }
 }
