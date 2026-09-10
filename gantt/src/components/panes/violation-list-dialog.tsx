@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bell, ListChecks, Search } from 'lucide-react'
+import { Bell, ListChecks, Search, Sparkles } from 'lucide-react'
 import { AppDialog, Button } from '@rois/ui'
 import { DateRangePicker } from '@/components/common/date-range-picker'
 import { LegalityRecheckIndicator } from '../legality/legality-recheck-indicator'
@@ -52,6 +52,14 @@ interface Props {
   recheckInfo?: RecheckIndicatorInfo
   /** Live Alert Center only: open the combined Recovery workflow for selected rows. */
   onRecovery?: (rows: CrewViolationRow[]) => void
+  /**
+   * Live Alert Center only: open the **mixed** (best-per-alert) Recovery
+   * workflow. Only enabled when the user has selected ≥ 2 alerts, since
+   * one alert trivially picks itself. Both buttons share the same
+   * underlying recovery flow — the dialog will surface a "Mixed
+   * recovery (best per alert)" tab inside the left method tree.
+   */
+  onRecoveryMixed?: (rows: CrewViolationRow[]) => void
 }
 
 type GroupBy = 'severity' | 'rule' | 'base' | 'rank'
@@ -102,7 +110,7 @@ const notRecoverableReason = (row: CrewViolationRow): string => {
  * canvas bell renders from), so it doubles as a check that messages reached the front
  * end. The date row drives the gantt's own range; the recheck indicator is informational.
  */
-export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckInfo, onRecovery }: Props) => {
+export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckInfo, onRecovery, onRecoveryMixed }: Props) => {
   const setModule = useShellStore((s) => s.setModule)
   const setLegalityItem = useShellStore((s) => s.setLegalityItem)
   const requestFocus = useRuleInstancesStore((s) => s.requestFocus)
@@ -262,6 +270,21 @@ export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckI
               <ListChecks className="h-3.5 w-3.5" />
               <span><span className="underline underline-offset-2">R</span>ecovery selected</span>
             </Button>
+            {onRecoveryMixed && (
+              <Button
+                variant="secondary"
+                className="h-7 gap-1.5 px-2.5 text-2xs"
+                disabled={selectedRecoveryRows.length < 2}
+                onClick={() => onRecoveryMixed(selectedRecoveryRows)}
+                title={selectedRecoveryRows.length < 2
+                  ? 'Select ≥ 2 alerts to use mixed (best-per-alert) recovery.'
+                  : 'Open the mixed recovery flow — each alert picks its cheapest executable option independently.'}
+                data-testid="alert-recovery-mixed"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Mixed recovery</span>
+              </Button>
+            )}
           </div>
         )}
         {recheckInfo && (

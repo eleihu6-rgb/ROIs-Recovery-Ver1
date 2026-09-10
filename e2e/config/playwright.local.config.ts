@@ -32,7 +32,7 @@ export default defineConfig({
   projects: [
     {
       name: 'gantt',
-      testMatch: /tests\/gantt\/.*recovery-context-menu.*\.spec\.ts/,
+      testMatch: /tests\/gantt\/(?:recovery-context-menu|recovery-mixed-mode).*\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         channel: 'chrome',

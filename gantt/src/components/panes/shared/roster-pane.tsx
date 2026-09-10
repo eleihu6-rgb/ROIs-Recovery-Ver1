@@ -422,6 +422,12 @@ export const SharedRosterPane = ({
       requiredRank: row.requiredRank,
     })))
   }, [])
+  // Mixed (best-per-alert) recovery — same dispatch as handleRecovery. The
+  // dialog's buildRecoveryPlans detects alerts.length > 1 and surfaces the
+  // mixed leaf in the left method tree automatically. We keep a separate
+  // callback so the Alert Center button can pass a `mode` tag later (e.g.
+  // for telemetry) without changing the existing single-mode path.
+  const handleRecoveryMixed = handleRecovery
   const handleCrewBellClick = useCallback((rowId: string) => {
     if (!alertCenter) return
     const hasViolations = alertCenter.rows.some((r) => r.crewId === rowId)
@@ -695,6 +701,7 @@ export const SharedRosterPane = ({
           onCrewClick={roster.bringCrewToTop}
           recheckInfo={alertCenter.recheckInfo}
           onRecovery={isLive ? handleRecovery : undefined}
+          onRecoveryMixed={isLive ? handleRecoveryMixed : undefined}
         />
       )}
       {alertCenter && crewBellCrewId !== null && (
