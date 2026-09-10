@@ -8,7 +8,7 @@ export type KnownModule = 'dashboard' | 'live' | 'scenario' | 'data' | 'legality
 export type ActiveModule = string
 export type ActiveLiveItem = 'roster' | 'pairing' | 'flight'
 export type ActiveScenarioItem = 'all' | 'po' | 'ro' | 'crew-bids'
-export type ActiveLegalityItem = 'rule-sets' | 'rule-instances' | 'composition' | 'comp-load'
+export type ActiveLegalityItem = 'rule-sets' | 'rule-instances' | 'cost-sets' | 'cost-templates' | 'composition' | 'comp-load'
 export type ActiveSystemItem = 'queue-tasks' | 'scheduler' | 'interface' | 'grafana' | 'prometheus' | 'windmill' | 'data-quality' | 'user-mgmt' | 'profile-mgmt' | 'menu-mgmt' | 'pbs-user-mgmt' | 'dept-mgmt'
 export type ActivePbsItem = 'period' | 'bid-definitions' | 'business-time' | 'admin-tools' | 'simulated-crew-portal'
 export type SidebarState = 'expanded' | 'collapsed' | 'hidden'
@@ -357,7 +357,7 @@ export const useShellStore = create<ShellStore>((set, get) => ({
         VALID_SCENARIO_ITEMS.includes(rawScenarioItem as ActiveScenarioItem)
           ? (rawScenarioItem as ActiveScenarioItem)
           : 'all'
-      const VALID_LEGALITY_ITEMS: ActiveLegalityItem[] = ['rule-sets', 'rule-instances']
+      const VALID_LEGALITY_ITEMS: ActiveLegalityItem[] = ['rule-sets', 'rule-instances', 'cost-sets', 'cost-templates']
       const rawLegalityItem = localStorage.getItem(KEYS.legalityItem)
       const legalityItem: ActiveLegalityItem =
         VALID_LEGALITY_ITEMS.includes(rawLegalityItem as ActiveLegalityItem)

@@ -46,6 +46,8 @@ export const PAGE_MENU: Record<string, string> = {
   'crew.workload-summary': 'DATA_CREW_WORKLOAD',
   // legality
   'rule-sets': 'LEGALITY_RULE_SETS',
+  'cost-sets': 'LEGALITY_RULE_SETS',
+  'cost-templates': 'LEGALITY_RULE_SETS',
   'rule-instances': 'LEGALITY_RULE_INSTANCES',
   composition: 'LEGALITY_COMPOSITION',
   'comp-load': 'LEGALITY_COMP_LOAD',

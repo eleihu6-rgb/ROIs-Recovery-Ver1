@@ -36,6 +36,7 @@ import dashboardRoutes from './routes/dashboard/index.js'
 import dataRoutes from './routes/data/index.js'
 import metadataRoutes from './routes/metadata/index.js'
 import ruleRoutes from './routes/rule/index.js'
+import costLibraryRoutes from './routes/cost/cost-library.js'
 import aiRoutes from './routes/ai/index.js'
 import bullmqPlugin from './plugins/bullmq.js'
 import { startBatchCrewWorker } from './workers/batch-crew-worker.js'
@@ -216,6 +217,7 @@ const start = async () => {
     await server.register(dataRoutes, { prefix: '/api/data' })
     await server.register(metadataRoutes, { prefix: '/api/metadata' })
     await server.register(ruleRoutes)
+    await server.register(costLibraryRoutes, { prefix: '/api/cost-library' })
     await server.register(aiRoutes)
     await server.register(ruleCheckRouteGroup)
     await server.register(pbsRoutes)

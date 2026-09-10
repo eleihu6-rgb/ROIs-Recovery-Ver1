@@ -55,13 +55,15 @@ const SCENARIO_MENU: ScenarioMenuItem[] = [
 interface LegalityMenuItem {
   item: ActiveLegalityItem
   label: string
-  helpTopicSlug: string
+  helpTopicSlug?: string
   Icon: React.ElementType
 }
 
 const LEGALITY_MENU: LegalityMenuItem[] = [
   { item: 'rule-sets',      label: 'Rule Sets',        helpTopicSlug: 'legality-tab-rule-sets', Icon: Scale },
   { item: 'rule-instances', label: 'Rule Templates',   helpTopicSlug: 'legality-tab-rule-templates', Icon: ListChecks },
+  { item: 'cost-sets', label: 'Cost Sets', Icon: Layers },
+  { item: 'cost-templates', label: 'Cost Templates', Icon: ListChecks },
 ]
 
 interface SystemMenuItem {

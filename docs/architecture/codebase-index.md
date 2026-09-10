@@ -207,6 +207,19 @@ live-server/src/
 
 ---
 
+## Cost Library (2026-09-10)
+
+| Layer | Path | Responsibility |
+|---|---|---|
+| Schema | `sql/migration/2026-09-10-cost-library.sql` | Five dedicated configuration tables and revision/membership FKs |
+| Seed | `sql/seed/2026-09-10-cost-library.sql` | Non-overwriting initial catalogue and default set |
+| Service | `live-server/src/services/cost/cost-library-service.ts` | Catalogue, revision and set transactions; copy/deletion safeguards |
+| Calculator | `live-server/src/services/cost/cost-calculator.ts` | Server workbench calculations; exact intermediate decimal arithmetic |
+| Validation | `live-server/src/services/cost/cost-validation.ts` | Zod request and per-calculator parameter schemas |
+| Routes | `live-server/src/routes/cost/cost-library.ts` | Authenticated `/api/cost-library` endpoints and Legality control permissions |
+| UI | `gantt/src/components/cost/` | Cost Sets/Templates, parameters and calculation workbenches |
+| API client | `gantt/src/services/cost-library-api.ts` | Existing authenticated API transport |
+
 ## 维护说明
 
 - 新增端点 / service / 表时，在对应小节追加一行；保持"路径 + 一句话"格式，不贴大段代码。
