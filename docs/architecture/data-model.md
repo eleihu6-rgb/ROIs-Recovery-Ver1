@@ -162,6 +162,21 @@ live_config                     (实时合规检查绑定哪套规章)
 
 ---
 
+### Cost Library (2026-09-10)
+
+The dedicated cost library mirrors the Legality UI without writing rule tables.
+Authoritative additive DDL: `sql/migration/2026-09-10-cost-library.sql`.
+
+`cost_type` -> `cost_instance` -> `cost_revision`; `cost_set` ->
+`cost_set_member` -> `cost_revision`. Membership also carries `cost_instance_id`;
+its composite FK to revision `(id,cost_instance_id)` prevents mismatched links.
+`cost_revision.gh_policy_revision_id` is a self FK pinning the GH configuration
+used by standby. `cost_instance.source_instance_id` records copy provenance.
+All FKs restrict deletion. Instance 1 is the protected template; revision numbers
+are separate from instance numbers. A set holds exact revisions, not implicitly
+the latest values. Storage/deployment details:
+`docs/modules/crew-recovery/cost-library-database.md`.
+
 ## 6. PBS 子系统（pbs/01-pbs.sql，独立）
 
 PBS 自成体系，FK 都在 `pbs_*` 内部闭环，**不跨表引用 live 的 pairing/flight**（靠业务编号弱关联）：
