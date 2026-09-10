@@ -1194,3 +1194,32 @@ Both tests pre-clean the demo DB via API before generating (§Simulate-User: API
 for pre-condition seeding; the user Generate action is clicked via the UI only).
 </content>
 </invoke>
+
+## Round-trip Pairing Builder (Option C Ver2)
+
+Live pairing toolbar exposes the Route action through `canBuildRoundtrip`; Scenario
+does not gain Live write access. `RoundtripBuilderDialog` uses AppDialog and the
+`/api/pairing/roundtrip/{options,search,build}` routes. Reference data and the server
+roundtrip profile provide bases, fleets, pilot ranks, composition and rule defaults.
+Search scopes the entire rotation (including brief/debrief) to the open Gantt dates
+in its timezone. Select one flight for its complete base loop, or leave selection
+empty to build eligible rotations sequentially. The bounded chooser is not a global
+optimizer and may leave unmatched flights.
+
+Each commit is locked/revalidated and uses the existing pairing writer. New strict
+coverage applies to pilot division, including cabin-only-covered flights as open for
+pilots; the older manual writer retains its prior coverage semantics. Duplicate
+submission is rejected with 409, not replayed as an original success receipt.
+
+`roundtrip-builder-store.created` records completion order. `prependBuiltPairings`
+keeps this tier above filters, sorts and saved pins while preferring current entities.
+Pins are temporarily suspended during focus. Explicit sort/clear focus restores
+normal ordering. Each committed detail is rendered before the next build request;
+a date/timezone change stops the remaining batch. Shared source returns optional
+`createdFocus` so Scenario does not consume Live results. Preview layoverMinutes are
+free-rest minutes, not the whole ground interval.
+
+Validation and retained IDs: `docs/test-cases/gantt/roundtrip-builder-acceptance.md`.
+Critical-step images: `docs/assets/screenshots/gantt/roundtrip-builder-*-Ver<N>.png`.
+The ten-write acceptance is not a harmless rerun: inspect its receipt and coordinate
+fresh available flights before running again.

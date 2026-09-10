@@ -373,7 +373,7 @@ export interface FlightPaneSource {
  */
 export interface PairingPaneSource {
   /** React hook — returns PairingItem rows (shared PairingFilter applied + found-floated + sorted; quick-search NOT applied). */
-  useRows: () => { rows: PairingItem[] }
+  useRows: () => { rows: PairingItem[]; createdFocus?: PairingItem[] }
 
   capabilities: {
     canDrag: boolean
@@ -382,6 +382,8 @@ export interface PairingPaneSource {
     lazyLoads: boolean
     /** Live-only: show the RES Pairing Creator button in the pane toolbar. Scenario leaves this undefined. */
     canCreateRes?: boolean
+    /** Live flight-backed creation only; Scenario has no compatible write adapter. */
+    canBuildRoundtrip?: boolean
   }
 
   // ── Selection (SEGMENT ids; hook + imperative) ───────────────────────────────

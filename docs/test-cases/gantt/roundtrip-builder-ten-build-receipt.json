@@ -1,0 +1,214 @@
+{
+  "target": "https://cr.rois.one/altair/live",
+  "outboundDate": "2026-09-20",
+  "base": "ADD",
+  "receipts": [
+    {
+      "shape": "four",
+      "pairingId": 151836,
+      "flightIds": [
+        154953,
+        154986,
+        154895,
+        154925
+      ],
+      "dutyCount": 1,
+      "segCount": 4,
+      "rowOrder": [
+        "151836",
+        "16546"
+      ],
+      "freeRestMinutes": [],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-1-four-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-1-four-built-Ver1.png"
+      ]
+    },
+    {
+      "shape": "four",
+      "pairingId": 151837,
+      "flightIds": [
+        154227,
+        154258,
+        154749,
+        154780
+      ],
+      "dutyCount": 1,
+      "segCount": 4,
+      "rowOrder": [
+        "151837",
+        "151836"
+      ],
+      "freeRestMinutes": [],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-2-four-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-2-four-built-Ver1.png"
+      ]
+    },
+    {
+      "shape": "four",
+      "pairingId": 151838,
+      "flightIds": [
+        154685,
+        154723,
+        154168,
+        154203
+      ],
+      "dutyCount": 1,
+      "segCount": 4,
+      "rowOrder": [
+        "151838",
+        "151837"
+      ],
+      "freeRestMinutes": [],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-3-four-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-3-four-built-Ver1.png"
+      ]
+    },
+    {
+      "shape": "two",
+      "pairingId": 151839,
+      "flightIds": [
+        157809,
+        157710
+      ],
+      "dutyCount": 1,
+      "segCount": 2,
+      "rowOrder": [
+        "151839",
+        "151838"
+      ],
+      "freeRestMinutes": [],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-4-two-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-4-two-built-Ver1.png"
+      ]
+    },
+    {
+      "shape": "two",
+      "pairingId": 151840,
+      "flightIds": [
+        159258,
+        159227
+      ],
+      "dutyCount": 1,
+      "segCount": 2,
+      "rowOrder": [
+        "151840",
+        "151839"
+      ],
+      "freeRestMinutes": [],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-5-two-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-5-two-built-Ver1.png"
+      ]
+    },
+    {
+      "shape": "layover",
+      "pairingId": 151841,
+      "flightIds": [
+        159910,
+        159882
+      ],
+      "dutyCount": 2,
+      "segCount": 2,
+      "rowOrder": [
+        "151841",
+        "151840"
+      ],
+      "freeRestMinutes": [
+        1350
+      ],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-6-layover-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-6-layover-built-Ver1.png"
+      ]
+    },
+    {
+      "shape": "layover",
+      "pairingId": 151842,
+      "flightIds": [
+        159008,
+        159009,
+        159013
+      ],
+      "dutyCount": 2,
+      "segCount": 3,
+      "rowOrder": [
+        "151842",
+        "151841"
+      ],
+      "freeRestMinutes": [
+        1365
+      ],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-7-layover-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-7-layover-built-Ver1.png"
+      ]
+    },
+    {
+      "shape": "layover",
+      "pairingId": 151843,
+      "flightIds": [
+        158367,
+        158417
+      ],
+      "dutyCount": 2,
+      "segCount": 2,
+      "rowOrder": [
+        "151843",
+        "151842"
+      ],
+      "freeRestMinutes": [
+        1555
+      ],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-8-layover-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-8-layover-built-Ver1.png"
+      ]
+    },
+    {
+      "shape": "layover",
+      "pairingId": 151844,
+      "flightIds": [
+        158070,
+        158040
+      ],
+      "dutyCount": 2,
+      "segCount": 2,
+      "rowOrder": [
+        "151844",
+        "151843"
+      ],
+      "freeRestMinutes": [
+        1355
+      ],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-9-layover-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-9-layover-built-Ver1.png"
+      ]
+    },
+    {
+      "shape": "layover",
+      "pairingId": 151845,
+      "flightIds": [
+        156970,
+        156990
+      ],
+      "dutyCount": 2,
+      "segCount": 2,
+      "rowOrder": [
+        "151845",
+        "151844"
+      ],
+      "freeRestMinutes": [
+        1365
+      ],
+      "screenshots": [
+        "docs/assets/screenshots/gantt/roundtrip-builder-10-layover-preview-Ver1.png",
+        "docs/assets/screenshots/gantt/roundtrip-builder-10-layover-built-Ver1.png"
+      ]
+    }
+  ]
+}

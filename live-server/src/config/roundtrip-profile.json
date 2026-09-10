@@ -1,0 +1,6 @@
+{
+  "defaults": { "checkinMin": 120, "debriefMin": 15, "restMin": 720, "maxDutyBlockMin": 480, "singleLegExemption": true },
+  "composition": { "narrow": [{ "rank": "CA", "plan": 1 }, { "rank": "FO", "plan": 1 }], "wide": [{ "rank": "CA", "plan": 2 }, { "rank": "FO", "plan": 2 }] },
+  "narrowFleetPatterns": ["^73", "7M"],
+  "limits": { "maxFlights": 100000, "maxRotationLegs": 32, "maxSearchStates": 256, "maxRuleMinutes": 2880, "maxCompositionCount": 20 }
+}

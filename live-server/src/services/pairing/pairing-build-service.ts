@@ -1,4 +1,4 @@
-import { eq, and, asc, inArray, sql } from 'drizzle-orm'
+import { eq, and, asc, inArray, or, isNull, notInArray } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
 import { pairing } from '../../models/pairing/pairing.js'
 import { pairingSegment } from '../../models/pairing/pairing-segment.js'
@@ -10,6 +10,7 @@ import { invalidate, invalidatePattern } from '../../utils/cache.js'
 import { notDeleted } from '../../utils/db.js'
 import { refreshPairingTafb } from './pairing-tafb-service.js'
 import { computeDutyFdpMin } from './pairing-fdp.js'
+import { isRoundtripFlightCancelled, roundtripError, toRoundtripFlight, validateRotation, type RoundtripScope } from './roundtrip-chooser.js'
 
 const CACHE_PREFIX = 'pairing'
 
@@ -59,7 +60,7 @@ export const minutesBetween = (a: Date, b: Date): number => (b.getTime() - a.get
 export const addMinutes = (d: Date, min: number): Date => new Date(d.getTime() + min * 60000)
 
 /** Rust `calculateDutyFdp` minutes for one planned duty (NULL when the binary is missing). */
-export const dutySchFdpMinForDuty = (duty: FlightRow[]): number | null => {
+export const dutySchFdpMinForDuty = (duty: FlightRow[], rules?: RoundtripScope['rules']): number | null => {
   if (duty.length === 0) return null
   const dutyFirst = duty[0]
   const dutyLast = duty[duty.length - 1]
@@ -76,10 +77,10 @@ export const dutySchFdpMinForDuty = (duty: FlightRow[]): number | null => {
       arr: flt.arvArp,
       fleet: flt.fleet,
     })),
-    briefStart: addMinutes(dutyFirst.schDepDtUtc, -CHECKIN_MIN),
+    briefStart: addMinutes(dutyFirst.schDepDtUtc, -(rules?.checkinMin ?? CHECKIN_MIN)),
     briefEnd: dutyFirst.schDepDtUtc,
     debriefStart: dutyLast.schArvDtUtc,
-    debriefEnd: addMinutes(dutyLast.schArvDtUtc, DEBRIEF_MIN),
+    debriefEnd: addMinutes(dutyLast.schArvDtUtc, rules?.debriefMin ?? DEBRIEF_MIN),
   })
 }
 
@@ -150,11 +151,11 @@ export const validateBuildRules = (duties: FlightRow[][], base: string): string[
 }
 
 /** Post-duty rest = max(12h, duty period). DP = duty check-in (dep−2h) → check-out (last arrival). */
-const dutyRestMin = (duty: FlightRow[]): number => {
-  const checkInStart = addMinutes(duty[0].schDepDtUtc, -CHECKIN_MIN)
+const dutyRestMin = (duty: FlightRow[], rules?: RoundtripScope['rules']): number => {
+  const checkInStart = addMinutes(duty[0].schDepDtUtc, -(rules?.checkinMin ?? CHECKIN_MIN))
   const checkOutEnd = addMinutes(duty[duty.length - 1].schArvDtUtc, CHECKOUT_MIN)
   const dp = minutesBetween(checkInStart, checkOutEnd)
-  return Math.max(REST_FLOOR_MIN, Math.round(dp))
+  return Math.max(rules?.restMin ?? REST_FLOOR_MIN, Math.round(dp))
 }
 
 type DrizzleTx = Parameters<Parameters<FastifyInstance['db']['transaction']>[0]>[0]
@@ -169,15 +170,20 @@ const writePairingContents = async (
   pairingId: number,
   flights: FlightRow[],
   username: string,
+  scope?: RoundtripScope,
 ): Promise<{ dutyCount: number; segCount: number; schStr: Date; schEnd: Date; actStr: Date; actEnd: Date }> => {
-  const duties = planDuties(flights)
+  const rules = scope?.rules
+  const checkin = rules?.checkinMin ?? CHECKIN_MIN
+  const debrief = rules?.debriefMin ?? DEBRIEF_MIN
+  const byId = new Map(flights.map(f => [f.id, f]))
+  const duties = scope ? validateRotation(flights.map(toRoundtripFlight), scope).dutyFlightIds.map(ids => ids.map(id => byId.get(id)!)) : planDuties(flights)
   const firstDuty = duties[0]
   const lastDuty = duties[duties.length - 1]
-  const lastRest = dutyRestMin(lastDuty)
+  const lastRest = dutyRestMin(lastDuty, rules)
 
-  const schStr = addMinutes(firstDuty[0].schDepDtUtc, -CHECKIN_MIN)
+  const schStr = addMinutes(firstDuty[0].schDepDtUtc, -checkin)
   const schEnd = addMinutes(lastDuty[lastDuty.length - 1].schArvDtUtc, lastRest)
-  const actStr = addMinutes(firstDuty[0].actDepDtUtc, -CHECKIN_MIN)
+  const actStr = addMinutes(firstDuty[0].actDepDtUtc, -checkin)
   const actEnd = addMinutes(lastDuty[lastDuty.length - 1].actArvDtUtc, lastRest)
 
   const audit = auditCreate(username)
@@ -187,7 +193,7 @@ const writePairingContents = async (
     const dutySeq = d + 1
     const dutyFirst = duty[0]
     const dutyLast = duty[duty.length - 1]
-    const restMin = dutyRestMin(duty)
+    const restMin = dutyRestMin(duty, rules)
     const isFinalDuty = d === duties.length - 1
 
     // Duty-level check-in / check-out anchors, denormalised onto EVERY segment of the duty
@@ -195,11 +201,11 @@ const writePairingContents = async (
     // brief); brief ends at first departure; debrief starts at last arrival; debrief/dropoff
     // end 15m later. These are the timestamps the gantt canvas reads to draw the light-gray
     // duty box, the inter-duty layover puck, and the back-to-base REST puck.
-    const dutyBriefStart = addMinutes(dutyFirst.schDepDtUtc, -CHECKIN_MIN)
+    const dutyBriefStart = addMinutes(dutyFirst.schDepDtUtc, -checkin)
     const dutyBriefEnd = dutyFirst.schDepDtUtc
     const dutyDebriefStart = dutyLast.schArvDtUtc
-    const dutyDebriefEnd = addMinutes(dutyLast.schArvDtUtc, DEBRIEF_MIN)
-    const dutySchFdpMin = dutySchFdpMinForDuty(duty)
+    const dutyDebriefEnd = addMinutes(dutyLast.schArvDtUtc, debrief)
+    const dutySchFdpMin = dutySchFdpMinForDuty(duty, rules)
     // A duty with a layover after it carries one overnight night; the final duty (back at base) 0.
     const layoverNits = isFinalDuty ? 0 : 1
 
@@ -256,7 +262,7 @@ const writePairingContents = async (
   }
 
   // Composition — flight crew (division P), CA/FO count by body type.
-  const comp = bodyComposition(flights[0].fleet)
+  const comp = (scope?.composition ?? bodyComposition(flights[0].fleet))
     .filter((c) => c.plan > 0)
     .map((c) => ({
       pairingId,
@@ -279,7 +285,8 @@ const fetchFlights = async (tx: DrizzleTx, ids: number[]): Promise<FlightRow[]> 
     .select()
     .from(flightTable)
     .where(inArray(flightTable.id, ids))
-    .orderBy(asc(flightTable.schDepDtUtc))
+    .orderBy(asc(flightTable.schDepDtUtc), asc(flightTable.id))
+    .for('update')
 }
 
 export const pairingBuildService = {
@@ -289,13 +296,17 @@ export const pairingBuildService = {
    * check-out 0, per-duty rest max(12h, DP), 8h multi-flight duty cap, composition by body type.
    * Returns the new pairing id so the UI can float it to the top row.
    */
-  async build(fastify: FastifyInstance, flightIds: number[], username: string) {
+  async build(fastify: FastifyInstance, flightIds: number[], username: string, scope?: RoundtripScope) {
     if (!Array.isArray(flightIds) || flightIds.length === 0) throw new Error('No flights provided')
     const uniqueIds = [...new Set(flightIds)]
 
     const result = await fastify.db.transaction(async (tx) => {
       const flights = await fetchFlights(tx, uniqueIds)
-      if (flights.length === 0) throw new Error('No matching flights found')
+      if (flights.length === 0) throw roundtripError('No matching flights found', scope ? 409 : 400)
+      if (scope) {
+        if (uniqueIds.length !== flightIds.length || flights.length !== flightIds.length || flights.some(isRoundtripFlightCancelled)) throw roundtripError('Flights changed or are no longer available', 409)
+        validateRotation(flights.map(toRoundtripFlight), scope)
+      }
 
       // Rule 2 — no mixing airline or fleet within one pairing.
       const airlines = new Set(flights.map((f) => f.airline))
@@ -311,16 +322,17 @@ export const pairingBuildService = {
         .where(and(
           inArray(pairingSegment.fltId, flights.map((f) => f.id)),
           notDeleted(pairingSegment.isDeleted),
-          sql`${pairingSegment.segAssignment} NOT IN ('DH', 'DHD')`,
+          scope ? eq(pairing.division, DIVISION_FLIGHT_CREW) : undefined,
+          or(isNull(pairingSegment.segAssignment), notInArray(pairingSegment.segAssignment, ['DH', 'DHD'])),
         ))
       if (covered.length > 0) {
         const nums = [...new Set(covered.map((c) => c.fltNum))].join(', ')
-        throw new Error(`Flight(s) already in a pairing: ${nums}`)
+        throw roundtripError(`Flight(s) already in a pairing: ${nums}`, 409)
       }
 
       const airline = flights[0].airline
       const fleet = flights[0].fleet
-      const base = homeBaseFor(airline, flights[0].depArp)
+      const base = scope?.base ?? homeBaseFor(airline, flights[0].depArp)
       const label = flights.map((f) => f.fltNum).join('/')
 
       // Insert header first (placeholder aggregates), then contents, then patch aggregates.
@@ -346,7 +358,7 @@ export const pairingBuildService = {
         })
         .returning({ id: pairing.id })
 
-      const agg = await writePairingContents(tx, hdr.id, flights, username)
+      const agg = await writePairingContents(tx, hdr.id, flights, username, scope)
 
       const durationDays = Math.max(0, Math.floor(minutesBetween(agg.schStr, agg.schEnd) / 1440))
       await tx
@@ -364,7 +376,7 @@ export const pairingBuildService = {
 
       await refreshPairingTafb(tx, hdr.id, username)
       // Option A — surface (never block): rule warnings ride along in the response for the UI toast.
-      const warnings = validateBuildRules(planDuties(flights), base)
+      const warnings = scope ? [] : validateBuildRules(planDuties(flights), base)
       return { pairingId: hdr.id, label, dutyCount: agg.dutyCount, segCount: agg.segCount, base, fleet, airline, warnings }
     })
 

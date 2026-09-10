@@ -9,6 +9,7 @@ import { useFlightCompositionStore } from '@/stores/flight-composition-store'
 import { useAirportTzStore } from '@/stores/airport-tz-store'
 import { useFilterStore, matchesPairingLabelFilter, pairingCompositionMatchesRank } from '@/stores/filter-store'
 import { usePairingStore } from '@/stores/pairing-store'
+import { useRoundtripBuilderStore } from '@/stores/roundtrip-builder-store'
 import { useRosterStore } from '@/stores/roster-store'
 import { useCrewStore } from '@/stores/crew-store'
 import { useRosterPeriodStore } from '@/stores/roster-period-store'
@@ -231,6 +232,7 @@ function makeLivePairingPaneSource(
   return {
     useRows: () => {
       const pairingItems = usePairingStore((s) => s.items)
+      const created = useRoundtripBuilderStore((s) => s.created)
       const loadCompositions = useFlightCompositionStore((s) => s.loadFor)
       const loadAirportTz = useAirportTzStore((s) => s.load)
       // Client-side header-click sort (pane-store 'pairing'); server sort is decoupled.
@@ -297,10 +299,11 @@ function makeLivePairingPaneSource(
       }
       const rows: PairingItem[] = [...frozen, ...nonFrozen]
 
-      return { rows }
+      const currentById = new Map(pairingItems.map((item) => [item.pairing.id, item]))
+      return { rows, createdFocus: created.map((item) => currentById.get(item.pairing.id) ?? item) }
     },
 
-    capabilities: { canDrag: true, canRubberBand: true, tracksHover: true, lazyLoads: true, canCreateRes: true },
+    capabilities: { canDrag: true, canRubberBand: true, tracksHover: true, lazyLoads: true, canCreateRes: true, canBuildRoundtrip: true },
 
     // ── Selection (SEGMENT ids) — wraps gantt-view-store ─────────────────────
     useSelectedIds: () => useGanttViewStore((s) => s.selectedTaskIds),
@@ -324,7 +327,10 @@ function makeLivePairingPaneSource(
     //    Server-side sort + SortDialog integration lands in step 2 (see header note).
     useSortColumn: () => usePaneStore((s) => s.getSortColumn('pairing')),
     useSortDirection: () => usePaneStore((s) => s.getSortDirection('pairing')),
-    setSort: (column) => usePaneStore.getState().setSortColumn('pairing', column),
+    setSort: (column) => {
+      useRoundtripBuilderStore.getState().clearFocus()
+      usePaneStore.getState().setSortColumn('pairing', column)
+    },
 
     // ── Lazy-load next page (Live only) ──────────────────────────────────────
     loadMore: () => void usePairingStore.getState().loadMore(),
