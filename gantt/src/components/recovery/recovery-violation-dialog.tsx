@@ -964,49 +964,175 @@ const bestCost = (group: RecoveryPlans['roster']): string => {
 
 const PlanComparison = ({ plans, selectedPlanType, onSelect }: { plans: RecoveryPlans; selectedPlanType: RecoveryPlans['roster']['id']; onSelect: (planType: RecoveryPlans['roster']['id']) => void }) => {
   const rows = [plans.roster, plans.standby, plans.crossBase]
+  // ── Tree highlight: the plan group with the lowest minimum total cost is
+  // surfaced as "★ BEST" on BOTH the By-strategy and By-cost-tier tree views.
+  const bestGroupId = useMemo<RecoveryPlans['roster']['id'] | null>(() => {
+    let bestId: RecoveryPlans['roster']['id'] | null = null
+    let bestCost = Number.POSITIVE_INFINITY
+    for (const group of rows) {
+      const min = minOptionCost(group.options)
+      if (min != null && min < bestCost) {
+        bestCost = min
+        bestId = group.id
+      }
+    }
+    return bestId
+  }, [rows])
+  const costTiers = useMemo(() => {
+    // Bucket each plan group by its minimum cost so the tree can show both
+    // groupings simultaneously and the cheapest bucket is visually anchored.
+    const tiers = [
+      { key: 'free', label: '¥0', test: (cost: number) => cost === 0 },
+      { key: 'low', label: '¥0–10k', test: (cost: number) => cost > 0 && cost <= 10000 },
+      { key: 'mid', label: '¥10k–50k', test: (cost: number) => cost > 10000 && cost <= 50000 },
+      { key: 'high', label: '¥50k+', test: (cost: number) => cost > 50000 },
+    ]
+    return tiers.map((tier) => ({
+      ...tier,
+      groups: rows
+        .map((group) => ({ group, minCost: minOptionCost(group.options) }))
+        .filter((entry) => entry.minCost != null && tier.test(entry.minCost)),
+    }))
+  }, [rows])
   return (
     <section className="border border-border bg-card" data-testid="recovery-plan-comparison">
-      <div className="border-b border-border px-3 py-2"><div className="text-xs font-semibold text-foreground">Recovery methods</div><div className="mt-0.5 text-2xs text-muted-foreground">Choose one method to filter the candidate options below. Selection here does not execute a recovery.</div></div>
-      <div className="grid gap-2 p-2 sm:grid-cols-3" role="tablist" aria-label="Recovery method">
-        {rows.map((group) => {
-          const selected = selectedPlanType === group.id
-          const tone = planTone(group.id)
-          const executableCount = group.options.filter((option) => option.ruleCheck === 'passed' && option.localExecutable).length
-          return <button
-            key={group.id}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            aria-pressed={selected}
-            data-testid={`recovery-plan-filter-${group.id}`}
-            onClick={() => onSelect(group.id)}
-            className={[
-              'group relative min-w-0 rounded border-2 p-3 text-left transition-[border-color,background-color,box-shadow] duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
-              selected ? `${tone.section} ${tone.selectedRow} shadow-sm` : 'border-border bg-background hover:border-foreground/30 hover:bg-accent/40',
-            ].join(' ')}
-          >
-            <span className={['absolute left-0 top-0 h-full w-1 rounded-l', tone.dot, selected ? 'opacity-100' : 'opacity-40 group-hover:opacity-80'].join(' ')} aria-hidden="true" />
-            <span className="flex items-start justify-between gap-2 pl-1">
-              <span className="flex min-w-0 items-start gap-2">
-                <span className={['mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full', tone.dot].join(' ')} aria-hidden="true" />
-                <span className="min-w-0">
-                  <span className="block truncate text-xs font-semibold text-foreground">{group.title}</span>
-                  <span className="mt-1 block text-2xs leading-4 text-muted-foreground">{group.description}</span>
+      <div className="border-b border-border px-3 py-2"><div className="text-xs font-semibold text-foreground">Recovery methods</div><div className="mt-0.5 text-2xs text-muted-foreground">Choose a strategy or cost tier on the left; the cheapest option is highlighted.</div></div>
+      <div className="grid gap-0 md:grid-cols-[240px_minmax(0,1fr)]">
+        {/* ── Left tree (strategy + cost tier) ─────────────────────────── */}
+        <nav className="border-b border-border bg-muted/15 p-2 md:border-b-0 md:border-r" aria-label="Recovery method tree">
+          <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">By strategy</div>
+          <ul className="mb-3 space-y-0.5" role="tree">
+            {rows.map((group) => {
+              const selected = selectedPlanType === group.id
+              const best = group.id === bestGroupId
+              return (
+                <li key={group.id} role="treeitem" aria-selected={selected}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(group.id)}
+                    data-testid={`recovery-plan-filter-${group.id}`}
+                    className={[
+                      'flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-xs transition-colors',
+                      selected ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground hover:bg-accent/60',
+                    ].join(' ')}
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className={['h-1.5 w-1.5 shrink-0 rounded-full', planTone(group.id).dot].join(' ')} aria-hidden="true" />
+                      <span className="truncate">{group.title}</span>
+                      {best && <span className="shrink-0 rounded bg-emerald-500/15 px-1 text-2xs font-bold text-emerald-700 dark:text-emerald-300">★</span>}
+                    </span>
+                    <span className="shrink-0 font-mono text-2xs text-muted-foreground tabular-nums">{group.options.length}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">By cost tier</div>
+          <ul className="space-y-0.5" role="tree">
+            {costTiers.map((tier) => (
+              <li key={tier.key} role="treeitem">
+                <div className="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs text-foreground">
+                  <span className="flex items-center gap-2">
+                    <span className="text-muted-foreground">▾</span>
+                    <span>{tier.label}</span>
+                  </span>
+                  <span className="font-mono text-2xs text-muted-foreground tabular-nums">{tier.groups.length}</span>
+                </div>
+                <ul className="ml-3 space-y-0.5 border-l border-border pl-2">
+                  {tier.groups.length === 0 && (
+                    <li className="px-2 py-0.5 text-2xs text-muted-foreground/60">—</li>
+                  )}
+                  {tier.groups.map(({ group, minCost }) => {
+                    const selected = selectedPlanType === group.id
+                    const best = group.id === bestGroupId
+                    return (
+                      <li key={group.id}>
+                        <button
+                          type="button"
+                          onClick={() => onSelect(group.id)}
+                          className={[
+                            'flex w-full items-center justify-between gap-2 rounded px-2 py-0.5 text-left text-2xs transition-colors',
+                            selected ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
+                          ].join(' ')}
+                        >
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className={['h-1 w-1 shrink-0 rounded-full', planTone(group.id).dot].join(' ')} aria-hidden="true" />
+                            <span className="truncate">{group.title}</span>
+                            {best && <span className="shrink-0 rounded bg-emerald-500/15 px-1 text-2xs font-bold text-emerald-700 dark:text-emerald-300">★</span>}
+                          </span>
+                          <span className="shrink-0 font-mono tabular-nums">{money(minCost ?? 0)}</span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 border-t border-border pt-2 text-2xs text-muted-foreground">
+            <span className="font-semibold text-emerald-700 dark:text-emerald-300">★</span> = lowest total cost across all plans.
+          </div>
+        </nav>
+
+        {/* ── Right detail: plan-level card (unchanged) ────────────────── */}
+        <div className="p-2">
+          {(() => {
+            const group = rows.find((g) => g.id === selectedPlanType) ?? rows[0]
+            const selected = selectedPlanType === group.id
+            const tone = planTone(group.id)
+            const executableCount = group.options.filter((option) => option.ruleCheck === 'passed' && option.localExecutable).length
+            const groupMin = minOptionCost(group.options)
+            const isBest = group.id === bestGroupId
+            return (
+              <article
+                key={group.id}
+                data-testid={`recovery-plan-detail-${group.id}`}
+                className={[
+                  'relative rounded border-2 p-3 text-left transition-[border-color,background-color,box-shadow] duration-150',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+                  isBest
+                    ? 'border-emerald-500/55 bg-emerald-500/[0.05] shadow-[0_0_0_3px_rgba(16,185,129,0.08)]'
+                    : selected ? `${tone.section} ${tone.selectedRow} shadow-sm` : 'border-border bg-background',
+                ].join(' ')}
+              >
+                {isBest && (
+                  <span className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded bg-emerald-500 px-2 py-0.5 text-2xs font-bold uppercase tracking-wide text-white shadow-sm">
+                    ★ Best cost · {money(groupMin ?? 0)}
+                  </span>
+                )}
+                <span className="flex items-start justify-between gap-2 pl-1">
+                  <span className="flex min-w-0 items-start gap-2">
+                    <span className={['mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full', tone.dot].join(' ')} aria-hidden="true" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-semibold text-foreground">{group.title}</span>
+                      <span className="mt-1 block text-2xs leading-4 text-muted-foreground">{group.description}</span>
+                    </span>
+                  </span>
+                  <span className={['shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold', selected ? tone.badge : 'bg-muted text-muted-foreground'].join(' ')}>{selected ? 'Selected' : 'Choose'}</span>
                 </span>
-              </span>
-              <span className={['shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold', selected ? tone.badge : 'bg-muted text-muted-foreground'].join(' ')}>{selected ? 'Selected' : 'Choose'}</span>
-            </span>
-            <span className="mt-3 grid grid-cols-4 gap-2 border-t border-border/60 pt-2 pl-1 text-2xs">
-              <span><span className="block text-muted-foreground">Options</span><span className="font-semibold tabular-nums text-foreground">{group.options.length}</span></span>
-              <span><span className="block text-muted-foreground">Executable</span><span className="font-semibold tabular-nums text-foreground">{executableCount}</span></span>
-              <span><span className="block text-muted-foreground">Filtered</span><span className="font-semibold tabular-nums text-foreground">{group.excludedOptions.length}</span></span>
-              <span><span className="block text-muted-foreground">Best cost</span><span className="font-semibold tabular-nums text-foreground">{bestCost(group)}</span></span>
-            </span>
-          </button>
-        })}
+                <span className="mt-3 grid grid-cols-4 gap-2 border-t border-border/60 pt-2 pl-1 text-2xs">
+                  <span><span className="block text-muted-foreground">Options</span><span className="font-semibold tabular-nums text-foreground">{group.options.length}</span></span>
+                  <span><span className="block text-muted-foreground">Executable</span><span className="font-semibold tabular-nums text-foreground">{executableCount}</span></span>
+                  <span><span className="block text-muted-foreground">Filtered</span><span className="font-semibold tabular-nums text-foreground">{group.excludedOptions.length}</span></span>
+                  <span><span className="block text-muted-foreground">Best cost</span><span className={['font-semibold tabular-nums', isBest ? 'text-emerald-700 dark:text-emerald-300' : 'text-foreground'].join(' ')}>{bestCost(group)}</span></span>
+                </span>
+              </article>
+            )
+          })()}
+        </div>
       </div>
        <div className="border-t border-border bg-muted/20 px-3 py-2 text-2xs text-muted-foreground">Showing detailed options for <span className="font-semibold text-foreground">{planForType(plans, selectedPlanType).title}</span>. Use the checkbox on one executable Crew, then Apply or Preview.</div>
     </section>
   )
+}
+
+// ── Helpers used by the tree + detail view ─────────────────────────────
+const minOptionCost = (options: RecoveryOption[]): number | null => {
+  let best: number | null = null
+  for (const option of options) {
+    const cost = option.metrics?.totalCost
+    if (typeof cost !== 'number' || !Number.isFinite(cost)) continue
+    if (best == null || cost < best) best = cost
+  }
+  return best
 }
