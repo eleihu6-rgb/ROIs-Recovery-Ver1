@@ -995,9 +995,9 @@ const PlanComparison = ({ plans, selectedPlanType, onSelect }: { plans: Recovery
     }))
   }, [rows])
   return (
-    <section className="shrink-0 border border-border bg-card" data-testid="recovery-plan-comparison">
+    <section className="shrink-0 overflow-hidden border border-border bg-card max-h-[40%]" data-testid="recovery-plan-comparison">
       <div className="border-b border-border px-3 py-2"><div className="text-xs font-semibold text-foreground">Recovery methods</div><div className="mt-0.5 text-2xs text-muted-foreground">Choose a strategy or cost tier on the left; the cheapest option is highlighted.</div></div>
-      <div className="grid gap-0 md:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="grid gap-0 overflow-y-auto md:max-h-[calc(40vh)] md:grid-cols-[240px_minmax(0,1fr)]">
         {/* ── Left tree (strategy + cost tier) ─────────────────────────── */}
         <nav className="border-b border-border bg-muted/15 p-2 md:border-b-0 md:border-r" aria-label="Recovery method tree">
           <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">By strategy</div>

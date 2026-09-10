@@ -126,6 +126,8 @@ export interface GanttTestApi {
   openPairingInfo: (id: number) => void
   /** Open the Live roster ContextMenu for a pairing (pairing-pane shape) at a fixed screen point. */
   openLivePairingContextMenu: (pairingId: number) => void
+  /** Open the Live roster ContextMenu for a specific (crewId, pairingId) by looking up the real RosterItem in the store. */
+  openLiveRosterContextMenu: (crewId: string, pairingId: number) => void
   /** 首条 roster 对象的字段名集合（用于验证精简 DTO：保留项在、裁剪项不在）。 */
   rosterKeys: () => string[]
   /** Roster-main 列配置（key/label/visible）——验证 SEN 列存在与可见性。 */
@@ -2363,6 +2365,27 @@ export const installGanttTestHook = (): void => {
         position: null,
       } as RosterItem
       useUiStore.getState().openContextMenu(160, 160, stub, 'pairing')
+    },
+    /**
+     * Test-only: synthesize a real RosterItem stub from the already-loaded
+     * roster store (looking up (crewId, pairingId) → first matching item) and
+     * open the Live Roster context menu. Lets Playwright drive the right-
+     * click → Recovery flow without reverse-engineering canvas pixel coords.
+     * The rosterRecoverySnapshot memo in context-menu.tsx still requires an
+     * 8004 violation in the rule/persisted stores, so callers must first
+     * settle the Legality recheck (per the manual test plan).
+     */
+    openLiveRosterContextMenu: (crewId: string, pairingId: number) => {
+      const all = useRosterStore.getState().main.rosterItems.concat(
+        useRosterStore.getState().sub.rosterItems,
+      )
+      const match = all.find(
+        (item) => item.crewId === crewId && Number(item.pairingId) === pairingId,
+      )
+      if (!match) throw new Error(
+        `openLiveRosterContextMenu: no roster item for crew=${crewId} pairing=${pairingId}`,
+      )
+      useUiStore.getState().openContextMenu(160, 160, match, 'roster-main')
     },
     rosterKeys,
     rosterColumns,
