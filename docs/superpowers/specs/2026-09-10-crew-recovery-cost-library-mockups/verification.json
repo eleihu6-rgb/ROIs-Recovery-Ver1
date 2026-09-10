@@ -1,0 +1,134 @@
+{
+  "timestamp": "2026-09-10T20:42:44.806Z",
+  "command": "node docs/superpowers/specs/2026-09-10-crew-recovery-cost-library-mockups/verify.cjs",
+  "results": [
+    {
+      "label": "Catalogue opens with 17 costs and GH preview",
+      "status": "PASS"
+    },
+    {
+      "screenshot": "/Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/cost-catalogue-desktop-Ver4.png"
+    },
+    {
+      "label": "Search and empty state",
+      "status": "PASS"
+    },
+    {
+      "label": "Category filter",
+      "status": "PASS"
+    },
+    {
+      "label": "Hotel quantity, price editing and minimum logic",
+      "status": "PASS"
+    },
+    {
+      "label": "Save and reload retains the rate",
+      "status": "PASS"
+    },
+    {
+      "label": "Fixed event and disabled/unpriced states",
+      "status": "PASS"
+    },
+    {
+      "label": "Duplicate and rename a cost",
+      "status": "PASS"
+    },
+    {
+      "label": "Export and validated import round trip",
+      "status": "PASS"
+    },
+    {
+      "label": "GH 85 with 1.2/1.5 tiers produces A 712.50 and B zero",
+      "status": "PASS"
+    },
+    {
+      "screenshot": "/Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/cost-workbench-desktop-Ver3.png"
+    },
+    {
+      "label": "Already above guarantee, combined duties and boundary",
+      "status": "PASS"
+    },
+    {
+      "label": "Multiplier change and invalid guarantee rejection",
+      "status": "PASS"
+    },
+    {
+      "label": "Tier rows can be added, edited, deleted and saved",
+      "status": "PASS"
+    },
+    {
+      "screenshot": "/Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/cost-standby-desktop-Ver1.png"
+    },
+    {
+      "screenshot": "/Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/cost-standby-mobile-Ver1.png"
+    },
+    {
+      "label": "Standby X/Y are configurable and pay uses credit, not a fee",
+      "status": "PASS"
+    },
+    {
+      "label": "Delay band crossing uses baseline difference",
+      "status": "PASS"
+    },
+    {
+      "label": "Booking refunds and shared vehicle quantity",
+      "status": "PASS"
+    },
+    {
+      "label": "Lowest crew cash selects B; total cash selects A",
+      "status": "PASS"
+    },
+    {
+      "screenshot": "/Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/cost-comparison-desktop-Ver3.png"
+    },
+    {
+      "label": "Selection cap and manual decision with reason",
+      "status": "PASS"
+    },
+    {
+      "label": "Daily cases have specific options and warning/violation states",
+      "status": "PASS"
+    },
+    {
+      "label": "Changing a recovery cost invalidates selection and recalculates",
+      "status": "PASS"
+    },
+    {
+      "label": "catalogue mobile page has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "screenshot": "/Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/cost-catalogue-mobile-Ver3.png"
+    },
+    {
+      "label": "catalogue mobile editor accepts changes",
+      "status": "PASS"
+    },
+    {
+      "label": "workbench mobile page has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "screenshot": "/Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/cost-workbench-mobile-Ver3.png"
+    },
+    {
+      "label": "workbench mobile editor accepts changes",
+      "status": "PASS"
+    },
+    {
+      "label": "comparison mobile page has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "screenshot": "/Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/cost-comparison-mobile-Ver3.png"
+    },
+    {
+      "label": "comparison mobile editor accepts changes",
+      "status": "PASS"
+    },
+    {
+      "label": "No browser runtime or failed asset requests",
+      "status": "PASS"
+    }
+  ]
+}
