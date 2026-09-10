@@ -9,7 +9,7 @@ Builds and repairs EK/ET crew pairings against the data model in
 `docs/architecture/data-model.md`. A pairing is a crew **rotation**: it must depart the
 airline's home base and eventually return to it. Anything else is invalid.
 
-## The base-loop invariant (the one rule that matters)
+## The base-loop invariant
 
 **A valid pairing's ordered segments start at its home base AND end at its home base.**
 
@@ -23,6 +23,25 @@ A pairing that violates this is a **stranded fragment**, not a rotation — the 
 never get home. Example cautionary case (2026-08-30): **pairing #150497 was invalid — its
 legs connected from neither base.** It, plus 89 other stranded fragments, were deleted and
 rebuilt into real base→base loops. After the fix: **191 DXB/ADD pairings, 0 invalid.**
+
+## The single-fleet invariant (mandatory)
+
+**Every flight in a pairing must have the same exact fleet code, across all duties.**
+For example, `738` and `7M8` must never share a pairing, even though both are narrow-body
+aircraft. A common aircraft family or crew composition does not make fleets interchangeable.
+
+- Partition candidate flights by airline + exact fleet before choosing connections. Apply
+  the same fleet constraint to outbound, return, next-day continuation, and packed base turns.
+- "All fleets" or multiple selected fleets broadens the search scope only: build separate
+  single-fleet pairings from that scope; never combine fleets into one rotation.
+- Before submitting each build, verify that all selected flights have a known fleet and
+  exactly one distinct fleet code. Resolve missing fleet data before building.
+- If no same-fleet continuation closes a valid base loop within the window, leave the legs
+  uncovered and report them. Never switch fleet to force a return to base.
+- The build service already hard-rejects mixed fleets with
+  `Cannot mix fleets in one pairing: 738, 7M8` (example reported 2026-09-10).
+  This is a blocking validation error, not a build-as-is warning. Correct the flight selection;
+  do not bypass the guard or relabel flight fleets to make the build pass.
 
 ## Data-model traps (read before touching pairings)
 
@@ -106,8 +125,9 @@ Narrow body (`/^73/`, `/7M/`) → CA1/FO1; wide (A380/788/789) → CA2/FO2.
 When invalid pairings already exist (Ryan's instruction: *"delete the invalid, then rebuild
 them"*), the surgical repair keeps already-valid pairings untouched:
 
-1. **Classify** every DXB/ADD pairing valid vs invalid by the base-loop invariant above
-   (order its segments, check first dep / last arv === base).
+1. **Classify** every DXB/ADD pairing against both the base-loop and single-fleet invariants
+   above (order its segments, check first dep / last arv === base, and verify the linked
+   flights have one exact fleet). A base loop alone does not prove validity.
 2. **Free universe** = EK/ET legs in the window that are NOT in a valid pairing.
 3. **Rebuild** greedy per airline+fleet base→base loops from the freed legs (seed from base
    departures, chain earliest rest-legal connection back to base; drop any chain that can't
@@ -131,6 +151,11 @@ or docs.
 
 ## Validation (§No-Illusion / §Playwright-Required / §PW-Snapshot)
 
+- **Fleet integrity:** after any build/repair, verify every resulting pairing's linked
+  flights have exactly one known fleet, matching the pairing fleet. Include multi-duty
+  rotations. When changing builder code, cover `738` + `7M8` rejection and an "All fleets"
+  search producing separate single-fleet rotations; capture the real UI result. The A-F
+  audit listed below is not evidence of fleet integrity unless it explicitly checks fleets.
 - **Data + integrity:** `e2e/tests/gantt/ek-et-base-loop-integrity.spec.ts` (`Live-1722i`) —
   filters the pairing pane to base DXB/ADD (Apply Filters → `pageSize=0`, so the store loads
   **every** matching pairing, making "0 invalid" a complete claim), asserts every pairing is a

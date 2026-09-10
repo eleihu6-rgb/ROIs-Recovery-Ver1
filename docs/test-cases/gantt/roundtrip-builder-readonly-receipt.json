@@ -1,0 +1,37 @@
+{
+  "target": "https://cr.rois.one/altair/live",
+  "pairingIds": [
+    151836,
+    151837,
+    151838,
+    151839,
+    151840,
+    151841,
+    151842,
+    151843,
+    151844,
+    151845
+  ],
+  "buildRequests": 0,
+  "searchRequests": 1,
+  "checks": [
+    "options close/reopen",
+    "fleet default composition",
+    "customized composition preserved",
+    "out-of-range dates",
+    "reversed dates",
+    "consumed flights excluded",
+    "interior selection",
+    "clear selection",
+    "scope edit invalidation",
+    "ten saved base loops, shapes and real rest"
+  ],
+  "screenshots": [
+    "docs/assets/screenshots/gantt/roundtrip-builder-readonly-options-loading-Ver2.png",
+    "docs/assets/screenshots/gantt/roundtrip-builder-readonly-options-reopened-Ver2.png",
+    "docs/assets/screenshots/gantt/roundtrip-builder-readonly-composition-preserved-Ver2.png",
+    "docs/assets/screenshots/gantt/roundtrip-builder-readonly-invalid-range-Ver2.png",
+    "docs/assets/screenshots/gantt/roundtrip-builder-readonly-interior-preview-Ver2.png",
+    "docs/assets/screenshots/gantt/roundtrip-builder-readonly-complete-Ver2.png"
+  ]
+}

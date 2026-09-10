@@ -41,6 +41,8 @@ import { useColumnStore } from '@/stores/column-store'
 import { useLayoutStore } from '@/stores/layout-store'
 import { usePaneInstanceStore } from '@/stores/pane-instance-store'
 import { useResPlannerStore } from '@/stores/res-planner-store'
+import { useRoundtripBuilderStore } from '@/stores/roundtrip-builder-store'
+import { prependBuiltPairings } from '@/utils/pairing-build-focus'
 import { useGanttSource } from '@/components/gantt/source/gantt-source-context'
 import type { BaseRenderContext } from '@/components/gantt/renderers/base-renderer'
 import type { Pairing, PairingItem, PairingFilters, PairingListQuery } from '@/types/pairing'
@@ -308,6 +310,11 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
   const pairingProgress = usePairingStore((s) => s.progress)
   const hasData = usePairingStore((s) => s.items.length > 0)
   const pairingItems = usePairingStore((s) => s.items)
+  const createdSnapshots = useRoundtripBuilderStore((s) => s.created)
+  const createdPairingItems = useMemo(() => {
+    const canonical = new Map(pairingItems.map((item) => [item.pairing.id, item]))
+    return createdSnapshots.map((item) => canonical.get(item.pairing.id) ?? item)
+  }, [createdSnapshots, pairingItems])
   const loadingMore = usePairingStore((s) => s.loadingMore)
   // PaneToolbar data
   const unfilteredTotal = usePairingStore((s) => s.unfilteredTotal)
@@ -474,12 +481,12 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
   const sortedPairingItems = useMemo(() => {
     const sorted = sortPairingRows(coverageFilteredItems, sortColumn, sortDirection)
     const foundSet = new Set(foundPairingIds)
-    if (foundSet.size === 0) return sorted
+    if (foundSet.size === 0) return prependBuiltPairings(sorted, createdPairingItems)
     // Explicit found rows still float first; Filter Label itself is a hard filter upstream.
     const labelTier = sorted.filter((pi) => foundSet.has(String(pi.pairing.id)))
     const rest = sorted.filter((pi) => !foundSet.has(String(pi.pairing.id)))
-    return labelTier.length === 0 ? sorted : [...labelTier, ...rest]
-  }, [coverageFilteredItems, sortColumn, sortDirection, foundPairingIds])
+    return prependBuiltPairings(labelTier.length === 0 ? sorted : [...labelTier, ...rest], createdPairingItems)
+  }, [coverageFilteredItems, sortColumn, sortDirection, foundPairingIds, createdPairingItems])
 
   // Extract pairings for panel row data
   const pairings = useMemo(() => sortedPairingItems.map((pi) => pi.pairing), [sortedPairingItems])
@@ -517,7 +524,8 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
 
   // Reorder: frozen rows first, then non-frozen
   const { reorderedPairingItems, reorderedPanelRows, frozenRowCount, selectedRowIndices } = useMemo(() => {
-    const frozenSet = new Set(frozenRowIds)
+    // Result focus temporarily precedes saved pinning; do not freeze an unbounded build batch.
+    const frozenSet = new Set(createdPairingItems.length ? [] : frozenRowIds)
     const selectedSet = new Set(selectedRowIds)
     const frozen: typeof sortedPairingItems = []
     const nonFrozen: typeof sortedPairingItems = []
@@ -551,7 +559,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
       frozenRowCount: frozen.length,
       selectedRowIndices: selIdx,
     }
-  }, [sortedPairingItems, panelRows, frozenRowIds, selectedRowIds])
+  }, [sortedPairingItems, panelRows, frozenRowIds, selectedRowIds, createdPairingItems])
 
   // Test introspection: publish the rendered pairing row order (no-op in prod build).
   useEffect(() => {
@@ -906,6 +914,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
   }, [crossPaneDrag, legacyPaneType])
 
   const handleColumnHeaderClick = useCallback((columnKey: string) => {
+    useRoundtripBuilderStore.getState().clearFocus()
     setSortColumn(legacyPaneType, columnKey)
   }, [setSortColumn, legacyPaneType])
 
@@ -948,6 +957,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
   const handleSortOpen = useCallback(() => setSortDialogOpen(true), [])
   const applyServerSort = useCallback(
     (nextSortBy: PairingSortBy, nextSortOrder: 'asc' | 'desc') => {
+      useRoundtripBuilderStore.getState().clearFocus()
       setSortCriteria(legacyPaneType, [])
       void applySort(nextSortBy, nextSortOrder)
     },
@@ -1041,6 +1051,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
           onClearAll={clearFilters}
           onRemoveFilter={handleRemoveFilter}
           onResPairingClick={source?.pairing?.capabilities?.canCreateRes ? () => useResPlannerStore.getState().open() : undefined}
+          onRoundtripPairingClick={source?.pairing?.capabilities?.canBuildRoundtrip ? () => useRoundtripBuilderStore.getState().open() : undefined}
           onClose={onClose}
         />
         <PairingOffscreenJumpHint

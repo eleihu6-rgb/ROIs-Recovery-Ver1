@@ -4,6 +4,9 @@ import { success, fail, error } from '../../utils/response.js'
 import { paginationQuerySchema } from '../../utils/pagination.js'
 import { pairingService } from '../../services/pairing/pairing-service.js'
 import { pairingBuildService } from '../../services/pairing/pairing-build-service.js'
+import { roundtripService } from '../../services/pairing/roundtrip-service.js'
+import { roundtripScopeSchema } from '../../services/pairing/roundtrip-chooser.js'
+import roundtripProfile from '../../config/roundtrip-profile.json'
 import { updateDutyNodes } from '../../services/pairing/pairing-duty-node-service.js'
 
 const doubleSchema = z.object({
@@ -28,6 +31,27 @@ const bodySchema = z.object({
 })
 
 export default async function pairingRoutes(fastify: FastifyInstance) {
+  fastify.get('/roundtrip/options', async (_request, reply) => success(reply, await roundtripService.options(fastify)))
+  fastify.post('/roundtrip/search', async (request, reply) => {
+    const parsed = z.object({ scope: roundtripScopeSchema }).safeParse(request.body)
+    if (!parsed.success) return error(reply, 400, parsed.error.message)
+    try { return success(reply, await roundtripService.search(fastify, parsed.data.scope)) }
+    catch (err) {
+      const problem = err as Error & { statusCode?: number }
+      if (problem.statusCode) return error(reply, problem.statusCode, problem.message)
+      throw err
+    }
+  })
+  fastify.post('/roundtrip/build', async (request, reply) => {
+    const parsed = z.object({ scope: roundtripScopeSchema, flightIds: z.array(z.number().int().positive()).min(1).max(roundtripProfile.limits.maxRotationLegs) }).safeParse(request.body)
+    if (!parsed.success) return error(reply, 400, parsed.error.message)
+    try { return success(reply, await roundtripService.build(fastify, parsed.data.scope, parsed.data.flightIds, request.authUser?.userCode ?? 'system')) }
+    catch (err) {
+      const problem = err as Error & { statusCode?: number }
+      if (problem.statusCode) return error(reply, problem.statusCode, problem.message)
+      throw err
+    }
+  })
   // GET /api/pairing — list with date range + pagination + filters
   fastify.get('/', async (request, reply) => {
     const schema = paginationQuerySchema.extend({

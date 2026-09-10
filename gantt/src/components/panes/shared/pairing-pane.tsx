@@ -53,6 +53,8 @@ import { pairingCreditedMinutes, isOpenPartialCoverage, sumCoverageCredit } from
 import { FilterDialog } from '@/components/layout/filter-dialog'
 import { publishScenarioPairingSelection, publishPairingOrder } from '@/utils/gantt-test-hook'
 import { useResPlannerStore } from '@/stores/res-planner-store'
+import { useRoundtripBuilderStore } from '@/stores/roundtrip-builder-store'
+import { prependBuiltPairings } from '@/utils/pairing-build-focus'
 import type { GanttContextId } from '@/types/gantt-context'
 
 interface SharedPairingPaneProps {
@@ -172,7 +174,7 @@ export const SharedPairingPane = ({
   const pairing = source.pairing!
 
   // ── Source data (all hooks called unconditionally) ────────────────────────
-  const { rows: sourceRows } = pairing.useRows()
+  const { rows: sourceRows, createdFocus } = pairing.useRows()
   const selectedPairingIds = pairing.useSelectedIds()
   const hoveredPairingId = pairing.useHoveredId()
   const sortColumn = pairing.useSortColumn()
@@ -187,7 +189,8 @@ export const SharedPairingPane = ({
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const rawSelectedRowIds = pairing.useSelectedRowIds ? pairing.useSelectedRowIds() : emptyStringSet
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const frozenRowCount = pairing.useFrozenRowCount ? pairing.useFrozenRowCount() : 0
+  const sourceFrozenRowCount = pairing.useFrozenRowCount ? pairing.useFrozenRowCount() : 0
+  const frozenRowCount = createdFocus?.length ? 0 : sourceFrozenRowCount
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [rubberBand, setRubberBand] = useState<RubberBandRect | null>(null)
@@ -220,14 +223,14 @@ export const SharedPairingPane = ({
   // Apply local quick-search on top of source rows
   const pairingItems = useMemo<PairingItem[]>(() => {
     const search = quickFilter.search.trim().toLowerCase()
-    if (!search) return sourceRows
-    return sourceRows.filter((it) => {
+    const filtered = !search ? sourceRows : sourceRows.filter((it) => {
       const p = it.pairing
       return (p.pairingLabel ?? '').toLowerCase().includes(search)
         || (p.assignment ?? '').toLowerCase().includes(search)
         || (p.base ?? '').toLowerCase().includes(search)
     })
-  }, [sourceRows, quickFilter.search])
+    return createdFocus?.length ? prependBuiltPairings(filtered, createdFocus) : filtered
+  }, [sourceRows, quickFilter.search, createdFocus])
 
   pairingItemsRef.current = pairingItems
   pairingItemsLenRef.current = pairingItems.length
@@ -721,6 +724,7 @@ export const SharedPairingPane = ({
           onClearAll={clearAllFilters}
           onRemoveFilter={onRemoveFilter}
           onResPairingClick={capabilities.canCreateRes ? () => useResPlannerStore.getState().open() : undefined}
+          onRoundtripPairingClick={capabilities.canBuildRoundtrip ? () => useRoundtripBuilderStore.getState().open() : undefined}
           onClose={onClose}
         />
         {overlay?.(pairingItems)}

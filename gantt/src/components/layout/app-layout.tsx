@@ -14,6 +14,7 @@ import { ViolationTooltip } from '@/components/gantt/violation-tooltip'
 import { KeyboardShortcutsDialog } from '@/components/common/keyboard-shortcuts-dialog'
 import { AddPaneMenu } from './add-pane-menu'
 import { ResPairingPlannerDialog } from '@/components/res-pairing/res-pairing-planner-dialog'
+import { RoundtripBuilderDialog } from '@/components/roundtrip-pairing/roundtrip-builder-dialog'
 import { useResPlannerStore } from '@/stores/res-planner-store'
 import { RosterPane } from '@/components/panes/roster-pane'
 import { PairingPane } from '@/components/panes/pairing-pane'
@@ -466,6 +467,7 @@ export const AppLayout = () => {
 
       {/* RES Pairing Planner (Live-only; mounted once here, opened via useResPlannerStore) */}
       <ResPairingPlannerDialog />
+      <RoundtripBuilderDialog />
 
       {/* RES generate result banner — persists after the dialog closes */}
       <ResGenerateBanner />

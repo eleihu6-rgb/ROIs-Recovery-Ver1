@@ -6,6 +6,7 @@ import type { RosterItem } from '@/types/roster'
 import { hasPairingFilterValues, type PairingFilter } from '@/stores/filter-store'
 import { useGanttViewStore } from './gantt-view-store'
 import { usePaneStore } from './pane-store'
+import { useRoundtripBuilderStore } from './roundtrip-builder-store'
 
 const formatDate = (d: Date): string => d.toISOString().slice(0, 10)
 const PAGE_SIZE = 100
@@ -658,6 +659,7 @@ export const usePairingStore = create<PairingStore>((set, get) => ({
   },
 
   removeItem: (pairingId) => {
+    useRoundtripBuilderStore.getState().removeCreated(pairingId)
     set((state) => ({
       items: state.items.filter((i) => i.pairing.id !== pairingId),
       total: state.total - 1,
