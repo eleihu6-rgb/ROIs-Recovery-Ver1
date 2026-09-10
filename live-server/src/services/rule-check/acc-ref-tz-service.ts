@@ -123,6 +123,7 @@ const runAccRefTz: AccRefRunner = (input, params) => {
     input: lines.join('\n'),
     encoding: 'utf8',
     maxBuffer: 1 << 28,
+    windowsHide: true,
   })
   if (result.error && (result.error as NodeJS.ErrnoException).code === 'ENOENT') {
     throw new Error(

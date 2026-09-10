@@ -24,13 +24,21 @@ vi.mock('@/stores/rule-check-store', () => {
   const state = {
     applyWsPairingUpdate: vi.fn(),
     applyWsRosterUpdate: vi.fn(),
-    ruleGroupCode: '',
   }
   const useRuleCheckStore = Object.assign(
     (selector: (s: typeof state) => unknown) => selector(state),
     { getState: () => state },
   )
   return { useRuleCheckStore }
+})
+
+vi.mock('@/stores/legality-store', () => {
+  const state = { selectedId: 1 }
+  const useLegalityStore = Object.assign(
+    (selector: (s: typeof state) => unknown) => selector(state),
+    { getState: () => state },
+  )
+  return { useLegalityStore }
 })
 
 describe('useRuleCheckWs', () => {
@@ -62,16 +70,20 @@ describe('useRuleCheckWs', () => {
       root.render(React.createElement(Probe))
     })
     expect(handlers).toHaveLength(1)
+    // The ruleset effect subscribes immediately when the selected Ruleset is
+    // already known; connection lifecycle events must repeat the same join.
+    expect(sent).toEqual([{ type: 'set_rule_group', groupCode: '1' }])
+    sent.length = 0
 
     act(() => {
       handlers[0]!({ type: 'authenticated' })
     })
-    expect(sent).toEqual([{ type: 'set_rule_group', groupCode: '103' }])
+    expect(sent).toEqual([{ type: 'set_rule_group', groupCode: '1' }])
 
     sent.length = 0
     act(() => {
       handlers[0]!({ type: 'connected', lastEventId: 0 })
     })
-    expect(sent).toEqual([{ type: 'set_rule_group', groupCode: '103' }])
+    expect(sent).toEqual([{ type: 'set_rule_group', groupCode: '1' }])
   })
 })

@@ -5,6 +5,7 @@ import { HelpNote, HelpScreenshot } from '../../help-article'
 // the app supports are listed in the note below, not baked into a row.
 const SHORTCUTS = [
   { group: 'File',      key: 'Ctrl+S',       action: 'Save all pending changes' },
+  { group: 'File',      key: 'Ctrl+R',       action: 'Open Crew Roster Recovery' },
   { group: 'Edit',      key: 'Ctrl+Z',       action: 'Undo last operation' },
   { group: 'Edit',      key: 'Ctrl+Y',       action: 'Redo' },
   { group: 'Edit',      key: 'Del',          action: 'Delete selected item' },

@@ -81,9 +81,9 @@ function buildQueryParams(query: PairingListQuery): Record<string, string | numb
 
 export const pairingApi = {
   /** Paginated pairing list (with composition info, no segments) */
-  async list(query: PairingListQuery = {}): Promise<PairingListResponse> {
+  async list(query: PairingListQuery = {}, options?: { timeout?: number }): Promise<PairingListResponse> {
     const params = buildQueryParams(query)
-    return api.get('/api/pairing', { params }) as Promise<PairingListResponse>
+    return api.get('/api/pairing', { params, ...(options?.timeout ? { timeout: options.timeout } : {}) }) as Promise<PairingListResponse>
   },
 
   /** Get pairing detail with segments and compositions */
@@ -91,7 +91,7 @@ export const pairingApi = {
     // The shared HTTP client unwraps the standard { code, data, message }
     // envelope before returning, so this is already the detail payload.
     const data = await api.get(`/api/pairing/${pairingId}`) as PairingDetailResponse
-    const pairing = data as Pairing
+    const pairing = data as unknown as Pairing
     const compositions = (data as { compositions?: PairingCompositionRow[] }).compositions ?? []
     // The detail endpoint returns composition as separate rows (actingRank/plan/fill)
     // and does NOT populate the Pairing.composition[] that the pairing pane renders

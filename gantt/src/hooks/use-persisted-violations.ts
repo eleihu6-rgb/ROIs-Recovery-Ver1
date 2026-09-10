@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 import { api } from '@/services/api'
 import type { ViolationItem } from '@/services/rule-session-api'
-import { useRuleCheckStore } from '@/stores/rule-check-store'
 import { useFilterStore } from '@/stores/filter-store'
 import { useCrewStore } from '@/stores/crew-store'
 import { useSessionViolationStore } from '@/stores/session-violation-store'
+import { useLegalityStore } from '@/stores/legality-store'
 import { resolveViolationViewBounds } from '@/utils/violation-display-window'
 
 interface ViolationEntry {
@@ -109,14 +109,12 @@ async function fetchPersistedViolations(
 let persistedViolationsFetchSeq = 0
 
 export function usePersistedViolations() {
-  // Use the TOOLBAR's active rule group (useRuleCheckStore.ruleGroupCode — the one the
-  // RuleGroupSelector shows/controls). Post Model-B drop, the toolbar group source moved
-  // from rule_group (group_code) → the default RULE workset id ('103'); the persisted
-  // result tables' rule_group_code column now holds that workset-id string. The default
-  // fallback below mirrors getDefaultRuleGroupCode (workset 103).
-  // `||` (not `??`) so the empty-string initial value also falls back before the
-  // selector resolves the default.
-  const groupCode = useRuleCheckStore((s) => s.ruleGroupCode || '103')
+  // The selected ruleset id is the authoritative group key for persisted Live
+  // violations. Do not fall back to a historical ruleset id while the ruleset
+  // selector is still loading: that queried an unrelated/removed workset and made
+  // valid 8004 rows appear to be missing in Alert Center.
+  const selectedRulesetId = useLegalityStore((s) => s.selectedId)
+  const groupCode = selectedRulesetId == null ? '' : String(selectedRulesetId)
   const dateRange = useFilterStore((s) => s.dateRange)
   const selectedRosterPeriodRange = useFilterStore((s) => s.selectedRosterPeriodRange)
   const replacePersistedViolations = useSessionViolationStore((s) => s.replacePersistedViolations)
@@ -169,6 +167,7 @@ export function usePersistedViolations() {
   // when crew loads regardless of React rendering (bypasses the batching issue where React
   // defers the re-render and the useEffect never sees the new selectedCrewIds value).
   useEffect(() => {
+    if (!groupCode) return
     void doFetch(groupCode)
 
     let prevLength = useCrewStore.getState().selectedCrewIds.length

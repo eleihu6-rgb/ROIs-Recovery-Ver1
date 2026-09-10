@@ -1,7 +1,7 @@
 import { api } from './api'
 
 export interface DraftOp {
-  type: 'move' | 'swap' | 'add' | 'remove' | 'update' | 'remove-pairing' | 'remove-pairing-from-crew' | 'add-flight-to-pairing' | 'create-pairing-from-flights' | 'assign-pairing' | 'add-ground-task'
+  type: 'move' | 'swap' | 'add' | 'remove' | 'update' | 'remove-pairing' | 'remove-pairing-from-crew' | 'add-flight-to-pairing' | 'create-pairing-from-flights' | 'assign-pairing' | 'add-ground-task' | 'cross-base-recovery'
   taskId?: number
   toCrewId?: string
   taskIdA?: number
@@ -32,6 +32,33 @@ export interface DraftOp {
     fixedCreditMin?: number | null
   }
   mockItems?: Record<string, unknown>[]
+  crossBase?: {
+    operation: 'swap' | 'standby' | 'destination' | 'direct'
+    sourceCrewId: string
+    sourcePairingId: number
+    targetCrewId: string
+    targetPairingId?: number | null
+    standbyTaskId?: number | null
+    /** Null only for destination-base recovery, which reuses Pairing DHD legs. */
+    outboundFlightId: number | null
+    /** Null only for destination-base recovery, which reuses Pairing DHD legs. */
+    returnFlightId: number | null
+    supportBase: string
+    recoveryBase: string
+    division: string
+    rosterActingRank: string
+    minFlightLeadHours: number
+    maxFlightLeadHours: number
+    reserveBeforeHours: number
+    returnAfterHours: number
+    destinationSplit?: {
+      destinationBase: string
+      middleFlightIds: number[]
+      removedDhdFlightIds: number[]
+      actingRank: string
+      createsPairing: boolean
+    }
+  }
 }
 
 /** Pairing ids covered by a remove-pairing draft op (single or batched). */

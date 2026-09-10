@@ -48,10 +48,18 @@ export async function assertRustReleaseBins(options = {}) {
   const bins = await loadRequiredBins(manifestPath, cargoTomlPath)
   const missing = []
   for (const bin of bins) {
-    const binPath = path.join(releaseDir, bin)
-    try {
-      fs.accessSync(binPath, fs.constants.X_OK)
-    } catch {
+    const candidates = process.platform === "win32" && !bin.endsWith(".exe")
+      ? [path.join(releaseDir, bin), path.join(releaseDir, bin + ".exe")]
+      : [path.join(releaseDir, bin)]
+    const exists = candidates.some((candidate) => {
+      try {
+        fs.accessSync(candidate, fs.constants.X_OK)
+        return true
+      } catch {
+        return false
+      }
+    })
+    if (!exists) {
       missing.push(bin)
     }
   }

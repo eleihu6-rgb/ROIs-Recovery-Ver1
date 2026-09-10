@@ -12,7 +12,7 @@ import { getOrSet, invalidate, invalidatePattern } from '../../utils/cache.js'
 import { auditCreate, auditUpdate } from '../../utils/audit.js'
 import { notDeleted } from '../../utils/db.js'
 import { rankService } from '../base/rank-service.js'
-import { propagateFlightActualTimeChange } from './flight-delay-propagation-service.js'
+import { propagateFlightChange } from './flight-delay-propagation-service.js'
 
 const CACHE_PREFIX = 'flight'
 const CACHE_TTL = 600 // 10min
@@ -48,6 +48,8 @@ interface FlightRowDB {
   schArvDtUtc: Date
   actDepDtUtc: Date | null
   actArvDtUtc: Date | null
+  estDepDtUtc?: Date | null
+  estArvDtUtc?: Date | null
   actDepArp: string
   actArvArp: string
   flightFlag: string
@@ -71,6 +73,8 @@ interface FlightApi {
   schArvDtUtc: string
   actDepDtUtc: string
   actArvDtUtc: string
+  estDepDtUtc?: string
+  estArvDtUtc?: string
   actDepArp: string
   actArvArp: string
   flightFlag: string
@@ -95,7 +99,7 @@ interface FlightItem {
 function toFlightApi(row: FlightRowDB): FlightApi {
   // isCancelled: fltSts contains 'CX' or flightFlag is 'X'
   const isCancelled = row.fltSts?.toUpperCase().includes('CX') || row.flightFlag?.toUpperCase() === 'X'
-  return {
+  const apiFlight: FlightApi = {
     id: row.id,
     airline: row.airline,
     fltDt: row.fltDt,
@@ -117,6 +121,13 @@ function toFlightApi(row: FlightRowDB): FlightApi {
     isDeleted: row.isDeleted,
     isCancelled,
   }
+  // Keep the legacy response shape for callers whose row projection predates
+  // ETD/ETA, while real flight-table rows expose the nullable fields.
+  if (Object.prototype.hasOwnProperty.call(row, 'estDepDtUtc')) {
+    apiFlight.estDepDtUtc = row.estDepDtUtc?.toISOString() ?? ''
+    apiFlight.estArvDtUtc = row.estArvDtUtc?.toISOString() ?? ''
+  }
+  return apiFlight
 }
 
 /** Bin-pack sorted flights into sub-rows with no time overlap */
@@ -428,27 +439,44 @@ export const flightService = {
 
       let affectedCrewIds: string[] = []
       let affectedPairingIds: number[] = []
-      const actDepChanged = data.actDepDtUtc != null && new Date(data.actDepDtUtc as Date).getTime() !== new Date((before as FlightRowDB).actDepDtUtc as Date).getTime()
-      const actArvChanged = data.actArvDtUtc != null && new Date(data.actArvDtUtc as Date).getTime() !== new Date((before as FlightRowDB).actArvDtUtc as Date).getTime()
-      if (actDepChanged || actArvChanged) {
-        const propagation = await propagateFlightActualTimeChange(
-          tx,
-          id,
-          row.actDepDtUtc as Date,
-          row.actArvDtUtc as Date,
-          username,
-        )
+      let referenceDates: Array<Date | string> = []
+      const beforeFlight = before as FlightRowDB
+      const changed = [
+        'fleet', 'schDepDtUtc', 'schArvDtUtc',
+        'estDepDtUtc', 'estArvDtUtc', 'actDepDtUtc', 'actArvDtUtc',
+      ].some((key) => {
+        const oldValue = beforeFlight[key as keyof FlightRowDB]
+        const newValue = row[key as keyof FlightRowDB]
+        const oldMs = oldValue instanceof Date ? oldValue.getTime() : oldValue
+        const newMs = newValue instanceof Date ? newValue.getTime() : newValue
+        return oldMs !== newMs
+      })
+      if (changed) {
+        const propagation = await propagateFlightChange(tx, id, {
+          fltDt: String(row.fltDt),
+          fltNum: row.fltNum,
+          airline: row.airline,
+          depArp: row.depArp,
+          arvArp: row.arvArp,
+          fleet: row.fleet,
+          schDepDtUtc: row.schDepDtUtc,
+          schArvDtUtc: row.schArvDtUtc,
+          actDepDtUtc: row.actDepDtUtc as Date,
+          actArvDtUtc: row.actArvDtUtc as Date,
+        }, username)
         affectedCrewIds = propagation.affectedCrewIds
         affectedPairingIds = propagation.affectedPairingIds
+        referenceDates = propagation.referenceDates
       }
 
-      return { flight: toFlightApi(row as FlightRowDB), affectedCrewIds, affectedPairingIds }
+      return { flight: toFlightApi(row as FlightRowDB), affectedCrewIds, affectedPairingIds, referenceDates }
     })
     if (!result) return null
 
     await Promise.all([
       invalidate(fastify.redis, `${CACHE_PREFIX}:${id}`),
       invalidatePattern(fastify.redis, `${CACHE_PREFIX}:list:*`),
+      invalidatePattern(fastify.redis, 'roster:v2:chunk:*'),
       ...(result.affectedPairingIds.length > 0
         ? [
           invalidatePattern(fastify.redis, 'pairing:list:*'),

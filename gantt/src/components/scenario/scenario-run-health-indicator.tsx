@@ -6,10 +6,11 @@ import type { ScenarioRunHealth } from '@/types'
 
 const POLL_MS = 30_000
 
-export const ScenarioRunHealthIndicator = (): React.ReactNode => {
+export const ScenarioRunHealthIndicator = ({ active }: { active: boolean }): React.ReactNode => {
   const [health, setHealth] = useState<ScenarioRunHealth | null>(null)
 
   useEffect(() => {
+    if (!active) return
     let cancelled = false
     const check = async () => {
       try {
@@ -22,7 +23,9 @@ export const ScenarioRunHealthIndicator = (): React.ReactNode => {
     void check()
     const id = setInterval(() => { void check() }, POLL_MS)
     return () => { cancelled = true; clearInterval(id) }
-  }, [])
+  }, [active])
+
+  if (!active) return null
 
   const overall = health?.overall
   const dotColor =

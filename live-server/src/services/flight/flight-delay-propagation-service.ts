@@ -20,6 +20,20 @@ type DrizzleTx = Parameters<Parameters<FastifyInstance['db']['transaction']>[0]>
 export interface FlightActualTimePropagationResult {
   affectedCrewIds: string[]
   affectedPairingIds: number[]
+  referenceDates: Array<Date | string>
+}
+
+export interface FlightChangeSnapshot {
+  fltDt: string
+  fltNum: string
+  airline: string
+  depArp: string
+  arvArp: string
+  fleet: string
+  schDepDtUtc: Date
+  schArvDtUtc: Date
+  actDepDtUtc: Date
+  actArvDtUtc: Date
 }
 
 /**
@@ -43,6 +57,33 @@ export const propagateFlightActualTimeChange = async (
   newActArvDtUtc: Date,
   username: string,
 ): Promise<FlightActualTimePropagationResult> => {
+  return propagateFlightChange(tx, flightId, {
+    fltDt: '',
+    fltNum: '',
+    airline: '',
+    depArp: '',
+    arvArp: '',
+    fleet: '',
+    schDepDtUtc: newActDepDtUtc,
+    schArvDtUtc: newActArvDtUtc,
+    actDepDtUtc: newActDepDtUtc,
+    actArvDtUtc: newActArvDtUtc,
+  }, username, { actualOnly: true })
+}
+
+/**
+ * Propagate an OPS flight update into every denormalized Pairing/Roster row that
+ * represents the physical flight. The flight row remains the source of truth;
+ * these copies are refreshed in the same transaction so Gantt data cannot observe
+ * a half-updated flight chain.
+ */
+export const propagateFlightChange = async (
+  tx: DrizzleTx,
+  flightId: number,
+  snapshot: FlightChangeSnapshot,
+  username: string,
+  options: { actualOnly?: boolean } = {},
+): Promise<FlightActualTimePropagationResult> => {
   const audit = auditUpdate(username)
 
   const touchedSegments = await tx
@@ -59,9 +100,24 @@ export const propagateFlightActualTimeChange = async (
   const affectedPairingIds = [...new Set(touchedSegments.map((s) => s.pairingId))]
 
   for (const seg of touchedSegments) {
+    const segmentValues = options.actualOnly
+      ? { actStrDtUtc: snapshot.actDepDtUtc, actEndDtUtc: snapshot.actArvDtUtc, ...audit }
+      : {
+          fltDt: snapshot.fltDt,
+          fltNum: snapshot.fltNum,
+          airline: snapshot.airline,
+          depArp: snapshot.depArp,
+          arvArp: snapshot.arvArp,
+          fleetSeg: snapshot.fleet,
+          schStrDtUtc: snapshot.schDepDtUtc,
+          schEndDtUtc: snapshot.schArvDtUtc,
+          actStrDtUtc: snapshot.actDepDtUtc,
+          actEndDtUtc: snapshot.actArvDtUtc,
+          ...audit,
+        }
     await tx
       .update(pairingSegment)
-      .set({ actStrDtUtc: newActDepDtUtc, actEndDtUtc: newActArvDtUtc, ...audit })
+      .set(segmentValues)
       .where(eq(pairingSegment.id, seg.id))
   }
 
@@ -85,6 +141,8 @@ export const propagateFlightActualTimeChange = async (
 
     const firstSeg = dutySegs[0]
     const lastSeg = dutySegs[dutySegs.length - 1]
+    const dutySchStrDtUtc = firstSeg.schStrDtUtc
+    const dutySchEndDtUtc = lastSeg.schEndDtUtc
     const dutyActStrDtUtc = firstSeg.actStrDtUtc
     const dutyActEndDtUtc = lastSeg.actEndDtUtc
 
@@ -92,7 +150,12 @@ export const propagateFlightActualTimeChange = async (
     for (const s of dutySegs) {
       await tx
         .update(pairingSegment)
-        .set({ dutyActStrDtUtc, dutyActEndDtUtc, ...audit })
+        .set({
+          ...(options.actualOnly ? {} : { dutySchStrDtUtc, dutySchEndDtUtc }),
+          dutyActStrDtUtc,
+          dutyActEndDtUtc,
+          ...audit,
+        })
         .where(eq(pairingSegment.id, s.id))
     }
 
@@ -138,13 +201,50 @@ export const propagateFlightActualTimeChange = async (
     await refreshPairingTafb(tx, pairingId, username)
   }
 
+  for (const pairingId of affectedPairingIds) {
+    const pairingSegments = await tx
+      .select()
+      .from(pairingSegment)
+      .where(and(eq(pairingSegment.pairingId, pairingId), notDeleted(pairingSegment.isDeleted)))
+      .orderBy(asc(pairingSegment.dutySeq), asc(pairingSegment.segSeq))
+    const first = pairingSegments[0]
+    const last = pairingSegments[pairingSegments.length - 1]
+    if (!first || !last) continue
+    await tx.update(pairing).set({
+      ...(options.actualOnly ? {} : {
+        fleet: snapshot.fleet,
+        schStrDtUtc: first.schStrDtUtc,
+        schEndDtUtc: last.schEndDtUtc,
+      }),
+      actStrDtUtc: first.actStrDtUtc,
+      actEndDtUtc: last.actEndDtUtc,
+      ...audit,
+    }).where(eq(pairing.id, pairingId))
+  }
+
+  const rosterValues = options.actualOnly
+    ? { actStrDtUtc: snapshot.actDepDtUtc, actEndDtUtc: snapshot.actArvDtUtc, ...audit }
+    : {
+        fltDt: snapshot.fltDt,
+        schStrDtUtc: snapshot.schDepDtUtc,
+        schEndDtUtc: snapshot.schArvDtUtc,
+        actStrDtUtc: snapshot.actDepDtUtc,
+        actEndDtUtc: snapshot.actArvDtUtc,
+        depArp: snapshot.depArp,
+        arvArp: snapshot.arvArp,
+        ...audit,
+      }
   const touchedRoster = await tx
     .update(rosterFlight)
-    .set({ actStrDtUtc: newActDepDtUtc, actEndDtUtc: newActArvDtUtc, ...audit })
+    .set(rosterValues)
     .where(and(eq(rosterFlight.fltId, flightId), notDeleted(rosterFlight.isDeleted)))
     .returning({ crewId: rosterFlight.crewId })
 
   const affectedCrewIds = [...new Set(touchedRoster.map((r) => r.crewId))]
 
-  return { affectedCrewIds, affectedPairingIds }
+  return {
+    affectedCrewIds,
+    affectedPairingIds,
+    referenceDates: [snapshot.schDepDtUtc, snapshot.schArvDtUtc, snapshot.actDepDtUtc, snapshot.actArvDtUtc],
+  }
 }

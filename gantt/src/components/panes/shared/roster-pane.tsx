@@ -38,12 +38,16 @@ import { getPaneStore } from '@/stores/pane-store'
 import { getScenarioLayoutStore } from '@/stores/scenario-layout-store'
 import { getScenarioRosterSelectionStore } from '@/stores/scenario-roster-selection-store'
 import { getScenarioViolationStore } from '@/stores/scenario-violation-store'
+import { useRecoveryPreviewStore } from '@/stores/recovery-preview-store'
 import { useSessionViolationStore } from '@/stores/session-violation-store'
 import { getScenarioGanttStore } from '@/stores/scenario-gantt-store'
 import { PaneHeaderCanvas } from '@/components/gantt/pane-header-canvas'
 import { PaneCanvas } from '@/components/gantt/pane-canvas'
 import { PaneConditionStrip } from '@/components/panes/pane-condition-strip'
 import { ViolationListDialog } from '@/components/panes/violation-list-dialog'
+import type { CrewViolationRow } from '@/components/panes/violation-list-dialog'
+import { RecoveryViolationDialog } from '@/components/recovery/recovery-violation-dialog'
+import type { RecoveryAlertSnapshot } from '@/services/recovery-candidates'
 import { QualityAnalysisDialog } from '@/components/panes/quality-analysis-dialog'
 import { PaneQuickFilter, EMPTY_QUICK_FILTER, getQuickFilterChips } from '@/components/panes/pane-quick-filter'
 import type { QuickFilterState } from '@/components/panes/pane-quick-filter'
@@ -55,6 +59,7 @@ import { publishPanelRows, publishValidityBlocks } from '@/utils/gantt-test-hook
 import { useCrewMemoStore } from '@/stores/crew-memo-store'
 import { useUiStore } from '@/stores/ui-store'
 import { useGanttViewStore } from '@/stores/gantt-view-store'
+import { notify } from '@/utils/notify'
 import type { GanttContextId } from '@/types/gantt-context'
 import type { RosterItem } from '@/types'
 
@@ -200,16 +205,20 @@ export const SharedRosterPane = ({
   const testPaneType = paneType
 
   const timezone = useTimezoneStore((s) => s.timezone)
+  const recoveryPreviewView = useRecoveryPreviewStore((s) => s.view)
 
   // ── Local UI chrome state ───────────────────────────────────────────────────
   const [quickFilterOpen, setQuickFilterOpen] = useState(false)
   const [filterDialogOpen, setFilterDialogOpen] = useState(false)
   const [sortDialogOpen, setSortDialogOpen] = useState(false)
   const [alertCenterOpen, setAlertCenterOpen] = useState(false)
+  const [recoveryAlert, setRecoveryAlert] = useState<RecoveryAlertSnapshot[] | null>(null)
   const [qualityOpen, setQualityOpen] = useState(false)
   const [qualityIssueCount, setQualityIssueCount] = useState(0)
   const [crewBellCrewId, setCrewBellCrewId] = useState<string | null>(null)
   const [overlapLanes, setOverlapLanes] = useState(false)
+  const previewCompare = isLive && recoveryPreviewView === 'compare'
+  const effectiveOverlapLanes = overlapLanes || previewCompare
   // Per-crew bell popup: violations filtered to the clicked crew.
   const crewBellRows = useMemo(
     () => alertCenter?.rows.filter((r) => r.crewId === crewBellCrewId) ?? [],
@@ -220,6 +229,51 @@ export const SharedRosterPane = ({
   // quick-filter to the roster selection store so the source applies the same crew filter.
   const [liveQuickFilter, setLiveQuickFilter] = useState<QuickFilterState>(EMPTY_QUICK_FILTER)
   const setHoveredCrew = useGanttViewStore((s) => s.setHoveredCrew)
+
+  // The Live hover tooltip is mounted above the pane tree. Bridge its Recovery action
+  // through a window event so the existing pane-owned Recovery workflow remains the
+  // single entry point for Alert Center, crew bells, and hovered Roster warnings.
+  useEffect(() => {
+    if (!isLive || livePaneType !== 'roster-main') return
+    const onRecoveryOpen = (event: Event) => {
+      const snapshot = (event as CustomEvent<RecoveryAlertSnapshot>).detail
+      if (!snapshot || snapshot.ruleCode !== '8004' || snapshot.pairingId == null) return
+      setAlertCenterOpen(false)
+      setCrewBellCrewId(null)
+      setRecoveryAlert([snapshot])
+    }
+    window.addEventListener('recovery:open', onRecoveryOpen)
+    return () => window.removeEventListener('recovery:open', onRecoveryOpen)
+  }, [isLive, livePaneType])
+
+  useEffect(() => {
+    if (!isLive || livePaneType !== 'roster-main' || !alertCenter) return
+    const onRecoveryShortcut = () => {
+      const recoverableRows = alertCenter.rows.filter((candidate) =>
+        candidate.ruleCode === '8004' && candidate.pairingId != null && candidate.canRecover === true,
+      )
+      if (recoverableRows.length === 0) {
+        notify.info('No recoverable 8004 alert in the loaded Live data.')
+        return
+      }
+      setAlertCenterOpen(false)
+      setCrewBellCrewId(null)
+      setRecoveryAlert(recoverableRows.map((row) => ({
+        id: `${row.crewId}-${row.pairingId}-${row.ruleCode}-${row.ruleInstance ?? ''}`,
+        ruleCode: row.ruleCode,
+        severity: row.severity,
+        crewId: row.crewId,
+        pairingId: row.pairingId!,
+        flightDate: row.flightDate ?? '—',
+        flightNumber: row.flightNumber ?? '—',
+        detail: row.message,
+        fleet: row.fleet,
+        requiredRank: row.requiredRank,
+      })))
+    }
+    window.addEventListener('recovery:shortcut', onRecoveryShortcut)
+    return () => window.removeEventListener('recovery:shortcut', onRecoveryShortcut)
+  }, [isLive, livePaneType, alertCenter])
 
   // Per-context filter store (crew dimension) — drives the FilterDialog chips.
   const useContextFilterStore = getFilterStore(contextId)
@@ -301,8 +355,8 @@ export const SharedRosterPane = ({
 
   const renderBuckets = useMemo(() => buildRosterRenderBuckets(renderItemsByCrew), [renderItemsByCrew])
   const laneLayoutByTaskId = useMemo(
-    () => (overlapLanes ? buildRosterLaneItemLayout(renderBuckets) : undefined),
-    [overlapLanes, renderBuckets],
+    () => (effectiveOverlapLanes ? buildRosterLaneItemLayout(renderBuckets) : undefined),
+    [effectiveOverlapLanes, renderBuckets],
   )
 
   // Feed the rendered list back to the source so its event-time hit-test / drop refs match.
@@ -350,6 +404,24 @@ export const SharedRosterPane = ({
   const handleQuickFilterToggle = useCallback(() => setQuickFilterOpen((o) => !o), [])
   const handleSortOpen = useCallback(() => setSortDialogOpen(true), [])
   const handleAlertCenterOpen = useCallback(() => setAlertCenterOpen(true), [])
+  const handleRecovery = useCallback((rows: CrewViolationRow[]) => {
+    const selected = rows.filter((row) => row.ruleCode === '8004' && row.pairingId != null && row.canRecover === true)
+    if (selected.length === 0) return
+    setAlertCenterOpen(false)
+    setCrewBellCrewId(null)
+    setRecoveryAlert(selected.map((row) => ({
+      id: `${row.crewId}-${row.pairingId}-${row.ruleCode}-${row.ruleInstance ?? ''}`,
+      ruleCode: row.ruleCode,
+      severity: row.severity,
+      crewId: row.crewId,
+      pairingId: row.pairingId!,
+      flightDate: row.flightDate ?? '—',
+      flightNumber: row.flightNumber ?? '—',
+      detail: row.message,
+      fleet: row.fleet,
+      requiredRank: row.requiredRank,
+    })))
+  }, [])
   const handleCrewBellClick = useCallback((rowId: string) => {
     if (!alertCenter) return
     const hasViolations = alertCenter.rows.some((r) => r.crewId === rowId)
@@ -469,7 +541,7 @@ export const SharedRosterPane = ({
       items: renderItems,
       itemsByCrew: renderItemsByCrew,
       renderBuckets,
-      overlapLanes,
+      overlapLanes: effectiveOverlapLanes,
       selectedTaskIds: selectedTaskIds as Set<number>,
       hoveredTaskId: null,        // no hover-driven task highlight (matches the old fork)
       violationMap,
@@ -493,7 +565,7 @@ export const SharedRosterPane = ({
       ctx.fillText('Loading more crew...', base.canvasWidth / 2, base.canvasHeight - 4)
       ctx.restore()
     }
-  }, [crewIds, renderItems, renderItemsByCrew, renderBuckets, overlapLanes, selectedTaskIds, violationMap, memoRosterIds, lockMap, timezone, sessionTags, showSessionTags, loadingMore, model.crewValidityBlock])
+  }, [crewIds, renderItems, renderItemsByCrew, renderBuckets, effectiveOverlapLanes, selectedTaskIds, violationMap, memoRosterIds, lockMap, timezone, sessionTags, showSessionTags, loadingMore, model.crewValidityBlock])
 
   // ── Interaction handler — hit-test + callbacks from the source ──────────────
   const getHitTest = roster.getHitTest
@@ -622,6 +694,7 @@ export const SharedRosterPane = ({
           rows={alertCenter.rows}
           onCrewClick={roster.bringCrewToTop}
           recheckInfo={alertCenter.recheckInfo}
+          onRecovery={isLive ? handleRecovery : undefined}
         />
       )}
       {alertCenter && crewBellCrewId !== null && (
@@ -631,6 +704,14 @@ export const SharedRosterPane = ({
           rows={crewBellRows}
           onCrewClick={roster.bringCrewToTop}
           recheckInfo={alertCenter.recheckInfo}
+          onRecovery={isLive ? handleRecovery : undefined}
+        />
+      )}
+      {isLive && (
+        <RecoveryViolationDialog
+          open={recoveryAlert !== null}
+          alert={recoveryAlert}
+          onClose={() => setRecoveryAlert(null)}
         />
       )}
       {qualityAnalysis && (

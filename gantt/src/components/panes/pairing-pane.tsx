@@ -44,6 +44,7 @@ import { useResPlannerStore } from '@/stores/res-planner-store'
 import { useGanttSource } from '@/components/gantt/source/gantt-source-context'
 import type { BaseRenderContext } from '@/components/gantt/renderers/base-renderer'
 import type { Pairing, PairingItem, PairingFilters, PairingListQuery } from '@/types/pairing'
+import { useRecoveryPreviewStore } from '@/stores/recovery-preview-store'
 import { TEXT_COLOR_RED } from '@/components/gantt/gantt-constants'
 import { VerticalSplitter } from '@/components/layout/vertical-splitter'
 
@@ -306,6 +307,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
   // Store data
   const loading = usePairingStore((s) => s.loading)
   const pairingProgress = usePairingStore((s) => s.progress)
+  const pairingLoadError = usePairingStore((s) => s.loadError)
   const hasData = usePairingStore((s) => s.items.length > 0)
   const pairingItems = usePairingStore((s) => s.items)
   const loadingMore = usePairingStore((s) => s.loadingMore)
@@ -443,6 +445,17 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
   const selectRowRange = usePaneStore((s) => s.selectRowRange)
   const unfreezeRow = usePaneStore((s) => s.unfreezeRow)
   const setStatusBarText = useUiStore((s) => s.setStatusBarText)
+  const pairingChanges = useRecoveryPreviewStore((s) => s.pairingChanges)
+  const pairingPreviewById = useMemo(
+    () => new Map(pairingChanges.map((change) => [change.pairingId, change] as const)),
+    [pairingChanges],
+  )
+  const createdPreviewItems = useMemo(
+    () => pairingChanges
+      .filter((change) => change.status === 'created' && change.previewItem)
+      .map((change) => change.previewItem!),
+    [pairingChanges],
+  )
 
   // Sorted pairing items (preserving segments). Coverage is a HARD filter when narrowed
   // (Open/Partial/etc.) — unified with Scenario; Full/Over rows are hidden, not floated.
@@ -472,21 +485,33 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
   }, [idFilteredItems, coverageActive, coverageSel, rankFilter])
 
   const sortedPairingItems = useMemo(() => {
-    const sorted = sortPairingRows(coverageFilteredItems, sortColumn, sortDirection)
+    const sorted = sortPairingRows([...coverageFilteredItems, ...createdPreviewItems], sortColumn, sortDirection)
+    const previewSet = new Set(pairingChanges.map((change) => change.pairingId))
+    const previewRows = sorted.filter((pi) => previewSet.has(pi.pairing.id))
+    const nonPreviewRows = sorted.filter((pi) => !previewSet.has(pi.pairing.id))
     const foundSet = new Set(foundPairingIds)
-    if (foundSet.size === 0) return sorted
+    if (foundSet.size === 0) return [...previewRows, ...nonPreviewRows]
     // Explicit found rows still float first; Filter Label itself is a hard filter upstream.
-    const labelTier = sorted.filter((pi) => foundSet.has(String(pi.pairing.id)))
-    const rest = sorted.filter((pi) => !foundSet.has(String(pi.pairing.id)))
-    return labelTier.length === 0 ? sorted : [...labelTier, ...rest]
-  }, [coverageFilteredItems, sortColumn, sortDirection, foundPairingIds])
+    const labelTier = nonPreviewRows.filter((pi) => foundSet.has(String(pi.pairing.id)))
+    const rest = nonPreviewRows.filter((pi) => !foundSet.has(String(pi.pairing.id)))
+    return [...previewRows, ...(labelTier.length === 0 ? nonPreviewRows : [...labelTier, ...rest])]
+  }, [coverageFilteredItems, createdPreviewItems, sortColumn, sortDirection, foundPairingIds, pairingChanges])
+
+  // Recovery Preview is an in-memory overlay. When a Pairing is modified in
+  // place, consume its actual After structure for the canvas while keeping the
+  // live Pairing store untouched. Ownership-only changes have no previewItem
+  // and therefore continue to use the loaded structure.
+  const displayPairingItems = useMemo(
+    () => sortedPairingItems.map((item) => pairingPreviewById.get(item.pairing.id)?.previewItem ?? item),
+    [sortedPairingItems, pairingPreviewById],
+  )
 
   // Extract pairings for panel row data
-  const pairings = useMemo(() => sortedPairingItems.map((pi) => pi.pairing), [sortedPairingItems])
+  const pairings = useMemo(() => displayPairingItems.map((pi) => pi.pairing), [displayPairingItems])
 
   // Build panel row data from sorted pairing items (two-line layout)
   const panelRows = useMemo((): PanelRowData[] => {
-    return sortedPairingItems.map((pi) => {
+    return displayPairingItems.map((pi) => {
       const p = pi.pairing
       // Cred: sum duty_act_credited_minutes once per duty (field is duty-level, same across all segs in a duty)
       const seenDuties = new Set<number>()
@@ -501,6 +526,8 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
       return {
         rowId: String(p.id),
         values: {
+          // Before/After Pairing details belong in the right Pairing canvas;
+          // keep the left sidebar's Pairing column to one stable label.
           pairingId: p.pairingLabel || `P-${p.id}`,
           base: p.base ?? '',
           type: p.assignmentGroup ?? '',
@@ -513,19 +540,19 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
         isFull: p.isFull,
       }
     })
-  }, [sortedPairingItems, rankOrderMap])
+  }, [displayPairingItems, rankOrderMap])
 
   // Reorder: frozen rows first, then non-frozen
   const { reorderedPairingItems, reorderedPanelRows, frozenRowCount, selectedRowIndices } = useMemo(() => {
     const frozenSet = new Set(frozenRowIds)
     const selectedSet = new Set(selectedRowIds)
-    const frozen: typeof sortedPairingItems = []
-    const nonFrozen: typeof sortedPairingItems = []
+    const frozen: typeof displayPairingItems = []
+    const nonFrozen: typeof displayPairingItems = []
     const frozenRows: PanelRowData[] = []
     const nonFrozenRows: PanelRowData[] = []
 
-    for (let i = 0; i < sortedPairingItems.length; i++) {
-      const item = sortedPairingItems[i]
+    for (let i = 0; i < displayPairingItems.length; i++) {
+      const item = displayPairingItems[i]
       const row = panelRows[i]
       const id = String(item.pairing.id)
       if (frozenSet.has(id)) {
@@ -551,7 +578,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
       frozenRowCount: frozen.length,
       selectedRowIndices: selIdx,
     }
-  }, [sortedPairingItems, panelRows, frozenRowIds, selectedRowIds])
+  }, [displayPairingItems, panelRows, frozenRowIds, selectedRowIds])
 
   // Test introspection: publish the rendered pairing row order (no-op in prod build).
   useEffect(() => {
@@ -646,6 +673,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
       timezone,
       showSessionTags: sessions.length > 1,
       dutyBuckets,
+      pairingPreviewById,
     }
     renderPairingTasks(pairingCtx)
 
@@ -661,7 +689,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
       ctx.fillText('Loading more pairings...', base.canvasWidth / 2, base.canvasHeight - 4)
       ctx.restore()
     }
-  }, [reorderedPairingItems, selectedPairingIds, hoveredPairingId, timezone, sessions.length, loadingMore, dutyBuckets])
+  }, [reorderedPairingItems, selectedPairingIds, hoveredPairingId, timezone, sessions.length, loadingMore, dutyBuckets, pairingPreviewById])
 
   // Hit test — uses refs for volatile data
   const getHitTest = useCallback(() => {
@@ -1026,6 +1054,11 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
       )}
       <PaneLoadingBar progress={pairingProgress} />
       <div ref={canvasContainerRef} className="relative flex flex-1 overflow-hidden">
+        {pairingLoadError && (
+          <div role="alert" className="absolute left-3 top-8 z-20 rounded border border-amber-500/50 bg-amber-50 px-2 py-1 text-xs text-amber-900 shadow-sm dark:bg-amber-950/60 dark:text-amber-100">
+            Pairing data load failed: {pairingLoadError}
+          </div>
+        )}
         <PaneConditionStrip
           paneType={legacyPaneType}
           filterChips={filterChips}

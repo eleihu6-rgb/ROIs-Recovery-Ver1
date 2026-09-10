@@ -26,6 +26,7 @@ import {
   asOfDateOnly,
   buildCrewBaseTimeline, resolveOffsetAtUtc, resolveBaseAt, resolveOffsetAt, midpointDateOnly,
   utcSecsToUtcDateOnly,
+  rustBinsSkipped,
 } from './legality-recheck-core.mjs'
 import {
   pairingEndRestSecsSql,
@@ -74,6 +75,24 @@ const FOCUS_CREW_IDS = (arg('--focus-crew-ids', '') || '').split(',').map((s) =>
 // Omit → whole group. Lets a single-rule param change skip the other 8 rules' (slow) recompute.
 const ONLY_CODES = (arg('--rules', '') || '').split(',').map((s) => s.trim()).filter(Boolean)
 const ACC_REF_BIN = path.resolve(__dirname, '../../rule-engine-rs/target/release/check-7500-ref')
+
+/**
+ * Resolve the rule scope for a local checkout without Rust release binaries.
+ *
+ * In that mode 8004 has a shared JavaScript fallback, while the other rule
+ * binaries do not. An unscoped cold-start must therefore recompute only 8004;
+ * otherwise a missing 7500/other binary can abort the pass before 8004 is
+ * calculated and leave Alert Center showing stale data.
+ */
+export const resolveLiveRecomputeCodes = (onlyCodes, skipRust) => {
+  const explicit = Array.isArray(onlyCodes) ? onlyCodes.filter(Boolean) : []
+  return explicit.length > 0 ? explicit : (skipRust ? ['8004'] : [])
+}
+
+export const shouldRefreshLiveAccRef = (skipRust) => !skipRust
+
+const SKIP_RUST = rustBinsSkipped()
+const RECOMPUTE_CODES = resolveLiveRecomputeCodes(ONLY_CODES, SKIP_RUST)
 
 function readEnv(key) {
   if (process.env[key]) return process.env[key]
@@ -1182,12 +1201,71 @@ export function liveSource(db, fromIso, toExclusiveIso) {
            group by rf.crew_id, rf.pairing_id`, P)).rows
     },
 
+    // ── rule 8004 — assigned flight fleet by segment ──
+    // Keep this Live adapter aligned with scenario legality: the fleet used by
+    // 8004 is segment-level, and may come from pairing_segment, flight, or the
+    // pairing fallback. Without this accessor a live pass can complete
+    // successfully while silently checking no fleet qualifications at all.
+    async fleetSegments(crewIds = []) {
+      const ids = [...new Set((Array.isArray(crewIds) ? crewIds : []).map((id) => String(id).trim()).filter(Boolean))]
+      return (await db.query(
+        `select rf.crew_id, rf.pairing_id, rf.duty_seq, rf.seg_seq,
+                coalesce(nullif(ps.fleet_seg, ''), nullif(f.fleet, ''), nullif(p.fleet, ''), '') as fleet,
+                coalesce(nullif(rf.assignment_group, ''), nullif(p.assignment_group, ''), '') as assignment_group,
+                coalesce(nullif(rf.assignment, ''), nullif(p.assignment, ''), '') as assignment,
+                extract(epoch from coalesce(rf.sch_str_dt_utc, ps.sch_str_dt_utc, f.sch_dep_dt_utc))::bigint as start_secs,
+                extract(epoch from coalesce(rf.sch_end_dt_utc, ps.sch_end_dt_utc, f.sch_arv_dt_utc))::bigint as end_secs
+           from roster_flight rf
+           left join pairing p
+             on p.id = rf.pairing_id and coalesce(p.is_deleted, 0) = 0
+           left join pairing_segment ps
+             on ps.pairing_id = rf.pairing_id
+            and coalesce(ps.is_deleted, 0) = 0
+            and ps.duty_seq = rf.duty_seq
+            and ps.seg_seq = rf.seg_seq
+           left join flight f
+             on f.id = coalesce(rf.flt_id, ps.flt_id)
+            and coalesce(f.is_deleted, 0) = 0
+          where rf.is_deleted = 0
+            and rf.sch_str_dt_utc >= $1 and rf.sch_str_dt_utc < $2
+            and rf.pairing_id is not null
+            and (cardinality($3::varchar[]) = 0 or rf.crew_id = any($3::varchar[]))`,
+        [...P, ids])).rows
+    },
+
+    // ── rule 8004 — effective crew fleet qualifications ──
+    // crew_fleet has no is_valid column in the current Live schema; validity is
+    // represented by the effective/expiry dates and evaluated by rule8004.
+    async fleetQuals(crewIds = []) {
+      const ids = [...new Set((Array.isArray(crewIds) ? crewIds : []).map((id) => String(id).trim()).filter(Boolean))]
+      return (await db.query(
+        `select crew_id, fleet_specific as value,
+                to_char(eff_dt, 'YYYY-MM-DD') as eff_date,
+                to_char(exp_dt, 'YYYY-MM-DD') as exp_date
+           from crew_fleet
+          where crew_id = any($1::varchar[])
+            and fleet_specific is not null and fleet_specific <> ''
+         union all
+         select crew_id, ac_type,
+                to_char(eff_dt, 'YYYY-MM-DD'), to_char(exp_dt, 'YYYY-MM-DD')
+           from crew_fleet
+          where crew_id = any($1::varchar[])
+            and ac_type is not null and ac_type <> ''
+         union all
+         select crew_id, fleet_grp,
+                to_char(eff_dt, 'YYYY-MM-DD'), to_char(exp_dt, 'YYYY-MM-DD')
+           from crew_fleet
+          where crew_id = any($1::varchar[])
+            and fleet_grp is not null and fleet_grp <> ''`,
+        [ids])).rows
+    },
+
     // ── rule 8004 — crew_base qualifications (Q rows) ──
     async baseQuals(crewIds) {
       return (await db.query(
         `select crew_id, base, to_char(coalesce(eff_dt_utc, eff_dt),'YYYY-MM-DD') as eff_date,
                 to_char(coalesce(exp_dt_utc, exp_dt),'YYYY-MM-DD') as exp_date
-           from f8.crew_base where crew_id = any($1::varchar[])`, [crewIds])).rows
+           from crew_base where crew_id = any($1::varchar[])`, [crewIds])).rows
     },
 
     // Full activity chain for 8004 BASE's closed-loop location exemption. Pairings
@@ -1456,18 +1534,26 @@ async function main() {
     // crew-specific Ref values on every live legality pass so roster mutations and parameter
     // changes cannot leave Pairing Info behind. The source intentionally ignores FROM/TO:
     // acclimatisation state is defined over each focused crew's complete chronological line.
-    const accRefRows = await loadLiveAccRefRows(db, FOCUS_CREW_IDS)
-    const accRefParams = await loadLiveAccRefParams(db, RULESET_ID)
-    const accRefUpdates = buildLiveAccRefUpdates(accRefRows, accRefParams)
-    await db.query('begin')
-    await persistLiveAccRef(db, accRefUpdates, FOCUS_CREW_IDS)
-    await db.query('commit')
+    // The local checkout may intentionally omit the private check-7500-ref
+    // artifact. In that case 8004 still has a JavaScript fallback, so do not
+    // let the optional 7500 state refresh abort the complete live pass.
+    let accRefRows = []
+    if (shouldRefreshLiveAccRef(SKIP_RUST)) {
+      accRefRows = await loadLiveAccRefRows(db, FOCUS_CREW_IDS)
+      const accRefParams = await loadLiveAccRefParams(db, RULESET_ID)
+      const accRefUpdates = buildLiveAccRefUpdates(accRefRows, accRefParams)
+      await db.query('begin')
+      await persistLiveAccRef(db, accRefUpdates, FOCUS_CREW_IDS)
+      await db.query('commit')
+    } else {
+      console.warn('live recheck: SKIP_RUST_BINS=true; skipping 7500 reference refresh')
+    }
     const ctx = { ruleGroupCode: GROUP, rulesetId: RULESET_ID, dateFrom: FROM, dateTo: TO }
     if (Number.isFinite(FOCUS_START_SECS) && Number.isFinite(FOCUS_END_SECS)) {
       ctx.focusIntervals = [{ startSecs: FOCUS_START_SECS, endSecs: FOCUS_END_SECS }]
     }
     if (FOCUS_CREW_IDS.length > 0) ctx.focusCrewIds = FOCUS_CREW_IDS
-    const all = await computeViolations(liveSource(db, FROM, toExclusive), ctx, ONLY_CODES)
+    const all = await computeViolations(liveSource(db, FROM, toExclusive), ctx, RECOMPUTE_CODES)
     await db.query('begin')
     // Scoped recheck: when --rules is given, only clear THOSE rule codes' rows so the other
     // rules' (untouched) violations survive the delete+reinsert.
@@ -1477,7 +1563,7 @@ async function main() {
     // pairing. After the anchor fix, the upsert key no longer collides with that old row.
     // Delete a bounded lookback slice for 8002 so stale out-of-window anchors are removed
     // before the corrected rows are inserted. The 365-day bound matches manday lead-in.
-    const recomputes8002 = ONLY_CODES.length === 0 || ONLY_CODES.includes('8002')
+    const recomputes8002 = RECOMPUTE_CODES.length === 0 || RECOMPUTE_CODES.includes('8002')
     if (recomputes8002) {
       await db.query(
         `delete from rule_violation
@@ -1486,8 +1572,8 @@ async function main() {
             and start_dt < ($3::date + interval '1 day')`,
         [RULESET_ID, FROM, TO, ROLLING_8002_DELETE_LOOKBACK_DAYS])
     }
-    const normalCodes = ONLY_CODES.filter((code) => code !== '8002')
-    if (ONLY_CODES.length) {
+    const normalCodes = RECOMPUTE_CODES.filter((code) => code !== '8002')
+    if (RECOMPUTE_CODES.length) {
       if (normalCodes.length) {
         await db.query(
           `delete from rule_violation
@@ -1534,7 +1620,7 @@ async function main() {
       `select rule_code, count(*)::int n from rule_violation
          where ruleset_id=$1 and start_dt >= $2::timestamptz and start_dt < ($3::date + interval '1 day')
          group by rule_code order by rule_code`, [RULESET_ID, FROM, TO])
-    const scope = ONLY_CODES.length ? `rules[${ONLY_CODES.join(',')}]` : 'all-rules'
+    const scope = RECOMPUTE_CODES.length ? `rules[${RECOMPUTE_CODES.join(',')}]` : 'all-rules'
     console.log(`live recheck ${GROUP} ${FROM}..${TO} (${scope}): ${all.length} computed; persisted in-window:`, cnt.rows)
   } catch (e) {
     try { await db.query('rollback') } catch { /* not in txn */ }

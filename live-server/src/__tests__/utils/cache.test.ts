@@ -64,6 +64,21 @@ describe('cache utils', () => {
 
       expect(result).toEqual(data)
     })
+
+    it('coalesces concurrent cache misses for the same key into one database fill', async () => {
+      redis.get.mockResolvedValue(null)
+      redis.set.mockResolvedValue('OK')
+      let resolveFetch!: (value: { id: number }) => void
+      const fetchFn = vi.fn(() => new Promise<{ id: number }>((resolve) => { resolveFetch = resolve }))
+
+      const first = getOrSet(redis as any, 'pairing:list:shared', 60, fetchFn)
+      await Promise.resolve()
+      const second = getOrSet(redis as any, 'pairing:list:shared', 60, fetchFn)
+      resolveFetch({ id: 1 })
+
+      await expect(Promise.all([first, second])).resolves.toEqual([{ id: 1 }, { id: 1 }])
+      expect(fetchFn).toHaveBeenCalledTimes(1)
+    })
   })
 
   // ---------- invalidate ----------

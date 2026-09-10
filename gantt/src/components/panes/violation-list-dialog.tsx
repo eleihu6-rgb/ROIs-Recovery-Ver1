@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Bell, Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Bell, ListChecks, Search } from 'lucide-react'
 import { AppDialog, Button } from '@rois/ui'
 import { DateRangePicker } from '@/components/common/date-range-picker'
 import { LegalityRecheckIndicator } from '../legality/legality-recheck-indicator'
@@ -21,6 +21,13 @@ export interface CrewViolationRow {
   ruleInstance?: string | null
   severity: number
   message: string
+  pairingId?: number | null
+  flightDate?: string | null
+  flightNumber?: string | null
+  fleet?: string | null
+  requiredRank?: string | null
+  /** False when the associated Roster has already ended and needs no Recovery. */
+  canRecover?: boolean
 }
 
 /** Display id: "8002/006" when the instance is known, else just "8002". */
@@ -43,6 +50,8 @@ interface Props {
    * scenario's own persisted legality status. Omitted → no status line rendered.
    */
   recheckInfo?: RecheckIndicatorInfo
+  /** Live Alert Center only: open the combined Recovery workflow for selected rows. */
+  onRecovery?: (rows: CrewViolationRow[]) => void
 }
 
 type GroupBy = 'severity' | 'rule' | 'base' | 'rank'
@@ -68,6 +77,24 @@ const sevDotClass = (sev: number): string => {
   return 'bg-yellow-500'
 }
 
+const rowKeyOf = (row: CrewViolationRow): string =>
+  `${row.crewId}|${row.pairingId ?? ''}|${row.ruleCode}|${row.ruleInstance ?? ''}|${row.flightDate ?? ''}|${row.message}`
+
+// Only 8004 alerts that the source has explicitly marked as recoverable can enter Recovery.
+// We treat `canRecover === true` as the gate (not `!== false`) so a missing/undefined value
+// from a non-Live source (e.g. Scenario) or a stale row is always treated as NOT recoverable
+// instead of silently allowing selection.
+const isRecoverable = (row: CrewViolationRow): boolean =>
+  row.ruleCode === '8004' && row.pairingId != null && row.canRecover === true
+
+/** Human-readable reason why a row cannot be selected for recovery. */
+const notRecoverableReason = (row: CrewViolationRow): string => {
+  if (row.ruleCode !== '8004') return "Only Rule 8004 alerts are recoverable (this is " + row.ruleCode + ")."
+  if (row.pairingId == null) return "This alert is not bound to a specific Pairing; only Pairing-anchored 8004 alerts are recoverable."
+  if (row.canRecover !== true) return "This 8004 alert is on a Roster that is no longer eligible for Recovery (e.g. it has already ended, or the source has not marked it recoverable in the current ruleset)."
+  return ""
+}
+
 /**
  * Legality Alert Center — lists every rule-violation message loaded into the gantt,
  * one message per row (crew id, base, rank, rule id, message). Scoped exactly to what
@@ -75,7 +102,7 @@ const sevDotClass = (sev: number): string => {
  * canvas bell renders from), so it doubles as a check that messages reached the front
  * end. The date row drives the gantt's own range; the recheck indicator is informational.
  */
-export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckInfo }: Props) => {
+export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckInfo, onRecovery }: Props) => {
   const setModule = useShellStore((s) => s.setModule)
   const setLegalityItem = useShellStore((s) => s.setLegalityItem)
   const requestFocus = useRuleInstancesStore((s) => s.requestFocus)
@@ -85,6 +112,11 @@ export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckI
   // Free-text search over crew id / rank / base, applied to the already-loaded rows
   // (not a server query) — narrows everything: the group list, table, and counts.
   const [search, setSearch] = useState('')
+  const [selectedRecoveryKeys, setSelectedRecoveryKeys] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (!open) setSelectedRecoveryKeys(new Set())
+  }, [open])
 
   // Rows narrowed by the search box. A row matches when its crew id, rank, or base
   // contains the (case-insensitive) query. Empty query matches all.
@@ -130,6 +162,37 @@ export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckI
     return [...filtered].sort((a, b) => (b.severity - a.severity) || a.crewId.localeCompare(b.crewId))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchedRows, groupBy, selectedKey])
+
+  const selectableVisibleRows = useMemo(
+    () => visibleRows.filter(isRecoverable),
+    [visibleRows],
+  )
+  const selectedRecoveryRows = useMemo(
+    () => rows.filter((row) => selectedRecoveryKeys.has(rowKeyOf(row)) && isRecoverable(row)),
+    [rows, selectedRecoveryKeys],
+  )
+  const allVisibleSelected = selectableVisibleRows.length > 0
+    && selectableVisibleRows.every((row) => selectedRecoveryKeys.has(rowKeyOf(row)))
+
+  const toggleRecoveryRow = (row: CrewViolationRow) => {
+    if (!isRecoverable(row)) return
+    const key = rowKeyOf(row)
+    setSelectedRecoveryKeys((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const toggleVisibleRecoveryRows = () => {
+    setSelectedRecoveryKeys((current) => {
+      const next = new Set(current)
+      if (allVisibleSelected) selectableVisibleRows.forEach((row) => next.delete(rowKeyOf(row)))
+      else selectableVisibleRows.forEach((row) => next.add(rowKeyOf(row)))
+      return next
+    })
+  }
 
   // Switching the grouping dimension resets the selection to "all".
   const changeGroupBy = (g: GroupBy) => { setGroupBy(g); setSelectedKey(null) }
@@ -185,8 +248,24 @@ export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckI
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        {onRecovery && (
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-2xs tabular-nums text-muted-foreground">{selectedRecoveryRows.length} selected</span>
+            <Button
+              className="h-7 gap-1.5 px-2.5 text-2xs"
+              disabled={selectedRecoveryRows.length === 0}
+              onClick={() => onRecovery(selectedRecoveryRows)}
+              title="Recover all selected 8004 alerts (Ctrl/Cmd+R)"
+              aria-keyshortcuts="Control+R Meta+R"
+              data-testid="alert-recovery-selected"
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              <span><span className="underline underline-offset-2">R</span>ecovery selected</span>
+            </Button>
+          </div>
+        )}
         {recheckInfo && (
-          <div className="ml-auto">
+          <div className={onRecovery ? '' : 'ml-auto'}>
             {recheckInfo.type === 'live'
               ? <LegalityRecheckIndicator groupCode={recheckInfo.groupCode} />
               : <ScenarioRecheckIndicator
@@ -265,6 +344,7 @@ export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckI
             <table className="w-full border-collapse text-xs" data-testid="violation-list-table">
               <thead className="sticky top-0 z-10 bg-muted/95">
                 <tr className="border-b border-border text-left text-2xs uppercase tracking-wide text-muted-foreground">
+                  {onRecovery && <th className="w-10 px-3 py-2 font-medium"><input type="checkbox" checked={allVisibleSelected} disabled={selectableVisibleRows.length === 0} onChange={toggleVisibleRecoveryRows} aria-label="Select all visible recoverable alerts" title={selectableVisibleRows.length === 0 ? "No recoverable 8004 alerts in the current view (non-8004 rules and 8004 on ended/unsupported Rosters are excluded)." : ""} data-testid="alert-recovery-select-all" className="h-3.5 w-3.5 accent-primary disabled:cursor-not-allowed disabled:opacity-50" /></th>}
                   <th className="px-3 py-2 font-medium">Sev</th>
                   <th className="px-3 py-2 font-medium">Crew</th>
                   <th className="px-3 py-2 font-medium">Base</th>
@@ -280,14 +360,37 @@ export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckI
                     className={[
                       'border-b border-border/50 align-top hover:bg-accent/40',
                       onCrewClick ? 'cursor-pointer' : '',
+                      onRecovery && !isRecoverable(r) ? 'opacity-60 saturate-50' : '',
                     ].join(' ')}
                     data-testid="violation-list-row"
                     data-crew-id={r.crewId}
                     data-rule-code={r.ruleCode}
                     data-rule-id={ruleIdOf(r)}
-                    onClick={onCrewClick ? () => onCrewClick(r.crewId) : undefined}
-                    title={onCrewClick ? `Bring crew ${r.crewId} to the top of the roster` : undefined}
+                    data-recoverable={onRecovery ? String(isRecoverable(r)) : undefined}
+                    data-not-recoverable-reason={onRecovery && !isRecoverable(r) ? notRecoverableReason(r) : undefined}
+                    onClick={onCrewClick && isRecoverable(r) ? () => onCrewClick(r.crewId) : undefined}
+                    title={(() => {
+                      if (onRecovery && !isRecoverable(r)) return notRecoverableReason(r)
+                      if (onCrewClick) return `Bring crew ${r.crewId} to the top of the roster`
+                      return undefined
+                    })()}
                   >
+                    {onRecovery && (() => {
+                      const recoverable = isRecoverable(r)
+                      const reason = recoverable ? '' : notRecoverableReason(r)
+                      return <td className="px-3 py-2" onClick={(event) => event.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedRecoveryKeys.has(rowKeyOf(r))}
+                          disabled={!recoverable}
+                          onChange={() => toggleRecoveryRow(r)}
+                          aria-label={recoverable ? `Select recovery alert for Crew ${r.crewId}, Pairing ${r.pairingId ?? 'unknown'}` : `Cannot select: ${reason}`}
+                          title={recoverable ? '' : reason}
+                          data-testid={`alert-recovery-checkbox-${r.crewId}-${r.pairingId ?? 'none'}`}
+                          className="h-3.5 w-3.5 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </td>
+                    })()}
                     <td className="px-3 py-2">
                       <span
                         className={`inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-sm px-1 text-2xs font-bold tabular-nums ${sevBadgeClass(r.severity)}`}

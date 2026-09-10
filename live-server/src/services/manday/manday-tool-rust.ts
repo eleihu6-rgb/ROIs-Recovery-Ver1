@@ -40,6 +40,7 @@ export function runRust(rows: ActivityRow[], bandMin = 3900, bandMax = 4500): Ru
     input: rows.map(toTsv).join('\n'),
     encoding: 'utf-8',
     maxBuffer: 1 << 28,
+    windowsHide: true,
   })
   if (res.status !== 0) throw new Error(`ruletool exited ${res.status}: ${res.stderr}`)
   const D: string[][] = []

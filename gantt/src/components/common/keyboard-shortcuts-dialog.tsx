@@ -11,6 +11,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     title: 'File',
     shortcuts: [
       { keys: ['Ctrl', 'S'], label: 'Save all pending changes' },
+      { keys: ['Ctrl', 'R'], label: 'Open Crew Roster Recovery' },
     ],
   },
   {

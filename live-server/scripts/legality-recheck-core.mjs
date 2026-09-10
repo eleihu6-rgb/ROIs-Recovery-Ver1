@@ -47,6 +47,33 @@ const LEGALITY_MESSAGES = loadMessages()
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const BIN_DIR = path.resolve(__dirname, '../../rule-engine-rs/target/release')
 const SRC_DIR = path.resolve(__dirname, '../../rule-engine-rs/src')
+const LIVE_SERVER_ENV_FILE = path.resolve(__dirname, '../.env')
+
+const isTruthyEnvValue = (value) => ['true', '1'].includes(String(value ?? '').trim().toLowerCase())
+
+/**
+ * Read the local Rust-binary switch with dotenv's precedence rules.
+ *
+ * The API entrypoint loads dotenv before spawning live-legality, but the CLI is
+ * also invoked directly by restart scripts and diagnostics. Reading the local
+ * env file here keeps both entry paths consistent without making production
+ * deployments depend on a development-only fallback.
+ */
+export function rustBinsSkipped({ environment = process.env, envFile = LIVE_SERVER_ENV_FILE } = {}) {
+  if (Object.prototype.hasOwnProperty.call(environment, 'SKIP_RUST_BINS')) {
+    return isTruthyEnvValue(environment.SKIP_RUST_BINS)
+  }
+  try {
+    const line = fs.readFileSync(envFile, 'utf8')
+      .split(/\r?\n/)
+      .find((entry) => /^\s*SKIP_RUST_BINS\s*=/.test(entry) && !/^\s*#/.test(entry))
+    if (!line) return false
+    const raw = line.replace(/^\s*SKIP_RUST_BINS\s*=\s*/, '').trim().replace(/^(['"])(.*)\1$/, '$2')
+    return isTruthyEnvValue(raw)
+  } catch {
+    return false
+  }
+}
 
 // Staleness guard: the check-* binaries are BUILD ARTIFACTS (git-ignored), so a `git pull`
 // that changes rule-engine-rs/src leaves an out-of-date binary that silently produces WRONG
@@ -71,6 +98,15 @@ const newestSrcMtime = () => {
   return _srcNewest
 }
 const REBUILD_HINT = 'Rebuild: cargo build --release --manifest-path rule-engine-rs/Cargo.toml'
+const resolveBinPath = (bin) => {
+  const candidates = process.platform === 'win32' && !bin.endsWith('.exe')
+    ? [path.join(BIN_DIR, bin), path.join(BIN_DIR, bin + '.exe')]
+    : [path.join(BIN_DIR, bin)]
+  for (const candidate of candidates) {
+    try { fs.accessSync(candidate, fs.constants.X_OK); return candidate } catch { /* try next */ }
+  }
+  return candidates[0]
+}
 const assertFresh = (binPath, bin) => {
   const src = newestSrcMtime()
   if (src == null) return // no source tree to compare against (deployed binary-only) → trust it
@@ -390,11 +426,68 @@ const releaseBinSlot = () => {
   else activeBins--
 }
 
+/**
+ * Local-development fallback for the base qualification checker.
+ *
+ * The Rust submodule is intentionally required in production. Some local
+ * checkouts omit that private submodule, though, while still setting
+ * SKIP_RUST_BINS=true to start the API. Keep the local roster preview usable
+ * for the 8004 rule without weakening production behavior; other binaries
+ * continue to fail loudly when their release artifact is unavailable.
+ */
+const runLocal8004Fallback = (args, tsv) => {
+  if (!rustBinsSkipped() || !args.includes('--emit-tsv')) return null
+  const graceArg = args.indexOf('--grace-days')
+  const graceDays = graceArg >= 0 ? Number(args[graceArg + 1]) || 0 : 0
+  const rosters = []
+  const qualifications = new Map()
+  for (const line of String(tsv).split(/\r?\n/).filter(Boolean)) {
+    const cells = line.split('\t')
+    if (cells[0] === 'R') {
+      rosters.push({ crew: cells[1], pairing: cells[2], base: cells[3], start: cells[4], end: cells[5] })
+    } else if (cells[0] === 'Q') {
+      const list = qualifications.get(cells[1]) ?? []
+      list.push({ base: cells[2], eff: cells[3], exp: cells[4] })
+      qualifications.set(cells[1], list)
+    }
+  }
+  const day = (value) => {
+    const t = Date.parse(`${String(value).slice(0, 10)}T00:00:00Z`)
+    return Number.isFinite(t) ? t : null
+  }
+  const graceMs = graceDays * DAY_MS
+  const output = []
+  for (const roster of rosters) {
+    if (!roster.base || roster.base === '*') continue
+    const start = day(roster.start)
+    const end = day(roster.end)
+    const valid = start != null && end != null && (qualifications.get(roster.crew) ?? []).some((qualification) => {
+      if (String(qualification.base).toUpperCase() !== String(roster.base).toUpperCase()) return false
+      const eff = qualification.eff === '-' ? null : day(qualification.eff)
+      const exp = qualification.exp === '-' ? null : day(qualification.exp)
+      return (eff == null || eff <= start) && (exp == null || end < exp + graceMs)
+    })
+    if (!valid) output.push([roster.crew, roster.pairing, roster.base])
+  }
+  return output
+}
+
 export async function runBin(bin, args, tsv) {
   await acquireBinSlot()
-  const binPath = path.join(BIN_DIR, bin)
+  const binPath = resolveBinPath(bin)
   try {
-    assertFresh(binPath, bin)
+    // Local checkouts may intentionally omit the private Rust submodule. The 8004
+    // checker has a JS fallback for that development configuration; keep the
+    // fallback reachable when the binary is missing before spawn() is attempted.
+    try {
+      assertFresh(binPath, bin)
+    } catch (error) {
+      if (bin === 'check-8004') {
+        const fallback = runLocal8004Fallback(args, tsv)
+        if (fallback != null) return fallback
+      }
+      throw error
+    }
     // Node 22 can leave stdin pipes open for stdin-to-EOF CLIs; feeding the child from
     // a real temp file keeps all rule binaries deterministic and avoids hung checks.
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rois-rule-'))
@@ -404,7 +497,7 @@ export async function runBin(bin, args, tsv) {
       fs.writeFileSync(tmpFile, tsv, 'utf-8')
       fd = fs.openSync(tmpFile, 'r')
       const { stdout, stderr } = await new Promise((resolve, reject) => {
-        const child = spawn(binPath, args, { stdio: [fd, 'pipe', 'pipe'] })
+        const child = spawn(binPath, args, { stdio: [fd, 'pipe', 'pipe'], windowsHide: true })
         let out = ''
         let err = ''
         let settled = false
@@ -419,6 +512,12 @@ export async function runBin(bin, args, tsv) {
         })
       })
       return stdout.trim().split('\n').filter(Boolean).map((l) => l.split('\t'))
+    } catch (error) {
+      if (bin === 'check-8004' && error?.code === 'ENOENT') {
+        const fallback = runLocal8004Fallback(args, tsv)
+        if (fallback != null) return fallback
+      }
+      throw error
     } finally {
       if (fd != null) fs.closeSync(fd)
       try { fs.unlinkSync(tmpFile) } catch {}
@@ -1547,7 +1646,7 @@ export async function rule8004(source, ctx) {
   if (!instances.length) { ctx.log('8004: no instances in rule set — skipped'); return [] }
   const rosters = await source.assignmentsRaw()
   const crewIds = [...new Set(rosters.map((r) => r.crew_id))]
-  const quals = await source.baseQuals(crewIds)
+const quals = await source.baseQuals(crewIds)
   const rosterByKey = new Map(rosters.map((r) => [`${r.crew_id}:${r.pairing_id}`, r]))
   const span = new Map(rosters.map((r) => [`${r.crew_id}:${r.pairing_id}`, { s: Number(r.start_secs), e: Number(r.end_secs) }]))
   const lines = []
@@ -1569,9 +1668,62 @@ export async function rule8004(source, ctx) {
   for (const q of competencyQuals) lines.push(['K', q.crew_id, q.dimension, q.value, q.eff_date ?? '-', q.exp_date ?? '-'].join('\t'))
   const tsv = lines.join('\n')
   const out = []
+  const binRunner = ctx.runBin ?? runBin
+  const add = (violation) => out.push(violation)
+
+  const valuesMatch = (filter, value) => {
+    const wanted = filterValues(filter)
+    if (wanted.length === 0) return true
+    const actual = String(value ?? '').trim().toUpperCase()
+    return actual !== '' && wanted.some((v) => String(v).trim().toUpperCase() === actual)
+  }
+  const enabled = (value) => ['Y', 'YES', 'TRUE', '1'].includes(String(value ?? '').trim().toUpperCase())
+  const dayMs = (value) => {
+    const raw = String(value ?? '').slice(0, 10)
+    const time = Date.parse(`${raw}T00:00:00Z`)
+    return Number.isFinite(time) ? time : null
+  }
+  const qualificationCovers = (qualification, day, graceDays) => {
+    const target = dayMs(day)
+    if (target == null) return false
+    const eff = qualification.eff_date ?? qualification.eff ?? null
+    const exp = qualification.exp_date ?? qualification.exp ?? null
+    const effMs = eff && eff !== '-' ? dayMs(eff) : null
+    const expMs = exp && exp !== '-' ? dayMs(exp) : null
+    const graceMs = Math.max(0, Number(graceDays) || 0) * DAY_MS
+    return (effMs == null || effMs <= target) && (expMs == null || target < expMs + graceMs + DAY_MS)
+  }
+  const rawFleetSegments = source.fleetSegments
+    ? await source.fleetSegments(crewIds)
+    : rosters.flatMap((r) => (r.segments ?? []).map((segment) => ({ ...segment, crew_id: r.crew_id, pairing_id: r.pairing_id })))
+  const fleetSegmentsByPairing = new Map()
+  for (const segment of rawFleetSegments ?? []) {
+    const key = `${segment.crew_id}:${segment.pairing_id}`
+    const list = fleetSegmentsByPairing.get(key) ?? []
+    list.push(segment)
+    fleetSegmentsByPairing.set(key, list)
+  }
+
+  let fleetQuals = []
+  if (instances.some((inst) => {
+    const H = headerIndexer(inst.header)
+    return (inst.rows ?? []).some((row) => String(row[H('Type')] ?? '').trim().toUpperCase() === 'FLEET' && enabled(row[H('Enable Check')]))
+  })) {
+    if (source.fleetQuals) fleetQuals = await source.fleetQuals(crewIds)
+    else if (source.crewQualEntries) fleetQuals = (await source.crewQualEntries()).filter((q) => ['F', 'FLEET'].includes(String(q.dim ?? q.dimension ?? '').trim().toUpperCase()))
+  }
+  const fleetQualsByCrew = new Map()
+  for (const qualification of fleetQuals ?? []) {
+    const key = String(qualification.crew_id ?? '').trim()
+    if (!key) continue
+    const list = fleetQualsByCrew.get(key) ?? []
+    list.push(qualification)
+    fleetQualsByCrew.set(key, list)
+  }
+
   for (const inst of instances) {
     const H = headerIndexer(inst.header)
-    for (const [rowIndex, row] of (inst.rows ?? []).entries()) {
+for (const [rowIndex, row] of (inst.rows ?? []).entries()) {
       const type = fieldRaw(row, H, 'Type', 'BASE').toUpperCase()
       if (!['BASE', 'RANK', 'FLEET'].includes(type)) {
         ctx.log(`8004/${inst.instance} row ${rowIndex + 1}: unsupported Type=${type}; skipped`)
@@ -1684,7 +1836,19 @@ export async function rule8004(source, ctx) {
       }
     }
   }
-  return out
+  // Base and Fleet are two checks of the same 8004 instance. Persist one row per
+  // crew/pairing/instance/scope and retain both explanations when both fail.
+  const merged = new Map()
+  for (const violation of out) {
+    const key = `${violation.crew_id}:${violation.pairing_id}:${violation.rule_instance}:${violation.scope_key ?? ''}`
+    const existing = merged.get(key)
+    if (!existing) merged.set(key, violation)
+    else {
+      const body = String(violation.message).replace(/^Row \d+:\s*/, '')
+      if (!String(existing.message).includes(body)) existing.message = `${existing.message} ${body}`
+    }
+  }
+  return [...merged.values()]
 }
 
 // ── Rule 1001 — ASSIGNMENT OVERLAP (same Rust kernel as the solver gate) ─────
@@ -3121,13 +3285,19 @@ export async function computeViolations(source, ctx, onlyCodes) {
   ctx.log = ctx.log ?? ((m) => console.error(`[recheck] ${m}`))
   const all = []
   const profile = !!process.env.RECHECK_PROFILE
-  for (const rule of rules) {
+  // Run every rule fn in parallel. memoizeSource() above already de-duplicates
+  // source-adapter reads across rules, and runBin() caps Rust binary spawns at
+  // MAX_CONCURRENT_BINS, so this is the cheapest way to overlap the per-rule
+  // Rust checker wall time. (Previously a sequential for-await let the slowest
+  // single rule determine the whole compute — preview-draft paths took 14-22s
+  // end-to-end when the full group ran against a busy 4-month window.)
+  const collected = await Promise.all(rules.map(async (rule) => {
     const t0 = profile ? Date.now() : 0
     const rows = await rule(source, ctx)
     if (profile) console.error(`[recheck-profile] ${rule.name}: ${Date.now() - t0}ms, ${rows.length} rows`)
-    // all.push(...rows) overflows the call stack when a rule returns >~125k rows (spread
-    // creates one call argument per element — rule1001 can emit 100k+ overlap rows on a
-    // busy 4-month window). Append with a loop so large result sets never blow the stack.
+    return rows
+  }))
+  for (const rows of collected) {
     for (const r of rows) all.push(r)
   }
   return applyRulesetSeverity(all, setRules)

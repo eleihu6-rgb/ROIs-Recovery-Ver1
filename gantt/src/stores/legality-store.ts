@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { legalityApi } from '@/services/legality-api'
+import { useRosterStore } from './roster-store'
+import { useCrewStore } from './crew-store'
 import { notify } from '@/utils/notify'
 import type {
   LegalityCatalogRule,
@@ -87,6 +89,18 @@ export const useLegalityStore = create<LegalityStore>((set, get) => ({
     // violations:{schema}:{worksetId} and only reaches clients that set_rule_group.
     const { useRuleCheckStore } = await import('./rule-check-store')
     useRuleCheckStore.getState().setRuleGroup(String(id))
+    // Rule switch clears the existing violations (see setRuleGroup). If the user
+    // already has a roster loaded, kick off a fresh check immediately so Alert
+    // Center / canvas bells reflect the new ruleset without waiting for the next
+    // Apply / Refresh. Skip when no items are loaded yet (cold start: applyGanttFilters
+    // or refreshAllPanes will run the first check on its own).
+    const items = useRosterStore.getState().main.rosterItems
+    if (items.length > 0) {
+      const { selectedCrewIds } = useCrewStore.getState()
+      if (selectedCrewIds.length > 0) {
+        void useRuleCheckStore.getState().checkCrews(selectedCrewIds, items)
+      }
+    }
     try {
       const data = await legalityApi.getRuleset(id)
       // Guard against an out-of-order response if the user clicked another set meanwhile.

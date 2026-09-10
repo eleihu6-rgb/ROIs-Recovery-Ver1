@@ -29,6 +29,7 @@ import { drawSelectionOutline } from '../selection-outline'
 import { drawDelayGhost } from './flight-renderer'
 import type { BaseRenderContext } from './base-renderer'
 import type { Pairing, PairingSegment, PairingItem } from '@/types/pairing'
+import type { RecoveryPairingPreview } from '@/stores/recovery-preview-store'
 import { formatTime } from '@/stores/timezone-store'
 import { SESSION_COLORS } from '@/stores/pairing-store'
 import { useAssignmentStore } from '@/stores/assignment-store'
@@ -85,6 +86,8 @@ export interface PairingRenderContext extends BaseRenderContext {
   showSessionTags: boolean
   /** V4-P02: prebuilt duty buckets keyed by pairing id (falls back to live grouping if absent). */
   dutyBuckets?: Map<number, PairingDutyGroup[]>
+  /** Session-only Recovery Pairing changes to tint and label in the Pairing pane. */
+  pairingPreviewById?: Map<number, RecoveryPairingPreview>
 }
 
 /**
@@ -469,6 +472,38 @@ const drawSegmentRow = (
         )
       }
     }
+  }
+
+  const pairingPreview = rc.pairingPreviewById?.get(pairing.id)
+  if (pairingPreview) {
+    const previewColor = pairingPreview.status === 'created'
+      ? 'rgba(16, 185, 129, 0.9)'
+      : pairingPreview.status === 'cancelled'
+        ? 'rgba(244, 63, 94, 0.9)'
+        : 'rgba(14, 165, 233, 0.9)'
+    const previewFill = pairingPreview.status === 'created'
+      ? 'rgba(16, 185, 129, 0.08)'
+      : pairingPreview.status === 'cancelled'
+        ? 'rgba(244, 63, 94, 0.08)'
+        : 'rgba(14, 165, 233, 0.08)'
+    ctx.save()
+    ctx.fillStyle = previewFill
+    ctx.fillRect(0, baseY + 1, canvasWidth, PAIRING_ROW_HEIGHT - 2)
+    ctx.strokeStyle = previewColor
+    ctx.lineWidth = 1.5
+    ctx.setLineDash(pairingPreview.status === 'modified' ? [5, 3] : [3, 2])
+    ctx.strokeRect(1, baseY + 1, canvasWidth - 2, PAIRING_ROW_HEIGHT - 2)
+    ctx.setLineDash([])
+    ctx.fillStyle = previewColor
+    ctx.font = `bold 8px ${PUCK_FONT_FAMILY}`
+    ctx.textBaseline = 'top'
+    ctx.textAlign = 'left'
+    ctx.fillText(
+      pairingPreview.status === 'created' ? 'CREATED' : pairingPreview.status === 'cancelled' ? 'CANCELLED' : 'AFTER',
+      7,
+      baseY + 2,
+    )
+    ctx.restore()
   }
 }
 

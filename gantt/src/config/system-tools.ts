@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type ActiveSystemItem = 'scheduler' | 'queue-tasks' | 'grafana' | 'prometheus' | 'windmill' | 'data-quality' | 'user-mgmt' | 'profile-mgmt' | 'menu-mgmt' | 'pbs-user-mgmt' | 'dept-mgmt'
+export type ActiveSystemItem = 'scheduler' | 'queue-tasks' | 'interface' | 'grafana' | 'prometheus' | 'windmill' | 'data-quality' | 'user-mgmt' | 'profile-mgmt' | 'menu-mgmt' | 'pbs-user-mgmt' | 'dept-mgmt'
 
 export interface SystemToolDefinition {
   item: ActiveSystemItem
@@ -17,7 +17,7 @@ type SystemToolEnv = Partial<Record<
   string
 >>
 
-export const DEFAULT_SYSTEM_TOOL_URLS: Record<Exclude<ActiveSystemItem, 'scheduler' | 'data-quality' | 'user-mgmt' | 'profile-mgmt' | 'menu-mgmt' | 'pbs-user-mgmt' | 'dept-mgmt'>, string> = {
+export const DEFAULT_SYSTEM_TOOL_URLS: Record<Exclude<ActiveSystemItem, 'scheduler' | 'interface' | 'data-quality' | 'user-mgmt' | 'profile-mgmt' | 'menu-mgmt' | 'pbs-user-mgmt' | 'dept-mgmt'>, string> = {
   'queue-tasks': '/altair/connector/admin/queues/',
   grafana: '/altair/monitor/grafana/',
   prometheus: '/altair/monitor/prometheus/',
@@ -34,6 +34,12 @@ export const createSystemToolDefinitions = (env: SystemToolEnv): SystemToolDefin
     item: 'scheduler',
     label: 'Scheduler',
     description: 'Central scheduled job controls grouped by service.',
+    url: '',
+  },
+  {
+    item: 'interface',
+    label: 'Interface',
+    description: 'Simulated OPS flight schedule updates and downstream consistency checks.',
     url: '',
   },
   {

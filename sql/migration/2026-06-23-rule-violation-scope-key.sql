@@ -40,7 +40,7 @@ BEGIN
        AND conname = 'rule_violation_uq_scope'
   ) THEN
     ALTER TABLE rule_violation ADD CONSTRAINT rule_violation_uq_scope
-      UNIQUE (crew_id, pairing_id, duty_seq, ruleset_id, rule_code, rule_instance, scope_key, start_dt);
+      UNIQUE NULLS NOT DISTINCT (crew_id, pairing_id, duty_seq, ruleset_id, rule_code, rule_instance, scope_key, start_dt);
   END IF;
 END $$;
 
@@ -64,6 +64,6 @@ BEGIN
        AND conname = 'scenario_rule_violation_uq_scope'
   ) THEN
     ALTER TABLE rule_violation ADD CONSTRAINT scenario_rule_violation_uq_scope
-      UNIQUE (scenario_id, crew_id, pairing_id, duty_seq, ruleset_id, rule_code, rule_instance, scope_key);
+      UNIQUE NULLS NOT DISTINCT (scenario_id, crew_id, pairing_id, duty_seq, ruleset_id, rule_code, rule_instance, scope_key);
   END IF;
 END $$;

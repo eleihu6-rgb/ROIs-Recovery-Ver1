@@ -67,6 +67,62 @@ import type { RosterItem } from '@/types'
 /** Hover overlay color */
 const HOVER_OVERLAY = 'rgba(255, 255, 255, 0.18)'
 
+const RECOVERY_BEFORE_FILL = 'rgba(14, 116, 144, 0.10)'
+const RECOVERY_BEFORE_BORDER = '#0891b2'
+const RECOVERY_AFTER_FILL = 'rgba(16, 185, 129, 0.24)'
+const RECOVERY_AFTER_BORDER = '#059669'
+
+/** Paint the phase marker used by the non-persisted Recovery comparison preview. */
+const drawRecoveryPreviewFrame = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  phase: 'before' | 'after',
+): void => {
+  ctx.save()
+  ctx.strokeStyle = phase === 'after' ? RECOVERY_AFTER_BORDER : RECOVERY_BEFORE_BORDER
+  ctx.lineWidth = phase === 'after' ? 2 : 1.5
+  ctx.setLineDash(phase === 'after' ? [6, 3] : [2, 2])
+  ctx.beginPath()
+  roundedRect(ctx, x, y, width, height, 3)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/**
+ * Paint a compact phase label inside the upper-left corner of a Recovery Roster.
+ * The label is drawn after the puck contents so it remains readable at narrow zooms.
+ */
+const drawRecoveryPhaseLabel = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  phase: 'before' | 'after',
+): void => {
+  if (width < 13) return
+  const color = phase === 'after' ? RECOVERY_AFTER_BORDER : RECOVERY_BEFORE_BORDER
+  const background = phase === 'after' ? 'rgba(236, 253, 245, 0.92)' : 'rgba(207, 250, 254, 0.92)'
+  const fullText = phase === 'after' ? 'After' : 'Before'
+  ctx.save()
+  ctx.font = `bold 7px ${PUCK_FONT_FAMILY}`
+  const fullWidth = ctx.measureText(fullText).width
+  const text = width >= fullWidth + 10 ? fullText : phase === 'after' ? 'A' : 'B'
+  const textWidth = ctx.measureText(text).width
+  const boxWidth = Math.min(width - 4, textWidth + 6)
+  ctx.fillStyle = background
+  ctx.beginPath()
+  roundedRect(ctx, x + 2, y + 2, boxWidth, 10, 2)
+  ctx.fill()
+  ctx.fillStyle = color
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, x + 5, y + 7)
+  ctx.restore()
+}
+
 export const getRosterRestMinutes = (item: RosterItem | null | undefined): number => {
   const minutes = item?.actRestMin ?? item?.dutyActRestMin ?? item?.dutySchRestMin ?? 0
   return Math.max(0, minutes)
@@ -308,8 +364,9 @@ export const renderRosterTasks = (rc: RosterRenderContext): void => {
         if (group.dutyGroups) {
           drawSegmentGroup(rc, group.items, rowIndex, timezone, group.dutyGroups, lane)
         } else {
-          for (const item of group.items) {
-            drawRosterTask(rc, item, rowIndex, timezone, lane)
+          const recoveryLabelIndex = group.items.findIndex((item) => item.isRecoveryBefore || item.isRecoveryAfter)
+          for (const [index, item] of group.items.entries()) {
+            drawRosterTask(rc, item, rowIndex, timezone, lane, recoveryLabelIndex < 0 || index === recoveryLabelIndex)
           }
         }
       }
@@ -387,8 +444,9 @@ export const renderRosterTasks = (rc: RosterRenderContext): void => {
           drawSegmentGroup(rc, group.items, rowIndex, timezone)
         } else {
           // Ground task or pairing fallback block (no dutySeq) → individual block
-          for (const item of group.items) {
-            drawRosterTask(rc, item, rowIndex, timezone)
+          const recoveryLabelIndex = group.items.findIndex((item) => item.isRecoveryBefore || item.isRecoveryAfter)
+          for (const [index, item] of group.items.entries()) {
+            drawRosterTask(rc, item, rowIndex, timezone, undefined, recoveryLabelIndex < 0 || index === recoveryLabelIndex)
           }
         }
       }
@@ -721,6 +779,9 @@ const drawSegmentGroup = (
       const isHovered = hoveredTaskId === item.id
       const isDH = isDeadheadRosterPuck(item)
       const isSBY = item.assignmentGroup === 'SBY'
+      const isCalloutStandby = item.isCalloutStandby === true || item.exceptionCode === 'CALLOUT_STANDBY'
+      const isRecoveryBefore = item.isRecoveryBefore === true
+      const isRecoveryAfter = item.isRecoveryAfter === true
       const severity = violationMap.get(item.id) ?? 0
 
       // Gradient fill: purple DH, SBY/Reserve assignment color, blue for normal FLY
@@ -731,7 +792,7 @@ const drawSegmentGroup = (
       } else if (isSBY) {
         const { colorTop, colorBottom, borderColor, textColor } = getTaskColorVariant(getTaskBaseColor(item.assignmentGroup, item.assignment))
         gradientFill(ctx, segStart, flightY, segWidth, flightHeight, colorTop, colorBottom, 3)
-        ctx.strokeStyle = borderColor
+        ctx.strokeStyle = isCalloutStandby ? '#facc15' : borderColor
         puckTextColor = textColor
       } else {
         const fill = resolveSegmentDutyFill({
@@ -749,10 +810,39 @@ const drawSegmentGroup = (
           ctx.strokeStyle = 'rgba(59, 130, 246, 0.45)'
         }
       }
+      if (isRecoveryBefore && !isCalloutStandby) {
+        ctx.fillStyle = RECOVERY_BEFORE_FILL
+        ctx.beginPath()
+        roundedRect(ctx, segStart, flightY, segWidth, flightHeight, 3)
+        ctx.fill()
+      } else if (isRecoveryAfter && !isCalloutStandby) {
+        ctx.fillStyle = RECOVERY_AFTER_FILL
+        ctx.beginPath()
+        roundedRect(ctx, segStart, flightY, segWidth, flightHeight, 3)
+        ctx.fill()
+      }
       ctx.lineWidth = 1
       ctx.beginPath()
       roundedRect(ctx, segStart, flightY, segWidth, flightHeight, 3)
       ctx.stroke()
+
+      if (isRecoveryAfter) {
+        drawRecoveryPreviewFrame(ctx, segStart, flightY, segWidth, flightHeight, 'after')
+      } else if (isRecoveryBefore) {
+        drawRecoveryPreviewFrame(ctx, segStart, flightY, segWidth, flightHeight, 'before')
+      }
+
+      if (isCalloutStandby) {
+        ctx.fillStyle = '#facc15'
+        ctx.beginPath()
+        ctx.arc(segStart + 6, flightY + 6, 3, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#0f172a'
+        ctx.font = `bold 5px ${PUCK_FONT_FAMILY}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText('C', segStart + 6, flightY + 6)
+      }
 
       // Text content based on width
       if (segWidth >= 60) {
@@ -852,6 +942,12 @@ const drawSegmentGroup = (
         ctx, outlineRect.x, outlineRect.y, outlineRect.w, outlineRect.h,
         colors.selectionBorder, colors.selectionWash,
       )
+    } else if (items.some((i) => i.isRecoveryAfter)) {
+      drawRecoveryPreviewFrame(ctx, outlineRect.x, outlineRect.y, outlineRect.w, outlineRect.h, 'after')
+      drawRecoveryPhaseLabel(ctx, outlineRect.x, outlineRect.y, outlineRect.w, 'after')
+    } else if (items.some((i) => i.isRecoveryBefore)) {
+      drawRecoveryPreviewFrame(ctx, outlineRect.x, outlineRect.y, outlineRect.w, outlineRect.h, 'before')
+      drawRecoveryPhaseLabel(ctx, outlineRect.x, outlineRect.y, outlineRect.w, 'before')
     } else if (items.some((i) => i.isPending)) {
       drawPendingOutline(ctx, outlineRect.x, outlineRect.y, outlineRect.w, outlineRect.h, colors.pendingBorder)
     } else if (items.some((i) => isOptimizerRosterSource(i.source))) {
@@ -1100,6 +1196,7 @@ const drawRosterTask = (
   rowIndex: number,
   timezone: string,
   lane?: RosterLaneGeometry | null,
+  showRecoveryLabel = true,
 ): void => {
   const { ctx, scrollX, scrollY, pxPerHour, rangeStart, selectedTaskIds, hoveredTaskId, violationMap, lockMap, frozenRowCount, memoRosterIds } = rc
   const colors = getGanttColors()
@@ -1122,9 +1219,14 @@ const drawRosterTask = (
 
   if (y + taskH < HEADER_HEIGHT) return
 
-  const baseColor = isGroundTask
-    ? getTaskBaseColor(task.assignmentGroup, task.assignment)
-    : getTaskBaseColor(task.assignmentGroup)
+  const isCalloutStandby = task.isCalloutStandby === true || task.exceptionCode === 'CALLOUT_STANDBY'
+  const isRecoveryBefore = task.isRecoveryBefore === true
+  const isRecoveryAfter = task.isRecoveryAfter === true
+  const baseColor = isCalloutStandby
+    ? '#0f766e'
+    : isGroundTask
+      ? getTaskBaseColor(task.assignmentGroup, task.assignment)
+      : getTaskBaseColor(task.assignmentGroup)
   const isSelected = selectedTaskIds.has(task.id)
   const isHovered = hoveredTaskId === task.id
   const severity = violationMap.get(task.id) ?? 0
@@ -1133,12 +1235,36 @@ const drawRosterTask = (
   // Background with gradient
   gradientFill(ctx, x, y, width, taskH, colorTop, colorBottom, 3)
 
+  if (isRecoveryBefore && !isCalloutStandby) {
+    ctx.fillStyle = RECOVERY_BEFORE_FILL
+    ctx.beginPath()
+    roundedRect(ctx, x, y, width, taskH, 3)
+    ctx.fill()
+  } else if (isRecoveryAfter && !isCalloutStandby) {
+    ctx.fillStyle = RECOVERY_AFTER_FILL
+    ctx.beginPath()
+    roundedRect(ctx, x, y, width, taskH, 3)
+    ctx.fill()
+  }
+
   // 1px border
   ctx.strokeStyle = borderColor
   ctx.lineWidth = 1
   ctx.beginPath()
   roundedRect(ctx, x, y, width, taskH, 3)
   ctx.stroke()
+
+  if (isCalloutStandby) {
+    ctx.fillStyle = '#facc15'
+    ctx.beginPath()
+    ctx.arc(x + 7, y + 7, 4, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#0f172a'
+    ctx.font = `bold 6px ${PUCK_FONT_FAMILY}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('C', x + 7, y + 7)
+  }
 
   // Hover overlay
   if (isHovered && !isSelected) {
@@ -1155,6 +1281,12 @@ const drawRosterTask = (
     drawPendingOutline(ctx, x, y, width, taskH, colors.pendingBorder)
   } else if (shouldDrawOptimizerOutline(task.source, isSelected)) {
     drawOptimizerOutline(ctx, x, y, width, taskH, colors.optimizerBorder)
+  }
+
+  if (isRecoveryAfter) {
+    drawRecoveryPreviewFrame(ctx, x, y, width, taskH, 'after')
+  } else if (isRecoveryBefore) {
+    drawRecoveryPreviewFrame(ctx, x, y, width, taskH, 'before')
   }
 
   const lockStatus = lockMap.get(task.id)
@@ -1267,6 +1399,11 @@ const drawRosterTask = (
         ctx.fillText('REST', restStartX + restWidth / 2, y + taskH / 2)
       }
     }
+  }
+
+  if (showRecoveryLabel && !isCalloutStandby) {
+    if (isRecoveryAfter) drawRecoveryPhaseLabel(ctx, x, y, width, 'after')
+    else if (isRecoveryBefore) drawRecoveryPhaseLabel(ctx, x, y, width, 'before')
   }
 }
 

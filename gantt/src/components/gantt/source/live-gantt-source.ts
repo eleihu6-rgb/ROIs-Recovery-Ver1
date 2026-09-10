@@ -15,6 +15,7 @@ import { useRosterPeriodStore } from '@/stores/roster-period-store'
 import { useRuleCheckStore } from '@/stores/rule-check-store'
 import { useLegalityStore } from '@/stores/legality-store'
 import { useSessionViolationStore } from '@/stores/session-violation-store'
+import { resolveRecoveryPreviewItems, useRecoveryPreviewStore } from '@/stores/recovery-preview-store'
 import { useLockStore } from '@/stores/lock-store'
 import { useColumnStore } from '@/stores/column-store'
 import { useReferenceStore } from '@/stores/reference-store'
@@ -48,6 +49,7 @@ import { getAllEffective } from '@/utils/crew-history'
 import { computeValidityBlock } from '@/utils/crew-validity'
 import { formatSeniority } from '@/utils/format-seniority'
 import { buildRankOrderMap, compareRosterDefault } from '@/utils/roster-default-sort'
+import { isRosterCompleted } from '@/services/recovery-candidates'
 import { READ_ONLY_CAPABILITIES, EMPTY_LOCK_MAP, type GanttPaneSource, type FlightPaneSource, type PairingPaneSource, type RosterPaneSource } from './gantt-pane-source'
 import type { CrewViolationRow } from '@/components/panes/violation-list-dialog'
 import type { FlightItem, FlightCompositionStatus, Flight } from '@/types/flight'
@@ -518,6 +520,7 @@ function buildLiveAlertRows(
   displayViolations: ReturnType<typeof useSessionViolationStore.getState>['displayViolations'],
   items: RosterItem[],
   crewItems: ReturnType<typeof useCrewStore.getState>['items'],
+  pairingItems: PairingItem[] = [],
 ): CrewViolationRow[] {
   if (displayViolations.size === 0) return []
   const detail = new Map<string, { base: string; rank: string }>()
@@ -540,6 +543,8 @@ function buildLiveAlertRows(
       for (const cid of crewIds) {
         if (!loadedCrewIds.has(cid)) continue
         const d = detail.get(cid)
+        const anchor = items.find((item) => String(item.crewId) === String(cid) && Number(item.pairingId) === Number(pairingId))
+        const pairing = pairingItems.find((item) => Number(item.pairing.id) === Number(pairingId))
         const dedupKey = `${cid}|${v.ruleCode}|${v.ruleInstance ?? ''}|${v.message}`
         if (seen.has(dedupKey)) continue
         seen.add(dedupKey)
@@ -551,6 +556,12 @@ function buildLiveAlertRows(
           ruleInstance: v.ruleInstance ?? null,
           severity: v.severity,
           message: v.message,
+          pairingId: Number(pairingId),
+          flightDate: anchor?.fltDt ?? anchor?.schStrDtUtc?.slice(0, 10) ?? null,
+          flightNumber: (anchor?.label ?? anchor?.assignment ?? '').split(/\s+/)[0] || null,
+          fleet: anchor?.fleetCode ?? pairing?.pairing.fleet ?? null,
+          requiredRank: anchor?.flightActingRank ?? null,
+          canRecover: v.ruleCode === '8004' && !isRosterCompleted(items, cid, Number(pairingId)),
         })
       }
     }
@@ -717,7 +728,16 @@ function makeLiveRosterPaneSource(
     // per dependency change — was previously rebuilt 3× across useRows / usePanelRows /
     // useViolationMap (buildLiveViolationMap ran 3×, panel build + ordering 2×).
     useRosterModel: () => {
-      const items = useRosterStore((s) => s[rosterKey].rosterItems)
+      const liveItems = useRosterStore((s) => s[rosterKey].rosterItems)
+      const recoveryPreviewItems = useRecoveryPreviewStore((s) => s.items)
+      const recoveryPreviewBeforeItems = useRecoveryPreviewStore((s) => s.beforeItems)
+      const recoveryPreviewView = useRecoveryPreviewStore((s) => s.view)
+      const items = useMemo(() => resolveRecoveryPreviewItems({
+        liveItems,
+        afterItems: recoveryPreviewItems,
+        beforeItems: recoveryPreviewBeforeItems,
+        view: recoveryPreviewView,
+      }), [liveItems, recoveryPreviewBeforeItems, recoveryPreviewItems, recoveryPreviewView])
       const baseItems = useRosterStore((s) => s[rosterKey].baseItems)
       const selectedCrewIds = useCrewStore((s) => s.selectedCrewIds)
       const crewItems = useCrewStore((s) => s.items)
@@ -792,10 +812,11 @@ function makeLiveRosterPaneSource(
       const displayViolations = useSessionViolationStore((s) => s.displayViolations)
       const items = useRosterStore((s) => s[rosterKey].rosterItems)
       const crewItems = useCrewStore((s) => s.items)
+      const pairingItems = usePairingStore((s) => s.items)
       const rulesetId = useLegalityStore((s) => s.selectedId)
       const rows = useMemo(
-        () => buildLiveAlertRows(displayViolations, items, crewItems),
-        [displayViolations, items, crewItems],
+        () => buildLiveAlertRows(displayViolations, items, crewItems, pairingItems),
+        [displayViolations, items, crewItems, pairingItems],
       )
       return { rows, onScan: liveAlertScan, recheckInfo: { type: 'live', groupCode: rulesetId == null ? '' : String(rulesetId) } }
     },
@@ -853,7 +874,16 @@ function makeLiveRosterPaneSource(
       const compositionById = useFlightCompositionStore((s) => s.byId)
       const loadAirportTz = useAirportTzStore((s) => s.load)
       const loadCompositions = useFlightCompositionStore((s) => s.loadFor)
-      const items = useRosterStore((s) => s[rosterKey].rosterItems)
+      const liveItems = useRosterStore((s) => s[rosterKey].rosterItems)
+      const recoveryPreviewItems = useRecoveryPreviewStore((s) => s.items)
+      const recoveryPreviewBeforeItems = useRecoveryPreviewStore((s) => s.beforeItems)
+      const recoveryPreviewView = useRecoveryPreviewStore((s) => s.view)
+      const items = useMemo(() => resolveRecoveryPreviewItems({
+        liveItems,
+        afterItems: recoveryPreviewItems,
+        beforeItems: recoveryPreviewBeforeItems,
+        view: recoveryPreviewView,
+      }), [liveItems, recoveryPreviewBeforeItems, recoveryPreviewItems, recoveryPreviewView])
 
       // Side-effects lifted from roster-pane.tsx (airport TZ + compositions for flight rows).
       useEffect(() => { void loadAirportTz() }, [loadAirportTz])
@@ -1010,7 +1040,16 @@ function makeLiveRosterPaneSource(
 
     // ── Optional Live-only overlays ───────────────────────────────────────────
     useLockMap: () => {
-      const items = useRosterStore((s) => s[rosterKey].rosterItems)
+      const liveItems = useRosterStore((s) => s[rosterKey].rosterItems)
+      const recoveryPreviewItems = useRecoveryPreviewStore((s) => s.items)
+      const recoveryPreviewBeforeItems = useRecoveryPreviewStore((s) => s.beforeItems)
+      const recoveryPreviewView = useRecoveryPreviewStore((s) => s.view)
+      const items = useMemo(() => resolveRecoveryPreviewItems({
+        liveItems,
+        afterItems: recoveryPreviewItems,
+        beforeItems: recoveryPreviewBeforeItems,
+        view: recoveryPreviewView,
+      }), [liveItems, recoveryPreviewBeforeItems, recoveryPreviewItems, recoveryPreviewView])
       const locks = useLockStore((s) => s.locks)
       return useMemo(() => {
         if (locks.size === 0) return EMPTY_LOCK_MAP
