@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { AppDialog, Button } from '@rois/ui'
 import { crewInfoFromStore } from '@/stores/crew-store'
 import { useUiStore } from '@/stores/ui-store'
@@ -186,14 +186,15 @@ export const CrewInfoDialog = () => {
     setLoading(true)
     setError(null)
     void crewInfoFromStore(crewId)
-      .then(setInfo)
+      .then((data) => startTransition(() => setInfo(data)))
       .catch((reason: unknown) => {
         setError(reason instanceof Error ? reason.message : 'Failed to load crew info')
       })
       .finally(() => setLoading(false))
   }, [open, crewId])
 
-  const crew = info?.crew
+  const deferredInfo = useDeferredValue(info)
+  const crew = deferredInfo?.crew
   const fullName = crew
     ? [crew.preferredName || crew.firstName, crew.middleName, crew.lastName].filter(Boolean).join(' ')
     : crewId ?? ''
@@ -205,14 +206,14 @@ export const CrewInfoDialog = () => {
     )
     : []
 
-  const recordSections: RecordSection[] = info
+  const recordSections: RecordSection[] = deferredInfo
     ? [
-      { id: 'base', label: 'Crew Base', rows: sortRowsByEffectiveDate(info.bases), hiddenFields: RECORD_HIDDEN_FIELDS.base },
-      { id: 'rank', label: 'Crew Rank', rows: sortRowsByEffectiveDate(info.ranks), hiddenFields: RECORD_HIDDEN_FIELDS.rank },
-      { id: 'fleet', label: 'Crew Fleet', rows: sortRowsByEffectiveDate(info.fleets), hiddenFields: RECORD_HIDDEN_FIELDS.fleet },
-      { id: 'qualification', label: 'Crew Qualification', rows: sortRowsByEffectiveDate(info.qualifications), hiddenFields: RECORD_HIDDEN_FIELDS.qualification },
-      { id: 'certification', label: 'Crew Certification', rows: sortRowsByEffectiveDate(info.certifications), hiddenFields: RECORD_HIDDEN_FIELDS.certification },
-      { id: 'team', label: 'Crew Team', rows: sortRowsByEffectiveDate(info.teams), hiddenFields: RECORD_HIDDEN_FIELDS.team },
+      { id: 'base', label: 'Crew Base', rows: sortRowsByEffectiveDate(deferredInfo.bases), hiddenFields: RECORD_HIDDEN_FIELDS.base },
+      { id: 'rank', label: 'Crew Rank', rows: sortRowsByEffectiveDate(deferredInfo.ranks), hiddenFields: RECORD_HIDDEN_FIELDS.rank },
+      { id: 'fleet', label: 'Crew Fleet', rows: sortRowsByEffectiveDate(deferredInfo.fleets), hiddenFields: RECORD_HIDDEN_FIELDS.fleet },
+      { id: 'qualification', label: 'Crew Qualification', rows: sortRowsByEffectiveDate(deferredInfo.qualifications), hiddenFields: RECORD_HIDDEN_FIELDS.qualification },
+      { id: 'certification', label: 'Crew Certification', rows: sortRowsByEffectiveDate(deferredInfo.certifications), hiddenFields: RECORD_HIDDEN_FIELDS.certification },
+      { id: 'team', label: 'Crew Team', rows: sortRowsByEffectiveDate(deferredInfo.teams), hiddenFields: RECORD_HIDDEN_FIELDS.team },
     ]
     : []
   const [baseSection, rankSection, fleetSection, qualificationSection, certificationSection, teamSection] = recordSections
@@ -225,11 +226,16 @@ export const CrewInfoDialog = () => {
       // Above Flight Detail (z-index 1000/1001) so Crew Info stacks on top when opened from it.
       className="z-[1100] w-[min(96vw,1200px)] sm:max-w-[1200px]"
       overlayClassName="z-[1100]"
-      bodyClassName="flex min-h-0 flex-col"
+      bodyClassName="flex min-h-[min(60vh,520px)] flex-col"
       footer={<Button variant="ghost" onClick={close} data-testid="crew-info-close">Close</Button>}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-3" data-testid="crew-info-dialog">
-        {loading && <p className="text-xs text-muted-foreground">Loading crew information…</p>}
+        {loading && (
+          <div className="flex flex-1 flex-col gap-2" data-testid="crew-info-loading">
+            <p className="text-xs text-muted-foreground">Loading crew information…</p>
+            <div className="flex-1 animate-pulse rounded-md border border-border bg-muted/20" />
+          </div>
+        )}
         {error && <p className="text-xs text-destructive">{error}</p>}
         {!loading && !error && crew && (
           <div className="min-h-0 flex-1 space-y-2 overflow-auto" data-testid="crew-info-records">

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useUiStore } from '@/stores/ui-store'
+import { prefetchCrewInfo } from '@/stores/crew-store'
 import { useRosterStore } from '@/stores/roster-store'
 import { useGanttViewStore } from '@/stores/gantt-view-store'
 import { usePaneStore } from '@/stores/pane-store'
@@ -92,6 +93,13 @@ export const ContextMenu = () => {
       document.removeEventListener('keydown', handleKey)
     }
   }, [open, closeContextMenu])
+
+  // Prefetch Crew Info while the roster row menu is open so the dialog opens without waiting on 7 API calls.
+  useEffect(() => {
+    if (!open || !task?.crewId || task.id !== -1) return
+    if (paneType?.startsWith('roster') !== true) return
+    prefetchCrewInfo(task.crewId)
+  }, [open, task?.crewId, task?.id, paneType])
 
   // ── NEW ENTRY: Roster-based Recovery ───────────────────────────────
   // Build a Recovery alert snapshot from the currently right-clicked Roster
@@ -372,7 +380,7 @@ export const ContextMenu = () => {
       label: 'Crew Info',
       onClick: () => {
         useUiStore.getState().openCrewInfo(task.crewId!)
-        closeContextMenu()
+        requestAnimationFrame(() => closeContextMenu())
       },
     })
     items.push({

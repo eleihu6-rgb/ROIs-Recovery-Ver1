@@ -773,26 +773,71 @@ export const useCrewStore = create<CrewStore>((set, get) => ({
   },
 }))
 
+const crewInfoCache = new Map<string, CrewInfo>()
+const crewInfoInflight = new Map<string, Promise<CrewInfo>>()
+
+const buildCrewInfo = (crew: Crew): CrewInfo => ({
+  crew,
+  ranks: crew.ranks ?? [],
+  bases: crew.bases ?? [],
+  fleets: crew.fleets ?? [],
+  qualifications: crew.qualifications ?? [],
+  certifications: crew.certifications ?? [],
+  teams: crew.teams ?? [],
+})
+
+/** One full /api/crew list call (all six history arrays inline) — not seven getInfo requests. */
+const fetchCrewInfoFullList = async (crewId: string): Promise<CrewInfo> => {
+  const result = await crewApi.list({
+    crewIds: [crewId],
+    page: 1,
+    pageSize: 1,
+    ...currentDateRangeParams(),
+  })
+  const crew = result.items[0]
+  if (!crew) throw new Error('Crew not found')
+  if (crew.ranks !== undefined) {
+    useCrewStore.setState((s) => ({ items: mergeItems(s.items, mapCrews([crew], [])) }))
+    return buildCrewInfo(crew)
+  }
+  return crewApi.getInfo(crewId)
+}
+
+/** Warm Crew Info while the context menu is open so the click path is instant. */
+export const prefetchCrewInfo = (crewId: string): void => {
+  if (!crewId) return
+  void crewInfoFromStore(crewId).catch(() => {})
+}
+
 /**
  * CrewInfo 数据组装：全部 6 类历史（ranks/bases/fleets + qual/cert/team）都随全量 crew 列表
  * 内联到 store，直接本地读，零后端请求。store 未命中或 crew 是 slim（Find Crew 用 gantt-panel，
- * 不带历史数组）时回退 crewApi.getInfo 全量。
+ * 不带历史数组）时用一次全量 list 拉取（非 getInfo 的 7 路并行）。
  */
 export const crewInfoFromStore = async (crewId: string): Promise<CrewInfo> => {
-  const item = useCrewStore.getState().items.find((i) => i.crew.crewId === crewId)
-  if (!item) return crewApi.getInfo(crewId)
-  const crew = item.crew
-  // Full list mode inlines all six history arrays; slim (gantt-panel) only has
-  // panelRank/panelBase/panelFleets. Fall back to the backend when the crew was
-  // loaded slim (no ranks array) so CrewInfo still shows full history.
-  if (crew.ranks === undefined) return crewApi.getInfo(crewId)
-  return {
-    crew,
-    ranks: crew.ranks ?? [],
-    bases: crew.bases ?? [],
-    fleets: crew.fleets ?? [],
-    qualifications: crew.qualifications ?? [],
-    certifications: crew.certifications ?? [],
-    teams: crew.teams ?? [],
-  }
+  const cached = crewInfoCache.get(crewId)
+  if (cached) return cached
+
+  const inflight = crewInfoInflight.get(crewId)
+  if (inflight) return inflight
+
+  const promise = (async (): Promise<CrewInfo> => {
+    const item = useCrewStore.getState().items.find((i) => i.crew.crewId === crewId)
+    if (item?.crew.ranks !== undefined) {
+      return buildCrewInfo(item.crew)
+    }
+    return fetchCrewInfoFullList(crewId)
+  })()
+    .then((info) => {
+      crewInfoCache.set(crewId, info)
+      crewInfoInflight.delete(crewId)
+      return info
+    })
+    .catch((err: unknown) => {
+      crewInfoInflight.delete(crewId)
+      throw err
+    })
+
+  crewInfoInflight.set(crewId, promise)
+  return promise
 }

@@ -4,12 +4,17 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CrewInfoDialog } from '../crew-info-dialog'
 import { useUiStore } from '@/stores/ui-store'
+import { useCrewStore } from '@/stores/crew-store'
 
-const { getInfo } = vi.hoisted(() => ({ getInfo: vi.fn() }))
+const { crewInfoFromStoreMock } = vi.hoisted(() => ({ crewInfoFromStoreMock: vi.fn() }))
 
-vi.mock('@/services/crew-api', () => ({
-  crewApi: { getInfo },
-}))
+vi.mock('@/stores/crew-store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/stores/crew-store')>()
+  return {
+    ...actual,
+    crewInfoFromStore: crewInfoFromStoreMock,
+  }
+})
 
 vi.mock('@rois/ui', () => ({
   AppDialog: ({ open, title, children, footer }: { open: boolean; title: React.ReactNode; children: React.ReactNode; footer?: React.ReactNode }) =>
@@ -132,7 +137,8 @@ const renderDialog = (): { root: Root; container: HTMLDivElement } => {
 
 describe('CrewInfoDialog', () => {
   beforeEach(() => {
-    getInfo.mockReset().mockResolvedValue(info)
+    crewInfoFromStoreMock.mockReset().mockResolvedValue(info)
+    useCrewStore.setState({ items: [] })
     act(() => useUiStore.getState().openCrewInfo('C001'))
   })
 
@@ -145,7 +151,7 @@ describe('CrewInfoDialog', () => {
     const { root, container } = renderDialog()
     await act(async () => Promise.resolve())
 
-    expect(getInfo).toHaveBeenCalledWith('C001')
+    expect(crewInfoFromStoreMock).toHaveBeenCalledWith('C001')
     expect(container.textContent).toContain('Ada Lovelace')
     expect(container.textContent).not.toContain('Basic Info')
     expect(container.textContent).not.toContain('Crew Records')

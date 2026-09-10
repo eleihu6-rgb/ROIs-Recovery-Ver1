@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react'
 import { Plane, Link2, Trash2, Users, PackageSearch, Pin, PinOff, CalendarClock, CalendarDays, UserRound, CalendarArrowDown } from 'lucide-react'
 import { useUiStore } from '@/stores/ui-store'
+import { prefetchCrewInfo } from '@/stores/crew-store'
 import { getScenarioGanttStore } from '@/stores/scenario-gantt-store'
 import { getScenarioLayoutStore } from '@/stores/scenario-layout-store'
 import { getScenarioRosterSelectionStore } from '@/stores/scenario-roster-selection-store'
@@ -81,6 +82,12 @@ export const ScenarioContextMenu = () => {
     }
   }, [open, closeContextMenu])
 
+  useEffect(() => {
+    if (!open || scenarioId == null || !task?.crewId || task.id !== -1) return
+    if (paneType !== 'scenario-roster') return
+    prefetchCrewInfo(task.crewId)
+  }, [open, scenarioId, task?.crewId, task?.id, paneType])
+
   // Only render for scenario right-clicks (Live's ContextMenu handles scenarioId == null).
   if (!open || scenarioId == null || !task) return null
 
@@ -126,7 +133,7 @@ export const ScenarioContextMenu = () => {
         label: 'Crew Info',
         onClick: () => {
           useUiStore.getState().openCrewInfo(task.crewId!)
-          closeContextMenu()
+          requestAnimationFrame(() => closeContextMenu())
         },
       })
       items.push({
