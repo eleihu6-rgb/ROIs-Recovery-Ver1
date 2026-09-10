@@ -17,7 +17,31 @@ Cold-start rule loading:
    - nested `AGENTS.md` when present
 5. Project-wide rules must be tracked in `CLAUDE.md`, `AGENTS.md`, or referenced files under `docs/`; local non-git memos may only supplement machine-specific runtime state.
 
-When `CLAUDE.md` and `AGENTS.md` overlap, keep them synchronized. If they conflict, this file is canonical for shared project behavior unless a rule is explicitly Codex-only in `AGENTS.md`.
+Keep shared rules here and link to them from `AGENTS.md`; avoid parallel copies. This file resolves duplicate shared rules between the two root guides. Module-specific guides apply within their scope. Session system/developer instructions and explicit user direction take precedence.
+
+## Agent Operating Defaults
+
+- Keep project instructions independent of model names and context-window sizes. Select models, reasoning settings, permissions, and MCP installations in the agent's supported runtime configuration; do not invent settings in this guide.
+- Treat an explicit request to change or fix something as authorization for the necessary reversible work. Continue through verification. Do not ask again for approval already given within the same scope.
+- Ask when a missing business decision materially affects correctness or scope. For routine implementation details, follow the existing system and state significant assumptions.
+- Load context progressively: root guide, touched module guides, relevant source/tests, then deeper references as needed. Do not preload every skill or historical handoff.
+- Check the worktree and preserve concurrent edits. Parallelize independent read-only investigations; sequence dependent edits and shared-state operations.
+- Report the result and evidence concisely. A newer model does not remove the need for business-rule, schema, security, and real-UI verification.
+
+## MCP and Skills
+
+- Discover capabilities from the current session's tool and skill catalogs. A configured server, local skill directory, or old transcript does not prove that a capability is callable now.
+- Prefer `codebase-memory-mcp` for code discovery. Check `list_projects`; call `index_repository` with the current repository path only if this checkout is not indexed. Use the returned project identifier in subsequent calls.
+- Use `search_graph` for symbols, `trace_path` for callers/callees, `get_code_snippet` for exact qualified names returned by search, `query_graph` for complex relationships, `search_code` for text-aware code search, and `get_architecture` for an overview. Check the current tool schema before supplying arguments.
+- If a tool is unavailable or results are insufficient/stale, state the limitation and use available graph tools or `rg` and source reads. Documentation, configuration, and literal searches may use `rg` directly.
+- Read a relevant skill's `SKILL.md` before applying it. Resolve its location from the session catalog; do not assume Claude and Codex expose identical skills or paths. Retained legacy skills are references, not evidence that their module is an active delivery target.
+- MemPalace stores development history through `memory/README.md` and the memory scripts; it is separate from the code knowledge graph. Neither replaces current source, schema, or test evidence. Never claim a memory save or indexing operation succeeded without its result.
+
+## Design Before Implementation
+
+For new functionality, business behavior, or material workflow changes that need a design decision, use the `brainstorming` skill when available. If it is unavailable after checking the catalog and local skill locations, report that limitation and write the design in `docs/superpowers/specs/`, covering scope, affected modules, risks, and verification. Resolve material product choices before implementing them; an explicit implementation request or existing design approval authorizes work within that scope. Do not introduce a second approval pause for the same decision.
+
+Read-only investigation and authorized documentation maintenance do not need a separate design approval. Multi-file edits alone do not determine whether a design is needed. Supplemental skills such as `karpathy-guidelines` are optional when installed and do not replace the design requirement.
 
 ## Current F8 Engine Scope
 
@@ -63,7 +87,6 @@ rois-ai/
 │   └── ui/          # 共享UI组件库 (@rois/ui, shadcn + Tailwind)
 ├── live-server/     # 实时排班服务 (Fastify + Drizzle + TS, 端口3000)
 ├── gantt/           # 排班前端 (React 19 + Vite + TS, 端口5173)
-├── rois-rule-engine/ # 法规引擎 Python 版 (pip包 rois_rule_engine，由 engine-server 内嵌的 Rule Engine Service 使用；PO/RO 直接 import)
 ├── pbs-server/      # PBS后端 (Fastify + Drizzle + TS, 端口3002)
 ├── engine-server/   # 优化引擎调度服务 + Rule Engine Service (FastAPI + Python, 端口3003；单一实例管理 active_groups + user_sessions + violation_worker)
 ├── connector-server/ # 外部系统对接服务 (Fastify + Drizzle + TS, 端口3004)
@@ -73,7 +96,7 @@ rois-ai/
 ├── ro-engine/       # Legacy RO engine/baselines, temporarily retained; not current F8 delivery scope
 ├── crewrule-dev/    # Legacy C++ rule reference for Rust rule ports
 ├── ai-server/       # AI service retained for future workflows; outside current F8 delivery scope
-├── pbs-portal/     # PBS网页前端 (React 19 + Vite + TS, 端口5174)
+├── pbs-portal/      # PBS网页前端 (React 19 + Vite + TS; verify port/base in current config)
 ├── pbs-app/         # PBS移动端App (React Native + Expo)
 ├── sql/             # 数据库脚本 (schema/建表 + seed/基础数据 + migration/增量)
 ├── e2e/             # E2E测试 (Playwright)
@@ -186,7 +209,7 @@ import type { Crew } from '@/types'
 
 ## Python 通用规范
 
-适用于：po-engine / ro-engine
+适用于：engine-server / pbs-engine；po-engine / ro-engine 仅在维护历史代码时适用。子模块的 Python 版本及依赖约束以各自指南和项目配置为准。
 
 ### 命名
 
@@ -212,8 +235,9 @@ import type { Crew } from '@/types'
 
 <详细说明（可选）>
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 ```
+
+Only add a `Co-Authored-By` trailer when the actual contributor identity is known and attribution is requested or supplied by the agent environment. Do not invent a model name, context size, or email address.
 
 ### 提交类型
 
@@ -290,8 +314,8 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
 **Non-negotiable.** After implementing ANY feature OR fixing ANY bug that touches the UI (gantt / pbs-portal / pbs-app) — see §User-Operation-Playwright-Required below for the broader rule covering changes that affect a user operation even when the change itself is backend-only, a script, or a raw SQL/migration:
 
-1. Write a Playwright e2e test in `e2e/gantt/` or `e2e/pbs-portal/` (Vitest unit test acceptable only for pure backend logic with no UI surface).
-2. Run it: `npx playwright test e2e/<module>/<your-test-file>.spec.ts --reporter=list`.
+1. Write a Playwright e2e test under `e2e/tests/<module>/` (focused module tests apply to pure backend logic with no UI surface).
+2. From `e2e/`, run `npx playwright test --config=config/playwright.config.ts --project=<module> tests/<module>/<your-test-file>.spec.ts --reporter=list`, selecting the touched area's actual config/project and environment.
 3. All tests must pass before the work is considered done.
 
 Minimum coverage per change type:
@@ -313,7 +337,7 @@ Anti-patterns — do NOT write these:
 | "No error shown" as proof of success | Loader gone + correct data present + count matches |
 | Test added after marking done | Write the test first, or alongside the code — never after |
 
-File naming: `e2e/<module>/<feature-name>.spec.ts`, named after the changed component or bug, e.g. `test('scenario list filters to PO only when PO sidebar item is active', ...)`.
+File naming: `e2e/tests/<module>/<feature-name>.spec.ts`, named after the changed component or bug, e.g. `test('scenario list filters to PO only when PO sidebar item is active', ...)`.
 
 ### §User-Operation-Playwright-Required — any change touching a user operation must be validated by Playwright as a real user
 
@@ -362,7 +386,7 @@ File naming: `e2e/<module>/<feature-name>.spec.ts`, named after the changed comp
 
 **Claims are worthless. The test output is the proof.** A feature is not working until a test proves it works; a bug is not fixed until a test proves it cannot recur. Never state "this should work" or "this looks correct" — run the test and paste the result.
 
-Required after every code change: write/update the test → run `npx playwright test e2e/<file>.spec.ts --reporter=list` → paste the PASS/FAIL summary → only then mark done. Forbidden: claiming "fixed"/"working" from code inspection alone, a test that always passes (`expect(true).toBe(true)`), or a test that only checks visibility instead of correct data.
+Required after behavior changes: write/update the relevant test, run it with the module's actual configuration, and report the command and PASS/FAIL result. Every change affecting what a user does or sees requires real-UI Playwright validation and a visually inspected screenshot from the same run, regardless of implementation layer. Backend tests supplement this gate; only behavior with no user-operation impact may use focused module tests alone. Bug fixes require regression coverage, or an explicit explanation of why it was infeasible. PBS business changes also require considering manual cases under `docs/test-cases/pbs/`. Development-documentation-only changes need diff, path, and consistency checks rather than runtime tests; in-app Help and other user-visible content remain subject to the Playwright and screenshot gates. Report unrun required checks and remaining risk. Do not use tautological assertions or visibility alone as proof of correct behavior.
 
 ### §PW-Snapshot — every UI-related Playwright validation captures a screenshot, versioned per iteration
 
@@ -371,7 +395,8 @@ Required after every code change: write/update the test → run `npx playwright 
 - Save under `docs/assets/screenshots/<module>/<feature-name>.png` (module = `gantt`/`pbs-portal`/`pbs-app`/etc., feature-name matches the changed component or spec).
 - **If the same feature/fix gets re-validated across multiple rounds** (a design tweak, a bug re-fix, feedback-driven iteration), do **not** overwrite the previous screenshot — suffix the filename with `-Ver<N>` (`Ver1`, `Ver2`, `Ver3`, ...), incrementing per round, so the sequence of screenshots documents visible progress across iterations. First capture of a feature may omit the suffix or start at `Ver1`; be consistent within one feature's history.
 - Capture via a Playwright script/test (`page.screenshot()` / `locator.screenshot()`), not a manual/out-of-band screenshot — it must come from the same automated run that proves the behavior, per §No-Illusion.
-- After capturing, verify the PNG visually with the Read tool before reporting done — a screenshot of the wrong element/state is worse than no screenshot.
+- After capturing, inspect the PNG with the current agent's image-viewing tool before reporting done; confirm the intended element and state are visible.
+- Include the screenshot path alongside the exact Playwright command and PASS/FAIL result in the delivery report. This applies to every user-related validation, including backend/data changes verified through the UI, not only visual styling changes.
 
 ### §Stale-Test — update it, never just report it
 
@@ -528,4 +553,3 @@ Stale = selector/route/field renamed but the feature still exists, or UI structu
 - WebSocket 连接需要验证 schema/用户身份后才允许订阅频道
 - 生产环境必须使用 HTTPS / WSS
 - Redis 和 PostgreSQL 只监听内网地址，禁止暴露公网
-
