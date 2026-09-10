@@ -269,23 +269,26 @@ async function fetchRecoveryFlights(
   }
   if (sourceStarts.length === 0 || sourceEnds.length === 0) return []
 
-  const oneDayMs = 24 * 3600 * 1000
-  const earliest = new Date(Math.min(...sourceStarts) - oneDayMs)
-  const latest = new Date(Math.max(...sourceEnds) + oneDayMs)
-  // Clamp the window to the loaded Live date range so a stale source roster
-  // date does not blow out the query to a multi-week window.
-  const windowStart = new Date(Math.max(earliest.getTime(), dateRange.start.getTime()))
-  const windowEnd = new Date(Math.min(latest.getTime(), dateRange.end.getTime() + oneDayMs))
-  if (windowEnd.getTime() <= windowStart.getTime()) return []
-
-  const startDate = windowStart.toISOString().slice(0, 10)
-  const endDate = windowEnd.toISOString().slice(0, 10)
+  // Compute the date window from the source Roster items. The window is
+  // [earliest source Roster start - 2 days, latest source Roster end + 2 days]
+  // so that DHD positioning flights (which may precede or follow the recovered
+  // Roster by up to 2 days) are all candidates. The ±2 day buffer also covers
+  // the 2-6h positioning lead (maxFlightLeadHours) for any of the candidate
+  // positioning flights.
+  const twoDayMs = 2 * 24 * 3600 * 1000
+  const earliest = new Date(Math.min(...sourceStarts) - twoDayMs)
+  const latest = new Date(Math.max(...sourceEnds) + twoDayMs)
+  // Snap to YYYY-MM-DD so the date range is inclusive on both ends.
+  const startDate = earliest.toISOString().slice(0, 10)
+  const endDate = latest.toISOString().slice(0, 10)
 
   try {
     const response = await flightApi.listFlat({
       startDate,
       endDate,
-      pageSize: 10000,
+      // 0 = return all matching rows in SQL (no in-memory pagination). The
+      // tight window above keeps the row count bounded (~hundreds per day).
+      pageSize: 0,
     })
     return response.items
       .filter((flight) => !flight.isCancelled && flight.depArp && flight.arvArp)
