@@ -266,7 +266,7 @@ test('Auto-assign + Rule 7305 — J4006 (ADD/7M8): max-consecutive-days is enfor
 
   // Visual proof: J4006's committed, spread-out month under Rule 7305.
   await page.screenshot({
-    path: 'docs/assets/screenshots/gantt/auto-assign-7305-max-consec-j4006-Ver2.png',
+    path: '../docs/assets/screenshots/gantt/auto-assign-7305-max-consec-j4006-Ver2.png',
     fullPage: true,
   })
 })

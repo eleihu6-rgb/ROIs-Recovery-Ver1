@@ -176,6 +176,11 @@ test('RT-20260920: build 3 four-leg, 2 two-leg and 5 layover ADD pairings throug
         if (segment.briefStartUtc) expect(utcMs(rendered.briefStartUtc!)).toBe(utcMs(segment.briefStartUtc))
         if (segment.dropoffEndUtc) expect(utcMs(rendered.dropoffEndUtc!)).toBe(utcMs(segment.dropoffEndUtc))
       }
+      // The dialog now stays open after a run so the planner can read the in-dialog
+      // build summary (built vs requested, unpaired flights, warnings), then closes it.
+      await expect(page.getByTestId('rt-summary')).toBeVisible()
+      await expect(page.getByTestId('rt-summary-title')).toContainText('1 pairing built')
+      await page.getByTestId('rt-show-results').click()
       await expect(page.getByTestId('roundtrip-builder-dialog')).not.toBeVisible()
       receipt.screenshots.push(await capture(page, `${index + 1}-${shape}-built`))
       writeReceipt()

@@ -4,6 +4,8 @@ import { useFilterStore } from '@/stores/filter-store'
 import { usePaneStore } from '@/stores/pane-store'
 import { useTimezoneStore } from '@/stores/timezone-store'
 import { useCrewStore } from '@/stores/crew-store'
+import { useRoundtripBuilderStore } from '@/stores/roundtrip-builder-store'
+import { useUiStore } from '@/stores/ui-store'
 import type { RosterItem } from '@/types/roster'
 import type { Crew } from '@/types/crew'
 
@@ -453,5 +455,93 @@ describe('dispatchAiAction', () => {
       expect(chip).toBe('Unknown crew id(s): 999')
       expect(mocks.addGroundTask).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('build_pairings (R\'Bot → Pairing Build Automation)', () => {
+  beforeEach(() => {
+    useFilterStore.getState().resetFilters()
+    useTimezoneStore.setState({ timezone: 'UTC' })
+    useRoundtripBuilderStore.setState({ isOpen: false, prefill: null, lastRun: null })
+  })
+
+  it('moves the Gantt range onto the request and opens the builder pre-filled', async () => {
+    const chip = await dispatchAiAction({
+      type: 'build_pairings',
+      base: 'ADD',
+      start: '2026-08-25',
+      end: '2026-10-07',
+      fleets: ['7M8'],
+      composition: [{ rank: 'CA', plan: 1 }, { rank: 'FO', plan: 1 }],
+      rules: { restMin: 720, maxDutyBlockMin: 480 },
+    })
+
+    expect(chip).toBe('Opening Pairing Build Automation — ADD · 7M8 · 2026-08-25 → 2026-10-07')
+
+    const state = useRoundtripBuilderStore.getState()
+    expect(state.isOpen).toBe(true)
+    expect(state.prefill).toEqual({
+      source: 'rbot',
+      base: 'ADD',
+      fleets: ['7M8'],
+      composition: [{ rank: 'CA', plan: 1 }, { rank: 'FO', plan: 1 }],
+      rules: { restMin: 720, maxDutyBlockMin: 480 },
+      startDate: '2026-08-25',
+      endDate: '2026-10-07',
+    })
+
+    // The dialog clamps its scope to the visible Gantt range, so the range must move first.
+    const { dateRange } = useFilterStore.getState()
+    expect(dateRange.start.toISOString()).toBe('2026-08-25T00:00:00.000Z')
+    expect(dateRange.end.toISOString()).toBe('2026-10-07T23:59:59.999Z')
+  })
+
+  it('opens with base + dates only when the order gave no fleet or rules', async () => {
+    await dispatchAiAction({ type: 'build_pairings', base: 'DXB', start: '2026-09-01', end: '2026-09-30' })
+    expect(useRoundtripBuilderStore.getState().prefill).toEqual({
+      source: 'rbot', base: 'DXB', fleets: undefined, composition: undefined, rules: undefined,
+      startDate: '2026-09-01', endDate: '2026-09-30',
+    })
+  })
+
+  it('rejects an unparseable date without opening the dialog', async () => {
+    expect(await dispatchAiAction({
+      type: 'build_pairings', base: 'ADD', start: 'nope', end: '2026-10-07',
+    })).toBeNull()
+    expect(useRoundtripBuilderStore.getState().isOpen).toBe(false)
+  })
+})
+
+describe('auto_assign_pairings (R\'Bot → Auto-assign open pairings)', () => {
+  beforeEach(() => {
+    useFilterStore.getState().resetFilters()
+    useTimezoneStore.setState({ timezone: 'UTC' })
+    useUiStore.getState().closeAutoAssignDialog()
+  })
+
+  it('moves the Gantt range onto the month and opens the dialog for the named crew', async () => {
+    const chip = await dispatchAiAction({
+      type: 'auto_assign_pairings', crewIds: ['T2004', 'T2005'],
+      start: '2026-09-01', end: '2026-09-30',
+    })
+
+    expect(chip).toBe('Auto-assigning open pairings for T2004, T2005 · 2026-09-01 → 2026-09-30')
+
+    const ui = useUiStore.getState()
+    expect(ui.autoAssignOpen).toBe(true)
+    expect(ui.autoAssignCrewIds).toEqual(['T2004', 'T2005'])
+    expect(ui.autoAssignPane).toBe('roster-main')
+
+    // The dialog plans against the viewport calendar month, so the range must move first.
+    const { dateRange } = useFilterStore.getState()
+    expect(dateRange.start.toISOString()).toBe('2026-09-01T00:00:00.000Z')
+    expect(dateRange.end.toISOString()).toBe('2026-09-30T23:59:59.999Z')
+  })
+
+  it('rejects an unparseable date without opening the dialog', async () => {
+    expect(await dispatchAiAction({
+      type: 'auto_assign_pairings', crewIds: ['T2004'], start: 'nope', end: '2026-09-30',
+    })).toBeNull()
+    expect(useUiStore.getState().autoAssignOpen).toBe(false)
   })
 })

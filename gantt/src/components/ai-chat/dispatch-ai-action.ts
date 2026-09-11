@@ -4,6 +4,8 @@ import { useTimezoneStore } from '@/stores/timezone-store'
 import { useCrewMemoStore } from '@/stores/crew-memo-store'
 import { useRosterStore } from '@/stores/roster-store'
 import { useCrewStore } from '@/stores/crew-store'
+import { useRoundtripBuilderStore } from '@/stores/roundtrip-builder-store'
+import { useUiStore } from '@/stores/ui-store'
 import { crewMemoApi } from '@/services/crew-memo-api'
 import { api } from '@/services/api'
 import { calendarDateToUtcMidnight, endOfCalendarDayUtc } from '@/components/gantt/gantt-utils'
@@ -237,6 +239,40 @@ export async function dispatchAiAction(action: AiAction): Promise<string | null>
       const created = await useRosterStore.getState().addGroundTask('main', data)
       if (!created || created.length === 0) return `Could not create the ground task for ${action.crewIds.join(', ')}.`
       return `Added "${assignmentResult.assignment}" for ${created.length} of ${action.crewIds.length} crew`
+    }
+    case 'build_pairings': {
+      // Pairing build commits real pairing rows, so R'Bot only PREPARES it: the Gantt
+      // range is moved onto the requested window (the dialog clamps its scope to the
+      // visible range) and the dialog opens pre-filled + already searched. The planner
+      // reviews the scope and presses "Build all".
+      const tz = useTimezoneStore.getState().timezone
+      const start = calendarDateToUtcMidnight(action.start, tz)
+      const end = endOfCalendarDayUtc(action.end, tz)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null
+      useFilterStore.getState().setDateRange(start, end)
+      useRoundtripBuilderStore.getState().openWithPrefill({
+        source: 'rbot',
+        base: action.base,
+        fleets: action.fleets,
+        composition: action.composition,
+        rules: action.rules,
+        startDate: action.start,
+        endDate: action.end,
+      })
+      const scopeText = [action.base, ...(action.fleets ?? [])].join(' · ')
+      return `Opening Pairing Build Automation — ${scopeText} · ${action.start} → ${action.end}`
+    }
+    case 'auto_assign_pairings': {
+      // The dialog computes its plan from the VIEWPORT calendar month, so move the Gantt
+      // range onto the requested window first. Nothing is committed here: the planner
+      // applies the replay and presses Save.
+      const tz = useTimezoneStore.getState().timezone
+      const start = calendarDateToUtcMidnight(action.start, tz)
+      const end = endOfCalendarDayUtc(action.end, tz)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null
+      useFilterStore.getState().setDateRange(start, end)
+      useUiStore.getState().openAutoAssignDialog(action.crewIds, 'roster-main')
+      return `Auto-assigning open pairings for ${action.crewIds.join(', ')} · ${action.start} → ${action.end}`
     }
     default:
       return null

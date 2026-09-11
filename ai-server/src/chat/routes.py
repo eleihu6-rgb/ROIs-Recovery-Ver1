@@ -7,7 +7,10 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from src.llm.client import llm_tools
-from src.chat.tools import TOOLS, tool_call_to_action, crew_bids_params
+from src.chat.tools import (
+    TOOLS, tool_call_to_action, crew_bids_params,
+    build_pairings_missing_message, auto_assign_missing_message,
+)
 from src.crewbids.runner import start_run, get_run
 
 _HELP_CORPUS_PATH = pathlib.Path(__file__).parent / 'help-corpus.json'
@@ -50,6 +53,25 @@ SYSTEM_PROMPT = (
     "READ-ONLY — it marks memo note icons on the duties that would be de-assigned (flying "
     "pairings + days off) for the planner to confirm; it never actually de-assigns. It needs a "
     "date range, and a scope of bases/ranks and/or specific crewIds. "
+    "You can also AUTOMATE a pairing build via the build_pairings tool (triggers: 'build pairings', "
+    "'build pairing for ADD 7M8', 'automate the pairing build', 'create pairings from open flights', "
+    "'pairing build for September'). It opens the 'Pairing Build Automation' dialog pre-filled with "
+    "the user's date range, base, fleet, crew composition and build rules, then searches the open "
+    "flights for them. It does NOT build by itself — the planner reviews the scope and presses "
+    "'Build all'. Extract the pairing base (airport code), the date range or month, and the fleet "
+    "when given; extract crew composition counts (CA/FO) and any build-rule overrides (minimum rest, "
+    "multi-leg block, check-in, debrief, single-leg long-haul exemption) only when the user states "
+    "them. That order needs at least a base AND a date range or month: if either is missing, ask for "
+    "the missing piece and DO NOT call the tool. Mention that the dialog will open so the user can "
+    "review and press 'Build all'. "
+    "You can also AUTO-ASSIGN open pairings to crew via the auto_assign_pairings tool (triggers: "
+    "'auto assign open pairings', 'auto assign pairings to T2004', 'fill T2004 and T2005 roster', "
+    "'assign open pairings for September'). It opens the 'Auto-assign open pairings' dialog for those "
+    "crew over the requested month or date range, showing the no-commit decision trace; the planner "
+    "then presses 'Apply to gantt' and Save. It never commits anything itself. That order needs at "
+    "least one crew id AND a month or date range: if either is missing, ask for the missing piece and "
+    "DO NOT call the tool. Crew ids are employee codes like T2004 — never invent them; if the user "
+    "did not name crew, ask which crew. "
     "You can also EDIT the LIVE main roster with move_task (move a crew's duty to another crew), "
     "swap_tasks (swap two crews' duties on a day), unassign_task (take a crew off a duty), and "
     "add_ground_task (create a day off / training / standby / other ground task for one or more "
@@ -123,11 +145,34 @@ def chat(req: ChatRequest) -> dict:
             crew_bids_msg = f'Could not start the crew-bid simulation: {exc}'
         break
 
+    # build_pairings is a client action (the dialog opens in the gantt), but an
+    # incomplete order (no base, or no date range/month) has no action to dispatch —
+    # surface the assistant's "which base/period?" question instead of a bare "Done.".
+    build_pairings_msg = ''
+    for c in calls:
+        if c.get('name') != 'build_pairings':
+            continue
+        build_pairings_msg = build_pairings_missing_message(c) or ''
+        break
+
+    # Same treatment for auto_assign_pairings: an order missing the crew or the period has
+    # no action to dispatch, so the assistant asks for the missing piece.
+    auto_assign_msg = ''
+    for c in calls:
+        if c.get('name') != 'auto_assign_pairings':
+            continue
+        auto_assign_msg = auto_assign_missing_message(c) or ''
+        break
+
     actions = [a for a in (tool_call_to_action(c) for c in calls) if a is not None]
     if crew_bids_msg:
         text = f'{text}\n\n{crew_bids_msg}'.strip() if text else crew_bids_msg
     elif crew_bids_missing_msg:
         text = crew_bids_missing_msg
+    elif build_pairings_msg:
+        text = build_pairings_msg
+    elif auto_assign_msg:
+        text = auto_assign_msg
     elif not text:
         text = 'Done.' if actions else 'I could not determine an action.'
     return {'role': 'assistant', 'content': text, 'actions': actions}

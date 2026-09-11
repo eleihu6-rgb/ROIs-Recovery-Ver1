@@ -53,6 +53,16 @@ describe('roundtrip chooser', () => {
       { ...leg(2, 'DIR', 'ADD', 105, 60), fleet: '' }], { ...scope, fleets: ['ALL'] })).toThrow('fleet')
   })
 
+  it('skips a rotation whose check-in falls outside the window but keeps other seeds', () => {
+    // Seed 1 departs 00:40 UTC — its 120-minute check-in lands on the previous day.
+    const early = [leg(1, 'ADD', 'DIR', -200, 60), leg(2, 'DIR', 'ADD', 0, 60)]
+    const later = [leg(3, 'ADD', 'JIB', 300, 60), leg(4, 'JIB', 'ADD', 400, 60)]
+    expect(() => validateRotation(early, scope)).toThrow('Check-in')
+    expect(chooseRotations([...early, ...later], scope).map(rotation => rotation.flightIds)).toEqual([[3, 4]])
+    // Nothing else buildable → the reason still surfaces instead of a silent empty result.
+    expect(() => chooseRotations(early, scope)).toThrow('Check-in is outside selected scope')
+  })
+
   it('accepts all-fleet scope and rejects empty fleet lists', () => {
     expect(roundtripScopeSchema.safeParse({ ...scope, fleets: ['ALL'] }).success).toBe(true)
     expect(roundtripScopeSchema.safeParse({ ...scope, fleets: [] }).success).toBe(false)

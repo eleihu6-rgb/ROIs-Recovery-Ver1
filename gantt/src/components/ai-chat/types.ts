@@ -40,6 +40,24 @@ export type AiAction =
       endTime?: string
       comments?: string
     }
+  /** Open the Pairing Build Automation dialog pre-filled from the chat order. */
+  | {
+      type: 'build_pairings'
+      base: string
+      start: string
+      end: string
+      fleets?: string[]
+      composition?: Array<{ rank: string; plan: number }>
+      rules?: {
+        checkinMin?: number
+        debriefMin?: number
+        restMin?: number
+        maxDutyBlockMin?: number
+        singleLegExemption?: boolean
+      }
+    }
+  /** Open the Auto-assign open pairings dialog for the named crew (stages a draft). */
+  | { type: 'auto_assign_pairings'; crewIds: string[]; start: string; end: string }
 
 export interface ChatResponse {
   role: 'assistant'

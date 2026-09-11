@@ -69,6 +69,65 @@ def test_chat_rejects_bad_role():
     assert r.status_code == 422
 
 
+def test_chat_returns_build_pairings_action(monkeypatch):
+    monkeypatch.setattr(routes, 'llm_tools', lambda m, t, s: (
+        'Opening the Pairing Build Automation for ADD 7M8 — review, then Build all.',
+        [{'name': 'build_pairings', 'input': {
+            'base': 'ADD', 'start': '2026-09-20', 'end': '2026-09-30', 'fleets': ['7M8'],
+            'composition': [{'rank': 'CA', 'plan': 1}, {'rank': 'FO', 'plan': 1}]}}],
+    ))
+    r = client.post('/ai/chat', json={'messages': [{'role': 'user', 'content':
+        'build pairings for ADD 7M8 from 2026-09-20 to 2026-09-30'}]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body['actions'] == [{
+        'type': 'build_pairings', 'base': 'ADD', 'start': '2026-09-20', 'end': '2026-09-30',
+        'fleets': ['7M8'], 'composition': [{'rank': 'CA', 'plan': 1}, {'rank': 'FO', 'plan': 1}],
+    }]
+    assert 'Pairing Build Automation' in body['content']
+
+
+def test_chat_asks_for_missing_build_pairings_scope(monkeypatch):
+    # The model called the tool without a base → no action may be dispatched, and the
+    # assistant must ask for the missing piece rather than answering a bare "Done.".
+    monkeypatch.setattr(routes, 'llm_tools', lambda m, t, s: (
+        'Sure.', [{'name': 'build_pairings', 'input': {'start': '2026-09-20', 'end': '2026-09-30'}}],
+    ))
+    r = client.post('/ai/chat', json={'messages': [{'role': 'user', 'content': 'build pairings'}]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body['actions'] == []
+    assert 'which base' in body['content'].lower()
+
+
+def test_chat_returns_auto_assign_action(monkeypatch):
+    monkeypatch.setattr(routes, 'llm_tools', lambda m, t, s: (
+        'Opening Auto-assign open pairings for T2004, T2005 — apply and Save to persist.',
+        [{'name': 'auto_assign_pairings', 'input': {
+            'crewIds': ['T2004', 'T2005'], 'start': '2026-09-01', 'end': '2026-09-30'}}],
+    ))
+    r = client.post('/ai/chat', json={'messages': [{'role': 'user', 'content':
+        'auto assign open pairings to T2004 and T2005 for September 2026'}]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body['actions'] == [{
+        'type': 'auto_assign_pairings', 'crewIds': ['T2004', 'T2005'],
+        'start': '2026-09-01', 'end': '2026-09-30',
+    }]
+    assert 'Auto-assign' in body['content']
+
+
+def test_chat_asks_for_missing_auto_assign_crew(monkeypatch):
+    monkeypatch.setattr(routes, 'llm_tools', lambda m, t, s: (
+        'Sure.', [{'name': 'auto_assign_pairings', 'input': {'month': 'September'}}],
+    ))
+    r = client.post('/ai/chat', json={'messages': [{'role': 'user', 'content': 'auto assign pairings'}]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body['actions'] == []
+    assert 'which crew' in body['content'].lower()
+
+
 def test_create_crew_bids_complete_starts_run(monkeypatch):
     started = {}
 

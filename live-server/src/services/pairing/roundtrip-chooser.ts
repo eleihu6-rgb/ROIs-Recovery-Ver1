@@ -224,6 +224,12 @@ export const chooseRotations = (input: RoundtripFlight[], scope: RoundtripScope)
   }
   const used = new Set<number>()
   const output: Rotation[] = []
+  // A candidate whose check-in/debrief falls outside the selected window is simply not
+  // buildable in that scope — the sibling `close()` already skips chains that fail
+  // validation, so one tight-edge seed must not fail the whole search. Keep the reason
+  // so an otherwise-empty result still explains why (Ryan: the error must stay visible
+  // when the chosen From/To date really cannot hold any rotation).
+  let boundaryError: Error | null = null
 
   const close = (initial: RoundtripFlight[]): RoundtripFlight[] | null => {
     const queue = [initial]
@@ -278,10 +284,20 @@ export const chooseRotations = (input: RoundtripFlight[], scope: RoundtripScope)
       chain = packed
     }
 
-    const rotation = validateRotation(chain, scope)
+    let rotation: Rotation
+    try {
+      rotation = validateRotation(chain, scope)
+    } catch (error) {
+      if (error instanceof Error && /^(Check-in|Final debrief) is outside/.test(error.message)) {
+        boundaryError = boundaryError ?? error
+        continue
+      }
+      throw error
+    }
     rotation.flightIds.forEach((id) => used.add(id))
     output.push(rotation)
   }
+  if (!output.length && boundaryError) throw boundaryError
   return output
 }
 

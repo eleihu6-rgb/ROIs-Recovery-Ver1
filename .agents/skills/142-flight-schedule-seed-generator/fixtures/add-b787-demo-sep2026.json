@@ -1,0 +1,19 @@
+{
+  "airline": "ET",
+  "base": "ADD",
+  "flightAssignment": "PAX",
+  "dateRange": { "start": "2026-09-01", "end": "2026-09-30" },
+  "fleets": [
+    {
+      "fleet": "B787",
+      "routes": [
+        { "otherAirport": "IAD", "out": { "fltNum": "ET500", "depLocal": "22:35", "blockMin": 870 }, "in": { "fltNum": "ET501", "depLocal": "22:20", "blockMin": 780 } },
+        { "otherAirport": "LHR", "out": { "fltNum": "ET700", "depLocal": "09:15", "blockMin": 480 }, "in": { "fltNum": "ET701", "depLocal": "21:15", "blockMin": 465 } },
+        { "otherAirport": "PVG", "out": { "fltNum": "ET688", "depLocal": "23:45", "blockMin": 660 }, "in": { "fltNum": "ET687", "depLocal": "00:40", "blockMin": 690 } },
+        { "otherAirport": "NBO", "out": { "fltNum": "ET306", "depLocal": "07:00", "blockMin": 105 }, "in": { "fltNum": "ET307", "depLocal": "10:30", "blockMin": 105 } },
+        { "otherAirport": "EBB", "out": { "fltNum": "ET806", "depLocal": "13:00", "blockMin": 90 }, "in": { "fltNum": "ET807", "depLocal": "15:45", "blockMin": 90 } },
+        { "otherAirport": "DAR", "out": { "fltNum": "ET802", "depLocal": "18:00", "blockMin": 135 }, "in": { "fltNum": "ET803", "depLocal": "21:30", "blockMin": 135 } }
+      ]
+    }
+  ]
+}
