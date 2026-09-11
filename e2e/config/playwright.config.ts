@@ -1,9 +1,16 @@
 import { defineConfig, devices } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadLocalEnv } from './load-env'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '../..')
+
+// Load the optional gitignored e2e/.env before reading any fallback below. This is
+// how a developer targets a non-local environment (e.g. Ryan's https://cr.rois.one
+// sign-off gate) WITHOUT changing the shared localhost defaults; a real env var or
+// CI value always wins over the file, and no file means unchanged localhost behavior.
+loadLocalEnv()
 
 /**
  * Environment variables (set in .env or CI pipeline). Defaults point ONLY at
