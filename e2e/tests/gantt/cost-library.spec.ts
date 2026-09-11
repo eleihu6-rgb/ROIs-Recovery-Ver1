@@ -519,4 +519,306 @@ test.describe('Cost Library real UI and PostgreSQL', () => {
       await expect(row(page, standby).getByLabel('Standby credit factor', { exact: true })).toHaveValue('0.25')
     } finally { await fixtures.cleanup() }
   })
+
+  /**
+   * Regression: when the cost-library backend returns a structured error (e.g.
+   * FK violation), the UI must show a clear category + message + hint + retry
+   * button — NOT the legacy "Cost library request failed" toast. We intercept
+   * the catalog endpoint and inject a structured 409 to verify the banner.
+   */
+  test('shows structured error banner (not generic toast) when catalog returns 409 conflict', async ({ page }) => {
+    await page.route('**/api/cost-library/catalog', async (route) => {
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 409,
+          data: { category: 'conflict', hint: 'Remove the references to "cost_set_member" first, then retry.', sqlState: '23503' },
+          message: 'This record is referenced by other data and cannot be deleted or changed.',
+        }),
+      })
+    })
+
+    await page.goto('/altair/')
+    await page.getByTestId('login-user-code').fill(TEST_ACCOUNTS.admin.userCode)
+    await page.getByTestId('login-password').fill(TEST_ACCOUNTS.admin.password)
+    await page.getByTestId('login-sign-in').click()
+    await page.getByTestId('module-nav-legality').click()
+    await page.getByTestId('legality-nav-cost-sets').click()
+
+    // The banner should appear instead of the generic toast
+    const banner = page.getByTestId('cost-library-load-error')
+    await expect(banner).toBeVisible()
+    await expect(banner).toHaveAttribute('data-category', 'conflict')
+    await expect(banner).toHaveAttribute('role', 'alert')
+    await expect(banner.getByTestId('cost-library-load-error-category')).toContainText('Conflict')
+    await expect(banner.getByTestId('cost-library-load-error-status')).toContainText('HTTP 409')
+    await expect(banner.getByTestId('cost-library-load-error-sqlstate')).toContainText('SQLSTATE 23503')
+    await expect(banner.getByTestId('cost-library-load-error-hint')).toContainText('cost_set_member')
+    // The legacy "Cost library request failed" string MUST NOT appear
+    await expect(page.getByText('Cost library request failed', { exact: true })).toHaveCount(0)
+
+    // Dismiss button works
+    await page.getByTestId('cost-library-load-error-dismiss').click()
+    await expect(banner).toBeHidden()
+
+    // Screenshot proof
+    await page.route('**/api/cost-library/catalog', async (route) => {
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 409,
+          data: { category: 'conflict', hint: 'Remove the references to "cost_set_member" first, then retry.', sqlState: '23503' },
+          message: 'This record is referenced by other data and cannot be deleted or changed.',
+        }),
+      })
+    })
+    await page.reload()
+    await expect(banner).toBeVisible()
+    await elementShot(banner, 'conflict-banner-Ver1')
+  })
+
+  /**
+   * Regression: 503 / connection errors show a Retry button (retryable=true).
+   */
+  test('shows Retry button on transient 503 errors', async ({ page }) => {
+    let intercepted = 0
+    await page.route('**/api/cost-library/catalog', async (route) => {
+      intercepted += 1
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 503,
+          data: { category: 'unavailable', hint: 'Verify DATABASE_URL, then retry.', sqlState: '08006' },
+          message: 'The database is unreachable. Check that PostgreSQL is running and the connection settings are correct.',
+        }),
+      })
+    })
+
+    await page.goto('/altair/')
+    await page.getByTestId('login-user-code').fill(TEST_ACCOUNTS.admin.userCode)
+    await page.getByTestId('login-password').fill(TEST_ACCOUNTS.admin.password)
+    await page.getByTestId('login-sign-in').click()
+    await page.getByTestId('module-nav-legality').click()
+    await page.getByTestId('legality-nav-cost-sets').click()
+
+    const banner = page.getByTestId('cost-library-load-error')
+    await expect(banner).toBeVisible()
+    await expect(banner).toHaveAttribute('data-category', 'unavailable')
+    await expect(banner).toHaveAttribute('data-retryable', 'true')
+    const retry = banner.getByTestId('cost-library-load-error-retry')
+    await expect(retry).toBeVisible()
+    await elementShot(banner, 'unavailable-retry-Ver1')
+
+    // Clicking Retry re-fires the route and updates the intercepted counter
+    await retry.click()
+    expect(intercepted).toBeGreaterThanOrEqual(2)
+  })
+
+  /**
+   * Regression: validation errors (e.g. 400 from a missing required column)
+   * show the column name in the user-facing message.
+   */
+  test('shows field-specific message for 400 validation errors (23502 not-null)', async ({ page }) => {
+    await page.route('**/api/cost-library/catalog', async (route) => {
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 400,
+          data: { category: 'validation', hint: 'Reload the page; the parent record may have been removed.', sqlState: '23502' },
+          message: 'The field "unit_price" is required but was not provided.',
+        }),
+      })
+    })
+
+    await page.goto('/altair/')
+    await page.getByTestId('login-user-code').fill(TEST_ACCOUNTS.admin.userCode)
+    await page.getByTestId('login-password').fill(TEST_ACCOUNTS.admin.password)
+    await page.getByTestId('login-sign-in').click()
+    await page.getByTestId('module-nav-legality').click()
+    await page.getByTestId('legality-nav-cost-sets').click()
+
+    const banner = page.getByTestId('cost-library-load-error')
+    await expect(banner).toBeVisible()
+    await expect(banner.getByTestId('cost-library-load-error-message')).toContainText('unit_price')
+    await expect(banner.getByTestId('cost-library-load-error-message')).toContainText('required')
+    // Validation is non-retryable — no Retry button
+    await expect(banner.getByTestId('cost-library-load-error-retry')).toHaveCount(0)
+    await elementShot(banner, 'validation-banner-Ver1')
+  })
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Menu navigation smoke tests — verify the Legality module's two
+  // cost-library menu items both load cleanly with no error banner,
+  // no console errors, and the catalog data renders. These are the
+  // tests that protect against regressions of the original
+  // "cost library request failed" bug surfacing on the happy path.
+  // ──────────────────────────────────────────────────────────────────────
+
+  /** Log in + open the Legality module, but leave the sub-menu selection
+   *  to the caller. Use this when a test wants to navigate between
+   *  Cost Sets and Cost Templates. */
+  const loginToLegality = async (page: Page): Promise<void> => {
+    await page.goto('/altair/')
+    await page.getByTestId('login-user-code').fill(TEST_ACCOUNTS.admin.userCode)
+    await page.getByTestId('login-password').fill(TEST_ACCOUNTS.admin.password)
+    await page.getByTestId('login-sign-in').click()
+    await page.getByTestId('module-nav-legality').click()
+    await expect(page.getByTestId('legality-nav-cost-sets')).toBeVisible()
+    await expect(page.getByTestId('legality-nav-cost-templates')).toBeVisible()
+  }
+
+  /** Asserts the cost-library view rendered without any error banner —
+   *  covers all three display sites (load-time, table header, dialog)
+   *  and the legacy "Cost library request failed" string. */
+  const expectNoCostLibraryError = async (page: Page): Promise<void> => {
+    // Load-time banner: should not be present at all on the happy path
+    await expect(page.getByTestId('cost-library-load-error')).toHaveCount(0)
+    // Table-region banner (set above the cost-table-heading)
+    await expect(page.getByTestId('cost-table-error')).toHaveCount(0)
+    // The legacy generic toast must never appear
+    await expect(page.getByText('Cost library request failed', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Request failed', { exact: true })).toHaveCount(0)
+  }
+
+  test('Cost Sets menu loads the cost library and shows no error', async ({ page, request }) => {
+    // Intercept the catalog request so we can assert the 200 response and
+    // payload shape. If the request never fires, the test fails here —
+    // proving the menu click did not actually hit the API.
+    const catalogResponse = page.waitForResponse(
+      (r) => r.url().endsWith('/api/cost-library/catalog') && r.request().method() === 'GET',
+    )
+
+    // Track browser-side console errors; any error logged by the React app
+    // (uncaught exception, React warning that the team treats as error,
+    // or a failed fetch from another component) will fail the test.
+    const consoleErrors: string[] = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text())
+    })
+    page.on('pageerror', (err) => consoleErrors.push(`pageerror: ${err.message}`))
+
+    await loginToLegality(page)
+    await page.getByTestId('legality-nav-cost-sets').click()
+
+    // The catalog GET must return 200
+    const res = await catalogResponse
+    expect(res.status(), `catalog response status: ${res.status()}`).toBe(200)
+    const body = (await res.json()) as { code: number; data: CostCatalog }
+    expect(body.code).toBe(200)
+    // Catalog must include at least the structural pieces the UI relies on
+    expect(Array.isArray(body.data.types)).toBe(true)
+    expect(Array.isArray(body.data.instances)).toBe(true)
+    expect(Array.isArray(body.data.sets)).toBe(true)
+
+    // The cost-library view must be fully visible and populated
+    const view = page.getByTestId('cost-library-view')
+    await expect(view).toBeVisible()
+    await expect(page.getByTestId('cost-table-heading')).toBeVisible()
+    // Either we have rows (>=1 instance), or the explicit empty-state —
+    // both are valid happy-path outcomes; what is NOT valid is a spinner
+    // stuck or an error region.
+    const rowCount = await page.locator('[data-testid^="cost-row-"]').count()
+    const emptyText = await page.getByText('No costs found.').count()
+    expect(rowCount > 0 || emptyText > 0, 'expected either a cost row or the empty-state message').toBe(true)
+
+    // No error banner anywhere in the view
+    await expectNoCostLibraryError(page)
+
+    // The active menu item must reflect "cost-sets" — shell-sidebar.tsx
+    // uses the `border-sidebar-primary` className to mark the active item
+    // (the component does not set aria-current; we mirror its actual contract).
+    await expect(page.getByTestId('legality-nav-cost-sets')).toHaveClass(/border-sidebar-primary/)
+    // The page heading reads "Cost Sets" (the set name is shown when a set
+    // is selected, but the badge label for the right-pane defaults to
+    // "Cost Sets" when no set is selected yet)
+    await expect(view).toContainText(/Cost Sets/i)
+
+    // No console errors during the whole flow
+    expect(consoleErrors, `browser console errors:\n${consoleErrors.join('\n')}`).toEqual([])
+
+    await shot(page, 'cost-sets-menu-loads-Ver1')
+  })
+
+  test('Cost Templates menu loads the templates view and shows no error', async ({ page }) => {
+    const catalogResponse = page.waitForResponse(
+      (r) => r.url().endsWith('/api/cost-library/catalog') && r.request().method() === 'GET',
+    )
+
+    const consoleErrors: string[] = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text())
+    })
+    page.on('pageerror', (err) => consoleErrors.push(`pageerror: ${err.message}`))
+
+    await loginToLegality(page)
+    await page.getByTestId('legality-nav-cost-templates').click()
+
+    // The catalog GET must still fire when switching to templates
+    const res = await catalogResponse
+    expect(res.status(), `catalog response status: ${res.status()}`).toBe(200)
+
+    // The same cost-library view component is reused for templates,
+    // but the catalogue aside is hidden and the heading changes
+    const view = page.getByTestId('cost-library-view')
+    await expect(view).toBeVisible()
+    await expect(view.getByRole('heading', { name: 'Cost Templates' })).toBeVisible()
+    // Cost-catalogue aside (the "Cost Catalogue" heading on the left) is
+    // hidden in template mode — see templates={true} branch in view
+    await expect(view.getByText('Cost Catalogue')).toHaveCount(0)
+    // Cost-Sets aside is also hidden
+    await expect(view.getByText('Cost Sets', { exact: true })).toHaveCount(0)
+
+    // Templates should render rows for instance_no=1, or empty state
+    const rowCount = await page.locator('[data-testid^="cost-row-"]').count()
+    const emptyText = await page.getByText('No costs found.').count()
+    expect(rowCount > 0 || emptyText > 0, 'expected either a template row or empty-state').toBe(true)
+
+    // No error banner anywhere
+    await expectNoCostLibraryError(page)
+
+    // The active menu item must reflect "cost-templates" (active class)
+    await expect(page.getByTestId('legality-nav-cost-templates')).toHaveClass(/border-sidebar-primary/)
+
+    expect(consoleErrors, `browser console errors:\n${consoleErrors.join('\n')}`).toEqual([])
+
+    await shot(page, 'cost-templates-menu-loads-Ver1')
+  })
+
+  test('Switching between Cost Sets and Cost Templates preserves a clean (no-error) state', async ({ page }) => {
+    const consoleErrors: string[] = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text())
+    })
+    page.on('pageerror', (err) => consoleErrors.push(`pageerror: ${err.message}`))
+
+    await loginToLegality(page)
+
+    // Sets → Templates → Sets → Templates, asserting each landing is clean.
+    // The first click on each menu item is covered by the prior two tests
+    // (which assert the catalog GET 200). Here we just verify the toggle
+    // itself never causes a visible error.
+    for (const target of ['cost-sets', 'cost-templates', 'cost-sets', 'cost-templates'] as const) {
+      await page.getByTestId(`legality-nav-${target}`).click()
+
+      const view = page.getByTestId('cost-library-view')
+      await expect(view).toBeVisible()
+      await expectNoCostLibraryError(page)
+
+      if (target === 'cost-sets') {
+        await expect(view.getByText('Cost Catalogue')).toBeVisible()
+      } else {
+        await expect(view.getByText('Cost Catalogue')).toHaveCount(0)
+        await expect(view.getByRole('heading', { name: 'Cost Templates' })).toBeVisible()
+      }
+      // Active nav item uses `border-sidebar-primary` class (shell-sidebar.tsx)
+      await expect(page.getByTestId(`legality-nav-${target}`)).toHaveClass(/border-sidebar-primary/)
+    }
+
+    expect(consoleErrors, `browser console errors:\n${consoleErrors.join('\n')}`).toEqual([])
+    await shot(page, 'cost-menu-toggle-Ver1')
+  })
 })
