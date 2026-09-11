@@ -277,8 +277,12 @@ export default async function recoveryCostRoutes(fastify: FastifyInstance): Prom
       if (result.amount !== null) directCost += result.amount
     }
     // Subtract DHD cost savings (analyst input — not priced by the library).
+    // Allow the net `directCost` to go negative when savings exceed the priced
+    // components so `directCost === sum(breakdown.amount)` always holds.
+    // Clamping at 0 would silently drop the savings that the breakdown row
+    // still records, leaving the header total out of sync with the table.
     if (input.dhdCostSavings > 0) {
-      directCost = Math.max(0, directCost - input.dhdCostSavings)
+      directCost = directCost - input.dhdCostSavings
       breakdown.push({
         label: 'DHD cost savings',
         typeCode: 0,
