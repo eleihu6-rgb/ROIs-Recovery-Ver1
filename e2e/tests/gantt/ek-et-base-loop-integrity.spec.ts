@@ -27,9 +27,9 @@ interface SegObj {
   schStrDtUtc: string | null; depArp: string | null; arvArp: string | null; fltNum: string | null
 }
 
-// Full rebuild window (the delete+rebuild placed every loop's legs inside 29 Aug–04 Sep).
+// Full build window: 29 Aug–04 Sep rebuilds + the 01–15 Sep ET coverage build (2026-09-09).
 const WIN_START = '2026-08-29T00:00:00.000Z'
-const WIN_END = '2026-09-05T00:00:00.000Z'
+const WIN_END = '2026-09-16T00:00:00.000Z'
 const HOME_BASES = ['DXB', 'ADD']
 const DELETED_INVALID_ID = 150497
 

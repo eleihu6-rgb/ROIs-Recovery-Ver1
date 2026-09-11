@@ -32,6 +32,7 @@ import { MandayInfoDialog } from '@/components/roster/manday-info-dialog'
 import { ScheduleDetailsDialog } from '@/components/roster/schedule-details-dialog'
 import { DailyTaskCalendarDialog } from '@/components/roster/daily-task-calendar-dialog'
 import { CrewInfoDialog } from '@/components/roster/crew-info-dialog'
+import { AutoAssignDialog } from '@/components/roster/auto-assign-dialog'
 import { GanttDayStatisticsDialog } from '@/components/gantt/gantt-day-statistics-dialog'
 import { AiChatPanel } from '@/components/ai-chat/ai-chat-panel'
 import { useUrlSync } from '@/hooks/use-url-sync'
@@ -178,6 +179,7 @@ export const AppShell = () => {
       <ScheduleDetailsDialog />
       <DailyTaskCalendarDialog />
       <CrewInfoDialog />
+      <AutoAssignDialog />
       <GanttDayStatisticsDialog />
       {canAccessRbot && <AiChatPanel />}
     </div>

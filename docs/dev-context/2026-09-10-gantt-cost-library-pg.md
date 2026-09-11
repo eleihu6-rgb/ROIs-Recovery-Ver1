@@ -5,20 +5,20 @@
 
 ## 基本信息
 
-- 时间：2026-09-10 15:20:51 PDT
+- 时间：2026-09-10 14:54:27 PDT
 - Wing：`gantt`
-- Topic：`cost-library-visual-parity`
-- Title：Cost Library visual parity and crew comparison
+- Topic：`cost-library-pg`
+- Title：Cost Library PostgreSQL and UI
 - Git branch：`feat/gantt/roundtrip-pairing-builder`
 
 ## 本轮对话上下文
 
-User approved docs/superpowers/specs/2026-09-10-cost-library-visual-parity.md and explicitly proceeded to development. Comprehensive alignment with legality-cost-mockup-Ver1 plus earlier workbench screenshot chart comparison, not only backgrounds/icons.
-Implemented cost-library-view.tsx visual hierarchy, readable catalogue labels, counts, set descriptions/status/selection, responsive table columns and formatted prices; historical standby loads pinned GH histories. cost-detail.tsx has parameter title icon, three-column forms and spaced tier table. New cost-workbench.tsx keeps single crew and adds Compare crews for GH/standby via existing saved-revision server calculator, before/after bars on shared scale, saved GH marker, standby HH:MM KPIs, side-by-side breakdown/cash difference and baseline replaced row. Clears stale outputs and discards stale in-flight responses. No schema/API/payroll math changes. All workbench crew values are user-entered scenarios, not new payroll records.
-Global unlayered universal border-color reset overrides Tailwind layered accents. Fixed only local cost selection edges and GH/formula markers with inline existing theme tokens; no global CSS changes. Teal result tint uses readable foreground text; disabled/unpriced is neutral and not comparable.
-GPT-5.5 verification: focused backend31 PASS, real UI Playwright3 PASS; receipt docs/test-cases/crew-recovery/cost-library-visual-parity.md. Gantt tsc --noEmit PASS, npm run check:ui PASS0 hard/124 preexisting warnings, git diff --check PASS. Versioned same-run screenshots in docs/assets/screenshots/crew-recovery/. Parent visually inspected standby-compare-workbench-tall-Ver2.png and standby-mobile-breakdown-bottom-Ver1.png: complete comparison/baseline row visible, amber marker clear. Element screenshots inside clipped scrollports were misleading; final evidence uses taller desktop viewport and genuine mobile page screenshots at chart/breakdown positions. Mobile uses existing collapsed shell sidebar.
-Default acceptance: GH85,1.2 through90,1.5 beyond; rate100; standby0700/dep1000 factor0.5 cutoff60 and pairing5.75 ->2:00 eligible,1:00 standby,6:45 assignment. A84->90:45 costs712.50;B70->76:45 costs0;delta712.50. Default template configurations preserved; test fixtures cleanup exact IDs.
-Live UI remains http://localhost:5173/altair/legality -> Cost Sets. No commit/push, no UAT writes, no extra DB deployment required. Preserve unrelated dirty files. Previous PG implementation context docs/dev-context/2026-09-10-gantt-cost-library-pg.md; pairing context docs/dev-context/2026-09-09-gantt-roundtrip-pairing-builder.md remain relevant.
+Approved Cost Library implementation delivered across dedicated PG tables, live-server API/calculators and real Legality UI. Spec: docs/superpowers/specs/2026-09-10-cost-library-pg-design.md. No new approval needed for this scope. User explicitly requested multiple agents and GPT-5.5 testing.
+Five cost tables keep immutable revisions and pinned set membership; template 001 is protected and copies use atomic numbering. GH default 85, through90 at1.2, above90 at1.5; standby default factor0.5 and cutoff60minutes, configurable. Seventeen illustrative defaults are not verified airline tariffs. Workbenches calculate saved revisions; automatic recovery selection/payroll are outside scope.
+SQL migration/seed and repeatable installer are documented in docs/modules/crew-recovery/cost-library-database.md. Configured f8_sit_live installation/repeat verification passed using the configured environment connection. No UAT write. Other DB synchronization adds structure/missing defaults without overwriting customized prices/membership.
+GPT-5.5 backend tests:31 PASS. GPT-5.5 real UI Playwright:3 PASS in13.4s; cleanup0 sets/instances; seed templates unchanged. Receipts: docs/test-cases/crew-recovery/cost-library.md and cost-library-pw.md. Gantt/backend builds and typechecks passed; npm run check:ui PASS0 hard/124 existing warnings; git diff --check passed. Same-run desktop/mobile screenshots in docs/assets/screenshots/crew-recovery/cost-library-*. Mobile existing shell leaves narrow working area; desktop primary planning surface.
+Live UI http://localhost:5173/altair/legality -> Cost Sets/Cost Templates. Compiled live-server running port3000 from live-server with env file; no tunnel changes. Preserve unrelated dirty files. No commit/push performed.
+Previous context preserved at docs/dev-context/2026-09-09-gantt-roundtrip-pairing-builder.md. This context adds Cost Library work, not a replacement for prior pairing decisions.
 
 ## 当前工作树快照
 
@@ -39,9 +39,7 @@ Live UI remains http://localhost:5173/altair/legality -> Cost Sets. No commit/pu
  M gantt/src/stores/shell-store.ts
  M live-server/src/index.ts
 ?? .agents/skills/141-crew-seed-generator/fixtures/ethiopia-add-7m8.json
-?? .claude/skills/demo-video/
 ?? docs/assets/screenshots/crew-recovery/
-?? docs/assets/screenshots/gantt/add-7m8-crew-batch-roster-Ver1.png
 ?? docs/assets/screenshots/gantt/cr-public-pairings-per-day-Ver1.png
 ?? docs/assets/screenshots/gantt/demo-live-add-base-tour-Ver1.png
 ?? docs/assets/screenshots/gantt/ek-et-duty-rest-integrity-Ver3.png
@@ -66,14 +64,12 @@ Live UI remains http://localhost:5173/altair/legality -> Cost Sets. No commit/pu
 ?? docs/assets/screenshots/gantt/pairing-builder-option-c-ver2-search-Ver2.png
 ?? docs/assets/videos/
 ?? docs/dev-context/2026-09-09-gantt-roundtrip-pairing-builder.md
-?? docs/dev-context/2026-09-10-gantt-cost-library-pg.md
 ?? docs/modules/crew-recovery/
 ?? docs/superpowers/plans/2026-09-10-cost-library-pg.md
 ?? docs/superpowers/plans/2026-09-10-crew-cost-mockups.md
 ?? docs/superpowers/specs/2026-09-09-pairing-builder-mockups/
 ?? docs/superpowers/specs/2026-09-10-0917-crew-recovery-cost-library-design-Ver1.md
 ?? docs/superpowers/specs/2026-09-10-cost-library-pg-design.md
-?? docs/superpowers/specs/2026-09-10-cost-library-visual-parity.md
 ?? docs/superpowers/specs/2026-09-10-crew-cost-standby-tiers-Ver2.md
 ?? docs/superpowers/specs/2026-09-10-crew-recovery-cost-library-mockups/
 ?? docs/superpowers/specs/2026-09-10-legality-cost-mockup-Ver1/
@@ -89,7 +85,6 @@ Live UI remains http://localhost:5173/altair/legality -> Cost Sets. No commit/pu
 ?? e2e/tests/gantt/cost-library.spec.ts
 ?? e2e/tests/gantt/cr-public-pairings-per-day.spec.ts
 ?? e2e/tests/gantt/demo-live-add-base-tour.spec.ts
-?? e2e/tests/gantt/validate-add-7m8-crew-batch-j4001-j4040.spec.ts
 ?? e2e/utils/demo-video/
 ?? gantt/src/components/cost/
 ?? gantt/src/services/cost-library-api.ts
@@ -131,7 +126,7 @@ live-server/src/index.ts
 新窗口先阅读：
 
 1. `NEXT_CONTEXT.md`
-2. 本文件：`docs/dev-context/2026-09-10-gantt-cost-library-visual-parity.md`
+2. 本文件：`docs/dev-context/2026-09-10-gantt-cost-library-pg.md`
 3. `docs/dev-context/LATEST.md`
 
 然后运行：

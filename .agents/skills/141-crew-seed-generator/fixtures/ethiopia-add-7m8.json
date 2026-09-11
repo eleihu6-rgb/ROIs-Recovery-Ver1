@@ -1,0 +1,53 @@
+{
+  "groups": [
+    {
+      "label": "Ethiopia / ADD / 7M8",
+      "idPrefix": "J",
+      "idStart": 4001,
+      "count": 40,
+      "caCount": 20,
+      "nationality": "ET",
+      "filiale": "F8",
+      "emplBaseDate": "2023-01-09",
+      "base": {
+        "code": "ADD",
+        "name": "Bole International Airport",
+        "icao": "HAAB",
+        "city": "ADD",
+        "dir": "I",
+        "zoneId": "Africa/Addis_Ababa",
+        "utcOffsetMin": 180,
+        "country": "ET"
+      },
+      "fleet": {
+        "code": "7M8",
+        "description": "Boeing 737 MAX 8",
+        "fleetGrp": "7M8",
+        "acType": "7M8",
+        "marketAcType": "Boeing 737 MAX 8",
+        "restfacility": 0,
+        "body": "N"
+      },
+      "ranks": {
+        "CA": { "code": "CA", "division": "P", "description": "Captain", "position": "CA" },
+        "FO": { "code": "FO", "division": "P", "description": "First Officer", "position": "FO" }
+      },
+      "names": {
+        "maleFirst": [
+          "Tewodros", "Getnet", "Mesfin", "Yosef", "Tsegaye", "Wondwossen", "Zerihun", "Endale",
+          "Alemayehu", "Fasil", "Beniam", "Temesgen", "Habtamu", "Melaku", "Dereje", "Adane",
+          "Shimelis", "Berhanu", "Kassahun", "Tamrat"
+        ],
+        "femaleFirst": [
+          "Meseret", "Aster", "Genet", "Almaz", "Birtukan", "Wubalem", "Tsehay", "Marta",
+          "Zewditu", "Yeshi", "Roman", "Bethlehem", "Frehiwot", "Selamawit"
+        ],
+        "last": [
+          "Mekonnen", "Wolde", "Zewde", "Beyene", "Mamo", "Shiferaw", "Demissie", "Gebremariam",
+          "Kifle", "Ayele", "Belay", "Wondimu", "Tefera", "Sisay", "Aregawi", "Mengistu",
+          "Gizaw", "Yimer", "Chane", "Fantahun"
+        ]
+      }
+    }
+  ]
+}

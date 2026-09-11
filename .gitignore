@@ -271,6 +271,7 @@ live-server/version.tmp
 # session/test scratch
 .superpowers/
 e2e/test-results/
+e2e/results/
 
 # local service + cron logs (rois.sh / weekly-help-release)
 logs/

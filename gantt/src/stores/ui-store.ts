@@ -149,6 +149,13 @@ interface UiStore {
   openCrewInfo: (crewId: string) => void
   closeCrewInfo: () => void
 
+  /** Auto-assign open pairings dialog (base+fleet-matched greedy assignment for selected crew). */
+  autoAssignOpen: boolean
+  autoAssignCrewIds: string[]
+  autoAssignPane: PaneType | null
+  openAutoAssignDialog: (crewIds: string[], pane?: PaneType | null) => void
+  closeAutoAssignDialog: () => void
+
   /** Timeline day statistics dialog. */
   ganttDayStatisticsOpen: boolean
   ganttDayStatisticsDate: string | null
@@ -365,6 +372,14 @@ export const useUiStore = create<UiStore>((set) => ({
   crewInfoCrewId: null,
   openCrewInfo: (crewId) => set({ crewInfoOpen: true, crewInfoCrewId: crewId }),
   closeCrewInfo: () => set({ crewInfoOpen: false, crewInfoCrewId: null }),
+
+  autoAssignOpen: false,
+  autoAssignCrewIds: [],
+  autoAssignPane: null,
+  openAutoAssignDialog: (crewIds, pane = null) =>
+    set({ autoAssignOpen: true, autoAssignCrewIds: crewIds, autoAssignPane: pane }),
+  closeAutoAssignDialog: () =>
+    set({ autoAssignOpen: false, autoAssignCrewIds: [], autoAssignPane: null }),
 
   ganttDayStatisticsOpen: false,
   ganttDayStatisticsDate: null,
