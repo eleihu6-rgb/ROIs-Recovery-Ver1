@@ -60,6 +60,7 @@ import { findPairingsByFlight } from '@/utils/bring-matches-to-top'
 import { markPhase, resetPhaseMarks, allPhaseMarks, phasesRelative } from '@/utils/gantt-perf-marks'
 import { isCrossDayLocal, useTimezoneStore } from '@/stores/timezone-store'
 import { useUiStore } from '@/stores/ui-store'
+import { wsClient } from '@/services/ws'
 import { useAirportTzStore } from '@/stores/airport-tz-store'
 import { useFlightCompositionStore } from '@/stores/flight-composition-store'
 import { formatFlightStatusLine } from '@/utils/format-flight-status-line'
@@ -114,6 +115,12 @@ export interface GanttTestApi {
   rowHeights: () => number[]
   /** 所有可见数据面板都已把对象呈现给用户（不在加载中 + 计数>0 + 已绘制） */
   ready: () => boolean
+  /**
+   * Live WebSocket is open. Lets e2e assert real-time push connectivity so a
+   * ws-403 / upgrade regression fails with a clear message instead of an opaque
+   * 20s poll timeout (the pane-sync propagation channel depends on this).
+   */
+  wsConnected: () => boolean
   /** Canvas 实际绘制回执（按 paneId） */
   render: () => PaneRenderStat[]
   /** Loaded roster_flight ids that have a visible crew memo (each draws a note icon). */
@@ -1031,6 +1038,7 @@ const pairingSegments = (): Array<Record<string, unknown>> =>
       schStrDtUtc: s.schStrDtUtc, schEndDtUtc: s.schEndDtUtc,
       actStrDtUtc: s.actStrDtUtc, actEndDtUtc: s.actEndDtUtc,
       briefStartUtc: (s as unknown as { briefStartUtc?: string | null }).briefStartUtc ?? null,
+      briefEndUtc: (s as unknown as { briefEndUtc?: string | null }).briefEndUtc ?? null,
       // Render anchors: the pairing canvas draws the layover puck from the previous duty's
       // dropoffEndUtc → next duty's pickupStartUtc, and the back-to-base REST puck from the
       // last duty's dropoffEndUtc for dutySchRestMin minutes. Expose them so tests can prove
@@ -2339,6 +2347,7 @@ export const installGanttTestHook = (): void => {
     grid: () => useLayoutStore.getState().grid.map((row) => [...row]),
     rowHeights: () => [...useLayoutStore.getState().rowHeights],
     ready,
+    wsConnected: () => wsClient.isConnected(),
     render: renderList,
     memoBadges,
     memoCount,

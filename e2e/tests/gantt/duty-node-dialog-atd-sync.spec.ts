@@ -104,6 +104,10 @@ const applyFlightFilter = (page: Page, filter: { depArps?: string[]; fltNums?: s
 const openLivePairingContextMenu = (page: Page, pairingId: number): Promise<void> =>
   page.evaluate((id) => (window.__ganttTest as unknown as { openLivePairingContextMenu: (n: number) => void }).openLivePairingContextMenu(id), pairingId)
 
+/** Is the Live real-time WebSocket actually open in the browser? */
+const wsConnected = (page: Page): Promise<boolean> =>
+  page.evaluate(() => (window.__ganttTest as unknown as { wsConnected: () => boolean }).wsConnected())
+
 /** Open Flight Detail for a known flight via a real double-click on its Flight-pane puck. */
 const openFlightDetailById = async (page: Page, dashboard: GanttDashboardPage, fltId: number): Promise<Locator> => {
   let probe: FocusResult | null = null
@@ -223,6 +227,19 @@ test.describe('Edit Duty Nodes — flight puck + pairing puck stay in sync per f
     await expect.poll(() => leg1Flight(page).then((f) => f?.id ?? null), {
       message: `${LEG1_FLT_NUM} (${LEG1_FLT_ID}) loaded in Flight pane`, timeout: 20_000,
     }).toBe(LEG1_FLT_ID)
+
+    // ── Real-time channel guard ───────────────────────────────────────────
+    // Every pane-sync assertion below depends on the Live WebSocket pushing the
+    // delay to already-open panes. Assert that channel is actually open *before*
+    // relying on it, so a ws-403 / upgrade regression (as happened over the
+    // cr.rois.one tunnel) fails here with a clear message — not as an opaque 20s
+    // poll timeout, and not masked by the client-side fallback poller, which
+    // would otherwise let the panes catch up on HTTP and hide the regression.
+    await expect.poll(() => wsConnected(page), {
+      message: 'Live WebSocket is connected (real-time pane push channel). '
+        + 'If this fails over a proxy/tunnel, the ws upgrade is being rejected (ws-403).',
+      timeout: 15_000,
+    }).toBe(true)
 
     // ── Baseline (on-time) ────────────────────────────────────────────────
     const flightBase = await leg1Flight(page)
