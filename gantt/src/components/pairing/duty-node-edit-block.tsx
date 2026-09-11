@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react'
+import { Clock } from 'lucide-react'
 import { useTimezoneStore } from '@/stores/timezone-store'
 import { GanttEnglishDatePicker } from '@/components/common/gantt-date-fields'
 
@@ -50,12 +52,58 @@ interface Props {
   onDropoffEndChange:  (d: Date) => void  // independent
 }
 
-const LockedBadge = () => (
-  <span className="text-xs text-muted-foreground ml-1" title="Locked to flight schedule">&#x1F512;</span>
+const LockedBadge = ({ title }: { title?: string }) => (
+  <span className="text-2xs text-muted-foreground ml-1" title={title ?? 'Locked to flight schedule'}>&#x1F512;</span>
 )
-const LinkedBadge = () => (
-  <span className="text-xs text-blue-400 ml-1" title="Linked — shifts adjacent node">&#x27F3;</span>
+const LinkedBadge = ({ title }: { title?: string }) => (
+  <span className="text-2xs text-primary ml-1" title={title ?? 'Linked — shifts adjacent node'}>&#x27F3;</span>
 )
+
+/**
+ * Wide, always-24-hour time field. Replaces native <input type="time">, whose
+ * rendering follows the browser locale and shows AM/PM ("04:00" for 16:00) — the
+ * item-4 bug. Accepts free-form "HHMM" / "H:MM" / "HH:MM", normalizes on commit
+ * (blur / Enter), and reverts unparseable input.
+ */
+function Time24Input({
+  value, disabled, ariaLabel, onCommit,
+}: {
+  value: string            // "HH:MM" in display tz
+  disabled?: boolean
+  ariaLabel: string
+  onCommit: (hhmm: string) => void
+}) {
+  const [draft, setDraft] = useState(value)
+  useEffect(() => { setDraft(value) }, [value])
+
+  const commit = () => {
+    const m = draft.trim().match(/^(\d{1,2}):?(\d{2})$/)
+    if (!m) { setDraft(value); return }
+    const h = Math.min(23, Math.max(0, Number(m[1])))
+    const mi = Math.min(59, Math.max(0, Number(m[2])))
+    const norm = `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`
+    setDraft(norm)
+    if (norm !== value) onCommit(norm)
+  }
+
+  return (
+    <div className={`flex h-8 w-24 items-center gap-1.5 rounded-md border px-2 tabular-nums
+      ${disabled ? 'bg-muted/50 text-muted-foreground' : 'bg-background text-foreground focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20'}`}>
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label={ariaLabel}
+        className="w-full bg-transparent text-sm font-medium outline-none disabled:cursor-not-allowed"
+        value={draft}
+        disabled={disabled}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } }}
+      />
+      <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+    </div>
+  )
+}
 
 export function DutyNodeEditBlock({
   blockLabel,
@@ -81,34 +129,37 @@ export function DutyNodeEditBlock({
     value,
     locked,
     linked,
+    lockTitle,
+    linkTitle,
     onChange,
   }: {
     label: string
     value: Date
     locked?: boolean
     linked?: boolean
+    lockTitle?: string
+    linkTitle?: string
     onChange?: (field: 'date' | 'time', val: string) => void
   }) => (
     <div className="flex flex-col gap-1">
       <label className="text-xs text-muted-foreground flex items-center">
         {label}
-        {locked && <LockedBadge />}
-        {linked && <LinkedBadge />}
+        {locked && <LockedBadge title={lockTitle} />}
+        {linked && <LinkedBadge title={linkTitle} />}
       </label>
-      <div className="flex gap-1">
+      <div className="flex gap-1.5">
         <GanttEnglishDatePicker
           ariaLabel={`${label} date`}
-          buttonClassName="h-8 w-32 border rounded px-2 py-1 text-sm"
+          buttonClassName="h-8 min-w-[7.5rem] flex-1 rounded-md border px-2 text-sm"
           value={utcToLocalDate(value.toISOString(), tz)}
           disabled={locked}
           onValueChange={(nextValue) => onChange?.('date', nextValue)}
         />
-        <input
-          type="time"
-          className="border rounded px-2 py-1 text-sm bg-background text-foreground w-24 disabled:opacity-50"
+        <Time24Input
+          ariaLabel={`${label} time`}
           value={utcToLocalTime(value.toISOString(), tz)}
           disabled={locked}
-          onChange={(e) => onChange?.('time', e.target.value)}
+          onCommit={(hhmm) => onChange?.('time', hhmm)}
         />
       </div>
     </div>
@@ -128,52 +179,56 @@ export function DutyNodeEditBlock({
         </div>
       )}
 
-      {/* Sign-in section */}
-      <div className="grid grid-cols-2 gap-4">
-        <TimeInput
-          label="Brief Start"
-          value={briefStart}
-          linked
-          onChange={handleDateTimeChange(onBriefStartChange, briefStart)}
-        />
-        <TimeInput
-          label="Brief End"
-          value={briefEnd}
-          locked
-        />
-      </div>
+      {/* Sign-in — event order: Pickup → Brief (flight departs at Brief End) */}
       <div className="grid grid-cols-2 gap-4">
         <TimeInput
           label="Pickup Start"
           value={pickupStart}
           onChange={handleDateTimeChange(onPickupStartChange, pickupStart)}
         />
-        <div className="text-xs text-muted-foreground self-end pb-2">
-          Pickup: {fmtDuration(pickupStart, briefStart)}
+        <div className="text-xs text-muted-foreground self-end pb-2 font-mono">
+          Pickup → Brief: {fmtDuration(pickupStart, briefStart)}
         </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <TimeInput
+          label="Brief Start"
+          value={briefStart}
+          linked
+          linkTitle="Linked — shifts Pickup with it"
+          onChange={handleDateTimeChange(onBriefStartChange, briefStart)}
+        />
+        <TimeInput
+          label="Brief End"
+          value={briefEnd}
+          locked
+          lockTitle="Locked to scheduled departure (STD)"
+        />
       </div>
 
       {!isValid && (
-        <div className="text-xs text-destructive">Brief Start must be before flight departure</div>
+        <div className="text-xs text-destructive">Brief Start must be before scheduled departure</div>
       )}
 
-      {/* Sign-out section */}
+      {/* Sign-out — event order: Debrief → Dropoff (flight arrives at Debrief Start) */}
       <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
         <TimeInput
           label="Debrief Start"
           value={debriefStart}
           locked
+          lockTitle="Locked to actual arrival (ATA)"
         />
         <TimeInput
           label="Debrief End"
           value={debriefEnd}
           linked
+          linkTitle="Linked — shifts Dropoff with it"
           onChange={handleDateTimeChange(onDebriefEndChange, debriefEnd)}
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div className="text-xs text-muted-foreground self-end pb-2">
-          Dropoff: {fmtDuration(debriefEnd, dropoffEnd)}
+        <div className="text-xs text-muted-foreground self-end pb-2 font-mono">
+          Debrief → Dropoff: {fmtDuration(debriefEnd, dropoffEnd)}
         </div>
         <TimeInput
           label="Dropoff End"

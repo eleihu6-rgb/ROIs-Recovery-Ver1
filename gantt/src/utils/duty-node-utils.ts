@@ -1,4 +1,5 @@
 import type { PairingSegment } from '@/types'
+import { DELAY_GHOST_THRESHOLD_MIN } from '@/components/gantt/gantt-constants'
 
 export interface DutyDoubleState {
   pickupStart: Date
@@ -92,6 +93,7 @@ export function applyBlock2DebriefEndChange(state: DutyEditState, newDebriefEnd:
 export type GanttBlockType =
   | 'pickup' | 'brief' | 'flight' | 'transit'
   | 'rest'   | 'hotel' | 'debrief' | 'dropoff'
+  | 'ghost'  // scheduled-departure delay slot (STD→ATD), hatched — mirrors Pairing/Roster pane
 
 export interface GanttBlock {
   type:       GanttBlockType
@@ -105,7 +107,7 @@ export interface GanttBlock {
 export interface GanttAxisLabel {
   pct:  number            // left %
   text: string            // "HH:MM"
-  kind: 'edit' | 'lock' | 'hotel'
+  kind: 'edit' | 'lock' | 'hotel' | 'act'  // 'act' = actual dep/arr (amber), shown on delay
 }
 
 export interface GanttBlockLabel {
@@ -153,12 +155,19 @@ export function buildGanttBlocks(
     : -1
 
   const b1Segs  = restIdx >= 0 ? segs.slice(0, restIdx + 1) : segs
-  const briefEnd = new Date(segs[0].actStrDtUtc)  // locked = first flight dep
+  // Path A: brief ends at the SCHEDULED departure (STD). When the flight is delayed
+  // (ATD − STD ≥ threshold) the STD→ATD gap renders as a hatched delay ghost, exactly
+  // like the Pairing/Roster panes — brief stays anchored to STD and never stretches.
+  const schDep0     = new Date(segs[0].schStrDtUtc)
+  const actDep0     = new Date(segs[0].actStrDtUtc)
+  const dep0Delayed = (actDep0.getTime() - schDep0.getTime()) / 60000 >= DELAY_GHOST_THRESHOLD_MIN
+  const briefEnd    = dep0Delayed ? schDep0 : actDep0  // locked = first flight STD (or ATD if on time)
 
   const blocks: GanttBlock[]      = []
   let restGapPct: number | null   = null
   let b2BriefEndForAxis: Date | null = null
   let b2DebriefStartForAxis: Date | null = null
+  let b2ActDepForAxis: Date | null = null  // block-2 ATD, set only when delayed
 
   // ── Pickup ──────────────────────────────────────────────────────────────
   blocks.push({
@@ -172,6 +181,14 @@ export function buildGanttBlocks(
     widthPct: wPct(state.briefStart, briefEnd),
     start: state.briefStart, end: briefEnd,
   })
+  // ── Delay ghost (STD→ATD) — first flight ──────────────────────────────────
+  if (dep0Delayed) {
+    blocks.push({
+      type: 'ghost', label: 'SKED',
+      widthPct: wPct(briefEnd, actDep0),
+      start: briefEnd, end: actDep0,
+    })
+  }
 
   // ── Block 1 flight segments ──────────────────────────────────────────────
   for (let i = 0; i < b1Segs.length; i++) {
@@ -250,10 +267,14 @@ export function buildGanttBlocks(
     if (b2Segs.length === 0) {
       return { blocks, axisLabels: [], blockLabels: [], restGapPct: null }
     }
-    const b2BriefEnd = new Date(b2Segs[0].actStrDtUtc)
+    const b2SchDep   = new Date(b2Segs[0].schStrDtUtc)
+    const b2ActDep   = new Date(b2Segs[0].actStrDtUtc)
+    const b2Delayed  = (b2ActDep.getTime() - b2SchDep.getTime()) / 60000 >= DELAY_GHOST_THRESHOLD_MIN
+    const b2BriefEnd = b2Delayed ? b2SchDep : b2ActDep
     const b2DebriefStart = new Date(b2Segs[b2Segs.length - 1].actEndDtUtc)
     b2BriefEndForAxis = b2BriefEnd
     b2DebriefStartForAxis = b2DebriefStart
+    b2ActDepForAxis = b2Delayed ? b2ActDep : null
     blocks.push({
       type: 'pickup', label: 'Pick²',
       widthPct: wPct(state.double!.pickupStart, state.double!.briefStart),
@@ -264,6 +285,13 @@ export function buildGanttBlocks(
       widthPct: wPct(state.double!.briefStart, b2BriefEnd),
       start: state.double!.briefStart, end: b2BriefEnd,
     })
+    if (b2Delayed) {
+      blocks.push({
+        type: 'ghost', label: 'SKED',
+        widthPct: wPct(b2BriefEnd, b2ActDep),
+        start: b2BriefEnd, end: b2ActDep,
+      })
+    }
     for (let i = 0; i < b2Segs.length; i++) {
       if (i > 0) {
         const gs = new Date(b2Segs[i - 1].actEndDtUtc)
@@ -295,16 +323,26 @@ export function buildGanttBlocks(
     ? new Date(b1Segs[b1Segs.length - 1].actEndDtUtc)
     : new Date(segs[segs.length - 1].actEndDtUtc)
 
+  // Amber "actual departure" ticks — shown only when the leg is delayed (ghost present).
+  const dep0ActTick: GanttAxisLabel[] = dep0Delayed
+    ? [{ pct: lPct(actDep0), text: hhmm(actDep0, timezone), kind: 'act' }]
+    : []
+  const b2ActTick: GanttAxisLabel[] = b2ActDepForAxis
+    ? [{ pct: lPct(b2ActDepForAxis), text: hhmm(b2ActDepForAxis, timezone), kind: 'act' }]
+    : []
+
   const rawLabels: GanttAxisLabel[] = isDouble ? [
     { pct: lPct(state.pickupStart),           text: hhmm(state.pickupStart,           timezone), kind: 'edit'  },
     { pct: lPct(state.briefStart),            text: hhmm(state.briefStart,            timezone), kind: 'edit'  },
     { pct: lPct(briefEnd),                    text: hhmm(briefEnd,                    timezone), kind: 'lock'  },
+    ...dep0ActTick,
     { pct: lPct(lastDebriefStart),            text: hhmm(lastDebriefStart,            timezone), kind: 'lock'  },
     { pct: lPct(state.debriefEnd),            text: hhmm(state.debriefEnd,            timezone), kind: 'edit'  },
     { pct: lPct(state.dropoffEnd),            text: hhmm(state.dropoffEnd,            timezone), kind: 'edit'  },
     { pct: lPct(state.double!.pickupStart),   text: hhmm(state.double!.pickupStart,   timezone), kind: 'hotel' },
     { pct: lPct(state.double!.briefStart),    text: hhmm(state.double!.briefStart,    timezone), kind: 'edit'  },
     { pct: lPct(b2BriefEndForAxis!),          text: hhmm(b2BriefEndForAxis!,          timezone), kind: 'lock'  },
+    ...b2ActTick,
     { pct: lPct(b2DebriefStartForAxis!),      text: hhmm(b2DebriefStartForAxis!,      timezone), kind: 'lock'  },
     { pct: lPct(state.double!.debriefEnd),    text: hhmm(state.double!.debriefEnd,    timezone), kind: 'edit'  },
     { pct: lPct(state.double!.dropoffEnd),    text: hhmm(state.double!.dropoffEnd,    timezone), kind: 'edit'  },
@@ -312,6 +350,7 @@ export function buildGanttBlocks(
     { pct: lPct(state.pickupStart),           text: hhmm(state.pickupStart,           timezone), kind: 'edit'  },
     { pct: lPct(state.briefStart),            text: hhmm(state.briefStart,            timezone), kind: 'edit'  },
     { pct: lPct(briefEnd),                    text: hhmm(briefEnd,                    timezone), kind: 'lock'  },
+    ...dep0ActTick,
     { pct: lPct(lastDebriefStart),            text: hhmm(lastDebriefStart,            timezone), kind: 'lock'  },
     { pct: lPct(state.debriefEnd),            text: hhmm(state.debriefEnd,            timezone), kind: 'edit'  },
     { pct: lPct(state.dropoffEnd),            text: hhmm(state.dropoffEnd,            timezone), kind: 'edit'  },

@@ -3,6 +3,18 @@ import type { DutyEditState, GanttBlock } from '@/utils/duty-node-utils'
 import type { PairingSegment } from '@/types'
 import { buildGanttBlocks } from '@/utils/duty-node-utils'
 import { useTimezoneStore } from '@/stores/timezone-store'
+import { ROSTER_FLIGHT_TOP, ROSTER_FLIGHT_BOTTOM } from '@/utils/puck-duty-color'
+import {
+  SEGMENT_BRIEF_COLOR,
+  SEGMENT_DEBRIEF_COLOR,
+  SEGMENT_PICKUP_DROP_COLOR,
+  SEGMENT_REST_BG,
+  DELAY_GHOST_FILL_COLOR,
+  DELAY_GHOST_BORDER_COLOR,
+  DELAY_GHOST_HATCH_ALPHA,
+  DELAY_GHOST_LABEL_COLOR,
+  DELAY_GHOST_ACTUAL_TIME_COLOR,
+} from '@/components/gantt/gantt-constants'
 
 interface Props {
   state:           DutyEditState
@@ -13,26 +25,42 @@ interface Props {
   onAddDouble:     () => void
 }
 
+// Colors mirror the Pairing/Roster Segment-mode panes so the duty puck reads
+// identically to the Gantt (item 5a). Hatched ghost = the STD→ATD delay slot (5b).
+const GHOST_HATCH = `rgba(148,163,184,${DELAY_GHOST_HATCH_ALPHA})` // DELAY_GHOST_HATCH_COLOR @ alpha
+
 const BLOCK_BG: Record<string, string> = {
-  pickup:  'linear-gradient(135deg,#92400e,#b45309)',
-  brief:   'linear-gradient(135deg,#1e3a8a,#2563eb)',
-  flight:  'linear-gradient(135deg,#1f2937,#374151)',
-  transit: 'repeating-linear-gradient(45deg,#1c2128 0,#1c2128 4px,#242d3c 4px,#242d3c 8px)',
-  rest:    'repeating-linear-gradient(45deg,#1a1040 0,#1a1040 5px,#231651 5px,#231651 10px)',
+  pickup:  SEGMENT_PICKUP_DROP_COLOR,
+  brief:   SEGMENT_BRIEF_COLOR,
+  flight:  `linear-gradient(135deg,${ROSTER_FLIGHT_TOP},${ROSTER_FLIGHT_BOTTOM})`,
+  transit: SEGMENT_REST_BG,
+  rest:    SEGMENT_REST_BG,
   hotel:   'rgba(110,64,201,0.18)',
-  debrief: 'linear-gradient(135deg,#164e63,#0891b2)',
-  dropoff: 'linear-gradient(135deg,#92400e,#b45309)',
+  debrief: SEGMENT_DEBRIEF_COLOR,
+  dropoff: SEGMENT_PICKUP_DROP_COLOR,
+  ghost:   DELAY_GHOST_FILL_COLOR,
 }
 
 const BLOCK_TEXT_COLOR: Record<string, string> = {
+  pickup:  'rgba(255,255,255,0.88)',
+  brief:   '#3b2a05',                 // dark ink on amber, matches pane brief label
+  flight:  'rgba(255,255,255,0.92)',
+  debrief: '#1e293b',                 // dark ink on slate
+  dropoff: 'rgba(255,255,255,0.88)',
+  ghost:   DELAY_GHOST_LABEL_COLOR,
   hotel:   '#a78bfa',
-  flight:  'rgba(255,255,255,0.65)',
   transit: 'transparent',
   rest:    'transparent',
 }
 
-const BLOCK_BORDER: Record<string, React.CSSProperties> = {
-  rest:  { borderLeft: '1px dashed rgba(110,64,201,0.4)', borderRight: '1px dashed rgba(110,64,201,0.4)' },
+const BLOCK_EXTRA: Record<string, React.CSSProperties> = {
+  ghost: {
+    backgroundImage: `repeating-linear-gradient(45deg, transparent 0, transparent 4px, ${GHOST_HATCH} 4px, ${GHOST_HATCH} 5px)`,
+    border:          `1px dashed ${DELAY_GHOST_BORDER_COLOR}`,
+    borderRight:     'none',
+    fontSize:        9,
+  },
+  rest:  { borderLeft: '1px dashed rgba(100,116,139,0.5)', borderRight: '1px dashed rgba(100,116,139,0.5)' },
   hotel: { borderLeft: '1px dashed rgba(110,64,201,0.5)', borderRight: '1px dashed rgba(110,64,201,0.5)' },
 }
 
@@ -71,7 +99,7 @@ function BlockSegment({ block, timezone }: { block: GanttBlock; timezone: string
         overflow:       'hidden',
         whiteSpace:     'nowrap',
         cursor:         'default',
-        ...(BLOCK_BORDER[block.type] ?? {}),
+        ...(BLOCK_EXTRA[block.type] ?? {}),
       }}
     >
       {label && (
@@ -173,10 +201,12 @@ export function DutyNodeGanttBar({
               fontFamily: 'var(--font-mono)',
               whiteSpace: 'nowrap',
               userSelect: 'none',
+              fontWeight: lp.kind === 'act' ? 600 : 400,
               color:
-                lp.kind === 'edit'  ? '#2f81f7' :
+                lp.kind === 'edit'  ? '#2563eb' :
+                lp.kind === 'act'   ? DELAY_GHOST_ACTUAL_TIME_COLOR :
                 lp.kind === 'hotel' ? '#a78bfa' :
-                '#4d5761',
+                '#94a3b8',
             }}
           >
             {lp.text}
