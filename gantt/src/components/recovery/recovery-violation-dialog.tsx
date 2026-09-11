@@ -887,7 +887,7 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
       {isFilteredTab && visibleFiltered.length === 0 ? <div className="min-h-0 flex-1 px-3 py-3 text-xs text-muted-foreground">No options were filtered out by Rule check. Every candidate in this plan is potentially executable.</div> : null}
       {(visibleOptions.length > 0 || (isFilteredTab && visibleFiltered.length > 0)) && <div className="min-h-0 flex-1 overflow-auto">
         <div className="sticky top-0 z-10 hidden grid-cols-[minmax(220px,1fr)_72px_72px_92px_110px_154px] gap-2 border-b border-border bg-background/95 px-3 py-1.5 text-3xs uppercase tracking-wide text-muted-foreground backdrop-blur sm:grid">
-          <span className="border-r border-border/60 pr-2">Crew / option</span><span className="text-right">Cancel</span><span className="text-right">Add</span><span className="text-right">Stability</span><span className="text-right">Cost</span><span className="text-right">Actions</span>
+          <span className="border-r border-border/60 pr-2">Crew / option</span><span className="text-center">Cancel</span><span className="text-center">Add</span><span className="text-center">Stability</span><span className="text-center">Cost</span><span className="text-right">Actions</span>
         </div>
         <div className="divide-y divide-border/70">{visibleOptions.map((option) => {
           const selected = selectedOptionId === option.id
@@ -910,10 +910,10 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Cost <button type="button" className="font-semibold text-foreground underline-offset-2 hover:underline" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button></span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
-                <button type="button" className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button>
+                <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
+                <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
+                <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
+                <button type="button" className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onPreview(option)} data-testid={`recovery-preview-${option.id}`}><Eye className="h-3.5 w-3.5" />Preview</button>
@@ -959,10 +959,10 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Cost <button type="button" className="font-semibold text-foreground underline-offset-2 hover:underline" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button></span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
-                <button type="button" className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button>
+                <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
+                <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
+                <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
+                <button type="button" className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid={`recovery-detail`}><Eye className="h-3.5 w-3.5" />Detail</button>
