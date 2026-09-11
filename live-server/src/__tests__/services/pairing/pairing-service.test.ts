@@ -222,6 +222,26 @@ describe('pairingService', () => {
 
       expect(refreshPairingTafb).toHaveBeenCalledWith(fastify.db, 42, 'admin')
     })
+
+    it('rejects mixed airlines (7M8 ET + F8 trap)', async () => {
+      const et = {
+        id: 1,
+        fltNum: 'ET877',
+        airline: 'ET',
+        fleet: '7M8',
+        depArp: 'ADD',
+        arvArp: 'LLW',
+        schDepDtUtc: new Date('2026-09-03T11:10:00Z'),
+        schArvDtUtc: new Date('2026-09-03T15:10:00Z'),
+        actDepDtUtc: new Date('2026-09-03T11:10:00Z'),
+        actArvDtUtc: new Date('2026-09-03T15:10:00Z'),
+      }
+      const f8 = { ...et, id: 2, fltNum: '759', airline: 'F8', depArp: 'YEG', arvArp: 'YLW' }
+      fastify.db.then.mockImplementation((resolve: (value: unknown) => unknown) => resolve([et, f8]))
+
+      await expect(pairingService.createFromFlights(fastify, [et.id, f8.id], 'ADD', 'P', 'admin'))
+        .rejects.toThrow(/Cannot mix airlines/)
+    })
   })
 
   // ---------- update ----------

@@ -57,6 +57,15 @@ const bodyComposition = (fleet: string): { rank: string; plan: number }[] => {
 
 const homeBaseFor = (airline: string, fallback: string): string => AIRLINE_HOME_BASE[airline] ?? fallback
 
+/** Rule 2 — one pairing must not mix airlines or fleets (shared by build + legacy create/add paths). */
+export const assertHomogeneousFlights = (flights: ReadonlyArray<{ airline: string; fleet: string }>): void => {
+  if (flights.length === 0) return
+  const airlines = new Set(flights.map((f) => f.airline))
+  if (airlines.size > 1) throw new Error(`Cannot mix airlines in one pairing: ${[...airlines].join(', ')}`)
+  const fleets = new Set(flights.map((f) => f.fleet))
+  if (fleets.size > 1) throw new Error(`Cannot mix fleets in one pairing: ${[...fleets].join(', ')}`)
+}
+
 export const minutesBetween = (a: Date, b: Date): number => (b.getTime() - a.getTime()) / 60000
 export const addMinutes = (d: Date, min: number): Date => new Date(d.getTime() + min * 60000)
 
@@ -333,11 +342,7 @@ export const pairingBuildService = {
         validateRotation(flights.map(toRoundtripFlight), scope)
       }
 
-      // Rule 2 — no mixing airline or fleet within one pairing.
-      const airlines = new Set(flights.map((f) => f.airline))
-      if (airlines.size > 1) throw new Error(`Cannot mix airlines in one pairing: ${[...airlines].join(', ')}`)
-      const fleets = new Set(flights.map((f) => f.fleet))
-      if (fleets.size > 1) throw new Error(`Cannot mix fleets in one pairing: ${[...fleets].join(', ')}`)
+      assertHomogeneousFlights(flights)
 
       // Guard — refuse flights already covered by a (non-deadhead) segment of a live pairing.
       const covered = await tx

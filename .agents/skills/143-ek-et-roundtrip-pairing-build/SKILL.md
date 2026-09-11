@@ -24,6 +24,25 @@ never get home. Example cautionary case (2026-08-30): **pairing #150497 was inva
 legs connected from neither base.** It, plus 89 other stranded fragments, were deleted and
 rebuilt into real base→base loops. After the fix: **191 DXB/ADD pairings, 0 invalid.**
 
+## The single-airline invariant (mandatory)
+
+**Every flight in a pairing must belong to the same airline.** EK/ET automation builds EK or ET
+rotations only — never weld F8 (or any other carrier) legs into the same pairing.
+
+- **7M8 is shared by ET and F8.** Filtering the Flight pane (or roundtrip search) by fleet `7M8`
+  alone is **not** enough: always restrict to `airline IN (EK, ET)` before choosing legs or
+  calling `POST /api/pairing/build`. The e2e builder does this explicitly (`etek =
+  rows.filter(r => r.airline === 'ET' || r.airline === 'EK')`).
+- `POST /api/pairing/build` hard-rejects mixed airlines (`Cannot mix airlines in one pairing:
+  ET, F8`). Legacy `create-from-flights` / `addSegment` paths enforce the same guard.
+- Audit rule **G** in `live-server/scripts/audit-pairing-build-rules.mjs` flags any MANUAL pairing
+  whose segments carry more than one airline code. Run it after any EK/ET build/repair sweep.
+
+Cautionary case: pairing **#58 ET877/ET876** showed F8 legs **759/758 (YEG–YLW, 1 Jan)** inserted
+between ET ADD–LLW sectors — a fleet-only filter on `7M8` pulled Flair flights into the same
+selection window as Ethiopian. The middle legs neither connect at LLW nor share dates with the ET
+rotation.
+
 ## The single-fleet invariant (mandatory)
 
 **Every flight in a pairing must have the same exact fleet code, across all duties.**

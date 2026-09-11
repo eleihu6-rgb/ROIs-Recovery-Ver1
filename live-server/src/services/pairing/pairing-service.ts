@@ -23,6 +23,7 @@ import { crewBase } from '../../models/crew/crew-base.js'
 import { refreshFlightCompositionFill } from '../../utils/composition-fill.js'
 import { classifyCoverage, isCoverageMet } from './coverage.js'
 import { refreshPairingTafb } from './pairing-tafb-service.js'
+import { assertHomogeneousFlights } from './pairing-build-service.js'
 import { computeDutyFdpMin } from './pairing-fdp.js'
 
 const CACHE_PREFIX = 'pairing'
@@ -774,6 +775,7 @@ export const pairingService = {
         .orderBy(asc(flightTable.schDepDtUtc))
 
       if (flights.length === 0) throw new Error('No matching flights found')
+      assertHomogeneousFlights(flights)
 
       const label = flights.map((f) => f.fltNum).join('-')
       const firstFlt = flights[0]
@@ -904,6 +906,18 @@ export const pairingService = {
         .where(eq(flightTable.id, flightId))
 
       if (!flt) throw new Error(`Flight #${flightId} not found`)
+
+      const [existingSeg] = await tx
+        .select({ airline: pairingSegment.airline, fleetSeg: pairingSegment.fleetSeg })
+        .from(pairingSegment)
+        .where(and(eq(pairingSegment.pairingId, pairingId), notDeleted(pairingSegment.isDeleted)))
+        .limit(1)
+      if (existingSeg) {
+        assertHomogeneousFlights([
+          { airline: existingSeg.airline ?? '', fleet: existingSeg.fleetSeg ?? '' },
+          { airline: flt.airline, fleet: flt.fleet },
+        ])
+      }
 
       // 3. Determine dutySeq + segSeq (append to last duty, next seg)
       const [maxSeqs] = await tx

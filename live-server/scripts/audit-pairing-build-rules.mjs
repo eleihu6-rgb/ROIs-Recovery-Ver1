@@ -16,6 +16,7 @@
  *   D  continuity       within a duty, next seg's dep_arp === prev seg's arv_arp
  *   E  unique coverage  no flight welded into more than one MANUAL pairing
  *   F  no time overlap  within a pairing, ordered segments never overlap in time
+ *   G  single airline   every segment in a pairing shares one non-empty airline code
  *
  * Usage (from live-server/, so .env + node_modules resolve):
  *   node scripts/audit-pairing-build-rules.mjs            # summary + up to 20 rows per rule
@@ -99,6 +100,18 @@ const RULES = [
              array_agg(distinct pairing_id) pairing_ids
       from seg group by flt_id having count(distinct pairing_id) > 1
       order by flt_id`,
+  },
+  {
+    code: 'G',
+    name: 'single airline (no ET/F8 mix within one pairing)',
+    sql: `with ${MAN_SEGS}
+      select pairing_id, count(distinct airline) airlines, array_agg(distinct airline) airline_codes,
+             count(*) seg_count
+      from seg
+      where airline is not null and airline <> ''
+      group by pairing_id
+      having count(distinct airline) > 1
+      order by pairing_id`,
   },
   {
     code: 'F',
