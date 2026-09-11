@@ -14,7 +14,19 @@ const SECTION_PATTERNS = {
 
 const normalizeWhitespace = (value) => value.replace(/\s+/g, ' ').trim()
 
+/**
+ * Normalize CRLF/CR to LF before parsing.
+ *
+ * Windows checkouts (core.autocrlf=true) hand us "---\r\n", which fails the
+ * `startsWith('---\n')` probe below and silently degraded every generated entry
+ * to title "Overview" with an empty description. The dev-skills data is a build
+ * artifact that regenerates on every dev/build run, so this must be
+ * platform-independent.
+ */
+const normalizeLineEndings = (text) => text.replace(/\r\n?/g, '\n')
+
 const parseFrontmatter = (text, fallbackName) => {
+  text = normalizeLineEndings(text)
   if (!text.startsWith('---\n')) {
     return { name: fallbackName, description: '', body: text }
   }
