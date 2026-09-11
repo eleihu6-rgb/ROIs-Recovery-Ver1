@@ -1,0 +1,20 @@
+# Trip Trade · TG account validation.
+# Logs in with the prefilled TG crew (35459), waits for the crew-portal roster
+# capture, opens the Trip Trade tab, and confirms My Duty renders real duties.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- takeScreenshot: tt_login
+- tapOn:
+    id: "login-btn"
+# Wait for the portal login + roster capture to finish and land on the tabs.
+- extendedWaitUntil:
+    visible: "tab-trip-trade"
+    timeout: 200000
+- tapOn: "tab-trip-trade"
+- assertVisible: "My Duty"
+- assertVisible: "Publish all duties"
+- takeScreenshot: tt_tg_myduty

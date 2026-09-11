@@ -1,0 +1,22 @@
+# Trip Trade · PR account validation.
+# Switches the airline to PR (crew 433535), logs in, waits for the roster
+# capture, opens the Trip Trade tab, and confirms My Duty renders PR duties.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible: "tab-trip-trade"
+    timeout: 200000
+- tapOn: "tab-trip-trade"
+- assertVisible: "My Duty"
+- assertVisible: "Publish all duties"
+- takeScreenshot: tt_pr_myduty

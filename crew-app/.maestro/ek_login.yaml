@@ -1,0 +1,52 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-EK"
+- assertVisible:
+    id: "crew-id"
+- assertVisible: "C900001"
+- assertVisible:
+    id: "crew-pw"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible: "Next Adventure"
+    timeout: 30000
+- tapOn: "tab-agenda"
+- assertVisible:
+    id: "agenda-screen"
+# Upcoming — the two future pairings Ryan added (EK448/449 dep 2026-08-21,
+# EK434/435 dep 2026-08-26). EK448/449 are unique so they unambiguously prove
+# the future roster bucketed into Upcoming.
+- tapOn:
+    id: "tab-upcoming"
+- assertVisible:
+    id: "trip-list"
+- assertVisible: "EK448"
+- assertVisible: "EK449"
+- takeScreenshot: maestro_ek_upcoming
+- tapOn:
+    id: "tab-past"
+- assertVisible:
+    id: "trip-list"
+- assertVisible: "EK225"
+- assertVisible: "EK226"
+- scrollUntilVisible:
+    element:
+      text: "EK434"
+    direction: DOWN
+    timeout: 20000
+- assertVisible: "EK435"
+- scrollUntilVisible:
+    element:
+      text: "EK5"
+    direction: DOWN
+    timeout: 20000
+- assertVisible: "EK6"
+- takeScreenshot: maestro_ek_roster

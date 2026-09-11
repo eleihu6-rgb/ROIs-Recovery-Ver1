@@ -1,0 +1,1562 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`TripCards renders upcoming trips parsed from the sample CSV 1`] = `
+<RCTScrollView
+  ListHeaderComponent={
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "justifyContent": "flex-end",
+          "paddingBottom": 2,
+          "paddingHorizontal": 16,
+          "paddingTop": 12,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "backgroundColor": "#ede8f8",
+            "borderColor": "#d4c9f0",
+            "borderRadius": 14,
+            "borderWidth": 1,
+            "paddingHorizontal": 12,
+            "paddingVertical": 5,
+          }
+        }
+        testID="tz-mode-chip"
+      >
+        <Text
+          style={
+            {
+              "color": "#7b4fb8",
+              "fontSize": 11,
+              "fontWeight": "700",
+              "letterSpacing": 0.4,
+            }
+          }
+        >
+          Times: 
+          Airport local
+        </Text>
+      </View>
+    </View>
+  }
+  contentContainerStyle={
+    {
+      "backgroundColor": "#f5f5f7",
+      "paddingBottom": 24,
+    }
+  }
+  data={
+    [
+      {
+        "alarmDisplay": undefined,
+        "ciTime": "01:00",
+        "data": [
+          {
+            "arvArp": "HKG",
+            "arvDateUTC": "01 Jun 2026 0400",
+            "crewId": "891939",
+            "depArp": "TPE",
+            "fleet": "350",
+            "flightDateUTC": "01 Jun 2026 0300",
+            "fltNumber": "FA100",
+            "hotel": "",
+          },
+          {
+            "arvArp": "TPE",
+            "arvDateUTC": "01 Jun 2026 0600",
+            "crewId": "891939",
+            "depArp": "HKG",
+            "fleet": "350",
+            "flightDateUTC": "01 Jun 2026 0500",
+            "fltNumber": "FA101",
+            "hotel": "",
+          },
+        ],
+        "kind": "trip",
+        "layoverHours": undefined,
+        "prevDay": false,
+        "startMs": 0,
+        "title": "01 Jun 2026 0100",
+        "tripId": "891939-01 Jun 2026 0100-FA100",
+      },
+      {
+        "alarmDisplay": undefined,
+        "ciTime": "01:00",
+        "data": [
+          {
+            "arvArp": "YVR",
+            "arvDateUTC": "03 Jun 2026 1100",
+            "crewId": "891939",
+            "depArp": "TPE",
+            "fleet": "350",
+            "flightDateUTC": "03 Jun 2026 0300",
+            "fltNumber": "FA200",
+            "hotel": "Hyatt Regency",
+          },
+          {
+            "arvArp": "TPE",
+            "arvDateUTC": "06 Jun 2026 0200",
+            "crewId": "891939",
+            "depArp": "YVR",
+            "fleet": "350",
+            "flightDateUTC": "05 Jun 2026 1300",
+            "fltNumber": "FA201",
+            "hotel": "",
+          },
+        ],
+        "kind": "trip",
+        "layoverHours": undefined,
+        "prevDay": false,
+        "startMs": 0,
+        "title": "03 Jun 2026 0100",
+        "tripId": "891939-03 Jun 2026 0100-FA200",
+      },
+    ]
+  }
+  getItem={[Function]}
+  getItemCount={[Function]}
+  initialNumToRender={8}
+  keyExtractor={[Function]}
+  maxToRenderPerBatch={8}
+  onContentSizeChange={[Function]}
+  onLayout={[Function]}
+  onMomentumScrollBegin={[Function]}
+  onMomentumScrollEnd={[Function]}
+  onScroll={[Function]}
+  onScrollBeginDrag={[Function]}
+  onScrollEndDrag={[Function]}
+  removeClippedSubviews={false}
+  renderItem={[Function]}
+  scrollEventThrottle={0.0001}
+  showsVerticalScrollIndicator={false}
+  stickyHeaderIndices={[]}
+  testID="trip-list"
+  windowSize={11}
+>
+  <View>
+    <View
+      collapsable={false}
+      onLayout={[Function]}
+    >
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "justifyContent": "flex-end",
+            "paddingBottom": 2,
+            "paddingHorizontal": 16,
+            "paddingTop": 12,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#ede8f8",
+              "borderColor": "#d4c9f0",
+              "borderRadius": 14,
+              "borderWidth": 1,
+              "paddingHorizontal": 12,
+              "paddingVertical": 5,
+            }
+          }
+          testID="tz-mode-chip"
+        >
+          <Text
+            style={
+              {
+                "color": "#7b4fb8",
+                "fontSize": 11,
+                "fontWeight": "700",
+                "letterSpacing": 0.4,
+              }
+            }
+          >
+            Times: 
+            Airport local
+          </Text>
+        </View>
+      </View>
+    </View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          {
+            "backgroundColor": "#f5f5f7",
+            "paddingBottom": 8,
+            "paddingHorizontal": 16,
+            "paddingTop": 12,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flex": 1,
+                "flexDirection": "row",
+                "flexWrap": "wrap",
+                "gap": 6,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "backgroundColor": "#ede8f8",
+                    "borderColor": "#d4c9f0",
+                    "borderRadius": 20,
+                    "borderWidth": 1,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "paddingHorizontal": 9,
+                    "paddingVertical": 5,
+                  },
+                  {
+                    "backgroundColor": "#f3eefb",
+                    "borderColor": "#cdbff0",
+                  },
+                ]
+              }
+            >
+              <RNSVGSvgView
+                align="xMidYMid"
+                bbHeight={15}
+                bbWidth={15}
+                fill="none"
+                focusable={false}
+                height={15}
+                meetOrSlice={0}
+                minX={0}
+                minY={0}
+                style={
+                  [
+                    {
+                      "backgroundColor": "transparent",
+                      "borderWidth": 0,
+                    },
+                    {
+                      "flex": 0,
+                      "height": 15,
+                      "width": 15,
+                    },
+                  ]
+                }
+                vbHeight={24}
+                vbWidth={24}
+                width={15}
+              >
+                <RNSVGGroup
+                  fill={null}
+                  propList={
+                    [
+                      "fill",
+                    ]
+                  }
+                >
+                  <RNSVGCircle
+                    cx={12}
+                    cy={12}
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                    propList={
+                      [
+                        "stroke",
+                        "strokeWidth",
+                      ]
+                    }
+                    r={9}
+                    stroke={
+                      {
+                        "payload": 4282198924,
+                        "type": 0,
+                      }
+                    }
+                    strokeWidth={1.9}
+                  />
+                  <RNSVGPath
+                    d="M12 7.5V12l3 1.8"
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                    propList={
+                      [
+                        "stroke",
+                        "strokeWidth",
+                        "strokeLinecap",
+                        "strokeLinejoin",
+                      ]
+                    }
+                    stroke={
+                      {
+                        "payload": 4282198924,
+                        "type": 0,
+                      }
+                    }
+                    strokeLinecap={1}
+                    strokeLinejoin={1}
+                    strokeWidth={1.9}
+                  />
+                </RNSVGGroup>
+              </RNSVGSvgView>
+              <Text
+                style={
+                  {
+                    "color": "#3d2b8c",
+                    "fontSize": 14,
+                    "fontWeight": "800",
+                  }
+                }
+              >
+                01:00
+              </Text>
+            </View>
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#ede8f8",
+                "borderRadius": 14,
+                "paddingHorizontal": 12,
+                "paddingVertical": 5,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#7b4fb8",
+                  "fontSize": 13,
+                  "fontWeight": "700",
+                }
+              }
+            >
+              2
+               
+              legs
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#ffffff",
+              "borderColor": "#ececf3",
+              "borderLeftWidth": 4,
+              "borderRadius": 8,
+              "borderWidth": 1,
+              "marginHorizontal": 16,
+              "marginTop": 12,
+              "padding": 16,
+            },
+            {
+              "borderLeftColor": "#7b4fb8",
+            },
+          ]
+        }
+        testID="trip-flight-card"
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "marginBottom": 12,
+            }
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "borderRadius": 10,
+                  "paddingHorizontal": 12,
+                  "paddingVertical": 6,
+                },
+                {
+                  "backgroundColor": "#ede8f8",
+                },
+              ]
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#3d2b8c",
+                    "fontSize": 15,
+                    "fontWeight": "700",
+                  },
+                  {
+                    "color": "#7b4fb8",
+                  },
+                ]
+              }
+            >
+              FA100
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#ede8f8",
+                "borderRadius": 10,
+                "paddingHorizontal": 12,
+                "paddingVertical": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#7b4fb8",
+                  "fontSize": 14,
+                  "fontWeight": "700",
+                }
+              }
+            >
+              A350
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "flex-start",
+                "minWidth": 64,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#636b7f",
+                  "fontSize": 26,
+                  "fontWeight": "800",
+                  "letterSpacing": 1,
+                }
+              }
+            >
+              TPE
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#8b92a5",
+                  "fontSize": 13,
+                  "fontWeight": "500",
+                  "marginTop": 3,
+                }
+              }
+            >
+              01 Jun 03:00
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flex": 1,
+                "flexDirection": "row",
+                "paddingHorizontal": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "backgroundColor": "#ececf3",
+                  "flex": 1,
+                  "height": 1,
+                }
+              }
+            />
+            <Text
+              style={
+                {
+                  "color": "#aeb3c2",
+                  "fontSize": 22,
+                  "marginLeft": 2,
+                }
+              }
+            >
+              ›
+            </Text>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "flex-start",
+                  "minWidth": 64,
+                },
+                {
+                  "alignItems": "flex-end",
+                },
+              ]
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#636b7f",
+                  "fontSize": 26,
+                  "fontWeight": "800",
+                  "letterSpacing": 1,
+                }
+              }
+            >
+              HKG
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#8b92a5",
+                  "fontSize": 13,
+                  "fontWeight": "500",
+                  "marginTop": 3,
+                }
+              }
+            >
+              01 Jun 04:00
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#ffffff",
+              "borderColor": "#ececf3",
+              "borderLeftWidth": 4,
+              "borderRadius": 8,
+              "borderWidth": 1,
+              "marginHorizontal": 16,
+              "marginTop": 12,
+              "padding": 16,
+            },
+            {
+              "borderLeftColor": "#7b4fb8",
+            },
+          ]
+        }
+        testID="trip-flight-card"
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "marginBottom": 12,
+            }
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "borderRadius": 10,
+                  "paddingHorizontal": 12,
+                  "paddingVertical": 6,
+                },
+                {
+                  "backgroundColor": "#ede8f8",
+                },
+              ]
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#3d2b8c",
+                    "fontSize": 15,
+                    "fontWeight": "700",
+                  },
+                  {
+                    "color": "#7b4fb8",
+                  },
+                ]
+              }
+            >
+              FA101
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#ede8f8",
+                "borderRadius": 10,
+                "paddingHorizontal": 12,
+                "paddingVertical": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#7b4fb8",
+                  "fontSize": 14,
+                  "fontWeight": "700",
+                }
+              }
+            >
+              A350
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "flex-start",
+                "minWidth": 64,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#636b7f",
+                  "fontSize": 26,
+                  "fontWeight": "800",
+                  "letterSpacing": 1,
+                }
+              }
+            >
+              HKG
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#8b92a5",
+                  "fontSize": 13,
+                  "fontWeight": "500",
+                  "marginTop": 3,
+                }
+              }
+            >
+              01 Jun 05:00
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flex": 1,
+                "flexDirection": "row",
+                "paddingHorizontal": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "backgroundColor": "#ececf3",
+                  "flex": 1,
+                  "height": 1,
+                }
+              }
+            />
+            <Text
+              style={
+                {
+                  "color": "#aeb3c2",
+                  "fontSize": 22,
+                  "marginLeft": 2,
+                }
+              }
+            >
+              ›
+            </Text>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "flex-start",
+                  "minWidth": 64,
+                },
+                {
+                  "alignItems": "flex-end",
+                },
+              ]
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#636b7f",
+                  "fontSize": 26,
+                  "fontWeight": "800",
+                  "letterSpacing": 1,
+                }
+              }
+            >
+              TPE
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#8b92a5",
+                  "fontSize": 13,
+                  "fontWeight": "500",
+                  "marginTop": 3,
+                }
+              }
+            >
+              01 Jun 06:00
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    />
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          {
+            "backgroundColor": "#f5f5f7",
+            "paddingBottom": 8,
+            "paddingHorizontal": 16,
+            "paddingTop": 12,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flex": 1,
+                "flexDirection": "row",
+                "flexWrap": "wrap",
+                "gap": 6,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "backgroundColor": "#ede8f8",
+                    "borderColor": "#d4c9f0",
+                    "borderRadius": 20,
+                    "borderWidth": 1,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "paddingHorizontal": 9,
+                    "paddingVertical": 5,
+                  },
+                  {
+                    "backgroundColor": "#f3eefb",
+                    "borderColor": "#cdbff0",
+                  },
+                ]
+              }
+            >
+              <RNSVGSvgView
+                align="xMidYMid"
+                bbHeight={15}
+                bbWidth={15}
+                fill="none"
+                focusable={false}
+                height={15}
+                meetOrSlice={0}
+                minX={0}
+                minY={0}
+                style={
+                  [
+                    {
+                      "backgroundColor": "transparent",
+                      "borderWidth": 0,
+                    },
+                    {
+                      "flex": 0,
+                      "height": 15,
+                      "width": 15,
+                    },
+                  ]
+                }
+                vbHeight={24}
+                vbWidth={24}
+                width={15}
+              >
+                <RNSVGGroup
+                  fill={null}
+                  propList={
+                    [
+                      "fill",
+                    ]
+                  }
+                >
+                  <RNSVGCircle
+                    cx={12}
+                    cy={12}
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                    propList={
+                      [
+                        "stroke",
+                        "strokeWidth",
+                      ]
+                    }
+                    r={9}
+                    stroke={
+                      {
+                        "payload": 4282198924,
+                        "type": 0,
+                      }
+                    }
+                    strokeWidth={1.9}
+                  />
+                  <RNSVGPath
+                    d="M12 7.5V12l3 1.8"
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                    propList={
+                      [
+                        "stroke",
+                        "strokeWidth",
+                        "strokeLinecap",
+                        "strokeLinejoin",
+                      ]
+                    }
+                    stroke={
+                      {
+                        "payload": 4282198924,
+                        "type": 0,
+                      }
+                    }
+                    strokeLinecap={1}
+                    strokeLinejoin={1}
+                    strokeWidth={1.9}
+                  />
+                </RNSVGGroup>
+              </RNSVGSvgView>
+              <Text
+                style={
+                  {
+                    "color": "#3d2b8c",
+                    "fontSize": 14,
+                    "fontWeight": "800",
+                  }
+                }
+              >
+                01:00
+              </Text>
+            </View>
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#ede8f8",
+                "borderRadius": 14,
+                "paddingHorizontal": 12,
+                "paddingVertical": 5,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#7b4fb8",
+                  "fontSize": 13,
+                  "fontWeight": "700",
+                }
+              }
+            >
+              2
+               
+              legs
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#ffffff",
+              "borderColor": "#ececf3",
+              "borderLeftWidth": 4,
+              "borderRadius": 8,
+              "borderWidth": 1,
+              "marginHorizontal": 16,
+              "marginTop": 12,
+              "padding": 16,
+            },
+            {
+              "borderLeftColor": "#7b4fb8",
+            },
+          ]
+        }
+        testID="trip-flight-card"
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "marginBottom": 12,
+            }
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "borderRadius": 10,
+                  "paddingHorizontal": 12,
+                  "paddingVertical": 6,
+                },
+                {
+                  "backgroundColor": "#ede8f8",
+                },
+              ]
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#3d2b8c",
+                    "fontSize": 15,
+                    "fontWeight": "700",
+                  },
+                  {
+                    "color": "#7b4fb8",
+                  },
+                ]
+              }
+            >
+              FA200
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#ede8f8",
+                "borderRadius": 10,
+                "paddingHorizontal": 12,
+                "paddingVertical": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#7b4fb8",
+                  "fontSize": 14,
+                  "fontWeight": "700",
+                }
+              }
+            >
+              A350
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "flex-start",
+                "minWidth": 64,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#636b7f",
+                  "fontSize": 26,
+                  "fontWeight": "800",
+                  "letterSpacing": 1,
+                }
+              }
+            >
+              TPE
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#8b92a5",
+                  "fontSize": 13,
+                  "fontWeight": "500",
+                  "marginTop": 3,
+                }
+              }
+            >
+              03 Jun 03:00
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flex": 1,
+                "flexDirection": "row",
+                "paddingHorizontal": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "backgroundColor": "#ececf3",
+                  "flex": 1,
+                  "height": 1,
+                }
+              }
+            />
+            <Text
+              style={
+                {
+                  "color": "#aeb3c2",
+                  "fontSize": 22,
+                  "marginLeft": 2,
+                }
+              }
+            >
+              ›
+            </Text>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "flex-start",
+                  "minWidth": 64,
+                },
+                {
+                  "alignItems": "flex-end",
+                },
+              ]
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#636b7f",
+                  "fontSize": 26,
+                  "fontWeight": "800",
+                  "letterSpacing": 1,
+                }
+              }
+            >
+              YVR
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#8b92a5",
+                  "fontSize": 13,
+                  "fontWeight": "500",
+                  "marginTop": 3,
+                }
+              }
+            >
+              03 Jun 11:00
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "borderTopColor": "#ececf3",
+              "borderTopWidth": 1,
+              "flexDirection": "row",
+              "gap": 8,
+              "marginTop": 12,
+              "paddingTop": 12,
+            }
+          }
+        >
+          <RNSVGSvgView
+            align="xMidYMid"
+            bbHeight={16}
+            bbWidth={16}
+            fill="none"
+            focusable={false}
+            height={16}
+            meetOrSlice={0}
+            minX={0}
+            minY={0}
+            style={
+              [
+                {
+                  "backgroundColor": "transparent",
+                  "borderWidth": 0,
+                },
+                {
+                  "flex": 0,
+                  "height": 16,
+                  "width": 16,
+                },
+              ]
+            }
+            vbHeight={24}
+            vbWidth={24}
+            width={16}
+          >
+            <RNSVGGroup
+              fill={null}
+              propList={
+                [
+                  "fill",
+                ]
+              }
+            >
+              <RNSVGPath
+                d="M3 18v-7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v7"
+                fill={
+                  {
+                    "payload": 4278190080,
+                    "type": 0,
+                  }
+                }
+                propList={
+                  [
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4287337125,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={1.9}
+              />
+              <RNSVGPath
+                d="M3 14h18"
+                fill={
+                  {
+                    "payload": 4278190080,
+                    "type": 0,
+                  }
+                }
+                propList={
+                  [
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4287337125,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeWidth={1.9}
+              />
+              <RNSVGPath
+                d="M7 10V7a1 1 0 0 1 1-1h3"
+                fill={
+                  {
+                    "payload": 4278190080,
+                    "type": 0,
+                  }
+                }
+                propList={
+                  [
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4287337125,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={1.9}
+              />
+              <RNSVGCircle
+                cx={8.5}
+                cy={11.5}
+                fill={
+                  {
+                    "payload": 4278190080,
+                    "type": 0,
+                  }
+                }
+                propList={
+                  [
+                    "stroke",
+                    "strokeWidth",
+                  ]
+                }
+                r={1.4}
+                stroke={
+                  {
+                    "payload": 4287337125,
+                    "type": 0,
+                  }
+                }
+                strokeWidth={1.6}
+              />
+              <RNSVGPath
+                d="M3 18v2m18-2v2"
+                fill={
+                  {
+                    "payload": 4278190080,
+                    "type": 0,
+                  }
+                }
+                propList={
+                  [
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4287337125,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeWidth={1.9}
+              />
+            </RNSVGGroup>
+          </RNSVGSvgView>
+          <Text
+            style={
+              {
+                "color": "#1a1a2e",
+                "flex": 1,
+                "fontSize": 13,
+                "fontWeight": "500",
+              }
+            }
+          >
+            Hyatt Regency
+          </Text>
+        </View>
+      </View>
+    </View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    >
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#ffffff",
+              "borderColor": "#ececf3",
+              "borderLeftWidth": 4,
+              "borderRadius": 8,
+              "borderWidth": 1,
+              "marginHorizontal": 16,
+              "marginTop": 12,
+              "padding": 16,
+            },
+            {
+              "borderLeftColor": "#7b4fb8",
+            },
+          ]
+        }
+        testID="trip-flight-card"
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "marginBottom": 12,
+            }
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "borderRadius": 10,
+                  "paddingHorizontal": 12,
+                  "paddingVertical": 6,
+                },
+                {
+                  "backgroundColor": "#ede8f8",
+                },
+              ]
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#3d2b8c",
+                    "fontSize": 15,
+                    "fontWeight": "700",
+                  },
+                  {
+                    "color": "#7b4fb8",
+                  },
+                ]
+              }
+            >
+              FA201
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#ede8f8",
+                "borderRadius": 10,
+                "paddingHorizontal": 12,
+                "paddingVertical": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#7b4fb8",
+                  "fontSize": 14,
+                  "fontWeight": "700",
+                }
+              }
+            >
+              A350
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "flex-start",
+                "minWidth": 64,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#636b7f",
+                  "fontSize": 26,
+                  "fontWeight": "800",
+                  "letterSpacing": 1,
+                }
+              }
+            >
+              YVR
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#8b92a5",
+                  "fontSize": 13,
+                  "fontWeight": "500",
+                  "marginTop": 3,
+                }
+              }
+            >
+              05 Jun 13:00
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flex": 1,
+                "flexDirection": "row",
+                "paddingHorizontal": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "backgroundColor": "#ececf3",
+                  "flex": 1,
+                  "height": 1,
+                }
+              }
+            />
+            <Text
+              style={
+                {
+                  "color": "#aeb3c2",
+                  "fontSize": 22,
+                  "marginLeft": 2,
+                }
+              }
+            >
+              ›
+            </Text>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "flex-start",
+                  "minWidth": 64,
+                },
+                {
+                  "alignItems": "flex-end",
+                },
+              ]
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#636b7f",
+                  "fontSize": 26,
+                  "fontWeight": "800",
+                  "letterSpacing": 1,
+                }
+              }
+            >
+              TPE
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#8b92a5",
+                  "fontSize": 13,
+                  "fontWeight": "500",
+                  "marginTop": 3,
+                }
+              }
+            >
+              06 Jun 02:00
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      onFocusCapture={[Function]}
+      onLayout={[Function]}
+      style={null}
+    />
+  </View>
+</RCTScrollView>
+`;

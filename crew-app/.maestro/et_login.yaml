@@ -1,0 +1,51 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+# Ethiopian Airlines (ET) crew J4002 via ROIS live-server /mobile-roster/session.
+# Crew id + password are prefilled from TEST_CREDENTIALS.ET (dev build).
+# Run: maestro test .maestro/et_login.yaml
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- assertVisible:
+    id: "crew-id"
+- assertVisible: "J4002"
+- tapOn:
+    text: "Show"
+- assertVisible: "Pier2026"
+- tapOn:
+    text: "Travel With Love"
+- scrollUntilVisible:
+    element:
+      id: "login-btn"
+    direction: DOWN
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible: "Next Adventure"
+    timeout: 30000
+- takeScreenshot: maestro_et_home
+- tapOn: "tab-agenda"
+- assertVisible:
+    id: "agenda-screen"
+- tapOn:
+    id: "tab-upcoming"
+- assertVisible:
+    id: "trip-list"
+- assertVisible:
+    text: ".*ET8.*"
+- takeScreenshot: maestro_et_upcoming
+- tapOn:
+    id: "tab-past"
+- assertVisible:
+    id: "trip-list"
+- assertVisible:
+    text: ".*ET8.*"
+- takeScreenshot: maestro_et_past
