@@ -1,0 +1,39 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-F8"
+- assertVisible:
+    id: "crew-id"
+- assertVisible: "113"
+- assertVisible:
+    id: "crew-pw"
+- tapOn:
+    id: "crew-pw"
+- inputText: "${F8_CREW_PASSWORD}"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "login-btn"
+    direction: DOWN
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible: "Next Adventure"
+    timeout: 30000
+- tapOn: "tab-agenda"
+- assertVisible:
+    id: "agenda-screen"
+- tapOn:
+    id: "tab-upcoming"
+- assertVisible:
+    id: "trip-list"
+- takeScreenshot: maestro_f8_roster

@@ -1,0 +1,58 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+# EK FDP-discretion end-to-end on sim.
+#
+# Prereq: EVACC backend running ENABLE_EK_CREW_APP_TEST_GATEWAY=1 with
+# CREW_NOTIFY_ENROLLED=C900001,C900002, and a pending discretion for C900002.
+# Seed from EVACC best-fit recovery by sending discretion to C900001/C900002.
+# This flow rejects C900002's request and is destructive; re-seed before re-run.
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-EK"
+- assertVisible:
+    id: "crew-id"
+- tapOn:
+    id: "crew-id"
+- eraseText
+- inputText: "C900002"
+- tapOn:
+    id: "crew-pw"
+- inputText: "Pier2026"
+- scroll
+- assertVisible:
+    id: "login-btn"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible: "Next Adventure"
+    timeout: 30000
+
+# Alerts tab: notification history plus open discretion.
+- tapOn: "tab-alerts"
+- assertVisible:
+    id: "notifications-screen"
+- extendedWaitUntil:
+    visible:
+      id: "discretion-card"
+    timeout: 15000
+- assertVisible: "ACTION REQUIRED"
+- takeScreenshot: maestro_ek_discretion
+
+# Reject discretion; decision returns to the EVACC crew-controller project.
+- tapOn:
+    id: "btn-reject"
+- assertVisible: "Reject FDP discretion?"
+- tapOn:
+    point: "70%,57%"
+- extendedWaitUntil:
+    visible: "Decision sent"
+    timeout: 15000
+- takeScreenshot: maestro_ek_discretion_done
+- assertVisible:
+    id: "notifications-screen"
+- assertVisible: "FDP discretion rejected"

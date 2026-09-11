@@ -82,6 +82,41 @@ describe('POST /api/mobile-roster/session', () => {
     await app.close()
   })
 
+  it('allows an ET airline POST session request to reach the mobile roster service', async () => {
+    const etResponse = { ...mobileRosterResponse, airline: 'ET' as const }
+    mobileRosterService.authenticateAndLoadMobileRoster.mockResolvedValue(etResponse)
+    const app = await buildApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/mobile-roster/session',
+      payload: { airline: 'ET', crewId: 'J4002', password: 'Pier2026' },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({ code: 200, data: etResponse, message: 'ok' })
+    expect(mobileRosterService.authenticateAndLoadMobileRoster).toHaveBeenCalledWith(
+      { pgPool: expect.anything() },
+      { airline: 'ET', crewId: 'J4002', password: 'Pier2026' },
+    )
+    await app.close()
+  })
+
+  it('rejects an unsupported airline code before loading a roster', async () => {
+    const app = await buildApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/mobile-roster/session',
+      payload: { airline: 'XX', crewId: '113', password: 'not-a-real-password' },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({ code: 400, data: null })
+    expect(mobileRosterService.authenticateAndLoadMobileRoster).not.toHaveBeenCalled()
+    await app.close()
+  })
+
   it('rejects an unauthenticated GET session request', async () => {
     const app = await buildApp()
 

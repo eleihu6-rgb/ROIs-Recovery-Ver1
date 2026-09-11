@@ -3,8 +3,10 @@ import type { QueryResultRow } from 'pg'
 import { env } from '../../config/index.js'
 import { quoteIdentifier } from '../../utils/db-schema.js'
 
+export type MobileRosterAirline = 'F8' | 'ET'
+
 export interface MobileRosterLoginInput {
-  airline: 'F8'
+  airline: MobileRosterAirline
   crewId: string
   password: string
   startDate?: string
@@ -40,7 +42,7 @@ export interface MobileRosterGroundDuty {
 
 export interface MobileRosterResponse {
   apiVersion: '1'
-  airline: 'F8'
+  airline: MobileRosterAirline
   crew: {
     crewId: string
     firstName: string
@@ -337,7 +339,7 @@ export const authenticateAndLoadMobileRoster = async (
 
   return {
     apiVersion: '1',
-    airline: 'F8',
+    airline: input.airline,
     crew: {
       crewId: profile.crew_id,
       firstName: profile.first_name,

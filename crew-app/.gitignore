@@ -1,0 +1,11 @@
+# React Native crew app — local/build artifacts
+node_modules/
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+.env
+*.log

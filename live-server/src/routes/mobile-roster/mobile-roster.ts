@@ -7,7 +7,7 @@ import {
 import { error, fail, success } from '../../utils/response.js'
 
 const loginSchema = z.object({
-  airline: z.literal('F8'),
+  airline: z.enum(['F8', 'ET']),
   crewId: z.string().trim().min(1),
   password: z.string().min(1),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
