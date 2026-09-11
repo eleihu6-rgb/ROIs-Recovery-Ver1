@@ -10,7 +10,6 @@ import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon, type IconName } from '../../components/v2/icons';
 import { BrandLogo } from '../../components/v2/BrandLogo';
 import { TicketCard, DashedLine } from '../../components/v2/TicketCard';
-import { airlineByCode } from '../auth/airlines';
 import { classifyTrips } from '../travel/tripCsv';
 import { tripDestination } from '../home/cities';
 import { daysUntil, greetingFor, legView, tripStartMs, MON } from './model';
@@ -24,7 +23,6 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const nav = useV2Nav();
   const airline = useAppSelector(s => s.auth.airline) ?? 'TG';
-  const crewId = useAppSelector(s => s.auth.crewId) ?? '';
   const alertCount = useAppSelector(s => s.notifications.notifications.length);
   const alarmsEnabled = useAppSelector(s => s.alarms.enabled);
   const mode = useAppSelector(s => s.settings.timeZoneMode);
@@ -66,11 +64,9 @@ export function HomeScreen() {
           <Icon name={greet.icon} size={34} color={p.ink} />
           <Text style={[s.greetText, { color: p.ink }]} testID="home-greeting">{greet.text}</Text>
         </View>
-        <Pressable style={s.tier} onPress={() => nav.navigate('Spec', { id: 'status' })} testID="home-status">
-          <Icon name="run" size={16} color={p.ink} strokeWidth={1.8} />
-          <Text style={[s.tierText, { color: p.ink }]}>{airlineByCode(airline).name} crew · {crewId} · {base}</Text>
-          <Icon name="chev" size={16} color={p.ink} strokeWidth={1.8} />
-        </Pressable>
+        {/* The crew/airline/base line that used to sit here is on Profile ▸ the crew
+            row now; Home goes straight to the trip (or straight to Explore when
+            nothing is published). */}
 
         {trip && first ? (
           <TicketCard palette={p} style={s.trip} holeY={holeY} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-next-trip">
@@ -83,8 +79,8 @@ export function HomeScreen() {
                 <View><Text style={[s.cd, { color: p.cardInk }]}>{first.arv}</Text><Text style={[s.ct, { color: p.cardSoft }]}>{first.arvTime}{first.arvDayOffset ? ` ${first.arvDayOffset}` : ''}</Text></View>
               </View>
               <View style={s.kv}>
-                <Text style={[s.kvk, { color: p.cardSoft }]}>Check-in <Text style={[s.kvv, { color: p.cardInk }]}>{first.checkIn}</Text></Text>
                 <Text style={[s.kvk, { color: p.cardSoft }]}>Ready <Text style={[s.kvv, { color: p.cardInk }]}>{first.ready}</Text></Text>
+                <Text style={[s.kvk, { color: p.cardSoft }]}>Check-in <Text style={[s.kvv, { color: p.cardInk }]}>{first.checkIn}</Text></Text>
               </View>
             </View>
             <View style={{ marginVertical: 16 }} onLayout={e => setHoleY(20 + e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2)}><DashedLine color={p.cardLine} /></View>
@@ -93,13 +89,7 @@ export function HomeScreen() {
               <View style={[s.btnSq, { backgroundColor: p.btn }]}><Icon name="qr" size={26} color="#fff" strokeWidth={1.8} /></View>
             </View>
           </TicketCard>
-        ) : (
-          <TicketCard palette={p} style={s.trip} testID="home-no-duty">
-            <Text style={[s.emptyH, { color: p.cardInk }]}>No upcoming duty</Text>
-            <Text style={[s.emptyP, { color: p.cardSoft }]}>Your next roster hasn’t been published yet.{'\n'}We’ll notify you when it is.</Text>
-            <View style={[s.btn, { backgroundColor: p.btn, marginTop: 16 }]}><Text style={s.btnText}>Remind me</Text></View>
-          </TicketCard>
-        )}
+        ) : null}
 
         <View style={s.sec}><Text style={[s.secTitle, { color: p.ink }]}>Explore your destinations</Text><Text style={[s.secLink, { color: p.inkSoft }]}>See all</Text></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.destRow} style={{ marginHorizontal: -22 }}>
@@ -158,10 +148,8 @@ const s = StyleSheet.create({
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 999, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   badgeText: { fontSize: 10, fontWeight: '700' },
-  greet: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 36 },
+  greet: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 26 },
   greetText: { fontSize: 34, fontWeight: '600', letterSpacing: -0.3 },
-  tier: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 34, alignSelf: 'flex-start' },
-  tierText: { fontSize: 15, fontWeight: '500' },
   trip: { marginTop: 18, padding: 20 },
   uh: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   uhText: { fontSize: 19, fontWeight: '600' },
@@ -177,8 +165,6 @@ const s = StyleSheet.create({
   btn: { flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   btnSq: { width: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  emptyH: { fontSize: 22, fontWeight: '600', textAlign: 'center', marginTop: 10 },
-  emptyP: { fontSize: 13, textAlign: 'center', lineHeight: 19, marginTop: 8 },
   sec: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 12 },
   secTitle: { fontSize: 17, fontWeight: '500' },
   secLink: { fontSize: 14, fontWeight: '500' },

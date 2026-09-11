@@ -1,5 +1,7 @@
 import type {Trip} from './tripCsv';
 import type {PortalDuty} from './portalCapture';
+import {airportZone} from '../settings/airportZones';
+import {wallClockInZone} from '../settings/timeFormat';
 import {z} from 'zod';
 
 export interface EkRosterCredentials {
@@ -14,6 +16,7 @@ export interface EkRosterCrew {
   lastName: string;
   base: string;
   rank: string;
+  nationality?: string | null;
 }
 
 export interface EkRosterFlight {
@@ -41,11 +44,14 @@ export interface EkRosterPairing {
 }
 
 export interface EkRosterGroundDuty {
-  dutyId?: string;
-  label?: string;
-  startUtc?: string;
-  endUtc?: string;
-  assignment?: string;
+  dutyId?: string | null;
+  /** The live-server sends NULL for day-off / leave rows (roster_flight.label is null). */
+  label?: string | null;
+  startUtc?: string | null;
+  endUtc?: string | null;
+  assignment?: string | null;
+  departureAirport?: string | null;
+  arrivalAirport?: string | null;
 }
 
 export interface EkRosterResponse {
@@ -102,11 +108,17 @@ const pairingSchema = z.object({
   flights: z.array(flightSchema),
 });
 const groundDutySchema = z.object({
-  dutyId: requiredString.optional(),
-  label: requiredString.optional(),
-  startUtc: utcTimestamp.optional(),
-  endUtc: utcTimestamp.optional(),
-  assignment: requiredString.optional(),
+  dutyId: requiredString.nullable().optional(),
+  // Day-off / leave rows carry no label and no flight number — the assignment
+  // code ("DO", "AL", …) is the only identity they have. Nulls are the real
+  // server values, so the transport schema must accept them instead of failing
+  // the whole envelope (that bug rejected J4002's Sep 9 / Sep 17 duties).
+  label: requiredString.nullable().optional(),
+  startUtc: utcTimestamp.nullable().optional(),
+  endUtc: utcTimestamp.nullable().optional(),
+  assignment: requiredString.nullable().optional(),
+  departureAirport: nullableString.optional(),
+  arrivalAirport: nullableString.optional(),
 });
 // Carriers served by the ROIS live-server `/mobile-roster/session` envelope
 // (F8 plus ET for the crew recovery solution). EK uses the older crew-app API.
@@ -128,6 +140,8 @@ const responseSchema = z.object({
     lastName: requiredString,
     base: requiredString,
     rank: requiredString,
+    // ISO-2 country code; older servers don't send it.
+    nationality: z.string().nullable().optional(),
   }),
   pairings: z.array(pairingSchema),
   groundDuties: z.array(groundDutySchema),
@@ -276,27 +290,37 @@ export function mapEkRosterToTrips(value: unknown): Trip[] {
 export function mapEkRosterToDuties(value: unknown): PortalDuty[] {
   const response = parseEkRosterResponse(value);
 
-  return response.groundDuties.map(duty => {
-    if (!duty.label || !duty.startUtc || !duty.endUtc || !duty.assignment) {
-      throw new Error('Invalid roster ground duty');
+  return response.groundDuties.flatMap(duty => {
+    // A duty with no window cannot be placed on a day. Skip it rather than
+    // failing the whole login — one bad row must not cost the crew their roster.
+    if (!duty.startUtc || !duty.endUtc) {
+      return [];
     }
+    const assignment = (duty.assignment ?? '').trim().toUpperCase();
+    const label = (duty.label ?? '').trim() || assignment || 'Duty';
     const id = duty.dutyId
-      ?? `${response.airline}:${response.crew.crewId}:${duty.assignment}:${duty.label}:${duty.startUtc}:${duty.endUtc}`;
-    return {
+      ?? `${response.airline}:${response.crew.crewId}:${assignment}:${label}:${duty.startUtc}:${duty.endUtc}`;
+    // `local*` is the AIRPORT-local wall clock: it decides which calendar day the
+    // card lands on, and a day-off row is a local-day concept.
+    const zone = airportZone(duty.departureAirport ?? undefined);
+    const start = new Date(duty.startUtc);
+    const end = new Date(duty.endUtc);
+    return [{
       id,
-      assignment: duty.assignment,
-      fltNum: duty.label,
-      dutyType: duty.label,
-      localStart: duty.startUtc,
-      localEnd: duty.endUtc,
+      assignment,
+      fltNum: (duty.label ?? '').trim(),
+      dutyType: label,
+      localStart: wallClockInZone(start, zone),
+      localEnd: wallClockInZone(end, zone),
       startUTC: duty.startUtc,
       endUTC: duty.endUtc,
       briefStart: duty.startUtc,
       crewId: response.crew.crewId,
       carrier: response.airline,
       baseOffsetMin: isMobileRosterAirline(response.airline) ? 0 : undefined,
+      airportCode: duty.departureAirport ?? undefined,
       raw: duty,
-    };
+    }];
   });
 }
 

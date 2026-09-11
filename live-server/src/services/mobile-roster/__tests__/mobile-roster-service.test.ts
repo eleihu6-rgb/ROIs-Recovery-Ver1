@@ -223,4 +223,57 @@ describe('authenticateAndLoadMobileRoster', () => {
       '2026-10-01T00:00:00.000Z',
     ])
   })
+
+  // Regression: `roster_flight.sch_str_dt_utc` / `pairing_segment.duty_sch_*_dt_utc`
+  // are `timestamp without time zone` holding UTC wall-clock. Selecting them raw made
+  // node-postgres parse the value as the SERVER's local time, so the API answered with
+  // instants shifted by the machine's UTC offset (e.g. a 05:30Z ET duty came back as
+  // 12:30Z on a Vancouver host) and the app drew those duties on the wrong day. The
+  // query must render them as explicit UTC ISO strings in SQL.
+  it('renders roster timestamps as explicit UTC ISO strings, never raw naive columns', async () => {
+    const pgPool = createPool([[await activePbsUser()], [crewProfile], flyingRows])
+
+    await authenticateAndLoadMobileRoster(serviceOptions(pgPool), {
+      airline: 'F8',
+      crewId: '113',
+      password: 'Pier2026',
+    })
+
+    const queryCalls = pgPool.query.mock.calls as unknown as Array<[string, unknown[]]>
+    const rosterQuery = queryCalls[2]?.[0] ?? ''
+    const utcIso = (column: string) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`
+
+    expect(rosterQuery).toContain(`${utcIso('rf.sch_str_dt_utc')} as start_utc`)
+    expect(rosterQuery).toContain(`${utcIso('rf.sch_end_dt_utc')} as end_utc`)
+    expect(rosterQuery).toContain(`${utcIso('ps.duty_sch_str_dt_utc')} as segment_check_in_utc`)
+    expect(rosterQuery).toContain(`${utcIso('ps.duty_sch_end_dt_utc')} as segment_release_utc`)
+    expect(rosterQuery).toContain(utcIso('min(ps_all.duty_sch_str_dt_utc)'))
+    expect(rosterQuery).toContain(utcIso('max(ps_all.duty_sch_end_dt_utc)'))
+    expect(rosterQuery).toContain(utcIso('min(rf_all.sch_str_dt_utc)'))
+    expect(rosterQuery).toContain(utcIso('max(rf_all.sch_end_dt_utc)'))
+    // The crew app prints the aircraft type next to the flight number; the fleet
+    // code has to come from the flight row the roster segment points at.
+    expect(rosterQuery).toContain('f.fleet')
+  })
+
+  // Regression: the month window must be compared UTC-to-UTC. Passing the ISO
+  // boundary straight at a naive column let Postgres reinterpret the column in the
+  // session timezone (Asia/Bangkok on the dev DB), which moved the window edge by
+  // hours and could drop a duty that starts just after midnight UTC.
+  it('compares the date window against UTC wall-clock, not the session timezone', async () => {
+    const pgPool = createPool([[await activePbsUser()], [crewProfile], []])
+
+    await authenticateAndLoadMobileRoster(serviceOptions(pgPool), {
+      airline: 'F8',
+      crewId: '113',
+      password: 'Pier2026',
+      startDate: '2026-09-01',
+      endDate: '2026-10-01',
+    })
+
+    const queryCalls = pgPool.query.mock.calls as unknown as Array<[string, unknown[]]>
+    const rosterQuery = queryCalls[2]?.[0] ?? ''
+    expect(rosterQuery).toContain('rf.sch_str_dt_utc >= ($2::timestamptz at time zone \'UTC\')')
+    expect(rosterQuery).toContain('rf.sch_str_dt_utc < ($3::timestamptz at time zone \'UTC\')')
+  })
 })

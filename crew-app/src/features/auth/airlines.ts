@@ -196,9 +196,12 @@ export const AIRLINES: Airline[] = [
   ),
 ];
 
-export const DEFAULT_AIRLINE = 'TG';
+// This build ships for Ethiopian Airlines: opening the app lands on the ET login
+// (no TG→ET switch every launch). TG/PR remain selectable in the picker.
+export const DEFAULT_AIRLINE = 'ET';
 
-// Test credentials auto-filled on the login page (doc/App Flow Ver1).
+// Test credentials for the airline picker's prefill (dev/QA convenience only —
+// the login form itself now starts empty, see LoginScreen).
 export const TEST_CREW_ID = '35459';
 export const TEST_CREW_PW = 'Pier2026';
 
@@ -220,9 +223,13 @@ export function airlineByCode(code: string): Airline {
 
 export function prefillForAirline(code: string, crewId: string, password: string) {
   const next = TEST_CREDENTIALS[code];
-  const untouched = Object.values(TEST_CREDENTIALS).some(
-    credential => credential.crewId === crewId && credential.password === password,
-  );
+  // "Untouched" = the fields are empty (the login form no longer opens with a
+  // remembered/last login) or still hold another carrier's test values. Real
+  // typed input is never clobbered.
+  const untouched = (crewId === '' && password === '')
+    || Object.values(TEST_CREDENTIALS).some(
+      credential => credential.crewId === crewId && credential.password === password,
+    );
   return next && untouched ? next : { crewId, password };
 }
 

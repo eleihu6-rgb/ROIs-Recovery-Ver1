@@ -1,0 +1,72 @@
+# Profile tab for ET crew J4002 — identity rows + avatar picker.
+# Expects the roster API to carry the crew's name and nationality
+# (live-server /mobile-roster/session → crew.nationality).
+#
+# Run: maestro test crew-app/.maestro/et_j4002_profile.yaml --debug-output <dir>
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4002"
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+# Home goes straight to the trip now — no airline/crew/base line above it.
+- assertNotVisible:
+    text: ".*crew · J4002.*"
+# The simulator's keychain warning raises the dev LogBox a beat after Home paints;
+# it covers the tab bar, so clear it right before AND after the tab tap.
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 30000
+# Row 1 = the crew's name, row 2 = id · base · nationality.
+- assertVisible:
+    id: "profile-crew-name"
+- assertVisible: "Getnet Kifle"
+- assertVisible: "J4002 · ADD · Ethiopia"
+- takeScreenshot: j4002_profile_01
+# Avatar picker: tap the picture, choose a different character.
+# NOTE: the sheet lives in its own RN Modal window, which Maestro's iOS snapshot
+# does not expose — so the pick happens by screen point (row 1, tile 2) and the
+# result is proven by the screenshots.
+- tapOn:
+    id: "profile-avatar"
+- takeScreenshot: j4002_profile_02_avatar_picker
+- tapOn:
+    point: "39%,27%"
+- takeScreenshot: j4002_profile_03_avatar_picked
+# Re-open: the ring must still be on the tile we picked (the choice is persisted).
+- tapOn:
+    id: "profile-avatar"
+- takeScreenshot: j4002_profile_04_avatar_reopened
+- tapOn:
+    point: "50%,93%"
+- assertVisible:
+    id: "profile-crew-name"

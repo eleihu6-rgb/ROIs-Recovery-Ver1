@@ -138,9 +138,11 @@ export interface RadioRowProps {
   selected: boolean;
   onPress: () => void;
   palette: CarrierPalette;
+  /** Optional right-aligned chip (e.g. the time-zone marker "13:00L"). */
+  badge?: string;
 }
 
-export function RadioRow({ title, sub, selected, onPress, palette }: RadioRowProps): React.JSX.Element {
+export function RadioRow({ title, sub, selected, onPress, palette, badge }: RadioRowProps): React.JSX.Element {
   return (
     <Pressable style={styles.radioRow} onPress={onPress}>
       <View
@@ -159,6 +161,11 @@ export function RadioRow({ title, sub, selected, onPress, palette }: RadioRowPro
           <Text style={[styles.radioSub, { color: palette.cardSoft }]}>{sub}</Text>
         ) : null}
       </View>
+      {badge ? (
+        <Text style={[styles.radioBadge, { color: palette.btn, borderColor: palette.cardLine }]}>
+          {badge}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -276,6 +283,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     marginTop: 2,
+  },
+  /** Right-aligned marker chip, e.g. the time-zone "13:00L" letters. */
+  radioBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    borderWidth: 1,
+    borderRadius: 9,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    overflow: 'hidden',
+    minWidth: 62,
+    textAlign: 'center',
   },
   sectionLabel: {
     fontSize: 11,

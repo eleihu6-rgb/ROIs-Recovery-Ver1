@@ -1,0 +1,61 @@
+# Regression: browsing the Schedule back to a month the airline published nothing
+# for used to crash the whole tab —
+#   "scrollToIndex out of range: item length 0 but minimum is 1"
+# (ScheduleScreen.tsx focus() → FlatList.scrollToIndex on an EMPTY card list, hit
+# from the mount effect as soon as the month changed). J4002 has Sep 2026 only, so
+# Aug 2026 is exactly that empty month.
+#
+# Run: maestro test crew-app/.maestro/et_j4002_schedule_empty_month.yaml --debug-output <dir>
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4002"
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-title"
+    timeout: 30000
+- takeScreenshot: j4002_empty_01_sep
+# Nothing published in August → the tab must stay alive and say so.
+- tapOn:
+    id: "sched-prev-month"
+- extendedWaitUntil:
+    visible:
+      text: "No duties published for Aug 2026."
+    timeout: 20000
+- takeScreenshot: j4002_empty_02_aug_no_crash
+# And the way back still works.
+# Tapping a day chip inside the empty month (every day has a chip, none has a
+# card) must not throw either. The strip sits at its left edge here, so tap a chip
+# that is actually on screen.
+- tapOn:
+    id: "day-3"
+- assertVisible:
+    text: "No duties published for Aug 2026."
+- takeScreenshot: j4002_empty_03_aug_day_chip

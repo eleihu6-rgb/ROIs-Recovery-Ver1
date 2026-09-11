@@ -6,9 +6,17 @@
 import { classifyTrips, type Trip, type TripLeg } from '../travel/tripCsv';
 import { classifyGroundDuties, type GroundDuty } from '../roster/dutyDisplay';
 import type { PortalDuty } from '../travel/portalCapture';
-import { formatLegTime, legDisplayDate, parseRosterUTC } from '../settings/timeFormat';
+import {
+  formatLegTime,
+  hhmmForInstant,
+  hhmmInZone,
+  legDisplayDate,
+  parseRosterUTC,
+  withZoneSuffix,
+} from '../settings/timeFormat';
 import type { TimeZoneMode } from '../settings/settingsSlice';
 import { alarmOptions, computeEffectiveAlarms, type EffectiveAlarm } from '../settings/alarmSetup';
+import { airportZone } from '../settings/airportZones';
 import type { DutyAlarmOverride } from '../alarms/alarmsSlice';
 import { checkInHhmm } from '../travel/tripDisplay';
 import type { Meeting } from '../meetings/meetingSetup';
@@ -52,6 +60,8 @@ export interface LegView {
   day: number;
   monthIdx: number;
   year: number;
+  /** True for the duty's first leg — only that leg carries the report markers. */
+  firstLeg: boolean;
 }
 
 /** Short fleet code: "Airbus A350-900" → "A350", "Boeing 787-9" → "B787". */
@@ -87,32 +97,62 @@ export function legView(
   // Report / leave-home / ready belong to the trip's first leg (check-in at base);
   // later legs of the same rotation don't repeat them.
   const isFirst = trip.legs[0] === leg;
-  const depD = legDisplayDate({ flightDateUTC: leg.flightDateUTC, localTime: leg.localDepTime, mode, baseTz });
-  const arvD = legDisplayDate({ flightDateUTC: leg.arvDateUTC, localTime: leg.localArvTime, mode, baseTz });
+  const depZone = airportZone(leg.depArp);
+  const arvZone = airportZone(leg.arvArp);
+  const depD = legDisplayDate({ flightDateUTC: leg.flightDateUTC, localTime: leg.localDepTime, mode, baseTz, airportTz: depZone });
+  const arvD = legDisplayDate({ flightDateUTC: leg.arvDateUTC, localTime: leg.localArvTime, mode, baseTz, airportTz: arvZone });
   const dk = depD ? depD.year * 10000 + (depD.monthIdx + 1) * 100 + depD.day : 0;
   const ak = arvD ? arvD.year * 10000 + (arvD.monthIdx + 1) * 100 + arvD.day : dk;
+  // Report (check-in) instant: the roster string is UTC; render it in the mode's zone.
+  const checkInUtc = parseRosterUTC(trip.checkInDateUTC);
   return {
     fltNumber: (leg.fltNumber || '').trim(),
     fleet: shortFleet(leg.fleet),
     dep: (leg.depArp || '').toUpperCase(),
     arv: (leg.arvArp || '').toUpperCase(),
     // formatLegTime may include the date ("16 Sep 00:30"); the cards show HH:MM only, date lives on the day header.
-    depTime: hhmmOnly(formatLegTime({ flightDateUTC: leg.flightDateUTC, localTime: leg.localDepTime, mode, baseTz })),
-    arvTime: hhmmOnly(formatLegTime({ flightDateUTC: leg.arvDateUTC, localTime: leg.localArvTime, mode, baseTz })),
+    depTime: withZoneSuffix(hhmmOnly(formatLegTime({ flightDateUTC: leg.flightDateUTC, localTime: leg.localDepTime, mode, baseTz, airportTz: depZone })), mode),
+    arvTime: withZoneSuffix(hhmmOnly(formatLegTime({ flightDateUTC: leg.arvDateUTC, localTime: leg.localArvTime, mode, baseTz, airportTz: arvZone })), mode),
     arvDayOffset: ak > dk ? '+1' : '',
     duration: fmtDuration(leg.flightDateUTC, leg.arvDateUTC),
-    leaveHome: isFirst ? alarm?.leaveHome?.hhmm ?? '—' : '—',
-    ready: isFirst ? alarm?.wakeUp?.hhmm ?? '—' : '—',
+    leaveHome: isFirst && alarm?.leaveHome
+      ? hhmmForInstant(alarm.leaveHome.instant, mode, baseTz, depZone)
+      : '—',
+    ready: isFirst && alarm?.wakeUp
+      ? hhmmForInstant(alarm.wakeUp.instant, mode, baseTz, depZone)
+      : '—',
     readyWord: alarm?.wakeWord ?? 'Get Ready',
-    checkIn: isFirst && trip.checkInDateUTC ? checkInHhmm(trip.checkInDateUTC) : '—',
+    checkIn: isFirst && trip.checkInDateUTC
+      ? (checkInUtc
+        ? hhmmForInstant(checkInUtc, mode, baseTz, depZone)
+        : withZoneSuffix(checkInHhmm(trip.checkInDateUTC), mode))
+      : '—',
     dateKey: dk,
     day: depD?.day ?? 0,
     monthIdx: depD?.monthIdx ?? 0,
     year: depD?.year ?? 0,
+    firstLeg: isFirst,
   };
 }
 
-/** Effective alarms keyed by trip id (first matching duty). */
+function alarmsFor(
+  trips: Trip[],
+  wakeUpHours: number,
+  leaveHomeHours: number,
+  overrides: Record<string, DutyAlarmOverride>,
+): { byTrip: Record<string, EffectiveAlarm>; all: EffectiveAlarm[] } {
+  const all = computeEffectiveAlarms(trips, alarmOptions(wakeUpHours, leaveHomeHours), overrides);
+  const byTrip: Record<string, EffectiveAlarm> = {};
+  for (const a of all) {
+    if (!byTrip[a.dutyId]) byTrip[a.dutyId] = a;
+  }
+  return { byTrip, all };
+}
+
+/**
+ * Alarms for the duties that have NOT finished yet — this drives what actually gets
+ * scheduled on the iOS clock, so past duties must stay out of it.
+ */
 export function alarmsByTrip(
   trips: Trip[],
   wakeUpHours: number,
@@ -120,13 +160,22 @@ export function alarmsByTrip(
   overrides: Record<string, DutyAlarmOverride>,
   now: Date,
 ): { byTrip: Record<string, EffectiveAlarm>; all: EffectiveAlarm[] } {
-  const upcoming = classifyTrips(trips, now).upcoming;
-  const all = computeEffectiveAlarms(upcoming, alarmOptions(wakeUpHours, leaveHomeHours), overrides);
-  const byTrip: Record<string, EffectiveAlarm> = {};
-  for (const a of all) {
-    if (!byTrip[a.dutyId]) byTrip[a.dutyId] = a;
-  }
-  return { byTrip, all };
+  return alarmsFor(classifyTrips(trips, now).upcoming, wakeUpHours, leaveHomeHours, overrides);
+}
+
+/**
+ * The same markers for EVERY published duty — the Schedule/Trip-Details record
+ * view. A card that already shows its check-in must not silently lose its wake-up
+ * and leave-home cells just because the duty has flown (Ryan: "10 Sep, ET805 as
+ * first seg in the duty, why no wake up and leave home time?").
+ */
+export function dutyAlarmsByTrip(
+  trips: Trip[],
+  wakeUpHours: number,
+  leaveHomeHours: number,
+  overrides: Record<string, DutyAlarmOverride>,
+): { byTrip: Record<string, EffectiveAlarm>; all: EffectiveAlarm[] } {
+  return alarmsFor(trips, wakeUpHours, leaveHomeHours, overrides);
 }
 
 /** Earliest upcoming flight trip (by real UTC instant), or null. */
@@ -176,6 +225,42 @@ export interface DayModel {
 
 function ymd(d: Date): number {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+/**
+ * Card-list index to open for a tapped day-strip index, or null when there is
+ * nothing to scroll to. A month the airline has published nothing for has an
+ * EMPTY card list, and `FlatList.scrollToIndex` throws on an out-of-range index
+ * ("scrollToIndex out of range: item length 0 but minimum is 1") — that crashed
+ * the Schedule tab as soon as a crew browsed back to such a month.
+ *
+ * A day with no card of its own (a blank roster day) opens the month's first
+ * card; the strip and the list re-sync from the viewability callback.
+ */
+export function resolveCardIndex(
+  cardsByStripIndex: Map<number, number>,
+  stripIndex: number,
+  cardCount: number,
+): number | null {
+  if (cardCount <= 0) {
+    return null;
+  }
+  const index = cardsByStripIndex.get(stripIndex);
+  if (index == null) {
+    return 0;
+  }
+  return index < cardCount ? index : cardCount - 1;
+}
+
+/**
+ * Whether a calendar day earns a card in the Schedule list. A day qualifies when
+ * something is actually published for it: flight legs, an airline ground duty
+ * (day off / leave / standby / training / …), a layover, or a meeting. A blank
+ * roster day is NOT a day off — the airline has simply published nothing — so it
+ * gets no card (the date strip still shows the day, without a duty dot).
+ */
+export function hasDutyCard(day: DayModel): boolean {
+  return day.legs.length > 0 || day.ground !== null || day.kind === 'layover' || day.meetings.length > 0;
 }
 
 function groundKind(g: GroundDuty): DayKind {
@@ -256,8 +341,11 @@ export function buildMonth(
   for (const g of [...ground.upcoming, ...ground.past]) {
     const dm = byKey.get(localKeyOf(g.localStart));
     if (dm && dm.legs.length === 0) {
-      const kind = groundKind(g);
-      if (kind !== 'off') { dm.ground = g; dm.kind = kind; }
+      // Keep the duty even when it IS a days-off row: an explicit airline days-off
+      // duty is the one case where a "Day Off" card is correct. A day with no duty
+      // at all stays blank and gets no card (see hasDutyCard).
+      dm.ground = g;
+      dm.kind = groundKind(g);
     }
   }
   for (const m of meetings) {

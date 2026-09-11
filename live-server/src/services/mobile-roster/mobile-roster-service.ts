@@ -16,6 +16,8 @@ export interface MobileRosterLoginInput {
 export interface MobileRosterFlight {
   flightId: string
   flightNumber: string
+  /** Aircraft fleet/type code the flight is scheduled with (e.g. "7M8", "788"). */
+  fleet: string | null
   departureAirport: string | null
   arrivalAirport: string | null
   startUtc: string
@@ -49,6 +51,8 @@ export interface MobileRosterResponse {
     lastName: string
     base: string
     rank: string
+    /** ISO-2 country code from `crew.nationality` (null when the roster has none). */
+    nationality: string | null
   }
   pairings: MobileRosterPairing[]
   groundDuties: MobileRosterGroundDuty[]
@@ -80,20 +84,22 @@ type CrewProfileRow = {
   last_name: string
   base: string | null
   rank: string | null
+  nationality: string | null
 }
 
 type RosterRow = {
   pairing_id: string | number | null
   pairing_label: string | null
   assignment: string | null
-  pairing_check_in_utc: Date | string | null
-  pairing_release_utc: Date | string | null
+  pairing_check_in_utc: string | null
+  pairing_release_utc: string | null
   flt_id: string | number | null
   flt_num: string | null
+  fleet: string | null
   dep_arp: string | null
   arv_arp: string | null
-  start_utc: Date | string | null
-  end_utc: Date | string | null
+  start_utc: string | null
+  end_utc: string | null
 }
 
 export class MobileRosterServiceError extends Error {
@@ -105,6 +111,18 @@ export class MobileRosterServiceError extends Error {
     this.statusCode = statusCode
   }
 }
+
+/**
+ * The roster/pairing time columns (`roster_flight.sch_str_dt_utc`,
+ * `pairing_segment.duty_sch_*_dt_utc`, …) are `timestamp without time zone` holding
+ * UTC wall-clock. Selecting them raw hands node-postgres a naive string, which it
+ * parses as the SERVER's local time — so the API used to answer with instants shifted
+ * by the machine offset (e.g. +7h on a Vancouver host), which the app then drew on the
+ * wrong day. Render them as explicit UTC ISO strings in SQL so the value never passes
+ * through local-time parsing (same rule as crew-memo/deassign-loader.ts).
+ */
+const utcIsoColumn = (column: string): string =>
+  `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`
 
 const toUtcString = (value: Date | string | null): string => {
   if (value === null) {
@@ -156,11 +174,17 @@ const resolveDateWindow = (input: MobileRosterLoginInput, now: Date): { start: D
   return { start, end }
 }
 
-export const authenticateAndLoadMobileRoster = async (
+/**
+ * The single crew-credential gate for mobile surfaces (roster + crew-app
+ * notifications): verifies the PBS portal password against
+ * `pbs_user.password_hash` and the account's access window, then returns the
+ * canonical crew id. Keeping one gate here means the notify routes cannot drift
+ * from the roster route's authorization rules.
+ */
+export const verifyMobileCrewCredentials = async (
   options: MobileRosterServiceOptions,
-  input: MobileRosterLoginInput,
-): Promise<MobileRosterResponse> => {
-  const liveSchema = quoteIdentifier(options.liveSchema ?? env.LIVE_SCHEMA)
+  input: { crewId: string; password: string },
+): Promise<{ crewId: string }> => {
   const pbsSchema = quoteIdentifier(options.pbsSchema ?? env.PBS_SCHEMA)
   const crewId = input.crewId.trim()
   const now = options.now ?? new Date()
@@ -190,9 +214,23 @@ export const authenticateAndLoadMobileRoster = async (
     throw new MobileRosterServiceError(401, 'Invalid crew ID or password.')
   }
 
+  return { crewId: user.crew_id }
+}
+
+export const authenticateAndLoadMobileRoster = async (
+  options: MobileRosterServiceOptions,
+  input: MobileRosterLoginInput,
+): Promise<MobileRosterResponse> => {
+  const liveSchema = quoteIdentifier(options.liveSchema ?? env.LIVE_SCHEMA)
+  const now = options.now ?? new Date()
+  const { crewId } = await verifyMobileCrewCredentials(options, {
+    crewId: input.crewId,
+    password: input.password,
+  })
+
   const profileResult = await options.pgPool.query<CrewProfileRow>(
-    `select c.crew_id, c.first_name, c.last_name, cb.base, cr.rank
-     from ${liveSchema}.crew c
+    `select c.crew_id, c.first_name, c.last_name, c.nationality, cb.base, cr.rank
+       from ${liveSchema}.crew c
      left join lateral (
        select base
        from ${liveSchema}.crew_base
@@ -213,7 +251,7 @@ export const authenticateAndLoadMobileRoster = async (
      ) cr on true
      where c.crew_id = $1
      limit 1`,
-    [user.crew_id, now.toISOString()],
+    [crewId, now.toISOString()],
   )
   const profile = profileResult.rows[0]
 
@@ -227,14 +265,15 @@ export const authenticateAndLoadMobileRoster = async (
        select rf.pairing_id,
               coalesce(p.pairing_label, rf.label) as pairing_label,
               rf.assignment,
-              ps.duty_sch_str_dt_utc as segment_check_in_utc,
-              ps.duty_sch_end_dt_utc as segment_release_utc,
+              ${utcIsoColumn('ps.duty_sch_str_dt_utc')} as segment_check_in_utc,
+              ${utcIsoColumn('ps.duty_sch_end_dt_utc')} as segment_release_utc,
               rf.flt_id,
               f.flt_num,
+              f.fleet,
               coalesce(f.dep_arp, rf.dep_arp) as dep_arp,
               coalesce(f.arv_arp, rf.arv_arp) as arv_arp,
-              rf.sch_str_dt_utc as start_utc,
-              rf.sch_end_dt_utc as end_utc,
+              ${utcIsoColumn('rf.sch_str_dt_utc')} as start_utc,
+              ${utcIsoColumn('rf.sch_end_dt_utc')} as end_utc,
               rf.duty_seq,
               rf.seg_seq
        from ${liveSchema}.roster_flight rf
@@ -249,27 +288,30 @@ export const authenticateAndLoadMobileRoster = async (
          on f.id = rf.flt_id and coalesce(f.is_deleted, 0) = 0
        where rf.crew_id = $1
          and rf.is_deleted = 0
-         and rf.sch_str_dt_utc >= $2
-         and rf.sch_str_dt_utc < $3
+         -- Compare UTC wall-clock against UTC wall-clock: casting a timestamptz
+         -- parameter against these naive columns would silently apply the session's
+         -- timezone to the boundary and drop/include rows near midnight.
+         and rf.sch_str_dt_utc >= ($2::timestamptz at time zone 'UTC')
+         and rf.sch_str_dt_utc < ($3::timestamptz at time zone 'UTC')
      ), pairing_boundaries as (
        select distinct wr.pairing_id,
               coalesce(
-                (select min(ps_all.duty_sch_str_dt_utc)
+                (select ${utcIsoColumn('min(ps_all.duty_sch_str_dt_utc)')}
                  from ${liveSchema}.pairing_segment ps_all
                  where ps_all.pairing_id = wr.pairing_id
                    and coalesce(ps_all.is_deleted, 0) = 0),
-                (select min(rf_all.sch_str_dt_utc)
+                (select ${utcIsoColumn('min(rf_all.sch_str_dt_utc)')}
                  from ${liveSchema}.roster_flight rf_all
                  where rf_all.crew_id = $1
                    and rf_all.pairing_id = wr.pairing_id
                    and rf_all.is_deleted = 0)
               ) as pairing_check_in_utc,
               coalesce(
-                (select max(ps_all.duty_sch_end_dt_utc)
+                (select ${utcIsoColumn('max(ps_all.duty_sch_end_dt_utc)')}
                  from ${liveSchema}.pairing_segment ps_all
                  where ps_all.pairing_id = wr.pairing_id
                    and coalesce(ps_all.is_deleted, 0) = 0),
-                (select max(rf_all.sch_end_dt_utc)
+                (select ${utcIsoColumn('max(rf_all.sch_end_dt_utc)')}
                  from ${liveSchema}.roster_flight rf_all
                  where rf_all.crew_id = $1
                    and rf_all.pairing_id = wr.pairing_id
@@ -285,6 +327,7 @@ export const authenticateAndLoadMobileRoster = async (
             coalesce(pb.pairing_release_utc, wr.segment_release_utc, wr.end_utc) as pairing_release_utc,
             wr.flt_id,
             wr.flt_num,
+            wr.fleet,
             wr.dep_arp,
             wr.arv_arp,
             wr.start_utc,
@@ -292,7 +335,7 @@ export const authenticateAndLoadMobileRoster = async (
      from window_rows wr
      left join pairing_boundaries pb on pb.pairing_id = wr.pairing_id
      order by wr.start_utc, wr.pairing_id, wr.duty_seq, wr.seg_seq`,
-    [user.crew_id, window.start.toISOString(), window.end.toISOString()],
+    [crewId, window.start.toISOString(), window.end.toISOString()],
   )
 
   const pairings = new Map<string, MobileRosterPairing>()
@@ -330,6 +373,7 @@ export const authenticateAndLoadMobileRoster = async (
     pairing.flights.push({
       flightId,
       flightNumber: row.flt_num ?? '',
+      fleet: row.fleet ?? null,
       departureAirport: row.dep_arp,
       arrivalAirport: row.arv_arp,
       startUtc: toUtcString(row.start_utc),
@@ -346,6 +390,7 @@ export const authenticateAndLoadMobileRoster = async (
       lastName: profile.last_name,
       base: profile.base ?? '',
       rank: profile.rank ?? '',
+      nationality: profile.nationality ?? null,
     },
     pairings: [...pairings.values()],
     groundDuties,

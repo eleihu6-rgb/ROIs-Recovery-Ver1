@@ -273,6 +273,9 @@ export interface PortalDuty {
   baseOffsetMin?: number;
   /** Training/course detail (TRG/SIM), when captured from detailAll. */
   training?: TrainingDetail;
+  /** IATA airport the duty is anchored to, when the source provides one
+   *  (live-server mobile roster sends departureAirport on ground duties). */
+  airportCode?: string;
   /** The original portal object, untouched, for fields we don't model yet. */
   raw: any;
 }

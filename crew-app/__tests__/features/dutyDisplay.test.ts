@@ -1,5 +1,6 @@
 import {
   categorise,
+  codeAddsInfo,
   toGroundDuty,
   classifyGroundDuties,
   groundDutyStartMs,
@@ -70,6 +71,19 @@ describe('categorise — every assignment code maps to a sensible category', () 
     // A genuine off-code still maps to off.
     expect(categorise('VOFF').category).toBe('off');
     expect(categorise('OFF').category).toBe('off');
+  });
+
+  // Ryan's on-device review: the 17 Sep card read "Annual Leave" and then printed
+  // "AL" underneath — the same fact twice. A code we humanise ourselves adds
+  // nothing; a code we could only guess at is all the detail that duty has.
+  it('tells a redundant roster code from one that still carries information', () => {
+    expect(codeAddsInfo('AL')).toBe(false); // "Annual Leave" already says it
+    expect(codeAddsInfo('DO')).toBe(false); // "Day Off"
+    expect(codeAddsInfo('SIM')).toBe(false); // "Simulator"
+    expect(codeAddsInfo('al')).toBe(false); // case-insensitive
+    expect(codeAddsInfo('')).toBe(false);
+    expect(codeAddsInfo('OFFICE X')).toBe(true); // fuzzy find → code is the detail
+    expect(codeAddsInfo('NEWSBY')).toBe(true); // unknown → the code IS the detail
   });
 });
 
@@ -154,5 +168,51 @@ describe('classifyGroundDuties over real multi-crew rosters', () => {
     for (let i = 1; i < pasts.length; i++) {
       expect(pasts[i]).toBeLessThanOrEqual(pasts[i - 1]);
     }
+  });
+});
+
+// ─── F8 / ET roster codes ────────────────────────────────────────────────────
+// Codes come from f8_sit_live.assignment. The ET crews' day-off and leave rows
+// arrive with NO label, so the code itself has to produce the card text.
+describe('F8 / ET ground-duty codes', () => {
+  it.each([
+    ['DO', 'off', 'Day Off'],
+    ['GDO', 'off', 'Guaranteed Day Off'],
+    ['AL', 'leave', 'Annual Leave'],
+    ['ILL', 'leave', 'Sick Leave'],
+    ['RES', 'reserve', 'Reserve'],
+    ['PRAM', 'standby', 'Standby AM/PM'],
+    ['PRPM', 'standby', 'Standby Night'],
+    ['SIM', 'training', 'Simulator'],
+    ['GRD', 'meeting', 'Ground Duty'],
+    ['SFT', 'other', 'Shift'],
+    ['DHD', 'deadhead', 'Deadhead'],
+    ['PAX', 'deadhead', 'Positioning'],
+  ] as const)('maps %s to %s / "%s"', (code, category, label) => {
+    expect(categorise(code)).toEqual({ category, label });
+  });
+
+  it('maps a null-label day-off duty from the mobile roster to a Day Off card', () => {
+    const duty = toGroundDuty({
+      id: 'ET:J4002:DO',
+      assignment: 'DO',
+      dutyType: 'DO',
+      fltNum: '',
+      localStart: '2026-09-09 00:00',
+      localEnd: '2026-09-09 23:59',
+      startUTC: '2026-09-08T21:00:00.000Z',
+      endUTC: '2026-09-09T20:59:00.000Z',
+      briefStart: '2026-09-08T21:00:00.000Z',
+      crewId: 'J4002',
+      carrier: 'ET',
+      baseOffsetMin: 0,
+      airportCode: 'ADD',
+      raw: {},
+    });
+
+    expect(duty.category).toBe('off');
+    expect(duty.label).toBe('Day Off');
+    expect(duty.allDay).toBe(true);
+    expect(duty.airport).toBe('ADD');
   });
 });

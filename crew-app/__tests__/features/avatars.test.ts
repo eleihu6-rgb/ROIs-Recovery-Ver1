@@ -1,7 +1,7 @@
 // Crew cartoon avatars — each crew maps to a stable, in-range cute avatar so the
 // Profile picture is a fun identity instead of a bare crew number.
 
-import { avatarForCrew, AVATAR_COUNT } from '../../src/features/settings/avatars';
+import { avatarForCrew, avatarParts, AVATAR_COUNT, CHARACTER_COUNT } from '../../src/features/settings/avatars';
 
 describe('avatarForCrew', () => {
   it('returns an index within [0, AVATAR_COUNT)', () => {
@@ -30,7 +30,24 @@ describe('avatarForCrew', () => {
     expect(avatarForCrew('')).toBe(0);
   });
 
-  it('exposes a 10-avatar set', () => {
-    expect(AVATAR_COUNT).toBe(10);
+  // The picker (Profile ▸ tap the avatar) offers every combination of the 10
+  // characters and their backings.
+  it('exposes the full pickable set', () => {
+    expect(CHARACTER_COUNT).toBe(10);
+    expect(AVATAR_COUNT).toBe(30);
+  });
+
+  it('splits an index into a character and a backing that both stay in range', () => {
+    for (let i = 0; i < AVATAR_COUNT; i++) {
+      const { character, background } = avatarParts(i);
+      expect(character).toBeGreaterThanOrEqual(0);
+      expect(character).toBeLessThan(CHARACTER_COUNT);
+      expect(background).toBeGreaterThanOrEqual(0);
+      expect(background).toBeLessThan(AVATAR_COUNT / CHARACTER_COUNT);
+    }
+    // Same character, different backing — that's what "more avatars" buys.
+    expect(avatarParts(3).character).toBe(3);
+    expect(avatarParts(13).character).toBe(3);
+    expect(avatarParts(13).background).toBe(1);
   });
 });

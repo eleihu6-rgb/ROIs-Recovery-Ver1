@@ -1,0 +1,73 @@
+# Crew-app sim for an ET crew member (default J4007; pass -e CREW_ID=J400x).
+# Logs in through the ROIS live-server API adapter and walks the Sep 2026 Schedule.
+#
+# Run:
+#   maestro test crew-app/.maestro/et_crew_duty_sim.yaml -e CREW_ID=J4001 \
+#     --debug-output <dir> --flatten-debug-output
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "${CREW_ID}"
+# `hideKeyboard` is a no-op on this screen and a later scroll gesture then lands on a
+# key; Return blurs the single-line TextInput and dismisses the keyboard reliably.
+- pressKey: Enter
+- takeScreenshot: sim_01_login
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+# The simulator keychain cannot persist an ET session; dismiss the soft notice and the
+# dev LogBox that follows it (it covers the tab bar).
+- tapOn:
+    text: "OK"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: sim_02_home
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-title"
+    timeout: 30000
+- takeScreenshot: sim_03_sched_open
+# Jump back to a day before today (the strip chips drive the list) so early-month
+# ground duties — e.g. J4002's 9 Sep Day Off — are captured too.
+- tapOn:
+    id: "day-9"
+- takeScreenshot: sim_04_sched_day09
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 25%"
+    duration: 600
+- takeScreenshot: sim_05_sched_fwd1
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 25%"
+    duration: 600
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 25%"
+    duration: 600
+- takeScreenshot: sim_06_sched_fwd3
