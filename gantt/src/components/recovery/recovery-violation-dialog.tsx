@@ -210,6 +210,13 @@ const allOptions = (plans: RecoveryPlans): RecoveryOption[] => [
   ...plans.roster.options,
   ...plans.standby.options,
   ...plans.crossBase.options,
+  // Include filtered candidates so `previewedOption` / `executionOption`
+  // lookups succeed when the user opens a Filtered-tab row in the Detail
+  // dialog and then invokes Preview. Filtered options are not directly
+  // selectable, so this only widens lookup, not the executable surface.
+  ...plans.roster.excludedOptions,
+  ...plans.standby.excludedOptions,
+  ...plans.crossBase.excludedOptions,
 ]
 
 const planTone = (planType: RecoveryPlanType) => planType === 'roster'
@@ -451,7 +458,13 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   const selectedPlan = plans ? planForType(plans, selectedPlanType) : null
   const selectedOption = useMemo(() => {
     if (!selectedPlan || !selectedOptionId) return null
-    return selectedPlan.options.find((option) => option.id === selectedOptionId) ?? null
+    // Search both the active and the filtered (Rule-checked out) lists so the
+    // Detail dialog opens for Filtered-tab rows too — their option objects are
+    // moved into `excludedOptions` by `updatePlanGroupOption` and would
+    // otherwise be unreachable from the detail-view lookup.
+    return selectedPlan.options.find((option) => option.id === selectedOptionId)
+      ?? selectedPlan.excludedOptions.find((option) => option.id === selectedOptionId)
+      ?? null
   }, [selectedPlan, selectedOptionId])
   const executionOption = useMemo(() => {
     if (!plans || !executionOptionId) return null
@@ -886,7 +899,7 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
       {visibleOptions.length === 0 && !isFilteredTab ? <div className="min-h-0 flex-1 px-3 py-3 text-xs text-muted-foreground">{filter === 'executable' ? 'No executable Crew in this plan. Try a different recovery method or check the Filtered tab.' : 'No executable candidates in the current loaded data range.'}</div> : null}
       {isFilteredTab && visibleFiltered.length === 0 ? <div className="min-h-0 flex-1 px-3 py-3 text-xs text-muted-foreground">No options were filtered out by Rule check. Every candidate in this plan is potentially executable.</div> : null}
       {(visibleOptions.length > 0 || (isFilteredTab && visibleFiltered.length > 0)) && <div className="min-h-0 flex-1 overflow-auto">
-        <div className="sticky top-0 z-10 hidden grid-cols-[minmax(220px,1fr)_72px_72px_92px_110px_154px] gap-2 border-b border-border bg-background/95 px-3 py-1.5 text-3xs uppercase tracking-wide text-muted-foreground backdrop-blur sm:grid">
+        <div className="sticky top-0 z-10 hidden grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px] gap-2 border-b border-border bg-background/95 px-3 py-1.5 text-3xs uppercase tracking-wide text-muted-foreground backdrop-blur sm:grid">
           <span className="border-r border-border/60 pr-2">Crew / option</span><span className="text-center">Cancel</span><span className="text-center">Add</span><span className="text-center">Stability</span><span className="text-center">Cost</span><span className="text-right">Actions</span>
         </div>
         <div className="divide-y divide-border/70">{visibleOptions.map((option) => {
@@ -894,7 +907,7 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
           const executionSelected = executionOptionId === option.id
           const executable = isExecutable(option)
           return <div key={option.id} className={["border-l-2 p-3", tone.section, selected ? tone.selectedRow : tone.row].join(' ')}>
-            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_56px_56px_72px_88px_120px] sm:items-center">
+            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px] sm:items-center">
               <div className="flex min-w-0 items-start gap-2">
                 <label className="mt-0.5 flex shrink-0 items-center text-2xs text-muted-foreground" title="Select this Crew for execution">
                   <input type="checkbox" checked={executionSelected} disabled={!executable} onChange={(event) => onToggleExecution(option, event.target.checked)} aria-label={`Execute recovery with Crew ${option.targetCrewId}`} data-testid={`recovery-crew-checkbox-${option.targetCrewId}`} className="h-3.5 w-3.5 accent-primary" />
@@ -965,7 +978,7 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <button type="button" className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
-                <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid={`recovery-detail`}><Eye className="h-3.5 w-3.5" />Detail</button>
+                <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid={`recovery-detail-${option.id}`}><Eye className="h-3.5 w-3.5" />Detail</button>
                 <span className={selected ? ['h-2 w-2 rounded-full', tone.dot].join(' ') : 'h-2 w-2 rounded-full bg-border'} aria-hidden="true" />
               </div>
             </div>
