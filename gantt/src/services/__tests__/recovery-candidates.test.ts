@@ -505,6 +505,55 @@ describe('buildRecoveryPlans', () => {
       && option.subOptions?.some((child) => child.id === secondSwap?.id))).toBe(false)
   })
 
+  it('still emits a combined roster option when one of the alerts has no roster candidates (partial coverage)', () => {
+    // Alert A's pairing is covered by candidate crew C → 1+ roster options.
+    // Alert B's pairing is intentionally given no overlapping roster so the
+    // standalone plan produces zero roster options. The combined roster group
+    // must still surface plans that cover alert A, and surface the gap via
+    // description so the user knows alert B is unrecovered in this mode.
+    const secondAlert: RecoveryAlertSnapshot = { ...alert, id: 'v-8004-second', crewId: 'B', pairingId: 200 }
+    const plans = buildRecoveryPlans({
+      alerts: [alert, secondAlert],
+      items: [
+        item(1, 'A', 100, range.sourceStart, range.sourceEnd),
+        // Alert B has no overlapping roster item — its source pairing has no
+        // entry in `items` and the alert itself can't be recovered by roster.
+        item(3, 'C', 300, '2026-09-05T18:00:00.000Z', '2026-09-05T20:00:00.000Z'),
+      ],
+      crews: [crew('A'), crew('B'), crew('C')],
+      rankOrder: new Map([['CA', 1]]),
+      now: testNow,
+    })
+
+    // Alert A is still covered: at least one combined option exists whose
+    // subOption recovers A → C.
+    const recoveringA = plans.roster.options.find((option) =>
+      option.subOptions?.some((child) => child.sourceCrewId === 'A' && child.targetCrewId === 'C'),
+    )
+    expect(recoveringA).toBeDefined()
+    // Description flags the partial coverage so the UI can warn the user.
+    expect(plans.roster.description).toMatch(/alert\(s\) have no roster option/i)
+  })
+
+  it('emits an empty combined group when EVERY alert lacks that method\'s options', () => {
+    // Both alerts intentionally have no roster options → combined roster
+    // stays empty (viableGroups === 0). Mixed still works as the fallback.
+    const secondAlert: RecoveryAlertSnapshot = { ...alert, id: 'v-8004-second', crewId: 'B', pairingId: 200 }
+    const plans = buildRecoveryPlans({
+      alerts: [alert, secondAlert],
+      items: [
+        item(3, 'C', 300, '2026-09-05T18:00:00.000Z', '2026-09-05T20:00:00.000Z'),
+      ],
+      crews: [crew('A'), crew('B'), crew('C')],
+      rankOrder: new Map([['CA', 1]]),
+      now: testNow,
+    })
+
+    expect(plans.roster.options).toHaveLength(0)
+    expect(plans.standby.options).toHaveLength(0)
+    expect(plans.crossBase.options).toHaveLength(0)
+  })
+
   it('generates a cross-base Direct option when candidate is free in the positioning window but has no active roster or SBY task', () => {
     // Source crew A is on Pairing 100 in PVG. Candidate crew D is BJS-based,
     // has the A320 fleet qualification, but has NO active FLY roster and NO SBY

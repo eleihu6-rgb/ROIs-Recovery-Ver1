@@ -1626,11 +1626,21 @@ const combineRecoveryOptions = (
   groups: RecoveryPlanGroup[],
   baselineItems: RosterItem[],
 ): RecoveryOption[] => {
-  if (groups.some((group) => group.options.length === 0)) return []
+  // Filter out alerts whose plan has no options for this mode (e.g. one
+  // alert has standby candidates but another doesn't). The combined plan
+  // then covers only the alerts that actually have options; the rest are
+  // surfaced separately via `buildRecoveryPlans` so the UI can warn the
+  // user that those alerts need a different recovery method.
+  const viableGroups = groups.filter((group) => group.options.length > 0)
+  const coveredAlertIndices = new Set<number>()
+  groups.forEach((group, index) => {
+    if (group.options.length > 0) coveredAlertIndices.add(index)
+  })
+  if (viableGroups.length === 0) return []
   const combinations: RecoveryOption[][] = [[]]
   // Keep the Cartesian expansion bounded; every option is still built from
   // complete child choices and the UI reports no partial combination as valid.
-  for (const group of groups) {
+  for (const group of viableGroups) {
     const next: RecoveryOption[][] = []
     for (const partial of combinations) {
       for (const option of group.options) {
@@ -1652,7 +1662,7 @@ const combineRecoveryOptions = (
     const executable = children.every((option) => option.localExecutable && option.ruleCheck !== 'failed') && reasons.length === 0
     return {
       ...first,
-      id: `combined-${groups[0].id}-${children.map((option) => option.id).join('__')}`,
+      id: `combined-${viableGroups[0].id}-${children.map((option) => option.id).join('__')}`,
       title: `Combined recovery · ${children.map((option) => `${option.sourceCrewId} → ${option.targetCrewId}`).join(' · ')}`,
       localExecutable: executable,
       reasons,
@@ -1687,13 +1697,24 @@ export const buildRecoveryPlans = (input: BuildRecoveryPlansInput & {
   }
 
   const childPlans = alerts.map((alert) => buildSingleRecoveryPlans({ ...input, alert }))
-  const makeGroup = (id: RecoveryPlanGroup['id'], key: 'roster' | 'standby' | 'crossBase', title: string, description: string): RecoveryPlanGroup => ({
-    id,
-    title,
-    description: `${description} Combined across ${alerts.length} selected alerts.`,
-    options: combineRecoveryOptions(childPlans.map((plan) => plan[key]), input.items),
-    excludedOptions: [],
-  })
+  const makeGroup = (id: RecoveryPlanGroup['id'], key: 'roster' | 'standby' | 'crossBase', title: string, description: string): RecoveryPlanGroup => {
+    const perAlertGroups = childPlans.map((plan) => plan[key])
+    const missingAlerts = alerts
+      .map((alert, index) => ({ alert, index, plan: childPlans[index] }))
+      .filter(({ plan }) => plan[key].options.length === 0)
+      .map(({ alert }) => `${alert.crewId}@${alert.pairingId ?? 'n/a'}`)
+    const baseDescription = `${description} Combined across ${alerts.length} selected alerts.`
+    const fullDescription = missingAlerts.length === 0
+      ? baseDescription
+      : `${baseDescription} ${missingAlerts.length} alert(s) have no ${key} option: ${missingAlerts.join(', ')} — those alerts need a different method (use Mixed recovery).`
+    return {
+      id,
+      title,
+      description: fullDescription,
+      options: combineRecoveryOptions(perAlertGroups, input.items),
+      excludedOptions: [],
+    }
+  }
   return {
     alert: alerts[0],
     alerts,
