@@ -28,6 +28,18 @@ Keep shared rules here and link to them from `AGENTS.md`; avoid parallel copies.
 - Check the worktree and preserve concurrent edits. Parallelize independent read-only investigations; sequence dependent edits and shared-state operations.
 - Report the result and evidence concisely. A newer model does not remove the need for business-rule, schema, security, and real-UI verification.
 
+## §Model-Routing — 按「判断 vs 机械执行」分层省 token（Claude / Codex 通用）
+
+> Applies to every coding agent (Claude, Codex, others). Split work by the seam between **judgment** and **mechanical execution**: keep judgment at full model capability, run mechanical execution at the cheapest capability that still produces a correct artifact. Cost-aware only — it never lowers a correctness or verification bar.
+
+- **Pin the judgment first, then execute cheaply.** For a test/validation task, decide the scenario at full capability — which crew / pairing / flight, what user operation, what to assert, and (per §Real-Business-Case-Test) that the fixture is a realistic multi-leg base→base structure. Only after that is fixed do you produce the mechanical artifact (script body, fixtures, edits, running checks).
+- **Cheap-execution candidates** (spec already pinned, low blast radius): Playwright script body from a defined scenario; unit-test scaffolding/fixtures from a decided business case; repetitive edits (renames, import ordering, token migrations like `text-[11px]`→`text-2xs`); running `npm run check:ui` / `npm audit` / tests and collecting output; screenshot inspection triage; doc/changelog/dev-context formatting.
+- **Never cheapen the judgment** (keep at full capability): deciding *what* a test asserts, cascade/KPI ripple reasoning (§Flight-Change-Ripple-Required), base-loop invariants, whether a fixture is realistic, data-model changes, source-of-truth migrations, legality/rule logic, §Gantt-Unify shared-vs-fork decisions, and performance/security judgment.
+- **Per-agent mechanism** (set the actual model/effort in the agent's own runtime config — do not hardcode model names or settings here):
+  - **Claude Code**: delegate the mechanical artifact to a **lower-cost subagent** (via the Agent tool) once the scenario is pinned; the primary model reviews the result before reporting done.
+  - **Codex**: **down-shift reasoning effort** for the mechanical steps and raise it back for the judgment steps, plus keep context tight (progressive loading, codebase-memory graph / `rg` over dumping whole files) — Codex's largest token cost is over-loaded context, not the work itself.
+- Every existing gate still applies to the cheaply-produced artifact — §Simulate-User, §No-Illusion (paste the exact command + PASS/FAIL), §PW-Snapshot (versioned screenshot, visually inspected). A cheaper model or lower effort producing the artifact does not relax proof requirements; the full-capability pass reviews it before done.
+
 ## MCP and Skills
 
 - Discover capabilities from the current session's tool and skill catalogs. A configured server, local skill directory, or old transcript does not prove that a capability is callable now.

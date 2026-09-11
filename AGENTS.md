@@ -18,7 +18,7 @@ Shared project rules belong in `CLAUDE.md` or referenced `docs/` files. Do not d
 
 ## Daily Workflow
 
-- Follow **MCP and Skills**, **Design Before Implementation**, and **Senior Engineering Workflow** in `CLAUDE.md`.
+- Follow **MCP and Skills**, **Design Before Implementation**, **Senior Engineering Workflow**, and **§Model-Routing** (judgment at full effort, mechanical execution at down-shifted reasoning effort with tight context) in `CLAUDE.md`.
 - Prefer the codebase-memory graph for code discovery; check current tool availability and indexing. Use `rg` for docs/config/literals or insufficient graph results.
 - Resolve skills through the session catalog and read the applicable `SKILL.md`. Old model names, local installation paths, and prior transcripts are not capability guarantees.
 - Inspect the worktree before editing. Preserve other contributors' changes, including concurrent work.
