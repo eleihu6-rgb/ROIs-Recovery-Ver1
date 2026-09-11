@@ -14,6 +14,7 @@
 //   POST /crew-app/v1/discretion/{discretionId}         {airline,crewId,password}
 //   POST /crew-app/v1/discretion/{discretionId}/decision {airline,crewId,password,decision,idempotencyKey,reason?}
 import {z} from 'zod';
+import {isMobileRosterAirline} from '../travel/ekRosterApi';
 
 export interface CrewNotifyCredentials {
   airline: string;
@@ -98,6 +99,27 @@ const listResponseSchema = z
   })
   .passthrough();
 
+// live-server (F8/ET) wraps every response in `{ code, data, message }`; EVACC
+// (EK) returns the payload raw. Only the ROIS live-server airlines unwrap.
+const envelopeSchema = z
+  .object({code: z.number(), data: z.unknown(), message: z.string().optional()})
+  .passthrough();
+
+function unwrapLiveServerEnvelope(raw: unknown, airline: string): unknown {
+  if (!isMobileRosterAirline(airline)) {
+    return raw;
+  }
+  const parsed = envelopeSchema.safeParse(raw);
+  if (!parsed.success) {
+    // Not an envelope at all — let the feed schema produce the error.
+    return raw;
+  }
+  if (parsed.data.code !== 200) {
+    throw new Error(parsed.data.message || 'Crew notification service unavailable');
+  }
+  return parsed.data.data;
+}
+
 export type CrewNotification = z.infer<typeof notificationSchema>;
 export type DiscretionRequest = z.infer<typeof discretionSchema>;
 export type NotificationsFeed = z.infer<typeof listResponseSchema>;
@@ -146,9 +168,10 @@ export async function fetchNotifications(
   since?: number,
   signal?: AbortSignal,
 ): Promise<NotificationsFeed> {
-  const body = {...normalizeCredentials(credentials), ...(since ? {since} : {})};
+  const normalized = normalizeCredentials(credentials);
+  const body = {...normalized, ...(since ? {since} : {})};
   const raw = await postJson(`${base(apiBaseUrl)}/crew-app/v1/notifications`, body, signal);
-  const result = listResponseSchema.safeParse(raw);
+  const result = listResponseSchema.safeParse(unwrapLiveServerEnvelope(raw, normalized.airline));
   if (!result.success) {
     throw new Error('Invalid notifications response');
   }

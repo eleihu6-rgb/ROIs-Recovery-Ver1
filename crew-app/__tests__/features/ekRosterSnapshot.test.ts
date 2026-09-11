@@ -95,6 +95,18 @@ describe('atomic EK roster snapshot', () => {
     expect(Keychain.resetGenericPassword).toHaveBeenCalled();
   });
 
+  it('keeps the original commit failure when the rollback cannot write either', async () => {
+    // Reclaimed app container: the snapshot write AND its rollback both fail
+    // with ENOENT. The caller must see the real cause, not a rollback error.
+    (AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('Failed to write value'));
+    (AsyncStorage.removeItem as jest.Mock).mockRejectedValueOnce(new Error('Failed to write value'));
+
+    await expect(commitEkRosterSnapshot({trips, duties: [], session}))
+      .rejects.toThrow('Failed to write value');
+
+    expect(Keychain.resetGenericPassword).toHaveBeenCalled();
+  });
+
   it('still clears legacy TG/PR session keys when no EK snapshot can be read', async () => {
     await AsyncStorage.multiSet([
       ['@royce_airline', 'TG'],

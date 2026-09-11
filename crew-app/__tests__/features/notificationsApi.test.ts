@@ -137,3 +137,58 @@ describe('crew-notify API client', () => {
     await expect(fetchNotifications(API, creds)).rejects.toThrow('Invalid notifications response');
   });
 });
+
+// F8/ET ride the ROIS live-server, which wraps every response in
+// `{ code, data, message }`; EK (EVACC) returns the payload raw.
+describe('crew-notify API client — live-server envelope (F8/ET)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const liveFeed = {
+    cursor: 7,
+    notifications: [
+      {
+        notifId: 'n1',
+        crewId: '113',
+        type: 'roster_change',
+        createdUtc: '2026-09-11T10:00:00.000Z',
+        title: 'Roster updated',
+        body: 'F8123 was assigned to you.',
+        status: 'unread',
+        seq: 7,
+      },
+    ],
+    openDiscretions: [],
+  };
+
+  const f8 = {airline: 'f8', crewId: ' 113 ', password: 'Pier2026'};
+
+  it('unwraps the live-server envelope and parses the feed', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(okJson({code: 200, data: liveFeed, message: 'ok'}));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const out = await fetchNotifications(API, f8);
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'http://127.0.0.1:8000/api/crew-app/v1/notifications',
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      airline: 'F8',
+      crewId: '113',
+      password: 'Pier2026',
+    });
+    expect(out.cursor).toBe(7);
+    expect(out.notifications[0].title).toBe('Roster updated');
+  });
+
+  it('surfaces the live-server envelope message when the code is not 200', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(okJson({code: 401, data: null, message: 'Invalid crew ID or password.'})) as unknown as typeof fetch;
+
+    await expect(fetchNotifications(API, f8)).rejects.toThrow('Invalid crew ID or password.');
+  });
+});

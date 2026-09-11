@@ -1,0 +1,59 @@
+# v2 · iOS Calendar meetings → app sync (TG crew, simulator).
+# Pre-req: `xcrun simctl privacy <udid> grant calendar org.reactjs.native.example.RoyceTravelTemplate`.
+# Seeds 4 demo meetings through the dev action (EventKit write), turns Meetings on,
+# then checks they surface in Upcoming Alarms and on today's Schedule card.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "row-preferences"
+- extendedWaitUntil:
+    visible:
+      id: "dev-demo-meetings"
+    timeout: 10000
+- tapOn:
+    id: "dev-demo-meetings"
+- extendedWaitUntil:
+    visible: "Demo meetings added"
+    timeout: 20000
+- takeScreenshot: v2_tg_m1_seeded
+- tapOn: "OK"
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "row-alarms"
+- scrollUntilVisible:
+    element:
+      text: "Alarm for meeting events.*"
+    direction: DOWN
+- takeScreenshot: v2_tg_m2_meetings_settings
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "home-alarms"
+- scrollUntilVisible:
+    element:
+      text: "Fleet standardisation briefing.*"
+    direction: DOWN
+- takeScreenshot: v2_tg_m3_upcoming_alarms
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    id: "day-11"
+- extendedWaitUntil:
+    visible: "Fleet standardisation briefing.*"
+    timeout: 10000
+- takeScreenshot: v2_tg_m4_schedule_today
