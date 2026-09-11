@@ -10,6 +10,7 @@ import { invalidate, invalidatePattern } from '../../utils/cache.js'
 import { notDeleted } from '../../utils/db.js'
 import { refreshPairingTafb } from './pairing-tafb-service.js'
 import { computeDutyFdpMin } from './pairing-fdp.js'
+import { computeDutyCreditMin } from './pairing-credit.js'
 import { isRoundtripFlightCancelled, roundtripError, toRoundtripFlight, validateRotation, type RoundtripScope } from './roundtrip-chooser.js'
 
 const CACHE_PREFIX = 'pairing'
@@ -150,13 +151,20 @@ export const validateBuildRules = (duties: FlightRow[][], base: string): string[
   return warnings
 }
 
-/** Post-duty rest = max(12h, duty period). DP = duty check-in (dep−2h) → check-out (last arrival). */
-const dutyRestMin = (duty: FlightRow[], rules?: RoundtripScope['rules']): number => {
+/** Duty period (minutes): check-in (dep−checkin) → check-out (last arrival + checkout). */
+const dutyDpMin = (duty: FlightRow[], rules?: RoundtripScope['rules']): number => {
   const checkInStart = addMinutes(duty[0].schDepDtUtc, -(rules?.checkinMin ?? CHECKIN_MIN))
   const checkOutEnd = addMinutes(duty[duty.length - 1].schArvDtUtc, CHECKOUT_MIN)
-  const dp = minutesBetween(checkInStart, checkOutEnd)
-  return Math.max(rules?.restMin ?? REST_FLOOR_MIN, Math.round(dp))
+  return Math.round(minutesBetween(checkInStart, checkOutEnd))
 }
+
+/** Σ scheduled block minutes across a duty's flight legs (block time, dep→arv fallback). */
+const dutyBlkMin = (duty: FlightRow[]): number =>
+  Math.round(duty.reduce((n, f) => n + (f.blkMin ?? minutesBetween(f.schDepDtUtc, f.schArvDtUtc)), 0))
+
+/** Post-duty rest = max(12h, duty period). DP = duty check-in (dep−2h) → check-out (last arrival). */
+const dutyRestMin = (duty: FlightRow[], rules?: RoundtripScope['rules']): number =>
+  Math.max(rules?.restMin ?? REST_FLOOR_MIN, dutyDpMin(duty, rules))
 
 type DrizzleTx = Parameters<Parameters<FastifyInstance['db']['transaction']>[0]>[0]
 
@@ -186,6 +194,16 @@ const writePairingContents = async (
   const actStr = addMinutes(firstDuty[0].actDepDtUtc, -checkin)
   const actEnd = addMinutes(lastDuty[lastDuty.length - 1].actArvDtUtc, lastRest)
 
+  // Duty credit from the Rust rule-7502 CARS engine: max(minCH-floor, Σblk×FT, DP×DP-ratio).
+  // One spawn for all duties; keyed d1..dN. Written to duty_(sch|act)_credited_minutes below so
+  // the crew-head RpCred (manday COALESCE(act,sch)) and the Pairing Info Total Credit
+  // (sumPairingCreditMinutes reads duty_act_credited_minutes) both populate at build time —
+  // without it a freshly-built/assigned pairing reads 0 / "—". Null map (binary missing / engine
+  // error) leaves the columns NULL, same graceful fallback as computeDutyFdpMin.
+  const creditByDuty = computeDutyCreditMin(
+    duties.map((duty, i) => ({ key: `d${i + 1}`, group: 'FLY', blkMin: dutyBlkMin(duty), dpMin: dutyDpMin(duty, rules) })),
+  )
+
   const audit = auditCreate(username)
 
   for (let d = 0; d < duties.length; d++) {
@@ -206,6 +224,10 @@ const writePairingContents = async (
     const dutyDebriefStart = dutyLast.schArvDtUtc
     const dutyDebriefEnd = addMinutes(dutyLast.schArvDtUtc, debrief)
     const dutySchFdpMin = dutySchFdpMinForDuty(duty, rules)
+    // Rule-7502 credit for this duty (same value on every seg of the duty, F8 convention).
+    // numeric columns are string-typed in Drizzle → serialise (NULL stays NULL).
+    const creditVal = creditByDuty?.get(`d${dutySeq}`) ?? null
+    const dutyCreditMin = creditVal == null ? null : String(creditVal)
     // A duty with a layover after it carries one overnight night; the final duty (back at base) 0.
     const layoverNits = isFinalDuty ? 0 : 1
 
@@ -249,6 +271,9 @@ const writePairingContents = async (
         // Post-duty rest + overnight nights — denormalised onto every seg of the duty (F8
         // convention). Mid-rotation duty = layover puck; final duty = back-to-base REST puck.
         dutySchFdpMin,
+        // Scheduled == actual credit at build (on-schedule plan); actual/rule pass may overwrite later.
+        dutySchCreditedMinutes: dutyCreditMin,
+        dutyActCreditedMinutes: dutyCreditMin,
         dutySchRestMin: restMin,
         dutyActRestMin: restMin,
         dutyLayoverNits: layoverNits,
