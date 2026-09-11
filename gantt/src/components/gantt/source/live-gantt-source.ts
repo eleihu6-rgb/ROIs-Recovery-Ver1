@@ -444,7 +444,13 @@ function buildLiveViolationMap(
           ? (itemsByCrew.get(v.crewId) ?? []).filter((task) => task.pairingId === pairingId)
           : itemsByPairingId.get(pairingId) ?? []
         for (const task of anchorTasks) {
-          if (!pairingTasksOverlapViolationWindow([task], v)) continue
+          // Direct attribution (Rule B): pairing+crewId both match this
+          // task — paint the puck without window-overlap fallback.
+          const directMatch = v.crewId != null
+            && String(task.crewId) === String(v.crewId)
+            && task.pairingId != null
+            && Number(task.pairingId) === Number(pairingId)
+          if (!directMatch && !pairingTasksOverlapViolationWindow([task], v)) continue
           bump(task.id, v.severity)
         }
         if (v.ruleCode === '7504') {
@@ -474,7 +480,16 @@ function buildLiveViolationMap(
       if (v.crewId) {
         const crewPairingTasks = (itemsByCrew.get(v.crewId) ?? []).filter((task) => task.pairingId === pairingId)
         for (const task of crewPairingTasks) {
-          if (!pairingTasksOverlapViolationWindow([task], v)) continue
+          // Direct attribution (Rule B): the violation names both crewId AND
+          // pairingId matching this task, so it's unambiguously anchored to
+          // the task — paint the puck without requiring window overlap. The
+          // window-overlap fallback only fires when attribution is missing
+          // or partial (e.g. pairing without crewId), and it can drop the
+          // alert if the engine wrote the window at a slightly different
+          // span than the task's sch*Dt (UTC vs local boundary edges).
+          const directMatch = String(task.crewId) === String(v.crewId)
+            && Number(task.pairingId) === Number(v.pairingId)
+          if (!directMatch && !pairingTasksOverlapViolationWindow([task], v)) continue
           bump(task.id, v.severity)
         }
         if (v.ruleCode === '7504') {
@@ -492,7 +507,10 @@ function buildLiveViolationMap(
         }
       } else {
         for (const task of itemsByPairingId.get(pairingId) ?? []) {
-          if (!pairingTasksOverlapViolationWindow([task], v)) continue
+          // Direct pairing match (no crewId on the alert) — pair with the
+          // task's own crew since both come from the same loaded roster.
+          const directMatch = task.pairingId != null && Number(task.pairingId) === Number(pairingId)
+          if (!directMatch && !pairingTasksOverlapViolationWindow([task], v)) continue
           bump(task.id, v.severity)
         }
       }

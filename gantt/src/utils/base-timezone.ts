@@ -14,6 +14,8 @@
 // behaviour rather than a blank screen.
 
 import type { TzOption } from '@/stores/timezone-store'
+import { useTimezoneStore } from '@/stores/timezone-store'
+import { reanchorDateRange } from '@/utils/date-range-anchor'
 
 /** Pick the first option marked as a base airport. */
 export const findBaseTimezone = (
@@ -37,4 +39,39 @@ export const resolveBaseTimezone = (
   if (base) return base.zoneId
   if (selectedZoneId) return selectedZoneId
   return null
+}
+
+/**
+ * Auto-sync the display timezone from the crew filter's base selection.
+ *
+ * Rule (per spec): "进入 Gantt，如用户选择 Base 过滤数据，自动按照选择列表中
+ * 第一个 Base 时区显示数据，否则默认 UTC。"
+ *
+ *   - If `bases` is non-empty, look up the FIRST base in the loaded
+ *     timezone options and switch the display to its IANA zone (keeping
+ *     the date range anchored to the same calendar days).
+ *   - If `bases` is empty, default the display to UTC.
+ *
+ * No-op when the resolved timezone already matches the current display.
+ * The base→timezone map is keyed on the option's `airport` (which is the
+ * 3-letter IATA code that the crew filter stores in `crew.bases[]`).
+ */
+export const syncDisplayTimezoneForBases = (bases: ReadonlyArray<string>): void => {
+  const tzStore = useTimezoneStore.getState()
+  const options = tzStore.timezoneOptions
+
+  if (bases.length === 0) {
+    if (tzStore.timezone !== 'UTC' || tzStore.timezoneAirport !== 'UTC') {
+      reanchorDateRange(tzStore.timezone, 'UTC')
+      tzStore.setTimezone('UTC', 'UTC')
+    }
+    return
+  }
+
+  const first = bases[0]
+  const match = options.find((o) => o.airport === first)
+  if (!match) return
+  if (tzStore.timezone === match.zoneId && tzStore.timezoneAirport === match.airport) return
+  reanchorDateRange(tzStore.timezone, match.zoneId)
+  tzStore.setTimezone(match.zoneId, match.airport)
 }

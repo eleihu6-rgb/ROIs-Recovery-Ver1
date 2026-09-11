@@ -142,7 +142,17 @@ const collectViolationTooltipEntries = ({
         (v.targetType === 'pairing' && v.targetId === task.pairingId) ||
         (v.targetType === 'crew' && String(v.targetId) === String(task.crewId))
       if (!applies) continue
-      if (v.targetType === 'crew' && !pairingTasksOverlapViolationWindow([task], v)) continue
+      // Direct attribution (Rule B): roster-targeted violations are anchored
+      // to the exact task by design — always include. Pairing-targeted with
+      // a matching crewId is also direct (the alert names both). Everything
+      // else (crew-only, or pairing without crewId) needs window overlap.
+      const directMatch =
+        (v.targetType === 'roster' && v.targetId === hoveredTaskId) ||
+        (v.targetType === 'pairing' &&
+          v.targetId === task.pairingId &&
+          v.crewId != null &&
+          String(v.crewId) === String(task.crewId))
+      if (!directMatch && !pairingTasksOverlapViolationWindow([task], v)) continue
       addEntry(v.ruleCode, v.ruleName, v.severity, v.message, undefined, { skipCrewBellOnly: true })
     }
   }
@@ -151,7 +161,16 @@ const collectViolationTooltipEntries = ({
     if (vs) {
       for (const v of vs) {
         if (v.crewId && String(task.crewId) && v.crewId !== String(task.crewId)) continue
-        if (!pairingTasksOverlapViolationWindow([task], v)) continue
+        // Direct attribution (Rule B): when the alert already names both
+        // `crewId` AND `pairingId` matching this task, the violation is
+        // unambiguously about this roster entry — skip the window-overlap
+        // fallback. Window overlap is the secondary signal used when the
+        // alert only knows pairing/crew (no anchor on a specific task), and
+        // it can drop the alert if the engine wrote the window at a slightly
+        // different span than the task's sch*Dt (UTC vs local boundaries).
+        const directMatch = v.crewId != null && String(task.crewId) === String(v.crewId)
+          && task.pairingId != null && Number(task.pairingId) === Number(v.pairingId)
+        if (!directMatch && !pairingTasksOverlapViolationWindow([task], v)) continue
         addEntry(v.ruleCode, v.ruleName, v.severity, v.message, v.ruleInstance, { skipCrewBellOnly: true })
       }
     }
@@ -198,8 +217,16 @@ const collectViolationTooltipEntries = ({
           (v.targetType === 'pairing' && v.targetId === task.pairingId) ||
           (v.targetType === 'crew' && String(v.targetId) === String(task.crewId))
         if (!applies) continue
+        // Direct attribution (Rule B) — see main violations loop.
+        const directMatch =
+          (v.targetType === 'roster' && v.targetId === hoveredTaskId) ||
+          (v.targetType === 'pairing' &&
+            v.targetId === task.pairingId &&
+            v.crewId != null &&
+            String(v.crewId) === String(task.crewId))
         if (
-          (v.targetType === 'pairing' || v.targetType === 'crew')
+          !directMatch
+          && (v.targetType === 'pairing' || v.targetType === 'crew')
           && !pairingTasksOverlapViolationWindow([task], v)
         ) continue
         addEntry(v.ruleCode, v.ruleName, v.severity, v.message, undefined, { skipCrewBellOnly: true })

@@ -446,7 +446,7 @@ describe('ViolationTooltip aggregation', () => {
     expect(beforePuck.map((e) => e.ruleCode)).toEqual(['7504'])
   })
 
-  it('omits 7501 from Aug puck hover when violation window is Sep (crew 923 shape)', () => {
+  it('RuleB — 7501 with crew+pairing attribution surfaces on every task of the anchored pairing even when the violation window is later (crew 923 shape)', () => {
     const augItem = {
       ...rosterItem(1006548, '923', 16693),
       schStrDtUtc: '2026-08-27T13:00:00.000Z',
@@ -471,6 +471,12 @@ describe('ViolationTooltip aggregation', () => {
       }]],
     ])
 
+    // Rule B: the alert is directly attributed to (crew=923, pairing=16693),
+    // so hovering any task of that pairing surfaces the entry even if the
+    // task's time is far from the violation window. The previous behaviour
+    // dropped the entry because pairingTasksOverlapViolationWindow returned
+    // false — that window-overlap gate is now a fallback for unattributed
+    // alerts only.
     const puckEntries = collectViolationTooltipEntriesForTest({
       hoveredTaskId: 1006548,
       hoveredCrewId: null,
@@ -478,7 +484,7 @@ describe('ViolationTooltip aggregation', () => {
       displayViolations,
       items: [augItem],
     })
-    expect(puckEntries.map((e) => e.ruleCode)).toEqual([])
+    expect(puckEntries.map((e) => e.ruleCode)).toEqual(['7501'])
 
     const crewEntries = collectViolationTooltipEntriesForTest({
       hoveredTaskId: null,

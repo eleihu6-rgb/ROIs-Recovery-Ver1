@@ -11,27 +11,14 @@ import { ChevronDown } from 'lucide-react'
 import { useTimezoneStore, type TzOption } from '@/stores/timezone-store'
 import { useFilterStore } from '@/stores/filter-store'
 import { timezoneApi } from '@/services/timezone-api'
-import { calendarDateToUtcMidnight, formatUtcOffset } from '@/components/gantt/gantt-utils'
+import { formatUtcOffset } from '@/components/gantt/gantt-utils'
+import { reanchorDateRange } from '@/utils/date-range-anchor'
 
 /**
- * Re-anchor the stored date range to local midnight in the new timezone.
- * Reads the calendar dates from the current range (in the old timezone),
- * then recomputes UTC timestamps using the new timezone.
+ * Note: `reanchorDateRange` was moved to `@/utils/date-range-anchor` so it
+ * can be reused by the base-filter auto-sync (`syncDisplayTimezoneForBases`)
+ * without dragging in the switcher's React import graph.
  */
-const reanchorDateRange = (oldTz: string, newTz: string): void => {
-  const { start, end } = useFilterStore.getState().dateRange
-  const oldFmt = new Intl.DateTimeFormat('en-CA', { timeZone: oldTz })
-  const startStr = oldFmt.format(start)
-  const endStr = oldFmt.format(end)
-
-  const newStart = calendarDateToUtcMidnight(startStr, newTz)
-  // End = midnight of the day after endStr, minus 1 ms
-  const [ey, em, ed] = endStr.split('-').map(Number)
-  const nextDayStr = new Date(Date.UTC(ey, em - 1, ed + 1)).toISOString().slice(0, 10)
-  const newEnd = new Date(calendarDateToUtcMidnight(nextDayStr, newTz).getTime() - 1)
-
-  useFilterStore.getState().setDateRange(newStart, newEnd)
-}
 
 export const TimezoneSwitcher = ({ scenarioId }: { scenarioId?: number } = {}) => {
   const timezone = useTimezoneStore((s) => s.timezone)

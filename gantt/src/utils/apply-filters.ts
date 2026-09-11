@@ -19,6 +19,7 @@ import { usePairingStore } from '@/stores/pairing-store'
 import { useFlightStore } from '@/stores/flight-store'
 import { useFlightCompositionStore } from '@/stores/flight-composition-store'
 import { markPhase } from '@/utils/gantt-perf-marks'
+import { syncDisplayTimezoneForBases } from '@/utils/base-timezone'
 
 export type ApplyGanttFiltersOptions = {
   /** Re-fetch pairing pane even when the pairing filter snapshot is unchanged. */
@@ -59,6 +60,17 @@ export const applyGanttFilters = async (opts?: ApplyGanttFiltersOptions): Promis
   const pairingIdsChanged = !appliedFilters || dateChanged || !pairingIdsEqual(appliedFilters.pairing, pairingFilter)
 
   if (!crewChanged && !pairingChanged && !flightChanged && !crewIdsChanged && !coverageChanged && !pairingIdsChanged) return
+
+  // Auto-sync display timezone to the first base in the crew filter (or UTC when
+  // no base is selected). Runs on every Apply so the planner's display follows
+  // their filter selection — they can still manually override via the switcher
+  // within a session; the next Apply re-syncs. See syncDisplayTimezoneForBases
+  // for the exact rule. Only fires when the crew filter actually changed (or
+  // on first apply), to avoid stomping on manual overrides between unrelated
+  // pairing/flight filter changes.
+  if (crewChanged || !appliedFilters) {
+    syncDisplayTimezoneForBases(crewFilter.bases)
+  }
 
   // 首屏阶段时间线锚点：Live 空启动后数据加载由 Apply 驱动，加载起点在这里
   // （旧 mount 自动加载的 gantt:open 打点已随之删除，见 use-gantt-viewport）。

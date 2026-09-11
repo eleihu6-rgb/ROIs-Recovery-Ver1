@@ -176,7 +176,7 @@ describe('effective-window violation severity maps', () => {
     expect(crewMap.get('2380')).toBe(1)
   })
 
-  it('7501 Sep window does not paint ! on Aug nearest-FLY anchor pairing (crew 923 shape)', () => {
+  it('RuleB — 7501 with crew+pairing attribution paints ! on every task of the anchored pairing even when the window is later (crew 923 shape)', () => {
     const aug = {
       ...item(1006548, '923', 16693),
       schStrDtUtc: '2026-08-27T13:00:00.000Z',
@@ -206,7 +206,11 @@ describe('effective-window violation severity maps', () => {
     const taskMap = buildLiveViolationMapForTest(new Map(), displayViolations, itemsByPairingId, itemsByCrew)
     const crewMap = buildLiveCrewViolationSeverityMapForTest(displayViolations)
 
-    expect(taskMap.get(1006548) ?? 0).toBe(0)
+    // Rule B: violation is attributed to (crew=923, pairing=16693), so the
+    // Aug task — part of the anchored pairing — paints sev=1 even though
+    // its time is far from the Sep window. Window overlap is now the
+    // fallback for unattributed alerts only.
+    expect(taskMap.get(1006548) ?? 0).toBe(1)
     expect(crewMap.get('923')).toBe(1)
   })
 
