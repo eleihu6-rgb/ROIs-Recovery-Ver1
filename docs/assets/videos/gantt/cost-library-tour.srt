@@ -1,0 +1,55 @@
+1
+00:00:00,024 --> 00:00:04,390
+ROIS prices every crew-recovery decision. A cost set groups the cost items to charge against; each item’s Calculation Workbench shows the money math.
+
+2
+00:00:04,390 --> 00:00:08,758
+A cost set is the bundle of priced items a recovery run is scored against.
+
+3
+00:00:08,758 --> 00:00:10,060
+Open Cost Sets under Legality.
+
+4
+00:00:10,060 --> 00:00:11,010
+“Daily Recovery” is the default cost set — the starter library ROIS scores against.
+
+5
+00:00:11,010 --> 00:00:14,566
+It bundles the individual cost items the optimizer charges for each decision.
+
+6
+00:00:14,566 --> 00:00:18,932
+Cost templates are the reusable cost items — let’s open the first two.
+
+7
+00:00:18,932 --> 00:00:19,982
+Switch to Cost Templates.
+
+8
+00:00:19,982 --> 00:00:21,194
+1002 — Pay above guaranteed hours: crew are guaranteed a monthly floor; only credit above it costs money.
+
+9
+00:00:21,194 --> 00:00:22,134
+The Calculation Workbench runs the default case live: 84h + 6.75h added → $712.50 above the guarantee floor.
+
+10
+00:00:22,134 --> 00:00:26,019
+Only credit above the floor becomes incremental cash, priced through the overtime tiers.
+
+11
+00:00:26,019 --> 00:00:27,326
+1003 — Airport standby credit: standby time first converts into credit.
+
+12
+00:00:27,326 --> 00:00:28,261
+That standby credit is added to pairing credit, then any hours over guarantee are priced through the linked GH policy.
+
+13
+00:00:28,261 --> 00:00:32,468
+Same workbench, a different calculator — each cost item explains exactly how it turns an action into cash.
+
+14
+00:00:32,468 --> 00:00:36,843
+Cost sets group the items; each item’s workbench shows how ROIS prices a recovery decision.

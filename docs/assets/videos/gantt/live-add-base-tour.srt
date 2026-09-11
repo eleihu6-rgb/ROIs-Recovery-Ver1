@@ -1,0 +1,83 @@
+1
+00:00:00,032 --> 00:00:05,460
+A guided walkthrough — sign in, scope crew and pairings to the ADD base, and open the Gantt.
+
+2
+00:00:05,460 --> 00:00:10,888
+Logging in to ROIS as Ryan.
+
+3
+00:00:10,888 --> 00:00:12,648
+Enter the user code “Ryan”.
+
+4
+00:00:12,648 --> 00:00:14,710
+Enter the password.
+
+5
+00:00:14,710 --> 00:00:16,490
+Click Sign In to enter ROIS.
+
+6
+00:00:16,490 --> 00:00:21,940
+Navigate to the Live scheduling view.
+
+7
+00:00:21,940 --> 00:00:23,680
+Open the Live view from the top navigation.
+
+8
+00:00:23,680 --> 00:00:25,358
+Live starts empty — click here to choose what to load.
+
+9
+00:00:25,358 --> 00:00:30,768
+Scope both crew and pairings to the Addis Ababa (ADD) base.
+
+10
+00:00:30,768 --> 00:00:32,074
+Open the Crew filter tab.
+
+11
+00:00:32,074 --> 00:00:33,256
+Open the crew Base selector.
+
+12
+00:00:33,256 --> 00:00:34,508
+Select ADD — Addis Ababa — for crew.
+
+13
+00:00:34,508 --> 00:00:35,736
+Now open the Pairing filter tab.
+
+14
+00:00:35,736 --> 00:00:36,962
+Open the pairing Base selector.
+
+15
+00:00:36,962 --> 00:00:38,156
+Select ADD for pairings too.
+
+16
+00:00:38,156 --> 00:00:39,406
+Apply the filter and open the Gantt.
+
+17
+00:00:39,406 --> 00:00:41,836
+Loading the ADD-base roster and pairings…
+
+18
+00:00:41,836 --> 00:00:47,252
+Jump the timeline to the current roster period.
+
+19
+00:00:47,252 --> 00:00:48,482
+Right-click the time axis to open “GO TO RP”.
+
+20
+00:00:48,482 --> 00:00:49,678
+Select the current roster period (marked “now”).
+
+21
+00:00:49,678 --> 00:00:55,088
+ADD base is loaded — 2 crew rosters and 1502 pairings on the Gantt.
