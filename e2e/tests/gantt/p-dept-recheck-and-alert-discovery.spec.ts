@@ -5,8 +5,11 @@
  *
  * Why this exact assertion matters:
  *   The hardcoded test data in `rule_violation` (seeded by `violations-init`)
- *   already contains two rows for Crew=113 / Pairing=135905 under
- *   `ruleset_id=1` with start_dt 2026-09-11T16:00Z (Beijing-local 2026-09-12 00:00).
+ *   already contains a Rule 8004 (Fleet Mismatch) row for Crew=113 /
+ *   Pairing=135905 under `ruleset_id=1` with start_dt 2026-09-11T16:00Z
+ *   (Beijing-local 2026-09-12 00:00). The 8004 alert is the only one this
+ *   test cares about; 3007 (FDP exceeded) exists for the same crew/pairing
+ *   but is out of scope here.
  *   Ruleset 1 is the only "RULE" workset in this demo DB and the
  *   default `Recovery Demo RuleSet` (enabled + isDefault=true ⇒ the Recheck-now
  *   button shows up next to its header). Selecting P division alone loads
@@ -160,9 +163,9 @@ test('Alert-Discover-P-Dept — select P dept, recheck ruleset=1, find Crew=113/
   await page.getByTestId('refresh-btn').waitFor({ state: 'visible', timeout: 15_000 })
 
   // Path 1: the BELL's data source — `__ganttTest.liveViolations()`.
-  // Filter to the exact crew/pairing the user named. Both 8004 (fleet mismatch)
-  // and 3007 (FDP exceeded) for this crew/pairing carry start_dt 2026-09-11T16:00Z
-  // = Beijing-local 2026-09-12 00:00 (= "9月12日").
+  // Scope strictly to Rule 8004 (Fleet Mismatch). The seeded row under
+  // ruleset_id=1 carries start_dt 2026-09-11T16:00Z = Beijing-local 2026-09-12
+  // 00:00 (= "9月12日") with message naming the actual fleet mismatch.
   await expect
     .poll(
       () =>
@@ -171,7 +174,7 @@ test('Alert-Discover-P-Dept — select P dept, recheck ruleset=1, find Crew=113/
             __ganttTest?: { liveViolations?: () => LiveViol[] }
           }).__ganttTest
           return (t?.liveViolations?.() ?? []).filter(
-            (v) => v.crewId === '113' && v.pairingId === 135905,
+            (v) => v.crewId === '113' && v.pairingId === 135905 && v.ruleCode === '8004',
           ).length
         }),
       { timeout: 60_000, intervals: [1_000] },
@@ -183,12 +186,13 @@ test('Alert-Discover-P-Dept — select P dept, recheck ruleset=1, find Crew=113/
       .__ganttTest
     return t
       .liveViolations()
-      .filter((v) => v.crewId === '113' && v.pairingId === 135905)
+      .filter((v) => v.crewId === '113' && v.pairingId === 135905 && v.ruleCode === '8004')
   })
   expect(targetHits.length).toBeGreaterThan(0)
+  // 8004 is sev=1 (Overridable) on this pairing. Message must reference the
+  // actual fleet assignment, not the rule template.
+  expect(targetHits.every((v) => v.ruleCode === '8004')).toBe(true)
   expect(targetHits.every((v) => typeof v.message === 'string' && v.message.length > 0)).toBe(true)
-  // Both 8004 and 3007 are sev=1 (Overridable) — assert the severity is in the
-  // valid range AND the message names the actual pairing (not the rule template).
   expect(targetHits.every((v) => v.severity >= 1 && v.severity <= 3)).toBe(true)
 
   // The bell badge shows a non-zero count.
@@ -201,12 +205,11 @@ test('Alert-Discover-P-Dept — select P dept, recheck ruleset=1, find Crew=113/
   const dialog = page.getByTestId('violation-list-dialog')
   await expect(dialog).toBeVisible({ timeout: 10_000 })
 
-  // Target row: data-crew-id="113". The Alert Center row table doesn't expose
-  // a data-pairing-id attribute, but EVERY violation row for crew 113 in this
-  // demo dataset belongs to pairing 135905 (verified via Path 1 above), so
-  // filtering by crew_id alone is sufficient.
+  // Target row: the 8004 (Fleet Mismatch) alert for Crew=113 / Pairing=135905.
+  // We match by data-crew-id + data-rule-code="8004" — the only Rule this test
+  // covers (other rules on the same crew, like 3007, are out of scope).
   const targetRow = dialog.locator(
-    `[data-testid="violation-list-row"][data-crew-id="${TARGET_CREW_ID}"]`,
+    `[data-testid="violation-list-row"][data-crew-id="${TARGET_CREW_ID}"][data-rule-code="8004"]`,
   ).first()
   await expect(targetRow).toBeVisible({ timeout: 15_000 })
 
@@ -215,17 +218,10 @@ test('Alert-Discover-P-Dept — select P dept, recheck ruleset=1, find Crew=113/
   //   - SEV badge column = one of {1, 2, 3} (numeric, not text).
   //     In Live mode the dialog shows a recovery-select checkbox as the first
   //     td when `onRecovery` is set, so SEV badge is at index 1.
-  //   - rule_id cell = non-empty (8004 or 3007; both real rule instances)
+  //   - rule_id attribute = "8004/002" (the seeded rule_instance for this crew/pairing)
   //   - message cell = non-empty rule message (the LAST td)
   await expect(targetRow).toContainText(TARGET_CREW_ID)
   await expect(targetRow.locator('td').nth(1)).toContainText(/^[123]$/)
-  // Rule codes for Crew=113 / Pairing=135905 (DB rows under ruleset_id=1):
-  //   - 8004 (fleet mismatch)
-  //   - 3007 (FDP exceeded)
-  // Use the row's data-rule-id attribute (rendered server-side from rule_violation)
-  // — Playwright's toContainText concatenates adjacent <td> text without whitespace,
-  // so plain \b won't match across cell boundaries ("CA3007/001" → no boundary
-  // between CA and 3).
-  await expect(targetRow).toHaveAttribute('data-rule-id', /8004\/002|3007\/001/)
+  await expect(targetRow).toHaveAttribute('data-rule-id', '8004/002')
   await expect(targetRow.locator('td').last()).not.toBeEmpty()
 })
