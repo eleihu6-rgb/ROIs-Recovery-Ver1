@@ -55,6 +55,8 @@ interface SegObj {
   actStrDtUtc: string | null
   actEndDtUtc: string | null
   pickupStartUtc: string | null
+  briefStartUtc: string | null
+  briefEndUtc: string | null
   dropoffEndUtc: string | null
   dutyActRestMin: number | null
   fltId: number | null
@@ -508,6 +510,53 @@ test.describe('Flight-detail edit propagates to Pairing/Roster panes + KPI', () 
     // with the delay, proving the same recompute pipeline (refreshLiveLegalityAndManday) fires.
     const kpiBefore = (await rosterKpis(page)).find((k) => k.crewId === CREW_ID)
     expect(kpiBefore, `crew ${CREW_ID} KPI row visible before delay`).toBeTruthy()
+
+    // ── Brief-anchoring regression (§Flight-Change-Ripple-Required) ─────────────────────────────
+    // Duty-event sequence is leave-home (pickup) → report (brief) → start flight. When a flight is
+    // delayed, the crew still leaves home and reports on the SCHEDULED plan — pickup/brief must
+    // stay anchored to STD, never drag onto the delayed ATD. This is the exact bug Ryan reported
+    // ("brief moved with ATD, should anchor with STD"): the previous propagation code re-anchored
+    // brief/pickup to dutyActStrDtUtc. Delay the OUTBOUND leg (the duty's FIRST segment — the
+    // touchedIsFirst path that recomputes the brief window) and prove the window holds at STD.
+    const outStd = outBefore!.schStrDtUtc
+    expect(outBefore!.briefEndUtc, 'baseline: on-time brief ends exactly at STD').toBe(outStd)
+    const outBriefStartBefore = outBefore!.briefStartUtc
+    const outPickupStartBefore = outBefore!.pickupStartUtc
+
+    const outDialog = await openFlightDetailById(page, dashboard, OUT_FLT_ID)
+    const outOriginal = await readOriginalAtdAta(outDialog)
+    // A real, well-past-threshold departure delay (+30 min ATD/ATA) on the first leg.
+    const outDelayedAtd = shiftTime(outOriginal.atd, 30)
+    const outDelayedAta = shiftTime(outOriginal.ata, 30)
+    await editActualTimes(page, outDialog, { atd: outDelayedAtd, ata: outDelayedAta })
+    await expect(outDialog.getByTestId('flight-detail-atd')).toHaveText(outDelayedAtd, { timeout: 10_000 })
+    await outDialog.getByTestId('flight-detail-close').click()
+    await expect(outDialog).toBeHidden({ timeout: 5_000 })
+
+    const outFlightDelayed = (await flightsNow(page)).find((f) => f.id === OUT_FLT_ID)
+    // Wait for the delay to actually land on the outbound segment's ghost bar (actStrDtUtc), so the
+    // brief-anchoring assertions below run against the post-cascade state, not a pre-cascade read.
+    await expect.poll(
+      async () => (await segsNow(page)).find((s) => s.segId === built.outSegId)?.actStrDtUtc,
+      { message: 'outbound segment actStrDtUtc picks up the departure delay', timeout: 20_000 },
+    ).toBe(outFlightDelayed!.actDepDtUtc)
+    const outDelayedSeg = (await segsNow(page)).find((s) => s.segId === built.outSegId)
+    // The regression: brief/pickup must NOT have followed the delayed ATD.
+    expect(outDelayedSeg!.briefEndUtc, 'brief END stays anchored to STD after the departure delay (NOT the delayed ATD)').toBe(outStd)
+    expect(outDelayedSeg!.briefEndUtc, 'brief END must not equal the delayed ATD').not.toBe(outDelayedSeg!.actStrDtUtc)
+    expect(outDelayedSeg!.briefStartUtc, 'report (brief start) stays fixed on the scheduled plan').toBe(outBriefStartBefore)
+    expect(outDelayedSeg!.pickupStartUtc, 'leave-home (pickup start) stays fixed on the scheduled plan').toBe(outPickupStartBefore)
+
+    // Revert the outbound leg to on-time before exercising the return-leg cascade below.
+    const outDialog2 = await openFlightDetailById(page, dashboard, OUT_FLT_ID)
+    await editActualTimes(page, outDialog2, { atd: outOriginal.atd, ata: outOriginal.ata })
+    await expect(outDialog2.getByTestId('flight-detail-atd')).toHaveText(outOriginal.atd, { timeout: 10_000 })
+    await outDialog2.getByTestId('flight-detail-close').click()
+    await expect(outDialog2).toBeHidden({ timeout: 5_000 })
+    await expect.poll(
+      async () => (await segsNow(page)).find((s) => s.segId === built.outSegId)?.actStrDtUtc,
+      { message: 'outbound segment reverts to on-time before the return-leg cascade', timeout: 20_000 },
+    ).toBe(outBefore!.actStrDtUtc)
 
     // Delay the RETURN leg — the last segment of the single duty, so the debrief/dropoff-window
     // assertions below stay meaningful (last-segment recompute).

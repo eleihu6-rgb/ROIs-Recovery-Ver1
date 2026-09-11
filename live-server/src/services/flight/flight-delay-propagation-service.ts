@@ -166,12 +166,17 @@ export const propagateFlightChange = async (
       const touchedIsLast = touchedSegments.some((s) => s.pairingId === pairingId && s.dutySeq === dutySeq && s.id === lastSeg.id)
 
       if (touchedIsFirst) {
-        const briefStart = addMinutes(dutyActStrDtUtc, -CHECKIN_MIN)
+        // Duty-event sequence: leave home (pickup) → report (brief) → start flight.
+        // Path A: pickup/brief anchor to SCHEDULED departure (STD), NOT actual (ATD).
+        // On a delay the crew still leaves home and reports on the scheduled plan;
+        // only the flight slips. The STD→ATD gap is the crew's wait, rendered as the
+        // hatched ghost extending the brief bar — it must never drag brief onto ATD.
+        const briefStart = addMinutes(dutySchStrDtUtc, -CHECKIN_MIN)
         await tx.update(pairingSegment).set({
           pickupStartUtc: briefStart,
           pickupEndUtc: briefStart,
           briefStartUtc: briefStart,
-          briefEndUtc: dutyActStrDtUtc,
+          briefEndUtc: dutySchStrDtUtc,
           ...audit,
         }).where(eq(pairingSegment.id, firstSeg.id))
       }
@@ -186,7 +191,10 @@ export const propagateFlightChange = async (
         }).where(eq(pairingSegment.id, lastSeg.id))
       }
       if (touchedIsFirst || touchedIsLast) {
-        const checkInStart = addMinutes(dutyActStrDtUtc, -CHECKIN_MIN)
+        // Report (check-in) is STD-anchored like brief above; release (check-out) is
+        // ATA-anchored. On a delay this correctly widens the duty span to include the
+        // crew's wait (STD-report → actual arrival), rather than understating it.
+        const checkInStart = addMinutes(dutySchStrDtUtc, -CHECKIN_MIN)
         const checkOutEnd = addMinutes(dutyActEndDtUtc, CHECKOUT_MIN)
         const restMin = Math.max(REST_FLOOR_MIN, Math.round(minutesBetween(checkInStart, checkOutEnd)))
         for (const s of dutySegs) {
