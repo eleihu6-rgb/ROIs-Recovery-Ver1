@@ -107,6 +107,21 @@ const makeDeps = (over: Partial<AutoAssignDeps> = {}): AutoAssignDeps => {
       for (const id of ids) m.set(id, candSegs.get(id) ?? [])
       return m
     }),
+    // Block minutes per candidate = Σ segment (schEnd − schStr), same basis as
+    // the SQL aggregate the 'even' packer uses to level flying hours by week.
+    fetchCandidateBlockMinutes: vi.fn(async (_f, ids: number[]) => {
+      const m = new Map<number, number>()
+      for (const id of ids) {
+        const segs = candSegs.get(id) ?? []
+        const mins = segs.reduce((sum, s) => {
+          const a = new Date(s.schStrDtUtc as Date).getTime()
+          const b = new Date(s.schEndDtUtc as Date).getTime()
+          return b > a ? sum + (b - a) / 60_000 : sum
+        }, 0)
+        m.set(id, Math.round(mins))
+      }
+      return m
+    }),
     fetchRuleNames: vi.fn(async (_f, codes: string[]) => {
       const names = new Map<string, string>([
         ['8002', 'Max Cumulative'],
@@ -247,5 +262,53 @@ describe('planAutoAssign', () => {
     expect(keptCrew.assigned.map((a) => a.pairingId)).toEqual([151528, 151540])
     expect(keptCrew.skipped).toHaveLength(0)
     expect(keptRun).toHaveBeenCalledTimes(1)
+  })
+
+  it('(f) even distribution spreads picks across week buckets; earliest front-loads', async () => {
+    // Month starting 2026-09-01 → week0 [09-01,09-08), week1 [09-08,09-15),
+    // week2 [09-15,09-22). Three open round trips in week0, one in week1, one
+    // in week2 — all equal block hours. With maxPerCrew=3, earliest-first would
+    // grab the three week0 pairings (front-loaded); even distribution should
+    // take one from each week so flying hours spread across the month.
+    const W0a = roundTrip(200, 'W0a 09-02', '2026-09-02T06:00:00Z', '2026-09-02T08:00:00Z', '2026-09-02T10:00:00Z', '2026-09-02T12:00:00Z')
+    const W0b = roundTrip(201, 'W0b 09-04', '2026-09-04T06:00:00Z', '2026-09-04T08:00:00Z', '2026-09-04T10:00:00Z', '2026-09-04T12:00:00Z')
+    const W0c = roundTrip(202, 'W0c 09-06', '2026-09-06T06:00:00Z', '2026-09-06T08:00:00Z', '2026-09-06T10:00:00Z', '2026-09-06T12:00:00Z')
+    const W1 = roundTrip(210, 'W1 09-10', '2026-09-10T06:00:00Z', '2026-09-10T08:00:00Z', '2026-09-10T10:00:00Z', '2026-09-10T12:00:00Z')
+    const W2 = roundTrip(220, 'W2 09-17', '2026-09-17T06:00:00Z', '2026-09-17T08:00:00Z', '2026-09-17T10:00:00Z', '2026-09-17T12:00:00Z')
+    const pairs = [W0a, W0b, W0c, W1, W2]
+    const segMap = new Map<number, SegmentRow[]>(pairs.map((p) => [p.cand.id, p.segs]))
+    const blk = (segs: SegmentRow[]): number =>
+      Math.round(
+        segs.reduce((sum, s) => {
+          const a = new Date(s.schStrDtUtc as Date).getTime()
+          const b = new Date(s.schEndDtUtc as Date).getTime()
+          return b > a ? sum + (b - a) / 60_000 : sum
+        }, 0),
+      )
+
+    const spreadDeps = () =>
+      makeDeps({
+        fetchCandidates: vi.fn(async () => pairs.map((p) => p.cand)),
+        fetchSegments: vi.fn(async (_f, ids: number[]) => {
+          const m = new Map<number, SegmentRow[]>()
+          for (const id of ids) m.set(id, segMap.get(id) ?? [])
+          return m
+        }),
+        fetchCandidateBlockMinutes: vi.fn(async (_f, ids: number[]) => {
+          const m = new Map<number, number>()
+          for (const id of ids) m.set(id, blk(segMap.get(id) ?? []))
+          return m
+        }),
+      })
+
+    const monthInput = { crewIds: ['J4001'], startDate: '2026-09-01', endDate: '2026-09-30', maxPerCrew: 3 }
+
+    // Default (even): one pairing from each of week 0, 1, 2 — spread, not clustered.
+    const even = await planAutoAssign(fakeFastify, monthInput, spreadDeps())
+    expect(even.crews[0].assigned.map((a) => a.pairingId)).toEqual([200, 210, 220])
+
+    // Explicit earliest: the three week-0 pairings, front-loaded.
+    const earliest = await planAutoAssign(fakeFastify, { ...monthInput, distribution: 'earliest' }, spreadDeps())
+    expect(earliest.crews[0].assigned.map((a) => a.pairingId)).toEqual([200, 201, 202])
   })
 })

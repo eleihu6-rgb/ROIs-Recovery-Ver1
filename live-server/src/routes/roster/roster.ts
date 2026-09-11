@@ -443,6 +443,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
         fleets: z.array(z.string().min(1)).optional(),
         policy: z.object({ skipOnSoft: z.boolean().optional() }).optional(),
         maxPerCrew: z.number().int().positive().max(200).optional(),
+        distribution: z.enum(['even', 'earliest']).optional(),
       })
       .refine((b) => b.startDate <= b.endDate, { message: 'startDate must be <= endDate' })
       .refine((b) => (b.rpFrom == null) === (b.rpTo == null), {

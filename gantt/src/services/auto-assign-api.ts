@@ -70,6 +70,8 @@ export interface AutoAssignPlanInput {
   fleets?: string[]
   policy?: { skipOnSoft?: boolean }
   maxPerCrew?: number
+  /** 'even' (default) levels flying hours across the month; 'earliest' front-loads. */
+  distribution?: 'even' | 'earliest'
 }
 
 export const autoAssignApi = {
