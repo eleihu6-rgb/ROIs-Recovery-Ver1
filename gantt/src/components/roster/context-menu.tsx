@@ -5,7 +5,7 @@ import { useGanttViewStore } from '@/stores/gantt-view-store'
 import { usePaneStore } from '@/stores/pane-store'
 import { usePairingStore } from '@/stores/pairing-store'
 import { pairingApi } from '@/services/pairing-api'
-import { Edit, Trash2, ArrowRightLeft, Crosshair, Link2, PackagePlus, PackageSearch, Pin, PinOff, Plane, SquarePlus, ClipboardEdit, Users, StickyNote, CalendarClock, CalendarDays, UserRound, CalendarArrowDown, ShieldAlert } from 'lucide-react'
+import { Edit, Trash2, ArrowRightLeft, Crosshair, Link2, PackagePlus, PackageSearch, Pin, PinOff, Plane, SquarePlus, ClipboardEdit, Users, StickyNote, CalendarClock, CalendarDays, UserRound, CalendarArrowDown, ShieldAlert, Wand2 } from 'lucide-react'
 import { notify } from '@/utils/notify'
 import { useCrewMemoStore } from '@/stores/crew-memo-store'
 import { useRuleCheckStore } from '@/stores/rule-check-store'
@@ -394,6 +394,28 @@ export const ContextMenu = () => {
         closeContextMenu()
       },
     })
+    // Auto-assign open pairings — operate on the multi-selected crew rows if the
+    // right-clicked row is part of the selection, otherwise just this one crew.
+    // Same selection semantics as "Pin N Selected Rows".
+    {
+      const selectedRowIds = usePaneStore.getState().getSelectedRowIds(paneType)
+      const targetCrewIds =
+        selectedRowIds.length > 0 && selectedRowIds.includes(task.crewId!)
+          ? selectedRowIds
+          : [task.crewId!]
+      const label =
+        targetCrewIds.length > 1
+          ? `Auto-assign open pairings (${targetCrewIds.length} crew)`
+          : 'Auto-assign open pairings'
+      items.push({
+        icon: Wand2,
+        label,
+        onClick: () => {
+          useUiStore.getState().openAutoAssignDialog(targetCrewIds, paneType)
+          closeContextMenu()
+        },
+      })
+    }
   } else if (paneType === 'pairing' && hasTask) {
     // Pairing pane actions — task.id is segment ID; task.pairingId is the actual pairing ID
     const pairingId = task.pairingId ?? task.id

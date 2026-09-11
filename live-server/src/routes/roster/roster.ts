@@ -12,6 +12,7 @@ import {
   mutationExclusiveService,
 } from '../../services/lock/mutation-exclusive-service.js'
 import { precheckAssignment } from '../../services/assignment/precheck-service.js'
+import { planAutoAssign } from '../../services/roster/auto-assign-service.js'
 
 // Recompute window padding around the mutated task date (a pairing spans duties forward;
 // the back pad absorbs timezone skew where the local crew_base_dt is a day before UTC start).
@@ -425,6 +426,39 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
       return success(reply, result)
     } catch (err) {
       return fail(reply, 400, (err as Error).message)
+    }
+  })
+
+  // POST /api/roster/auto-assign/plan — legality-aware auto-assign PLANNER.
+  // Read-only: returns a per-crew decision trace + plan, persists nothing.
+  fastify.post('/auto-assign/plan', async (request, reply) => {
+    const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    const schema = z
+      .object({
+        crewIds: z.array(z.string().min(1)).min(1),
+        startDate: ymd,
+        endDate: ymd,
+        rpFrom: ymd.optional(),
+        rpTo: ymd.optional(),
+        fleets: z.array(z.string().min(1)).optional(),
+        policy: z.object({ skipOnSoft: z.boolean().optional() }).optional(),
+        maxPerCrew: z.number().int().positive().max(200).optional(),
+      })
+      .refine((b) => b.startDate <= b.endDate, { message: 'startDate must be <= endDate' })
+      .refine((b) => (b.rpFrom == null) === (b.rpTo == null), {
+        message: 'rpFrom and rpTo must both be set or both omitted',
+      })
+
+    const parsed = schema.safeParse(request.body)
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.message)
+    }
+
+    try {
+      const plan = await planAutoAssign(fastify, parsed.data)
+      return success(reply, plan)
+    } catch (err) {
+      return error(reply, 500, (err as Error).message)
     }
   })
 
