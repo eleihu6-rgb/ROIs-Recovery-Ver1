@@ -18,11 +18,16 @@ const ICON_BY_ROUTE: Record<string, IconName> = {
 
 export function PillDock({ state, descriptors, navigation, palette }: PillDockProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
+  // The Schedule tab scrolls near-white duty cards right up to the bar, where the
+  // frosted glass look vanishes. That tab gets a solid dark pill instead; the icon
+  // and label treatment is identical, only the backing changes.
+  const onLightContent = state.routes[state.index]?.name === 'Schedule';
 
   return (
     <View
       style={[
         styles.dock,
+        onLightContent ? styles.dockDark : null,
         { bottom: Math.max(insets.bottom, 22) - 4 },
       ]}
     >
@@ -79,6 +84,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 6,
+    // Lifts the glass pill off whatever it floats over (fade scrim on Schedule,
+    // photos on Home) so the dock still reads as a bar, not as content.
+    shadowColor: '#000',
+    shadowOpacity: 0.24,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  // Solid dark backing for tabs whose content is light (Schedule's duty cards).
+  dockDark: {
+    backgroundColor: 'rgba(26,34,32,0.9)',
+    borderColor: 'rgba(255,255,255,0.16)',
   },
   tab: {
     flex: 1,

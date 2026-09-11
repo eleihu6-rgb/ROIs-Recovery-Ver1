@@ -14,6 +14,14 @@ import { reconcileAlarms } from '../alarms/alarmsSlice';
 interface AuthState {
   airline: string;
   crewId: string | null;
+  /** Crew's home base from the loaded roster (ADD for the ET crews) — drives the
+   *  base-time zone and the base shown on Home. Null before the roster loads. */
+  base: string | null;
+  /** Roster profile for the Profile tab (name + nationality ride along with the
+   *  roster; the crew id alone is not a human identity). */
+  firstName: string | null;
+  lastName: string | null;
+  nationality: string | null;
   /** In-memory only (loaded from Keychain when keepLogin) — used to re-auth/refresh. */
   password: string | null;
   keepLogin: boolean;
@@ -25,6 +33,10 @@ interface AuthState {
 const initialState: AuthState = {
   airline: DEFAULT_AIRLINE,
   crewId: null,
+  base: null,
+  firstName: null,
+  lastName: null,
+  nationality: null,
   password: null,
   keepLogin: false,
   loggedIn: false,
@@ -51,6 +63,9 @@ const authSlice = createSlice({
     },
     _clearSession(state) {
       state.crewId = null;
+      state.firstName = null;
+      state.lastName = null;
+      state.nationality = null;
       state.password = null;
       state.keepLogin = false;
       state.loggedIn = false;
@@ -58,10 +73,40 @@ const authSlice = createSlice({
     _setHydrated(state) {
       state.hydrated = true;
     },
+    _setCrewBase(state, action: PayloadAction<string | null>) {
+      state.base = action.payload;
+    },
+    _setCrewProfile(state, action: PayloadAction<{
+      firstName: string | null;
+      lastName: string | null;
+      nationality: string | null;
+    }>) {
+      state.firstName = action.payload.firstName;
+      state.lastName = action.payload.lastName;
+      state.nationality = action.payload.nationality;
+    },
   },
 });
 
-const { _setSession, _clearSession, _setHydrated } = authSlice.actions;
+const { _setSession, _clearSession, _setHydrated, _setCrewBase, _setCrewProfile } = authSlice.actions;
+
+/** Roster-derived profile facts that are not part of the login parameters. */
+export function setCrewBase(base: string | null) {
+  return _setCrewBase(base);
+}
+
+/** Roster-derived crew name / nationality for the Profile tab. */
+export function setCrewProfile(profile: {
+  firstName?: string | null;
+  lastName?: string | null;
+  nationality?: string | null;
+}) {
+  return _setCrewProfile({
+    firstName: profile.firstName ?? null,
+    lastName: profile.lastName ?? null,
+    nationality: profile.nationality ?? null,
+  });
+}
 
 // EK persists its roster + session metadata transactionally before Redux is
 // published. This action completes that already-persisted login without running

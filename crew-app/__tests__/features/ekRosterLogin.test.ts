@@ -13,6 +13,11 @@ jest.mock('../../src/features/auth/authSlice', () => ({
   publishEphemeralSession: (payload: unknown) => ({
     type: 'auth/publishEphemeralSession', payload,
   }),
+  setCrewBase: (base: string | null) => ({type: 'auth/setCrewBase', payload: base}),
+  setCrewProfile: (profile: unknown) => ({type: 'auth/setCrewProfile', payload: profile}),
+}));
+jest.mock('../../src/features/settings/settingsSlice', () => ({
+  setBaseTimeZone: (zone: string) => ({type: 'settings/setBaseTimeZone', payload: zone}),
 }));
 
 import {
@@ -93,6 +98,12 @@ describe('EK roster login transaction', () => {
     expect(actions).toEqual([
       {type: 'trips/setTrips', payload: trips},
       {type: 'duties/setDuties', payload: duties},
+      // Roster-derived profile facts: the crew's real base (DXB) and the base
+      // time zone it maps to, plus the name/nationality the Profile tab shows.
+      // Set with the roster, never before it is accepted.
+      {type: 'auth/setCrewBase', payload: 'DXB'},
+      {type: 'auth/setCrewProfile', payload: {firstName: 'Amina', lastName: 'Khan', nationality: undefined}},
+      {type: 'settings/setBaseTimeZone', payload: 'Asia/Dubai'},
       {type: 'auth/publishPersistedSession', payload: params},
     ]);
     expect(commitEkRosterSnapshot).toHaveBeenCalledWith({
@@ -104,6 +115,9 @@ describe('EK roster login transaction', () => {
       'commit',
       'trips/setTrips',
       'duties/setDuties',
+      'auth/setCrewBase',
+      'auth/setCrewProfile',
+      'settings/setBaseTimeZone',
       'auth/publishPersistedSession',
     ]);
   });
@@ -148,6 +162,9 @@ describe('EK roster login transaction', () => {
     expect(actions).toEqual([
       {type: 'trips/setTrips', payload: trips},
       {type: 'duties/setDuties', payload: duties},
+      {type: 'auth/setCrewBase', payload: 'DXB'},
+      {type: 'auth/setCrewProfile', payload: {firstName: 'Amina', lastName: 'Khan', nationality: undefined}},
+      {type: 'settings/setBaseTimeZone', payload: 'Asia/Dubai'},
       {type: 'auth/publishEphemeralSession', payload: params},
     ]);
   });

@@ -10,6 +10,7 @@
 //   • Times are in the departure airport's local timezone.
 
 import type { Trip } from '../travel/tripCsv';
+import { AIRPORT_TZ } from './airportZones';
 
 export interface AlarmOptions {
   wakeUpHoursBefore: number;
@@ -68,41 +69,6 @@ export interface DutyAlarm {
 }
 
 // IATA airport → IANA timezone. Extend as needed; covers the sample + common hubs.
-const AIRPORT_TZ: Record<string, string> = {
-  TPE: 'Asia/Taipei',
-  BKK: 'Asia/Bangkok',
-  NRT: 'Asia/Tokyo',
-  HND: 'Asia/Tokyo',
-  KIX: 'Asia/Tokyo',
-  FUK: 'Asia/Tokyo',
-  HKG: 'Asia/Hong_Kong',
-  YVR: 'America/Vancouver',
-  SIN: 'Asia/Singapore',
-  ICN: 'Asia/Seoul',
-  PEK: 'Asia/Shanghai',
-  PVG: 'Asia/Shanghai',
-  CAN: 'Asia/Shanghai',
-  CGK: 'Asia/Jakarta',
-  DPS: 'Asia/Makassar',
-  KTM: 'Asia/Kathmandu',
-  DEL: 'Asia/Kolkata',
-  BOM: 'Asia/Kolkata',
-  KMG: 'Asia/Shanghai',
-  CTU: 'Asia/Shanghai',
-  ARN: 'Europe/Stockholm',
-  LHR: 'Europe/London',
-  CDG: 'Europe/Paris',
-  FRA: 'Europe/Berlin',
-  ZRH: 'Europe/Zurich',
-  MXP: 'Europe/Rome',
-  SYD: 'Australia/Sydney',
-  MEL: 'Australia/Melbourne',
-  DXB: 'Asia/Dubai',
-  LAX: 'America/Los_Angeles',
-  SFO: 'America/Los_Angeles',
-  JFK: 'America/New_York',
-};
-
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',

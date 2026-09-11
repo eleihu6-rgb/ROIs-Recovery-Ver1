@@ -148,6 +148,10 @@ describe('EK roster API adapter', () => {
     expect(trips[0].legs).toHaveLength(2);
     expect(trips[0].legs[0].fltNumber).toBe('ET805');
     expect(trips[0].legs[1].fltNumber).toBe('ET802');
+    // The schedule prints the aircraft beside the flight number; the fleet has to
+    // survive the envelope normaliser, which used to force it to null whenever the
+    // server left it out (the ET/F8 roster API sent no fleet at all).
+    expect(trips[0].legs.map(leg => leg.fleet)).toEqual(['B738', 'B738']);
   });
 
   it('maps F8 ground duties into UTC portal duties', () => {
@@ -413,5 +417,133 @@ describe('EK roster API adapter', () => {
     await expect(fetchEkRoster('http://127.0.0.1:8000/api', {
       crewId: 'C900001', password: 'Pier2026',
     })).rejects.toThrow('Invalid EK roster response');
+  });
+});
+
+// ─── Ground duties on the live-server mobile roster ──────────────────────────
+// Real payload for ET crew J4002 (captured 2026-09-11): the Day Off (Sep 9) and
+// Annual Leave (Sep 17) rows carry `label: null` because roster_flight.label is
+// NULL on them. Declaring those fields as `requiredString.optional()` rejected
+// null, so the whole envelope failed with "Invalid F8 roster envelope" and the
+// crew could not sign in at all.
+describe('mobile roster ground duties', () => {
+  const envelope = (groundDuties: unknown[]) => ({
+    code: 200,
+    message: 'ok',
+    data: {
+      apiVersion: '1',
+      airline: 'ET',
+      crew: { crewId: 'J4002', firstName: 'Getnet', lastName: 'Kifle', base: 'ADD', rank: 'CA' },
+      pairings: [],
+      groundDuties,
+    },
+  });
+
+  const loadDuties = async (groundDuties: unknown[]) => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => envelope(groundDuties),
+    }) as jest.Mock;
+    return fetchEkRoster('http://127.0.0.1:3000/api', {
+      airline: 'ET', crewId: 'J4002', password: 'Pier2026',
+    });
+  };
+
+  it('accepts the null label the server sends for day-off / leave rows', async () => {
+    const roster = await loadDuties([
+      {
+        assignment: 'DO',
+        label: null,
+        startUtc: '2026-09-08T21:00:00.000Z',
+        endUtc: '2026-09-09T20:59:00.000Z',
+        departureAirport: 'ADD',
+        arrivalAirport: 'ADD',
+      },
+    ]);
+
+    const duties = mapEkRosterToDuties(roster);
+    expect(duties).toHaveLength(1);
+    // Labelled from the code, and placed on the airport-local calendar day (ADD).
+    expect(duties[0].assignment).toBe('DO');
+    expect(duties[0].dutyType).toBe('DO');
+    expect(duties[0].localStart).toBe('2026-09-09 00:00');
+    expect(duties[0].localEnd).toBe('2026-09-09 23:59');
+    expect(duties[0].airportCode).toBe('ADD');
+  });
+
+  it('keeps a null-label leave duty and its pairing UTC window', async () => {
+    const roster = await loadDuties([
+      {
+        assignment: 'AL',
+        label: null,
+        startUtc: '2026-09-16T21:00:00.000Z',
+        endUtc: '2026-09-17T20:59:00.000Z',
+        departureAirport: 'ADD',
+        arrivalAirport: 'ADD',
+      },
+    ]);
+
+    const duties = mapEkRosterToDuties(roster);
+    expect(duties[0].localStart).toBe('2026-09-17 00:00');
+    expect(duties[0].startUTC).toBe('2026-09-16T21:00:00.000Z');
+  });
+
+  it('skips a duty with no time window instead of failing the login', async () => {
+    const roster = await loadDuties([
+      { assignment: 'DO', label: null, startUtc: null, endUtc: null, departureAirport: 'ADD' },
+      {
+        assignment: 'DO',
+        label: null,
+        startUtc: '2026-09-08T21:00:00.000Z',
+        endUtc: '2026-09-09T20:59:00.000Z',
+        departureAirport: 'ADD',
+      },
+    ]);
+
+    expect(mapEkRosterToDuties(roster)).toHaveLength(1);
+  });
+
+  // The live-server added `fleet` to the roster flights because the schedule card
+  // had no aircraft to print. The envelope normaliser must pass it through, and
+  // still null it for a server that has not been upgraded yet.
+  it('carries the flight fleet from the roster envelope through to the trip leg', async () => {
+    const envelopeWithFlight = (fleet: unknown) => ({
+      code: 200,
+      message: 'ok',
+      data: {
+        apiVersion: '1',
+        airline: 'ET',
+        crew: { crewId: 'J4002', firstName: 'Getnet', lastName: 'Kifle', base: 'ADD', rank: 'CA' },
+        pairings: [{
+          pairingId: '151429',
+          label: 'ET805/ET802',
+          checkInUtc: '2026-09-10T05:10:00.000Z',
+          releaseUtc: '2026-09-10T11:30:00.000Z',
+          assignment: 'FLY',
+          flights: [{
+            flightId: '157799',
+            flightNumber: 'ET805',
+            departureAirport: 'ADD',
+            arrivalAirport: 'DAR',
+            startUtc: '2026-09-10T05:10:00.000Z',
+            endUtc: '2026-09-10T08:00:00.000Z',
+            fleet,
+          }],
+        }],
+        groundDuties: [],
+      },
+    });
+
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => envelopeWithFlight('7M8') }) as jest.Mock;
+    const withFleet = await fetchEkRoster('http://127.0.0.1:3000/api', {
+      airline: 'ET', crewId: 'J4002', password: 'Pier2026',
+    });
+    expect(mapEkRosterToTrips(withFleet)[0].legs[0].fleet).toBe('7M8');
+
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => envelopeWithFlight(undefined) }) as jest.Mock;
+    const withoutFleet = await fetchEkRoster('http://127.0.0.1:3000/api', {
+      airline: 'ET', crewId: 'J4002', password: 'Pier2026',
+    });
+    expect(mapEkRosterToTrips(withoutFleet)[0].legs[0].fleet).toBe('');
   });
 });

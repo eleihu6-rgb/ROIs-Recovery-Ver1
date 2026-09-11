@@ -30,7 +30,10 @@ const shared = {
   frost: 'rgba(255,255,255,.14)',
   frostLine: 'rgba(255,255,255,.22)',
   frostStrong: 'rgba(255,255,255,.24)',
-  card: '#f1f5f9',
+  // 20% translucent so the carrier ground shows through — a pure-white slab on the
+  // dark gradient read as a hole punched in the screen (Ryan: "white card with 20%
+  // more transparency, not pure white").
+  card: 'rgba(241,245,249,0.8)',
   cardInk: '#1e3a5a',
   cardSoft: '#6c7f93',
   cardLine: '#c9d5e1',

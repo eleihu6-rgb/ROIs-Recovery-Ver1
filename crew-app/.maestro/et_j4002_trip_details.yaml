@@ -1,0 +1,38 @@
+# Trip Details for ET crew J4002 — the "Upcoming Trip" card must not repeat the
+# flight/route/date it already shows in the hero, and the Aircraft row must carry
+# the real fleet code (7M8) the roster API now sends.
+#
+# Run: maestro test crew-app/.maestro/et_j4002_trip_details.yaml --debug-output <dir>
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4002"
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: j4002_trip_01_home
+- tapOn:
+    id: "home-next-trip"
+- extendedWaitUntil:
+    visible:
+      id: "page-trip-details"
+    timeout: 30000
+- assertVisible: "Aircraft"
+- takeScreenshot: j4002_trip_02_details

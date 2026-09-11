@@ -3,6 +3,7 @@
 // label according to the user's chosen display mode (settingsSlice).
 
 import type { TimeZoneMode } from './settingsSlice';
+import { FIXED_OFFSET_MIN } from './airportZones';
 
 const MON = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -56,15 +57,6 @@ function formatLocalWallClock(value: string | undefined): string | null {
   const [, , mo, d, h, mi] = m;
   return `${d} ${MON[parseInt(mo, 10) - 1]} ${h}:${mi}`;
 }
-
-// Fixed UTC offsets (minutes) for base timezones with NO daylight saving.
-// Bangkok (the default base) is always UTC+7 — Thailand never observes DST.
-// Used as a reliable offline fallback if the JS engine's Intl tz support is
-// missing/broken (Hermes on RN historically returns no time parts).
-const FIXED_OFFSET_MIN: Record<string, number> = {
-  'Asia/Bangkok': 420,
-  UTC: 0,
-};
 
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -130,6 +122,67 @@ export function deviceTimeZone(): string {
   }
 }
 
+/**
+ * The marker appended to every displayed duty time so the crew can see which
+ * clock it is on (doc: time convention agreed 2026-09-11):
+ *   L = airport local · B = base time · Z = UTC · '' for phone-local (the crew
+ * knows their own phone's zone, so it carries no marker).
+ */
+export function zoneSuffix(mode: TimeZoneMode): string {
+  if (mode === 'airport') {
+    return 'L';
+  }
+  if (mode === 'base') {
+    return 'B';
+  }
+  if (mode === 'utc') {
+    return 'Z';
+  }
+  return '';
+}
+
+/** "HH:MM" + the mode marker, e.g. "10:10L" — never marks a dash/placeholder. */
+export function withZoneSuffix(hhmm: string, mode: TimeZoneMode): string {
+  return /^\d{2}:\d{2}$/.test(hhmm) ? `${hhmm}${zoneSuffix(mode)}` : hhmm;
+}
+
+/** "HH:MM" of a real instant in one IANA zone (DST-aware, fixed-table fallback). */
+export function hhmmInZone(instant: Date, timeZone: string): string {
+  const off = offsetMinutes(instant, timeZone) ?? 0;
+  const shifted = new Date(instant.getTime() + off * 60000);
+  return `${pad2(shifted.getUTCHours())}:${pad2(shifted.getUTCMinutes())}`;
+}
+
+/** "YYYY-MM-DD HH:mm" wall clock of an instant in one IANA zone. */
+export function wallClockInZone(instant: Date, timeZone: string): string {
+  const off = offsetMinutes(instant, timeZone) ?? 0;
+  const s = new Date(instant.getTime() + off * 60000);
+  return `${s.getUTCFullYear()}-${pad2(s.getUTCMonth() + 1)}-${pad2(s.getUTCDate())}`
+    + ` ${pad2(s.getUTCHours())}:${pad2(s.getUTCMinutes())}`;
+}
+
+/**
+ * "HH:MM" of an instant in whichever zone the display mode selects, marker
+ * included. Used for the duty markers (report / wake up / leave home) that are
+ * stored as instants rather than roster strings.
+ */
+export function hhmmForInstant(
+  instant: Date,
+  mode: TimeZoneMode,
+  baseTz: string,
+  airportTz: string,
+  deviceTz?: string,
+): string {
+  const tz = mode === 'airport'
+    ? airportTz
+    : mode === 'base'
+      ? baseTz
+      : mode === 'device'
+        ? deviceTz || deviceTimeZone()
+        : 'UTC';
+  return withZoneSuffix(hhmmInZone(instant, tz), mode);
+}
+
 export interface FormatLegTimeOpts {
   /** Roster UTC time "DD MMM YYYY HHMM" (real UTC for portal-captured legs). */
   flightDateUTC: string;
@@ -137,6 +190,12 @@ export interface FormatLegTimeOpts {
   localTime?: string;
   mode: TimeZoneMode;
   baseTz: string;
+  /**
+   * IANA zone of the airport this time belongs to (departure airport for a
+   * departure, arrival airport for an arrival). Required for 'airport' mode
+   * when `localTime` is absent — without it the only honest answer is UTC.
+   */
+  airportTz?: string;
   /** Override the phone timezone for 'device' mode (tests). */
   deviceTz?: string;
 }
@@ -149,14 +208,19 @@ export interface FormatLegTimeOpts {
  *  • 'base'    — convert the UTC instant into the base timezone.
  */
 export function formatLegTime(opts: FormatLegTimeOpts): string {
-  const { flightDateUTC, localTime, mode, baseTz } = opts;
+  const { flightDateUTC, localTime, mode, baseTz, airportTz } = opts;
 
   if (mode === 'airport') {
     const local = formatLocalWallClock(localTime);
     if (local) {
       return local;
     }
-    // No local time (CSV leg) — fall back to the raw UTC roster time.
+    // API-fed rosters carry UTC only, so resolve the airport's own zone rather
+    // than printing the UTC clock under an airport label.
+    const utc = parseRosterUTC(flightDateUTC);
+    if (utc && airportTz) {
+      return formatInZone(utc, airportTz);
+    }
     return formatRosterShort(flightDateUTC);
   }
 
@@ -212,10 +276,20 @@ function rosterDateOnly(value: string | undefined): DisplayDate | null {
  * line up exactly with the per-leg times on the trip cards.
  */
 export function legDisplayDate(opts: FormatLegTimeOpts): DisplayDate | null {
-  const { flightDateUTC, localTime, mode, baseTz } = opts;
+  const { flightDateUTC, localTime, mode, baseTz, airportTz } = opts;
 
   if (mode === 'airport') {
-    return localWallClockDate(localTime) ?? rosterDateOnly(flightDateUTC);
+    const local = localWallClockDate(localTime);
+    if (local) {
+      return local;
+    }
+    const utc = airportTz ? parseRosterUTC(flightDateUTC) : null;
+    if (utc && airportTz) {
+      const off = offsetMinutes(utc, airportTz) ?? 0;
+      const shifted = new Date(utc.getTime() + off * 60000);
+      return { year: shifted.getUTCFullYear(), monthIdx: shifted.getUTCMonth(), day: shifted.getUTCDate() };
+    }
+    return rosterDateOnly(flightDateUTC);
   }
   if (mode === 'utc') {
     return rosterDateOnly(flightDateUTC);

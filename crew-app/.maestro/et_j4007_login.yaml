@@ -1,0 +1,86 @@
+# Ethiopian Airlines (ET) crew J4007 — the ADD/7M8 batch seeded by
+# sql/seed/2026-09-10-crew-add-j4001-j4040-add-7m8.sql and rostered for Sep 2026 by the
+# real-UI auto-assign run (e2e/tests/gantt/auto-assign-even-distribution-j4007.spec.ts).
+#
+# Purpose: prove the app accepts the crew's credentials and that the Sep 2026 Schedule
+# shows the same duties the gantt shows. Account comes from
+# sql/seed/2026-09-11-crew-app-accounts-and-password.sql (shared test password Pier2026).
+#
+# Run: maestro test crew-app/.maestro/et_j4007_login.yaml --test-output-dir <dir>
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4007"
+# `hideKeyboard` is a no-op for this screen (the software keyboard stays up and a
+# later scroll gesture lands on a key, appending a stray character). Pressing
+# Return blurs the single-line TextInput and dismisses the keyboard reliably.
+- pressKey: Enter
+- takeScreenshot: j4007_01_login
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+# The simulator keychain cannot persist an ET session (pre-existing, covered by
+# et_login_storage_failure_*.yaml); dismiss the soft notice if it appears.
+- tapOn:
+    text: "OK"
+    optional: true
+# The dev LogBox (console.warn from that same persistence failure) covers the tab bar
+# and swallows taps. It arrives a beat after the home screen, so dismiss it right
+# before AND after the tab tap and retry the tab once — a second tap on the same tab
+# is a no-op when the first one already landed.
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: j4007_03_home
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-title"
+    timeout: 30000
+- takeScreenshot: j4007_04_sched_sep_top
+# J4007's September duties (gantt ground truth: e2e/results/crew-app-parity/
+# j4007-gantt-sep2026.json). The day list opens on today (Sep 11); scroll forward to
+# the late-evening duty that used to be drawn a day late — ET857 (Sep 13) — then on
+# to the long 6-leg pairing (Sep 24/25). Day chips are virtualised, so swipes drive
+# the list: dragging from the bottom to the top moves the list forward in time.
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 25%"
+    duration: 600
+- takeScreenshot: j4007_05_sched_forward1
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 25%"
+    duration: 600
+- takeScreenshot: j4007_06_sched_forward2
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 25%"
+    duration: 600
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 25%"
+    duration: 600
+- takeScreenshot: j4007_07_sched_late

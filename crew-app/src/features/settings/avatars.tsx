@@ -6,14 +6,13 @@
 import React from 'react';
 import Svg, { Circle, Ellipse, Path, Rect, Line, G } from 'react-native-svg';
 
-export const AVATAR_COUNT = 10;
-
-// Cohesive purple/indigo family so each avatar sits naturally on the app's
-// purple header (subtle variety, no clashing warm tones).
+// 10 characters × 3 backings = 30 pickable avatars (Profile ▸ tap the avatar).
+// One cohesive purple/indigo family: subtle variety, no clashing warm tones.
 const BG = [
-  '#6c5ce7', '#7b4fb8', '#9b5fc9', '#8a6df0', '#7159c4',
-  '#6a4fb0', '#a368d8', '#5b6fd6', '#7d5fe0', '#9466d4',
+  '#6c5ce7', '#7b4fb8', '#9b5fc9',
 ];
+export const CHARACTER_COUNT = 10;
+export const AVATAR_COUNT = CHARACTER_COUNT * BG.length;
 
 const INK = '#2c2440';     // eyes / line work
 const FACE = '#ffffff';    // character face
@@ -197,11 +196,19 @@ export function CrewAvatar({
   size?: number;
   bare?: boolean;
 }) {
-  const i = ((index % AVATAR_COUNT) + AVATAR_COUNT) % AVATAR_COUNT;
+  const { character, background } = avatarParts(index);
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">
-      {!bare && <Circle cx={50} cy={50} r={50} fill={BG[i]} />}
-      {CHARACTERS[i]()}
+      {!bare && <Circle cx={50} cy={50} r={50} fill={BG[background]} />}
+      {CHARACTERS[character]()}
     </Svg>
   );
+}
+
+/** Split an avatar index into its character and backing-colour parts. */
+export function avatarParts(index: number): { character: number; background: number } {
+  const i = Number.isFinite(index) ? Math.trunc(index) : 0;
+  const character = ((i % CHARACTER_COUNT) + CHARACTER_COUNT) % CHARACTER_COUNT;
+  const background = ((Math.floor(i / CHARACTER_COUNT) % BG.length) + BG.length) % BG.length;
+  return { character, background };
 }

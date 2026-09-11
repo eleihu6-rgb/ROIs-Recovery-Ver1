@@ -3,7 +3,7 @@
 // Parses a crew-roster CSV (see data/Crew Roster Sample.csv), groups rows into
 // trips by check-in date, and classifies each trip as upcoming or past.
 
-import { parse, isValid } from 'date-fns';
+import { parseRosterUTC } from '../settings/timeFormat';
 
 export interface TripLeg {
   crewId: string;
@@ -40,15 +40,16 @@ export interface ClassifiedTrips {
 }
 
 // CSV uses e.g. "01 Jun 2026 0100" (day, abbreviated month, year, 24h time).
-const DATE_FORMAT = 'dd MMM yyyy HHmm';
-
-/** Parse a roster datetime string ("01 Jun 2026 0100") into a Date, or null. */
+//
+// These columns are literally named "… UTC" and every producer hands us UTC wall
+// clock (portalCapture → roisBaseToUTC, ekRosterApi → toLegacyRosterUtc), so the
+// parse MUST be UTC. date-fns `parse` reads the string in the DEVICE's timezone,
+// which shifted the past/upcoming boundary by the phone's offset: on a Vancouver
+// phone a duty that ended 15:00Z still counted as "upcoming" at 21:50Z, so it kept
+// its wake-up / leave-home markers while the previous day's identical duty had
+// none. alarmSetup already worked around this with its own UTC parser.
 export function parseTripDate(value: string | undefined): Date | null {
-  if (!value || !value.trim()) {
-    return null;
-  }
-  const d = parse(value.trim(), DATE_FORMAT, new Date(0));
-  return isValid(d) ? d : null;
+  return parseRosterUTC(value);
 }
 
 /** Split a single CSV line, honouring simple double-quoted fields. */

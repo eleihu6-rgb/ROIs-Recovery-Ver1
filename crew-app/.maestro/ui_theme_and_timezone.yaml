@@ -1,0 +1,55 @@
+# UI capture flow for the 2026-09-11 theme + time-zone work:
+#   login page → airline picker → post-login loading page → Profile ▸ Time Zone legend.
+# Run: maestro test crew-app/.maestro/ui_theme_and_timezone.yaml --debug-output <dir> --flatten-debug-output
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- takeScreenshot: ui_01_login
+- tapOn:
+    id: "airline-dropdown"
+- assertVisible:
+    id: "airline-search"
+- takeScreenshot: ui_02_airline_picker
+- tapOn:
+    id: "airline-ET"
+- takeScreenshot: ui_03_login_et
+- tapOn:
+    id: "login-btn"
+# The roster load paints the loading page for a beat — capture it right away.
+- takeScreenshot: ui_04_loading
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "OK"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+# The dev LogBox can still cover the tab bar for a beat after login; retry once.
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 20000
+- takeScreenshot: ui_05_profile
+- tapOn:
+    id: "row-timezone"
+- assertVisible:
+    id: "page-timezone"
+- takeScreenshot: ui_06_timezone
+- tapOn:
+    id: "timezone-legend-toggle"
+- assertVisible:
+    id: "timezone-legend"
+- takeScreenshot: ui_07_timezone_legend

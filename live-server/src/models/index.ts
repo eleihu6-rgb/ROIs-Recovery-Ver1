@@ -42,6 +42,7 @@ export {
   mandayArchiveLog,
 } from './crew/crew-manday'
 export { crewMemo, crewProfile, crewSeniority, crewKpiAdjust } from './crew/crew-memo'
+export { crewNotification } from './crew/crew-notification'
 export { crewQualification } from './crew/crew-qualification'
 export { crewRank } from './crew/crew-rank'
 export { crewStatus } from './crew/crew-status'

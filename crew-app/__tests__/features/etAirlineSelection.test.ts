@@ -34,6 +34,15 @@ describe('ET airline selection', () => {
     });
   });
 
+  // The login form no longer opens with a remembered/last login, so an EMPTY form
+  // counts as untouched and the carrier's test crew is offered on selection.
+  it('prefills the ET test crew when the form is empty', () => {
+    expect(prefillForAirline('ET', '', '')).toEqual({
+      crewId: 'J4002',
+      password: 'Pier2026',
+    });
+  });
+
   it('appears only once in the catalogue (WIRED entry wins over duplicate)', () => {
     const matches = AIRLINES.filter(a => a.code === 'ET');
     expect(matches).toHaveLength(1);

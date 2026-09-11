@@ -24,8 +24,10 @@ describe('authSlice', () => {
     const { auth } = makeStore().getState();
     expect(auth.loggedIn).toBe(false);
     expect(auth.hydrated).toBe(false);
-    expect(auth.airline).toBe('TG');
+    // This build ships for Ethiopian Airlines — the app opens on the ET login.
+    expect(auth.airline).toBe('ET');
     expect(auth.crewId).toBeNull();
+    expect(auth.base).toBeNull();
   });
 
   it('login sets the session live and persists it', async () => {

@@ -62,7 +62,12 @@ export const CATEGORY_META: Record<DutyCategory, CategoryMeta> = {
 const CODE_MAP: Record<string, { category: DutyCategory; label: string }> = {
   OFF: { category: 'off', label: 'Day Off' },
   VOFF: { category: 'off', label: 'Voluntary Day Off' },
+  // ── F8 / ET roster codes (f8_sit_live.assignment) ──
+  DO: { category: 'off', label: 'Day Off' },
+  GDO: { category: 'off', label: 'Guaranteed Day Off' },
   VAC: { category: 'leave', label: 'Annual Leave' },
+  AL: { category: 'leave', label: 'Annual Leave' },
+  ILL: { category: 'leave', label: 'Sick Leave' },
   VAC_PH: { category: 'leave', label: 'Leave (Public Holiday)' },
   HOL: { category: 'leave', label: 'Public Holiday' },
   SIM: { category: 'training', label: 'Simulator' },
@@ -70,7 +75,13 @@ const CODE_MAP: Record<string, { category: DutyCategory; label: string }> = {
   MEETING: { category: 'meeting', label: 'Meeting' },
   OFFICE: { category: 'meeting', label: 'Office Duty' },
   BLOCK: { category: 'reserve', label: 'Reserve' },
+  RES: { category: 'reserve', label: 'Reserve' },
+  PRAM: { category: 'standby', label: 'Standby AM/PM' },
+  PRPM: { category: 'standby', label: 'Standby Night' },
   DHD: { category: 'deadhead', label: 'Deadhead' },
+  PAX: { category: 'deadhead', label: 'Positioning' },
+  GRD: { category: 'meeting', label: 'Ground Duty' },
+  SFT: { category: 'other', label: 'Shift' },
   CHMSBA: { category: 'standby', label: 'Standby' },
   CHMSBB: { category: 'standby', label: 'Standby' },
   CHMSB3: { category: 'standby', label: 'Standby' },
@@ -97,7 +108,10 @@ export function categorise(assignment: string): { category: DutyCategory; label:
   if (/SB|STBY|STANDBY|RESERVE/.test(code)) {
     return { category: 'standby', label: 'Standby' };
   }
-  if (/VAC|LEAVE|ANNUAL|^AL$|HOL/.test(code)) {
+  if (/^DO$|^DOFF$|^GDO$|^REST$/.test(code)) {
+    return { category: 'off', label: 'Day Off' };
+  }
+  if (/VAC|LEAVE|ANNUAL|^AL$|^ILL$|^SICK|HOL/.test(code)) {
     return { category: 'leave', label: 'Leave' };
   }
   if (/MEET|OFFICE|BRIEF|GROUND/.test(code)) {
@@ -113,6 +127,21 @@ export function categorise(assignment: string): { category: DutyCategory; label:
     return { category: 'deadhead', label: 'Deadhead' };
   }
   return { category: 'other', label: code || 'Duty' };
+}
+
+/**
+ * Whether the raw roster code tells the crew anything the card doesn't already
+ * say. Every code we humanise ourselves ("DO" → "Day Off", "AL" → "Annual
+ * Leave", "SIM" → "Simulator") is pure duplication under the duty title, so the
+ * schedule drops it; a code we could only guess at (the fuzzy fallback) is the
+ * duty's only identity, so that one stays on the card.
+ */
+export function codeAddsInfo(assignment: string): boolean {
+  const code = (assignment || '').toUpperCase().trim();
+  if (!code) {
+    return false;
+  }
+  return CODE_MAP[code] === undefined;
 }
 
 export interface GroundDuty {
@@ -140,6 +169,8 @@ export interface GroundDuty {
   training?: TrainingDetail;
   /** Online-meeting join link (calendar meetings only) — drives a "Join" button. */
   joinUrl?: string;
+  /** IATA airport the duty is anchored to (drives airport-local time display). */
+  airport?: string;
   crewId: string;
 }
 
@@ -193,6 +224,7 @@ export function toGroundDuty(d: PortalDuty): GroundDuty {
     allDay: isAllDay(d.localStart, d.localEnd),
     detail: detailFor(d, category),
     training: d.training,
+    airport: d.airportCode,
     crewId: d.crewId,
   };
 }

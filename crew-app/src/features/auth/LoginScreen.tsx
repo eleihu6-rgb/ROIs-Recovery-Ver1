@@ -40,8 +40,10 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export function LoginScreen({ navigation }: Props) {
   const [airline, setAirline] = useState(DEFAULT_AIRLINE);
-  const [crewId, setCrewId] = useState(TEST_CREW_ID);
-  const [password, setPassword] = useState(TEST_CREW_PW);
+  // The form starts empty: the app no longer opens with a remembered/last login
+  // pre-filled into the fields (Ryan, 2026-09-11).
+  const [crewId, setCrewId] = useState('');
+  const [password, setPassword] = useState('');
   const [keepLogin, setKeepLogin] = useState(true);
   const [showPw, setShowPw] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -225,18 +227,21 @@ function AirlinePicker({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent>
-      <SafeAreaView style={styles.sheet}>
-        <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>Select airline</Text>
-          <TouchableOpacity onPress={onClose} hitSlop={12} testID="airline-picker-close">
-            <Text style={styles.sheetClose}>Done</Text>
-          </TouchableOpacity>
-        </View>
+      {/* The picker is the login page's own palette (altair sage) so choosing a
+          carrier never drops the crew into the app-theme purple. */}
+      <GradientScreen palette={LOGIN} style={styles.sheet}>
+        <SafeAreaView style={styles.sheetInner}>
+          <View style={styles.sheetHeader}>
+            <Text style={[styles.sheetTitle, { color: LOGIN.ink }]}>Select airline</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={12} testID="airline-picker-close">
+              <Text style={[styles.sheetClose, { color: LOGIN.ink }]}>Done</Text>
+            </TouchableOpacity>
+          </View>
         <View style={styles.searchWrap}>
           <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 8 }}>
             <Path
               d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"
-              fill={colors.muted}
+              fill={LOGIN.g1}
             />
           </Svg>
           <TextInput
@@ -265,7 +270,8 @@ function AirlinePicker({
             <Text style={styles.pickEmpty}>No airline matches “{query}”.</Text>
           }
         />
-      </SafeAreaView>
+        </SafeAreaView>
+      </GradientScreen>
     </Modal>
   );
 }
@@ -302,7 +308,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.muted,
+    color: LOGIN.g2,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     marginBottom: space.sm8,
@@ -311,10 +317,10 @@ const styles = StyleSheet.create({
   dropdown: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bg,
+    backgroundColor: '#fff',
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.hairline,
+    borderWidth: 1.5,
+    borderColor: LOGIN.g4,
     paddingHorizontal: space.md12,
     paddingVertical: 11,
     gap: space.md12,
@@ -324,14 +330,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: colors.tintBg,
+    backgroundColor: 'rgba(30,61,56,.10)',
     alignItems: 'center',
   },
-  dropdownCodeText: { fontSize: 13, fontWeight: '800', color: colors.primary },
-  dropdownText: { flex: 1, fontSize: 16, color: colors.ink, fontWeight: '600' },
+  dropdownCodeText: { fontSize: 13, fontWeight: '800', color: LOGIN.g1 },
+  dropdownText: { flex: 1, fontSize: 16, color: LOGIN.g1, fontWeight: '600' },
 
   // ── Airline picker sheet ──
-  sheet: { flex: 1, backgroundColor: colors.card },
+  sheet: { flex: 1 },
+  sheetInner: { flex: 1 },
   sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -339,23 +346,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl24,
     paddingVertical: space.lg16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.hairline,
+    borderBottomColor: LOGIN.frostLine,
   },
-  sheetTitle: { ...font.h2, color: colors.ink },
-  sheetClose: { color: colors.accent, fontWeight: '800', fontSize: 16 },
+  sheetTitle: { ...font.h2 },
+  sheetClose: { fontWeight: '800', fontSize: 16 },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bg,
+    backgroundColor: 'rgba(255,255,255,.9)',
     borderRadius: radius.md,
     paddingHorizontal: space.md12,
     marginHorizontal: space.lg16,
     marginVertical: space.md12,
     borderWidth: 1,
-    borderColor: colors.hairline,
+    borderColor: LOGIN.frostLine,
   },
-  searchInput: { flex: 1, paddingVertical: 11, fontSize: 16, color: colors.ink },
-  searchClear: { color: colors.faint, fontSize: 15, fontWeight: '700', paddingHorizontal: 4 },
+  searchInput: { flex: 1, paddingVertical: 11, fontSize: 16, color: LOGIN.g1 },
+  searchClear: { color: LOGIN.g2, fontSize: 15, fontWeight: '700', paddingHorizontal: 4 },
   pickRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -363,46 +370,48 @@ const styles = StyleSheet.create({
     paddingVertical: space.md12,
     gap: space.md12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.hairline,
+    borderBottomColor: LOGIN.frostLine,
   },
   pickCode: {
     minWidth: 42,
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 6,
-    backgroundColor: colors.bg,
+    backgroundColor: LOGIN.frost,
     alignItems: 'center',
   },
-  pickCodeActive: { backgroundColor: colors.accent },
-  pickCodeText: { fontSize: 13, fontWeight: '800', color: colors.muted },
-  pickCodeTextActive: { color: colors.onPrimary },
-  pickName: { flex: 1, fontSize: 16, color: colors.ink, fontWeight: '500' },
-  pickNameActive: { fontWeight: '800', color: colors.primary },
-  pickReady: { fontSize: 11, fontWeight: '700', color: colors.accent },
-  pickCheck: { fontSize: 16, fontWeight: '900', color: colors.accent },
-  pickEmpty: { textAlign: 'center', color: colors.faint, marginTop: space.xxl32, fontSize: 14 },
+  pickCodeActive: { backgroundColor: '#fff' },
+  pickCodeText: { fontSize: 13, fontWeight: '800', color: LOGIN.ink },
+  pickCodeTextActive: { color: LOGIN.g1 },
+  pickName: { flex: 1, fontSize: 16, color: LOGIN.ink, fontWeight: '500' },
+  pickNameActive: { fontWeight: '800' },
+  pickReady: { fontSize: 11, fontWeight: '700', color: LOGIN.inkSoft },
+  pickCheck: { fontSize: 16, fontWeight: '900', color: LOGIN.ink },
+  pickEmpty: { textAlign: 'center', color: LOGIN.inkFaint, marginTop: space.xxl32, fontSize: 14 },
 
   input: {
-    backgroundColor: colors.bg,
+    backgroundColor: '#fff',
     borderRadius: radius.md,
     paddingHorizontal: space.lg16,
     paddingVertical: 13,
     fontSize: 16,
-    color: colors.ink,
-    borderWidth: 1,
-    borderColor: colors.hairline,
+    color: LOGIN.g1,
+    borderWidth: 1.5,
+    borderColor: 'rgba(30,61,56,.16)',
   },
   pwRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bg,
+    backgroundColor: '#fff',
     borderRadius: radius.md,
     paddingHorizontal: space.lg16,
-    borderWidth: 1,
-    borderColor: colors.hairline,
+    borderWidth: 1.5,
+    borderColor: 'rgba(30,61,56,.16)',
   },
-  pwInput: { flex: 1, paddingVertical: 13, fontSize: 16, color: colors.ink },
-  showPw: { color: colors.accent, fontWeight: '700', fontSize: 13 },
+  pwInput: { flex: 1, paddingVertical: 13, fontSize: 16, color: LOGIN.g1 },
+  // The Show/Hide link is part of the "airline / code / select box" cluster the
+  // login page is themed around — it used to stay app-theme purple.
+  showPw: { color: LOGIN.g1, fontWeight: '700', fontSize: 13 },
 
   keepRow: { flexDirection: 'row', alignItems: 'center', gap: space.md12, marginTop: space.xl24 },
   checkbox: {
@@ -410,13 +419,13 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.tintBorder,
+    borderColor: 'rgba(30,61,56,.30)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  checkboxOn: { backgroundColor: LOGIN.g1, borderColor: LOGIN.g1 },
   checkMark: { color: colors.onPrimary, fontSize: 14, fontWeight: '900' },
-  keepText: { ...font.body, color: colors.ink, fontWeight: '600' },
+  keepText: { ...font.body, color: LOGIN.g1, fontWeight: '600' },
 
   loginBtn: {
     backgroundColor: LOGIN.btn,
@@ -426,5 +435,5 @@ const styles = StyleSheet.create({
     marginTop: space.xl24,
   },
   loginBtnText: { color: colors.onPrimary, fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
-  hint: { fontSize: 11, color: colors.faint, textAlign: 'center', marginTop: space.lg16, lineHeight: 16 },
+  hint: { fontSize: 11, color: 'rgba(30,61,56,.55)', textAlign: 'center', marginTop: space.lg16, lineHeight: 16 },
 });

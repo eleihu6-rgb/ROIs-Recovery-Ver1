@@ -19,15 +19,21 @@ export interface SettingsState {
   // Explore (doc/Explore Ver1): crew-picked interests (category keys from
   // explorePlaces.EXPLORE_CATEGORIES) used to filter layover recommendations.
   explorePrefs: string[];
+  /** Crew-picked cartoon avatar (index into settings/avatars). null = the stable
+   *  avatar derived from the crew id. */
+  avatarIndex: number | null;
 }
 
 const TZMODE_KEY = '@royce_tzmode';
+const BASETZ_KEY = '@royce_basetz';
 const EXPLORE_PREFS_KEY = '@royce_explore_prefs';
+const AVATAR_KEY = '@royce_avatar';
 
 const initialState: SettingsState = {
   timeZoneMode: 'airport',
   baseTimeZone: 'Asia/Bangkok',
   explorePrefs: [...DEFAULT_EXPLORE_PREFS],
+  avatarIndex: null,
 };
 
 const settingsSlice = createSlice({
@@ -43,6 +49,9 @@ const settingsSlice = createSlice({
     _setExplorePrefs(state, action: PayloadAction<string[]>) {
       state.explorePrefs = action.payload;
     },
+    _setAvatarIndex(state, action: PayloadAction<number | null>) {
+      state.avatarIndex = action.payload;
+    },
   },
 });
 
@@ -57,11 +66,43 @@ export function setTimeZoneMode(mode: TimeZoneMode) {
 }
 
 /** Persist the crew's Explore interests so they survive restarts. */
+/**
+ * Set the crew's base time zone from the roster's home base. "Base time" means
+ * the crew's own base airport (ADD for the ET crews), not the TG-flavoured
+ * Bangkok default the app shipped with.
+ */
+export function setBaseTimeZone(zone: string) {
+  return async (dispatch: AppDispatch) => {
+    if (!zone) {
+      return;
+    }
+    dispatch(settingsSlice.actions._setBaseTimeZone(zone));
+    try {
+      await AsyncStorage.setItem(BASETZ_KEY, zone);
+    } catch {}
+  };
+}
+
+/** Persist the crew's Explore interests so they survive restarts. */
 export function setExplorePrefs(prefs: string[]) {
   return async (dispatch: AppDispatch) => {
     dispatch(settingsSlice.actions._setExplorePrefs(prefs));
     try {
       await AsyncStorage.setItem(EXPLORE_PREFS_KEY, JSON.stringify(prefs));
+    } catch {}
+  };
+}
+
+/** Persist the crew's chosen cartoon avatar (null = back to the crew-id default). */
+export function setAvatarIndex(index: number | null) {
+  return async (dispatch: AppDispatch) => {
+    dispatch(settingsSlice.actions._setAvatarIndex(index));
+    try {
+      if (index === null) {
+        await AsyncStorage.removeItem(AVATAR_KEY);
+      } else {
+        await AsyncStorage.setItem(AVATAR_KEY, JSON.stringify(index));
+      }
     } catch {}
   };
 }
@@ -78,11 +119,26 @@ export function loadSettings() {
       }
     } catch {}
     try {
+      const baseTz = await AsyncStorage.getItem(BASETZ_KEY);
+      if (baseTz) {
+        dispatch(settingsSlice.actions._setBaseTimeZone(baseTz));
+      }
+    } catch {}
+    try {
       const raw = await AsyncStorage.getItem(EXPLORE_PREFS_KEY);
       if (raw !== null) {
         const prefs = JSON.parse(raw);
         if (Array.isArray(prefs) && prefs.every(p => typeof p === 'string')) {
           dispatch(settingsSlice.actions._setExplorePrefs(prefs));
+        }
+      }
+    } catch {}
+    try {
+      const raw = await AsyncStorage.getItem(AVATAR_KEY);
+      if (raw !== null) {
+        const index = JSON.parse(raw);
+        if (typeof index === 'number' && Number.isFinite(index)) {
+          dispatch(settingsSlice.actions._setAvatarIndex(Math.trunc(index)));
         }
       }
     } catch {}

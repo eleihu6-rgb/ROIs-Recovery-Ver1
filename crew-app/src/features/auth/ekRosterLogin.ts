@@ -8,7 +8,9 @@ import {
 import type {Trip} from '../travel/tripCsv';
 import {setTrips} from '../travel/tripsSlice';
 import {airlineByCode} from './airlines';
-import {publishEphemeralSession, publishPersistedSession} from './authSlice';
+import {publishEphemeralSession, publishPersistedSession, setCrewBase, setCrewProfile} from './authSlice';
+import {setBaseTimeZone} from '../settings/settingsSlice';
+import {airportZone} from '../settings/airportZones';
 import {
   commitEkRosterSnapshot,
   discardEkRosterSnapshot,
@@ -107,6 +109,16 @@ export async function loadEkRosterSession(
 
   dispatch(setTrips(trips));
   dispatch(setDuties(duties));
+  // "Base time" must be the crew's own base — the setting shipped hardcoded to
+  // Bangkok for the TG app, which quietly mislabels every ET time. Set it with
+  // the rest of the roster so a cancelled login still publishes nothing.
+  dispatch(setCrewBase(response.crew.base));
+  dispatch(setCrewProfile({
+    firstName: response.crew.firstName,
+    lastName: response.crew.lastName,
+    nationality: response.crew.nationality,
+  }));
+  dispatch(setBaseTimeZone(airportZone(response.crew.base)));
   dispatch(
     persistenceError
       ? publishEphemeralSession(params)

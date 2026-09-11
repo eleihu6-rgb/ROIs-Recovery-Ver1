@@ -35,6 +35,7 @@ const etCrewProfile = {
   last_name: 'Kifle',
   base: 'ADD',
   rank: 'CA',
+  nationality: 'ET',
 }
 
 const etFlyingRows: MockRow[] = [
@@ -46,6 +47,7 @@ const etFlyingRows: MockRow[] = [
     pairing_release_utc: '2026-09-01T18:30:00.000Z',
     flt_id: '9001',
     flt_num: 'ET805',
+    fleet: '7M8',
     dep_arp: 'ADD',
     arv_arp: 'NBO',
     start_utc: '2026-09-01T12:30:00.000Z',
@@ -59,6 +61,7 @@ const etFlyingRows: MockRow[] = [
     pairing_release_utc: '2026-09-01T18:30:00.000Z',
     flt_id: '9002',
     flt_num: 'ET802',
+    fleet: '7M8',
     dep_arp: 'NBO',
     arv_arp: 'ADD',
     start_utc: '2026-09-01T16:00:00.000Z',
@@ -89,11 +92,16 @@ describe('authenticateAndLoadMobileRoster (ET carrier)', () => {
 
     expect(result.airline).toBe('ET')
     expect(result.crew).toMatchObject({ crewId: 'J4002', base: 'ADD' })
+    // Profile screen: name + nationality come from the same crew row.
+    expect(result.crew).toMatchObject({ firstName: 'Getnet', lastName: 'Kifle', nationality: 'ET' })
     expect(result.pairings).toHaveLength(1)
     expect(result.pairings[0].flights).toHaveLength(2)
     expect(result.pairings[0].flights.map(flight => flight.flightNumber)).toEqual([
       'ET805',
       'ET802',
     ])
+    // Fleet/type rides along with each flight so the crew app can print the
+    // aircraft next to the flight number (it showed nothing before this).
+    expect(result.pairings[0].flights.map(flight => flight.fleet)).toEqual(['7M8', '7M8'])
   })
 })

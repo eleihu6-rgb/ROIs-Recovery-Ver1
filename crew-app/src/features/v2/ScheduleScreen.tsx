@@ -12,15 +12,25 @@ import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon } from '../../components/v2/icons';
 import { TicketCard, DashedLine } from '../../components/v2/TicketCard';
 import { useMonth } from './useV2';
-import { creditLabel, MON, type DayModel, type DayKind, type LegView } from './model';
+import { hasDutyCard, MON, resolveCardIndex, type DayModel, type DayKind, type LegView } from './model';
 import { useV2Nav } from './nav';
 import { IconButton } from './HomeScreen';
+import { codeAddsInfo, type GroundDuty } from '../roster/dutyDisplay';
+import type { TimeZoneMode } from '../settings/settingsSlice';
+import { hhmmForInstant, parseRosterUTC } from '../settings/timeFormat';
+import { airportZone } from '../settings/airportZones';
+
+/** Inner surface (icon disc, marker strip, meeting row) — a touch lighter than the
+ *  card itself, and equally translucent so the carrier ground shows through. */
+const CARD_INSET = 'rgba(255,255,255,0.72)';
 
 export function ScheduleScreen() {
   const p = useCarrier();
   const insets = useSafeAreaInsets();
   const nav = useV2Nav();
   const alertCount = useAppSelector(s => s.notifications.notifications.length);
+  const mode = useAppSelector(s => s.settings.timeZoneMode);
+  const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const [now] = useState(() => new Date());
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const month = useMonth(ym.y, ym.m, now);
@@ -29,21 +39,57 @@ export function ScheduleScreen() {
   const strip = useRef<FlatList<DayModel>>(null);
   const lock = useRef(0);
 
+  // The strip shows every calendar day; the list only carries days that actually
+  // have something on them (see hasDutyCard), so the two indexes diverge.
+  const listDays = useMemo(() => month.days.filter(hasDutyCard), [month.days]);
+  const stripToList = useMemo(() => {
+    const map = new Map<number, number>();
+    let listIndex = 0;
+    month.days.forEach((day, stripIndex) => {
+      if (hasDutyCard(day)) {
+        map.set(stripIndex, listIndex++);
+      }
+    });
+    return map;
+  }, [month.days]);
+  const listToStrip = useMemo(() => {
+    const map = new Map<number, number>();
+    let stripIndex = 0;
+    listDays.forEach((_day, listIndex) => {
+      while (stripIndex < month.days.length && month.days[stripIndex] !== listDays[listIndex]) {
+        stripIndex++;
+      }
+      map.set(listIndex, stripIndex);
+    });
+    return map;
+  }, [listDays, month.days]);
+
   const focus = useCallback((i: number, animated = true) => {
     lock.current = Date.now();
     setActive(i);
-    list.current?.scrollToIndex({ index: i, animated, viewPosition: 0 });
+    // A month with nothing published has no cards — scrolling an empty list to
+    // index 0 throws, so only scroll when there is something to land on.
+    const listIndex = resolveCardIndex(stripToList, i, listDays.length);
+    if (listIndex !== null) {
+      list.current?.scrollToIndex({ index: listIndex, animated, viewPosition: 0 });
+    }
     strip.current?.scrollToIndex({ index: i, animated, viewPosition: 0.5 });
-  }, []);
+  }, [stripToList, listDays.length]);
   useEffect(() => { const t = setTimeout(() => focus(month.focusIndex, false), 50); return () => clearTimeout(t); }, [month.focusIndex, focus]);
 
   const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (Date.now() - lock.current < 700) return;
     const first = viewableItems[0]?.index;
-    if (first != null) { setActive(first); strip.current?.scrollToIndex({ index: first, animated: true, viewPosition: 0.5 }); }
+    if (first == null) return;
+    const stripIndex = listToStrip.get(first);
+    if (stripIndex == null) return;
+    setActive(stripIndex);
+    strip.current?.scrollToIndex({ index: stripIndex, animated: true, viewPosition: 0.5 });
   }).current;
 
-  const title = `Sched ${MON[ym.m]} ${ym.y} · ${creditLabel(month.blockMinutes)} Credit`;
+  // Month only — the credit figure lives on Profile ▸ Block hours, and repeating
+  // it in the title made the header read as a statistic instead of a date.
+  const title = `Sched ${MON[ym.m]} ${ym.y}`;
   return (
     <GradientScreen palette={p}>
       <View style={[s.head, { paddingTop: insets.top + 4 }]}>
@@ -66,20 +112,23 @@ export function ScheduleScreen() {
         />
       </View>
       <FlatList
-        ref={list} data={month.days} keyExtractor={d => String(d.key)} contentContainerStyle={s.list} showsVerticalScrollIndicator={false}
+        ref={list} data={listDays} keyExtractor={d => String(d.key)} contentContainerStyle={s.list} showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewable} viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
         onScrollToIndexFailed={info => setTimeout(() => list.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
-        renderItem={({ item }) => <DayCard day={item} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} />}
+        ListEmptyComponent={<Text style={[s.empty, { color: p.inkSoft }]}>No duties published for {MON[ym.m]} {ym.y}.</Text>}
+        renderItem={({ item }) => (
+          <DayCard day={item} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} />
+        )}
         testID="sched-list"
       />
     </GradientScreen>
   );
 }
 
-function DayCard({ day, palette: p, onTrip }: { day: DayModel; palette: CarrierPalette; onTrip: (tripId: string) => void }) {
-  const head = `${day.dow.toUpperCase()} ${day.day} ${MON[new Date().getMonth()].toUpperCase()}${day.isToday ? ' · TODAY' : ''}`;
+function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip }: { day: DayModel; monthIdx: number; mode: TimeZoneMode; baseTz: string; palette: CarrierPalette; onTrip: (tripId: string) => void }) {
+  const head = `${day.dow.toUpperCase()} ${day.day} ${MON[monthIdx].toUpperCase()}${day.isToday ? ' · TODAY' : ''}`;
   const meetings = day.meetings.map(m => (
-    <View key={m.id} style={[s.meet, { backgroundColor: '#fff' }]}>
+    <View key={m.id} style={[s.meet, { backgroundColor: CARD_INSET }]}>
       <Text style={[s.meetT, { color: p.cardInk }]}>{m.hhmm}</Text>
       <View style={{ flex: 1 }}><Text style={[s.meetTitle, { color: p.cardInk }]} numberOfLines={2}>{m.title}</Text><Text style={{ color: p.cardSoft, fontSize: 12 }}>{m.where}</Text></View>
       <Text style={[s.meetCal, { color: p.cardSoft, borderColor: p.cardLine }]}>iOS CAL</Text>
@@ -94,7 +143,7 @@ function DayCard({ day, palette: p, onTrip }: { day: DayModel; palette: CarrierP
       </View>
     );
   }
-  const info = dayInfo(day);
+  const info = dayInfo(day, mode, baseTz);
   return (
     <View style={s.card}>
       <TicketCard palette={p} testID={`day-card-${day.day}`} style={{ padding: 0, overflow: 'hidden' }}>
@@ -102,8 +151,8 @@ function DayCard({ day, palette: p, onTrip }: { day: DayModel; palette: CarrierP
         <Art kind={day.kind} day={day.day} />
         <View style={{ padding: 18, paddingTop: 10 }}>
           <View style={s.dhead}>
-            <View style={[s.logo, { backgroundColor: '#fff' }]}><Icon name={info.icon} size={24} color={p.btn} /></View>
-            <View><Text style={{ color: p.cardSoft, fontSize: 12 }}>{info.sub}</Text><Text style={[s.ac, { color: p.cardInk }]}>{info.title}</Text></View>
+            <View style={[s.logo, { backgroundColor: CARD_INSET }]}><Icon name={info.icon} size={24} color={p.btn} /></View>
+            <View><Text style={[s.ac, { color: p.cardInk }]}>{info.title}</Text><Text style={{ color: p.cardSoft, fontSize: 12, marginTop: 2 }}>{info.sub}</Text></View>
           </View>
           {!!info.note && <Text style={{ color: p.cardSoft, fontSize: 13, marginTop: 10, lineHeight: 19 }}>{info.note}</Text>}
           {meetings}
@@ -123,8 +172,13 @@ function FlightCard({ leg, palette: p, onPress, last, head, meetings }: { leg: L
       <Text style={[s.dayHead, { color: p.cardSoft }]}>{head}</Text>
       {meetings}
       <View style={s.dhead}>
-        <View style={[s.logo, { backgroundColor: '#fff' }]}><Icon name="jet" size={24} color={p.btn} /></View>
-        <View><Text style={{ color: p.cardSoft, fontSize: 12 }}>Flight</Text><Text style={[s.ac, { color: p.cardInk }]}>{leg.fltNumber}{leg.fleet ? ` · ${leg.fleet}` : ''}</Text></View>
+        <View style={[s.logo, { backgroundColor: CARD_INSET }]}><Icon name="jet" size={24} color={p.btn} /></View>
+        {/* The jet glyph already says "flight", so the word is dropped; the fleet
+            code sits beside the flight number. */}
+        <View style={s.fltRow}>
+          <Text style={[s.ac, { color: p.cardInk }]}>{leg.fltNumber}</Text>
+          {!!leg.fleet && <Text style={[s.fleet, { color: p.cardSoft, borderColor: p.cardLine }]}>{leg.fleet}</Text>}
+        </View>
       </View>
             <View style={s.fleg}>
               <View style={s.port}><Text style={[s.code, { color: p.cardInk }]}>{leg.dep}</Text><Text style={[s.tm, { color: p.cardSoft }]}>{leg.depTime}</Text></View>
@@ -135,26 +189,51 @@ function FlightCard({ leg, palette: p, onPress, last, head, meetings }: { leg: L
               <View style={[s.port, { alignItems: 'flex-end' }]}><Text style={[s.code, { color: p.cardInk }]}>{leg.arv}</Text><Text style={[s.tm, { color: p.cardSoft }]}>{leg.arvTime}{leg.arvDayOffset ? ` ${leg.arvDayOffset}` : ''}</Text></View>
             </View>
       <View style={{ marginVertical: 14 }} onLayout={e => setHoleY(CARD_PAD + e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2)}><DashedLine color={p.cardLine} /></View>
-      <View style={s.meta}><Icon name="cal" size={16} color={p.cardSoft} /><Text style={{ color: p.cardSoft, fontSize: 13 }}>Report {leg.checkIn}</Text></View>
-      <View style={[s.prep, { backgroundColor: '#fff' }]}>
-        <View><Text style={[s.pk, { color: p.cardSoft }]}>LEAVE HOME</Text><Text style={[s.pv, { color: p.cardInk }]}>{leg.leaveHome}</Text></View>
-        <View><Text style={[s.pk, { color: p.cardSoft }]}>{leg.readyWord.toUpperCase()}</Text><Text style={[s.pv, { color: p.btn }]}>{leg.ready}</Text></View>
-        <View><Text style={[s.pk, { color: p.cardSoft }]}>CHECK-IN</Text><Text style={[s.pv, { color: p.cardInk }]}>{leg.checkIn}</Text></View>
-      </View>
+      {/* Wake up / leave home / check-in are duty-level markers anchored to the FIRST
+          leg only; later legs of the same rotation repeat none of them. Report and
+          check-in are the same instant, so check-in carries the report time. Alarm
+          cells with no value (a duty that has already started — alarms are computed
+          for upcoming duties only) are dropped rather than shown as dashes. */}
+      {leg.firstLeg && (leg.ready !== '—' || leg.leaveHome !== '—' || leg.checkIn !== '—') ? (
+        <View style={[s.prep, { backgroundColor: CARD_INSET }]}>
+          {leg.ready !== '—' ? <View><Text style={[s.pk, { color: p.cardSoft }]}>{leg.readyWord.toUpperCase()}</Text><Text style={[s.pv, { color: p.btn }]}>{leg.ready}</Text></View> : null}
+          {leg.leaveHome !== '—' ? <View><Text style={[s.pk, { color: p.cardSoft }]}>LEAVE HOME</Text><Text style={[s.pv, { color: p.cardInk }]}>{leg.leaveHome}</Text></View> : null}
+          {leg.checkIn !== '—' ? <View><Text style={[s.pk, { color: p.cardSoft }]}>CHECK-IN</Text><Text style={[s.pv, { color: p.cardInk }]}>{leg.checkIn}</Text></View> : null}
+        </View>
+      ) : null}
     </TicketCard>
   );
 }
 
-function dayInfo(d: DayModel): { icon: 'house' | 'clock' | 'book'; title: string; sub: string; note: string } {
+function dayInfo(d: DayModel, mode: TimeZoneMode, baseTz: string): { icon: 'house' | 'clock' | 'book'; title: string; sub: string; note: string } {
+  const g = d.ground;
+  const window = g ? dutyWindow(g, mode, baseTz) : '';
+  // Never print a code the title already spells out ("Annual Leave" + "AL",
+  // "Day Off" + "DO"). Only a code we had to guess at still carries meaning.
+  const code = g && codeAddsInfo(g.code) ? g.code : '';
   switch (d.kind) {
-    case 'standby': return { icon: 'clock', title: `${d.ground?.label ?? 'Standby'}`, sub: `${hhmm(d.ground?.localStart)} – ${hhmm(d.ground?.localEnd)}`, note: 'Be reachable. Call-out within 90 minutes.' };
-    case 'training': return { icon: 'book', title: d.ground?.label ?? 'Training', sub: `${hhmm(d.ground?.localStart)} – ${hhmm(d.ground?.localEnd)}`, note: d.ground?.code ?? '' };
-    case 'ground': return { icon: 'clock', title: d.ground?.label ?? 'Duty', sub: `${hhmm(d.ground?.localStart)} – ${hhmm(d.ground?.localEnd)}`, note: d.ground?.code ?? '' };
+    case 'standby': return { icon: 'clock', title: g?.label ?? 'Standby', sub: window, note: g?.code === 'RES' ? 'Reserve duty.' : 'Be reachable. Call-out within 90 minutes.' };
+    case 'training': return { icon: 'book', title: g?.label ?? 'Training', sub: window, note: g?.detail ?? code };
+    case 'ground': return { icon: g?.category === 'leave' ? 'house' : 'clock', title: g?.label ?? 'Duty', sub: window, note: g?.detail ?? code };
     case 'layover': { const h = d.layoverTrip?.legs[0]?.hotel; return { icon: 'house', title: `Layover${d.layoverTrip ? ' · ' + (d.layoverTrip.legs[0]?.arvArp ?? '') : ''}`, sub: h || 'Hotel', note: '' }; }
-    default: return { icon: 'house', title: 'Day off', sub: 'Rest day', note: '' };
+    // An explicit airline days-off row — the only kind of day off that gets a card.
+    default: return { icon: 'house', title: g?.label ?? 'Day Off', sub: window || 'Off', note: code };
   }
 }
-const hhmm = (local: string | undefined) => (local || '').slice(11, 16) || '—';
+
+/** Local window of a ground duty, in the crew's chosen time display mode. */
+function dutyWindow(g: GroundDuty, mode: TimeZoneMode, baseTz: string): string {
+  if (g.allDay) {
+    return 'All day';
+  }
+  const zone = airportZone(g.airport);
+  const start = parseRosterUTC(g.startRosterUTC);
+  const end = parseRosterUTC(g.endRosterUTC);
+  if (!start || !end) {
+    return `${(g.localStart || '').slice(11, 16) || '—'} – ${(g.localEnd || '').slice(11, 16) || '—'}`;
+  }
+  return `${hhmmForInstant(start, mode, baseTz, zone)} – ${hhmmForInstant(end, mode, baseTz, zone)}`;
+}
 
 /** Flat two-tone illustration strip (mock art-beach / art-cafe / art-standby / art-training). */
 function Art({ kind, day }: { kind: DayKind; day: number }) {
@@ -181,10 +260,12 @@ const s = StyleSheet.create({
   dnum: { fontSize: 18, fontWeight: '600', marginTop: 4 },
   today: { textDecorationLine: 'underline' },
   dot: { width: 5, height: 5, borderRadius: 3, marginTop: 5 },
-  list: { paddingHorizontal: 22, paddingTop: 6, paddingBottom: 110, gap: 14 },
+  list: { paddingHorizontal: 22, paddingTop: 6, paddingBottom: 120, gap: 14 },
   card: {},
   dayHead: { fontSize: 12, fontWeight: '600', letterSpacing: 0.7 },
   dhead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10, marginBottom: 16 },
+  fltRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  fleet: { fontSize: 12, fontWeight: '600', letterSpacing: 0.6, borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   logo: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   ac: { fontSize: 17, fontWeight: '600', marginTop: 1 },
   fleg: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -202,4 +283,5 @@ const s = StyleSheet.create({
   meetT: { fontSize: 15, fontWeight: '600', width: 44 },
   meetTitle: { fontSize: 13, fontWeight: '600' },
   meetCal: { fontSize: 10, letterSpacing: 0.8, borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
+  empty: { textAlign: 'center', fontSize: 14, marginTop: 60 },
 });

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Altair — 10 eastbound refinements</title>
+<style>
+:root{--ink:#262925;--muted:#73756e;--paper:#f5f3ed;--line:#deded4}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,Helvetica,sans-serif}header,main,footer{max-width:1500px;margin:auto;padding:0 44px}header{padding-top:32px}.mast{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:22px;font-size:11px;letter-spacing:2px;text-transform:uppercase}.intro{padding:42px 0 28px;display:flex;align-items:end;justify-content:space-between;gap:36px}h1{font-size:clamp(44px,5vw,76px);font-weight:500;letter-spacing:-4px;line-height:1.02;margin:0 0 20px}h1 em{font-family:Georgia,serif;color:#bc512b;font-weight:400}.intro p{font-size:15px;line-height:1.65;color:var(--muted);max-width:530px;margin:0}.note{max-width:230px!important;font-size:12px!important}.controls{display:flex;gap:8px;flex-wrap:wrap;padding:6px 0 26px}button{cursor:pointer;font:inherit;font-size:12px;border:1px solid #cfd0c6;background:transparent;border-radius:24px;padding:10px 16px;color:var(--ink)}button:hover{background:#e7e6dc}button[aria-pressed=true]{background:var(--ink);color:white;border-color:var(--ink)}button:focus-visible,a:focus-visible{outline:3px solid #d66b31;outline-offset:4px}.mode{margin-left:auto}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}.card{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fffdf8}.card[hidden]{display:none}.visual{background:var(--bg);color:var(--primary);height:305px;position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column}.meta{position:absolute;top:18px;left:18px;right:18px;display:flex;justify-content:space-between;color:var(--primary);font-size:10px;letter-spacing:1.2px;text-transform:uppercase}.symbol{width:132px;height:132px}.word{color:var(--primary);font-size:42px;line-height:1.15;letter-spacing:-2px;margin-top:7px;font-weight:600}.word.tech{font-family:monospace;letter-spacing:3px;text-transform:uppercase;font-size:32px}.word.soft{font-family:Georgia,serif;font-weight:400;font-style:italic;letter-spacing:-1px}.word.round{font-family:'Arial Rounded MT Bold','Trebuchet MS',sans-serif;letter-spacing:-2px;font-weight:700}.word.wide{font-size:30px;letter-spacing:7px;text-transform:uppercase;font-weight:500}.caption{font-size:8px;letter-spacing:2.4px;text-transform:uppercase;margin-top:8px;color:var(--primary);opacity:.75}.info{padding:18px}.info h2{margin:0 0 8px;font-size:17px;font-weight:500;letter-spacing:-.4px}.info p{font-size:12px;color:var(--muted);line-height:1.6;margin:0;min-height:58px}.bottom{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid #e9e8e0}.app{width:42px;height:42px;background:var(--bg);color:var(--primary);border-radius:11px;display:grid;place-items:center;border:1px solid #0000000a}.app svg{width:33px;height:33px}.download{font-size:10px;color:var(--muted);text-underline-offset:4px}.mini{display:flex;align-items:center;gap:10px}.mini>svg{width:23px;height:23px;color:var(--ink);--secondary:currentColor;--detail:#fff;--bg:#fff}.mono .visual,.mono .app{--primary:#242923;--secondary:#242923;--detail:#fffdf8;--bg:#fffdf8}.mono .visual{background:#fffdf8}.mono .app{background:#fffdf8}footer{padding-top:30px;padding-bottom:40px;display:flex;justify-content:space-between;gap:20px;font-size:11px;line-height:1.6;color:var(--muted)}footer a{color:inherit}#count{font-size:11px;letter-spacing:1px;color:var(--muted);margin:0 0 14px}@media(max-width:1100px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:800px){header,main,footer{padding-left:22px;padding-right:22px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.intro{display:block}.note{display:none}.mode{margin-left:0}h1{letter-spacing:-2px}}@media(max-width:480px){.grid{grid-template-columns:1fr}.visual{height:290px}.info p{min-height:0}.mast{font-size:9px;letter-spacing:1px}.intro{padding-top:30px}footer{display:block}.controls{gap:6px}button{padding:9px 12px}}@media print{.controls,.download{display:none}.grid{grid-template-columns:repeat(3,1fr)}.card{break-inside:avoid}.visual{height:230px}.symbol{width:105px;height:105px}.intro{padding:20px 0}h1{font-size:40px}.info p{min-height:65px}}
+
+ .palettes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-bottom:28px}.palettes>span{font-size:10px;letter-spacing:1.5px;color:var(--muted);margin-right:8px}.palettes button:before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;background:var(--chip,#a57858)}[data-palette=teal]{--chip:#176d73}[data-palette=night]{--chip:#d9b368}[data-palette=violet]{--chip:#8c78c4}[data-palette=graphite]{--chip:#465767}[data-palette=original]{--chip:#ad9b81}
+/* Larger comparison panels for this focused refinement collection. */
+.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;max-width:1140px;margin:auto}
+.visual{height:330px}.symbol{width:208px;height:162px}.word{font-size:46px}.word.wide{font-size:33px}.word.tech{font-size:35px}
+.info{padding:22px 26px}.info p{min-height:40px;max-width:450px;font-size:13px}
+.app{width:54px;height:54px;border-radius:14px}.app svg{width:46px;height:40px}.mini>svg{width:32px;height:27px}
+#count{max-width:1140px;margin:0 auto 16px}.meta{top:20px;left:24px;right:24px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.visual{height:300px}.info{padding:20px}.info p{min-height:0}}
+@media print{.visual{height:230px}.symbol{width:150px;height:116px}.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header><div class="mast"><span>Altair / Eastbound / Refining no. 46</span><span>Vol. 04 · Concepts 51—60</span></div><div class="intro"><div><h1>Eastbound.<br><em>Guided by Altair.</em></h1><p>Ten refinements of Departure arc (#46) and Three-star compass (#44). An abstract aircraft or spacecraft moves east, with Altair shining ahead. One direction, explored through shape, motion and restraint.</p></div><p class="note">Two inspirations, one direction.<br>#46 brings the curve.<br>#44 brings the guiding stars.</p></div><nav class="controls" aria-label="Logo previews"><button data-filter="All" aria-pressed="true">All 10</button><button data-filter="Aircraft" aria-pressed="false">Aircraft</button><button data-filter="Spacecraft" aria-pressed="false">Spacecraft</button><button class="mode" id="mono" aria-pressed="false">Monochrome</button></nav><div class="palettes" role="group" aria-label="Colour palettes"><span>COLOUR STORY</span><button data-palette="original" aria-pressed="true">Designer mix</button><button data-palette="copper" aria-pressed="false">Copper & cream</button><button data-palette="teal" aria-pressed="false">Ocean teal</button><button data-palette="night" aria-pressed="false">Midnight & gold</button><button data-palette="violet" aria-pressed="false">Cosmic violet</button><button data-palette="graphite" aria-pressed="false">Graphite & ice</button></div></header>
+<main><p id="count" aria-live="polite">10 / 10 DIRECTIONS</p><div class="grid" id="gallery"></div></main>
+<footer><span>Refinements of #46 Departure arc · SVG symbols included · Concept stage</span><a href="altair-aquila-20.html">← Back to the Aquila collection</a></footer>
+<script>
+const line=(d,w=5,extra='')=>`<path d="${d}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`;
+const fill=d=>`<path d="${d}" fill="currentColor"/>`;
+const circle=(x,y,r,extra='')=>`<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor" ${extra}/>`;
+const accent=art=>`<g style="color:var(--secondary);fill:currentColor">${art}</g>`;
+const detail=art=>`<g style="color:var(--detail)">${art}</g>`;
+const star=(x,y,s=1)=>`<path transform="translate(${x} ${y}) scale(${s})" d="M0-14 4-4 14 0 4 4 0 14-4 4-14 0-4-4Z" fill="currentColor"/>`;
+const plane=()=>fill('M70 22 77 57 112 82 112 91 78 77 77 102 89 110 89 115 70 108 51 115 51 110 63 102 62 77 28 91 28 82 63 57Z');
+
+const guide=(y=70)=>accent(star(154,y,.67));
+const air='M122 74 92 68 69 44 59 44 72 68 52 68 41 58 34 58 40 74 34 90 41 90 52 80 72 80 59 104 69 104 92 80Z';
+const arc='M29 108C6 90 11 53 35 34C65 11 110 19 131 41';
+const concepts=[
+{name:'Eastbound classic',cat:'Aircraft',p:'#985d45',s:'#d6a354',bg:'#fbefe0',style:'soft',caption:'A clear direction',desc:'Closest to #46. A light departure arc, a crisp eastbound aircraft and a warm guiding star. My recommended starting point.',art:line(arc,3.5)+fill(air)+guide()},
+{name:'Paper horizon',cat:'Aircraft',p:'#296c75',s:'#bc9356',bg:'#eaf2ee',style:'soft',caption:'Follow your bright star',desc:'A folded paper aircraft reduced to two sweeping triangles. The open fold keeps the symbol airy and readable.',art:line('M24 101C7 67 30 32 61 27C91 22 113 29 128 42',3)+fill('M39 47 126 72 39 101 58 76Z')+detail(fill('M58 76 111 73 48 92Z'))+guide(72)},
+{name:'Quiet glider',cat:'Aircraft',p:'#34516a',s:'#c49959',bg:'#edf0f1',style:'wide',caption:'Less noise. More sky.',desc:'A long, elegant wing and a fine orbital sweep. More glider than jet, with generous space around the guiding star.',art:line('M28 112C1 77 23 30 67 23C94 19 115 28 130 43',2.5)+fill('M126 73 88 67 61 36 55 38 71 69 44 70 31 58 28 60 33 74 28 88 31 90 44 78 71 79 55 110 61 112 88 81Z')+guide(73)},
+{name:'Ribbon departure',cat:'Aircraft',p:'#a3684e',s:'#d0a46c',bg:'#f8f0e4',style:'soft',caption:'A journey in one gesture',desc:'The flight curve flows into a folded aircraft. A single visual gesture carries the eye from departure to Altair.',art:line('M31 110C7 99 8 64 30 46C50 31 75 34 81 49C88 66 74 80 52 80',5)+fill('M43 51 127 72 42 101 57 78 91 72 58 67Z')+guide(72)},
+{name:'Compass wing',cat:'Aircraft',p:'#456d62',s:'#c9a260',bg:'#edf0e5',style:'wide',caption:'Always oriented',desc:'Inspired by #44: a compass-like aircraft, a guiding star and two smaller waypoints. The arc retains the warmth of #46.',art:line('M123 44C95 10 36 15 20 56C3 98 43 126 82 120',3)+fill('M124 73 60 40 71 66 39 57 48 73 39 89 71 80 60 106Z')+line('M126 39 154 73 135 107',1.6)+circle(126,39,2.5)+circle(135,107,2.5)+guide(73)},
+{name:'Stellar shuttle',cat:'Spacecraft',p:'#bad4e4',s:'#f0c47a',bg:'#203747',style:'wide',caption:'Beyond the familiar',desc:'A smooth lifting-body spacecraft follows the departure arc. The small cockpit cutout adds character without technical clutter.',art:line(arc,3)+fill('M125 73Q108 53 85 57L48 40 61 63 35 65 44 73 35 81 61 83 48 106 85 89Q108 93 125 73Z')+detail(line('M108 68Q113 73 108 78',3))+guide(73)},
+{name:'Photon sail',cat:'Spacecraft',p:'#625582',s:'#bd975e',bg:'#f0edf5',style:'soft',caption:'Carried by starlight',desc:'A crescent-like sail points toward Altair. An abstract spacecraft with softer edges and a more imaginative personality.',art:line('M27 111C6 79 26 36 61 27C87 20 107 25 127 40',3)+fill('M47 38Q91 52 125 73Q90 93 47 108L64 74Z')+detail(fill('M54 49 103 73 54 96 70 74Z'))+guide(73)},
+{name:'Vector cruiser',cat:'Spacecraft',p:'#b9c9f3',s:'#eed09b',bg:'#2b3150',style:'tech',caption:'The next heading',desc:'A sharply faceted spacecraft with a clean negative-space spine. A precise, technical refinement for a more futuristic Altair.',art:line('M24 106C3 80 17 43 43 29C69 15 104 20 126 39',2.5)+fill('M128 73 55 38 69 64 37 57 47 73 37 89 69 82 55 108Z')+detail(fill('M58 70H109L83 75H58Z'))+guide(73)},
+{name:'Slingshot',cat:'Spacecraft',p:'#286a71',s:'#c09a58',bg:'#e8f1ed',style:'wide',caption:'Momentum with purpose',desc:'A broad orbital curve ends in a small dart-shaped craft. The strongest sense of forward motion, with Altair kept clearly ahead.',art:line('M111 35C67 9 17 35 17 70C17 102 53 116 85 103C100 97 103 83 108 74',6)+fill('M126 73 96 51 102 72 87 85 108 83Z')+guide(73)},
+{name:'Guiding spark',cat:'Spacecraft',p:'#394e62',s:'#bf9456',bg:'#f2eee5',style:'soft',caption:'Small mark. Far horizons.',desc:'A minimal compass-like starship follows Altair, with two quiet waypoints on the departure arc. A compact blend of #44 and #46.',art:line('M30 104C9 83 16 51 40 35C63 20 91 21 113 31',4)+fill('M126 73 51 46 64 73 51 100 87 82Z')+circle(30,104,3)+circle(113,31,3)+guide(73)}
+];
+const svg=(art,label='')=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 140" ${label?`role="img" aria-label="${label.replaceAll('&','&amp;')}"`:'aria-hidden="true"'}>${art}</svg>`;
+document.querySelector('#gallery').innerHTML=concepts.map((c,i)=>{const art=svg(c.art,c.name+' eastbound logo');const download=svg(c.art,'Altair '+c.name).replace('<svg ',`<svg style="color:${c.p};--secondary:${c.s};--detail:${c.bg}" `);return `<article class="card" data-category="${c.cat}" style="--primary:${c.p};--secondary:${c.s};--detail:${c.bg};--bg:${c.bg}"><div class="visual"><div class="meta"><span>${i+51} / ${c.cat}</span><span>${i===0?'Recommended':'ALTAIR'}</span></div><div class="symbol">${art}</div><div class="word ${c.style}">altair</div><div class="caption">${c.caption}</div></div><div class="info"><h2>${c.name}</h2><p>${c.desc}</p><div class="bottom"><div class="mini"><div class="app">${svg(c.art)}</div>${svg(c.art)}</div><a class="download" download="altair-${i+51}-${c.name.toLowerCase().replaceAll(/[^a-z0-9]+/g,'-')}.svg" href="data:image/svg+xml;charset=utf-8,${encodeURIComponent(download)}">Download SVG ↗</a></div></div></article>`}).join('');
+document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));let count=0;document.querySelectorAll('.card').forEach(card=>{card.hidden=button.dataset.filter!=='All'&&card.dataset.category!==button.dataset.filter;if(!card.hidden)count++});document.querySelector('#count').textContent=`${count} / 10 DIRECTIONS`;}));
+
+const palettes={
+copper:{p:'#985d45',s:'#c28a35',bg:'#fbefe0'},
+teal:{p:'#176d73',s:'#b78c39',bg:'#e6f3ef'},
+night:{p:'#c3d9e9',s:'#f1c777',bg:'#192d40'},
+violet:{p:'#d4c9f2',s:'#f1c891',bg:'#352b50'},
+graphite:{p:'#374d60',s:'#51859b',bg:'#edf2f5'}
+};
+let selectedPalette='original';
+function applyPalette(){
+document.querySelectorAll('.card').forEach((card,i)=>{
+const c=concepts[i], palette=palettes[selectedPalette]||c;
+for(const [key,value] of Object.entries({'--primary':palette.p,'--secondary':palette.s,'--detail':palette.bg,'--bg':palette.bg}))card.style.setProperty(key,value);
+const mono=document.body.classList.contains('mono');
+const exportPalette=mono?{p:'#242923',s:'#242923',bg:'#fffdf8'}:palette;
+const exported=svg(c.art,'Altair '+c.name).replace('<svg ',`<svg style="color:${exportPalette.p};--secondary:${exportPalette.s};--detail:${exportPalette.bg}" `);
+const link=card.querySelector('.download');
+link.href='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(exported);
+link.download=`altair-${i+51}-${c.name.toLowerCase().replaceAll(/[^a-z0-9]+/g,'-')}-${mono?'mono':selectedPalette}.svg`;
+});
+}
+document.querySelectorAll('[data-palette]').forEach(button=>button.addEventListener('click',()=>{
+selectedPalette=button.dataset.palette;
+document.querySelectorAll('[data-palette]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+applyPalette();
+}));
+document.querySelector('#mono').addEventListener('click',event=>{event.currentTarget.setAttribute('aria-pressed',String(document.body.classList.toggle('mono')));applyPalette();});
+applyPalette();
+
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import {
   parseTripDate,
   parseAndClassify,
 } from '../../src/features/travel/tripCsv';
+import type { Trip } from '../../src/features/travel/tripCsv';
 
 // The real sample referenced by doc/Add Trip Ver1.
 const CSV_PATH = path.resolve(
@@ -20,12 +21,19 @@ const csv = fs.readFileSync(CSV_PATH, 'utf8');
 const NOW = new Date('2026-05-31T00:00:00Z');
 
 describe('parseTripDate', () => {
-  it('parses the roster datetime format', () => {
+  // The roster columns are named "… UTC" and every producer hands over UTC wall
+  // clock, so the parse must be UTC — date-fns' default `parse` reads the string in
+  // the DEVICE timezone, which used to shift the past/upcoming boundary by the
+  // phone's offset (a duty that ended 15:00Z still counted as upcoming at 21:50Z on
+  // a Vancouver phone, so it kept its wake-up / leave-home markers).
+  it('parses the roster datetime format as UTC, not device-local', () => {
     const d = parseTripDate('03 Jun 2026 0300');
     expect(d).not.toBeNull();
-    expect(d!.getFullYear()).toBe(2026);
-    expect(d!.getMonth()).toBe(5); // June (0-indexed)
-    expect(d!.getDate()).toBe(3);
+    expect(d!.toISOString()).toBe('2026-06-03T03:00:00.000Z');
+    // Cross-check in UTC components so a machine east of UTC can't fake this.
+    expect(d!.getUTCFullYear()).toBe(2026);
+    expect(d!.getUTCMonth()).toBe(5); // June (0-indexed)
+    expect(d!.getUTCDate()).toBe(3);
   });
 
   it('returns null for empty or invalid input', () => {
@@ -80,5 +88,36 @@ describe('classifyTrips', () => {
     const a = parseAndClassify(csv, NOW);
     const b = classifyTrips(groupIntoTrips(parseRosterCsv(csv)), NOW);
     expect(a).toEqual(b);
+  });
+
+  // Regression for the on-device report ("10 Sep ET805 — why no wake up / leave
+  // home?"): the boundary was computed with a device-local parse, so a duty that
+  // had already finished still counted as "upcoming" for as many hours as the
+  // phone sits behind UTC, while the previous day's identical duty did not.
+  it('a duty that already ended is past, measured against the real UTC instant', () => {
+    // "01 Jun 2026 2100" IS 21:00 UTC. On a Vancouver phone the old local parse
+    // read it as 21:00 PDT (= 02 Jun 04:00Z), so the duty stayed "upcoming" for
+    // another seven hours and kept its alarm markers.
+    const trip: Trip = {
+      id: 'T1',
+      crewId: 'C1',
+      checkInDateUTC: '01 Jun 2026 2000',
+      legs: [{
+        crewId: 'C1',
+        fltNumber: 'FA100',
+        flightDateUTC: '01 Jun 2026 2000',
+        depArp: 'BKK',
+        arvDateUTC: '01 Jun 2026 2100',
+        arvArp: 'BKK',
+        fleet: '',
+        hotel: '',
+      }],
+    };
+
+    // Half an hour after the final arrival → past.
+    expect(classifyTrips([trip], new Date('2026-06-01T21:30:00Z')).past).toEqual([trip]);
+    expect(classifyTrips([trip], new Date('2026-06-01T21:30:00Z')).upcoming).toEqual([]);
+    // Half an hour before it → still upcoming.
+    expect(classifyTrips([trip], new Date('2026-06-01T20:30:00Z')).upcoming).toEqual([trip]);
   });
 });

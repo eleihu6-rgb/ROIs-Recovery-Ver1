@@ -1,0 +1,84 @@
+# Ethiopian Airlines (ET) crew J4002 — Sep 2026 GROUND-DUTY parity.
+#
+# Ground truth (f8_sit_live.roster_flight, created 2026-09-11 by the planner in the
+# Live gantt, i.e. cr.rois.one/altair/live):
+#   id 1354915  assignment DO  ADD→ADD  2026-09-08 21:00Z → 2026-09-09 20:59Z  (= ADD local day 9 Sep)
+#   id 1354916  assignment AL  ADD→ADD  2026-09-16 21:00Z → 2026-09-17 20:59Z  (= ADD local day 17 Sep)
+#
+# The mobile-roster API already returns both rows (verified with curl). This flow
+# proves the APP places them on the right calendar day: the day-off row is a
+# local-day concept, so the UTC window has to be rendered in ADD (+03:00) before
+# it is bucketed into a Schedule day card.
+#
+# Run: maestro test crew-app/.maestro/et_j4002_ground_duties.yaml --test-output-dir <dir>
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4002"
+# `hideKeyboard` is a no-op here (see et_j4007_login.yaml); Return blurs the field.
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+# Simulator keychain cannot persist an ET session → soft notice, then the dev
+# LogBox (which covers the tab bar and swallows taps).
+- tapOn:
+    text: "OK"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: j4002_01_home
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-title"
+    timeout: 30000
+- takeScreenshot: j4002_02_sched_sep_top
+# 9 Sep — Day Off (DO window covers ADD local 09 Sep 00:00–23:59).
+- tapOn:
+    id: "day-9"
+- extendedWaitUntil:
+    visible:
+      text: "Day Off"
+    timeout: 30000
+- assertVisible: "All day"
+# The title already says "Day Off" — the raw "DO" code must NOT be repeated.
+- assertNotVisible: "^DO$"
+# …and the flight card right below must print the aircraft beside the flight
+# number (ET805 · 7M8) instead of repeating the jet icon with the word "Flight".
+- assertVisible: "7M8"
+- assertNotVisible: "^Flight$"
+- takeScreenshot: j4002_03_sched_sep09_dayoff
+# 17 Sep — Annual Leave (AL window covers ADD local 17 Sep 00:00–23:59).
+- scrollUntilVisible:
+    element:
+      text: "Annual Leave"
+    direction: DOWN
+    timeout: 60000
+- assertVisible: "All day"
+# "Annual Leave" already says it — no "AL" line underneath.
+- assertNotVisible: "^AL$"
+- takeScreenshot: j4002_04_sched_sep17_annualleave

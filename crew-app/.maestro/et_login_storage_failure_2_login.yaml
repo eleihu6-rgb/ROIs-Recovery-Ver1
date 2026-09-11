@@ -1,7 +1,8 @@
 appId: org.reactjs.native.example.RoyceTravelTemplate
 # Phase B: AsyncStorage is unwritable at this point (host made the storage
 # directory read-only), so the roster snapshot cannot be persisted. Sign-in must
-# still succeed with the in-memory session and the soft "not saved" notice.
+# still succeed with the in-memory session — and since 2026-09-11 it does so
+# silently: the "could not save your login" pop-up was removed at Ryan's request.
 ---
 - launchApp
 - extendedWaitUntil:
@@ -21,11 +22,7 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
 - tapOn:
     id: "login-btn"
 - extendedWaitUntil:
-    visible: ".*could not save your login.*"
-    timeout: 30000
-- takeScreenshot: ver_storage_failure_notice
-- tapOn: "OK"
-- extendedWaitUntil:
-    visible: "Next Adventure"
+    visible:
+      id: "home-screen"
     timeout: 30000
 - takeScreenshot: ver_storage_failure_home
