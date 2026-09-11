@@ -80,7 +80,7 @@ select cs.id,i.id,r.id,t.type_code
   from cost_set cs
   join cost_type t on true
   join cost_instance i on i.cost_type_id=t.id and i.instance_no=1
-  join lateral (select id from cost_revision where cost_instance_id=i.id and enabled order by revision_no desc limit 1) r on true
+  join lateral (select id from cost_revision where cost_instance_id=i.id and i.enabled order by revision_no desc limit 1) r on true
  where cs.is_default
    and not exists (
      select 1 from cost_set_member csm
