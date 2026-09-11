@@ -21,7 +21,9 @@ insert into _cost_library_seed values
     (2006,'Ground transfer','Positioning','vehicle-trip',80,'quantity','["quantity","fixed","minimum"]','{"minimumQuantity":4}','Synthetic illustrative price'),
     (2008,'Hotel booking replacement','Accommodation','booking',160,'booking','["booking"]','{"originalAmount":140,"refundAmount":140,"changeFee":0}','Synthetic illustrative price'),
     (3001,'Incremental flight delay','Other operating cash','minute',60,'bands','["bands","quantity"]','{"threshold":120,"upperRate":25}','Illustrative curve; R2'),
-    (3005,'Aircraft ferry sector','Other operating cash','sector',9000,'quantity','["quantity","fixed","minimum"]','{"minimumQuantity":4}','Illustrative price; R2 section 1.4');
+    (3005,'Aircraft ferry sector','Other operating cash','sector',9000,'quantity','["quantity","fixed","minimum"]','{"minimumQuantity":4}','Illustrative price; R2 section 1.4'),
+    (1015,'Roster change stability penalty','Recovery stability','change',260,'quantity','["quantity","fixed","minimum"]','{"minimumQuantity":1}','Illustrative price; replaces hard-coded frontend virtualCost component (quantity so swap with qty=2 still prices)'),
+    (1016,'Follow-on impact stability penalty','Recovery stability','impact',1800,'quantity','["quantity","fixed","minimum"]','{"minimumQuantity":1}','Illustrative price; replaces hard-coded frontend virtualCost component (quantity so multiple follow-on impacts price correctly)');
 
 insert into cost_type (type_code,name,category_code,calculator_code,parameter_schema_json)
 select type_code,name,category,calculator,jsonb_build_object('calculatorCodes',allowed)
@@ -65,4 +67,23 @@ insert into cost_set_member (cost_set_id,cost_instance_id,cost_revision_id,sort_
 select ns.id,i.id,r.id,t.type_code from _cost_library_new_set ns cross join cost_instance i
 join cost_type t on t.id=i.cost_type_id
 join lateral (select id from cost_revision where cost_instance_id=i.id order by revision_no desc limit 1) r on true
+on conflict (cost_set_id,cost_instance_id) do nothing;
+
+-- Reconciliation pass for cost types added after the original default set was
+-- seeded. cost_set_member inserts above only target a freshly created set; if
+-- the default set already existed (e.g. the DB was seeded earlier), it does
+-- not retroactively gain the new members. The reconciliation below is
+-- idempotent and pulls in any missing cost types whose default instance + an
+-- enabled revision exist.
+insert into cost_set_member (cost_set_id,cost_instance_id,cost_revision_id,sort_order)
+select cs.id,i.id,r.id,t.type_code
+  from cost_set cs
+  join cost_type t on true
+  join cost_instance i on i.cost_type_id=t.id and i.instance_no=1
+  join lateral (select id from cost_revision where cost_instance_id=i.id and enabled order by revision_no desc limit 1) r on true
+ where cs.is_default
+   and not exists (
+     select 1 from cost_set_member csm
+       where csm.cost_set_id=cs.id and csm.cost_instance_id=i.id
+   )
 on conflict (cost_set_id,cost_instance_id) do nothing;

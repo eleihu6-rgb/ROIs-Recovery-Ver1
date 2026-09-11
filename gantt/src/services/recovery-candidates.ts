@@ -87,12 +87,23 @@ export interface RecoveryMetrics {
   changedRosterCount: number
   followOnImpactCount: number
   rosterStability: number
+  /**
+   * Direct cost priced entirely by the cost library (every component — transfer
+   * base, cross-base, cross-division, cross-role, roster change penalty, follow-on
+   * impact, DHD positioning — flows through cost_type revisions). `virtualCost`
+   * is no longer a separate additive component; whatever a planner used to encode
+   * in the hard-coded stability coefficient now lives in cost types 1015 / 1016.
+   */
   directCost: number
   dhdFlightCost: number
   /** Positive amount of DHD cost avoided by reusing the first DHD's destination base. */
   dhdCostSavings?: number
-  virtualCost: number
-  virtualCostWeight: number
+  /**
+   * Alias for `directCost`. Retained so existing UI / sort logic (which
+   * historically compared `totalCost`) keeps working unchanged. Will always
+   * equal `directCost` now that all stability penalties are priced by the
+   * cost library.
+   */
   totalCost: number
   currency: string
   /** P0-1 lite — per-component cost breakdown. Undefined when enrichment failed. */
@@ -801,9 +812,15 @@ const buildMetrics = (
   const crossRole = sourceCrew.rank !== targetCrew.rank ? 1 : 0
   const dhdFlightCost = positioning?.dhdFlightCost ?? 0
   const dhdCostSavings = destinationSplit?.dhdCostSavings ?? 0
+  // Direct cost is now computed entirely by the cost library through
+  // `enrichPlansWithLibraryCosts`. The value assembled here is only a
+  // non-library fallback (used if the cost-library HTTP call fails) so the UI
+  // can still render *some* number — and we keep the historical hard-coded
+  // coefficients so the fallback roughly matches the legacy behaviour.
+  // The bridge (`live-server/src/routes/recovery/recovery-cost.ts`) prices
+  // every component (incl. the stability-penalty 1015/1016 types) so the
+  // final `directCost` always equals `sum(breakdown.amount)`.
   const directCost = (mode === 'standby' || mode === 'cross-base-standby' ? 3200 : mode === 'swap' || mode === 'cross-base-swap' ? 1500 : 900) + crossBase * 1600 + crossDivision * 2200 + crossRole * 1200 + dhdFlightCost - dhdCostSavings
-  const virtualCost = changed * 260 + followOnImpactCount * 1800 + (mode === 'standby' || mode === 'cross-base-standby' ? 700 : 0)
-  const virtualCostWeight = 1
   const loadedRosterCount = Math.max(1, allGroups.length)
   // Keep the score aligned with the documented weighted model. Each count is
   // measured against the same loaded-Roster evaluation scope for comparison.
@@ -823,9 +840,10 @@ const buildMetrics = (
     directCost,
     dhdFlightCost,
     dhdCostSavings,
-    virtualCost,
-    virtualCostWeight,
-    totalCost: directCost + virtualCost * virtualCostWeight,
+    // `totalCost` is now an alias of `directCost` — both fields carry the
+    // cost-library-priced total. Sorting / display logic that reads
+    // `totalCost` continues to work without modification.
+    totalCost: directCost,
     currency: 'CNY',
   }
 }
@@ -1605,10 +1623,6 @@ const combineRecoveryMetrics = (options: RecoveryOption[], loadedRosterCount: nu
   const directCost = options.reduce((sum, option) => sum + option.metrics.directCost, 0)
   const dhdFlightCost = options.reduce((sum, option) => sum + option.metrics.dhdFlightCost, 0)
   const dhdCostSavings = options.reduce((sum, option) => sum + (option.metrics.dhdCostSavings ?? 0), 0)
-  const virtualCost = options.reduce((sum, option) => sum + option.metrics.virtualCost, 0)
-  const virtualCostWeight = options.length === 0
-    ? 1
-    : options.reduce((sum, option) => sum + option.metrics.virtualCostWeight, 0) / options.length
   const penalty = 0.30 * cancelledRosterCount + 0.20 * addedRosterCount + 0.15 * changedRosterCount + 0.35 * followOnImpactCount
   const rosterStability = Math.round(Math.max(0, Math.min(100, 100 - (100 * penalty) / Math.max(1, loadedRosterCount))) * 100) / 100
   return {
@@ -1621,9 +1635,10 @@ const combineRecoveryMetrics = (options: RecoveryOption[], loadedRosterCount: nu
     directCost,
     dhdFlightCost,
     dhdCostSavings,
-    virtualCost,
-    virtualCostWeight,
-    totalCost: directCost + virtualCost * virtualCostWeight,
+    // `totalCost` mirrors `directCost` (see `buildMetrics` note). The combined
+    // option's own `costBreakdown` is assembled by `enrichPlansWithLibraryCosts`
+    // from the child breakdowns so it still sums back to this `directCost`.
+    totalCost: directCost,
     currency: 'CNY',
   }
 }
@@ -1817,23 +1832,20 @@ export const optionToLibraryCostInput = (
   }
 }
 
-const sumVirtualCost = (option: RecoveryOption): number => option.metrics.virtualCost
-
 const recomputeMetricsForOption = (
   option: RecoveryOption,
   result: RecoveryLibraryCostResult,
 ): RecoveryOption => {
   const directCost = result.directCost ?? option.metrics.directCost
   const currency = result.directCost == null ? option.metrics.currency : result.currency
-  const virtualCost = sumVirtualCost(option)
-  const virtualCostWeight = option.metrics.virtualCostWeight
   return {
     ...option,
     metrics: {
       ...option.metrics,
       directCost,
       currency,
-      totalCost: directCost + virtualCost * virtualCostWeight,
+      // `totalCost` mirrors `directCost` — see `buildMetrics`.
+      totalCost: directCost,
       costBreakdown: result.breakdown,
       costNotes: result.notes,
       costEnrichmentFailed: result.directCost == null,
@@ -1853,8 +1865,6 @@ const recomputeCombinedMetrics = (subOptions: RecoveryOption[], baselineItems: R
       directCost: 0,
       dhdFlightCost: 0,
       dhdCostSavings: 0,
-      virtualCost: 0,
-      virtualCostWeight: 1,
       totalCost: 0,
       currency: 'CNY',
     }
@@ -1866,8 +1876,6 @@ const recomputeCombinedMetrics = (subOptions: RecoveryOption[], baselineItems: R
   const directCost = subOptions.reduce((sum, o) => sum + o.metrics.directCost, 0)
   const dhdFlightCost = subOptions.reduce((sum, o) => sum + o.metrics.dhdFlightCost, 0)
   const dhdCostSavings = subOptions.reduce((sum, o) => sum + (o.metrics.dhdCostSavings ?? 0), 0)
-  const virtualCost = subOptions.reduce((sum, o) => sum + o.metrics.virtualCost, 0)
-  const virtualCostWeight = subOptions.reduce((sum, o) => sum + o.metrics.virtualCostWeight, 0) / subOptions.length
   const loadedRosterCount = Math.max(1, baselineItems.length ? new Set(baselineItems.map((i) => `${i.crewId}:${i.pairingId}`)).size : subOptions.length)
   const penalty = 0.30 * cancelledRosterCount + 0.20 * addedRosterCount + 0.15 * changedRosterCount + 0.35 * followOnImpactCount
   const rosterStability = Math.round(Math.max(0, Math.min(100, 100 - (100 * penalty) / loadedRosterCount)) * 100) / 100
@@ -1881,9 +1889,9 @@ const recomputeCombinedMetrics = (subOptions: RecoveryOption[], baselineItems: R
     directCost,
     dhdFlightCost,
     dhdCostSavings,
-    virtualCost,
-    virtualCostWeight,
-    totalCost: directCost + virtualCost * virtualCostWeight,
+    // `totalCost` mirrors `directCost` — see `buildMetrics`. The combined
+    // option's breakdown is the concatenation of every child's breakdown.
+    totalCost: directCost,
     currency: subOptions[0].metrics.currency,
   }
 }

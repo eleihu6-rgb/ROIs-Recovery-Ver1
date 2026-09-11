@@ -78,6 +78,8 @@ type RevisionRow = {
 }
 type TypeRow = {
   id: number
+  /** cost_instance.id for the default (instance_no=1) row, used as the revision-lookup key. */
+  instanceId: number
   type_code: number
   calculator_code: string
 }
@@ -108,10 +110,15 @@ const buildComponents = (input: CostInput): Array<{ label: string; typeCode: num
     components.push({ label: `Cross-role augmentation ×${input.crossRole}`, typeCode: 1014, quantity: input.crossRole })
   }
   if (input.changed > 0 && !isStandby) {
-    components.push({ label: `Roster change penalty ×${input.changed}`, typeCode: 1009, quantity: input.changed })
+    // Replaced the previous 1009 (Short-notice roster change) reuse with a
+    // dedicated stability-penalty cost type (1015) so the breakdown row has
+    // a unique semantic meaning instead of colliding with the transfer base.
+    components.push({ label: `Roster change penalty ×${input.changed}`, typeCode: 1015, quantity: input.changed })
   }
   if (input.followOnImpactCount > 0) {
-    components.push({ label: `Follow-on impact ×${input.followOnImpactCount}`, typeCode: 3005, quantity: input.followOnImpactCount })
+    // Replaced the previous 3005 (Aircraft ferry sector) reuse with a
+    // dedicated follow-on penalty cost type (1016) for the same reason.
+    components.push({ label: `Follow-on impact ×${input.followOnImpactCount}`, typeCode: 1016, quantity: input.followOnImpactCount })
   }
   if (input.dhdOutboundSectors > 0) {
     components.push({ label: `DHD outbound ×${input.dhdOutboundSectors}`, typeCode: 2004, quantity: input.dhdOutboundSectors })
@@ -153,9 +160,17 @@ export default async function recoveryCostRoutes(fastify: FastifyInstance): Prom
     const typeByCode = new Map<number, TypeRow>()
     const instanceIds: number[] = []
     for (const row of instancesResult.rows) {
-      instanceIds.push(Number(row.instance_id))
+      const instanceId = Number(row.instance_id)
+      instanceIds.push(instanceId)
       const existing = typeByCode.get(Number(row.type_code))
-      if (!existing) typeByCode.set(Number(row.type_code), { id: Number(row.id), type_code: Number(row.type_code), calculator_code: row.calculator_code })
+      if (!existing) {
+        typeByCode.set(Number(row.type_code), {
+          id: Number(row.id),
+          instanceId,
+          type_code: Number(row.type_code),
+          calculator_code: row.calculator_code,
+        })
+      }
     }
     const revisionsByCostInstanceId = new Map<number, RevisionRow>()
     for (const id of instanceIds) {
@@ -202,7 +217,7 @@ export default async function recoveryCostRoutes(fastify: FastifyInstance): Prom
         notes.push(`Cost type ${component.typeCode} not installed — install the cost library seed first.`)
         continue
       }
-      const revision = revisionsByCostInstanceId.get(type.id)
+      const revision = revisionsByCostInstanceId.get(type.instanceId)
       if (!revision) {
         breakdown.push({
           label: component.label,
