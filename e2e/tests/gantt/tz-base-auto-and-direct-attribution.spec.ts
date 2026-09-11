@@ -103,6 +103,22 @@ const removeBaseFilter = async (page: Page, base: string): Promise<void> => {
   if ((await remove.count()) > 0) await remove.click()
 }
 
+const setRosterHover = (
+  page: Page,
+  taskId: number,
+  clientX: number,
+  clientY: number,
+): Promise<void> =>
+  page.evaluate(
+    ({ id, x, y }) => {
+      const t = (window as unknown as {
+        __ganttTest?: { setHoveredTaskForTest?: (id: number, x: number, y: number) => void }
+      }).__ganttTest
+      t?.setHoveredTaskForTest?.(id, x, y)
+    },
+    { id: taskId, x: clientX, y: clientY },
+  )
+
 test('RuleA+RuleB — base filter auto-switches timezone; UTC + direct attribution shows 8004 alert on hover', async ({
   page,
   request,
@@ -173,10 +189,10 @@ test('RuleA+RuleB — base filter auto-switches timezone; UTC + direct attributi
   const tzBeforeHover = await readTimezone(page)
   expect(tzBeforeHover.timezoneAirport, 'hover path must run in UTC for this regression').toBe('UTC')
 
-  await page.evaluate((id) => {
-    const t = (window as unknown as { __ganttTest?: { hoverRosterTask?: (id: number) => void } }).__ganttTest
-    t?.hoverRosterTask?.(id)
-  }, TARGET_TASK_ID)
+  // Drive the floating tooltip through the same code path the canvas uses
+  // on a real mouse hover. The tooltip itself only needs hoveredTaskId to
+  // render its content — hoverPosition is for placement.
+  await setRosterHover(page, TARGET_TASK_ID, 400, 200)
 
   const tooltip = page.locator('div.fixed', { hasText: 'Rule Violations' }).last()
   await expect(tooltip).toBeVisible({ timeout: 10_000 })
@@ -185,18 +201,17 @@ test('RuleA+RuleB — base filter auto-switches timezone; UTC + direct attributi
   await expect(eightRow, '8004 alert must surface on hover in UTC after Rule B fix').toBeVisible({
     timeout: 5_000,
   })
-  await expect(eightRow).toContainText(/113|135905|2026-09-1[12]/i)
-  await expect(eightRow).toContainText(/^[123]$/)
+  // The row carries data-rule-id (e.g. "8004/002") for the Alert Center parity.
+  await expect(eightRow).toHaveAttribute('data-rule-id', /8004\/002|8004\/001/)
+  // The message cell references the actual fleet mismatch and a date.
+  await expect(eightRow).toContainText(/Crew fleet|fleet|pairing|2026-09-1[12]/i)
 
   // Sanity: same direct attribution should still work in YVR (the previous "working" mode).
   await page.evaluate(() => {
     const t = (window as unknown as { __ganttTest?: { setTimezone?: (z: string, a: string) => void } }).__ganttTest
     t?.setTimezone?.('America/Vancouver', 'YVR')
   })
-  await page.evaluate((id) => {
-    const t = (window as unknown as { __ganttTest?: { hoverRosterTask?: (id: number) => void } }).__ganttTest
-    t?.hoverRosterTask?.(id)
-  }, TARGET_TASK_ID)
+  await setRosterHover(page, TARGET_TASK_ID, 400, 200)
   const yvrTooltip = page.locator('div.fixed', { hasText: 'Rule Violations' }).last()
   await expect(yvrTooltip).toBeVisible({ timeout: 5_000 })
   await expect(yvrTooltip.locator('[data-rule-code="8004"]').first()).toBeVisible()

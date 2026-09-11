@@ -466,7 +466,12 @@ export const ViolationTooltip = ({ scenarioId }: ViolationTooltipProps = {}) => 
 
             if (compact) {
               return (
-                <div key={gi} className="px-2.5 py-1.5">
+                <div
+                  key={gi}
+                  className="px-2.5 py-1.5"
+                  data-rule-code={g.ruleCode}
+                  data-rule-id={formatViolationRuleLabel(g)}
+                >
                   {/* Group header: SEVERITY  8056/006  [×4] */}
                   <div className="flex items-center gap-1.5">
                     <span
@@ -504,7 +509,12 @@ export const ViolationTooltip = ({ scenarioId }: ViolationTooltipProps = {}) => 
             }
 
             return (
-              <div key={gi} className="flex items-start gap-2 px-2.5 py-2">
+              <div
+                key={gi}
+                className="flex items-start gap-2 px-2.5 py-2"
+                data-rule-code={g.ruleCode}
+                data-rule-id={formatViolationRuleLabel(g)}
+              >
                 <span
                   className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: sevColor, boxShadow: `0 0 3px ${sevColor}40` }}

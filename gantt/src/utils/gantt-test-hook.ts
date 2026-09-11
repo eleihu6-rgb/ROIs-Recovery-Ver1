@@ -214,6 +214,14 @@ export interface GanttTestApi {
   hoverPairingSegment: (segId: number) => void
   /** Hover a roster flight task by id — sets "<crew> · <label> · <flight info>". */
   hoverRosterTask: (taskId: number) => void
+  /**
+   * Drive the floating violation tooltip by setting the gantt-view-store hover
+   * state with a synthetic (clientX, clientY). Mirrors the canvas onItemHover
+   * path so tests can assert the tooltip's data-rule-code rendering without
+   * needing to compute canvas-local puck coordinates. The tooltip itself
+   * only needs `hoveredTaskId` to render — `hoverPosition` is placement only.
+   */
+  setHoveredTaskForTest: (taskId: number, clientX: number, clientY: number) => void
   /** Set the gantt-selected timezone (drives status-line date #1). */
   setTimezone: (zoneId: string, airport: string) => void
   /** The airport's own IANA zoneId (status-line date #2 source), or undefined. */
@@ -1091,6 +1099,14 @@ const hoverRosterTask = (taskId: number): void => {
       useUiStore.getState().setStatusBarText(`${crewPart}  ·  ${task.assignment ?? task.assignmentGroup}  ·  ${time}`)
     }
   }
+}
+
+// Set the gantt-view-store hover state with a synthetic (clientX, clientY). Used by
+// tests that want to drive the floating violation tooltip without computing
+// canvas-local puck coordinates. Mirrors what canvas onItemHover does on a real
+// mouse move — the tooltip only needs hoveredTaskId to render content.
+const setHoveredTaskForTest = (taskId: number, clientX: number, clientY: number): void => {
+  useGanttViewStore.getState().setHoveredTask(taskId, clientX, clientY)
 }
 
 // Set the gantt-selected timezone (drives date #1 in the status line).
@@ -2429,6 +2445,7 @@ export const installGanttTestHook = (): void => {
     pairingSegments,
     hoverPairingSegment,
     hoverRosterTask,
+    setHoveredTaskForTest,
     setTimezone,
     airportZone,
     viewStoreWrites: () => viewStoreWriteCount,
