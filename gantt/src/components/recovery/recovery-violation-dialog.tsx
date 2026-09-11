@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, Eye, Loader2, Maximize2, Minimize2, ShieldAlert, Users } from 'lucide-react'
 import { AppDialog, Button, Popover, PopoverContent, PopoverTrigger } from '@rois/ui'
 import type { RosterItem } from '@/types'
@@ -405,6 +405,128 @@ async function logCrossBaseTrace(
     console.warn('[recovery] cross-base trace POST error', err)
   }
 }
+
+/**
+ * Memoized sub-table for the recovery Detail dialog. Isolated so that:
+ *   - Re-rendering the parent `RecoveryViolationDialog` (e.g. on filter change)
+ *     does NOT reconcile hundreds of `<tr>` rows unless the option's `changes`
+ *     array actually changed reference.
+ *   - Filtering / selecting a different option while the Detail dialog stays
+ *     open (rare but possible) only swaps the table contents, not the dialog
+ *     chrome.
+ *
+ * Reference equality on `changes` is enough because `updatePlanGroupOption`
+ * always returns a fresh option object with a fresh `changes` array whenever
+ * any change occurs — see `buildChanges` / `sortChangesByStartTime` in
+ * `recovery-candidates.ts`.
+ */
+const RecoveryDetailChangesTable = memo(function RecoveryDetailChangesTable({ changes }: { changes: RecoveryOption['changes'] }) {
+  return (
+    <div className="overflow-auto">
+      <table className="w-full border-collapse text-xs">
+        <thead className="bg-muted/70 text-left text-2xs text-muted-foreground">
+          <tr>
+            <th className="px-2 py-2">CrewID</th>
+            <th className="px-2 py-2">Roster</th>
+            <th className="px-2 py-2">PairingID</th>
+            <th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span></th>
+            <th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span></th>
+            <th className="px-2 py-2">Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          {changes.map((change, index) => (
+            <tr key={`${change.crewId}-${change.rosterId}-${index}`} className="border-b border-border/50">
+              <td className="px-2 py-2 font-mono">{change.crewId}</td>
+              <td className="px-2 py-2 font-mono">{change.rosterId}</td>
+              <td className="px-2 py-2 font-mono">{change.pairingId ?? '—'}</td>
+              <td className="max-w-56 border-l-2 border-sky-500 bg-sky-500/10 px-2 py-2 text-sky-800 dark:text-sky-100">{change.before}</td>
+              <td className="max-w-56 border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-2 text-emerald-800 dark:text-emerald-100">{change.after}</td>
+              <td className="px-2 py-2"><span className={changeTypeClass(change.changeType)}>{changeTypeLabel(change.changeType)}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+})
+
+/**
+ * Extracted Detail dialog — sibling of the main `RecoveryViolationDialog`
+ * rather than a child rendered inline in its body.
+ *
+ * Previously the Detail `<AppDialog>` lived inside the main dialog's body,
+ * so opening it forced React to re-render the entire body of the parent
+ * (PlanTree + PlanSummary + PlanGroup with potentially hundreds of options +
+ * the violation table) before mounting the dialog. That cascade made the
+ * click on a *filtered* option feel sluggish: filtered rows live in
+ * `excludedOptions` (typically the largest list) and the prior lookup also
+ * did two linear `.find()` scans per render.
+ *
+ * With this component, opening the Detail dialog only mounts `<RecoveryDetailDialog>`
+ * and its `RecoveryDetailChangesTable` — the parent dialog body is left alone.
+ */
+const RecoveryDetailDialog = memo(function RecoveryDetailDialog({
+  option,
+  open,
+  onOpenChange,
+  onPreview,
+}: {
+  option: RecoveryOption | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onPreview: (option: RecoveryOption) => void
+}) {
+  if (!option) return null
+  const hasPositioning = option.positioning != null
+  return (
+    <AppDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      data-testid="recovery-detail-dialog"
+      className="sm:max-w-[min(1050px,94vw)]"
+      icon={<Eye className="h-4 w-4" />}
+      title={`Recovery detail · ${option.title}${hasPositioning ? ' · DHD positioning' : ''}`}
+      bodyClassName="p-0"
+      footer={(
+        <div className="flex w-full items-center justify-between gap-2">
+          <Button className="h-7 gap-1 px-2" onClick={() => onPreview(option)}>
+            <Eye className="h-3.5 w-3.5" />Preview
+          </Button>
+          <Button variant="ghost" className="h-7 px-2" onClick={() => onOpenChange(false)}>Close</Button>
+        </div>
+      )}
+    >
+      <div className="p-3">
+        <div className="mb-3 grid grid-cols-3 gap-3 border-b border-border pb-3 sm:grid-cols-5">
+          {metric('Crew impact', option.metrics.affectedCrewCount)}
+          {metric('Roster impact', option.metrics.changedRosterCount)}
+          {metric('Stability', `${option.metrics.rosterStability}%`)}
+          {metric('Cost', money(option.metrics.totalCost, option.metrics.currency))}
+        </div>
+        <div className="mb-2 grid grid-cols-2 gap-2 text-2xs text-muted-foreground sm:grid-cols-3">
+          <div>Cancelled rosters: <span className="font-semibold text-foreground">{option.metrics.cancelledRosterCount}</span></div>
+          <div>Added rosters: <span className="font-semibold text-foreground">{option.metrics.addedRosterCount}</span></div>
+          <div>Follow-on impact: <span className="font-semibold text-foreground">{option.metrics.followOnImpactCount}</span></div>
+        </div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs font-semibold text-foreground">Before / after complete Roster changes</div>
+          <div className="flex flex-wrap items-center gap-2 text-2xs text-muted-foreground" aria-label="Roster change color legend">
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-500" />Cancelled</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-600" />Added</span>
+          </div>
+        </div>
+        <RecoveryDetailChangesTable changes={option.changes} />
+        <div className="mt-3 flex items-center gap-2 text-2xs text-muted-foreground">
+          <Users className="h-3.5 w-3.5" />Callout Standby retains the original SBY task and marks it with a yellow C indicator in the Live Gantt preview.
+        </div>
+      </div>
+    </AppDialog>
+  )
+})
+
 export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) => {
   const mainItems = useRosterStore((s) => s.main.rosterItems)
   const subItems = useRosterStore((s) => s.sub.rosterItems)
@@ -456,16 +578,27 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     return bestId
   }, [plans])
   const selectedPlan = plans ? planForType(plans, selectedPlanType) : null
+  // O(1) lookup across the active + filtered (excluded) option lists so the
+  // Detail dialog opens instantly — without this we linearly scan both lists
+  // on every render and a click on a filtered option (always in the tail of
+  // `excludedOptions`) was the slowest path.
+  const selectedPlanOptionsById = useMemo(() => {
+    if (!selectedPlan) return new Map<string, RecoveryOption>()
+    const map = new Map<string, RecoveryOption>()
+    for (const option of selectedPlan.options) {
+      map.set(option.id, option)
+      option.subOptions?.forEach((child) => map.set(child.id, child))
+    }
+    for (const option of selectedPlan.excludedOptions) {
+      if (!map.has(option.id)) map.set(option.id, option)
+      option.subOptions?.forEach((child) => { if (!map.has(child.id)) map.set(child.id, child) })
+    }
+    return map
+  }, [selectedPlan])
   const selectedOption = useMemo(() => {
-    if (!selectedPlan || !selectedOptionId) return null
-    // Search both the active and the filtered (Rule-checked out) lists so the
-    // Detail dialog opens for Filtered-tab rows too — their option objects are
-    // moved into `excludedOptions` by `updatePlanGroupOption` and would
-    // otherwise be unreachable from the detail-view lookup.
-    return selectedPlan.options.find((option) => option.id === selectedOptionId)
-      ?? selectedPlan.excludedOptions.find((option) => option.id === selectedOptionId)
-      ?? null
-  }, [selectedPlan, selectedOptionId])
+    if (!selectedOptionId) return null
+    return selectedPlanOptionsById.get(selectedOptionId) ?? null
+  }, [selectedPlanOptionsById, selectedOptionId])
   const executionOption = useMemo(() => {
     if (!plans || !executionOptionId) return null
     return allOptions(plans).find((option) => option.id === executionOptionId) ?? null
@@ -583,9 +716,18 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     void buildPlans(selectedAlerts.map((selectedAlert) => ({ ...selectedAlert, canRecover: true })))
   }, [open, selectedAlerts])
 
-  const selectOption = (option: RecoveryOption) => {
+  const selectOption = useCallback((option: RecoveryOption) => {
     setSelectedOptionId(option.id)
-  }
+  }, [])
+  // Open the Detail dialog for an option. Kept stable so `PlanGroup` rows
+  // don't re-render every time the parent dialog re-renders for unrelated
+  // reasons (filter tab changes, scroll position, etc.). The previous inline
+  // arrow `(option) => { selectOption(option); setDetailOpen(true) }` was
+  // recreated on every render and forced the entire option list to reconcile.
+  const openDetail = useCallback((option: RecoveryOption) => {
+    setSelectedOptionId(option.id)
+    setDetailOpen(true)
+  }, [])
 
   const selectPlanType = (planType: RecoveryPlans['roster']['id']) => {
     if (!plans) return
@@ -820,16 +962,14 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
                 selectedPlanType={selectedPlanType}
                 bestGroupId={bestGroupId}
               />
-              {selectedPlan && <PlanGroup group={selectedPlan} selectedOptionId={selectedOptionId} executionOptionId={executionOptionId} onSelect={selectOption} onToggleExecution={selectExecutionOption} onDetail={(option) => { selectOption(option); setDetailOpen(true) }} onPreview={previewInLive} onShowCostBreakdown={setCostBreakdownOption} />}
+              {selectedPlan && <PlanGroup group={selectedPlan} selectedOptionId={selectedOptionId} executionOptionId={executionOptionId} onSelect={selectOption} onToggleExecution={selectExecutionOption} onDetail={openDetail} onPreview={previewInLive} onShowCostBreakdown={setCostBreakdownOption} />}
               <div className="shrink-0 text-3xs text-muted-foreground/60">Stability: <span className="font-mono">{ROSTER_STABILITY_FORMULA}</span></div>
             </div>
           </div>}
         </section>
       </div>}
 
-      {detailOpen && selectedOption && <AppDialog open={detailOpen} onOpenChange={setDetailOpen} data-testid="recovery-detail-dialog" className="sm:max-w-[min(1050px,94vw)]" icon={<Eye className="h-4 w-4" />} title={`Recovery detail · ${selectedOption.title}${selectedOption.positioning ? ' · DHD positioning' : ''}`} bodyClassName="p-0" footer={<div className="flex w-full items-center justify-between gap-2"><Button className="h-7 gap-1 px-2" onClick={() => previewInLive(selectedOption)}><Eye className="h-3.5 w-3.5" />Preview</Button><Button variant="ghost" className="h-7 px-2" onClick={() => setDetailOpen(false)}>Close</Button></div>}>
-        <div className="p-3"><div className="mb-3 grid grid-cols-3 gap-3 border-b border-border pb-3 sm:grid-cols-5">{metric('Crew impact', selectedOption.metrics.affectedCrewCount)}{metric('Roster impact', selectedOption.metrics.changedRosterCount)}{metric('Stability', `${selectedOption.metrics.rosterStability}%`)}{metric('Cost', money(selectedOption.metrics.totalCost, selectedOption.metrics.currency))}</div><div className="mb-2 grid grid-cols-2 gap-2 text-2xs text-muted-foreground sm:grid-cols-3"><div>Cancelled rosters: <span className="font-semibold text-foreground">{selectedOption.metrics.cancelledRosterCount}</span></div><div>Added rosters: <span className="font-semibold text-foreground">{selectedOption.metrics.addedRosterCount}</span></div><div>Follow-on impact: <span className="font-semibold text-foreground">{selectedOption.metrics.followOnImpactCount}</span></div></div><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="text-xs font-semibold text-foreground">Before / after complete Roster changes</div><div className="flex flex-wrap items-center gap-2 text-2xs text-muted-foreground" aria-label="Roster change color legend"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-500" />Cancelled</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-600" />Added</span></div></div><div className="overflow-auto"><table className="w-full border-collapse text-xs"><thead className="bg-muted/70 text-left text-2xs text-muted-foreground"><tr><th className="px-2 py-2">CrewID</th><th className="px-2 py-2">Roster</th><th className="px-2 py-2">PairingID</th><th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span></th><th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span></th><th className="px-2 py-2">Change</th></tr></thead><tbody>{selectedOption.changes.map((change, index) => <tr key={`${change.crewId}-${change.rosterId}-${index}`} className="border-b border-border/50"><td className="px-2 py-2 font-mono">{change.crewId}</td><td className="px-2 py-2 font-mono">{change.rosterId}</td><td className="px-2 py-2 font-mono">{change.pairingId ?? '—'}</td><td className="max-w-56 border-l-2 border-sky-500 bg-sky-500/10 px-2 py-2 text-sky-800 dark:text-sky-100">{change.before}</td><td className="max-w-56 border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-2 text-emerald-800 dark:text-emerald-100">{change.after}</td><td className="px-2 py-2"><span className={changeTypeClass(change.changeType)}>{changeTypeLabel(change.changeType)}</span></td></tr>)}</tbody></table></div><div className="mt-3 flex items-center gap-2 text-2xs text-muted-foreground"><Users className="h-3.5 w-3.5" />Callout Standby retains the original SBY task and marks it with a yellow C indicator in the Live Gantt preview.</div></div>
-      </AppDialog>}
+      {detailOpen && selectedOption && <RecoveryDetailDialog option={selectedOption} open={detailOpen} onOpenChange={setDetailOpen} onPreview={previewInLive} />}
       <RecoveryCostBreakdownDialog
         open={costBreakdownOption !== null}
         onOpenChange={(open) => { if (!open) setCostBreakdownOption(null) }}
