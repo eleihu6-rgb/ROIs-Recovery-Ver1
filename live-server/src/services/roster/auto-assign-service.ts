@@ -1,4 +1,4 @@
-import { and, asc, between, desc, eq, gt, inArray, isNull, lte, or } from 'drizzle-orm'
+import { and, asc, between, desc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
 import { crew } from '../../models/crew/crew.js'
 import { crewBase } from '../../models/crew/crew-base.js'
@@ -31,6 +31,13 @@ export interface AutoAssignInput {
   policy?: { skipOnSoft?: boolean }
   /** Safety cap on pairings packed per crew. */
   maxPerCrew?: number
+  /**
+   * Packing strategy across the month:
+   *  - 'even' (default): level block hours across 7-day week buckets so the
+   *    roster is spread evenly instead of front-loaded on the first days.
+   *  - 'earliest': legacy greedy earliest-first pack.
+   */
+  distribution?: 'even' | 'earliest'
 }
 
 export type StepKind = 'filter' | 'consider' | 'skip' | 'assign'
@@ -146,6 +153,12 @@ export interface AutoAssignDeps {
     to: string,
   ) => Promise<PreviewRosterItem[]>
   fetchSegments: (fastify: FastifyInstance, pairingIds: number[]) => Promise<Map<number, SegmentRow[]>>
+  /**
+   * Scheduled block minutes per pairing (Σ segment sch-end − sch-str), computed
+   * in SQL so the 'even' packer can level flying hours across weeks WITHOUT
+   * pulling every segment row for every candidate. Matches `blockMinutesOf`.
+   */
+  fetchCandidateBlockMinutes: (fastify: FastifyInstance, pairingIds: number[]) => Promise<Map<number, number>>
   fetchRuleNames: (fastify: FastifyInstance, ruleCodes: string[]) => Promise<Map<string, string>>
   runLegality: typeof previewDraftLegality
 }
@@ -355,6 +368,21 @@ const defaultDeps: AutoAssignDeps = {
     return map
   },
 
+  async fetchCandidateBlockMinutes(fastify, pairingIds) {
+    const map = new Map<number, number>()
+    if (pairingIds.length === 0) return map
+    const rows = await fastify.db
+      .select({
+        pairingId: pairingSegment.pairingId,
+        blockMinutes: sql<number>`coalesce(sum(greatest(extract(epoch from (${pairingSegment.schEndDtUtc} - ${pairingSegment.schStrDtUtc})) / 60, 0)), 0)`,
+      })
+      .from(pairingSegment)
+      .where(and(inArray(pairingSegment.pairingId, pairingIds), notDeleted(pairingSegment.isDeleted)))
+      .groupBy(pairingSegment.pairingId)
+    for (const r of rows) map.set(r.pairingId, Math.round(Number(r.blockMinutes)))
+    return map
+  },
+
   async fetchRuleNames(fastify, ruleCodes) {
     const map = new Map<string, string>()
     const codes = [...new Set(ruleCodes.map((c) => Number(c)).filter((n) => Number.isFinite(n)))]
@@ -424,6 +452,7 @@ const planForCrew = async (
     fleets: string[] | null
     skipOnSoft: boolean
     maxPerCrew: number
+    distribution: 'even' | 'earliest'
   },
   deps: AutoAssignDeps,
 ): Promise<CrewPlan> => {
@@ -462,7 +491,6 @@ const planForCrew = async (
     message: `Found ${candidates.length} open pairing(s) at base ${ctx.base}, fleet(s) ${ctx.fleets.join('/')} in ${input.startDate}..${input.endDate}`,
   })
 
-  // ── Greedy earliest-first pack with cheap in-process checks ────────────────
   const accepted: AcceptedEntry[] = []
   const occupied: Array<{ start: number; end: number }> = []
 
@@ -479,44 +507,101 @@ const planForCrew = async (
     if (s != null && e != null) occupied.push({ start: s, end: e })
   }
 
+  // ── Eligibility pass (candidate order): cheap precheck + time parse ─────────
+  // no-slot skips (division/open-slot/rank, or unscheduled) are emitted here;
+  // survivors carry their parsed window for the selection stage below.
+  const eligible: Array<{ cand: CandidatePairing; actingRank: string; startMs: number; endMs: number }> = []
   for (const cand of candidates) {
-    if (accepted.length >= input.maxPerCrew) break
-
     const pre = await deps.precheck(fastify, crewId, cand.id)
     if (!pre.ok) {
       steps.push({ kind: 'skip', pairingId: cand.id, label: cand.label, reason: 'no-slot', message: pre.message })
       skipped.push({ pairingId: cand.id, label: cand.label, reason: 'no-slot', message: pre.message })
       continue
     }
-
     const startMs = toMs(cand.schStr)
     const endMs = toMs(cand.schEnd)
+    if (startMs == null || endMs == null) {
+      const msg = 'Pairing has no scheduled time'
+      steps.push({ kind: 'skip', pairingId: cand.id, label: cand.label, reason: 'no-slot', message: msg })
+      skipped.push({ pairingId: cand.id, label: cand.label, reason: 'no-slot', message: msg })
+      continue
+    }
+    eligible.push({ cand, actingRank: pre.actingRank, startMs, endMs })
+  }
+
+  // Emit a consider step, then either reserve the window (accept) or overlap-skip.
+  const evaluate = (e: (typeof eligible)[number]): boolean => {
     steps.push({
       kind: 'consider',
-      pairingId: cand.id,
-      label: cand.label,
-      startDt: toIso(cand.schStr),
-      endDt: toIso(cand.schEnd),
-      rank: pre.actingRank,
+      pairingId: e.cand.id,
+      label: e.cand.label,
+      startDt: toIso(e.cand.schStr),
+      endDt: toIso(e.cand.schEnd),
+      rank: e.actingRank,
     })
-
-    if (startMs == null || endMs == null) {
-      steps.push({ kind: 'skip', pairingId: cand.id, label: cand.label, reason: 'no-slot', message: 'Pairing has no scheduled time' })
-      skipped.push({ pairingId: cand.id, label: cand.label, reason: 'no-slot', message: 'Pairing has no scheduled time' })
-      continue
-    }
-
-    const clash = occupied.some((o) => timeRangesOverlap(startMs, endMs, o.start, o.end))
-    if (clash) {
+    if (occupied.some((o) => timeRangesOverlap(e.startMs, e.endMs, o.start, o.end))) {
       const msg = 'Time-overlaps a duty already on the roster (existing or just-picked)'
-      steps.push({ kind: 'skip', pairingId: cand.id, label: cand.label, reason: 'overlap', message: msg })
-      skipped.push({ pairingId: cand.id, label: cand.label, reason: 'overlap', message: msg })
-      continue
+      steps.push({ kind: 'skip', pairingId: e.cand.id, label: e.cand.label, reason: 'overlap', message: msg })
+      skipped.push({ pairingId: e.cand.id, label: e.cand.label, reason: 'overlap', message: msg })
+      return false
+    }
+    occupied.push({ start: e.startMs, end: e.endMs })
+    accepted.push({ cand: e.cand, actingRank: e.actingRank, items: [], blockMinutes: 0 })
+    return true
+  }
+
+  if (input.distribution === 'earliest') {
+    // ── Legacy greedy earliest-first pack ────────────────────────────────────
+    for (const e of eligible) {
+      if (accepted.length >= input.maxPerCrew) break
+      evaluate(e)
+    }
+  } else {
+    // ── Even pack: level block hours across 7-day week buckets ───────────────
+    // Bucket eligible by week index from startDate (candidate order = earliest-
+    // first within a week), then repeatedly feed the currently lightest week so
+    // flying hours spread across the month instead of front-loading week 1.
+    const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+    const startDayMs = Date.parse(`${input.startDate}T00:00:00Z`)
+    const weekOf = (ms: number): number => Math.max(0, Math.floor((ms - startDayMs) / WEEK_MS))
+
+    const blockByPairing = await deps.fetchCandidateBlockMinutes(
+      fastify,
+      eligible.map((e) => e.cand.id),
+    )
+
+    const queues = new Map<number, Array<(typeof eligible)[number]>>()
+    for (const e of eligible) {
+      const w = weekOf(e.startMs)
+      const q = queues.get(w)
+      if (q) q.push(e)
+      else queues.set(w, [e])
     }
 
-    // Tentatively accept — reserve its window so later candidates see it.
-    occupied.push({ start: startMs, end: endMs })
-    accepted.push({ cand, actingRank: pre.actingRank, items: [], blockMinutes: 0 })
+    // Seed each week's load from the existing roster's block minutes so weeks
+    // that already carry duty are treated as heavier.
+    const weekLoad = new Map<number, number>()
+    for (const it of existing) {
+      const s = toMs(it.schStrDtUtc)
+      const en = toMs(it.schEndDtUtc)
+      if (s != null && en != null && en > s) {
+        const w = weekOf(s)
+        weekLoad.set(w, (weekLoad.get(w) ?? 0) + (en - s) / 60_000)
+      }
+    }
+
+    while (accepted.length < input.maxPerCrew) {
+      const openWeeks = [...queues.entries()].filter(([, q]) => q.length > 0).map(([w]) => w)
+      if (openWeeks.length === 0) break
+      // Lightest week first; tie-break earliest week so the trace still reads
+      // chronologically when loads are equal.
+      openWeeks.sort((a, b) => (weekLoad.get(a) ?? 0) - (weekLoad.get(b) ?? 0) || a - b)
+      const w = openWeeks[0]
+      const e = queues.get(w)!.shift()!
+      if (evaluate(e)) {
+        weekLoad.set(w, (weekLoad.get(w) ?? 0) + (blockByPairing.get(e.cand.id) ?? 0))
+      }
+    }
   }
 
   // ── Expand accepted pairings to crew×segment PreviewRosterItem rows ────────
@@ -654,6 +739,7 @@ export async function planAutoAssign(
   const rpTo = input.rpTo ?? input.endDate
   const skipOnSoft = input.policy?.skipOnSoft ?? true
   const maxPerCrew = input.maxPerCrew ?? 50
+  const distribution = input.distribution ?? 'even'
 
   const crews: CrewPlan[] = []
   // Sequential (crew display order): each crew's plan is independent, but the
@@ -662,7 +748,7 @@ export async function planAutoAssign(
     const plan = await planForCrew(
       fastify,
       crewId,
-      { startDate: input.startDate, endDate: input.endDate, rpFrom, rpTo, fleets: input.fleets ?? null, skipOnSoft, maxPerCrew },
+      { startDate: input.startDate, endDate: input.endDate, rpFrom, rpTo, fleets: input.fleets ?? null, skipOnSoft, maxPerCrew, distribution },
       deps,
     )
     crews.push(plan)

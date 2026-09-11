@@ -132,7 +132,7 @@ export const AutoAssignDialog = () => {
       <div className="flex h-full min-h-0 flex-col gap-2 py-1" data-testid="auto-assign-body">
         {phase === 'planning' && (
           <p className="text-xs text-muted-foreground" data-testid="auto-assign-planning">
-            Computing plan… filtering open pairings, packing earliest-first, checking legality.
+            Computing plan… filtering open pairings, spreading flying hours evenly across the month, checking legality.
           </p>
         )}
         {phase === 'error' && (
