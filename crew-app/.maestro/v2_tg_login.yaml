@@ -1,0 +1,78 @@
+# v2 redesign · TG crew validation.
+# Logs in with the prefilled TG crew (35459), waits for the crew-portal roster
+# capture, then walks every v2 tab and the main pages, screenshotting each.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- assertVisible: "altair"
+- takeScreenshot: v2_tg_01_login
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- assertVisible:
+    id: "home-greeting"
+- takeScreenshot: v2_tg_02_home
+- tapOn:
+    id: "home-alarms"
+- assertVisible: "Upcoming Alarms"
+- takeScreenshot: v2_tg_03_home_alarms
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "qa-check-in"
+- assertVisible: "Check-In"
+- takeScreenshot: v2_tg_04_quick_checkin
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-schedule"
+- assertVisible:
+    id: "sched-title"
+# The list opens on the next flight day: its ticket card must show the prep row.
+- extendedWaitUntil:
+    visible: "LEAVE HOME"
+    timeout: 10000
+- takeScreenshot: v2_tg_05_schedule
+- tapOn:
+    id: "tab-global"
+- assertVisible: "Global view is on the way"
+- takeScreenshot: v2_tg_06_global
+- tapOn:
+    id: "tab-profile"
+- assertVisible:
+    id: "profile-crew-id"
+- assertVisible: "Crew 35459"
+- takeScreenshot: v2_tg_07_profile
+- tapOn:
+    id: "row-alarms"
+- assertVisible: "Alarms & Meetings"
+- assertVisible: "Get Ready"
+- takeScreenshot: v2_tg_08_profile_alarms
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "row-timezone"
+- extendedWaitUntil:
+    visible: "Airport Local.*"
+    timeout: 10000
+- takeScreenshot: v2_tg_09_timezone
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "row-preferences"
+- extendedWaitUntil:
+    visible: "Destination preferences.*"
+    timeout: 10000
+- takeScreenshot: v2_tg_10_preferences
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-home"
+- assertVisible:
+    id: "home-screen"

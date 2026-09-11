@@ -1,0 +1,20 @@
+# v2 · today's calendar meeting on the Schedule card (run after v2_tg_meetings.yaml; keeps session).
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp
+# Simulator keychain does not persist the kept session; sign in again (roster capture ~1-2 min).
+- tapOn:
+    id: "login-btn"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    id: "tab-schedule"
+- scrollUntilVisible:
+    element:
+      text: "Fleet standardisation briefing.*"
+    direction: UP
+    timeout: 30000
+- takeScreenshot: v2_tg_m4_schedule_today

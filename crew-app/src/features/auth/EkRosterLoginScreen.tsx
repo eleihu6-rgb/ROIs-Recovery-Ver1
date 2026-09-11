@@ -16,16 +16,29 @@ export function EkRosterLoginScreen({navigation, route}: Props) {
   useEffect(() => {
     const controller = new AbortController();
 
-    loadEkRosterSession(route.params, dispatch, controller.signal).catch(error => {
-      if (isEkRosterLoginAbortError(error)) {
-        return;
-      }
-      Alert.alert(
-        `Unable to load ${airline.name} roster`,
-        error instanceof Error ? error.message : 'Try again.',
-      );
-      navigation.goBack();
-    });
+    loadEkRosterSession(route.params, dispatch, controller.signal)
+      .then(result => {
+        // The roster is live; only the "keep me logged in" promise is broken.
+        // Warn without sending the crew back to the login screen.
+        if (result.persisted || !route.params.keepLogin) {
+          return;
+        }
+        Alert.alert(
+          `Signed in to ${airline.name}`,
+          'Your roster loaded, but this device could not save your login. '
+            + 'You will be asked to sign in again next time.',
+        );
+      })
+      .catch(error => {
+        if (isEkRosterLoginAbortError(error)) {
+          return;
+        }
+        Alert.alert(
+          `Unable to load ${airline.name} roster`,
+          error instanceof Error ? error.message : 'Try again.',
+        );
+        navigation.goBack();
+      });
 
     return () => controller.abort();
   }, [airline.name, dispatch, navigation, route.params]);

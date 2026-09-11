@@ -17,6 +17,12 @@ import { LoginScreen } from '../features/auth/LoginScreen';
 import { LoginCaptureScreen } from '../features/auth/LoginCaptureScreen';
 import { EkRosterLoginScreen } from '../features/auth/EkRosterLoginScreen';
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
+import { V2Navigator } from '../features/v2/V2Navigator';
+
+// v2 redesign (mock-mirror, Sep 2026): the 4-tab pill dock replaces the legacy
+// 6-tab bar. The legacy MainTabs below is retained until the v2 rollout is
+// signed off, then removed.
+const USE_V2 = true;
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -440,7 +446,7 @@ export function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {loggedIn || DEV_FORCE_MAIN ? (
-        <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen name="Main" component={USE_V2 ? V2Navigator : MainTabs} />
       ) : DEV_AUTOSTART_CAPTURE ? (
         // TEMP (sim autotest): boot straight into the portal capture, no login tap.
         <Stack.Screen

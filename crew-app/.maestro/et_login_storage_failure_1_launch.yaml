@@ -1,0 +1,9 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+# Phase A: launch (NOT clearState) so the app boots on the login screen with a
+# fresh AsyncStorage directory created during startup hydration.
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "login-screen"
+    timeout: 20000

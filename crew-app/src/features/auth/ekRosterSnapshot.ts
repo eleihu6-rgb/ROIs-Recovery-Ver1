@@ -116,10 +116,13 @@ export async function commitEkRosterSnapshot(
     throwIfAborted(signal);
   } catch (error) {
     if (attemptedSnapshotCommit) {
-      await restoreSnapshot(previousRaw);
+      // Best effort: the rollback writes to the same storage that just failed
+      // (e.g. the app's data container was reclaimed while the app was
+      // running), so a rollback failure must not mask the original error.
+      await restoreSnapshot(previousRaw).catch(() => undefined);
     }
     if (keychainService) {
-      await Keychain.resetGenericPassword({service: keychainService});
+      await Keychain.resetGenericPassword({service: keychainService}).catch(() => undefined);
     }
     throw error;
   }

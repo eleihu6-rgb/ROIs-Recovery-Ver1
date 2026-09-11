@@ -70,6 +70,13 @@ export function publishPersistedSession(payload: SessionPayload) {
   return _setSession(payload);
 }
 
+// The roster authenticated but this device could not store the session (the
+// Keychain or AsyncStorage write failed). The crew works from the in-memory
+// roster for this run and signs in again next launch; nothing was persisted.
+export function publishEphemeralSession(payload: SessionPayload) {
+  return _setSession(payload);
+}
+
 // Restore a persisted "Keep Login" session on app launch.
 export function loadAuthSession() {
   return async (dispatch: AppDispatch) => {

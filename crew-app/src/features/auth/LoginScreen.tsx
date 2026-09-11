@@ -29,6 +29,12 @@ import {
 } from './airlines';
 import type { Airline } from './airlines';
 import { colors, font, space, radius } from '../../theme';
+import { GradientScreen } from '../../components/v2/GradientScreen';
+import { AltairMark } from '../../components/v2/BrandLogo';
+import { PALETTES } from '../../theme/carrier';
+
+// v2 login palette: Altair sage/teal ground, white card, teal button.
+const LOGIN = PALETTES.altair;
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -65,8 +71,9 @@ export function LoginScreen({ navigation }: Props) {
   };
 
   return (
+    <GradientScreen palette={LOGIN}>
     <SafeAreaView style={styles.container} testID="login-screen">
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={LOGIN.g1} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -75,17 +82,11 @@ export function LoginScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           {/* Hero */}
+          {/* Hero — Altair compass (neutral brand before an airline is chosen). */}
           <View style={styles.hero}>
-            <View style={styles.logoCircle}>
-              <Svg width={34} height={34} viewBox="0 0 24 24">
-                <Path
-                  d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z"
-                  fill={colors.white}
-                />
-              </Svg>
-            </View>
-            <Text style={styles.title}>R'Bot</Text>
-            <Text style={styles.subtitle}>Travel With Love</Text>
+            <AltairMark size={72} />
+            <Text style={styles.title}>altair</Text>
+            <Text style={styles.subtitle}>ALWAYS A WAY FORWARD</Text>
           </View>
 
           {/* Card */}
@@ -173,6 +174,7 @@ export function LoginScreen({ navigation }: Props) {
         onClose={() => setPickerOpen(false)}
       />
     </SafeAreaView>
+    </GradientScreen>
   );
 }
 
@@ -269,7 +271,7 @@ function AirlinePicker({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.primary },
+  container: { flex: 1, backgroundColor: 'transparent' },
   scroll: { flexGrow: 1, paddingBottom: space.xxl32 },
 
   hero: { alignItems: 'center', paddingTop: 36, paddingBottom: 28 },
@@ -282,8 +284,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: space.lg16,
   },
-  title: { ...font.h1, color: colors.onPrimary, letterSpacing: 0.3 },
-  subtitle: { ...font.body, color: colors.onPrimaryMuted, marginTop: 6 },
+  // Mock #701: italic serif wordmark + spaced uppercase tagline.
+  title: { fontSize: 44, fontWeight: '500', fontStyle: 'italic', fontFamily: 'Georgia', color: colors.onPrimary, letterSpacing: -0.8, marginTop: 6 },
+  subtitle: { fontSize: 10, fontWeight: '600', letterSpacing: 3.2, color: LOGIN.inkSoft, marginTop: 12 },
 
   card: {
     backgroundColor: colors.card,
@@ -416,8 +419,8 @@ const styles = StyleSheet.create({
   keepText: { ...font.body, color: colors.ink, fontWeight: '600' },
 
   loginBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.lg,
+    backgroundColor: LOGIN.btn,
+    borderRadius: 12,
     paddingVertical: space.lg16,
     alignItems: 'center',
     marginTop: space.xl24,

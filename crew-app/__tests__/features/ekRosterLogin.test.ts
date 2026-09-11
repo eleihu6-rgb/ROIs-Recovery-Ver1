@@ -10,6 +10,9 @@ jest.mock('../../src/features/auth/authSlice', () => ({
   publishPersistedSession: (payload: unknown) => ({
     type: 'auth/publishPersistedSession', payload,
   }),
+  publishEphemeralSession: (payload: unknown) => ({
+    type: 'auth/publishEphemeralSession', payload,
+  }),
 }));
 
 import {
@@ -84,7 +87,9 @@ describe('EK roster login transaction', () => {
 
     const result = await loadEkRosterSession(params, dispatch as never);
 
-    expect(result).toBe(trips);
+    expect(result.trips).toBe(trips);
+    expect(result.persisted).toBe(true);
+    expect(result.persistenceError).toBeNull();
     expect(actions).toEqual([
       {type: 'trips/setTrips', payload: trips},
       {type: 'duties/setDuties', payload: duties},
@@ -125,12 +130,41 @@ describe('EK roster login transaction', () => {
     },
   );
 
-  it('does not publish any Redux state when atomic persistence fails', async () => {
-    (commitEkRosterSnapshot as jest.Mock).mockRejectedValue(new Error('disk full'));
+  it('signs the crew in for this run when atomic persistence fails', async () => {
+    // Simulator/deleted-container failure: AsyncStorage cannot create its temp
+    // file. The roster is real, so the login must survive it.
+    (commitEkRosterSnapshot as jest.Mock).mockRejectedValue(new Error('Failed to write value'));
+    const actions: Array<{type: string; payload: unknown}> = [];
+    const dispatch: jest.Mock = jest.fn(async action => {
+      actions.push(action);
+      return action;
+    });
+
+    const result = await loadEkRosterSession(params, dispatch as never);
+
+    expect(result.trips).toBe(trips);
+    expect(result.persisted).toBe(false);
+    expect(result.persistenceError?.message).toBe('Failed to write value');
+    expect(actions).toEqual([
+      {type: 'trips/setTrips', payload: trips},
+      {type: 'duties/setDuties', payload: duties},
+      {type: 'auth/publishEphemeralSession', payload: params},
+    ]);
+  });
+
+  it('still aborts when a failed persistence attempt races a cancellation', async () => {
+    const controller = new AbortController();
+    (commitEkRosterSnapshot as jest.Mock).mockImplementation(async () => {
+      controller.abort();
+      throw new Error('Failed to write value');
+    });
     const dispatch = jest.fn();
 
-    await expect(loadEkRosterSession(params, dispatch as never)).rejects.toThrow('disk full');
+    await expect(
+      loadEkRosterSession(params, dispatch as never, controller.signal),
+    ).rejects.toMatchObject({name: 'AbortError', message: 'EK roster login cancelled'});
 
+    expect(discardEkRosterSnapshot).toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
   });
 

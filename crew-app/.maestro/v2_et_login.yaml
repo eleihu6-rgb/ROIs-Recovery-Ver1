@@ -1,0 +1,48 @@
+# v2 redesign · ET crew validation.
+# Selects Ethiopian in the airline picker (prefills J4002), logs in through the
+# API adapter, then checks the emerald carrier ground and every v2 tab.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- takeScreenshot: v2_et_01_login
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- assertVisible:
+    id: "home-greeting"
+# Simulator keychain can't persist the ET session (pre-existing, covered by
+# et_login_storage_failure_*.yaml); dismiss the soft notice if it appears.
+- tapOn:
+    text: "OK"
+    optional: true
+- takeScreenshot: v2_et_02_home
+- tapOn:
+    id: "tab-schedule"
+- assertVisible:
+    id: "sched-title"
+- takeScreenshot: v2_et_03_schedule
+- tapOn:
+    id: "tab-profile"
+- assertVisible: "Crew J4002"
+- assertVisible: "Ethiopian Airlines"
+- takeScreenshot: v2_et_04_profile
+- tapOn:
+    id: "row-alarms"
+- assertVisible: "Alarms & Meetings"
+- takeScreenshot: v2_et_05_profile_alarms
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-home"
+- assertVisible:
+    id: "home-screen"
