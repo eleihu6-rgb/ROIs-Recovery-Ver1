@@ -35,7 +35,25 @@ const PUBLIC_PATHS = [
 /** Exact public exceptions that must not expose other methods or descendants. */
 const PUBLIC_EXACT_ROUTES = [
   { method: 'POST', path: '/api/mobile-roster/session' }, // Crew credential authentication; production requires HTTPS and mobile hardening
+  // Crew-app notification feed for F8/ET — same body-credential pattern as the
+  // mobile roster; the global JWT hook would otherwise reject them.
+  { method: 'POST', path: '/api/crew-app/v1/notifications' },
+  { method: 'POST', path: '/api/crew-app/v1/notifications/:notifId/read' },
 ]
+
+/**
+ * Match an exact route pattern, allowing `:param` segments to stand for one
+ * non-empty path segment. Unlike a prefix match this keeps the exemption bound
+ * to one method and one shape, so no other method or descendant is exposed.
+ */
+const matchesRoutePattern = (pattern: string, path: string): boolean => {
+  const patternParts = pattern.split('/')
+  const pathParts = path.split('/')
+  if (patternParts.length !== pathParts.length) return false
+  return patternParts.every((part, index) =>
+    part.startsWith(':') ? (pathParts[index]?.length ?? 0) > 0 : part === pathParts[index]
+  )
+}
 
 /**
  * Global JWT authentication hook.
@@ -51,7 +69,9 @@ export default fp(async (fastify: FastifyInstance) => {
     const path = request.url.split('?')[0]
     if (
       PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + '/'))
-      || PUBLIC_EXACT_ROUTES.some((route) => route.method === request.method && route.path === path)
+      || PUBLIC_EXACT_ROUTES.some(
+        (route) => route.method === request.method && matchesRoutePattern(route.path, path)
+      )
     ) return
 
     // Extract Bearer token
