@@ -357,7 +357,9 @@ async function legacy7305(source, ctx) {
     const off = await offsetForDuty(source, crew, row.start_secs ?? row.s, row.offset_min)
     list.push(['D', crew, row.id ?? row.activity_id ?? row.pairing_id ?? 0,
       row.pairing_id ?? 0, row.start_secs ?? row.s, row.end_secs ?? row.e,
-      row.end_including_rest_secs ?? row.end_rest_secs ?? row.e,
+      // 7305 counts consecutive DUTY days; post-duty rest is not duty — feed
+      // duty-end (mirror legality-recheck-core.mjs) so a clear day off breaks the run.
+      row.end_secs ?? row.e,
       off,
       row.assignment ?? row.code ?? '', row.assignment_group ?? '',
       row.attributes ?? '', row.label ?? '', boolYN(row.is_pre_assigned, isGround),

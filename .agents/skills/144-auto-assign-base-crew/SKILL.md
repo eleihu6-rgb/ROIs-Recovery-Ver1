@@ -30,9 +30,17 @@ process visible/animated instead of a black-box backend batch.
 1. Resolve crew **base** (`crew_base`, most-recent effDt) + **fleet quals** (request `fleets` overrides).
 2. Fetch OPEN candidates: `base=`, `fleet in`, `schStrDtUtc BETWEEN start..end` (SAME window semantics
    as `pairing-service.list` / the pairing pane), coverage open/partial, sorted asc → emit `filter` step.
-3. Greedy earliest-first pack with CHEAP in-process checks only: `precheckAssignment`
-   (division/open-slot/rank → `no-slot` skip) + `timeRangesOverlap` against existing roster AND
-   already-picked pairings (`overlap` skip). Cap `maxPerCrew` (default 50).
+3. Eligibility pass (candidate order): CHEAP in-process checks only — `precheckAssignment`
+   (division/open-slot/rank → `no-slot` skip) + time parse. Survivors → `eligible[]`. Then SELECT with
+   one of two strategies (`distribution`, default **`'even'`**):
+   - **`'even'`** (default): bucket eligible by **7-day week** from `startDate`, then greedily feed the
+     currently **lightest week** (least accumulated block minutes; tie-break earliest week, earliest
+     pairing within a week) → flying hours spread across the month instead of front-loading week 1.
+     Week load seeded from the crew's existing roster block minutes. Uses `fetchCandidateBlockMinutes`
+     (a SQL Σ-segment aggregate, NOT a per-candidate segment fetch) as the leveling metric.
+   - **`'earliest'`**: legacy greedy earliest-first (candidate order).
+   Both check `timeRangesOverlap` against existing roster AND already-picked pairings (`overlap` skip) at
+   pick time, and cap `maxPerCrew` (default 50).
 4. Expand accepted → crew×segment `PreviewRosterItem[]`, validate the ASSEMBLED roster ONCE with
    `previewDraftLegality` (full running roster incl. existing duty in `afterItems`).
 5. **Backtrack-trim**: severity 3 always removed; severity 1-2 removed too when `skipOnSoft` (default
@@ -45,8 +53,9 @@ process visible/animated instead of a black-box backend batch.
 - `src/services/roster/auto-assign-service.ts` — `planAutoAssign(fastify, input, deps?)` + all types.
   IO grouped behind injectable `AutoAssignDeps` (default = real impls) so Vitest can drive it with fakes.
 - `src/routes/roster/roster.ts` — `POST /auto-assign/plan` (Zod-validated), registered before `assign-flight`.
-- `tests/unit/auto-assign-service.test.ts` — 5 mocked cases (pack order, overlap, no-slot, 8002 sev-3
-  backtrack, 7505 sev-2 skipOnSoft on/off). Real multi-segment ADD round-trip fixtures.
+- `tests/unit/auto-assign-service.test.ts` — 6 mocked cases (pack order, overlap, no-slot, 8002 sev-3
+  backtrack, 7505 sev-2 skipOnSoft on/off, even-vs-earliest week spread). Real multi-segment ADD
+  round-trip fixtures.
 
 **Frontend (gantt):**
 - `src/services/auto-assign-api.ts` — client + response types (mirrors the backend shape; `startDt/endDt`
@@ -77,7 +86,8 @@ process visible/animated instead of a black-box backend batch.
 
 ## API contract
 Request: `{ crewIds: string[]≥1, startDate, endDate (YYYY-MM-DD), rpFrom?, rpTo? (both-or-neither, for
-7505/7507), fleets?: string[], policy?: { skipOnSoft?: boolean=true }, maxPerCrew?: int 1..200=50 }`.
+7505/7507), fleets?: string[], policy?: { skipOnSoft?: boolean=true }, maxPerCrew?: int 1..200=50,
+distribution?: 'even'(default)|'earliest' }`.
 Response: `{ crews: [{ crewId, crewName, base, fleets[], steps:(filter|consider|skip|assign)[],
 assigned:[{pairingId, rosterActingRank, label, startDt, endDt, blockMinutes}], skipped:[{pairingId, label,
 reason, ruleCode?, message}], summary:{assignedCount, skippedCount, blockMinutes} }],
@@ -92,6 +102,27 @@ summary:{crewCount, assignedTotal, skippedTotal} }`.
   GANTT_TEST_PASS=123456 npx playwright test tests/gantt/auto-assign-open-pairings-j4001.spec.ts
   --config=config/playwright.config.ts --reporter=list`. Right-click target = the name-column canvas
   `pane-header-canvas-roster-main` at `HEADER_HEIGHT(30) + ROW_HEIGHT(43)/2` for row 0.
+
+## Even distribution is RULE-DRIVEN (Rule 7305), not a packer cap
+Ryan's "first week too tight, last 3 weeks too loose" is solved by legality, not a hard cap in the
+packer. **Rule 7305** "Max Consecutive Duties Limitation" (Type=Days, cap=5, scope `FLY|CRAM|CRPM|RES`,
+severity 1) is a member of the LIVE pilot ruleset **workset 103**. Because step 4/5 validate the whole
+assembled roster via `previewDraftLegality` and the backtrack-trim drops any pairing with severity ≥1,
+7305 forces day-off gaps → the roster spreads across the month. The packer is **generic over rule code**
+— no packer change needed; making a rule "initiate" during packing = add it to workset 103 (`rule_set`
+row) + set severity ≥1. **No `cargo build`**: `param_json` + `rule_set` are runtime data. Users edit the
+cap in **Legality → Rule Sets** (`legality-param-table-editor.tsx` → `PATCH /api/legality/rule/:id/params`).
+- **7305 semantics ≠ calendar days**: it counts duty streaks with rest-gap logic (a clear day off resets),
+  so faithful proof = 7305 FIRES in the plan skip trace (`ruleCode:'7305'`), NOT a naive consecutive-date
+  recount (that overcounts). Test: `e2e/tests/gantt/auto-assign-7305-max-consec-j4006.spec.ts` (J4006).
+- **7305 consecutive-day boundary = duty-END, NOT duty-end+rest** (fixed 2026-09-10): the D-row builder in
+  `legality-recheck-core.mjs` `rule7305()` (~line 2156) feeds `row.end_secs` (duty-end) into the kernel's
+  col-6 day boundary. Do NOT revert to `end_including_rest_secs`/`end_rest_secs` — the 12h rest tail spills
+  into the next morning, welds a blank day off into the streak, and mis-shapes run boundaries. This shared
+  function drives both the live recheck and `previewDraftLegality` (packer trim), so the fix also stops the
+  packer from assigning 6 consecutive duty days. No Rust rebuild.
+- **7505** "Min # GDOs in a RP" is in 103 but is **per rostering period**, NOT a rolling Y-day window;
+  a true rolling days-off rule would need new Rust logic (rebuild + scope flag).
 
 ## Gotchas / open items
 - **Ruleset divergence**: the planner currently validates against the DB **default** active ruleset

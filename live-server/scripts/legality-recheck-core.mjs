@@ -2153,7 +2153,11 @@ export async function rule7305(source, ctx) {
     const off = await offsetForDuty(source, crew, row.start_secs ?? row.s, row.offset_min)
     list.push(['D', crew, row.id ?? row.activity_id ?? row.pairing_id ?? 0,
       row.pairing_id ?? 0, row.start_secs ?? row.s, row.end_secs ?? row.e,
-      row.end_including_rest_secs ?? row.end_rest_secs ?? row.e,
+      // 7305 counts consecutive DUTY days; the post-duty minimum rest is NOT duty.
+      // Feed the duty-end (not duty-end+rest) into the kernel's consecutive-day
+      // boundary so a clear calendar day off breaks the run instead of the rest
+      // tail spilling into the next morning and welding a blank day into the streak.
+      row.end_secs ?? row.e,
       off,
       row.assignment ?? row.code ?? '', row.assignment_group ?? '',
       row.attributes ?? '', row.label ?? '', boolYN(row.is_pre_assigned, isGround),
