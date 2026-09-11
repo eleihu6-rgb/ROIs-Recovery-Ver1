@@ -156,7 +156,7 @@ describe('cost library routes', () => {
     expect(res.json().message).toBe('quantity is required')
   })
 
-  it('sanitizes unexpected calculate errors as 500', async () => {
+  it('maps generic JS errors to a structured 500 with category=internal', async () => {
     service.calculate.mockRejectedValue(new Error('database connection failed: internal detail'))
     const app = await buildApp(admin)
     const res = await app.inject({
@@ -166,6 +166,155 @@ describe('cost library routes', () => {
     })
 
     expect(res.statusCode).toBe(500)
-    expect(res.json().message).toBe('Cost library request failed')
+    // Must NOT leak the raw error message
+    expect(res.json().message).not.toBe('database connection failed: internal detail')
+    // Must be a client-safe summary
+    expect(res.json().message).toMatch(/unexpected error/i)
+    expect(res.json().data).toEqual({
+      category: 'internal',
+      hint: expect.stringMatching(/administrator/i),
+      sqlState: null,
+    })
+  })
+
+  it('maps PostgreSQL FK violation (23503) to 409 with hint about referenced table', async () => {
+    const err = Object.assign(new Error('insert or update on table "cost_set_member" violates foreign key constraint'), {
+      code: '23503',
+      table: 'cost_set_member',
+      constraint: 'fk_member_instance',
+    })
+    service.deleteSet.mockRejectedValue(err)
+    const app = await buildApp(admin)
+    const res = await app.inject({ method: 'DELETE', url: '/sets/1' })
+
+    expect(res.statusCode).toBe(409)
+    const body = res.json()
+    expect(body.message).toMatch(/referenced by other data/i)
+    expect(body.data.category).toBe('conflict')
+    expect(body.data.sqlState).toBe('23503')
+    expect(body.data.hint).toMatch(/cost_set_member/)
+    // Raw constraint / table info must NOT leak into the user-facing message
+    expect(body.message).not.toMatch(/fk_member_instance/)
+  })
+
+  it('maps PostgreSQL unique violation (23505) to 409 with "duplicate" hint', async () => {
+    const err = Object.assign(new Error('duplicate key value violates unique constraint'), {
+      code: '23505',
+      constraint: 'uq_cost_set_name',
+    })
+    service.createSet.mockRejectedValue(err)
+    const app = await buildApp(admin)
+    const res = await app.inject({
+      method: 'POST',
+      url: '/sets',
+      payload: { name: 'dup', description: '', division: 'F8', enabled: true },
+    })
+
+    expect(res.statusCode).toBe(409)
+    const body = res.json()
+    expect(body.message).toMatch(/already exists/i)
+    expect(body.data.category).toBe('conflict')
+    expect(body.data.sqlState).toBe('23505')
+    expect(body.data.hint).toMatch(/different name/i)
+  })
+
+  it('maps PostgreSQL not-null violation (23502) to 400 and names the missing column', async () => {
+    const err = Object.assign(new Error('null value in column "unit_price" violates not-null constraint'), {
+      code: '23502',
+      column: 'unit_price',
+      table: 'cost_revision',
+    })
+    service.addRevision.mockRejectedValue(err)
+    const app = await buildApp(admin)
+    const res = await app.inject({
+      method: 'POST',
+      url: '/instances/1/revisions',
+      payload: {
+        expectedRevisionNo: 1,
+        calculatorCode: 'fixed',
+        effectiveFrom: '2026-01-01T00:00:00Z',
+        effectiveTo: null,
+        currencyCode: 'USD',
+        unitCode: 'HOUR',
+        unitPrice: 10,
+        paramsJson: {},
+        applicabilityJson: {},
+        reference: '',
+        ghPolicyRevisionId: null,
+      },
+    })
+
+    expect(res.statusCode).toBe(400)
+    const body = res.json()
+    expect(body.message).toMatch(/unit_price.*required/i)
+    expect(body.data.category).toBe('validation')
+    expect(body.data.sqlState).toBe('23502')
+  })
+
+  it('maps PostgreSQL bad text representation (22P02) to 400 with format hint', async () => {
+    const err = Object.assign(new Error('invalid input syntax for type bigint: "abc"'), {
+      code: '22P02',
+    })
+    service.updateInstance.mockRejectedValue(err)
+    const app = await buildApp(admin)
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/instances/999',
+      payload: { name: 'X', enabled: true },
+    })
+
+    expect(res.statusCode).toBe(400)
+    const body = res.json()
+    expect(body.message).toMatch(/not in the expected format/i)
+    expect(body.data.category).toBe('validation')
+    expect(body.data.sqlState).toBe('22P02')
+    // Raw pg message must not leak
+    expect(body.message).not.toMatch(/bigint/)
+  })
+
+  it('maps connection errors (ECONNREFUSED) to 503 with retry hint', async () => {
+    const err = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:5432'), { code: 'ECONNREFUSED' })
+    service.catalog.mockRejectedValue(err)
+    const app = await buildApp(planner)
+    const res = await app.inject({ method: 'GET', url: '/catalog' })
+
+    expect(res.statusCode).toBe(503)
+    const body = res.json()
+    expect(body.message).toMatch(/database is unreachable/i)
+    expect(body.data.category).toBe('unavailable')
+    expect(body.data.hint).toMatch(/DATABASE_URL/)
+    // Connection details must not leak
+    expect(body.message).not.toMatch(/127\.0\.0\.1/)
+  })
+
+  it('maps transaction conflict (40001 serialization_failure) to 503', async () => {
+    const err = Object.assign(new Error('could not serialize access'), { code: '40001' })
+    service.updateSet.mockRejectedValue(err)
+    const app = await buildApp(admin)
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/sets/1',
+      payload: { name: 'n', description: '', division: 'F8', enabled: true, expectedVersion: 1 },
+    })
+
+    expect(res.statusCode).toBe(503)
+    const body = res.json()
+    expect(body.message).toMatch(/concurrent update conflict/i)
+    expect(body.data.category).toBe('unavailable')
+    expect(body.data.hint).toMatch(/newer version/i)
+  })
+
+  it('maps developer error (42P01 undefined_table) to 500 with admin-contact hint', async () => {
+    const err = Object.assign(new Error('relation "cost_set" does not exist'), { code: '42P01' })
+    service.catalog.mockRejectedValue(err)
+    const app = await buildApp(planner)
+    const res = await app.inject({ method: 'GET', url: '/catalog' })
+
+    expect(res.statusCode).toBe(500)
+    const body = res.json()
+    expect(body.message).toMatch(/table is missing/i)
+    expect(body.data.category).toBe('internal')
+    expect(body.data.sqlState).toBe('42P01')
+    expect(body.message).not.toMatch(/cost_set/)
   })
 })

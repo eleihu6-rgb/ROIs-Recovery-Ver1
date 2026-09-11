@@ -1,6 +1,10 @@
 // Marks the environment as a React act() environment for tests using createRoot/act.
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
+// Extend Vitest's `expect` with jest-dom matchers (`toHaveTextContent`,
+// `toHaveAttribute`, …). Required for component tests under src/__tests__.
+import '@testing-library/jest-dom/vitest'
+
 // Node 26 exposes `localStorage` as a configurable getter that returns undefined,
 // shadowing the jsdom implementation. Polyfill with an in-memory store so tests that
 // exercise code using bare `localStorage` work correctly in the jsdom environment.

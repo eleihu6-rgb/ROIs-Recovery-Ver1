@@ -74,7 +74,6 @@ import resPairingRoutes from './routes/res-pairing/res-pairing.js'
 import mobileRosterRoutes from './routes/mobile-roster/mobile-roster.js'
 import recoveryRoutes from './routes/recovery/recovery.js'
 import recoveryCostRoutes from './routes/recovery/recovery-cost.js'
-import costLibraryRoutes from './routes/cost/cost-library.js'
 import { bumpBackendVersion, formatAppVersion } from './utils/app-version.js'
 import { resolveFiliale } from './utils/filiale.js'
 import { flushRosterPublishAdjustBatches } from './services/roster/roster-publish-outbound-service.js'
@@ -228,7 +227,6 @@ const start = async () => {
     await server.register(rosterViolationsRoutes, { prefix: '/api' })
     await server.register(recoveryRoutes, { prefix: '/api/recovery' })
     await server.register(recoveryCostRoutes, { prefix: '/api/recovery' })
-    await server.register(costLibraryRoutes, { prefix: '/api/cost-library' })
     await server.register(pairingCompositionRefreshAdminRoutes, { prefix: '/api/admin' })
     await server.register(mandayCreditRefreshAdminRoutes, { prefix: '/api/admin' })
     await server.register(scenarioKpiBackfillRoutes, { prefix: '/api/admin' })

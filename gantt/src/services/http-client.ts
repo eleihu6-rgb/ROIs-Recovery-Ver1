@@ -65,10 +65,25 @@ export const createHttpClient = (options: HttpClientOptions): AxiosInstance => {
         if (body.code === 200) {
           return body.data
         }
-        return Promise.reject(createNormalizedHttpError(
+        // The body is a failure envelope. Carry its structured `data`
+        // (category/hint/sqlState from the cost-library pg-error mapper and
+        // similar utilities) onto the thrown Error so call sites can branch
+        // on it without re-parsing the message string.
+        const errorData = (body && typeof body === 'object' && 'data' in body ? (body as { data: unknown }).data : null) as
+          | { category?: string; hint?: string | null; sqlState?: string | null }
+          | null
+        const err = createNormalizedHttpError(
           silenceIfAccessDenied(body.message || 'API Error', response.status),
           response.status,
-        ))
+        )
+        if (errorData && typeof errorData === 'object') {
+          Object.assign(err, {
+            category: typeof errorData.category === 'string' ? errorData.category : undefined,
+            hint: typeof errorData.hint === 'string' ? errorData.hint : undefined,
+            sqlState: typeof errorData.sqlState === 'string' ? errorData.sqlState : undefined,
+          })
+        }
+        return Promise.reject(err)
       }
       return response.data
     },

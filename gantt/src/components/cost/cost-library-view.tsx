@@ -3,16 +3,16 @@ import { ChevronDown, ChevronRight, Coins, Copy, Layers, ListPlus, Pencil, Plus,
 import { AppDialog, Button } from '@rois/ui'
 import { usePermission } from '@/hooks/use-permission'
 import { costLibraryApi } from '@/services/cost-library-api'
-import { costCode } from '@/types/cost-library'
+import { costCode, toNormalizedCostError, type NormalizedCostError } from '@/types/cost-library'
 import type { CostCatalog, CostInstance, CostRevision, CostSet, SetDraft } from '@/types/cost-library'
 import { CostDetail, costInputClass } from './cost-detail'
+import { CostErrorBanner } from './cost-error-banner'
 
 const actionClass = 'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40'
 const badgeClass = 'inline-flex shrink-0 items-center rounded-sm bg-muted px-1.5 py-0.5 text-2xs font-normal text-muted-foreground'
 const rowGridClass = 'grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-x-3 gap-y-2 px-4 py-3 @lg:grid-cols-[minmax(0,1fr)_6rem_7rem] @3xl:grid-cols-[minmax(0,2fr)_7rem_6rem_7rem_7rem]'
 const priceNumber = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 type DialogKind = 'new' | 'edit' | 'copy' | 'delete' | 'members' | 'instance' | 'delete-instance'
-const message = (error: unknown): string => error instanceof Error ? error.message : 'Request failed'
 export const CostLibraryView = ({ templates = false }: { templates?: boolean }): React.JSX.Element => {
   const [catalog, setCatalog] = useState<CostCatalog | null>(null)
   const [selectedSet, setSelectedSet] = useState<number | null>(null)
@@ -22,7 +22,10 @@ export const CostLibraryView = ({ templates = false }: { templates?: boolean }):
   const [history, setHistory] = useState<Record<number, CostRevision[]>>({})
   const [search, setCostSearch] = useState('')
   const [setSearch, setSetSearch] = useState('')
-  const [error, setError] = useState('')
+  // Structured error state replaces the previous plain string. Keeping
+  // `null` as the "no error" sentinel makes the UI conditional rendering
+  // explicit and avoids the old "Cost library request failed" toast.
+  const [error, setError] = useState<NormalizedCostError | null>(null)
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [dialog, setDialog] = useState<DialogKind | null>(null)
@@ -37,7 +40,7 @@ export const CostLibraryView = ({ templates = false }: { templates?: boolean }):
     setCatalog(data)
     setSelectedSet((id) => data.sets.some((s) => s.id === id) ? id : data.sets[0]?.id ?? null)
   }, [])
-  useEffect(() => { let live = true; const load = async (): Promise<void> => { try { const data = await costLibraryApi.catalog(); if (live) { setCatalog(data); setSelectedSet(data.sets[0]?.id ?? null) } } catch (e) { if (live) setError(message(e)) } }; void load(); return () => { live = false } }, [])
+  useEffect(() => { let live = true; const load = async (): Promise<void> => { try { const data = await costLibraryApi.catalog(); if (live) { setCatalog(data); setSelectedSet(data.sets[0]?.id ?? null); setError(null) } } catch (e) { if (live) setError(toNormalizedCostError(e)) } }; void load(); return () => { live = false } }, [])
   useEffect(() => { setSelectedInstance(null); setExpanded(new Set()) }, [templates])
   useEffect(() => { setLatestInstances(new Set()) }, [selectedSet, templates])
   useEffect(() => {
@@ -49,12 +52,12 @@ export const CostLibraryView = ({ templates = false }: { templates?: boolean }):
       try {
         const lists = await Promise.all(missing.map((i) => costLibraryApi.revisions(i.id)))
         if (active) setHistory((h) => ({ ...h, ...Object.fromEntries(missing.map((i, index) => [i.id, lists[index]])) }))
-      } catch (e) { if (active) setError(message(e)) }
+      } catch (e) { if (active) setError(toNormalizedCostError(e)) }
     }
     void load()
     return () => { active = false }
   }, [catalog, selectedSet, templates])
-  const run = async (operation: () => Promise<void>): Promise<void> => { setBusy(true); setError(''); try { await operation() } catch (e) { setError(message(e)) } finally { setBusy(false) } }
+  const run = async (operation: () => Promise<void>): Promise<void> => { setBusy(true); setError(null); try { await operation() } catch (e) { setError(toNormalizedCostError(e)) } finally { setBusy(false) } }
   const loadHistory = async (instance: CostInstance): Promise<void> => {
     const revisions = await costLibraryApi.revisions(instance.id)
     const policies = revisions.some((revision) => revision.calculatorCode === 'standby')
@@ -65,7 +68,7 @@ export const CostLibraryView = ({ templates = false }: { templates?: boolean }):
   }
   const set = catalog?.sets.find((s) => s.id === selectedSet)
   const openDialog = (kind: DialogKind, instance?: CostInstance): void => {
-    setError(''); setTarget(instance ?? null); setMode('shared')
+    setError(null); setTarget(instance ?? null); setMode('shared')
     setDraft(instance ? { name: instance.name, enabled: instance.enabled, description: '', division: '' } : kind === 'new' ? { name: '', description: '', division: catalog?.sets[0]?.division ?? '', enabled: true } : { name: kind === 'copy' ? `${set?.name ?? ''} copy` : set?.name ?? '', description: set?.description ?? '', division: set?.division ?? '', enabled: set?.enabled ?? true })
     setMembers(Object.fromEntries(set?.members.map((m) => [m.costInstanceId, m.costRevisionId]) ?? [])); setDialog(kind)
     if (kind === 'members' && catalog) void run(async () => { const lists = await Promise.all(catalog.instances.map((i) => costLibraryApi.revisions(i.id))); setHistory(Object.fromEntries(catalog.instances.map((i, index) => [i.id, lists[index]]))) })
@@ -81,7 +84,7 @@ export const CostLibraryView = ({ templates = false }: { templates?: boolean }):
     if (dialog === 'delete-instance' && target) { await costLibraryApi.deleteInstance(target.id); setSelectedInstance(null) }
     await reload(); if (next) setSelectedSet(next.id); setDialog(null)
   })
-  if (!catalog) return <div className="p-4 text-xs" data-testid="cost-library-loading">{error ? <><p role="alert">{error}</p><Button variant="outline" onClick={() => void run(reload)}>Retry</Button></> : 'Loading cost library...'}</div>
+  if (!catalog) return <div className="p-4 text-xs" data-testid="cost-library-loading">{error ? <CostErrorBanner error={error} onRetry={() => void run(reload)} onDismiss={() => setError(null)} testIdPrefix="cost-library-load-error" /> : 'Loading cost library...'}</div>
   const filtered = catalog.instances.filter((i) => (!templates || i.instanceNo === 1) && `${costCode(i)} ${i.name}`.toLowerCase().includes(search.toLowerCase()))
   const rows = filtered.filter((i) => selectedInstance ? i.id === selectedInstance : templates ? i.instanceNo === 1 : set?.members.some((m) => m.costInstanceId === i.id))
   const guarantees = [...new Map([...catalog.instances.map((i) => i.latestRevision), ...Object.values(history).flat()].filter((r) => r.calculatorCode === 'guarantee').map((r) => [r.id, r])).values()]
@@ -110,7 +113,11 @@ export const CostLibraryView = ({ templates = false }: { templates?: boolean }):
         <div className="flex shrink-0 items-center gap-1">{icon('Refresh cost library', RefreshCw, () => void run(async () => { await reload(); setHistory({}); setExpanded(new Set()) }))}{!templates && set && <>{allowed('BTN_EDIT') && icon('Edit cost set', Pencil, () => openDialog('edit'), 'cost-set-edit')}{allowed('BTN_COPY') && icon('Copy cost set', Copy, () => openDialog('copy'), 'cost-set-copy')}{allowed('BTN_ADD_RULES') && icon('Manage cost membership', ListPlus, () => openDialog('members'), 'cost-set-members')}{allowed('BTN_DELETE') && icon('Delete cost set', Trash2, () => openDialog('delete'), 'cost-set-delete')}</>}</div>
       </header>
       <div data-testid="cost-table-heading" className={`${rowGridClass} border-b border-border bg-muted/40 text-2xs text-muted-foreground`}><span>Cost ID / Description</span><span className="hidden @3xl:block">Category / Source</span><span className="text-right">Unit price</span><span className="hidden @3xl:block">Revision / Status</span><span className="hidden text-right @lg:block">Actions</span></div>
-      {error && !dialog && <p role="alert" className="p-3 text-xs text-destructive">{error}</p>}
+      {error && !dialog && (
+        <div className="px-4 pt-3" data-testid="cost-error-region">
+          <CostErrorBanner error={error} onRetry={() => void run(reload)} onDismiss={() => setError(null)} testIdPrefix="cost-table-error" />
+        </div>
+      )}
       {notice && <p role="status" className="p-3 text-xs text-muted-foreground">{notice}</p>}
       {rows.length === 0 && <p className="p-4 text-xs text-muted-foreground">No costs found.</p>}
       {rows.map((instance) => {
@@ -145,7 +152,9 @@ export const CostLibraryView = ({ templates = false }: { templates?: boolean }):
     <AppDialog open={dialog !== null} onOpenChange={(open) => { if (!open && !busy) setDialog(null) }} title={dialog === 'members' ? 'Manage cost membership' : dialog === 'instance' ? 'Edit cost instance' : dialog === 'delete-instance' ? 'Delete cost instance' : `${dialog === 'new' ? 'New' : dialog === 'edit' ? 'Edit' : dialog === 'copy' ? 'Copy' : 'Delete'} cost set`} data-testid="cost-dialog" footer={<><Button variant="ghost" disabled={busy} onClick={() => setDialog(null)}>Cancel</Button><Button data-testid="cost-dialog-save" disabled={busy || (!draft.name.trim() && dialog !== 'members')} onClick={() => void submit()}>{dialog?.startsWith('delete') ? 'Delete' : 'Save'}</Button></>}>
       <div className="flex flex-col gap-3 text-xs">
         {dialog === 'members' ? catalog.instances.map((i) => <div key={i.id} className="flex items-center gap-2 border-b border-border pb-2"><label className="flex min-w-0 flex-1 items-center gap-2"><input type="checkbox" aria-label={`Include ${costCode(i)}`} checked={members[i.id] !== undefined} onChange={(e) => setMembers((m) => { const next = { ...m }; if (e.target.checked) next[i.id] = i.latestRevision.id; else delete next[i.id]; return next })} /><span>{costCode(i)} {i.name}</span></label><select aria-label={`Revision ${costCode(i)}`} className={`${costInputClass} max-w-36`} disabled={members[i.id] === undefined || busy} value={members[i.id] ?? i.latestRevision.id} onChange={(e) => setMembers({ ...members, [i.id]: Number(e.target.value) })}>{(history[i.id] ?? [i.latestRevision]).map((r) => <option key={r.id} value={r.id}>Revision {r.revisionNo}{r.id === i.latestRevision.id ? ' (latest)' : ''}</option>)}</select></div>) : dialog?.startsWith('delete') ? <p>Delete {target?.name ?? set?.name}?</p> : <><label>Name<input aria-label="Name" className={costInputClass} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>{dialog === 'copy' ? <label>Cost instances<select aria-label="Copy mode" className={costInputClass} value={mode} onChange={(e) => setMode(e.target.value as 'shared' | 'independent')}><option value="shared">Use existing instances</option><option value="independent">Create independent copies</option></select></label> : <>{dialog !== 'instance' && <><label>Description<input aria-label="Description" className={costInputClass} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></label><label>Division<input aria-label="Division" className={costInputClass} value={draft.division} onChange={(e) => setDraft({ ...draft, division: e.target.value })} /></label></>}<label className="flex items-center gap-2"><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />Enabled</label></>}{dialog === 'instance' && target?.instanceNo !== 1 && allowed('BTN_DELETE') && <Button variant="destructive" onClick={() => setDialog('delete-instance')}><Trash2 className="mr-1 h-3 w-3" />Delete instance</Button>}</>}
-        {error && <p role="alert" className="text-destructive">{error}</p>}
+        {error && (
+          <CostErrorBanner error={error} compact onDismiss={() => setError(null)} testIdPrefix="cost-dialog-error" />
+        )}
       </div>
     </AppDialog>
   </div>

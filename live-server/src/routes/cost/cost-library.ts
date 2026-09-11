@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireMenuAccess } from '../../utils/menu-access.js'
 import { getOrResolvePermissionContext } from '../../services/permission/permission-service.js'
 import { success, error } from '../../utils/response.js'
+import { mapPgError, isPgError } from '../../utils/pg-error.js'
 import { CostLibraryError, CostLibraryService } from '../../services/cost/cost-library-service.js'
 import { idSchema, setSchema, revisionSchema, inputsSchema } from '../../services/cost/cost-validation.js'
 
@@ -23,8 +24,24 @@ export default async function costLibraryRoutes(fastify: FastifyInstance): Promi
       catch (err) {
         if (err instanceof z.ZodError) return error(reply,400,err.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; '))
         if (err instanceof CostLibraryError) return error(reply,err.statusCode,err.message)
-        request.log.error({ err },'Cost library request failed')
-        return error(reply,500,'Cost library request failed')
+        // Map PG / network / driver errors to a structured payload so the UI can
+        // show an actionable message + hint instead of "Cost library request failed".
+        // The full server-side error (with stack + raw PG message) is still logged.
+        const payload = mapPgError(err)
+        request.log.error({
+          err,
+          sqlState: isPgError(err) ? (err as { code?: string }).code : undefined,
+          category: payload.category,
+        }, 'Cost library request failed')
+        return reply.code(payload.status).send({
+          code: payload.status,
+          data: {
+            category: payload.category,
+            hint: payload.hint ?? null,
+            sqlState: payload.sqlState ?? null,
+          },
+          message: payload.message,
+        })
       }
     } })
   }
