@@ -18,9 +18,12 @@ import {
   firstFlightDepartureUtcExpr,
   lastFlightArrivalUtcExpr,
 } from './assignment-overlap-rest-sql.mjs'
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 
 const toDate = (value) => (value instanceof Date ? value : new Date(value))
 const dateSql = (value) => toDate(value).toISOString().slice(0, 19).replace('T', ' ')
+// Audit column: updated_by = user(legality_recheck), e.g. tiao(legality_recheck)
+const REVIOL_STAMP = formatUserModule(resolveActorFromArgv(), 'legality_recheck')
 const normalizeDivision = (value) => {
   const v = String(value ?? '').trim().toUpperCase()
   if (v === 'C' || v === 'CC' || v === 'CABIN') return 'C'
@@ -1160,12 +1163,12 @@ export function buildSeedSource(db, scenarioId, ctx) {
         if (!Number.isFinite(pairingId) || !Number.isFinite(dutySeq) || !Number.isFinite(fdpMin)) continue
         await db.query(
           `update f8.pairing_segment
-              set duty_sch_fdp_min = $3, updated_by = 'legality_recheck', updated_at = now()
+              set duty_sch_fdp_min = $3, updated_by = $4, updated_at = now()
             where pairing_id = $1 and duty_seq = $2
               and coalesce(is_deleted, 0) = 0
               and duty_sch_fdp_min is null
               and coalesce(duty_is_manual_modify, 0) <> 1`,
-          [pairingId, dutySeq, fdpMin],
+          [pairingId, dutySeq, fdpMin, REVIOL_STAMP],
         )
       }
     },

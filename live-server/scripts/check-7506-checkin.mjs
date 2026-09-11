@@ -23,6 +23,7 @@ import path from 'node:path'
 import pg from 'pg'
 import { readDatabaseUrl, crewOffsets } from './check-7501-sdfd.mjs'
 import { loadRulesetRule, fieldRaw } from './legality-ruleset-params.mjs'
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 
 const { Client } = pg
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -33,7 +34,8 @@ const BIN = path.join(REPO, 'rule-engine-rs', 'target', 'release', 'check-7506')
 // not the dropped varchar rule_group_code column.
 const RULE_CODE = '7506'
 const SEVERITY = 1 // Soft / yellow (DB rule severity = 1)
-const CREATED_BY = 'rust_7506'
+// Audit columns: created_by/updated_by = user(check_7506_checkin), e.g. tiao(check_7506_checkin)
+const CREATED_BY = formatUserModule(resolveActorFromArgv(), 'check_7506_checkin')
 
 function argFlag(name, fallback) {
   const i = process.argv.indexOf(name)

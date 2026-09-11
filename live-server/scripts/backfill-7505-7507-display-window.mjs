@@ -13,6 +13,7 @@
  */
 import pg from 'pg'
 import { calendarRpDisplayWindow, parseRpDatesFrom7505Message } from './legality-rp-window.mjs'
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 
 const args = process.argv.slice(2)
 const getArg = (name, def) => {
@@ -29,6 +30,8 @@ const IDENTIFIER = /^[a-z][a-z0-9_]*$/
 if (!IDENTIFIER.test(schema)) {
   throw new Error(`invalid schema: ${schema}`)
 }
+// Audit column: updated_by = user(backfill_7505_7507_window), e.g. tiao(backfill_7505_7507_window)
+const UPDATED_BY = formatUserModule(resolveActorFromArgv(), 'backfill_7505_7507_window')
 
 const client = new pg.Client({ connectionString: DB_URL })
 await client.connect()
@@ -55,9 +58,9 @@ try {
             set window_start_dt = $2::timestamptz,
                 window_end_dt = $3::timestamptz,
                 updated_at = now(),
-                updated_by = 'backfill-7505-7507-display-window'
+                updated_by = $4
           where id = $1`,
-        [row.id, win.window_start_dt, win.window_end_dt],
+        [row.id, win.window_start_dt, win.window_end_dt, UPDATED_BY],
       )
     }
     updated += 1

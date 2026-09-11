@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import pg from 'pg'
 import { loadRulesetRules, fieldRaw } from './legality-ruleset-params.mjs'
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 
 const { Client } = pg
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -35,7 +36,8 @@ const BIN = path.join(REPO, 'rule-engine-rs', 'target', 'release', 'check-8002-c
 // not the dropped varchar rule_group_code column.
 const RULE_CODE = '8002'
 const SEVERITY = 2 // Overridable / WARNING
-const MARKER = 'rust_8002_credit' // created_by — separates these from the BH-window 8002 rows
+// Audit columns: created_by/updated_by = user(check_8002_credit) — separates these from the BH-window 8002 rows
+const MARKER = formatUserModule(resolveActorFromArgv(), 'check_8002_credit')
 
 function hhmmToHours(raw) {
   const s = String(raw ?? '').trim()

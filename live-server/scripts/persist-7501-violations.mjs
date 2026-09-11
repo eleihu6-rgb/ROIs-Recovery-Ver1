@@ -16,7 +16,7 @@
  * 7501 rows for the group first.
  *
  * Usage:
- *   node live-server/scripts/persist-7501-violations.mjs [minLimits] [--from 2026-06-01 --to 2026-07-01]
+ *   node live-server/scripts/persist-7501-violations.mjs [minLimits] [--from 2026-06-01 --to 2026-07-01] [--user <userCode>]
  */
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
@@ -35,6 +35,7 @@ import {
 } from './check-7501-sdfd.mjs'
 
 const { Client } = pg
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 void __dirname
 
@@ -42,6 +43,8 @@ const GROUP_CODE = 'pbs_solver_ruleset'
 const RULE_CODE = '7501'
 const SEVERITY = 1 // rule 7501 configured severity (yellow)
 const UNIT = 'RH'
+// Audit columns: created_by/updated_by = user(persist_7501), e.g. tiao(persist_7501)
+const PERSIST_STAMP = formatUserModule(resolveActorFromArgv(), 'persist_7501')
 
 function argFlag(name, fallback) {
   const i = process.argv.indexOf(name)
@@ -125,7 +128,7 @@ async function main() {
       batch.forEach((v, idx) => {
         const b = idx * 13
         placeholders.push(
-          `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},now(),'rust_7501_sdfd','rust_7501_sdfd')`,
+          `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},now(),'${PERSIST_STAMP}','${PERSIST_STAMP}')`,
         )
         const startDt = new Date(v.windowStartSecs * 1000).toISOString()
         const endDt = new Date(v.windowEndSecs * 1000).toISOString()

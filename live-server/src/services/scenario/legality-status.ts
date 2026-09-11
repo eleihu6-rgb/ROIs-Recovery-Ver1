@@ -12,10 +12,15 @@ import { liveSchema, scenarioSchema } from '../../utils/db-schema.js'
 export type EnsureState = 'READY' | 'COMPUTING' | 'FAILED'
 
 /** Spawn the (Rust-backed) scenario legality compute for one scenario, detached. */
-function spawnCompute(fastify: FastifyInstance, scenarioId: number, airlineSchema?: string): void {
+function spawnCompute(fastify: FastifyInstance, scenarioId: number, airlineSchema?: string, actor?: string | null): void {
   // live-server runs with cwd = live-server/, so the script path is relative to it.
   const script = path.resolve(process.cwd(), 'scripts/scenario-legality.mjs')
-  const child = spawn(process.execPath, [script, String(scenarioId)], {
+  const args = [script, String(scenarioId)]
+  // Forward the acting user so the child stamps scenario.rule_violation.created_by
+  // as e.g. "tiao(legality_recheck)". Falls back to 'system' for background triggers.
+  const safeActor = (actor ?? '').trim() || 'system'
+  args.push('--user', safeActor)
+  const child = spawn(process.execPath, args, {
     detached: true,
     stdio: 'ignore',
     // The detached script publishes a completion signal; it needs the airline schema
@@ -66,7 +71,7 @@ const isSeedLegalityScenario = (meta: { status: string | null; file_type: string
 export async function ensureLegality(
   fastify: FastifyInstance,
   scenarioId: number,
-  options?: { airlineSchema?: string },
+  options?: { airlineSchema?: string; actor?: string | null },
 ): Promise<EnsureLegalityResult> {
   const pool = fastify.pgPool
   const live = liveSchema()
@@ -154,18 +159,18 @@ export async function ensureLegality(
     client.release()
   }
 
-  if (won) spawnCompute(fastify, scenarioId, options?.airlineSchema)
+  if (won) spawnCompute(fastify, scenarioId, options?.airlineSchema, options?.actor)
   return { state: 'COMPUTING', paramsStale, computedAt, errorText: null }
 }
 
 /** Force a recompute regardless of freshness, clearing the params_stale flag. Used by the
  *  manual "Recheck" on out-of-window scenarios. */
-export async function forceRecompute(fastify: FastifyInstance, scenarioId: number): Promise<EnsureState> {
+export async function forceRecompute(fastify: FastifyInstance, scenarioId: number, actor?: string | null): Promise<EnsureState> {
   await fastify.pgPool.query(
     `update ${scenarioSchema()}.legality_status set status='COMPUTING', params_stale=false,
         computed_version = computed_version - 1, updated_at = now() where scenario_id = $1`,
     [scenarioId],
   )
-  spawnCompute(fastify, scenarioId)
+  spawnCompute(fastify, scenarioId, undefined, actor)
   return 'COMPUTING'
 }

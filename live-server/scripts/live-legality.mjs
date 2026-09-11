@@ -38,6 +38,7 @@ import {
   lastFlightArrivalUtcExpr,
 } from './assignment-overlap-rest-sql.mjs'
 import { publishViolationsUpdated, legalityRecheckRedisKey } from './live-legality-publish.mjs'
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const IS_MAIN = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
@@ -1491,12 +1492,12 @@ export function liveSource(db, fromIso, toExclusiveIso) {
         if (!Number.isFinite(pairingId) || !Number.isFinite(dutySeq) || !Number.isFinite(fdpMin)) continue
         await db.query(
           `update pairing_segment
-              set duty_sch_fdp_min = $3, updated_by = 'legality_recheck', updated_at = now()
+              set duty_sch_fdp_min = $3, updated_by = $4, updated_at = now()
             where pairing_id = $1 and duty_seq = $2
               and coalesce(is_deleted, 0) = 0
               and duty_sch_fdp_min is null
               and coalesce(duty_is_manual_modify, 0) <> 1`,
-          [pairingId, dutySeq, fdpMin],
+          [pairingId, dutySeq, fdpMin, formatUserModule(USER, 'legality_recheck')],
         )
       }
     },
@@ -1520,9 +1521,12 @@ export function liveSource(db, fromIso, toExclusiveIso) {
 const COLS = ['crew_id', 'pairing_id', 'duty_seq', 'ruleset_id', 'rule_code', 'rule_instance', 'scope_key',
   'start_dt', 'end_dt', 'window_start_dt', 'window_end_dt', 'severity', 'actual_value', 'limit_value', 'unit', 'message', 'created_by', 'updated_by']
 const CONFLICT = '(crew_id, pairing_id, duty_seq, ruleset_id, rule_code, rule_instance, scope_key, start_dt)'
+// audit columns: created_by/updated_by = user(legality_recheck), e.g. tiao(legality_recheck)
+const USER = resolveActorFromArgv()
+const REVIOL_STAMP = formatUserModule(USER, 'legality_recheck')
 const UPDATE = `end_dt=excluded.end_dt, window_start_dt=excluded.window_start_dt, window_end_dt=excluded.window_end_dt,
   severity=excluded.severity, actual_value=excluded.actual_value,
-  limit_value=excluded.limit_value, unit=excluded.unit, message=excluded.message, computed_at=now(), updated_by='legality_recheck'`
+  limit_value=excluded.limit_value, unit=excluded.unit, message=excluded.message, computed_at=now(), updated_by='${REVIOL_STAMP}'`
 const ROLLING_8002_DELETE_LOOKBACK_DAYS = 365
 
 async function main() {
@@ -1591,7 +1595,7 @@ async function main() {
     for (let i = 0; i < all.length; i += 2000) {
       const chunk = all.slice(i, i + 2000).map((r) => [r.crew_id, r.pairing_id, r.duty_seq, RULESET_ID,
         r.rule_code, r.rule_instance, r.scope_key ?? '', r.start_dt, r.end_dt, r.window_start_dt ?? null, r.window_end_dt ?? null,
-        r.severity, r.actual_value, r.limit_value, r.unit, r.message, 'legality_recheck', 'legality_recheck'])
+        r.severity, r.actual_value, r.limit_value, r.unit, r.message, REVIOL_STAMP, REVIOL_STAMP])
       const q = buildBulkInsert('rule_violation', COLS, chunk, CONFLICT, UPDATE)
       if (q) await db.query(q.text, q.values)
     }

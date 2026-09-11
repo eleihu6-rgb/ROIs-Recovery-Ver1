@@ -42,18 +42,20 @@ export default async function violationsInitAdminRoutes(fastify: FastifyInstance
     const ruleGroupCode = parsed.data.ruleGroupCode ?? 'flair_gantt_rule'
     const yearsBack = parsed.data.yearsBack ?? 1
     const airline = await resolveFiliale(fastify)
+    // Current logged-in user (admin trigger). Falls back to 'system' for nightly cron / no-auth.
+    const triggeredBy = request.authUser?.userCode ?? 'system'
 
     await fastify.violationsInitQueue.add(
       'violationsInit:start',
-      { airline, ruleGroupCode, yearsBack, resetProgress: true },
+      { airline, ruleGroupCode, yearsBack, resetProgress: true, triggeredBy },
     )
 
     fastify.log.info(
-      { airline, ruleGroupCode, yearsBack, triggeredBy: request.authUser!.userCode },
+      { airline, ruleGroupCode, yearsBack, triggeredBy },
       'Violations init manually triggered',
     )
 
-    return reply.send({ code: 200, data: { airline, ruleGroupCode, yearsBack }, message: 'Violations init job queued' })
+    return reply.send({ code: 200, data: { airline, ruleGroupCode, yearsBack, triggeredBy }, message: 'Violations init job queued' })
   })
 
   /**

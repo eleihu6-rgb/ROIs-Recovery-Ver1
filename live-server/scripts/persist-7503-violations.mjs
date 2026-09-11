@@ -21,6 +21,7 @@ import pg from 'pg'
 import { readParams, crewOffsets, extractWorkPeriods, toTsv, runEngine } from './check-7503-wocl.mjs'
 
 const { Client } = pg
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ENV_PATH = path.join(path.resolve(__dirname, '../..'), 'live-server', '.env')
 
@@ -28,6 +29,8 @@ const GROUP_CODE = 'pbs_solver_ruleset'
 const RULE_CODE = '7503'
 const SEVERITY = 2
 const UNIT = 'WOCL'
+// Audit columns: created_by/updated_by = user(persist_7503), e.g. tiao(persist_7503)
+const PERSIST_STAMP = formatUserModule(resolveActorFromArgv(), 'persist_7503')
 
 function readDatabaseUrl() {
   const env = readFileSync(ENV_PATH, 'utf8')
@@ -66,7 +69,7 @@ async function main() {
       batch.forEach((v, idx) => {
         const b = idx * 13
         placeholders.push(
-          `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},now(),'rust_7503','rust_7503')`,
+          `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},now(),'${PERSIST_STAMP}','${PERSIST_STAMP}')`,
         )
         const inputHash = createHash('sha256').update(`${v.crewId}|${v.pairingId}|${v.startSecs}|7503`).digest('hex')
         values.push(

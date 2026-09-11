@@ -32,17 +32,19 @@ async function liveRulesetRefreshWindow(fastify: FastifyInstance): Promise<{ fro
   }
 }
 
-async function refreshLiveRuleset(fastify: FastifyInstance, worksetId: number): Promise<void> {
+async function refreshLiveRuleset(fastify: FastifyInstance, worksetId: number, actor: string): Promise<void> {
   const window = await liveRulesetRefreshWindow(fastify)
   if (!window) return
-  spawnLiveRecheck(fastify, String(worksetId), window.from, window.to)
+  spawnLiveRecheck(fastify, String(worksetId), window.from, window.to, null, null, actor)
 }
 
-async function refreshAllLiveRulesets(fastify: FastifyInstance, rulesetIds: number[], ruleCodes?: string[] | null): Promise<void> {
+async function refreshAllLiveRulesets(
+  fastify: FastifyInstance, rulesetIds: number[], actor: string, ruleCodes?: string[] | null,
+): Promise<void> {
   const window = await liveRulesetRefreshWindow(fastify)
   if (!window) return
   for (const id of rulesetIds) {
-    spawnLiveRecheck(fastify, String(id), window.from, window.to, ruleCodes)
+    spawnLiveRecheck(fastify, String(id), window.from, window.to, ruleCodes, null, actor)
   }
 }
 
@@ -281,7 +283,9 @@ export default async function legalityRoutes(fastify: FastifyInstance) {
       // + its dependents). null → whole group. The client passes this back to POST /recheck so
       // a single-rule edit recomputes one rule (~seconds), not all 9 (~minutes).
       const recheckRuleCodes = await affectedRuleCodes(fastify.pgPool, id)
-      if (affected.liveWorksetIds.length > 0) await refreshAllLiveRulesets(fastify, affected.liveWorksetIds, recheckRuleCodes)
+      if (affected.liveWorksetIds.length > 0) {
+        await refreshAllLiveRulesets(fastify, affected.liveWorksetIds, userOf(request), recheckRuleCodes)
+      }
       return success(reply, {
         paramJson: body.paramJson,
         affectsLiveDefault: affected.affectsLiveDefault,
@@ -492,7 +496,7 @@ export default async function legalityRoutes(fastify: FastifyInstance) {
          VALUES ($1, $2, 'RULE', $3, $4, $5, $6, $6) RETURNING id, name, category, type, division, enabled, updated_by`,
         [b.name.trim(), division, type, enabled, filiale, userOf(request)])
       await fastify.pgPool.query('COMMIT')
-      if (enabled && types.includes('LIVE')) await refreshLiveRuleset(fastify, Number(rows[0].id))
+      if (enabled && types.includes('LIVE')) await refreshLiveRuleset(fastify, Number(rows[0].id), userOf(request))
       return success(reply, { id: Number(rows[0].id), name: rows[0].name, category: rows[0].category, type: rows[0].type, division: rows[0].division, enabled: rows[0].enabled, updatedBy: rows[0].updated_by, ruleCount: 0, isDefault: rows[0].enabled })
     } catch (err) { await fastify.pgPool.query('ROLLBACK'); return error(reply, 500, (err as Error).message) }
   })
@@ -546,7 +550,7 @@ export default async function legalityRoutes(fastify: FastifyInstance) {
       const { rows } = await fastify.pgPool.query<{ id: number; name: string; category: string | null; type: string; division: string; enabled: boolean }>(
         `UPDATE workset SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING id, name, category, type, division, enabled`, vals)
       if (rows.length === 0) return error(reply, 404, `workset ${wid} not found`)
-      if (refreshLive) await refreshLiveRuleset(fastify, wid)
+      if (refreshLive) await refreshLiveRuleset(fastify, wid, userOf(request))
       return success(reply, { id: Number(rows[0].id), name: rows[0].name, category: rows[0].category, type: rows[0].type, division: rows[0].division, enabled: rows[0].enabled })
     } catch (err) { return error(reply, 500, (err as Error).message) }
   })
@@ -667,7 +671,15 @@ export default async function legalityRoutes(fastify: FastifyInstance) {
     if (cur === 'computing') return success(reply, { status: 'computing' }) // dedupe concurrent triggers
     await fastify.redis.set(k('status'), 'computing', { EX: 1800 })
     // ruleCodes (optional) scopes the recompute to a subset; omitted → whole group.
-    spawnLiveRecheck(fastify, rulesetId, b.from, b.to, Array.isArray(b.ruleCodes) ? b.ruleCodes : null)
+    spawnLiveRecheck(
+      fastify,
+      rulesetId,
+      b.from,
+      b.to,
+      Array.isArray(b.ruleCodes) ? b.ruleCodes : null,
+      null,
+      userOf(request),
+    )
     return success(reply, { status: 'computing' })
   })
 

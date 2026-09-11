@@ -110,7 +110,7 @@ const scheduleMutationRefresh = (
   result: Awaited<ReturnType<typeof executeRosterAssignment>>,
   username: string,
 ): void => {
-  void recheckLiveRosterMutation(fastify, rulesetId ?? undefined, result.dates, result.crewIds)
+  void recheckLiveRosterMutation(fastify, rulesetId ?? undefined, result.dates, result.crewIds, username)
     .catch((err) => fastify.log.warn({ err }, 'Recovery legality recheck failed'))
   if (result.dates.length === 0) return
 

@@ -25,6 +25,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import pg from 'pg'
 import { createClient } from 'redis'
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 import {
   computeViolations, buildBulkInsert,
   crewTeamRowsToMap, REST_LEAVE_CODES,
@@ -74,6 +75,10 @@ const LIVE_SCHEMA = quoteIdent(readEnvDefault('LIVE_SCHEMA', 'f8'))
 const SCENARIO_SCHEMA = quoteIdent(readEnvDefault('SCENARIO_SCHEMA', 'scenario'))
 export const applySchemas = (text) =>
   text.replaceAll('f8.', `${LIVE_SCHEMA}.`).replaceAll('scenario.', `${SCENARIO_SCHEMA}.`)
+// Audit stamp for scenario.rule_violation.created_by — produced by the scenario recheck
+// module (e.g. "tiao(legality_recheck)" or "system(legality_recheck)").
+const SCENARIO_USER = resolveActorFromArgv()
+const SCENARIO_STAMP = formatUserModule(SCENARIO_USER, 'legality_recheck')
 
 export const recalculateScenarioAccRefTz = async (client, scenarioId, rulesetId) =>
   recalculateAccRefTz(client, {
@@ -1568,9 +1573,10 @@ export function scenarioSource(db, scenarioId, ctx) {
 // tag — the scenario read path (routes/scenario/legality.ts) selects/filters by scenario_id only,
 // so this column's value isn't queried. (Migrated from rule_group_code → ruleset_id alongside
 // f8.* + scenario.legality_status; see 2026-06-23-scenario-rule-violation-rule-group-code-to-ruleset-id.sql.)
+// created_by = user(legality_recheck) — current logged-in user (admin POST /recheck) or 'system'.
 const COLS = ['scenario_id', 'roster_version', 'crew_id', 'pairing_id', 'duty_seq', 'ruleset_id',
   'rule_code', 'rule_instance', 'scope_key', 'start_dt', 'end_dt', 'window_start_dt', 'window_end_dt',
-  'severity', 'actual_value', 'limit_value', 'unit', 'message']
+  'severity', 'actual_value', 'limit_value', 'unit', 'message', 'created_by']
 const CONFLICT = '(scenario_id, crew_id, pairing_id, duty_seq, ruleset_id, rule_code, rule_instance, scope_key)'
 const UPDATE = `roster_version=excluded.roster_version, start_dt=excluded.start_dt, end_dt=excluded.end_dt,
   window_start_dt=excluded.window_start_dt, window_end_dt=excluded.window_end_dt,
@@ -1618,7 +1624,7 @@ async function main() {
         const chunk = all.slice(i, i + 2000).map((r) => [SCENARIO_ID, rosterVersion, r.crew_id, r.pairing_id,
           r.duty_seq, ctx.rulesetId, r.rule_code, r.rule_instance, r.scope_key ?? '', r.start_dt, r.end_dt,
           r.window_start_dt ?? null, r.window_end_dt ?? null, r.severity,
-          r.actual_value, r.limit_value, r.unit, r.message])
+          r.actual_value, r.limit_value, r.unit, r.message, SCENARIO_STAMP])
         const q = buildBulkInsert('scenario.rule_violation', COLS, chunk, CONFLICT, UPDATE)
         if (q) await db.query(q.text, q.values)
       }

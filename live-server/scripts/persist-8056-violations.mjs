@@ -24,6 +24,7 @@ import { extractDuties, toTsv, runEngine } from './check-8056-spacing.mjs'
 import { loadRulesetRule, fieldRaw } from './legality-ruleset-params.mjs'
 
 const { Client } = pg
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.resolve(__dirname, '../..')
 const ENV_PATH = path.join(REPO, 'live-server', '.env')
@@ -32,6 +33,8 @@ const GROUP_CODE = 'pbs_solver_ruleset'
 const RULE_CODE = '8056'
 const SEVERITY = 2 // Overridable / WARNING
 const UNIT = 'HOUR'
+// Audit columns: created_by/updated_by = user(persist_8056), e.g. tiao(persist_8056)
+const PERSIST_STAMP = formatUserModule(resolveActorFromArgv(), 'persist_8056')
 
 async function readRuleParams(c) {
   const rule = await loadRulesetRule(c, 8056)
@@ -102,7 +105,7 @@ async function main() {
       batch.forEach((v, idx) => {
         const b = idx * 13
         placeholders.push(
-          `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},now(),'rust_8056','rust_8056')`,
+          `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},now(),'${PERSIST_STAMP}','${PERSIST_STAMP}')`,
         )
         const startDt = new Date(v.gapStartSecs * 1000).toISOString()
         const endDt = new Date(v.gapEndSecs * 1000).toISOString()

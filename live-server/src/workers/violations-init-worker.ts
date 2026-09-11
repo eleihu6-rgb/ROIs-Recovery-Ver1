@@ -6,6 +6,7 @@ import { env } from '../config/index.js'
 import { attachBullmqErrorLogger, getBullmqRedisConnection } from '../utils/bullmq-redis.js'
 import { ruleCheckDataService } from '../services/rule-check/rule-check-data-service.js'
 import { computeWindowSums } from '../services/rule-check/flight-history.js'
+import { formatUserModule } from '../utils/user-module.js'
 
 // ---------------------------------------------------------------------------
 // Local type mirror (avoids importing @rois/rule-engine at module load time)
@@ -110,6 +111,7 @@ export interface ViolationsInitStartData {
   ruleGroupCode: string   // e.g. 'ccar121_gantt'
   yearsBack: number       // 3 for historical init, 1 for nightly refresh
   resetProgress: boolean  // false = resume; true = start fresh (nightly)
+  triggeredBy?: string    // userCode of the actor (admin trigger or 'system' for nightly cron)
 }
 
 export interface ViolationsInitCrewData {
@@ -118,6 +120,7 @@ export interface ViolationsInitCrewData {
   crewId: string
   dateFrom: string  // YYYY-MM-DD
   dateTo: string
+  triggeredBy?: string  // propagated from the orchestrator (userCode or 'system')
 }
 
 // ---------------------------------------------------------------------------
@@ -254,8 +257,13 @@ async function deleteCrewViolations(
 async function bulkInsertViolations(
   fastify: FastifyInstance,
   rows: RuleViolationRow[],
+  actor: string,
 ): Promise<void> {
   if (rows.length === 0) return
+  // audit columns: created_by/updated_by = user(module), e.g. tiao(violations_init)
+  const module = 'violations_init'
+  const createdBy = formatUserModule(actor, module)
+  const updatedBy = createdBy
 
   const BATCH = 500
   for (let offset = 0; offset < rows.length; offset += BATCH) {
@@ -264,9 +272,9 @@ async function bulkInsertViolations(
     const placeholders: string[] = []
 
     batch.forEach((row, idx) => {
-      const b = idx * 14
+      const b = idx * 16
       placeholders.push(
-        `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},$${b + 14},now(),'violations_init','violations_init')`,
+        `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},$${b + 14},now(),$${b + 15},$${b + 16})`,
       )
       values.push(
         row.crew_id,
@@ -283,6 +291,8 @@ async function bulkInsertViolations(
         row.unit,
         row.message,
         row.input_hash,
+        createdBy,
+        updatedBy,
       )
     })
 
@@ -355,7 +365,14 @@ async function handleOrchestrate(
     await queue.addBulk(
       chunk.map(crewId => ({
         name: 'violationsInit:crew',
-        data: { airline, ruleGroupCode, crewId, dateFrom, dateTo } satisfies ViolationsInitCrewData,
+        data: {
+          airline,
+          ruleGroupCode,
+          crewId,
+          dateFrom,
+          dateTo,
+          triggeredBy: data.triggeredBy,
+        } satisfies ViolationsInitCrewData,
       })),
     )
   }
@@ -508,7 +525,7 @@ async function handleCrew(
 
   // 7. Replace violations for this crew + rule group atomically
   await deleteCrewViolations(fastify, crewId, ruleGroupCode)
-  await bulkInsertViolations(fastify, violations)
+  await bulkInsertViolations(fastify, violations, data.triggeredBy ?? 'system')
 
   // 8. Cache new input hash so the next run can skip unchanged crews
   await storeHash(fastify, airline, ruleGroupCode, crewId, inputHash)

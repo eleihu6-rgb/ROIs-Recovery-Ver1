@@ -39,7 +39,7 @@ export const refreshLiveLegalityAndManday = async (
 ): Promise<void> => {
   const crewIds = [...new Set((input.crewIds ?? []).map(String).filter((id) => id.trim().length > 0))]
   await Promise.all([
-    recheckLiveRosterMutation(fastify, undefined, input.legalityDates, crewIds),
+    recheckLiveRosterMutation(fastify, undefined, input.legalityDates, crewIds, input.updatedBy),
     recomputeMandayAndNotify(fastify, {
       crewIds,
       startDt: input.startDt,

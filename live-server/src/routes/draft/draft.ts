@@ -292,7 +292,7 @@ export default async function draftRoutes(fastify: FastifyInstance) {
     }
 
     // Check the mutated RP, or the three-RP fallback when dates are unavailable.
-    await recheckLiveRosterMutation(fastify, rulesetId, [...refDates], affectedCrewIds)
+    await recheckLiveRosterMutation(fastify, rulesetId, [...refDates], affectedCrewIds, username)
 
     // Notify clients of the roster change (credit/crew stats arrive via the async
     // manday-updated push after the worker recomputes).

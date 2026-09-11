@@ -34,7 +34,10 @@ export default async function scenarioLegalityRoutes(fastify: FastifyInstance): 
 
     let state: Awaited<ReturnType<typeof ensureLegality>>
     try {
-      state = await ensureLegality(fastify, scenarioId, { airlineSchema: requestSchema(request) })
+      state = await ensureLegality(fastify, scenarioId, {
+        airlineSchema: requestSchema(request),
+        actor: request.authUser?.userCode ?? null,
+      })
     } catch (err) {
       request.log.error({ err, scenarioId }, 'ensureLegality failed')
       return reply.code(404).send({ code: 404, data: null, message: String(err) })
@@ -98,7 +101,7 @@ export default async function scenarioLegalityRoutes(fastify: FastifyInstance): 
     if (Number.isNaN(scenarioId)) {
       return reply.code(400).send({ code: 400, data: null, message: 'invalid id' })
     }
-    const state = await forceRecompute(fastify, scenarioId)
+    const state = await forceRecompute(fastify, scenarioId, request.authUser?.userCode ?? null)
     return reply.send({ code: 200, data: { status: state }, message: 'ok' })
   })
 }

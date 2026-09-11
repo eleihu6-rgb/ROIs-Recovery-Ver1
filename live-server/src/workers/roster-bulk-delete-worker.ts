@@ -156,6 +156,7 @@ export const processRosterBulkDelete = async (
           rulesetId,
           [result!.firstSchStrDtUtc, result!.lastSchStrDtUtc],
           result!.crewIds,
+          username,
         )
         stages.rechecking.status = 'completed'
         stages.rechecking.finishedAt = new Date().toISOString()

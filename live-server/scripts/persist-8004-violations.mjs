@@ -24,6 +24,7 @@ import { extractData, toTsv, runEngine } from './check-8004-competency.mjs'
 import { loadRulesetRule, fieldRaw } from './legality-ruleset-params.mjs'
 
 const { Client } = pg
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ENV_PATH = path.join(path.resolve(__dirname, '../..'), 'live-server', '.env')
 
@@ -31,6 +32,8 @@ const GROUP_CODE = 'pbs_solver_ruleset'
 const RULE_CODE = '8004'
 const SEVERITY = 2 // Overridable / WARNING
 const UNIT = 'BASE'
+// Audit columns: created_by/updated_by = user(persist_8004), e.g. tiao(persist_8004)
+const PERSIST_STAMP = formatUserModule(resolveActorFromArgv(), 'persist_8004')
 
 async function readRuleParams(c) {
   const rule = await loadRulesetRule(c, 8004)
@@ -81,7 +84,7 @@ async function main() {
       batch.forEach((v, idx) => {
         const b = idx * 13
         placeholders.push(
-          `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},now(),'rust_8004','rust_8004')`,
+          `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12},$${b + 13},now(),'${PERSIST_STAMP}','${PERSIST_STAMP}')`,
         )
         const s = span.get(`${v.crewId}|${v.pairingId}`) ?? { startSecs: 0, endSecs: 0 }
         const inputHash = createHash('sha256').update(`${v.crewId}|${v.pairingId}|${v.base}|8004`).digest('hex')

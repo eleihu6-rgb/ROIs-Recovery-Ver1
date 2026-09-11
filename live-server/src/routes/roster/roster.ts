@@ -32,11 +32,13 @@ const recheckMutation = (
   body: unknown,
   dates: Array<Date | string | null | undefined>,
   crewIds: Array<string | null | undefined> = [],
+  actor: string | null | undefined = undefined,
 ) => recheckLiveRosterMutation(
   fastify,
   mutationRulesetId(body),
   dates,
   [...new Set(crewIds.filter((id): id is string => !!id))],
+  actor,
 )
 
 /**
@@ -230,7 +232,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
 
     try {
       const result = await rosterService.create(fastify, body as never, username)
-      await recheckMutation(fastify, body, [result?.schStrDtUtc], [result?.crewId])
+      await recheckMutation(fastify, body, [result?.schStrDtUtc], [result?.crewId], username)
       if (result?.crewId && result?.schStrDtUtc) {
         await recomputeForMutation(fastify, schemaName, [result.crewId], result.schStrDtUtc, username)
       }
@@ -257,7 +259,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
       if (!result) {
         return fail(reply, 404, 'Roster entry not found')
       }
-      await recheckMutation(fastify, body, [result?.schStrDtUtc], [result?.crewId])
+      await recheckMutation(fastify, body, [result?.schStrDtUtc], [result?.crewId], username)
       if (result?.crewId && result?.schStrDtUtc) {
         await recomputeForMutation(fastify, schemaName, [result.crewId], result.schStrDtUtc, username)
       }
@@ -278,7 +280,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
     try {
       const result = await rosterService.remove(fastify, numId, username)
       if (!result) return fail(reply, 404, 'Roster entry not found')
-      await recheckMutation(fastify, request.query, [result?.schStrDtUtc], [result?.crewId])
+      await recheckMutation(fastify, request.query, [result?.schStrDtUtc], [result?.crewId], username)
       if (result?.crewId && result?.schStrDtUtc) {
         await recomputeForMutation(fastify, schemaName, [result.crewId], result.schStrDtUtc, username)
       }
@@ -298,7 +300,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
     try {
       const result = await rosterService.remove(fastify, numId, username)
       if (!result) return fail(reply, 404, 'Roster entry not found')
-      await recheckMutation(fastify, request.body, [result?.schStrDtUtc], [result?.crewId])
+      await recheckMutation(fastify, request.body, [result?.schStrDtUtc], [result?.crewId], username)
       if (result?.crewId && result?.schStrDtUtc) {
         await recomputeForMutation(fastify, schemaName, [result.crewId], result.schStrDtUtc, username)
       }
@@ -334,6 +336,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
         request.body,
         [result?.taskA?.schStrDtUtc, result?.taskB?.schStrDtUtc],
         [result?.taskA?.crewId, result?.taskB?.crewId],
+        parsed.data.username,
       )
       // Swap touches BOTH crews at BOTH dates — recompute each crew over a
       // window around each task date.
@@ -373,6 +376,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
         request.body,
         [result?.schStrDtUtc],
         [result?.crewId, result?.sourceCrewId],
+        parsed.data.username,
       )
       // Move affects the target crew (gained) and the source crew (lost).
       if (result?.crewId && result?.schStrDtUtc) {
@@ -419,7 +423,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
         precheck.actingRank,
         parsed.data.username,
       )
-      await recheckMutation(fastify, request.body, [result?.[0]?.schStrDtUtc], [parsed.data.crewId])
+      await recheckMutation(fastify, request.body, [result?.[0]?.schStrDtUtc], [parsed.data.crewId], parsed.data.username)
       if (parsed.data.crewId && result?.[0]?.schStrDtUtc) {
         await recomputeForMutation(fastify, schemaName, [parsed.data.crewId], result[0].schStrDtUtc, parsed.data.username)
       }
@@ -484,7 +488,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
         parsed.data.crewId,
         parsed.data.username,
       )
-      await recheckMutation(fastify, request.body, [result?.schStrDtUtc], [parsed.data.crewId])
+      await recheckMutation(fastify, request.body, [result?.schStrDtUtc], [parsed.data.crewId], parsed.data.username)
       if (parsed.data.crewId && result?.schStrDtUtc) {
         await recomputeForMutation(fastify, schemaName, [parsed.data.crewId], result.schStrDtUtc, parsed.data.username)
       }
@@ -526,6 +530,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
         request.body,
         [taskData.startDtUtc, taskData.endDtUtc],
         taskData.crewIds,
+        username,
       )
       // Ground tasks (DO/VAC/ILL) drive is_day_off/is_al/is_leave + credit.
       await recomputeForMutation(fastify, schemaName, taskData.crewIds, [taskData.startDtUtc, taskData.endDtUtc], username)
@@ -558,6 +563,7 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
         request.body,
         result?.map((row) => row.schStrDtUtc) ?? [],
         [crewId],
+        username,
       )
       if (crewId && result?.[0]?.schStrDtUtc) {
         await recomputeForMutation(fastify, schemaName, [crewId], result.map((row) => row.schStrDtUtc), username)

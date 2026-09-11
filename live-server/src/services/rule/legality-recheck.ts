@@ -182,8 +182,9 @@ export async function flagScenariosParamsStale(pool: Pick<Pool, 'query'>, scenar
 export function spawnLiveRecheck(
   fastify: FastifyInstance, groupCode: string, from: string, to: string, ruleCodes?: string[] | null,
   focus?: { focusStartSecs: number; focusEndSecs: number; focusCrewIds: string[] } | null,
+  actor?: string | null,
 ): void {
-  void spawnLiveRecheckResolved(fastify, groupCode, from, to, ruleCodes, focus).catch((err) => {
+  void spawnLiveRecheckResolved(fastify, groupCode, from, to, ruleCodes, focus, actor).catch((err) => {
     fastify.log.error({ err }, 'live legality recheck spawn failed before child start')
   })
 }
@@ -260,7 +261,9 @@ export async function recheckLiveRosterMutation(
   rulesetId: number | string | undefined,
   dates: Array<Date | string | null | undefined>,
   crewIds: string[] = [],
+  actor?: string | null,
 ): Promise<void> {
+  const safeActor = (actor ?? '').trim() || 'system'
   const requested = Number(rulesetId)
   let resolved = Number.isInteger(requested) && requested > 0 ? requested : null
   let resolvedIds: number[]
@@ -318,6 +321,7 @@ export async function recheckLiveRosterMutation(
       window.to,
       null,
       focus,
+      safeActor,
     )
   }
 }
@@ -325,10 +329,15 @@ export async function recheckLiveRosterMutation(
 async function spawnLiveRecheckResolved(
   fastify: FastifyInstance, groupCode: string, from: string, to: string, ruleCodes?: string[] | null,
   focus?: { focusStartSecs: number; focusEndSecs: number; focusCrewIds: string[] } | null,
+  actor?: string | null,
 ): Promise<void> {
   const filiale = await resolveFiliale(fastify)
   const script = path.resolve(process.cwd(), 'scripts/live-legality.mjs')
   const args = [script, '--group', groupCode, '--from', from, '--to', to, '--airline', filiale]
+  // Forward the acting user (admin trigger from POST /recheck) so the child script
+  // stamps rule_violation.created_by / updated_by as e.g. "tiao(legality_recheck)".
+  const safeActor = (actor ?? '').trim() || 'system'
+  args.push('--user', safeActor)
   // Resolve the workset's own division (103 = Pilot 'P', 637 = Cabin 'C') and pass it through —
   // live-legality defaults to 'P', which would wrongly skip cabin crew when the gantt rechecks
   // the Cabin (637) ruleset.

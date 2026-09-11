@@ -30,6 +30,7 @@ import path from 'node:path'
 import pg from 'pg'
 import { crewLocalRpWindowUtc, nextIsoDate } from './legality-rp-window.mjs'
 import { loadRulesetRule, headerIndexer, rule2015StartTimeRaw } from './legality-ruleset-params.mjs'
+import { formatUserModule, resolveActorFromArgv } from './_user-module.mjs'
 
 const { Client } = pg
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -41,7 +42,8 @@ const BIN = path.join(REPO, 'rule-engine-rs', 'target', 'release', 'check-7505')
 // not the dropped varchar rule_group_code column.
 const RULE_CODE = '7505'
 const SEVERITY = 1 // Soft / INFO (the rule's own severity)
-const MARKER = 'rust_7505'
+// Audit columns: created_by/updated_by = user(check_7505_gdo), e.g. tiao(check_7505_gdo)
+const MARKER = formatUserModule(resolveActorFromArgv(), 'check_7505_gdo')
 // Roster-vocabulary day-off codes (the live roster_flight uses 'DO' for guaranteed days off).
 const DO_CODES = ['DO']
 const DAY_MS = 86_400_000
