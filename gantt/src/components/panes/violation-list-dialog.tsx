@@ -9,6 +9,7 @@ import type { RecheckIndicatorInfo } from '@/components/gantt/source/gantt-pane-
 import { useShellStore } from '@/stores/shell-store'
 import { useRuleInstancesStore } from '@/stores/rule-instances-store'
 import { parseAlertRuleId } from './parse-alert-rule-id'
+import { recoveryTriggerFor } from '@/services/recovery-trigger'
 
 /** One violation message, resolved to the crew it belongs to. */
 export interface CrewViolationRow {
@@ -88,18 +89,24 @@ const sevDotClass = (sev: number): string => {
 const rowKeyOf = (row: CrewViolationRow): string =>
   `${row.crewId}|${row.pairingId ?? ''}|${row.ruleCode}|${row.ruleInstance ?? ''}|${row.flightDate ?? ''}|${row.message}`
 
-// Only 8004 alerts that the source has explicitly marked as recoverable can enter Recovery.
+// Only alerts the source explicitly marked as recoverable can enter Recovery:
+// Rule 8004 (aircraft qualification) and Rule 1001 (Assignment Overlap with a
+// ground task overlapping the flying Pairing).
 // We treat `canRecover === true` as the gate (not `!== false`) so a missing/undefined value
 // from a non-Live source (e.g. Scenario) or a stale row is always treated as NOT recoverable
 // instead of silently allowing selection.
 const isRecoverable = (row: CrewViolationRow): boolean =>
-  row.ruleCode === '8004' && row.pairingId != null && row.canRecover === true
+  recoveryTriggerFor(row.ruleCode) != null && row.pairingId != null && row.canRecover === true
 
 /** Human-readable reason why a row cannot be selected for recovery. */
 const notRecoverableReason = (row: CrewViolationRow): string => {
-  if (row.ruleCode !== '8004') return "Only Rule 8004 alerts are recoverable (this is " + row.ruleCode + ")."
-  if (row.pairingId == null) return "This alert is not bound to a specific Pairing; only Pairing-anchored 8004 alerts are recoverable."
-  if (row.canRecover !== true) return "This 8004 alert is on a Roster that is no longer eligible for Recovery (e.g. it has already ended, or the source has not marked it recoverable in the current ruleset)."
+  if (recoveryTriggerFor(row.ruleCode) == null) {
+    return 'Only Rule 8004 and Assignment Overlap (1001) alerts are recoverable (this is ' + row.ruleCode + ').'
+  }
+  if (row.pairingId == null) return 'This alert is not bound to a specific Pairing; only Pairing-anchored alerts are recoverable.'
+  if (row.canRecover !== true) {
+    return `This ${row.ruleCode} alert is not eligible for Recovery (a 8004 Roster may have already ended, or a 1001 alert has no ground task overlapping its flying Pairing).`
+  }
   return ""
 }
 
@@ -263,7 +270,7 @@ export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckI
               className="h-7 gap-1.5 px-2.5 text-2xs"
               disabled={selectedRecoveryRows.length === 0}
               onClick={() => onRecovery(selectedRecoveryRows)}
-              title="Recover all selected 8004 alerts (Ctrl/Cmd+R)"
+              title="Recover all selected alerts (8004 aircraft qualification / 1001 assignment overlap) (Ctrl/Cmd+R)"
               aria-keyshortcuts="Control+R Meta+R"
               data-testid="alert-recovery-selected"
             >
@@ -367,7 +374,7 @@ export const ViolationListDialog = ({ open, onClose, rows, onCrewClick, recheckI
             <table className="w-full border-collapse text-xs" data-testid="violation-list-table">
               <thead className="sticky top-0 z-10 bg-muted/95">
                 <tr className="border-b border-border text-left text-2xs uppercase tracking-wide text-muted-foreground">
-                  {onRecovery && <th className="w-10 px-3 py-2 font-medium"><input type="checkbox" checked={allVisibleSelected} disabled={selectableVisibleRows.length === 0} onChange={toggleVisibleRecoveryRows} aria-label="Select all visible recoverable alerts" title={selectableVisibleRows.length === 0 ? "No recoverable 8004 alerts in the current view (non-8004 rules and 8004 on ended/unsupported Rosters are excluded)." : ""} data-testid="alert-recovery-select-all" className="h-3.5 w-3.5 accent-primary disabled:cursor-not-allowed disabled:opacity-50" /></th>}
+                  {onRecovery && <th className="w-10 px-3 py-2 font-medium"><input type="checkbox" checked={allVisibleSelected} disabled={selectableVisibleRows.length === 0} onChange={toggleVisibleRecoveryRows} aria-label="Select all visible recoverable alerts" title={selectableVisibleRows.length === 0 ? "No recoverable alerts in the current view (only 8004 aircraft qualification and 1001 assignment overlap on a Roster with a ground/fly overlap are selectable)." : ""} data-testid="alert-recovery-select-all" className="h-3.5 w-3.5 accent-primary disabled:cursor-not-allowed disabled:opacity-50" /></th>}
                   <th className="px-3 py-2 font-medium">Sev</th>
                   <th className="px-3 py-2 font-medium">Crew</th>
                   <th className="px-3 py-2 font-medium">Base</th>

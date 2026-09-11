@@ -33,7 +33,9 @@ import { calculateCost } from '../../services/cost/cost-calculator.js'
 import { validateParameters } from '../../services/cost/cost-validation.js'
 
 const costInputSchema = z.object({
-  mode: z.enum(['transfer', 'swap', 'standby', 'cross-base-standby', 'cross-base-swap', 'cross-base-destination', 'cross-base-direct']),
+  // `swap-duty` (Assignment Overlap) prices like a swap; `flight-delay` keeps the
+  // Crew and is priced as a delay-only option (no roster-change components).
+  mode: z.enum(['transfer', 'swap', 'standby', 'swap-duty', 'flight-delay', 'cross-base-standby', 'cross-base-swap', 'cross-base-destination', 'cross-base-direct']),
   crossBase: z.number().int().min(0).max(8),
   crossDivision: z.number().int().min(0).max(4),
   crossRole: z.number().int().min(0).max(4),
@@ -91,9 +93,14 @@ type TypeRow = {
  */
 const buildComponents = (input: CostInput): Array<{ label: string; typeCode: number; quantity: number }> => {
   const isStandby = input.mode === 'standby' || input.mode === 'cross-base-standby'
-  const isSwap = input.mode === 'swap' || input.mode === 'cross-base-swap'
+  const isSwap = input.mode === 'swap' || input.mode === 'cross-base-swap' || input.mode === 'swap-duty'
+  const isDelayOnly = input.mode === 'flight-delay'
   const components: Array<{ label: string; typeCode: number; quantity: number }> = []
-  if (isStandby) {
+  if (isDelayOnly) {
+    // Keeping the Crew changes no Roster, so no 1009 component is added. The
+    // delay cost itself is priced by the cost library's delay type once the
+    // delay minutes are supplied (Apply path not wired yet).
+  } else if (isStandby) {
     components.push({ label: 'Standby activation', typeCode: 1007, quantity: 1 })
   } else if (isSwap) {
     components.push({ label: 'Roster swap base', typeCode: 1009, quantity: 2 })

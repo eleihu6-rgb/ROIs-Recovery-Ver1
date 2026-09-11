@@ -85,6 +85,21 @@ export default defineConfig(({ mode }) => {
     configureServer(server: import('vite').ViteDevServer) { server.middlewares.use(redirect); },
     configurePreviewServer(server: import('vite').PreviewServer) { server.middlewares.use(redirect); },
   };
+  // ── SPA route vs API prefix ───────────────────────────────────────────────
+  // `/<prefix>/live` is the backend API prefix, but it is also the URL a user can
+  // end up refreshing in the browser. A top-level navigation (Accept: text/html)
+  // must render the app instead of being proxied to live-server, which answers
+  // `{"code":401,"message":"Authentication required..."}` for a tokenless root
+  // request. The app's own API calls (JSON accept header, `/api/...` path) keep
+  // going to live-server unchanged.
+  const isSpaNavigationToApiPrefix = (req: { url?: string; headers?: Record<string, string | string[] | undefined> }) => {
+    const accept = String(req.headers?.accept ?? '')
+    if (!accept.includes('text/html')) return false
+    const path = (req.url ?? '').split('?')[0]
+    return path === `/${apiPrefix}/live` || path === `/${apiPrefix}/live/`
+  };
+  const spaNavigationBypass = (req: { url?: string; headers?: Record<string, string | string[] | undefined> }) =>
+    isSpaNavigationToApiPrefix(req) ? `${base}index.html` : undefined;
   const runtimeVersionPlugin = {
     name: 'rois-runtime-version',
     handleHotUpdate(ctx: import('vite').HmrContext) {
@@ -149,6 +164,7 @@ export default defineConfig(({ mode }) => {
         target: liveTarget,
         changeOrigin: true,
         rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/live`), ""),
+        bypass: spaNavigationBypass,
         ws: true,
       },
       [`/${apiPrefix}/rule`]: {
@@ -175,7 +191,7 @@ export default defineConfig(({ mode }) => {
     allowedHosts: true,
     proxy: {
       "/api/mobile-roster": { target: liveTarget, changeOrigin: true },
-      [`/${apiPrefix}/live`]: { target: liveTarget, changeOrigin: true, rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/live`), ""), ws: true },
+      [`/${apiPrefix}/live`]: { target: liveTarget, changeOrigin: true, rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/live`), ""), bypass: spaNavigationBypass, ws: true },
       [`/${apiPrefix}/rule`]: { target: ruleTarget, changeOrigin: true, rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/rule`), "") },
       [`/${apiPrefix}/ai`]: { target: aiTarget, changeOrigin: true, rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/ai`), "/ai") },
     },

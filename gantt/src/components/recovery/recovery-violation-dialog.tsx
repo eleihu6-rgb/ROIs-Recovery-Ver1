@@ -9,6 +9,8 @@ import { useReferenceStore } from '@/stores/reference-store'
 import { useRuleCheckStore } from '@/stores/rule-check-store'
 import { useSessionViolationStore } from '@/stores/session-violation-store'
 import { buildRecoveryPairingPreview, useRecoveryPreviewStore } from '@/stores/recovery-preview-store'
+import { visiblePlanGroups } from '@/services/recovery-candidates'
+import { canRecoverViolation, recoveryTriggerFor } from '@/services/recovery-trigger'
 import { useLegalityStore } from '@/stores/legality-store'
 import { useFilterStore } from '@/stores/filter-store'
 import { useDraftStore } from '@/stores/draft-store'
@@ -87,7 +89,7 @@ const toViolationRows = (
       detail,
       fleet: itemFleetOf(item, pairings),
       requiredRank: item?.flightActingRank || null,
-      canRecover: ruleCode === '8004' && !isRosterCompleted(items, crewId, pairingId),
+      canRecover: canRecoverViolation({ ruleCode, items, crewId, pairingId }),
     })
   }
 
@@ -128,6 +130,9 @@ const money = (value: number, currency: string = 'CNY'): string => new Intl.Numb
 }).format(value)
 
 const optionBadge = (option: RecoveryOption): string => {
+  // Swap duty / Flight Delay are surfaced in the GUI only — their Apply path is
+  // not wired yet, so they read as "Preview only" rather than "Blocked".
+  if (option.mode === 'swap-duty' || option.mode === 'flight-delay') return 'Preview only'
   if (option.ruleCheck === 'pending') return 'Checking'
   if (option.ruleCheck === 'passed' && option.localExecutable) return 'Executable'
   if (option.ruleCheck === 'failed') return 'Rule failed'
@@ -189,6 +194,8 @@ const updateOption = (plans: RecoveryPlans, optionId: string, fn: (option: Recov
   roster: updatePlanGroupOption(plans.roster, optionId, fn),
   standby: updatePlanGroupOption(plans.standby, optionId, fn),
   crossBase: updatePlanGroupOption(plans.crossBase, optionId, fn),
+  swapDuty: updatePlanGroupOption(plans.swapDuty, optionId, fn),
+  flightDelay: updatePlanGroupOption(plans.flightDelay, optionId, fn),
 })
 
 const currentFleetQuals = (crew: ReturnType<typeof useCrewStore.getState>['items'][number]['crew']): string[] => {
@@ -202,22 +209,16 @@ const currentFleetQuals = (crew: ReturnType<typeof useCrewStore.getState>['items
 type RecoveryPlanType = RecoveryPlans['roster']['id']
 
 const planForType = (plans: RecoveryPlans, planType: RecoveryPlanType): RecoveryPlans['roster'] => {
-  if (planType === 'mixed') return plans.mixed
-  return planType === 'cross-base' ? plans.crossBase : plans[planType]
+  const groups = visiblePlanGroups(plans)
+  return groups.find((group) => group.id === planType) ?? groups[0]
 }
 
-const allOptions = (plans: RecoveryPlans): RecoveryOption[] => [
-  ...plans.roster.options,
-  ...plans.standby.options,
-  ...plans.crossBase.options,
+const allOptions = (plans: RecoveryPlans): RecoveryOption[] =>
   // Include filtered candidates so `previewedOption` / `executionOption`
   // lookups succeed when the user opens a Filtered-tab row in the Detail
   // dialog and then invokes Preview. Filtered options are not directly
   // selectable, so this only widens lookup, not the executable surface.
-  ...plans.roster.excludedOptions,
-  ...plans.standby.excludedOptions,
-  ...plans.crossBase.excludedOptions,
-]
+  visiblePlanGroups(plans).flatMap((group) => [...group.options, ...group.excludedOptions])
 
 const planTone = (planType: RecoveryPlanType) => planType === 'roster'
   ? {
@@ -245,6 +246,24 @@ const planTone = (planType: RecoveryPlanType) => planType === 'roster'
       dot: 'bg-indigo-500',
       row: 'bg-indigo-500/[0.045]',
       selectedRow: 'bg-indigo-500/[0.12]',
+    }
+  : planType === 'swap-duty' ? {
+      // Swap duty (Assignment Overlap) — violet/rose so it reads as a
+      // distinct decision from the amber standby group it sits next to.
+      section: 'border-rose-500/55',
+      header: 'bg-rose-500/[0.08]',
+      badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+      dot: 'bg-rose-500',
+      row: 'bg-rose-500/[0.045]',
+      selectedRow: 'bg-rose-500/[0.12]',
+    }
+  : planType === 'flight-delay' ? {
+      section: 'border-slate-500/55',
+      header: 'bg-slate-500/[0.08]',
+      badge: 'bg-slate-500/15 text-slate-700 dark:text-slate-300',
+      dot: 'bg-slate-500',
+      row: 'bg-slate-500/[0.045]',
+      selectedRow: 'bg-slate-500/[0.12]',
     }
   : {
       section: 'border-teal-500/55',
@@ -566,9 +585,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   // so single-alert flows don't get a misleading "mixed is cheapest" hint.
   const bestGroupId = useMemo<RecoveryPlans['roster']['id'] | null>(() => {
     if (!plans) return null
-    const rows = plans.alerts.length > 1
-      ? [plans.roster, plans.standby, plans.crossBase, plans.mixed]
-      : [plans.roster, plans.standby, plans.crossBase]
+    const rows = visiblePlanGroups(plans)
     let bestId: RecoveryPlans['roster']['id'] | null = null
     let bestCost = Number.POSITIVE_INFINITY
     for (const group of rows) {
@@ -631,9 +648,10 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   }, [recoveryPreviewOptionId])
 
   const buildPlans = async (selectedRows: ViolationRow[]) => {
-    const selected = selectedRows.filter((row) => row.ruleCode === '8004' && row.pairingId != null && row.canRecover)
+    const selected = selectedRows.filter((row) =>
+      row.pairingId != null && row.canRecover === true && recoveryTriggerFor(row.ruleCode) != null)
     if (selected.length === 0) {
-      notify.info('Select at least one active 8004 alert to generate recovery options.')
+      notify.info('Select at least one recoverable 8004 or Assignment Overlap (1001) alert to generate recovery options.')
       return
     }
     setBuilding(true)
@@ -701,7 +719,8 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     // must NOT block the UI. The trace is always populated by buildRecoveryPlans,
     // so even successful cross-base options are recorded for tuning.
     void logCrossBaseTrace(enriched, selected, crewSnapshots.length, recoveryFlights.length, items.length)
-    const initialPlan = enriched.roster.options.length > 0 ? enriched.roster : enriched.standby.options.length > 0 ? enriched.standby : enriched.crossBase
+    const visibleGroups = visiblePlanGroups(enriched)
+    const initialPlan = visibleGroups.find((group) => group.options.length > 0) ?? enriched.standby
     setSelectedPlanType(initialPlan.id)
     const first = initialPlan.options.find((option) => option.localExecutable) ?? initialPlan.options[0]
     setSelectedOptionId(first?.id ?? null)
@@ -1221,9 +1240,7 @@ const PlanTree = ({
   // always trivially picks itself). Hide the leaf in the tree when
   // alerts.length <= 1 so single-alert flows (right-click → Recovery, single
   // Alert Center row) never expose a no-op entry.
-  const rows = plans.alerts.length > 1
-    ? [plans.roster, plans.standby, plans.crossBase, plans.mixed]
-    : [plans.roster, plans.standby, plans.crossBase]
+  const rows = visiblePlanGroups(plans)
   const costTiers = useMemo(() => {
     const tiers = [
       { key: 'free', label: '¥0', test: (cost: number) => cost === 0 },
@@ -1342,9 +1359,7 @@ const PlanSummary = ({
   selectedPlanType: RecoveryPlans['roster']['id']
   bestGroupId: RecoveryPlans['roster']['id'] | null
 }) => {
-  const rows = plans.alerts.length > 1
-    ? [plans.roster, plans.standby, plans.crossBase, plans.mixed]
-    : [plans.roster, plans.standby, plans.crossBase]
+  const rows = visiblePlanGroups(plans)
   const group = rows.find((g) => g.id === selectedPlanType) ?? rows[0]
   const selected = selectedPlanType === group.id
   const tone = planTone(group.id)

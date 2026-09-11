@@ -21,7 +21,8 @@ import { severityLabelFromNum } from '@/utils/severity-labels'
 import type { DisplayViolation } from '@/stores/session-violation-store'
 import type { RosterItem } from '@/types'
 import type { RuleViolation } from '@/types/rule-check'
-import { isRosterCompleted, type RecoveryAlertSnapshot } from '@/services/recovery-candidates'
+import type { RecoveryAlertSnapshot } from '@/services/recovery-candidates'
+import { canRecoverViolation, recoveryTriggerFor } from '@/services/recovery-trigger'
 
 /** Delay before tooltip hides after mouse leaves the task (ms) */
 const HIDE_DELAY = 600
@@ -274,8 +275,13 @@ const recoveryAlertForHoveredTask = (
   items: RosterItem[],
 ): RecoveryAlertSnapshot | null => {
   if (!task || task.pairingId == null) return null
-  const violation = entries.find((entry) => entry.ruleCode.trim().toUpperCase() === '8004')
-  if (!violation || isRosterCompleted(items, task.crewId, task.pairingId)) return null
+  const violation = entries.find((entry) => recoveryTriggerFor(entry.ruleCode.trim().toUpperCase()) != null)
+  if (!violation || !canRecoverViolation({
+    ruleCode: violation.ruleCode,
+    items,
+    crewId: task.crewId,
+    pairingId: task.pairingId,
+  })) return null
   const pairingItems = items
     .filter((item) => item.crewId === task.crewId && Number(item.pairingId) === Number(task.pairingId))
     .sort((a, b) => new Date(a.schStrDtUtc ?? 0).getTime() - new Date(b.schStrDtUtc ?? 0).getTime())
@@ -555,7 +561,7 @@ export const ViolationTooltip = ({ scenarioId }: ViolationTooltipProps = {}) => 
         </div>
         {recoveryAlert && (
           <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-primary/[0.04] px-2.5 py-2">
-            <span className="text-2xs text-muted-foreground">8004 supports Crew Roster Recovery</span>
+            <span className="text-2xs text-muted-foreground">{recoveryAlert.ruleCode} supports Crew Roster Recovery</span>
             <button
               type="button"
               title="Recovery (Ctrl/Cmd+R)"

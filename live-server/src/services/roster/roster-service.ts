@@ -10,6 +10,7 @@ import { assignment as assignmentTable } from '../../models/base/assignment.js'
 import { base as baseTable } from '../../models/base/base.js'
 import { pairingComposition } from '../../models/pairing/pairing-composition.js'
 import { refreshPairingCompositionFillBulk } from '../../utils/composition-fill.js'
+import { coerceTimestampFields } from '../../utils/drizzle-timestamps.js'
 import { getOrSet, getOrSetChunks, invalidate, invalidatePattern } from '../../utils/cache.js'
 import { auditCreate, auditUpdate } from '../../utils/audit.js'
 import { notDeleted } from '../../utils/db.js'
@@ -17,6 +18,9 @@ import { liveSchema } from '../../utils/db-schema.js'
 import { withPrefix } from '../../utils/redis-key-prefix.js'
 
 const CACHE_PREFIX = 'roster:v2'
+
+/** Timestamp columns on roster_flight that must be revived from ISO strings. */
+const ROSTER_FLIGHT_TIMESTAMP_FIELDS = ['schStrDtUtc', 'schEndDtUtc', 'actStrDtUtc', 'actEndDtUtc'] as const
 /** 分片缓存前缀：每个 crew × 版本 × 日期窗口一个分片（roster:chunk:<crewId>:v<ver>:<start>:<end>）。 */
 const CHUNK_PREFIX = `${CACHE_PREFIX}:chunk`
 /** 每 crew 的分片版本计数器（roster:chunkver:<crewId>）；写操作 INCR，读端把版本编进分片 key。 */
@@ -392,17 +396,16 @@ export const rosterService = {
   async update(fastify: FastifyInstance, id: number, data: Partial<typeof rosterFlight.$inferInsert>, username: string) {
     assertCommentsNamespaceAvailable(data.comments)
     const depArp = typeof data.depArp === 'string' ? data.depArp : undefined
-    const updateData: Partial<typeof rosterFlight.$inferInsert> = {
+    // HTTP/draft transport carries timestamps as ISO strings, but Drizzle's
+    // timestamp columns require a Date (their mapper calls value.toISOString()).
+    // Without this the ground-task / task edit save fails with
+    // "value.toISOString is not a function".
+    const updateData: Partial<typeof rosterFlight.$inferInsert> = coerceTimestampFields({
       ...data,
       ...(depArp !== undefined ? { base: depArp } : {}),
-    }
-    const [existing] = await fastify.db
-      .select({ source: rosterFlight.source })
-      .from(rosterFlight)
-      .where(eq(rosterFlight.id, id))
-    if (existing?.source === 'IMP') {
-      throw Object.assign(new Error('Imported (IMP) tasks cannot be edited; delete and re-create instead'), { statusCode: 409 })
-    }
+    }, ROSTER_FLIGHT_TIMESTAMP_FIELDS)
+    // The former "Imported (IMP) tasks cannot be edited" guard was removed
+    // (2026-09-11): imported NOC rosters are edited in place like any other row.
     const [row] = await fastify.db
       .update(rosterFlight)
       .set({ ...updateData, ...auditUpdate(username) })
@@ -668,9 +671,7 @@ export const rosterService = {
       if (!taskA || !taskB) {
         throw new Error('One or both tasks not found')
       }
-      if (taskA.source === 'IMP' || taskB.source === 'IMP') {
-        throw Object.assign(new Error('Imported (IMP) tasks cannot be swapped'), { statusCode: 409 })
-      }
+      // IMP swap guard removed (2026-09-11) — see rosterService.update().
 
       const audit = auditUpdate(username)
 
@@ -713,9 +714,7 @@ export const rosterService = {
       if (!task) {
         throw new Error('Task not found')
       }
-      if (task.source === 'IMP') {
-        throw Object.assign(new Error('Imported (IMP) tasks cannot be moved'), { statusCode: 409 })
-      }
+      // IMP move guard removed (2026-09-11) — see rosterService.update().
       sourceCrewId = task.crewId
 
       const audit = auditUpdate(username)
@@ -770,9 +769,7 @@ export const rosterService = {
         .orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
 
       if (sourceRows.length === 0) throw new Error(`Source Roster ${data.sourcePairingId} is not assigned to ${data.sourceCrewId}`)
-      if (sourceRows.some((row) => row.source === 'IMP')) {
-        throw Object.assign(new Error('Imported (IMP) Roster cannot be recovered'), { statusCode: 409 })
-      }
+      // IMP recovery guard removed (2026-09-11) — imported Rosters are recoverable.
 
       const targetPairingId = data.mode === 'swap' ? Number(data.targetPairingId) : data.sourcePairingId
       if (!Number.isInteger(targetPairingId) || targetPairingId <= 0) {
@@ -791,9 +788,7 @@ export const rosterService = {
           .orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
         : []
       if (data.mode === 'swap' && targetRows.length === 0) throw new Error(`Target Roster ${targetPairingId} is not assigned to ${data.targetCrewId}`)
-      if (targetRows.some((row) => row.source === 'IMP')) {
-        throw Object.assign(new Error('Imported (IMP) target Roster cannot be recovered'), { statusCode: 409 })
-      }
+      // IMP target-Roster guard removed (2026-09-11) — see above.
 
       if (data.sourceCrewId === data.targetCrewId) {
         throw Object.assign(new Error('Source and target Crew must be different'), { statusCode: 400 })
@@ -1004,7 +999,7 @@ export const rosterService = {
         notDeleted(rosterFlight.isDeleted),
       )).orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
       if (sourceRows.length === 0) throw Object.assign(new Error(`Source Roster ${data.sourcePairingId} is not assigned to ${data.sourceCrewId}`), { statusCode: 409 })
-      if (sourceRows.some((row) => row.source === 'IMP')) throw Object.assign(new Error('Imported (IMP) Roster cannot be recovered'), { statusCode: 409 })
+      // IMP recovery guard removed (2026-09-11) — imported Rosters are recoverable.
       if (data.sourceCrewId === data.targetCrewId) throw Object.assign(new Error('Source and support Crew must be different'), { statusCode: 400 })
       if (data.operation === 'swap' && data.targetPairingId == null) throw Object.assign(new Error('targetPairingId is required for a Cross-base Roster swap'), { statusCode: 400 })
 
@@ -1015,7 +1010,7 @@ export const rosterService = {
         notDeleted(rosterFlight.isDeleted),
       )).orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
       if (targetPairingId != null && targetRows.length === 0) throw Object.assign(new Error(`Target Roster ${targetPairingId} is not assigned to ${data.targetCrewId}`), { statusCode: 409 })
-      if (targetRows.some((row) => row.source === 'IMP')) throw Object.assign(new Error('Imported (IMP) target Roster cannot be recovered'), { statusCode: 409 })
+      // IMP target-Roster guard removed (2026-09-11) — see above.
 
       const sourceStart = Math.min(...sourceRows.map((row) => startMs(row.schStrDtUtc)))
       const sourceEnd = Math.max(...sourceRows.map((row) => endMs(row.schEndDtUtc)))
@@ -1211,7 +1206,7 @@ export const rosterService = {
         notDeleted(rosterFlight.isDeleted),
       )).orderBy(asc(rosterFlight.dutySeq), asc(rosterFlight.segSeq))
       if (sourceRows.length === 0) throw Object.assign(new Error(`Source Roster ${data.sourcePairingId} is not assigned to ${data.sourceCrewId}`), { statusCode: 409 })
-      if (sourceRows.some((row) => row.source === 'IMP')) throw Object.assign(new Error('Imported (IMP) Roster cannot be recovered'), { statusCode: 409 })
+      // IMP recovery guard removed (2026-09-11) — imported Rosters are recoverable.
       if (data.sourceCrewId === data.targetCrewId) throw Object.assign(new Error('Source and destination Crew must be different'), { statusCode: 400 })
 
       const [sourcePair] = await tx.select().from(pairingTable).where(and(

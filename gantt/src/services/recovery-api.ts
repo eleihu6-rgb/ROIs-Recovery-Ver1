@@ -42,7 +42,7 @@ export const recoveryTraceApi = {
 }
 
 export interface RecoveryLibraryCostApiInput {
-  mode: 'transfer' | 'swap' | 'standby' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
+  mode: 'transfer' | 'swap' | 'standby' | 'swap-duty' | 'flight-delay' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
   crossBase: number
   crossDivision: number
   crossRole: number
@@ -91,7 +91,14 @@ export const recoveryCostApi = {
 
 export type RecoveryPlanId = 'standby' | 'swap' | 'cross-base'
 
-export type RecoveryOptionMode = 'transfer' | 'swap' | 'standby' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
+export type RecoveryOptionMode = 'transfer' | 'swap' | 'standby' | 'swap-duty' | 'flight-delay' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
+
+/**
+ * Which alert type opened the Recovery dialog. Determines the visible plan set:
+ * `roster-qualification` (8004) keeps roster / standby / cross-base, while
+ * `assignment-overlap` (1001) shows standby → Swap duty → Flight Delay only.
+ */
+export type { RecoveryTrigger } from './recovery-rules'
 
 export interface RecoveryApplyOption {
   mode: RecoveryOptionMode
@@ -217,6 +224,9 @@ export interface FlightChangeInput {
 }
 
 const applyOption = (input: RecoveryApplyOption): Promise<RecoveryMethodMutation> => {
+  if (input.mode === 'swap-duty' || input.mode === 'flight-delay') {
+    return Promise.reject(new Error('Swap duty and Flight Delay are preview-only options; Apply is not wired for them yet.'))
+  }
   if (input.mode === 'cross-base-standby' || input.mode === 'cross-base-swap' || input.mode === 'cross-base-destination' || input.mode === 'cross-base-direct') {
     return Promise.reject(new Error('Cross-base recovery requires positioning flight details; use recoveryApi.crossBase().'))
   }

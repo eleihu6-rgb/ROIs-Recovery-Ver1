@@ -47,6 +47,7 @@ import { PaneConditionStrip } from '@/components/panes/pane-condition-strip'
 import { ViolationListDialog } from '@/components/panes/violation-list-dialog'
 import type { CrewViolationRow } from '@/components/panes/violation-list-dialog'
 import { RecoveryViolationDialog } from '@/components/recovery/recovery-violation-dialog'
+import { recoveryTriggerFor } from '@/services/recovery-trigger'
 import type { RecoveryAlertSnapshot } from '@/services/recovery-candidates'
 import { QualityAnalysisDialog } from '@/components/panes/quality-analysis-dialog'
 import { PaneQuickFilter, EMPTY_QUICK_FILTER, getQuickFilterChips } from '@/components/panes/pane-quick-filter'
@@ -237,7 +238,11 @@ export const SharedRosterPane = ({
     if (!isLive || livePaneType !== 'roster-main') return
     const onRecoveryOpen = (event: Event) => {
       const snapshot = (event as CustomEvent<RecoveryAlertSnapshot>).detail
-      if (!snapshot || snapshot.ruleCode !== '8004' || snapshot.pairingId == null) return
+      // Accept every alert type the Recovery trigger owns: 8004 (aircraft
+      // qualification) and 1001 (Assignment Overlap). Restricting this to 8004
+      // silently dropped the newer entry points (Roster context menu + hover
+      // tooltip), so the menu item appeared but no dialog opened.
+      if (!snapshot || snapshot.pairingId == null || recoveryTriggerFor(snapshot.ruleCode) == null) return
       setAlertCenterOpen(false)
       setCrewBellCrewId(null)
       setRecoveryAlert([snapshot])
@@ -250,10 +255,10 @@ export const SharedRosterPane = ({
     if (!isLive || livePaneType !== 'roster-main' || !alertCenter) return
     const onRecoveryShortcut = () => {
       const recoverableRows = alertCenter.rows.filter((candidate) =>
-        candidate.ruleCode === '8004' && candidate.pairingId != null && candidate.canRecover === true,
+        recoveryTriggerFor(candidate.ruleCode) != null && candidate.pairingId != null && candidate.canRecover === true,
       )
       if (recoverableRows.length === 0) {
-        notify.info('No recoverable 8004 alert in the loaded Live data.')
+        notify.info('No recoverable 8004 or Assignment Overlap (1001) alert in the loaded Live data.')
         return
       }
       setAlertCenterOpen(false)
@@ -405,7 +410,8 @@ export const SharedRosterPane = ({
   const handleSortOpen = useCallback(() => setSortDialogOpen(true), [])
   const handleAlertCenterOpen = useCallback(() => setAlertCenterOpen(true), [])
   const handleRecovery = useCallback((rows: CrewViolationRow[]) => {
-    const selected = rows.filter((row) => row.ruleCode === '8004' && row.pairingId != null && row.canRecover === true)
+    const selected = rows.filter((row) =>
+      recoveryTriggerFor(row.ruleCode) != null && row.pairingId != null && row.canRecover === true)
     if (selected.length === 0) return
     setAlertCenterOpen(false)
     setCrewBellCrewId(null)

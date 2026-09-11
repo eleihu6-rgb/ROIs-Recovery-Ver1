@@ -389,7 +389,9 @@ export const buildRecoveryPairingPreview = (
       : undefined,
   })
 
-  const isSwap = option.mode === 'swap' || option.mode === 'cross-base-swap'
+  // `swap-duty` (Assignment Overlap) exchanges two Pairings exactly like `swap`,
+  // so the Pairing pane shows the same before/after ownership flip.
+  const isSwap = option.mode === 'swap' || option.mode === 'cross-base-swap' || option.mode === 'swap-duty'
   if (isSwap && option.targetPairingId != null) {
     const targetLabel = pairingName(pairings, option.targetPairingId, option.beforeItems)
     changes.push({

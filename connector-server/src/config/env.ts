@@ -60,6 +60,29 @@ const envSchema = z
     }
 })
 
+// ── Database target switch (DB_TARGET) ──────────────────────────────────────
+// This repo talks to two identical `recovery` databases:
+//   local → 192.168.199.180:5432 (intranet, default)
+//   sin   → 47.237.67.15:55432   (Singapore)
+// Both connection strings live in `.env` as DB_URL_LOCAL / DB_URL_SIN; DB_TARGET
+// picks the live one. When DB_TARGET is unset the previous behaviour is kept
+// exactly as-is (DATABASE_URL is used verbatim).
+const applyDatabaseTarget = (): void => {
+  const target = process.env.DB_TARGET?.trim().toLowerCase()
+  if (!target) return
+  if (target !== 'local' && target !== 'sin') {
+    throw new Error(`DB_TARGET must be "local" or "sin" (got "${target}")`)
+  }
+  const key = target === 'local' ? 'DB_URL_LOCAL' : 'DB_URL_SIN'
+  const url = process.env[key]?.trim()
+  if (!url) {
+    throw new Error(`DB_TARGET=${target} requires ${key} to be set`)
+  }
+  process.env.DATABASE_URL = url
+}
+
+applyDatabaseTarget()
+
 const parsedEnv = envSchema.parse(process.env)
 
 export const env = {

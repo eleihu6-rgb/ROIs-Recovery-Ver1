@@ -3,6 +3,21 @@
 > 新开 AI / Codex 对话窗口时，先让对方阅读这个文件。
 > 这个文件不保存具体业务细节，而是规定如何恢复最近开发上下文。
 
+## 本机运行约定（本工作区，2026-09-11 起）
+
+本工作区（`ChatGPT/Recovery DEMO 2`，Windows 开发机）**只运行两个服务**，不要启动其它模块：
+
+| 服务 | 端口 | 地址 |
+|------|------|------|
+| Gantt 前端（`gantt`） | 5566 | http://localhost:5566/altair/ |
+| 后端（`live-server`） | 3000 | http://localhost:3000 |
+
+- **不要启动**：`pbs-server`（3002）、`connector-server`（3104）、`pbs-portal`（3030）、`engine-server`（3103）、`ai-server`（3005）、`ro-engine`、`po-engine`。用户已明确表示这些在本机不再需要。
+- 启动方式：进对应模块目录执行 `pnpm run dev`；日志在 `<模块>/logs/*.log`。
+- 停止服务：先按端口找监听进程，再 `taskkill /PID <pid> /T /F`。注意 `tsx watch` 会自动重启子进程，必须连守护进程一起停。
+- 数据库 / Redis 连接写在各服务 `.env`（`DB_TARGET=local` 默认内网库，改成 `sin` 切新加坡库；两套连接串都在 `DB_URL_LOCAL` / `DB_URL_SIN`）。`.env` 已被 gitignore，**连接串和密码不得写进本文件、代码或任何提交物**。
+- 同机路径 `dev/ROIs-Recovery-Ver1-new` 是另一份已停用的旧副本，不要在那里启动服务或写入改动。
+
 ## 新窗口启动方式
 
 推荐直接复制这段作为新窗口第一条消息：

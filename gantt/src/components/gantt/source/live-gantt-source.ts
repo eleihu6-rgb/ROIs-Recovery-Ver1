@@ -50,7 +50,7 @@ import { getAllEffective } from '@/utils/crew-history'
 import { computeValidityBlock } from '@/utils/crew-validity'
 import { formatSeniority } from '@/utils/format-seniority'
 import { buildRankOrderMap, compareRosterDefault } from '@/utils/roster-default-sort'
-import { isRosterCompleted } from '@/services/recovery-candidates'
+import { canRecoverViolation } from '@/services/recovery-trigger'
 import { READ_ONLY_CAPABILITIES, EMPTY_LOCK_MAP, type GanttPaneSource, type FlightPaneSource, type PairingPaneSource, type RosterPaneSource } from './gantt-pane-source'
 import type { CrewViolationRow } from '@/components/panes/violation-list-dialog'
 import type { FlightItem, FlightCompositionStatus, Flight } from '@/types/flight'
@@ -585,7 +585,12 @@ function buildLiveAlertRows(
           flightNumber: (anchor?.label ?? anchor?.assignment ?? '').split(/\s+/)[0] || null,
           fleet: anchor?.fleetCode ?? pairing?.pairing.fleet ?? null,
           requiredRank: anchor?.flightActingRank ?? null,
-          canRecover: v.ruleCode === '8004' && !isRosterCompleted(items, cid, Number(pairingId)),
+          canRecover: canRecoverViolation({
+            ruleCode: v.ruleCode,
+            items,
+            crewId: cid,
+            pairingId: Number(pairingId),
+          }),
         })
       }
     }
@@ -1012,9 +1017,8 @@ function makeLiveRosterPaneSource(
         },
         onDragStart: (hit, clientX, clientY) => {
           if (!hit.itemId || !crossPaneDrag) return
-          // IMP-sourced rows are immutable — block drag-move
-          const dragTask = taskById.get(hit.itemId)
-          if (dragTask?.source === 'IMP') return
+          // IMP-sourced rows are draggable like any other row (the previous
+          // "IMP rows are immutable" block was removed 2026-09-11).
           const canvas = canvasRef.current
           if (!canvas) return
           const source: DragSource = {

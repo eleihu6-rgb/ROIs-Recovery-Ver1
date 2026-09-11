@@ -11,7 +11,9 @@ import { notify } from '@/utils/notify'
 import { useCrewMemoStore } from '@/stores/crew-memo-store'
 import { useRuleCheckStore } from '@/stores/rule-check-store'
 import { useSessionViolationStore } from '@/stores/session-violation-store'
-import { isRosterCompleted, type RecoveryAlertSnapshot } from '@/services/recovery-candidates'
+import type { RecoveryAlertSnapshot } from '@/services/recovery-candidates'
+import { findRecoverableAlert, recoverablePairingsForCrew, recoveryTriggerFor } from '@/services/recovery-trigger'
+import { overlappingPairingIdsForTask } from '@/services/recovery-rules'
 import { findCrewToTop } from '@/utils/find-crew'
 import { bringPairingIdToTop, bringFlightIdToTop, findPairingsByFlight, liveHasFlightPaneOpen } from '@/utils/bring-matches-to-top'
 import { deletePairings, resolveSelectedPairingIds } from '@/utils/delete-gantt-selection'
@@ -101,15 +103,18 @@ export const ContextMenu = () => {
     prefetchCrewInfo(task.crewId)
   }, [open, task?.crewId, task?.id, paneType])
 
-  // ── NEW ENTRY: Roster-based Recovery ───────────────────────────────
-  // Build a Recovery alert snapshot from the currently right-clicked Roster
-  // task by looking up any 8004 rule violation against this (crewId,
-  // pairingId) anchor. Mirrors recoveryAlertForHoveredTask in
-  // violation-tooltip.tsx so the Roster-context menu and the hover tooltip
-  // expose the same Recovery entry point. The downstream flow is unchanged:
-  // the snapshot is dispatched through the existing `recovery:open` window
-  // event, which roster-pane.tsx listens for and feeds into
-  // <RecoveryViolationDialog>.
+  // ── Roster-based Recovery entry point ──────────────────────────────
+  // Build a Recovery alert snapshot from the right-clicked Roster task.
+  //
+  // Two alert types qualify (see services/recovery-trigger.ts):
+  //   8004 aircraft qualification — anchored on the right-clicked Pairing.
+  //   1001 Assignment Overlap     — the Crew holds a ground task overlapping the
+  //                                 flying Pairing; right-clicking either side
+  //                                 resolves to that Pairing.
+  //
+  // Mirrors recoveryAlertForHoveredTask in violation-tooltip.tsx. The snapshot is
+  // dispatched through the existing `recovery:open` window event, which
+  // roster-pane.tsx listens for and feeds into <RecoveryViolationDialog>.
   //
   // IMPORTANT: these hooks must run BEFORE any conditional return below
   // (scenarioId/open/task early-returns). React requires hooks to be called
@@ -120,64 +125,58 @@ export const ContextMenu = () => {
   const persistedViolationsMap = useSessionViolationStore((s) => s.displayViolations)
   const mainRosterItems = useRosterStore((s) => s.main.rosterItems)
   const subRosterItems = useRosterStore((s) => s.sub.rosterItems)
-  const rosterRecoverySnapshot = useMemo<RecoveryAlertSnapshot | null>(() => {
+  const rosterRecoverySnapshots = useMemo<RecoveryAlertSnapshot[]>(() => {
     // task may be null while the menu is closed (the `if (!open || !task) return null`
     // below narrows it, but hooks must run on every render regardless).
-    if (!task || task.id <= 0 || task.pairingId == null || !task.crewId) return null
-    if (paneType?.startsWith('roster') !== true) return null
+    if (!task || !task.crewId) return []
+    if (paneType?.startsWith('roster') !== true) return []
     const allItems = [...mainRosterItems, ...subRosterItems]
-    const pairingItems = allItems
-      .filter((item) => item.crewId === task.crewId && Number(item.pairingId) === Number(task.pairingId))
-      .sort((a, b) => new Date(a.schStrDtUtc ?? 0).getTime() - new Date(b.schStrDtUtc ?? 0).getTime())
-    const anchor = pairingItems[0] ?? task
-    let hit = null as null | { ruleCode: string; severity: number; message: string }
-    for (const [, list] of ruleViolationsMap) {
-      for (const violation of list) {
-        const matchPairing = violation.targetType === 'pairing'
-          && Number(violation.targetId) === Number(anchor.pairingId)
-          && (violation.crewId == null || violation.crewId === anchor.crewId)
-        const matchCrew = violation.targetType === 'crew'
-          && String(violation.targetId) === anchor.crewId
-          && violation.anchorPairingId != null
-          && Number(violation.anchorPairingId) === Number(anchor.pairingId)
-        if (!matchPairing && !matchCrew) continue
-        if (violation.ruleCode.trim().toUpperCase() !== '8004') continue
-        hit = { ruleCode: violation.ruleCode, severity: violation.severity, message: violation.message }
-        break
-      }
-      if (hit) break
-    }
-    if (!hit) {
-      const persisted = persistedViolationsMap.get(Number(anchor.pairingId)) ?? []
-      const candidate = persisted.find((v) =>
-        !v.passed
-        && (v.crewId == null || v.crewId === anchor.crewId)
-        && String(v.ruleCode ?? '').trim().toUpperCase() === '8004'
-      )
-      if (candidate) {
-        hit = {
-          ruleCode: String(candidate.ruleCode ?? '8004'),
-          severity: typeof candidate.severity === 'number' ? candidate.severity : 3,
-          message: candidate.message ?? '',
-        }
-      }
-    }
-    if (!hit) return null
-    if (anchor.pairingId == null) return null
-    if (isRosterCompleted(allItems, anchor.crewId, anchor.pairingId)) return null
-    const label = anchor.label ?? anchor.assignment ?? ''
-    return {
-      id: `context-${anchor.crewId}-${anchor.pairingId}-${hit.ruleCode}`,
-      ruleCode: hit.ruleCode,
-      severity: hit.severity,
-      crewId: anchor.crewId,
-      pairingId: Number(anchor.pairingId),
-      flightDate: anchor.fltDt ?? anchor.schStrDtUtc?.slice(0, 10) ?? '—',
-      flightNumber: label.split(/\s+/)[0] || '—',
-      detail: hit.message,
-      fleet: anchor.fleetCode ?? null,
-      requiredRank: anchor.flightActingRank || null,
-    }
+    const crewId = String(task.crewId)
+    // Row-background right-clicks arrive as a mock task (id <= 0): fall back to
+    // every Pairing of this Crew so the entry does not depend on hitting the puck.
+    const isBackground = task.id <= 0
+
+    const candidates = isBackground
+      ? recoverablePairingsForCrew({
+          crewId,
+          items: allItems,
+          liveViolations: ruleViolationsMap.values(),
+          persistedViolations: persistedViolationsMap,
+        }).map((entry) => entry.pairingId)
+      : task.pairingId != null
+        ? [Number(task.pairingId)]
+        : overlappingPairingIdsForTask(allItems, crewId, task.id)
+    if (candidates.length === 0) return []
+
+    return candidates.flatMap((pairingId) => {
+      // A Pairing can carry several alerts (8004 + 1001); take the first whose
+      // entry condition actually holds rather than gating on an arbitrary one.
+      const hit = findRecoverableAlert({
+        crewId,
+        pairingId,
+        items: allItems,
+        liveViolations: ruleViolationsMap.values(),
+        persistedViolations: persistedViolationsMap,
+      })
+      if (!hit) return []
+      const pairingItems = allItems
+        .filter((item) => String(item.crewId) === crewId && Number(item.pairingId) === pairingId)
+        .sort((a, b) => new Date(a.schStrDtUtc ?? 0).getTime() - new Date(b.schStrDtUtc ?? 0).getTime())
+      const anchor = pairingItems[0] ?? task
+      const label = anchor.label ?? anchor.assignment ?? ''
+      return [{
+        id: `context-${crewId}-${pairingId}-${hit.ruleCode}`,
+        ruleCode: hit.ruleCode,
+        severity: hit.severity,
+        crewId,
+        pairingId,
+        flightDate: anchor.fltDt ?? anchor.schStrDtUtc?.slice(0, 10) ?? '—',
+        flightNumber: label.split(/\s+/)[0] || '—',
+        detail: hit.message,
+        fleet: anchor.fleetCode ?? null,
+        requiredRank: anchor.flightActingRank || null,
+      }]
+    })
   }, [paneType, task, ruleViolationsMap, persistedViolationsMap, mainRosterItems, subRosterItems])
 
   // Scenario right-clicks carry a scenarioId — the ScenarioContextMenu handles those.
@@ -304,10 +303,6 @@ export const ContextMenu = () => {
   // Extra fields stuffed onto the mock task by pairing/flight panes for "Find Crew".
   const findCtx = task as unknown as { findFltId?: number | null; findTargetPane?: 'main' | 'sub' }
 
-  // IMP-sourced flying rows are immutable (no edit/move/swap); ground tasks open
-  // the read-only Ground Editor and can still be deleted.
-  const isImp = task.source === 'IMP'
-
   // Common items for roster tasks
   if (paneType?.startsWith('roster') && hasTask) {
     // Ground task (pairingId === null and id > 0) → show Edit Ground Task
@@ -320,22 +315,24 @@ export const ContextMenu = () => {
       })
     } else {
       items.push(
-        { icon: Edit, label: 'Edit Task', shortcut: 'Enter', onClick: handleEdit, disabled: isImp },
-        { icon: ArrowRightLeft, label: 'Swap Task', onClick: handleSwap, disabled: isImp },
+        // IMP-sourced rows are editable/swappable like any other row
+        // (IMP immutability was removed 2026-09-11).
+        { icon: Edit, label: 'Edit Task', shortcut: 'Enter', onClick: handleEdit },
+        { icon: ArrowRightLeft, label: 'Swap Task', onClick: handleSwap },
       )
     }
-    // ── NEW: Roster-based Recovery entry point ──
-    // Visible only when the right-clicked Roster task has an active 8004
-    // rule violation (see rosterRecoverySnapshot above). Click dispatches
-    // the same window event as the hover tooltip / Alert Center button,
-    // so the existing RecoveryViolationDialog opens with the matching
-    // alert pre-selected. Logic and downstream workflow are unchanged.
-    if (rosterRecoverySnapshot) {
+    // ── Roster-based Recovery entry point ──
+    // Shown when the right-clicked Roster task (or the ground task it overlaps)
+    // resolves to a recoverable Pairing — Rule 8004 aircraft qualification or
+    // Rule 1001 Assignment Overlap (see rosterRecoverySnapshots above). Click
+    // dispatches the same window event as the hover tooltip / Alert Center
+    // button, so the existing RecoveryViolationDialog opens pre-selected.
+    for (const snapshot of rosterRecoverySnapshots) {
       items.push({
         icon: ShieldAlert,
-        label: 'Recovery',
+        label: rosterRecoverySnapshots.length > 1 ? `Recovery · Pairing #${snapshot.pairingId}` : 'Recovery',
         onClick: () => {
-          window.dispatchEvent(new CustomEvent('recovery:open', { detail: rosterRecoverySnapshot }))
+          window.dispatchEvent(new CustomEvent('recovery:open', { detail: snapshot }))
           closeContextMenu()
         },
       })

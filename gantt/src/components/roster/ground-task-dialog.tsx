@@ -206,10 +206,12 @@ export const GroundTaskDialog = () => {
 
   /** Scenario has no ground-task write API — dialog is view-only. */
   const viewOnly = scenarioId != null
-  /** IMP-sourced rows are immutable — treat as view-only in edit mode. */
-  const isImp = mode === 'edit' && editItem?.source === 'IMP'
-  /** Combined read-only flag: Scenario view-only OR IMP immutability. */
-  const readOnly = viewOnly || isImp
+  /**
+   * Read-only flag. IMP-sourced rows used to be forced read-only here; that
+   * restriction was removed 2026-09-11 — imported ground tasks are edited in
+   * place like any other row.
+   */
+  const readOnly = viewOnly
 
   const [selectedCrewIds, setSelectedCrewIds] = useState<string[]>([])
   const [crewInput, setCrewInput] = useState('')
@@ -672,7 +674,7 @@ export const GroundTaskDialog = () => {
             </div>
           </div>
 
-      {(!readOnly || isImp) && mode === 'edit' && editItem?.pairingId === null && (
+      {!readOnly && mode === 'edit' && editItem?.pairingId === null && (
         <div className="mt-3 border-t border-border pt-3">
           <p className="mb-2 text-2xs uppercase tracking-widest text-muted-foreground">Danger Zone</p>
           <Button variant="destructive" size="sm" onClick={handleDelete} disabled={saving} className="text-xs" data-testid="ground-task-delete-btn">

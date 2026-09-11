@@ -1223,3 +1223,43 @@ Validation and retained IDs: `docs/test-cases/gantt/roundtrip-builder-acceptance
 Critical-step images: `docs/assets/screenshots/gantt/roundtrip-builder-*-Ver<N>.png`.
 The ten-write acceptance is not a harmless rerun: inspect its receipt and coordinate
 fresh available flights before running again.
+
+## 17. Crew Recovery entry points (Live)
+
+Recovery opens from four places, all of which must stay in sync. There are now
+**two** qualifying alert types: Rule `8004` (aircraft qualification) and Rule
+`1001` (Assignment Overlap, accepted only when the Crew holds a ground task
+overlapping the flying Pairing).
+
+| Entry | Mechanism |
+|---|---|
+| Alert Center row checkbox → "Recovery" | direct call into the pane's recovery state |
+| Crew bell list (same dialog, filtered to one Crew) | direct call into the pane's recovery state |
+| Roster context menu ("Recovery") | `window` event `recovery:open` |
+| Violation hover tooltip ("Recovery") | `window` event `recovery:open` |
+
+### Gotchas learned the hard way
+
+1. **The `recovery:open` listener used to hard-code `ruleCode !== '8004' → return`.**
+   Adding new entry points to the menu/tooltip without touching that guard makes
+   the menu item appear and then do nothing on click (no dialog, no error). Use
+   the shared `recoveryTriggerFor(ruleCode)` gate instead of the literal.
+2. **A Pairing commonly carries 8004 *and* 1001 at once.** Never take "the first
+   recoverable alert" and then gate the whole Pairing on it: the 8004 entry
+   condition refuses a finished Roster, which would hide the 1001 decision.
+   `findRecoverableAlert()` orders Assignment Overlap first and only falls back
+   to 8004 when 1001 does not apply.
+3. **1001 recovery must work for an already-finished Roster.** Planners review
+   yesterday's overlap. `buildSingleRecoveryPlans` resolves the source Roster
+   (and the swap-duty candidate scope) from *all* groups — not just the
+   still-active ones — when the trigger is `assignment-overlap`. 8004 keeps its
+   "finished Roster is not a Recovery target" rule.
+4. **The new groups must be part of cost enrichment.** `enrichPlansWithLibraryCosts`
+   enumerates groups explicitly; `swapDuty` / `flightDelay` have to be listed or
+   their options never get priced.
+5. **HMR stale module graph.** After editing `recovery-trigger.ts` exports, a
+   hot-reloaded page can throw `does not provide an export named ...` and render
+   blank. Hard-refresh (Ctrl+Shift+R) before testing — several "it still does not
+   work" reports were a stale bundle, not the fix.
+
+Design + scope: `docs/superpowers/specs/2026-09-11-swap-duty-and-flight-delay-recovery-design.md`.
