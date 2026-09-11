@@ -34,15 +34,17 @@ await client.connect()
 
 /** All checks share this base: MANUAL pairings + their segments joined to flights. */
 const MAN_SEGS = `
-  man as (select id, base from pairing where source='MANUAL' and is_deleted=0),
+  man as (select id, base, created_by from pairing where source='MANUAL' and is_deleted=0),
   seg as (
     select ps.pairing_id, man.base, ps.duty_seq, ps.seg_seq, ps.dep_arp, ps.arv_arp,
            ps.sch_str_dt_utc, ps.sch_end_dt_utc, ps.flt_id, f.flt_num, f.blk_min,
-           row_number() over (partition by ps.pairing_id order by ps.duty_seq, ps.seg_seq) rn,
-           count(*)     over (partition by ps.pairing_id) n
+           coalesce(nullif(ps.airline, ''), f.airline) airline,
+           row_number() over (partition by ps.pairing_id, man.created_by order by ps.duty_seq, ps.seg_seq) rn,
+           count(*)     over (partition by ps.pairing_id, man.created_by) n
     from pairing_segment ps
-    join man on man.id = ps.pairing_id
-    join flight f on f.id = ps.flt_id)`
+    join man on man.id = ps.pairing_id and ps.created_by = man.created_by
+    join flight f on f.id = ps.flt_id
+    where ps.is_deleted = 0)`
 
 const RULES = [
   {
