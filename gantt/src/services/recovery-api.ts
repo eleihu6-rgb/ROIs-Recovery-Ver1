@@ -53,19 +53,32 @@ export interface RecoveryLibraryCostApiInput {
   dhdCostSavings: number
 }
 
+/** Per-component cost breakdown row — surfaced by /api/recovery/calculate-cost/batch. */
+export interface CostLibraryBreakdownRow {
+  label: string
+  typeCode: number
+  calculatorCode: string
+  revisionId: number | null
+  quantity: number
+  amount: number | null
+  status: 'priced' | 'unpriced' | 'disabled' | 'missing-revision'
+  currencyCode: string
+}
+
 export interface RecoveryLibraryCostApiResult {
   directCost: number | null
   currency: string
-  breakdown: Array<{
-    label: string
-    typeCode: number
-    calculatorCode: string
-    revisionId: number | null
-    quantity: number
-    amount: number | null
-    status: 'priced' | 'unpriced' | 'disabled' | 'missing-revision'
-    currencyCode: string
-  }>
+  /** Per-component breakdown. Frontend may discard this when only totals are needed. */
+  breakdown: CostLibraryBreakdownRow[]
+  /** Human-readable notes from the bridge (e.g. "fallback to other-airline because own-airline unpriced"). */
+  notes: string[]
+}
+
+/** Trimmed shape used by `enrichPlansWithLibraryCosts` — keeps the surface area small. */
+export interface RecoveryLibraryCostResult {
+  directCost: number | null
+  currency: string
+  breakdown: CostLibraryBreakdownRow[]
   notes: string[]
 }
 

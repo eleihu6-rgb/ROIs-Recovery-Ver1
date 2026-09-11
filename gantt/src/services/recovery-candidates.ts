@@ -1,5 +1,5 @@
 import type { RosterItem } from '@/types'
-import type { RecoveryOptionMode } from './recovery-api'
+import type { CostLibraryBreakdownRow, RecoveryOptionMode } from './recovery-api'
 import { CROSS_BASE_DHD_COST_PER_MINUTE, DEFAULT_CROSS_BASE_RECOVERY_CONFIG, type CrossBaseRecoveryConfig } from '@/config/recovery-cross-base'
 
 export interface RecoveryFlightSnapshot {
@@ -95,6 +95,12 @@ export interface RecoveryMetrics {
   virtualCostWeight: number
   totalCost: number
   currency: string
+  /** P0-1 lite — per-component cost breakdown. Undefined when enrichment failed. */
+  costBreakdown?: CostLibraryBreakdownRow[]
+  /** P0-1 lite — notes from cost library (e.g. "Cross-division unpriced"). */
+  costNotes?: string[]
+  /** P0-1 lite — true if the cost-library enrichment call failed and we fell back to the hard-coded value. */
+  costEnrichmentFailed?: boolean
 }
 
 export interface RecoveryOption {
@@ -1777,6 +1783,10 @@ export interface RecoveryLibraryCostInput {
 export interface RecoveryLibraryCostResult {
   directCost: number | null
   currency: string
+  /** Per-component breakdown (forwarded to `option.metrics.costBreakdown` by enrichPlansWithLibraryCosts). */
+  breakdown: CostLibraryBreakdownRow[]
+  /** Free-form notes from the cost library (forwarded to `option.metrics.costNotes`). */
+  notes: string[]
 }
 
 export const optionToLibraryCostInput = (
@@ -1824,6 +1834,9 @@ const recomputeMetricsForOption = (
       directCost,
       currency,
       totalCost: directCost + virtualCost * virtualCostWeight,
+      costBreakdown: result.breakdown,
+      costNotes: result.notes,
+      costEnrichmentFailed: result.directCost == null,
     },
   }
 }
@@ -1915,9 +1928,27 @@ export const enrichPlansWithLibraryCosts = async (
   try {
     results = await fetcher(inputs)
   } catch {
+    // Mark every leaf as failed so the UI can show the "unavailable" hint.
+    const markFailed = (option: RecoveryOption): RecoveryOption => {
+      if (option.subOptions && option.subOptions.length > 0) {
+        return { ...option, subOptions: option.subOptions.map(markFailed) }
+      }
+      return {
+        ...option,
+        metrics: { ...option.metrics, costEnrichmentFailed: true },
+      }
+    }
+    return {
+      ...plans,
+      roster: { ...plans.roster, options: plans.roster.options.map(markFailed) },
+      standby: { ...plans.standby, options: plans.standby.options.map(markFailed) },
+      crossBase: { ...plans.crossBase, options: plans.crossBase.options.map(markFailed) },
+      mixed: { ...plans.mixed, options: plans.mixed.options.map(markFailed) },
+    }
+  }
+  if (results.length !== allOptions.length) {
     return plans
   }
-  if (results.length !== allOptions.length) return plans
 
   let cursor = 0
   const enrichLeaf = (option: RecoveryOption): RecoveryOption => {
@@ -1926,7 +1957,7 @@ export const enrichPlansWithLibraryCosts = async (
       const metrics = recomputeCombinedMetrics(enrichedSubs, baselineItems)
       return { ...option, subOptions: enrichedSubs, metrics }
     }
-    const result = results[cursor++] ?? { directCost: null, currency: option.metrics.currency }
+    const result = results[cursor++] ?? { directCost: null, currency: option.metrics.currency, breakdown: [], notes: [] }
     return recomputeMetricsForOption(option, result)
   }
   const enrichGroup = (group: RecoveryPlanGroup): RecoveryPlanGroup => ({

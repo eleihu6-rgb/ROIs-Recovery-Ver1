@@ -17,6 +17,7 @@ import { legalityPreviewApi } from '@/services/legality-preview-api'
 import { flightApi } from '@/services/flight-api'
 import { buildRecoveryDraftPlan } from '@/services/recovery-draft'
 import { recoveryTraceApi } from '@/services/recovery-api'
+import { RecoveryCostBreakdownDialog } from './recovery-cost-breakdown-dialog'
 import { buildRecoveryPlans, enrichPlansWithLibraryCosts, isRosterCompleted, recoveryRuleFailures, ROSTER_STABILITY_FORMULA, type CrossBaseCandidateTrace, type RecoveryAlertSnapshot, type RecoveryFlightSnapshot, type RecoveryLibraryCostFetcher, type RecoveryOption, type RecoveryPlans } from '@/services/recovery-candidates'
 import { recoveryCostApi } from '@/services/recovery-api'
 import { notify } from '@/utils/notify'
@@ -419,6 +420,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
   const [executionOptionId, setExecutionOptionId] = useState<string | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [costBreakdownOption, setCostBreakdownOption] = useState<RecoveryOption | null>(null)
   const [applying, setApplying] = useState(false)
   const [building, setBuilding] = useState(false)
   const [previewCollapsed, setPreviewCollapsed] = useState(false)
@@ -537,7 +539,12 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     // cost-library outage never blanks the recovery dialog.
     const libraryFetcher: RecoveryLibraryCostFetcher = async (inputs) => {
       const response = await recoveryCostApi.postBatch(inputs)
-      return response.results.map((row) => ({ directCost: row.directCost, currency: row.currency }))
+      return response.results.map((row) => ({
+        directCost: row.directCost,
+        currency: row.currency,
+        breakdown: row.breakdown,
+        notes: row.notes,
+      }))
     }
     const enriched = await enrichPlansWithLibraryCosts(next, buildInput.items, libraryFetcher)
     setPlans(enriched)
@@ -800,7 +807,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
                 selectedPlanType={selectedPlanType}
                 bestGroupId={bestGroupId}
               />
-              {selectedPlan && <PlanGroup group={selectedPlan} selectedOptionId={selectedOptionId} executionOptionId={executionOptionId} onSelect={selectOption} onToggleExecution={selectExecutionOption} onDetail={(option) => { selectOption(option); setDetailOpen(true) }} onPreview={previewInLive} />}
+              {selectedPlan && <PlanGroup group={selectedPlan} selectedOptionId={selectedOptionId} executionOptionId={executionOptionId} onSelect={selectOption} onToggleExecution={selectExecutionOption} onDetail={(option) => { selectOption(option); setDetailOpen(true) }} onPreview={previewInLive} onShowCostBreakdown={setCostBreakdownOption} />}
               <div className="shrink-0 text-3xs text-muted-foreground/60">Stability: <span className="font-mono">{ROSTER_STABILITY_FORMULA}</span></div>
             </div>
           </div>}
@@ -810,11 +817,22 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
       {detailOpen && selectedOption && <AppDialog open={detailOpen} onOpenChange={setDetailOpen} data-testid="recovery-detail-dialog" className="sm:max-w-[min(1050px,94vw)]" icon={<Eye className="h-4 w-4" />} title={`Recovery detail · ${selectedOption.title}${selectedOption.positioning ? ' · DHD positioning' : ''}`} bodyClassName="p-0" footer={<div className="flex w-full items-center justify-between gap-2"><Button className="h-7 gap-1 px-2" onClick={() => previewInLive(selectedOption)}><Eye className="h-3.5 w-3.5" />Preview</Button><Button variant="ghost" className="h-7 px-2" onClick={() => setDetailOpen(false)}>Close</Button></div>}>
         <div className="p-3"><div className="mb-3 grid grid-cols-3 gap-3 border-b border-border pb-3 sm:grid-cols-5">{metric('Crew impact', selectedOption.metrics.affectedCrewCount)}{metric('Roster impact', selectedOption.metrics.changedRosterCount)}{metric('Stability', `${selectedOption.metrics.rosterStability}%`)}{metric('Direct cost', money(selectedOption.metrics.directCost, selectedOption.metrics.currency))}{metric('Total cost', money(selectedOption.metrics.totalCost, selectedOption.metrics.currency))}</div><div className="mb-2 grid grid-cols-2 gap-2 text-2xs text-muted-foreground sm:grid-cols-3"><div>Cancelled rosters: <span className="font-semibold text-foreground">{selectedOption.metrics.cancelledRosterCount}</span></div><div>Added rosters: <span className="font-semibold text-foreground">{selectedOption.metrics.addedRosterCount}</span></div><div>Follow-on impact: <span className="font-semibold text-foreground">{selectedOption.metrics.followOnImpactCount}</span></div><div>Virtual cost: <span className="font-semibold text-foreground">{money(selectedOption.metrics.virtualCost, selectedOption.metrics.currency)}</span></div><div>Virtual cost weight: <span className="font-semibold text-foreground">{selectedOption.metrics.virtualCostWeight.toFixed(1)}</span></div></div><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="text-xs font-semibold text-foreground">Before / after complete Roster changes</div><div className="flex flex-wrap items-center gap-2 text-2xs text-muted-foreground" aria-label="Roster change color legend"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-500" />Cancelled</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-600" />Added</span></div></div><div className="overflow-auto"><table className="w-full border-collapse text-xs"><thead className="bg-muted/70 text-left text-2xs text-muted-foreground"><tr><th className="px-2 py-2">CrewID</th><th className="px-2 py-2">Roster</th><th className="px-2 py-2">PairingID</th><th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span></th><th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span></th><th className="px-2 py-2">Change</th></tr></thead><tbody>{selectedOption.changes.map((change, index) => <tr key={`${change.crewId}-${change.rosterId}-${index}`} className="border-b border-border/50"><td className="px-2 py-2 font-mono">{change.crewId}</td><td className="px-2 py-2 font-mono">{change.rosterId}</td><td className="px-2 py-2 font-mono">{change.pairingId ?? '—'}</td><td className="max-w-56 border-l-2 border-sky-500 bg-sky-500/10 px-2 py-2 text-sky-800 dark:text-sky-100">{change.before}</td><td className="max-w-56 border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-2 text-emerald-800 dark:text-emerald-100">{change.after}</td><td className="px-2 py-2"><span className={changeTypeClass(change.changeType)}>{changeTypeLabel(change.changeType)}</span></td></tr>)}</tbody></table></div><div className="mt-3 flex items-center gap-2 text-2xs text-muted-foreground"><Users className="h-3.5 w-3.5" />Callout Standby retains the original SBY task and marks it with a yellow C indicator in the Live Gantt preview.</div></div>
       </AppDialog>}
+      <RecoveryCostBreakdownDialog
+        open={costBreakdownOption !== null}
+        onOpenChange={(open) => { if (!open) setCostBreakdownOption(null) }}
+        planTitle={costBreakdownOption?.title ?? ''}
+        breakdown={costBreakdownOption?.metrics.costBreakdown}
+        notes={costBreakdownOption?.metrics.costNotes}
+        currency={costBreakdownOption?.metrics.currency ?? 'CNY'}
+        total={costBreakdownOption?.metrics.directCost ?? 0}
+        enrichmentFailed={costBreakdownOption?.metrics.costEnrichmentFailed === true}
+        testIdPrefix="recovery-option-cost"
+      />
     </AppDialog>
   )
 }
 
-const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onToggleExecution, onDetail, onPreview }: { group: RecoveryPlans['roster']; selectedOptionId: string | null; executionOptionId: string | null; onSelect: (option: RecoveryOption) => void; onToggleExecution: (option: RecoveryOption, checked: boolean) => void; onDetail: (option: RecoveryOption) => void; onPreview: (option: RecoveryOption) => void }) => {
+const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onToggleExecution, onDetail, onPreview, onShowCostBreakdown }: { group: RecoveryPlans['roster']; selectedOptionId: string | null; executionOptionId: string | null; onSelect: (option: RecoveryOption) => void; onToggleExecution: (option: RecoveryOption, checked: boolean) => void; onDetail: (option: RecoveryOption) => void; onPreview: (option: RecoveryOption) => void; onShowCostBreakdown: (option: RecoveryOption) => void }) => {
   const tone = planTone(group.id)
   const excludedCount = group.excludedOptions.length
   const isExecutable = (option: RecoveryOption): boolean => option.localExecutable && option.ruleCheck === 'passed'
@@ -891,11 +909,11 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <span className="sm:hidden text-2xs text-muted-foreground">Cancel <b className="text-foreground">{option.metrics.cancelledRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
-                <span className="sm:hidden text-2xs text-muted-foreground">Cost <b className="text-foreground">{money(option.metrics.totalCost, option.metrics.currency)}</b></span>
+                <span className="sm:hidden text-2xs text-muted-foreground">Cost <button type="button" className="font-semibold text-foreground underline-offset-2 hover:underline" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button></span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{money(option.metrics.totalCost, option.metrics.currency)}</span>
+                <button type="button" className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onPreview(option)} data-testid={`recovery-preview-${option.id}`}><Eye className="h-3.5 w-3.5" />Preview</button>
@@ -940,11 +958,11 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <span className="sm:hidden text-2xs text-muted-foreground">Cancel <b className="text-foreground">{option.metrics.cancelledRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
-                <span className="sm:hidden text-2xs text-muted-foreground">Cost <b className="text-foreground">{money(option.metrics.totalCost, option.metrics.currency)}</b></span>
+                <span className="sm:hidden text-2xs text-muted-foreground">Cost <button type="button" className="font-semibold text-foreground underline-offset-2 hover:underline" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button></span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{money(option.metrics.totalCost, option.metrics.currency)}</span>
+                <button type="button" className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid={`recovery-detail`}><Eye className="h-3.5 w-3.5" />Detail</button>
