@@ -155,6 +155,78 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
+        'name': 'auto_assign_pairings',
+        'description': "Open the LIVE gantt's 'Auto-assign open pairings' dialog for specific crew over a "
+                       "month or date range. Use when the user says 'auto assign pairings', 'auto assign "
+                       "open pairings to <crew>', 'fill <crew>'s roster', 'assign open pairings for "
+                       "<month>', or names crew ids to roster. The dialog shows the no-commit decision "
+                       "trace (filter → consider → skip-on-rule → assign) and the planner presses 'Apply "
+                       "to gantt' and then Save, so the assignment is staged in the draft — never "
+                       "committed by the assistant. Needs at least one crew id AND a month or a start/end "
+                       "date range; if either is missing, ask for it and do NOT call the tool.",
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'crewIds': {'type': 'array', 'items': {'type': 'string'},
+                            'description': "Crew employee codes, e.g. ['T2004','T2005']"},
+                'start': {'type': 'string', 'description': 'Target window start, YYYY-MM-DD'},
+                'end': {'type': 'string', 'description': 'Target window end, YYYY-MM-DD'},
+                'month': {'type': ['string', 'integer'],
+                          'description': 'Target month, e.g. "September", "Sep", or 9'},
+                'year': {'type': ['string', 'integer'],
+                         'description': 'Target year, defaults to current year if omitted'},
+            },
+            'required': ['crewIds'],
+        },
+    },
+    {
+        'name': 'build_pairings',
+        'description': "Open the LIVE gantt's 'Pairing Build Automation' dialog pre-filled with the "
+                       "user's requested pairing-build scope, then run 'Find open flights' for them. "
+                       "Use when the user says 'build pairings', 'build pairing for <base> <fleet>', "
+                       "'automate the pairing build', 'create pairings from open flights', or gives a "
+                       "pairing-build order with a date range. It prepares the build — it does NOT "
+                       "commit: the planner reviews the scope and presses 'Build all'. Needs a pairing "
+                       "base (airport code) AND a date range (start/end YYYY-MM-DD, or a month). "
+                       "Optional: fleets (omit for all fleets), crew composition per rank, and build "
+                       "rule overrides. If the base or the date range is missing, ask for it and do "
+                       "NOT call the tool.",
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'base': {'type': 'string', 'description': "Pairing base airport code, e.g. 'ADD'"},
+                'start': {'type': 'string', 'description': 'Build window start, YYYY-MM-DD'},
+                'end': {'type': 'string', 'description': 'Build window end, YYYY-MM-DD'},
+                'month': {'type': ['string', 'integer'],
+                          'description': 'Target build month, e.g. "September", "Sep", or 9'},
+                'year': {'type': ['string', 'integer'],
+                         'description': 'Target build year, defaults to current year if omitted'},
+                'fleets': {'type': 'array', 'items': {'type': 'string'},
+                           'description': "Fleet codes to build from, e.g. ['7M8']; omit for all fleets"},
+                'composition': {
+                    'type': 'array',
+                    'description': "Crew per rank, e.g. [{'rank':'CA','plan':1},{'rank':'FO','plan':1}]; "
+                                   'omit for the default composition',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'rank': {'type': 'string', 'description': 'Rank code, e.g. CA, FO'},
+                            'plan': {'type': 'integer', 'description': 'How many crew of this rank'},
+                        },
+                        'required': ['rank', 'plan'],
+                    },
+                },
+                'restMin': {'type': 'integer', 'description': 'Minimum rest override, minutes'},
+                'maxDutyBlockMin': {'type': 'integer', 'description': 'Multi-leg duty block cap override, minutes'},
+                'checkinMin': {'type': 'integer', 'description': 'Check-in override, minutes'},
+                'debriefMin': {'type': 'integer', 'description': 'Debrief override, minutes'},
+                'singleLegExemption': {'type': 'boolean',
+                                       'description': 'Exempt single-leg long-haul duties from the block cap'},
+            },
+            'required': ['base'],
+        },
+    },
+    {
         'name': 'move_task',
         'description': "Move ONE crew member's duty (pairing or ground task) to a different crew "
                        "member on the LIVE main roster. Stages the change as a pending draft edit — "
@@ -370,6 +442,21 @@ def tool_call_to_action(call: dict[str, Any]) -> dict[str, Any] | None:
                 if capped:
                     action[key] = capped
         return action
+    if name == 'build_pairings':
+        # Opens the client's Pairing Build Automation dialog. Incomplete orders are
+        # dropped here so the assistant's "which base/period?" text stands.
+        params = build_pairings_params(call)
+        if params is None:
+            return None
+        return {'type': 'build_pairings', **params}
+    if name == 'auto_assign_pairings':
+        # Opens the client's Auto-assign open pairings dialog (stages a draft; the
+        # planner applies and saves). Incomplete orders are dropped so the
+        # assistant's "which crew/period?" text stands.
+        params = auto_assign_params(call)
+        if params is None:
+            return None
+        return {'type': 'auto_assign_pairings', **params}
     if name == 'move_task':
         crew_id, to_crew_id = data.get('crewId'), data.get('toCrewId')
         if not (_non_blank_str(crew_id) and _non_blank_str(to_crew_id)):
@@ -514,3 +601,159 @@ def crew_bids_params(call: dict[str, Any], today: date | None = None) -> dict[st
     if start > end:
         start, end = end, start
     return {'bases': bases, 'ranks': ranks, 'start': start, 'end': end}
+
+
+# Pairing-build rule overrides the dialog accepts. Bounds keep a model-supplied
+# number from producing a nonsense build (e.g. a 10-minute rest floor).
+BUILD_RULE_BOUNDS = {
+    'restMin': (0, 2880),
+    'maxDutyBlockMin': (0, 2880),
+    'checkinMin': (0, 480),
+    'debriefMin': (0, 480),
+}
+MAX_COMPOSITION_ITEMS = 6
+MAX_COMPOSITION_PLAN = 20
+
+
+def _build_pairing_composition(value: Any) -> list[dict[str, Any]]:
+    """Normalize the optional crew-composition list into unique rank/plan slots."""
+    if not isinstance(value, list):
+        return []
+    slots: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in value:
+        if not isinstance(raw, dict):
+            continue
+        rank = raw.get('rank')
+        plan = raw.get('plan')
+        if not isinstance(rank, str) or not rank.strip():
+            continue
+        if isinstance(plan, bool) or not isinstance(plan, int):
+            continue
+        code = rank.strip().upper()
+        if code in seen or not 1 <= plan <= MAX_COMPOSITION_PLAN:
+            continue
+        seen.add(code)
+        slots.append({'rank': code, 'plan': plan})
+        if len(slots) >= MAX_COMPOSITION_ITEMS:
+            break
+    return slots
+
+
+def _build_pairing_rules(data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize the optional build-rule overrides; unknown/out-of-range values are dropped."""
+    rules: dict[str, Any] = {}
+    for key, (low, high) in BUILD_RULE_BOUNDS.items():
+        value = data.get(key)
+        if isinstance(value, bool) or not isinstance(value, int):
+            continue
+        if low <= value <= high:
+            rules[key] = value
+    exemption = data.get('singleLegExemption')
+    if isinstance(exemption, bool):
+        rules['singleLegExemption'] = exemption
+    return rules
+
+
+def build_pairings_params(call: dict[str, Any], today: date | None = None) -> dict[str, Any] | None:
+    """Validate a build_pairings tool call into a normalized Pairing Build Automation scope.
+
+    Returns {'base','start','end'} plus any supplied fleets/composition/rules only
+    when the order is actionable (a base AND either valid dates or a resolvable
+    month); otherwise None, so the assistant asks for the missing piece instead of
+    opening the dialog on an empty scope.
+    """
+    if call.get('name') != 'build_pairings':
+        return None
+    data = call.get('input') or {}
+    base = data.get('base')
+    if not isinstance(base, str):
+        return None
+    base = base.strip().upper()
+    if not base or len(base) > 4 or not base.isalnum():
+        return None
+    start, end = data.get('start'), data.get('end')
+    if not (_is_iso_date(start) and _is_iso_date(end)):
+        resolved = month_range_from_input(data, today or date.today())
+        if resolved is None:
+            return None
+        start, end = resolved
+    if start > end:
+        start, end = end, start
+    params: dict[str, Any] = {'base': base, 'start': start, 'end': end}
+    raw_fleets = data.get('fleets')
+    if isinstance(raw_fleets, list):
+        fleets = [f.strip().upper() for f in raw_fleets if isinstance(f, str) and f.strip()][:MAX_SCOPE_ITEMS]
+        if fleets and 'ALL' not in fleets:
+            params['fleets'] = fleets
+    composition = _build_pairing_composition(data.get('composition'))
+    if composition:
+        params['composition'] = composition
+    rules = _build_pairing_rules(data)
+    if rules:
+        params['rules'] = rules
+    return params
+
+
+def build_pairings_missing_message(call: dict[str, Any]) -> str | None:
+    """Message asking for the piece that stops a build_pairings order from running, else None."""
+    if call.get('name') != 'build_pairings':
+        return None
+    if build_pairings_params(call) is not None:
+        return None
+    data = call.get('input') or {}
+    base = data.get('base')
+    has_base = isinstance(base, str) and bool(base.strip())
+    has_period = (_is_iso_date(data.get('start')) and _is_iso_date(data.get('end'))) or \
+        month_range_from_input(data, date.today()) is not None
+    period_text = str(data.get('month') or data.get('start') or 'that period')
+    if not has_base and not has_period:
+        return 'Which base, and which date range or month, should I build pairings for?'
+    if not has_base:
+        return f'Which base should I build pairings for in {period_text}?'
+    return 'Which date range or month should I build pairings for?'
+
+
+def auto_assign_params(call: dict[str, Any], today: date | None = None) -> dict[str, Any] | None:
+    """Validate an auto_assign_pairings tool call into a normalized auto-assign scope.
+
+    Returns {'crewIds','start','end'} only when the order is actionable (>=1 crew id AND
+    either valid dates or a resolvable month); otherwise None, so the assistant asks for
+    the missing piece instead of opening the dialog on an empty scope.
+    """
+    if call.get('name') != 'auto_assign_pairings':
+        return None
+    data = call.get('input') or {}
+    raw_crew = data.get('crewIds')
+    if not isinstance(raw_crew, list):
+        return None
+    crew_ids = [c.strip() for c in raw_crew if isinstance(c, str) and c.strip()][:MAX_SCOPE_ITEMS]
+    if not crew_ids:
+        return None
+    start, end = data.get('start'), data.get('end')
+    if not (_is_iso_date(start) and _is_iso_date(end)):
+        resolved = month_range_from_input(data, today or date.today())
+        if resolved is None:
+            return None
+        start, end = resolved
+    if start > end:
+        start, end = end, start
+    return {'crewIds': crew_ids, 'start': start, 'end': end}
+
+
+def auto_assign_missing_message(call: dict[str, Any]) -> str | None:
+    """Message asking for the piece that stops an auto_assign_pairings order, else None."""
+    if call.get('name') != 'auto_assign_pairings':
+        return None
+    if auto_assign_params(call) is not None:
+        return None
+    data = call.get('input') or {}
+    raw_crew = data.get('crewIds')
+    has_crew = isinstance(raw_crew, list) and any(isinstance(c, str) and c.strip() for c in raw_crew)
+    has_period = (_is_iso_date(data.get('start')) and _is_iso_date(data.get('end'))) or \
+        month_range_from_input(data, date.today()) is not None
+    if not has_crew and not has_period:
+        return 'Which crew, and which month or date range, should I auto-assign open pairings for?'
+    if not has_crew:
+        return 'Which crew should I auto-assign open pairings to?'
+    return 'Which month or date range should I auto-assign open pairings for?'

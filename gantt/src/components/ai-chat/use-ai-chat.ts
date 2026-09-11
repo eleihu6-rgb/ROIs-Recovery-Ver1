@@ -16,6 +16,11 @@ const RELOAD_ACTIONS = new Set<AiAction['type']>([
   'filter_flight',
   'reset_filters',
   'set_date_range',
+  // Opens the Pairing Build Automation dialog; the Gantt range was just moved onto
+  // the requested build window, so the panes reload with the new window.
+  'build_pairings',
+  // Opens the Auto-assign dialog, which plans against the (just moved) viewport month.
+  'auto_assign_pairings',
 ])
 
 export function useAiChat() {

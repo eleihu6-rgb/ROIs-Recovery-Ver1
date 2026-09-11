@@ -33,7 +33,10 @@ const Field = ({ label, children }: { label: string; children: ReactNode }): Rea
 const errorText = (error: unknown): string => error instanceof Error ? error.message : 'Pairing build request failed'
 
 export const RoundtripBuilderDialog = (): ReactElement => {
-  const { isOpen, running, progress, close, setProgress, addCreated, created, clearFocus } = useRoundtripBuilderStore()
+  const {
+    isOpen, running, progress, close, setProgress, addCreated, created, clearFocus,
+    prefill, consumePrefill, lastRun, setLastRun,
+  } = useRoundtripBuilderStore()
   const dateRange = useFilterStore((state) => state.dateRange)
   const timezone = useTimezoneStore((state) => state.timezone)
   const ganttStart = calendarDateInTimeZone(dateRange.start, timezone)
@@ -48,6 +51,11 @@ export const RoundtripBuilderDialog = (): ReactElement => {
   const [query, setQuery] = useState('')
   const [departureDate, setDepartureDate] = useState('')
   const [page, setPage] = useState(0)
+  // R'Bot handoff: banner, the one automatic open-flight search, and the leftover
+  // uncovered-flight count kept for the post-run summary (result is cleared then).
+  const [rbotPrepared, setRbotPrepared] = useState(false)
+  const [autoSearch, setAutoSearch] = useState(false)
+  const [uncoveredFlights, setUncoveredFlights] = useState(0)
   const revision = useRef(0)
   const context = useRef('')
   const compositionCustomized = useRef(false)
@@ -111,34 +119,82 @@ export const RoundtripBuilderDialog = (): ReactElement => {
     (!query || [flight.fltNum, flight.depArp, flight.arvArp].some((value) => value.toLowerCase().includes(query.toLowerCase()))) &&
     (!departureDate || calendarDateInTimeZone(new Date(flight.schDepDtUtc), timezone) === departureDate)),
   [result, query, departureDate, timezone])
-  const validScope = Boolean(scope && scope.base && scope.fleets.length && scope.composition.length &&
-    scope.startDate >= ganttStart && scope.endDate <= ganttEnd && scope.startDate <= scope.endDate)
-  const find = async (): Promise<void> => {
-    if (!scope || !validScope) { setError('Choose dates within the open Gantt and a base, fleet and crew composition.'); return }
+  const scopeValid = (candidate: RoundtripScope | null): boolean => Boolean(candidate && candidate.base &&
+    candidate.fleets.length && candidate.composition.length &&
+    candidate.startDate >= ganttStart && candidate.endDate <= ganttEnd && candidate.startDate <= candidate.endDate)
+  const validScope = scopeValid(scope)
+  // `target` lets the R'Bot handoff search with the scope it just set (state is not
+  // readable from this closure until the next render).
+  const find = async (target?: RoundtripScope): Promise<void> => {
+    const candidate = target ?? scope
+    if (!scopeValid(candidate)) { setError('Choose dates within the open Gantt and a base, fleet and crew composition.'); return }
     const version = ++revision.current
     setSearching(true); setError(''); setResult(null); setSelected(null)
     try {
-      const data = await roundtripApi.search(scope)
-      if (version === revision.current) { setResult(data); setPage(0) }
+      const data = await roundtripApi.search(candidate!)
+      if (version === revision.current) {
+        setResult(data); setPage(0)
+        const paired = new Set(data.rotations.flatMap((rotation) => rotation.flightIds))
+        setUncoveredFlights(Math.max(0, data.flights.length - paired.size))
+      }
     } catch (err) { if (version === revision.current) setError(errorText(err)) }
     finally { setSearching(false) }
   }
+  // R'Bot handoff — apply the requested scope once the build options are known, then
+  // run the open-flight search exactly once so the planner only reviews and builds.
+  useEffect(() => {
+    if (!isOpen || !prefill || !options) return
+    const pending = consumePrefill()
+    if (!pending) return
+    const fleets = pending.fleets?.filter((fleet) => options.fleets.includes(fleet)) ?? []
+    setScope((old) => {
+      const base = old ?? initialScope(options)
+      return {
+        ...base,
+        base: pending.base && options.bases.includes(pending.base) ? pending.base : base.base,
+        fleets: fleets.length ? fleets : base.fleets,
+        composition: pending.composition?.length ? pending.composition : base.composition,
+        rules: { ...base.rules, ...(pending.rules ?? {}) },
+        startDate: pending.startDate ?? base.startDate,
+        endDate: pending.endDate ?? base.endDate,
+      }
+    })
+    setRbotPrepared(pending.source === 'rbot')
+    setLastRun(null)
+    invalidate()
+    setAutoSearch(true)
+    // Options/prefill identity drives this effect; initialScope/invalidate are stable
+    // enough for a one-shot handoff and are intentionally not dependencies here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, prefill, options])
+  useEffect(() => {
+    if (!autoSearch || !scope) return
+    setAutoSearch(false)
+    void find(scope)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSearch, scope])
   const build = async (): Promise<void> => {
     if (!scope || !result || running || !validScope) return
     const targets = selected === null ? result.rotations : rotation ? [rotation] : []
     if (!targets.length) return
     const snapshot = structuredClone(scope)
     const buildContext = context.current
+    const requested = targets.length
+    const uncovered = uncoveredFlights
     let completed = 0
+    const warnings: string[] = []
     let committedId: number | null = null
     setProgress(true, 'Building 0 / ' + targets.length)
-    close()
+    setLastRun(null)
+    // The dialog stays open so progress and the final summary are visible here; the
+    // planner presses "View Gantt" once the run finishes.
     try {
       for (const candidate of targets) {
         if (context.current !== buildContext) throw new Error('Gantt dates or timezone changed. Remaining pairings were not built.')
         const receipt = await roundtripApi.build(snapshot, candidate.flightIds)
         committedId = receipt.pairingId
         completed++
+        for (const warning of receipt.warnings ?? []) warnings.push('#' + receipt.pairingId + ': ' + warning)
         const detail = await pairingApi.getDetail(receipt.pairingId)
         const pairing = { ...detail.pairing, segments: detail.segments }
         if (context.current !== buildContext) throw new Error('Gantt dates or timezone changed after pairing #' + receipt.pairingId + ' was committed. Review it in its original date range.')
@@ -165,14 +221,15 @@ export const RoundtripBuilderDialog = (): ReactElement => {
     } finally {
       setProgress(false, completed + ' / ' + targets.length + ' built')
       setResult(null); setSelected(null)
+      setLastRun({ requested, built: completed, failed: requested - completed, uncoveredFlights: uncovered, warnings })
     }
   }
-  return <AppDialog open={isOpen} onOpenChange={(open): void => { if (!open) close() }}
+  return <AppDialog open={isOpen} onOpenChange={(open): void => { if (!open) { setRbotPrepared(false); close() } }}
     title="Pairing Build Automation" icon={<Route className="h-4 w-4" />}
     data-testid="roundtrip-builder-dialog" className="sm:max-w-6xl" bodyClassName="p-0" resizable
     footer={<>
       <span className="mr-auto text-xs text-muted-foreground" data-testid="rt-progress">{progress || (result ? result.rotations.length + ' valid rotations' : '')}</span>
-      <Button variant="outline" size="sm" disabled={running || !options} onClick={(): void => { if (options) { compositionCustomized.current = false; setScope(initialScope(options)); invalidate() } }}><RotateCcw className="mr-1 h-3 w-3" />Reset</Button>
+      <Button variant="outline" size="sm" disabled={running || !options} onClick={(): void => { if (options) { compositionCustomized.current = false; setScope(initialScope(options)); setRbotPrepared(false); setLastRun(null); invalidate() } }}><RotateCcw className="mr-1 h-3 w-3" />Reset</Button>
       <Button variant="outline" size="sm" data-testid="rt-show-results" onClick={close}><Eye className="mr-1 h-3 w-3" />View Gantt</Button>
       <Button variant="outline" size="sm" data-testid="rt-find" disabled={running || searching || !scope} onClick={(): void => { void find() }}>
         {searching ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Search className="mr-1 h-3 w-3" />}Find open flights
@@ -186,6 +243,32 @@ export const RoundtripBuilderDialog = (): ReactElement => {
       {created.length > 0 && <button className="ml-auto inline-flex items-center gap-1 text-primary" disabled={running} onClick={clearFocus}><RotateCcw className="h-3 w-3" />Clear new-pairing focus ({created.length})</button>}
     </div>
     {error && <div role="alert" className="border-b border-destructive/30 bg-destructive/5 px-4 py-2 text-xs text-destructive">{error}</div>}
+    {rbotPrepared && !running && !lastRun && <div data-testid="rt-rbot-banner" className="border-b border-primary/30 bg-primary/5 px-4 py-2 text-xs">
+      R&apos;Bot prepared this build from your request — review the scope and the open
+      flights, then press <span className="font-medium">Build all</span>.
+      <span className="text-muted-foreground"> Next time just ask R&apos;Bot, e.g. &ldquo;build pairings for ADD 7M8 from 2026-08-25 to 2026-10-07&rdquo;.</span>
+    </div>}
+    {running && <div data-testid="rt-progress-card" className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-2 text-xs">
+      <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+      <span data-testid="rt-progress-text">{progress || 'Building…'}</span>
+      <span className="ml-auto text-muted-foreground">{scope ? [scope.base, ...scope.fleets].join(' · ') : ''}</span>
+    </div>}
+    {lastRun && !running && <div data-testid="rt-summary" className="border-b border-border bg-muted/30 px-4 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-medium" data-testid="rt-summary-title">
+          {lastRun.built} pairing{lastRun.built === 1 ? '' : 's'} built
+        </span>
+        <span className="text-muted-foreground">of {lastRun.requested} requested</span>
+        {lastRun.failed > 0 && <span className="text-destructive">{lastRun.failed} not built</span>}
+        <span className="text-muted-foreground">
+          {lastRun.uncoveredFlights} open flight{lastRun.uncoveredFlights === 1 ? '' : 's'} left unpaired in scope
+        </span>
+        {created.length > 0 && <span className="ml-auto text-muted-foreground">Newest {created[0].pairing.pairingLabel ?? 'pairing'} (#{created[0].pairing.id})</span>}
+      </div>
+      {lastRun.warnings.length > 0 && <ul data-testid="rt-summary-warnings" className="mt-1 list-disc pl-4 text-destructive">
+        {lastRun.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+      </ul>}
+    </div>}
     {!scope ? <div className="p-6 text-sm text-muted-foreground">{loadingOptions ? 'Loading build options...' : 'Build options unavailable.'}</div> :
       <div className="grid min-h-0 grid-cols-1 md:grid-cols-[20rem_minmax(0,1fr)]">
         <div className="space-y-4 border-r border-border p-4">
@@ -239,7 +322,11 @@ export const RoundtripBuilderDialog = (): ReactElement => {
                 <span>{page + 1} / {Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))}</span>
                 <button aria-label="Next flights" disabled={(page + 1) * PAGE_SIZE >= filtered.length} onClick={(): void => setPage(page + 1)}><ArrowRight className="h-3 w-3" /></button>
               </div>
-            </> : <p className="py-4 text-xs text-muted-foreground">{searching ? 'Finding connected open flights...' : 'No search results.'}</p>}
+            </> : <p className="py-4 text-xs text-muted-foreground">
+              {searching ? 'Finding connected open flights...'
+                : lastRun ? 'Build finished. Press “Find open flights” to search the flights still open in this scope.'
+                  : 'No search results.'}
+            </p>}
           </section>
           <section className="border-t border-border pt-4"><Heading icon={Route}>Pairing preview</Heading>
             {rotation ? <RoundtripPreview rotation={rotation} flights={flightMap} rules={scope.rules} timezone={timezone} /> :

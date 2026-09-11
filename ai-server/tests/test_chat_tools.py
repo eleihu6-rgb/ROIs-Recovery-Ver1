@@ -1,6 +1,10 @@
 from datetime import date
 
-from src.chat.tools import TOOLS, tool_call_to_action, crew_bids_params
+from src.chat.tools import (
+    TOOLS, tool_call_to_action, crew_bids_params,
+    build_pairings_params, build_pairings_missing_message,
+    auto_assign_params, auto_assign_missing_message,
+)
 
 
 def test_all_tools_defined():
@@ -8,6 +12,7 @@ def test_all_tools_defined():
     assert names == {
         'filter_crew', 'filter_pairing', 'filter_flight', 'sort_roster',
         'reset_filters', 'set_date_range', 'create_crew_bids', 'prepare_pa_removal',
+        'build_pairings', 'auto_assign_pairings',
         'move_task', 'swap_tasks', 'unassign_task', 'add_ground_task',
     }
 
@@ -401,3 +406,168 @@ def test_add_ground_task_drops_invalid_time():
     assert action == {
         'type': 'add_ground_task', 'crewIds': ['10234'], 'assignment': 'day off', 'date': '2026-09-05',
     }
+
+
+# ── Pairing Build Automation (R'Bot → roundtrip builder dialog) ──────────────
+
+def test_build_pairings_advertised_with_base_and_period_inputs():
+    tool = next(t for t in TOOLS if t['name'] == 'build_pairings')
+    props = tool['input_schema']['properties']
+    assert tool['input_schema']['required'] == ['base']
+    for key in ('base', 'start', 'end', 'month', 'year', 'fleets', 'composition',
+                'restMin', 'maxDutyBlockMin', 'checkinMin', 'debriefMin', 'singleLegExemption'):
+        assert key in props, key
+
+
+def test_build_pairings_maps_full_scope():
+    action = tool_call_to_action({'name': 'build_pairings', 'input': {
+        'base': 'add', 'start': '2026-08-25', 'end': '2026-10-07',
+        'fleets': ['7m8'], 'composition': [{'rank': 'ca', 'plan': 1}, {'rank': 'fo', 'plan': 1}],
+        'restMin': 720, 'maxDutyBlockMin': 480, 'checkinMin': 120, 'debriefMin': 15,
+        'singleLegExemption': True,
+    }})
+    assert action == {
+        'type': 'build_pairings', 'base': 'ADD', 'start': '2026-08-25', 'end': '2026-10-07',
+        'fleets': ['7M8'], 'composition': [{'rank': 'CA', 'plan': 1}, {'rank': 'FO', 'plan': 1}],
+        'rules': {'restMin': 720, 'maxDutyBlockMin': 480, 'checkinMin': 120, 'debriefMin': 15,
+                  'singleLegExemption': True},
+    }
+
+
+def test_build_pairings_minimal_scope_omits_optional_keys():
+    action = tool_call_to_action({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'start': '2026-08-25', 'end': '2026-10-07',
+    }})
+    assert action == {'type': 'build_pairings', 'base': 'ADD', 'start': '2026-08-25', 'end': '2026-10-07'}
+
+
+def test_build_pairings_accepts_month_and_year():
+    action = tool_call_to_action({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'month': 'September', 'year': 2026,
+    }})
+    assert action == {'type': 'build_pairings', 'base': 'ADD', 'start': '2026-09-01', 'end': '2026-09-30'}
+
+
+def test_build_pairings_month_defaults_to_current_year():
+    params = build_pairings_params({'name': 'build_pairings', 'input': {'base': 'ADD', 'month': 6}},
+                                   today=date(2026, 3, 1))
+    assert params['start'] == '2026-06-01' and params['end'] == '2026-06-30'
+
+
+def test_build_pairings_swaps_reversed_dates():
+    params = build_pairings_params({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'start': '2026-10-07', 'end': '2026-08-25'}})
+    assert params['start'] == '2026-08-25' and params['end'] == '2026-10-07'
+
+
+def test_build_pairings_requires_base_and_period():
+    assert tool_call_to_action({'name': 'build_pairings', 'input': {
+        'start': '2026-08-25', 'end': '2026-10-07'}}) is None
+    assert tool_call_to_action({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'start': 'August', 'end': '2026-10-07'}}) is None
+    assert tool_call_to_action({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'month': 'Smarch'}}) is None
+    assert tool_call_to_action({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'month': 13}}) is None
+
+
+def test_build_pairings_normalizes_fleets_and_drops_all_fleets():
+    params = build_pairings_params({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'start': '2026-08-25', 'end': '2026-10-07',
+        'fleets': ['7m8', ' a380 ', '']}})
+    assert params['fleets'] == ['7M8', 'A380']
+    all_fleets = build_pairings_params({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'start': '2026-08-25', 'end': '2026-10-07', 'fleets': ['ALL']}})
+    assert 'fleets' not in all_fleets
+
+
+def test_build_pairings_caps_composition_and_drops_invalid_slots():
+    params = build_pairings_params({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'start': '2026-08-25', 'end': '2026-10-07',
+        'composition': [{'rank': 'CA', 'plan': 1}, {'rank': 'ca', 'plan': 3},
+                        {'rank': 'FO', 'plan': 0}, {'rank': 'FO', 'plan': 2}, {'rank': '', 'plan': 1},
+                        {'rank': 'PU', 'plan': '2'}, {'rank': 'CA2', 'plan': 99}]}})
+    assert params['composition'] == [{'rank': 'CA', 'plan': 1}, {'rank': 'FO', 'plan': 2}]
+
+
+def test_build_pairings_clamps_rule_overrides():
+    params = build_pairings_params({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'start': '2026-08-25', 'end': '2026-10-07',
+        'restMin': 7000, 'checkinMin': 120, 'debriefMin': -5, 'maxDutyBlockMin': 480,
+        'singleLegExemption': False}})
+    assert params['rules'] == {'maxDutyBlockMin': 480, 'checkinMin': 120, 'singleLegExemption': False}
+
+
+def test_build_pairings_missing_message_asks_for_base_then_period():
+    assert build_pairings_missing_message({'name': 'build_pairings', 'input': {}}) == \
+        'Which base, and which date range or month, should I build pairings for?'
+    assert build_pairings_missing_message({'name': 'build_pairings', 'input': {
+        'start': '2026-08-25', 'end': '2026-10-07'}}) == \
+        'Which base should I build pairings for in 2026-08-25?'
+    assert build_pairings_missing_message({'name': 'build_pairings', 'input': {
+        'base': 'ADD'}}) == 'Which date range or month should I build pairings for?'
+    assert build_pairings_missing_message({'name': 'build_pairings', 'input': {
+        'base': 'ADD', 'start': '2026-08-25', 'end': '2026-10-07'}}) is None
+
+
+def test_build_pairings_missing_message_ignores_other_tools():
+    assert build_pairings_missing_message({'name': 'move_task', 'input': {}}) is None
+
+
+# ── Auto-assign open pairings (R'Bot → auto-assign dialog) ───────────────────
+
+def test_auto_assign_advertised_with_crew_ids():
+    tool = next(t for t in TOOLS if t['name'] == 'auto_assign_pairings')
+    props = tool['input_schema']['properties']
+    assert tool['input_schema']['required'] == ['crewIds']
+    for key in ('crewIds', 'start', 'end', 'month', 'year'):
+        assert key in props, key
+
+
+def test_auto_assign_maps_crew_and_range():
+    action = tool_call_to_action({'name': 'auto_assign_pairings', 'input': {
+        'crewIds': ['T2004', ' T2005 '], 'start': '2026-09-01', 'end': '2026-09-30',
+    }})
+    assert action == {'type': 'auto_assign_pairings', 'crewIds': ['T2004', 'T2005'],
+                      'start': '2026-09-01', 'end': '2026-09-30'}
+
+
+def test_auto_assign_accepts_month_and_swaps_reversed_dates():
+    assert tool_call_to_action({'name': 'auto_assign_pairings', 'input': {
+        'crewIds': ['T2004'], 'month': 'September', 'year': 2026,
+    }}) == {'type': 'auto_assign_pairings', 'crewIds': ['T2004'],
+            'start': '2026-09-01', 'end': '2026-09-30'}
+    assert auto_assign_params({'name': 'auto_assign_pairings', 'input': {
+        'crewIds': ['T2004'], 'start': '2026-09-30', 'end': '2026-09-01',
+    }})['start'] == '2026-09-01'
+
+
+def test_auto_assign_caps_crew_ids():
+    params = auto_assign_params({'name': 'auto_assign_pairings', 'input': {
+        'crewIds': [f'T{i:04d}' for i in range(30)], 'start': '2026-09-01', 'end': '2026-09-30',
+    }})
+    assert len(params['crewIds']) == 10
+
+
+def test_auto_assign_requires_crew_and_period():
+    assert tool_call_to_action({'name': 'auto_assign_pairings', 'input': {
+        'start': '2026-09-01', 'end': '2026-09-30'}}) is None
+    assert tool_call_to_action({'name': 'auto_assign_pairings', 'input': {
+        'crewIds': ['T2004']}}) is None
+    assert tool_call_to_action({'name': 'auto_assign_pairings', 'input': {
+        'crewIds': [], 'month': 'September'}}) is None
+    assert tool_call_to_action({'name': 'auto_assign_pairings', 'input': {
+        'crewIds': ['T2004'], 'month': 'Smarch'}}) is None
+
+
+def test_auto_assign_missing_message_asks_for_crew_then_period():
+    assert auto_assign_missing_message({'name': 'auto_assign_pairings', 'input': {}}) == \
+        'Which crew, and which month or date range, should I auto-assign open pairings for?'
+    assert auto_assign_missing_message({'name': 'auto_assign_pairings', 'input': {
+        'start': '2026-09-01', 'end': '2026-09-30'}}) == \
+        'Which crew should I auto-assign open pairings to?'
+    assert auto_assign_missing_message({'name': 'auto_assign_pairings', 'input': {
+        'crewIds': ['T2004']}}) == 'Which month or date range should I auto-assign open pairings for?'
+    assert auto_assign_missing_message({'name': 'auto_assign_pairings', 'input': {
+        'crewIds': ['T2004'], 'month': 'September'}}) is None
+    assert auto_assign_missing_message({'name': 'build_pairings', 'input': {}}) is None

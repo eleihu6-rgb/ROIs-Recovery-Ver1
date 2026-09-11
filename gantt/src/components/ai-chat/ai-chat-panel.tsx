@@ -26,6 +26,8 @@ export const AiChatPanel = () => {
       hints.rank ? `"show ${hints.rank} crew"` : null,
       hints.fleet ? `"show ${hints.fleet} fleet crew"` : null,
       hints.crewId ? `"find crew ${hints.crewId}"` : null,
+      // Pairing Build Automation handoff — discoverable from the same real setup values.
+      hints.base && hints.fleet ? `"build pairings for ${hints.base} ${hints.fleet}"` : null,
     ].filter((t): t is string => t !== null)
 
     const rotating =

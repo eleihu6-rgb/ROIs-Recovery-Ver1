@@ -60,11 +60,19 @@ export interface RoundtripOptions {
   composition: { narrow: RoundtripComposition[]; wide: RoundtripComposition[] }
   narrowFleets: string[]
 }
+/** Receipt for one committed rotation. `warnings` carry the service's build-rule notes ("build as-is"). */
+export interface RoundtripBuildReceipt {
+  pairingId: number
+  label: string
+  dutyCount: number
+  segCount: number
+  warnings?: string[]
+}
 export const roundtripApi = {
   options: async (): Promise<RoundtripOptions> =>
     api.get('/api/pairing/roundtrip/options') as Promise<RoundtripOptions>,
   search: async (scope: RoundtripScope): Promise<RoundtripSearch> =>
     api.post('/api/pairing/roundtrip/search', { scope }) as Promise<RoundtripSearch>,
-  build: async (scope: RoundtripScope, flightIds: number[]): Promise<{ pairingId: number; label: string; dutyCount: number; segCount: number }> =>
-    api.post('/api/pairing/roundtrip/build', { scope, flightIds }) as Promise<{ pairingId: number; label: string; dutyCount: number; segCount: number }>,
+  build: async (scope: RoundtripScope, flightIds: number[]): Promise<RoundtripBuildReceipt> =>
+    api.post('/api/pairing/roundtrip/build', { scope, flightIds }) as Promise<RoundtripBuildReceipt>,
 }

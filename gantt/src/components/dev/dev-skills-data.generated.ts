@@ -651,6 +651,18 @@ export const DEV_SKILLS: DevSkillEntry[] = [
     "sourcePath": ".agents/skills/143-ek-et-roundtrip-pairing-build/SKILL.md"
   },
   {
+    "name": "144-auto-assign-base-crew",
+    "folder": "144-auto-assign-base-crew",
+    "number": 144,
+    "title": "Auto-assign open pairings to base crew",
+    "description": "Auto-assign open base+fleet-matched pairings to selected base crew, warning-clean, across the viewport calendar month. Use when touching the gantt roster context-menu \"Auto-assign open pairings\" action, the no-commit planner endpoint POST /api/roster/auto-assign/plan, the brain/hands split (backend decision trace + frontend replay), or when adapting the greedy legality-aware packer. Also the canonical note that the plan is validated by the SAME Rust engine (previewDraftLegality) the manual assign uses, so no rules are re-implemented.",
+    "overview": "A shipped gantt feature (\"brain + hands\"). Always load **115-gantt-playbook** before gantt work; this skill is the how-to for one feature.",
+    "function": "- **Brain** (fast, no-commit): `POST /api/roster/auto-assign/plan` computes, per crew, a greedy warning-clean assignment plan + a full decision **trace**, and returns it. Persists NOTHING (the underlying legality preview rolls back). - **Hands** (real UI): the gantt **replays** the plan as real assign draft ops, one per pairing, each scrolling the pairing pane to the target and running the same optimistic apply + live legality check a drag-drop does. Assignments accumulate in the draft; the user presses **Save** to commit. This keeps the Rust engine the single source of legality truth (no rule logic duplicated) and makes the proces...",
+    "howToUse": "- **Target month = viewport calendar month**, via `resolveViewportMonthBounds()` (leftmost visible day's month) — NOT the toolbar date range. J4001 over Sep 2026 → 12 assigned / 795 skipped. - **J4001** = Meseret Gebremariam, base **ADD**, fleet **7M8** (seed `sql/seed/2026-09-10-crew-add-j4001-j4040-add-7m8.sql`). Real engine drives backtrack on hard **1001 \"Assignment Overlap\"** (sev 3) and soft **7504 \"Spacing Rule - WOCL\"** (sev 1, trimmed under skipOnSoft) — proving the two-tier design: the cheap time-overlap check misses duty-padding overlaps the engine catches. - `previewDraftLegality` runs in a rolled-back txn → the planner...",
+    "resources": [],
+    "sourcePath": ".agents/skills/144-auto-assign-base-crew/SKILL.md"
+  },
+  {
     "name": "portal-help-writing",
     "folder": "portal-help-writing",
     "number": null,
