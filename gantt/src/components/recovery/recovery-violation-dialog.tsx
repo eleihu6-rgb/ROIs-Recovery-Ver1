@@ -17,7 +17,8 @@ import { legalityPreviewApi } from '@/services/legality-preview-api'
 import { flightApi } from '@/services/flight-api'
 import { buildRecoveryDraftPlan } from '@/services/recovery-draft'
 import { recoveryTraceApi } from '@/services/recovery-api'
-import { buildRecoveryPlans, isRosterCompleted, recoveryRuleFailures, ROSTER_STABILITY_FORMULA, type CrossBaseCandidateTrace, type RecoveryAlertSnapshot, type RecoveryFlightSnapshot, type RecoveryOption, type RecoveryPlans } from '@/services/recovery-candidates'
+import { buildRecoveryPlans, enrichPlansWithLibraryCosts, isRosterCompleted, recoveryRuleFailures, ROSTER_STABILITY_FORMULA, type CrossBaseCandidateTrace, type RecoveryAlertSnapshot, type RecoveryFlightSnapshot, type RecoveryLibraryCostFetcher, type RecoveryOption, type RecoveryPlans } from '@/services/recovery-candidates'
+import { recoveryCostApi } from '@/services/recovery-api'
 import { notify } from '@/utils/notify'
 import { bringCrewIdsToTop } from '@/utils/bring-matches-to-top'
 
@@ -121,8 +122,8 @@ const metric = (label: string, value: string | number) => (
   </div>
 )
 
-const money = (value: number): string => new Intl.NumberFormat('zh-CN', {
-  style: 'currency', currency: 'CNY', maximumFractionDigits: 0,
+const money = (value: number, currency: string = 'CNY'): string => new Intl.NumberFormat('zh-CN', {
+  style: 'currency', currency, maximumFractionDigits: 0,
 }).format(value)
 
 const optionBadge = (option: RecoveryOption): string => {
@@ -530,15 +531,24 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     const next = selected.length === 1
       ? buildRecoveryPlans({ ...buildInput, alert: selected[0] })
       : buildRecoveryPlans({ ...buildInput, alerts: selected })
-    setPlans(next)
+    // Refresh every option's directCost from the cost library so the UI
+    // surfaces configured tariff prices instead of the hard-coded
+    // constants. Falls back to the original costs on network error so a
+    // cost-library outage never blanks the recovery dialog.
+    const libraryFetcher: RecoveryLibraryCostFetcher = async (inputs) => {
+      const response = await recoveryCostApi.postBatch(inputs)
+      return response.results.map((row) => ({ directCost: row.directCost, currency: row.currency }))
+    }
+    const enriched = await enrichPlansWithLibraryCosts(next, buildInput.items, libraryFetcher)
+    setPlans(enriched)
 
     // Persist the cross-base diagnostic to .dev-logs/recovery-cross-base-trace.jsonl
     // (via the live-server /api/recovery/debug-trace endpoint) so an empty
     // cross-base group can be analysed offline. Fire-and-forget - failure to log
     // must NOT block the UI. The trace is always populated by buildRecoveryPlans,
     // so even successful cross-base options are recorded for tuning.
-    void logCrossBaseTrace(next, selected, crewSnapshots.length, recoveryFlights.length, items.length)
-    const initialPlan = next.roster.options.length > 0 ? next.roster : next.standby.options.length > 0 ? next.standby : next.crossBase
+    void logCrossBaseTrace(enriched, selected, crewSnapshots.length, recoveryFlights.length, items.length)
+    const initialPlan = enriched.roster.options.length > 0 ? enriched.roster : enriched.standby.options.length > 0 ? enriched.standby : enriched.crossBase
     setSelectedPlanType(initialPlan.id)
     const first = initialPlan.options.find((option) => option.localExecutable) ?? initialPlan.options[0]
     setSelectedOptionId(first?.id ?? null)
@@ -744,7 +754,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
            {metric('Affected Crew', previewedOption.subOptions?.length ? [...new Set(previewedOption.subOptions.flatMap((candidate) => [candidate.sourceCrewId, candidate.targetCrewId]))].join(', ') : previewedOption.targetCrewId)}
           {metric('Method', previewedOption.mode === 'standby' ? 'Callout SBY' : 'Roster transfer / swap')}
           {metric('Roster impact', previewedOption.metrics.changedRosterCount)}
-          {metric('Total cost', money(previewedOption.metrics.totalCost))}
+          {metric('Total cost', money(previewedOption.metrics.totalCost, previewedOption.metrics.currency))}
         </div>
         <Button variant="ghost" className="mt-3 h-7 gap-1 px-2 text-2xs" onClick={() => setPreviewCollapsed(false)} data-testid="recovery-expand-options"><Minimize2 className="h-3.5 w-3.5" />Return to recovery options</Button>
       </div> : <div className={alert
@@ -798,7 +808,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
       </div>}
 
       {detailOpen && selectedOption && <AppDialog open={detailOpen} onOpenChange={setDetailOpen} data-testid="recovery-detail-dialog" className="sm:max-w-[min(1050px,94vw)]" icon={<Eye className="h-4 w-4" />} title={`Recovery detail · ${selectedOption.title}${selectedOption.positioning ? ' · DHD positioning' : ''}`} bodyClassName="p-0" footer={<div className="flex w-full items-center justify-between gap-2"><Button className="h-7 gap-1 px-2" onClick={() => previewInLive(selectedOption)}><Eye className="h-3.5 w-3.5" />Preview</Button><Button variant="ghost" className="h-7 px-2" onClick={() => setDetailOpen(false)}>Close</Button></div>}>
-        <div className="p-3"><div className="mb-3 grid grid-cols-3 gap-3 border-b border-border pb-3 sm:grid-cols-5">{metric('Crew impact', selectedOption.metrics.affectedCrewCount)}{metric('Roster impact', selectedOption.metrics.changedRosterCount)}{metric('Stability', `${selectedOption.metrics.rosterStability}%`)}{metric('Direct cost', money(selectedOption.metrics.directCost))}{metric('Total cost', money(selectedOption.metrics.totalCost))}</div><div className="mb-2 grid grid-cols-2 gap-2 text-2xs text-muted-foreground sm:grid-cols-3"><div>Cancelled rosters: <span className="font-semibold text-foreground">{selectedOption.metrics.cancelledRosterCount}</span></div><div>Added rosters: <span className="font-semibold text-foreground">{selectedOption.metrics.addedRosterCount}</span></div><div>Follow-on impact: <span className="font-semibold text-foreground">{selectedOption.metrics.followOnImpactCount}</span></div><div>Virtual cost: <span className="font-semibold text-foreground">{money(selectedOption.metrics.virtualCost)}</span></div><div>Virtual cost weight: <span className="font-semibold text-foreground">{selectedOption.metrics.virtualCostWeight.toFixed(1)}</span></div></div><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="text-xs font-semibold text-foreground">Before / after complete Roster changes</div><div className="flex flex-wrap items-center gap-2 text-2xs text-muted-foreground" aria-label="Roster change color legend"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-500" />Cancelled</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-600" />Added</span></div></div><div className="overflow-auto"><table className="w-full border-collapse text-xs"><thead className="bg-muted/70 text-left text-2xs text-muted-foreground"><tr><th className="px-2 py-2">CrewID</th><th className="px-2 py-2">Roster</th><th className="px-2 py-2">PairingID</th><th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span></th><th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span></th><th className="px-2 py-2">Change</th></tr></thead><tbody>{selectedOption.changes.map((change, index) => <tr key={`${change.crewId}-${change.rosterId}-${index}`} className="border-b border-border/50"><td className="px-2 py-2 font-mono">{change.crewId}</td><td className="px-2 py-2 font-mono">{change.rosterId}</td><td className="px-2 py-2 font-mono">{change.pairingId ?? '—'}</td><td className="max-w-56 border-l-2 border-sky-500 bg-sky-500/10 px-2 py-2 text-sky-800 dark:text-sky-100">{change.before}</td><td className="max-w-56 border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-2 text-emerald-800 dark:text-emerald-100">{change.after}</td><td className="px-2 py-2"><span className={changeTypeClass(change.changeType)}>{changeTypeLabel(change.changeType)}</span></td></tr>)}</tbody></table></div><div className="mt-3 flex items-center gap-2 text-2xs text-muted-foreground"><Users className="h-3.5 w-3.5" />Callout Standby retains the original SBY task and marks it with a yellow C indicator in the Live Gantt preview.</div></div>
+        <div className="p-3"><div className="mb-3 grid grid-cols-3 gap-3 border-b border-border pb-3 sm:grid-cols-5">{metric('Crew impact', selectedOption.metrics.affectedCrewCount)}{metric('Roster impact', selectedOption.metrics.changedRosterCount)}{metric('Stability', `${selectedOption.metrics.rosterStability}%`)}{metric('Direct cost', money(selectedOption.metrics.directCost, selectedOption.metrics.currency))}{metric('Total cost', money(selectedOption.metrics.totalCost, selectedOption.metrics.currency))}</div><div className="mb-2 grid grid-cols-2 gap-2 text-2xs text-muted-foreground sm:grid-cols-3"><div>Cancelled rosters: <span className="font-semibold text-foreground">{selectedOption.metrics.cancelledRosterCount}</span></div><div>Added rosters: <span className="font-semibold text-foreground">{selectedOption.metrics.addedRosterCount}</span></div><div>Follow-on impact: <span className="font-semibold text-foreground">{selectedOption.metrics.followOnImpactCount}</span></div><div>Virtual cost: <span className="font-semibold text-foreground">{money(selectedOption.metrics.virtualCost, selectedOption.metrics.currency)}</span></div><div>Virtual cost weight: <span className="font-semibold text-foreground">{selectedOption.metrics.virtualCostWeight.toFixed(1)}</span></div></div><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="text-xs font-semibold text-foreground">Before / after complete Roster changes</div><div className="flex flex-wrap items-center gap-2 text-2xs text-muted-foreground" aria-label="Roster change color legend"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-500" />Cancelled</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-600" />Added</span></div></div><div className="overflow-auto"><table className="w-full border-collapse text-xs"><thead className="bg-muted/70 text-left text-2xs text-muted-foreground"><tr><th className="px-2 py-2">CrewID</th><th className="px-2 py-2">Roster</th><th className="px-2 py-2">PairingID</th><th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-500" />Before</span></th><th className="px-2 py-2"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />After</span></th><th className="px-2 py-2">Change</th></tr></thead><tbody>{selectedOption.changes.map((change, index) => <tr key={`${change.crewId}-${change.rosterId}-${index}`} className="border-b border-border/50"><td className="px-2 py-2 font-mono">{change.crewId}</td><td className="px-2 py-2 font-mono">{change.rosterId}</td><td className="px-2 py-2 font-mono">{change.pairingId ?? '—'}</td><td className="max-w-56 border-l-2 border-sky-500 bg-sky-500/10 px-2 py-2 text-sky-800 dark:text-sky-100">{change.before}</td><td className="max-w-56 border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-2 text-emerald-800 dark:text-emerald-100">{change.after}</td><td className="px-2 py-2"><span className={changeTypeClass(change.changeType)}>{changeTypeLabel(change.changeType)}</span></td></tr>)}</tbody></table></div><div className="mt-3 flex items-center gap-2 text-2xs text-muted-foreground"><Users className="h-3.5 w-3.5" />Callout Standby retains the original SBY task and marks it with a yellow C indicator in the Live Gantt preview.</div></div>
       </AppDialog>}
     </AppDialog>
   )
@@ -881,11 +891,11 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <span className="sm:hidden text-2xs text-muted-foreground">Cancel <b className="text-foreground">{option.metrics.cancelledRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
-                <span className="sm:hidden text-2xs text-muted-foreground">Cost <b className="text-foreground">{money(option.metrics.totalCost)}</b></span>
+                <span className="sm:hidden text-2xs text-muted-foreground">Cost <b className="text-foreground">{money(option.metrics.totalCost, option.metrics.currency)}</b></span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{money(option.metrics.totalCost)}</span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{money(option.metrics.totalCost, option.metrics.currency)}</span>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onPreview(option)} data-testid={`recovery-preview-${option.id}`}><Eye className="h-3.5 w-3.5" />Preview</button>
@@ -898,18 +908,18 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
               {option.subOptions.map((child) => <div key={child.id} className="grid gap-1 border-t border-border/50 pt-1 text-2xs sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
                 <span className="font-mono text-foreground">{child.sourceCrewId} → {child.targetCrewId}</span>
                 <span className="text-muted-foreground">{child.mode === 'standby' || child.mode === 'cross-base-standby' ? 'Callout SBY' : child.mode === 'swap' || child.mode === 'cross-base-swap' ? 'Roster swap' : child.mode === 'cross-base-destination' ? 'Destination-base pairing' : child.mode === 'cross-base-direct' ? 'Cross-base direct' : 'Roster transfer'}</span>
-                <span className="text-right tabular-nums text-muted-foreground">Cancel {child.metrics.cancelledRosterCount} · Add {child.metrics.addedRosterCount} · {money(child.metrics.totalCost)}</span>
+                <span className="text-right tabular-nums text-muted-foreground">Cancel {child.metrics.cancelledRosterCount} · Add {child.metrics.addedRosterCount} · {money(child.metrics.totalCost, child.metrics.currency)}</span>
               </div>)}
             </div>}
             {option.ruleMessages.length > 0 && <div className="mt-2 flex items-start gap-1.5 text-2xs text-destructive"><ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{option.ruleMessages.join(' ')}</span></div>}
             {option.mode === 'standby' && option.standbyWindow && <div className="mt-2 text-2xs text-amber-700">SBY window: {option.standbyWindow} · original SBY retained · Callout icon in preview</div>}
             {option.destinationSplit && <div className="mt-2 grid gap-1 text-2xs text-indigo-700 dark:text-indigo-300 sm:grid-cols-2">
               <span>Destination base: <b>{option.destinationSplit.destinationBase}</b> · Acting Rank: <b>{option.destinationSplit.actingRank}</b></span>
-              <span>{option.destinationSplit.createsPairing ? 'New Pairing' : 'Original Pairing modified'} · Composition plan 1 · DHD saving: <b>{money(option.destinationSplit.dhdCostSavings)}</b></span>
+              <span>{option.destinationSplit.createsPairing ? 'New Pairing' : 'Original Pairing modified'} · Composition plan 1 · DHD saving: <b>{money(option.destinationSplit.dhdCostSavings, option.metrics.currency)}</b></span>
             </div>}
             {option.positioning && <div className="mt-2 grid gap-1 text-2xs text-teal-700 dark:text-teal-300 sm:grid-cols-2">
               <span>Support base: <b>{option.positioning.supportBase}</b> · Recovery base: <b>{option.positioning.recoveryBase}</b></span>
-              <span>DHD: <b>{option.positioning.outbound.fltNum}</b> outbound / <b>{option.positioning.inbound.fltNum}</b> return · {money(option.metrics.dhdFlightCost)}</span>
+              <span>DHD: <b>{option.positioning.outbound.fltNum}</b> outbound / <b>{option.positioning.inbound.fltNum}</b> return · {money(option.metrics.dhdFlightCost, option.metrics.currency)}</span>
             </div>}
           </div>
         })}
@@ -930,11 +940,11 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <span className="sm:hidden text-2xs text-muted-foreground">Cancel <b className="text-foreground">{option.metrics.cancelledRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
-                <span className="sm:hidden text-2xs text-muted-foreground">Cost <b className="text-foreground">{money(option.metrics.totalCost)}</b></span>
+                <span className="sm:hidden text-2xs text-muted-foreground">Cost <b className="text-foreground">{money(option.metrics.totalCost, option.metrics.currency)}</b></span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
                 <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
-                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{money(option.metrics.totalCost)}</span>
+                <span className="hidden border-l border-border/50 pl-1.5 text-right text-2xs font-semibold tabular-nums sm:block">{money(option.metrics.totalCost, option.metrics.currency)}</span>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid={`recovery-detail`}><Eye className="h-3.5 w-3.5" />Detail</button>
@@ -1008,8 +1018,10 @@ const changeTypeClass = (changeType: RecoveryOption['changes'][number]['changeTy
 
 const bestCost = (group: RecoveryPlans['roster']): string => {
   const executable = group.options.filter((option) => option.ruleCheck === 'passed' && option.localExecutable)
-  const values = (executable.length > 0 ? executable : group.options).map((option) => option.metrics.totalCost)
-  return values.length === 0 ? '—' : money(Math.min(...values))
+  const candidates = executable.length > 0 ? executable : group.options
+  if (candidates.length === 0) return '—'
+  const min = candidates.reduce((best, option) => option.metrics.totalCost < best.metrics.totalCost ? option : best)
+  return money(min.metrics.totalCost, min.metrics.currency)
 }
 
 /**

@@ -94,7 +94,7 @@ export interface RecoveryMetrics {
   virtualCost: number
   virtualCostWeight: number
   totalCost: number
-  currency: 'CNY'
+  currency: string
 }
 
 export interface RecoveryOption {
@@ -1727,6 +1727,201 @@ const emptyMixedGroup = (): RecoveryPlanGroup => ({
   options: [],
   excludedOptions: [],
 })
+
+/**
+ * Re-compute `directCost` / `currency` for every option (and each sub-option
+ * inside combined options) by delegating to the cost library via the supplied
+ * batch fetcher. Combined options have their directCost re-summed from the
+ * enriched child options so the totals stay consistent. Each group is then
+ * re-sorted by the new directCost so the cheapest library-priced option
+ * stays at the top.
+ *
+ * The fetcher signature intentionally matches `recoveryCostApi.postBatch` so
+ * the dialog can pass it through directly. The default fetcher falls back to
+ * `null` directCost (preserving the original hard-coded cost) on error so a
+ * network blip never blanks the UI.
+ */
+export interface RecoveryLibraryCostInput {
+  mode: RecoveryOptionMode
+  crossBase: number
+  crossDivision: number
+  crossRole: number
+  changed: number
+  followOnImpactCount: number
+  dhdOutboundSectors: number
+  dhdFlightCost: number
+  dhdCostSavings: number
+}
+
+export interface RecoveryLibraryCostResult {
+  directCost: number | null
+  currency: string
+}
+
+export const optionToLibraryCostInput = (
+  option: Pick<RecoveryOption, 'mode' | 'metrics' | 'positioning'>,
+): RecoveryLibraryCostInput => {
+  // `directCost` components mirror what `buildMetrics` already computes:
+  //   crossBase (1 if mode starts with `cross-base`)
+  //   crossDivision (1 if `metrics.crossDivision` is set; kept 0/1 for the
+  //     library's `quantity` calculator)
+  //   crossRole (1 if `mode === 'swap' || mode === 'cross-base-swap'`)
+  //   changed (1 for transfer/standby, 2 for swap variants)
+  //   followOnImpactCount (passed straight through)
+  //   dhdOutboundSectors (1 if the option carries a `positioning` block —
+  //     the library treats each sector the same; the DHD flight cost is
+  //     subtracted in a final manual adjustment)
+  const isSwap = option.mode === 'swap' || option.mode === 'cross-base-swap'
+  const isCrossBase = option.mode.startsWith('cross-base')
+  return {
+    mode: option.mode,
+    crossBase: isCrossBase ? 1 : 0,
+    crossDivision: option.metrics.followOnImpactCount >= 0 && option.mode.includes('cross-division') ? 1 : 0,
+    crossRole: isSwap ? 1 : 0,
+    changed: isSwap ? 2 : 1,
+    followOnImpactCount: option.metrics.followOnImpactCount,
+    dhdOutboundSectors: option.positioning ? 1 : 0,
+    dhdFlightCost: option.metrics.dhdFlightCost,
+    dhdCostSavings: option.metrics.dhdCostSavings ?? 0,
+  }
+}
+
+const sumVirtualCost = (option: RecoveryOption): number => option.metrics.virtualCost
+
+const recomputeMetricsForOption = (
+  option: RecoveryOption,
+  result: RecoveryLibraryCostResult,
+): RecoveryOption => {
+  const directCost = result.directCost ?? option.metrics.directCost
+  const currency = result.directCost == null ? option.metrics.currency : result.currency
+  const virtualCost = sumVirtualCost(option)
+  const virtualCostWeight = option.metrics.virtualCostWeight
+  return {
+    ...option,
+    metrics: {
+      ...option.metrics,
+      directCost,
+      currency,
+      totalCost: directCost + virtualCost * virtualCostWeight,
+    },
+  }
+}
+
+const recomputeCombinedMetrics = (subOptions: RecoveryOption[], baselineItems: RosterItem[]): RecoveryMetrics => {
+  if (subOptions.length === 0) {
+    return {
+      affectedCrewCount: 0,
+      cancelledRosterCount: 0,
+      addedRosterCount: 0,
+      changedRosterCount: 0,
+      followOnImpactCount: 0,
+      rosterStability: 0,
+      directCost: 0,
+      dhdFlightCost: 0,
+      dhdCostSavings: 0,
+      virtualCost: 0,
+      virtualCostWeight: 1,
+      totalCost: 0,
+      currency: 'CNY',
+    }
+  }
+  const cancelledRosterCount = subOptions.reduce((sum, o) => sum + o.metrics.cancelledRosterCount, 0)
+  const addedRosterCount = subOptions.reduce((sum, o) => sum + o.metrics.addedRosterCount, 0)
+  const changedRosterCount = subOptions.reduce((sum, o) => sum + o.metrics.changedRosterCount, 0)
+  const followOnImpactCount = subOptions.reduce((sum, o) => sum + o.metrics.followOnImpactCount, 0)
+  const directCost = subOptions.reduce((sum, o) => sum + o.metrics.directCost, 0)
+  const dhdFlightCost = subOptions.reduce((sum, o) => sum + o.metrics.dhdFlightCost, 0)
+  const dhdCostSavings = subOptions.reduce((sum, o) => sum + (o.metrics.dhdCostSavings ?? 0), 0)
+  const virtualCost = subOptions.reduce((sum, o) => sum + o.metrics.virtualCost, 0)
+  const virtualCostWeight = subOptions.reduce((sum, o) => sum + o.metrics.virtualCostWeight, 0) / subOptions.length
+  const loadedRosterCount = Math.max(1, baselineItems.length ? new Set(baselineItems.map((i) => `${i.crewId}:${i.pairingId}`)).size : subOptions.length)
+  const penalty = 0.30 * cancelledRosterCount + 0.20 * addedRosterCount + 0.15 * changedRosterCount + 0.35 * followOnImpactCount
+  const rosterStability = Math.round(Math.max(0, Math.min(100, 100 - (100 * penalty) / loadedRosterCount)) * 100) / 100
+  return {
+    affectedCrewCount: subOptions.length,
+    cancelledRosterCount,
+    addedRosterCount,
+    changedRosterCount,
+    followOnImpactCount,
+    rosterStability,
+    directCost,
+    dhdFlightCost,
+    dhdCostSavings,
+    virtualCost,
+    virtualCostWeight,
+    totalCost: directCost + virtualCost * virtualCostWeight,
+    currency: subOptions[0].metrics.currency,
+  }
+}
+
+const resortGroupByDirectCost = (group: RecoveryPlanGroup): RecoveryPlanGroup => {
+  const ranked = [...group.options].sort((a, b) => {
+    const dc = a.metrics.directCost - b.metrics.directCost
+    if (dc !== 0) return dc
+    return a.id.localeCompare(b.id)
+  })
+  return { ...group, options: ranked, excludedOptions: group.excludedOptions }
+}
+
+export type RecoveryLibraryCostFetcher = (inputs: RecoveryLibraryCostInput[]) => Promise<RecoveryLibraryCostResult[]>
+
+const emptyLibraryFetcher: RecoveryLibraryCostFetcher = async () => []
+
+/**
+ * Enrich a freshly built `RecoveryPlans` with cost-library-priced directCost
+ * values. Replaces `metrics.directCost` and `metrics.currency` for every
+ * option (including sub-options of combined options) and re-sorts each
+ * group so the cheapest library-priced option is first.
+ */
+export const enrichPlansWithLibraryCosts = async (
+  plans: RecoveryPlans,
+  baselineItems: RosterItem[],
+  fetcher: RecoveryLibraryCostFetcher = emptyLibraryFetcher,
+): Promise<RecoveryPlans> => {
+  const flatten = (option: RecoveryOption): RecoveryOption[] =>
+    option.subOptions && option.subOptions.length > 0 ? option.subOptions.flatMap(flatten) : [option]
+
+  const allOptions: RecoveryOption[] = [
+    ...plans.roster.options.flatMap(flatten),
+    ...plans.standby.options.flatMap(flatten),
+    ...plans.crossBase.options.flatMap(flatten),
+    ...plans.mixed.options.flatMap(flatten),
+  ]
+  if (allOptions.length === 0) return plans
+
+  const inputs = allOptions.map(optionToLibraryCostInput)
+  let results: RecoveryLibraryCostResult[]
+  try {
+    results = await fetcher(inputs)
+  } catch {
+    return plans
+  }
+  if (results.length !== allOptions.length) return plans
+
+  let cursor = 0
+  const enrichLeaf = (option: RecoveryOption): RecoveryOption => {
+    if (option.subOptions && option.subOptions.length > 0) {
+      const enrichedSubs = option.subOptions.map(enrichLeaf)
+      const metrics = recomputeCombinedMetrics(enrichedSubs, baselineItems)
+      return { ...option, subOptions: enrichedSubs, metrics }
+    }
+    const result = results[cursor++] ?? { directCost: null, currency: option.metrics.currency }
+    return recomputeMetricsForOption(option, result)
+  }
+  const enrichGroup = (group: RecoveryPlanGroup): RecoveryPlanGroup => ({
+    ...resortGroupByDirectCost({
+      ...group,
+      options: group.options.map(enrichLeaf),
+    }),
+  })
+  return {
+    ...plans,
+    roster: enrichGroup(plans.roster),
+    standby: enrichGroup(plans.standby),
+    crossBase: enrichGroup(plans.crossBase),
+    mixed: enrichGroup(plans.mixed),
+  }
+}
 
 /**
  * Mixed recovery — best-per-alert combination.

@@ -41,6 +41,40 @@ export const recoveryTraceApi = {
     recoveryTraceClient.post(url, body) as Promise<T>,
 }
 
+export interface RecoveryLibraryCostApiInput {
+  mode: 'transfer' | 'swap' | 'standby' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
+  crossBase: number
+  crossDivision: number
+  crossRole: number
+  changed: number
+  followOnImpactCount: number
+  dhdOutboundSectors: number
+  dhdFlightCost: number
+  dhdCostSavings: number
+}
+
+export interface RecoveryLibraryCostApiResult {
+  directCost: number | null
+  currency: string
+  breakdown: Array<{
+    label: string
+    typeCode: number
+    calculatorCode: string
+    revisionId: number | null
+    quantity: number
+    amount: number | null
+    status: 'priced' | 'unpriced' | 'disabled' | 'missing-revision'
+    currencyCode: string
+  }>
+  notes: string[]
+}
+
+export const recoveryCostApi = {
+  /** Batch cost calculation — used by the recovery dialog to refresh directCost from the cost library. */
+  postBatch: (inputs: RecoveryLibraryCostApiInput[]): Promise<{ results: RecoveryLibraryCostApiResult[] }> =>
+    recoveryTraceClient.post('/api/recovery/calculate-cost/batch', { inputs }) as Promise<{ results: RecoveryLibraryCostApiResult[] }>,
+}
+
 
 export type RecoveryPlanId = 'standby' | 'swap' | 'cross-base'
 
