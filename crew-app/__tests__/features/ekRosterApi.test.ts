@@ -408,6 +408,32 @@ describe('EK roster API adapter', () => {
     })).rejects.toThrow('Invalid crew credentials');
   });
 
+  it('names the carrier and status when the roster service itself is down', async () => {
+    // 2026-09-11 (Ryan, ET J4002): live-server behind cr.rois.one/api was down,
+    // Cloudflare answered 502 `Bad Gateway`, and the app reported the hardcoded
+    // "EK roster service unavailable" for an Ethiopian login.
+    global.fetch = jest.fn().mockResolvedValue({ok: false, status: 502}) as jest.Mock;
+    await expect(fetchEkRoster('https://cr.rois.one/api', {
+      airline: 'ET', crewId: 'J4002', password: 'Pier2026',
+    })).rejects.toThrow('ET roster service unavailable (HTTP 502)');
+  });
+
+  it('reports an unreachable roster service instead of the raw network error', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as jest.Mock;
+    await expect(fetchEkRoster('https://cr.rois.one/api', {
+      airline: 'ET', crewId: 'J4002', password: 'Pier2026',
+    })).rejects.toThrow('Cannot reach the ET roster service. Check your connection and try again.');
+  });
+
+  it('lets a cancelled login abort without being reported as a service failure', async () => {
+    const abortError = new Error('Aborted');
+    abortError.name = 'AbortError';
+    global.fetch = jest.fn().mockRejectedValue(abortError) as jest.Mock;
+    await expect(fetchEkRoster('https://cr.rois.one/api', {
+      airline: 'ET', crewId: 'J4002', password: 'Pier2026',
+    })).rejects.toThrow('Aborted');
+  });
+
   it('validates the complete response before returning it to persistence callers', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
