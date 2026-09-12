@@ -9,7 +9,7 @@ import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { Linking } from 'react-native';
+import { Linking, StyleSheet } from 'react-native';
 
 import settingsReducer from '../../src/features/settings/settingsSlice';
 import meetingsReducer, { toggleMeetingMute } from '../../src/features/meetings/meetingsSlice';
@@ -180,6 +180,34 @@ describe('Schedule meetings — cards', () => {
 
     expect(tree.getByText('Alarm off')).toBeTruthy();
     expect(tree.queryByTestId('meeting-join')).toBeNull();
+  });
+
+  // Regression: the time column was `width: 44` with no numberOfLines/flexShrink,
+  // which wrapped bold "HH:MM" onto two lines ("13:0" / "00") next to the title
+  // column. RN Testing Library doesn't run real flexbox layout, so this asserts
+  // the props/style that keep the text on one line instead of measured pixels.
+  it('renders the meeting time on a single line, wide enough for "HH:MM" ("13:00" bug)', () => {
+    const m: DayMeeting = {
+      id: 'ev-standup',
+      title: 'Weekly Alignment call',
+      where: 'CPS - Weekly Status call',
+      hhmm: '13:00',
+      endMs: Date.parse('2026-09-10T13:30:00+03:00'),
+      endHhmm: '13:30',
+      startMs: Date.parse('2026-09-10T13:00:00+03:00'),
+      joinUrl: null,
+      alarmHhmm: '12:52',
+      muted: false,
+    };
+    const tree = render(<MeetingRow meeting={m} palette={p} {...noop} />);
+
+    const timeNode = tree.getByText('13:00');
+    expect(timeNode.props.numberOfLines).toBe(1);
+
+    const flatStyle = StyleSheet.flatten(timeNode.props.style) as { width?: number; flexShrink?: number };
+    // "13:00"/"06:00" at this fontSize+weight needs more than the old 44px box.
+    expect(flatStyle.width).toBeGreaterThanOrEqual(48);
+    expect(flatStyle.flexShrink).toBe(0);
   });
 });
 
