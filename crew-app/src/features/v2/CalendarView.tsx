@@ -114,11 +114,12 @@ function CompactMonth({
                 accessibilityLabel={`${cell.day} ${MON[month.monthIdx]}${cell.isFlight ? ', flight duty' : cell.hasContent ? ', duty' : ''}`}
               >
                 <Text style={[s.cellDay, { color: on ? '#fff' : p.cardInk }, cell.isToday && s.today]}>{cell.day}</Text>
-                {/* One glyph says what the day is: jet = flight duty, dot = any
-                    other published duty, nothing = nothing published. */}
+                {/* One glyph says what the day is: the mock's outline plane =
+                    flight duty, dot = any other published duty, nothing =
+                    nothing published. */}
                 <View style={s.dotSlot}>
                   {cell.isFlight ? (
-                    <Icon name="jet" size={12} color={on ? '#fff' : p.btn} />
+                    <Icon name="plane" size={14} color={on ? '#fff' : p.btn} />
                   ) : cell.hasContent ? (
                     <View style={[s.dot, { backgroundColor: on ? '#fff' : p.btn }]} />
                   ) : null}

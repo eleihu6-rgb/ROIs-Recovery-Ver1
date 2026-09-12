@@ -382,7 +382,10 @@ export interface AgendaRow {
 }
 
 const KIND_ICON: Record<DayKind, IconName> = {
-  flight: 'jet',
+  // The mock's own flight glyph (the outline plane used by the dock and the
+  // flight cards) — not the filled jet silhouette, which reads as a solid blob
+  // at the calendar's small size.
+  flight: 'plane',
   layover: 'bed',
   standby: 'clock',
   training: 'book',
@@ -425,7 +428,7 @@ export function agendaRows(month: MonthModel, selected: number | null): AgendaRo
       rows.push({
         id: `flight-${d.key}-${leg.fltNumber}`,
         day: d.day,
-        icon: 'jet',
+        icon: KIND_ICON.flight,
         title: `${leg.fltNumber} ${leg.dep} → ${leg.arv}`,
         sub: sub(),
         time: window(leg.depTime, leg.arvTime),

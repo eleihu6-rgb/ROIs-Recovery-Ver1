@@ -20,6 +20,8 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     timeout: 10000
 - tapOn:
     id: "airline-PR"
+# Selecting the carrier pre-fills its test crew id + password (the form itself
+# opens empty), so the flow mirrors how a QA operator logs in.
 - tapOn:
     id: "login-btn"
 - extendedWaitUntil:

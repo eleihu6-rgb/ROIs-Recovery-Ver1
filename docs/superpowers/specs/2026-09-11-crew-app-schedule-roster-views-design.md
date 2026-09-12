@@ -28,6 +28,9 @@ agent(s) implementing it against real `crew-app` code.
 4. **"Duty" in the month summary = the sum of each day's own report→release
    window**, not check-in to the end of a multi-day rotation (a layover rest day
    is not duty time).
+5. **The Calendar uses the mock's own flight glyph** — the outline plane from
+   the dock and the flight cards, not the filled jet silhouette, which reads as
+   a solid blob in a 14 px calendar cell (Ryan, 2026-09-11).
 
 ## What this adds
 
