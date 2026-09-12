@@ -32,6 +32,13 @@ const TOPIC_MAP: Record<string, ComponentType> = {
   'live-rule-set':    lazy(() => import('./topics/live/live-rule-set')),
   'live-zoom':        lazy(() => import('./topics/live/live-zoom')),
   'live-keyboard':    lazy(() => import('./topics/live/live-keyboard')),
+  // Recovery
+  'recovery-overview': lazy(() => import('./topics/recovery/recovery-overview')),
+  'recovery-cost-library': lazy(() => import('./topics/recovery/recovery-cost-library')),
+  'recovery-102': lazy(() => import('./topics/recovery/recovery-102')),
+  'recovery-103': lazy(() => import('./topics/recovery/recovery-103')),
+  'recovery-104': lazy(() => import('./topics/recovery/recovery-104')),
+  'recovery-costs': lazy(() => import('./topics/recovery/recovery-costs')),
   // Scenario
   'scenario-overview': lazy(() => import('./topics/scenario/scenario-overview')),
   'scenario-browse':   lazy(() => import('./topics/scenario/scenario-browse')),

@@ -1,0 +1,21 @@
+import { HelpH2, HelpStep, HelpNote, HelpWarning } from '../../help-article'
+
+export default function RecoveryArticle() {
+  return <>
+<HelpNote>Availability: these cases require the Assignment Overlap recovery update. If Recovery shows only Roster transfer or exchange, Standby Crew callout and Cross-base positioning for an overlap, your build does not yet include cases 103 and 104. Ask your administrator to update it.</HelpNote>
+<HelpStep n={1}>In Live Alert Center, select the recoverable <strong>1001</strong> alert for the ground task and flying pairing, then open <strong>Recovery → Standby Crew callout</strong>.</HelpStep>
+<HelpStep n={2}>Review replacement crews whose loaded <strong>SBY</strong> window contains the affected pairing’s start. The candidate must satisfy the rank check and have no other loaded overlapping task. Fleet mismatches remain visible warnings. The list is limited to loaded crews and does not prove that a different-base crew can physically reach the departure airport.</HelpStep>
+<HelpStep n={3}>Review <strong>Detail</strong>, the rule result, <strong>Cost breakdown</strong>, and <strong>Preview</strong>. This reuses the existing standby method. The selected SBY task is retained, with a yellow <strong>C</strong> indicator and a callout exception; other overlaps are not intentionally permitted.</HelpStep>
+<HelpStep n={4}>Check the chosen executable crew and select <strong>Apply selected option</strong>. The draft removes the complete affected pairing from the original crew, assigns it to the standby crew, and marks the retained SBY as a callout. The original crew’s ground task stays. The pairing’s flight sequence is not rebuilt.</HelpStep>
+<HelpStep n={5}>Use <strong>Save</strong>, then verify replacement coverage on every leg, the retained callout marker, the original crew’s ground task, and the refreshed alerts and crew totals. An unsaved preview or draft is not the completed roster.</HelpStep>
+<HelpWarning>Pricing is partial: the current recovery bridge prices one fixed Day-off recall event (illustrative default USD 600); it does not invoke the airport standby/GH calculator. It does not calculate the selected crew’s actual standby pay or guarantee difference. Check the breakdown and do not interpret missing prices as free.</HelpWarning>
+
+<HelpH2>Operational theory: transfer ownership, preserve the flying plan</HelpH2>
+<HelpNote>Standby provides an alternative crew resource. This case moves the entire affected pairing to that crew; it does not shorten the original ground task or split the pairing. The retained SBY marker records that standby was called out, so the intentional SBY/flying relationship differs from an unrelated overlapping duty.</HelpNote>
+<HelpH2>Worked complex case and review sequence</HelpH2>
+<p className="text-xs leading-relaxed">Illustrative baseline: Crew A has a ground task ending 15:00Z and a two-leg pairing starting before that time. Crew B has an SBY window containing the pairing start. Open the 1001 alert for A, choose Standby Crew callout, and inspect B’s complete day and the following duty. Confirm B can report at the required station, holds the required qualification and can complete both legs and the release. A matching SBY window alone does not prove these operational facts.</p>
+<p className="text-xs leading-relaxed">Open Detail and compare the complete pairing before/after. Inspect the cost popup: a displayed recall charge is not proof of actual standby credit or incremental monthly pay. Select B’s checkbox, then Preview. Expect A’s ground task to remain, the whole pairing to move to B and B’s SBY to remain marked as a callout. If any leg appears uncovered or another duty overlaps, stop and reassess the option.</p>
+<HelpH2>Acceptance after saving</HelpH2>
+<HelpNote>Inspect every leg’s crew coverage, not only the first visible roster bar. Confirm A no longer owns the moved pairing, B owns it once, and the callout marker remains after refresh. Recheck B’s downstream rest and monthly credit and A’s remaining duties. Any actual crew notification or reporting arrangement must follow the operator’s process; the documented Apply action stages a draft and is not proof that a crew has acknowledged a callout.</HelpNote>
+  </>
+}

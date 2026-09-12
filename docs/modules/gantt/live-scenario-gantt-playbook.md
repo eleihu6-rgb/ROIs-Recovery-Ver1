@@ -1385,3 +1385,8 @@ All three Assignment-Overlap methods are executable through the normal
 
 Design + scope: `docs/superpowers/specs/2026-09-11-swap-duty-and-flight-delay-recovery-design.md`.
 Apply + Flight Delay redesign: `docs/superpowers/specs/2026-09-12-recovery-apply-swap-duty-and-flight-delay.md`.
+
+
+## Recovery cases 102–104 and reusable extension contract
+
+See [the recovery study](../crew-recovery/2026-09-12-cases-102-104-study-Ver1.md) for pushed-source provenance, overlap eligibility, shared options/Preview/Apply flow, complete-pairing mutations, cost adapter limitations and Save/ripple review gaps. Reuse the existing trigger, candidate, dialog, cost breakdown and draft contracts when adding a case. The online Help Recovery category contains the operational workflow, separate 19-type Cost Library introduction and numbered case walkthroughs. See [verification and public screenshots](../crew-recovery/2026-09-12-recovery-help-verification-Ver1.md) for the distinction between current Help validation and unverified live recovery persistence.

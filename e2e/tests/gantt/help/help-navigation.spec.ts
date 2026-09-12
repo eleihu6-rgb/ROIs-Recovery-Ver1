@@ -46,6 +46,7 @@ test.describe('Help page navigation', () => {
     expect(labels).toEqual([
       'Dashboard',
       'Live',
+      'Recovery',
       'Scenario',
       'Data',
       'Legality',

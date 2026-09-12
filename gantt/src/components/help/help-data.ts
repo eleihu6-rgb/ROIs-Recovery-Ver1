@@ -204,6 +204,20 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     ],
   },
   {
+    slug: 'recovery',
+    title: 'Recovery',
+    lucideIcon: 'ShieldCheck',
+    defaultExpanded: true,
+    topics: [
+      { slug: 'recovery-overview', title: 'Recovery workflow and reusable approach', categorySlug: 'recovery', stepCount: 6, isNew: true, overview: 'Find disruptions in Live, open Alert Center Recovery, compare solutions, preview, Apply to draft, Save and recheck. Shared approach for future recovery cases.' },
+      { slug: 'recovery-cost-library', title: 'Cost Library introduction and calculation types', categorySlug: 'recovery', stepCount: 8, isNew: true, overview: 'All 19 cost types and seven calculation methods: guarantee GH pay, airport standby credit, recall, hotel, per diem, deadhead, ground transfer, booking, flight delay and stability penalties. Cost Templates, Cost Sets, revisions and worked calculation examples.' },
+      { slug: 'recovery-102', title: '102 — Standby Crew callout', categorySlug: 'recovery', stepCount: 5, isNew: true, overview: 'Resolve Assignment Overlap (1001) with a standby replacement. Preserve SBY, review fleet warnings, compare cost and save the roster transfer.' },
+      { slug: 'recovery-103', title: '103 — Swap duty', categorySlug: 'recovery', stepCount: 5, isNew: true, overview: 'Exchange complete pairings with a later-reporting crew to resolve a ground-task overlap. Review both directions, fleet warnings and cost limitations.' },
+      { slug: 'recovery-104', title: '104 — Flight Delay (Partial)', categorySlug: 'recovery', stepCount: 5, isNew: true, overview: 'Keep the original crew and delay all affected pairing flights after the ground task. Review STD, STA, ATD, ATA, connections, cost gaps and legality limits.' },
+      { slug: 'recovery-costs', title: 'Comparing recovery costs (Partial)', categorySlug: 'recovery', stepCount: 4, isNew: true, overview: 'Understand Cost breakdown, Best cost, stability, cost library pricing, missing tariffs, standby credit, swap quantities, delay costs, currency conversion and mixed currencies.' },
+    ],
+  },
+  {
     slug: 'scenario',
     title: 'Scenario',
     lucideIcon: 'FlaskConical',

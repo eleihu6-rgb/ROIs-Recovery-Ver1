@@ -1,0 +1,22 @@
+import { HelpH2, HelpScreenshot, HelpStep, HelpNote, HelpWarning } from '../../help-article'
+
+export default function RecoveryArticle() {
+  return <>
+<HelpNote>Availability: these cases require the Assignment Overlap recovery update. If Recovery shows only Roster transfer or exchange, Standby Crew callout and Cross-base positioning for an overlap, your build does not yet include cases 103 and 104. Ask your administrator to update it.</HelpNote>
+<HelpStep n={1}>Open a single recoverable <strong>1001</strong> alert in Live and choose <strong>Recovery → Swap duty</strong>. Use this when another crew has a complete pairing that starts after the original crew’s overlapping ground task ends.</HelpStep>
+<HelpStep n={2}>Review candidates on the recovery business date. Both directions must pass the base/division and rank-seat checks and avoid other task overlaps. Candidates failing those checks may remain visible as unavailable; open <strong>Detail</strong> for the reason. Fleet mismatches are shown as warnings and do not by themselves block selection.</HelpStep>
+<HelpStep n={3}>Compare both crews’ before/after assignments, rule results, Stability and Cost. Use <strong>Preview</strong> to inspect both roster rows. A later reporting time by itself is not enough: the return pairing must fit the original crew’s remaining duties.</HelpStep>
+<HelpStep n={4}>Check an executable candidate and choose <strong>Apply selected option</strong>. The draft removes each crew’s original pairing and assigns each pairing to the other crew: two removals and two assignments. Despite the label Swap duty, this exchanges complete pairings, not just one leg or one duty within a multi-duty pairing.</HelpStep>
+<HelpStep n={5}>Use <strong>Save</strong>, then confirm both crews’ new pairings, every segment’s coverage, unchanged ground tasks, and the refreshed overlap and legality results. Pairing identities and flight routes stay; roster ownership changes.</HelpStep>
+<HelpWarning>Pricing is partial: the swap base requests quantity two, which the default fixed tariff rejects as unpriced, but the current adapter sends only one change-penalty quantity for Swap duty and omits the older swap-mode modifier. Its estimate is not consistently comparable with the older swap method.</HelpWarning>
+<HelpScreenshot src="/help/screenshots/recovery-103-submitted-Ver1.png" alt="Submitted Swap duty screen with method tree, candidate checkbox, fleet warning and comparison metrics" caption="Submitted build example, 12 September 2026. This is the contributor’s Playwright capture, not a new public recovery run. Your build and data may differ; see the availability note." />
+
+<HelpH2>Operational theory: a swap must work in both directions</HelpH2>
+<HelpNote>Call the conflicting pairing P and the candidate’s pairing Q. The proposed result is A→Q and B→P. It is insufficient that Q starts after A’s ground task: B must also be able to operate all of P, and both pairings must fit their new owners’ preceding and following duties. This is why a swap can have wider consequences than a standby callout.</HelpNote>
+<HelpH2>Worked complex case: two crews, two complete pairings</HelpH2>
+<p className="text-xs leading-relaxed">Illustrative baseline: A’s ground task ends 15:00Z, overlapping pairing P. B owns pairing Q, reporting at 17:00Z on the recovery business date. Both pairings contain multiple legs. Open A’s 1001 alert, choose Swap duty, and inspect B’s candidate. Read all of P and Q, including release times and station continuity; compare the next duties for both crews. The 17:00Z report is only the first check.</p>
+<p className="text-xs leading-relaxed">In Detail, follow each direction separately: remove P from A, add Q to A; remove Q from B, add P to B. Review rank-seat, base/division results, other overlaps and fleet warnings. Open Cost breakdown before comparing the displayed amount with standby: the current swap pricing has inconsistent change quantities. Tick the intended candidate, open Preview, and check both rows rather than accepting a favourable summary metric.</p>
+<HelpH2>Acceptance after saving</HelpH2>
+<HelpNote>Confirm exactly one owner in the exchanged seat for each pairing and full coverage on every leg. A retains the ground task and receives Q; B receives P. Confirm neither pairing was duplicated or left open, and neither crew acquired a new overlap or unacceptable rest/FDP result. If Q’s later finish disrupts A’s next duty, the original overlap may be resolved while the overall recovery remains incomplete.</HelpNote>
+  </>
+}

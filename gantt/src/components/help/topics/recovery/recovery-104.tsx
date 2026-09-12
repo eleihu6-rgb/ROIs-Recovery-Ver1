@@ -1,0 +1,25 @@
+import { HelpH2, HelpScreenshot, HelpStep, HelpNote, HelpWarning } from '../../help-article'
+
+export default function RecoveryArticle() {
+  return <>
+<HelpNote>Availability: these cases require the Assignment Overlap recovery update. If Recovery shows only Roster transfer or exchange, Standby Crew callout and Cross-base positioning for an overlap, your build does not yet include cases 103 and 104. Ask your administrator to update it.</HelpNote>
+<HelpWarning>Partial — Flight Delay can stage flight edits, but its recovery cost does not price delay minutes and its plan does not run the standby/swap rule preview. It is not a fully validated delay solution.</HelpWarning>
+<HelpStep n={1}>Open a recoverable <strong>1001</strong> alert and select <strong>Recovery → Flight Delay</strong>. The original crew keeps the pairing and the overlapping ground task.</HelpStep>
+<HelpStep n={2}>Read the <strong>Flight</strong> list. It includes all loaded flight segments of the affected pairing, with <strong>STD, STA, ATD and ATA</strong> and the proposed delayed actual times. A missing ground-task end, unusable flight times, or no required change prevents application.</HelpStep>
+<HelpStep n={3}>The earliest proposed departure is the latest overlapping ground-task end <strong>plus 61 minutes</strong>. Flights never advance. Each following leg preserves its original nonnegative gap after the preceding arrival, and each flight keeps its original block duration. For example, ground task ending 15:00Z gives a 16:01Z floor; a 2h55 flight then arrives 18:56Z and a 45-minute turnaround gives the next departure at 19:41Z.</HelpStep>
+<HelpStep n={4}>Selecting this method selects its single plan; there is <strong>no crew checkbox</strong>. Review <strong>Preview</strong> and choose <strong>Apply selected option</strong>. The draft changes <strong>ATD/ATA only</strong>, retaining STD/STA, crew ownership and the ground task.</HelpStep>
+<HelpStep n={5}>After operational review, <strong>Save</strong> uses the flight-edit path to update linked pairing segments and roster rows. Check every affected flight, all linked crews and pairings, onward duties, report/release/rest, and refreshed credit/FDP and alerts. Shared flight edits can affect more than the one crew shown in Recovery.</HelpStep>
+<HelpNote>Stability is shown as <strong>100%</strong> because this measure counts roster reassignment, not punctuality or passenger disruption. It does not mean the delay is harmless. Preserving gaps also does not establish that the complete roster remains legal.</HelpNote>
+<HelpScreenshot src="/help/screenshots/recovery-104-submitted-Ver1.png" alt="Submitted Flight Delay screen showing all pairing flights and proposed ATD and ATA times" caption="Submitted build example, 12 September 2026. This is the contributor’s Playwright capture, not a new public recovery run. Your build and data may differ; see the availability note." />
+
+<HelpH2>Operational theory: preserve ownership, propagate time</HelpH2>
+<HelpNote>A delay removes this conflict by making the flying start later. It preserves each loaded flight’s duration and nonnegative gap to the next flight. It does not rebuild aircraft rotations, secure airport slots, calculate passenger connections or prove that the crew can legally complete the extended day. These consequences need separate operational review.</HelpNote>
+<HelpH2>Worked two-leg timeline</HelpH2>
+<p className="text-xs leading-relaxed">Suppose the latest overlapping ground task ends 15:00Z. The original actual times are leg 1 at 14:50–17:45Z and leg 2 at 18:30–21:30Z. The departure floor is 16:01Z. Leg 1 becomes 16:01–18:56Z, preserving 2h55 block. The original 45-minute gap moves leg 2 to 19:41–22:41Z, preserving 3h block. STD and STA remain the schedule baseline.</p>
+<p className="text-xs leading-relaxed">For each leg, the proposed departure is the latest of the ground-task end plus 61 minutes, its original departure and the preceding proposed arrival plus the original nonnegative gap. The proposed arrival is departure plus original block duration. The delay therefore propagates through the loaded pairing; it is not just a change to the first departure.</p>
+<HelpH2>Review and apply, step by step</HelpH2>
+<p className="text-xs leading-relaxed">Select Flight Delay, read every row in Flight, and compare old and proposed ATD/ATA. Check the last arrival, release and next reporting time before Apply. Selecting the method establishes the single target; browsing this method is consequential when you subsequently press Apply selected option. Preview the proposal, then inspect the unsaved flight edits before Save.</p>
+<HelpH2>Acceptance after saving</HelpH2>
+<HelpWarning>Do not use Executable or 100% Stability as a legality certificate. This method does not run the standby/swap candidate rule preview. After Save, refresh every linked pairing and crew, confirm ATD/ATA and unchanged STD/STA, and recheck the original overlap plus FDP, rest, credit and follow-on assignments. The submitted case tests establish draft staging, not a fully verified saved recovery across all linked crews.</HelpWarning>
+  </>
+}
