@@ -102,6 +102,8 @@ export interface LiveRosterChrome {
   sortChips?: SortChip[]
   /** Drop-target row index (cross-pane drag indicator). */
   dropTargetRow?: number
+  /** Open Live crew absence records dialog. */
+  onCrewAbsenceClick?: () => void
   /** Open Live roster bulk-delete dialog. */
   onRosterBulkDeleteClick?: () => void
   rosterBulkDeleteDisabled?: boolean
@@ -766,6 +768,7 @@ export const SharedRosterPane = ({
           recheckStuck={legalityRecheck ? legalityRecheck.stuck : undefined}
           overlapLanes={overlapLanes}
           onOverlapLanesToggle={handleOverlapLanesToggle}
+          onCrewAbsenceClick={liveChrome?.onCrewAbsenceClick}
           onRosterBulkDeleteClick={liveChrome?.onRosterBulkDeleteClick}
           rosterBulkDeleteDisabled={liveChrome?.rosterBulkDeleteDisabled}
           rosterBulkDeleteIcon={liveChrome?.rosterBulkDeleteIcon}

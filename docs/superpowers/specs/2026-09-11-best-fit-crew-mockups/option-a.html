@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Best-Fit Crew | Option A — centered modal</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body data-option="a">
+
+<div class="reviewbar">
+  <strong>ROIS-AI · Best-Fit Crew for an Open Pairing</strong>
+  <nav>
+    <a href="#" aria-current="page">Option A — modal</a>
+    <a href="option-b.html">Option B — docked</a>
+  </nav>
+  <span class="sample">Synthetic sample data · nothing is assigned</span>
+</div>
+
+<div class="shellbar">
+  <strong>Altair</strong>
+  <span>Live Gantt</span>
+  <span>Scenario</span>
+  <span class="on">Live</span>
+  <span style="margin-left:auto" class="muted">Demo date 2026-09-11 · Roster period 2026RP09</span>
+</div>
+
+<div class="gantt" id="gantt">
+  <section class="pane">
+    <div class="panehead">
+      <strong>Pairings</strong>
+      <span class="count" id="pairing-count">0</span>
+      <span class="opencredit" id="open-credit">—</span>
+      <span class="cluster">
+        <button id="btn-queue" class="primary" data-testid="btn-queue" title="List every open or partially open pairing in the current scope">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          Best-fit queue (<span id="queue-n">0</span>)
+        </button>
+        <button class="icon" id="btn-show-ctx" title="Show the pairing row right-click menu">⋯</button>
+      </span>
+    </div>
+    <div id="pairing-rows"></div>
+  </section>
+
+  <section class="pane">
+    <div class="panehead"><strong>Roster · main</strong><span class="count">20 crew</span></div>
+    <div id="roster-rows"></div>
+  </section>
+</div>
+
+<div id="ctxmenu" class="ctxmenu" hidden></div>
+<div id="scrim" class="scrim" hidden></div>
+<div id="overlay"></div>
+
+<script src="model.js"></script>
+<script>
+(function () {
+  'use strict'
+  const M = window.bestFitMockup
+  const $ = (sel) => document.querySelector(sel)
+
+  // Full pairings are shown only to demonstrate the disabled context-menu item.
+  const FULL_PAIRINGS = [
+    { id: 41055, label: 'PA-41055', base: 'DXB', fleet: 'B777', division: 'P', depLocal: '2026-09-13 08:40', coverage: 'full', composition: [{ rank: 'CA', plan: 1, fill: 1 }, { rank: 'FO', plan: 1, fill: 1 }] },
+    { id: 41112, label: 'PA-41112', base: 'ADD', fleet: 'B787', division: 'P', depLocal: '2026-09-15 19:05', coverage: 'full', composition: [{ rank: 'CA', plan: 1, fill: 1 }] },
+  ]
+
+  const state = {
+    basis: 'fairness',
+    onlyLegal: false,
+    rankSlots: '',
+    maxCandidates: 40,
+    search: '',
+    selected: null,
+    simToken: 0,
+    simError: false,
+    panelPairing: null,
+    queueOpen: false,
+  }
+
+  // ── backdrop ─────────────────────────────────────────────────────────────
+
+  function openSlotText(p) {
+    if (p.coverage === 'full') return 'Filled'
+    return M.openSlots(p).map((rank) => {
+      const slot = p.composition.find((s) => s.rank === rank)
+      return rank + ' ×' + Math.max(0, (slot.plan || 0) - (slot.fill || 0))
+    }).join(' · ')
+  }
+
+  function renderBackdrop() {
+    const rows = []
+    const queue = M.queueRows().slice(0, 5)
+    const mix = [queue[0], FULL_PAIRINGS[0], queue[1], queue[2], queue[3], FULL_PAIRINGS[1], queue[4]].filter(Boolean)
+    for (const p of mix) {
+      const isOpen = p.coverage !== 'full'
+      rows.push(
+        '<div class="prow' + (p.id === 41287 ? ' sel' : '') + '" data-pairing-id="' + p.id + '" data-open="' + isOpen + '">' +
+          '<div class="lab"><b>' + p.label + '</b><span class="muted tiny">' + p.base + ' · ' + p.fleet + ' · ' +
+            (isOpen ? '<span style="color:#915d07">' + openSlotText(p) + '</span>' : '<span>Full</span>') + '</span></div>' +
+          '<div class="track"><span class="puck">' + p.depLocal.slice(5, 10) + '  ' + p.fleet + '  ' + p.base + '</span></div>' +
+        '</div>'
+      )
+    }
+    $('#pairing-rows').innerHTML = rows.join('')
+    $('#pairing-count').textContent = String(mix.length)
+    $('#open-credit').textContent = 'Open credit ' + M.formatMinutes(M.queueRows().reduce((sum, r) => sum + r.uncoveredCreditMin, 0))
+    $('#queue-n').textContent = String(M.queueRows().length)
+
+    $('#roster-rows').innerHTML = M.crews.slice(0, 8).map((c, i) => (
+      '<div class="rrow"><div class="lab"><b>' + c.crewId + '</b> ' + c.name.split(' ')[0] + '</div>' +
+      '<div class="track">' +
+        (i % 3 === 0 ? '<span class="duty do">DO</span>' : '') +
+        '<span class="duty">' + c.base + '–' + (i % 2 ? 'LHR' : 'JNB') + '</span>' +
+        (i % 4 === 1 ? '<span class="duty do">DO</span>' : '') +
+      '</div></div>'
+    )).join('')
+  }
+
+  // ── context menu ─────────────────────────────────────────────────────────
+
+  function showCtx(x, y, pairing) {
+    const open = pairing.coverage !== 'full'
+    const menu = $('#ctxmenu')
+    menu.innerHTML =
+      '<div class="item">View pairing detail</div>' +
+      '<div class="item">Locate pairing</div>' +
+      '<div class="sep"></div>' +
+      '<div class="item hf' + (open ? '' : ' disabled') + '" data-testid="ctx-bestfit"' + (open ? ' data-pairing-id="' + pairing.id + '"' : '') + '>' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>' +
+        'Find best-fit crew…</div>' +
+      (open ? '' : '<div class="item disabled tiny">Pairing is fully staffed</div>')
+    menu.hidden = false
+    const rect = menu.getBoundingClientRect()
+    menu.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + 'px'
+    menu.style.top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)) + 'px'
+    if (open) {
+      menu.querySelector('[data-pairing-id]').addEventListener('click', () => {
+        hideCtx(); openPanel(Number(pairing.id))
+      })
+    }
+  }
+
+  const hideCtx = () => { $('#ctxmenu').hidden = true }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#ctxmenu') && !e.target.closest('[data-pairing-id]')) hideCtx()
+  })
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideCtx(); closeAll() } })
+
+  $('#pairing-rows').addEventListener('contextmenu', (e) => {
+    const row = e.target.closest('.prow')
+    if (!row) return
+    e.preventDefault()
+    const all = M.queueRows().concat(FULL_PAIRINGS)
+    const pairing = all.find((p) => String(p.id) === row.dataset.pairingId)
+    showCtx(e.clientX, e.clientY, pairing)
+  })
+
+  $('#btn-show-ctx').addEventListener('click', (e) => {
+    e.stopPropagation()
+    const row = document.querySelector('.prow.sel') || document.querySelector('.prow')
+    const rect = row.getBoundingClientRect()
+    const pairing = M.queueRows().concat(FULL_PAIRINGS).find((p) => String(p.id) === row.dataset.pairingId)
+    showCtx(rect.left + 60, rect.bottom + 2, pairing)
+  })
+
+  // ── overlays ─────────────────────────────────────────────────────────────
+
+  function closeAll() {
+    state.queueOpen = false
+    state.panelPairing = null
+    $('#overlay').innerHTML = ''
+    $('#scrim').hidden = true
+  }
+
+  $('#scrim').addEventListener('click', closeAll)
+  $('#btn-queue').addEventListener('click', () => { hideCtx(); openQueue() })
+
+  // ── queue (Entry 2) ──────────────────────────────────────────────────────
+
+  function openQueue() {
+    state.queueOpen = true
+    state.panelPairing = null
+    $('#scrim').hidden = false
+    const rows = M.queueRows()
+    const sort = state.queueSort || 'departure'
+    const sorted = [...rows].sort((a, b) => {
+      if (sort === 'credit') return b.uncoveredCreditMin - a.uncoveredCreditMin
+      if (sort === 'rank') return a.base.localeCompare(b.base) || a.fleet.localeCompare(b.fleet) || a.label.localeCompare(b.label)
+      return a.daysUntil - b.daysUntil
+    })
+    $('#overlay').innerHTML =
+    '<div class="dialog" data-testid="queue" style="width:1020px">' +
+      '<div class="titlebar"><h1>Best-fit queue — open pairings</h1>' +
+        '<button class="icon" data-testid="queue-close" title="Close">✕</button></div>' +
+      '<div class="queue">' +
+        '<div class="queuehead">' +
+          '<h2>Open / partially open pairings in scope</h2>' +
+          '<span class="chip info"><b>' + rows.length + '</b> pairings</span>' +
+          '<span class="chip soft">Uncovered credit <b>' + M.formatMinutes(rows.reduce((n, r) => n + r.uncoveredCreditMin, 0)) + '</b></span>' +
+          '<label class="small muted">Sort ' +
+            '<select id="queue-sort">' +
+              '<option value="departure">Earliest departure</option>' +
+              '<option value="credit">Largest gap credit</option>' +
+              '<option value="rank">Base → fleet → rank</option>' +
+            '</select></label>' +
+          '<label class="small muted">Base <select><option>All bases</option><option>DXB</option><option>ADD</option><option>YEG</option></select></label>' +
+          '<label class="small muted">Fleet <select><option>All fleets</option><option>B777</option><option>B787</option><option>A350</option><option>B737</option></select></label>' +
+          '<span class="muted small" style="margin-left:auto">Scope follows the Pairing pane filters · Coverage = Open + Partial</span>' +
+        '</div>' +
+        '<div class="scroll"><table class="list">' +
+          '<thead><tr><th>Pairing</th><th>Departs (base local)</th><th>Base</th><th>Fleet</th><th>Div</th><th>Group</th><th>Coverage</th><th>Open slots</th><th>Uncovered credit</th><th>Urgency</th><th>Legal crew</th><th></th></tr></thead>' +
+          '<tbody>' + sorted.map((p) => (
+            '<tr class="row queue-row" data-pairing-id="' + p.id + '">' +
+              '<td><b>' + p.label + '</b><span class="why">#' + p.id + (p.id === 41287 ? ' · fixture depth' : '') + '</span></td>' +
+              '<td class="tnum">' + M.parseLocal(p.depLocal).weekday + ' ' + M.parseLocal(p.depLocal).short + ' ' + M.parseLocal(p.depLocal).hm + '</td>' +
+              '<td>' + p.base + '</td><td>' + p.fleet + '</td><td>' + p.divisionLabel + '</td><td>' + p.assignmentGroup + '</td>' +
+              '<td><span class="chip ' + (p.coverage === 'open' ? 'hard' : 'soft') + '">' + (p.coverage === 'open' ? 'Open' : 'Partial') + '</span></td>' +
+              '<td>' + p.openSlots.map((s) => s.rank + ' ×' + s.count).join(', ') + '</td>' +
+              '<td class="tnum">' + M.formatMinutes(p.uncoveredCreditMin) + '</td>' +
+              '<td><span class="urgency ' + (p.daysUntil <= 2 ? 'now' : p.daysUntil <= 4 ? 'soon' : '') + '">' + (p.daysUntil <= 0 ? 'today' : p.daysUntil + 'd') + '</span></td>' +
+              '<td class="tnum">' + p.legalCount + ' legal · ' + p.hardCount + ' blocked</td>' +
+              '<td><button class="primary" data-testid="queue-row-action" data-pairing-id="' + p.id + '">Find best-fit →</button></td>' +
+            '</tr>'
+          )).join('') + '</tbody>' +
+        '</table></div>' +
+        '<div class="queuefoot">Read-only worklist. Selecting several pairings and solving them together is out of scope for v1 (PBS solver territory). ' +
+        'This prototype models the full candidate pipeline for PA-41287.</div>' +
+      '</div>' +
+    '</div>'
+
+    $('#overlay').querySelector('[data-testid=queue-close]').addEventListener('click', closeAll)
+    $('#overlay').querySelector('#queue-sort').value = sort
+    $('#overlay').querySelector('#queue-sort').addEventListener('change', (e) => { state.queueSort = e.target.value; openQueue() })
+    $('#overlay').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-testid=queue-row-action]')
+      if (btn) { e.stopPropagation(); openPanel(Number(btn.dataset.pairingId)) }
+    })
+  }
+
+  // ── best-fit panel (Entry 1) ─────────────────────────────────────────────
+
+  function openPanel(pairingId) {
+    const pairing = M.queueRows().find((p) => p.id === pairingId) || M.pairing
+    state.panelPairing = pairing
+    state.queueOpen = false
+    state.selected = null
+    state.simError = false
+    state.simToken += 1
+    $('#scrim').hidden = false
+    renderPanel()
+    simulate()
+  }
+
+  function panelRows() {
+    const basis = state.basis
+    let rows = M.rankCrews(basis)
+    if (state.onlyLegal) rows = rows.filter((r) => !r.blocked && r.legality.verdict === 'pass')
+    if (state.rankSlots) rows = rows.filter((r) => r.crew.rank === state.rankSlots || (state.rankSlots === 'FO' && r.crew.rank === 'CA'))
+    if (state.search) {
+      const q = state.search.toLowerCase()
+      rows = rows.filter((r) => r.crew.crewId.includes(q) || r.crew.name.toLowerCase().includes(q))
+    }
+    return rows.slice(0, state.maxCandidates)
+  }
+
+  function funnelStrip(f) {
+    const stage = (label, value, cls) => '<div class="stage ' + (cls || '') + '"><small>' + label + '</small><b class="tnum">' + value + '</b></div>'
+    const arrow = '<div class="arrow">›</div>'
+    return '<div class="funnel" data-testid="funnel">' +
+      stage('All crew', f.universe) + arrow +
+      stage('Basic match', f.basic, 'info') + arrow +
+      stage('Simulated', f.simulated) + arrow +
+      stage('No new violation', f.pass, 'pass') + arrow +
+      stage('Soft warning', f.soft, 'soft') + arrow +
+      stage('Hard blocked', f.hard, 'hard') +
+    '</div>'
+  }
+
+  function renderPanel() {
+    const p = state.panelPairing
+    const f = M.funnel(p)
+    const isFixture = p.id === 41287
+    const rows = isFixture ? panelRows() : []
+    const slotHtml = p.composition.map((s) => {
+      const open = (s.plan || 0) - (s.fill || 0)
+      return '<span class="slot' + (open > 0 ? ' short' : '') + '">' + s.rank + ' ' + (s.fill || 0) + '/' + s.plan +
+        (open > 0 ? ' · <span class="open">' + open + ' open</span>' : ' · filled') + '</span>'
+    }).join('')
+
+    $('#overlay').innerHTML =
+    '<div class="dialog" data-testid="bestfit-panel">' +
+      '<div class="titlebar">' +
+        '<h1>Best-fit crew — ' + p.label + '</h1>' +
+        '<span class="chip ' + (p.coverage === 'open' ? 'hard' : 'soft') + '" style="background:#ffffff2e;color:#fff">' + (p.coverage === 'open' ? 'Open' : 'Partial') + '</span>' +
+        '<button class="icon" data-testid="panel-close" title="Close">✕</button>' +
+      '</div>' +
+      '<div class="ctxbar">' +
+        '<div class="kv"><small>Pairing</small><b>' + p.label + ' · #' + p.id + '</b></div>' +
+        '<div class="kv"><small>Base / fleet</small><b>' + p.base + ' · ' + p.fleet + '</b></div>' +
+        '<div class="kv"><small>Division</small><b>' + (p.divisionLabel || p.division) + '</b></div>' +
+        '<div class="kv"><small>Departs (base local)</small><b class="tnum">' + p.depLocal + '</b></div>' +
+        '<div class="kv"><small>Returns</small><b class="tnum">' + p.arrLocal + '</b></div>' +
+        '<div class="kv"><small>TAFB</small><b class="tnum">' + M.formatMinutes(p.tafbMin) + '</b></div>' +
+        '<div class="kv"><small>Block</small><b class="tnum">' + M.formatMinutes(p.blockMin) + '</b></div>' +
+        '<div class="kv"><small>Duties / segs</small><b class="tnum">' + p.dutyCount + ' / ' + p.segCount + '</b></div>' +
+        '<div class="slots">' + slotHtml + '</div>' +
+      '</div>' +
+      funnelStrip(f) +
+      '<div class="filterbar">' +
+        '<label>Rank slot <select id="f-rank"><option value="">All open slots</option><option value="CA">CA only</option><option value="FO">FO only</option></select></label>' +
+        '<label><input type="checkbox" id="f-legal"> Only fully legal</label>' +
+        '<label>Max candidates <select id="f-max"><option>20</option><option selected>40</option></select></label>' +
+        '<label>Cost set <select id="f-cost"><option>Daily Recovery · rev 3</option><option>Pilot Recovery · rev 1</option></select></label>' +
+        '<label>Crew <input id="f-search" type="search" placeholder="id or name" style="width:130px"></label>' +
+        '<span class="muted small" id="f-count" style="margin-left:auto"></span>' +
+      '</div>' +
+      (state.simError
+        ? '<div class="abort"><span>⛔</span><div><b>Legality engine unavailable.</b> The Rust rule engine did not answer (503). ' +
+          'No candidate can be ranked as legal until the simulation succeeds. ' +
+          '<button id="btn-retry" data-testid="btn-retry" style="margin-top:6px">Retry simulation</button></div></div>'
+        : '') +
+      '<div class="body">' +
+        '<div class="col-list"><div class="scroll" id="cand-scroll"></div></div>' +
+        '<div class="col-detail"><div class="detail" id="detail"></div></div>' +
+      '</div>' +
+      '<div class="footer">' +
+        '<span class="summary" id="panel-summary"></span>' +
+        '<span class="muted small">Rank by</span>' +
+        '<button id="btn-fairness" data-testid="basis-fairness" class="primary">Fairness (lowest MBH)</button>' +
+        '<button id="btn-cost" data-testid="basis-cost">Cost (cost library)</button>' +
+        '<button id="btn-rerun" data-testid="btn-rerun">Re-run simulation</button>' +
+        '<button disabled title="Simulation only — this prototype writes nothing">Assign selected (simulation only)</button>' +
+        '<button data-testid="panel-close-2">Close</button>' +
+      '</div>' +
+    '</div>'
+
+    $('#overlay').querySelector('[data-testid=panel-close]').addEventListener('click', closeAll)
+    $('#overlay').querySelector('[data-testid=panel-close-2]').addEventListener('click', closeAll)
+    $('#overlay').querySelector('#btn-fairness').addEventListener('click', () => setBasis('fairness'))
+    $('#overlay').querySelector('#btn-cost').addEventListener('click', () => setBasis('cost'))
+    $('#overlay').querySelector('#btn-rerun').addEventListener('click', () => { state.simError = false; state.simToken += 1; renderPanel(); simulate() })
+    const retry = $('#overlay').querySelector('#btn-retry')
+    if (retry) retry.addEventListener('click', () => { state.simError = false; state.simToken += 1; renderPanel(); simulate() })
+    $('#overlay').querySelector('#f-rank').addEventListener('change', (e) => { state.rankSlots = e.target.value; renderRows() })
+    $('#overlay').querySelector('#f-legal').addEventListener('change', (e) => { state.onlyLegal = e.target.checked; renderRows() })
+    $('#overlay').querySelector('#f-max').addEventListener('change', (e) => { state.maxCandidates = Number(e.target.value); renderRows() })
+    $('#overlay').querySelector('#f-search').addEventListener('input', (e) => { state.search = e.target.value; renderRows() })
+    paintBasisButtons()
+    renderRows()
+  }
+
+  function setBasis(basis) {
+    state.basis = basis
+    paintBasisButtons()
+    renderRows()
+  }
+
+  function paintBasisButtons() {
+    const fair = $('#overlay').querySelector('#btn-fairness')
+    const cost = $('#overlay').querySelector('#btn-cost')
+    if (!fair || !cost) return
+    fair.className = state.basis === 'fairness' ? 'primary' : ''
+    cost.className = state.basis === 'cost' ? 'primary' : ''
+  }
+
+  function verdictChip(v, count) {
+    if (v === 'pass') return '<span class="chip pass">✔ Pass</span>'
+    if (v === 'soft') return '<span class="chip soft">▲ Soft warning ' + count + '</span>'
+    return '<span class="chip hard">⛔ Hard block ' + count + '</span>'
+  }
+
+  function renderRows() {
+    if (state.panelPairing && state.panelPairing.id !== 41287) {
+      $('#cand-scroll').innerHTML =
+        '<div class="state"><b>No basic match for ' + state.panelPairing.label + '</b>' +
+        '0 of ' + M.crews.length + ' fixture crew match ' + state.panelPairing.base + ' · ' + state.panelPairing.fleet + ' · ' +
+        (state.panelPairing.divisionLabel || state.panelPairing.division) + '. The synthetic crew set is centred on DXB · B777 · Pilot, ' +
+        'so DXB/B777 pairings in the queue resolve counts and the rest land here. The real feature runs Stage 1 for the selected pairing.' +
+        '<div style="margin-top:10px"><button class="primary" id="btn-load-fixture">Load the PA-41287 fixture</button></div></div>'
+      const btn = $('#cand-scroll').querySelector('#btn-load-fixture')
+      if (btn) btn.addEventListener('click', () => openPanel(41287))
+      $('#f-count').textContent = '0 of ' + M.crews.length + ' crew match'
+      $('#panel-summary').textContent = '0 candidates'
+      return
+    }
+
+    const rows = panelRows()
+    $('#f-count').textContent = rows.length + ' shown of ' + M.basicMatch(state.panelPairing).length + ' basic matches'
+    const f = M.funnel(state.panelPairing)
+    $('#panel-summary').textContent = f.pass + ' legal · ' + f.soft + ' soft-warning · ' + f.hard + ' hard-blocked of ' + f.basic + ' matched'
+
+    if (rows.length === 0) {
+      $('#cand-scroll').innerHTML = '<div class="state"><b>No candidate passes the current filters</b>' +
+        'Basic eligibility is base + fleet + rank + division — it cannot be waived. Widen the filters, or refresh the roster scope.</div>'
+      return
+    }
+
+    $('#cand-scroll').innerHTML =
+      '<table class="list"><thead><tr>' +
+        '<th>#</th><th>Crew</th><th>Sen.</th><th>Base</th><th>Fleets</th><th>Rank</th>' +
+        '<th>MBH</th><th>MCred</th><th>Cost</th><th>Legality</th>' +
+      '</tr></thead><tbody>' +
+      rows.map((r) => (
+        '<tr class="row' + (r.blocked ? ' blocked' : '') + (state.selected === r.crew.crewId ? ' sel' : '') + '"' +
+            ' data-testid="cand-row" data-crew-id="' + r.crew.crewId + '" data-blocked="' + r.blocked + '">' +
+          '<td><span class="rankbadge">' + r.rank + '</span></td>' +
+          '<td><b>' + r.crew.crewId + '</b> ' + r.crew.name + '<span class="why" data-testid="why">' + r.why + '</span></td>' +
+          '<td class="tnum">' + r.crew.seniority.toFixed(0) + '</td>' +
+          '<td>' + r.crew.base + '</td>' +
+          '<td>' + r.crew.fleets.join(', ') + '</td>' +
+          '<td>' + r.crew.rank + '</td>' +
+          '<td class="tnum">' + r.mbh + '</td>' +
+          '<td class="tnum">' + r.mcred + '</td>' +
+          '<td class="tnum">' + (r.cost.status === 'priced'
+            ? M.formatMoney(r.cost.amount)
+            : '<span class="chip">unpriced</span>') + '</td>' +
+          '<td data-testid="legality-cell">' + (r.blocked
+            ? verdictChip('hard', r.legality.violations.length) + '<span class="rulecodes">' + r.legality.violations.map((v) => v.ruleCode).join(', ') + '</span>'
+            : '<span class="chip">queued</span>') + '</td>' +
+        '</tr>'
+      )).join('') + '</tbody></table>'
+
+    $('#cand-scroll').querySelectorAll('[data-testid=cand-row]').forEach((tr) => {
+      tr.addEventListener('click', () => {
+        const id = tr.dataset.crewId
+        if (state.selected === id) return
+        state.selected = id
+        $('#cand-scroll').querySelectorAll('[data-testid=cand-row]').forEach((x) => x.classList.toggle('sel', x === tr))
+        renderDetail(id)
+      })
+    })
+    if (!state.selected && rows[0]) { state.selected = rows[0].crew.crewId; renderDetail(state.selected) }
+  }
+
+  /** Staggered "Queued → Simulating → verdict" reveal; the data is already deterministic. */
+  function simulate() {
+    const token = ++state.simToken
+    const cells = Array.from($('#overlay').querySelectorAll('[data-testid=cand-row]'))
+    cells.forEach((tr, i) => {
+      const id = tr.dataset.crewId
+      const cell = tr.querySelector('[data-testid=legality-cell]')
+      if (!cell) return
+      const hard = tr.dataset.blocked === 'true'
+      const legality = M.legalityOf(id)
+      cell.innerHTML = '<span class="chip">queued</span>'
+      window.setTimeout(() => {
+        if (token !== state.simToken || !document.body.contains(cell)) return
+        cell.innerHTML = '<span class="chip"><span class="spin"></span> simulating</span>'
+      }, 120 + i * 55)
+      window.setTimeout(() => {
+        if (token !== state.simToken || !document.body.contains(cell)) return
+        if (hard && state.simError) return
+        cell.innerHTML = verdictChip(legality.verdict, legality.violations.length) +
+          (hard ? '<span class="rulecodes">' + legality.violations.map((v) => v.ruleCode).join(', ') + '</span>' : '')
+      }, 420 + i * 55)
+    })
+  }
+
+  function renderDetail(crewId) {
+    const host = $('#detail')
+    if (!crewId) {
+      host.innerHTML = '<div class="state">Select a candidate to see the simulated assignment, the Rust legality delta and the cost breakdown.</div>'
+      return
+    }
+    const crew = M.crews.find((c) => c.crewId === String(crewId))
+    const legality = M.legalityOf(crewId)
+    const cost = M.costTotal(crewId)
+    const p = M.pairing
+    const blocks = [
+      '<span class="duty do">DO</span>',
+      '<span class="duty">DXB–LHR</span>',
+      '<span class="duty do">DO</span>',
+    ].slice(0, 2 + (Number(crewId) % 2))
+
+    host.innerHTML =
+      '<div class="kv2">' +
+        '<div><small>Crew</small><b>' + crew.crewId + ' ' + crew.name + '</b></div>' +
+        '<div><small>Seniority</small><b class="tnum">' + crew.seniority.toFixed(2) + '</b></div>' +
+        '<div><small>Base / rank</small><b>' + crew.base + ' · ' + crew.rank + '</b></div>' +
+        '<div><small>Fleet quals</small><b>' + crew.fleets.join(', ') + '</b></div>' +
+        '<div><small>MBH</small><b class="tnum">' + M.formatMinutes(crew.mbhMin) + '</b></div>' +
+        '<div><small>MCred</small><b class="tnum">' + M.formatMinutes(crew.mcredMin) + '</b></div>' +
+        '<div><small>Days off left</small><b class="tnum">' + crew.mdo + '</b></div>' +
+        '<div><small>Matching slot</small><b>' + (crew.rank === 'CA' ? 'CA (or FO acting-down)' : 'FO') + '</b></div>' +
+      '</div>' +
+      '<h3>Simulated assignment</h3>' +
+      '<div class="simstrip">' +
+        '<div class="small muted">' + crew.crewId + ' · Sep 2026</div>' +
+        '<div class="line">' + blocks.join('') + '<span class="duty newp">+' + p.label + '</span></div>' +
+        '<div class="simnote">Simulation only — nothing is assigned. The pairing is appended to this crew\'s month to ask the rule engine what would change.</div>' +
+      '</div>' +
+      '<h3>Rust legality delta <span class="chip ' + (legality.verdict === 'pass' ? 'pass' : legality.verdict === 'soft' ? 'soft' : 'hard') + '">' +
+        (legality.verdict === 'pass' ? 'no new violation' : legality.verdict === 'soft' ? legality.violations.length + ' soft warning' + (legality.violations.length > 1 ? 's' : '') : legality.violations.length + ' hard violation') +
+      '</span></h3>' +
+      (legality.violations.length === 0
+        ? '<div class="empty">No new violation versus the crew\'s current roster. Hard gates (base, fleet, rank, rest, days off) are all satisfied by the simulation.</div>'
+        : legality.violations.map((v) => (
+            '<div class="viol' + (v.severity < 3 ? ' soft' : '') + '">' +
+              '<b>Rule ' + v.ruleCode + '/' + v.ruleInstance + ' · ' + v.title + ' · severity ' + v.severity + (v.severity >= 3 ? ' (hard)' : ' (soft)') + '</b>' +
+              v.message + '<div class="tiny muted">window ' + v.windowStart + ' → ' + v.windowEnd + '</div>' +
+            '</div>'
+          )).join('')) +
+      '<h3>Cost of this assignment <span class="chip cost">' + cost.label + '</span></h3>' +
+      '<div class="costbox">' +
+        (cost.status === 'priced'
+          ? cost.breakdown.map((b) => '<div class="costrow"><span>' + b.label + '</span><span class="tnum">' + b.value + '</span></div>').join('') +
+            '<div class="costrow total"><span>Incremental cost</span><span class="tnum">' + M.formatMoney(cost.amount) + '</span></div>'
+          : '<div class="costrow"><span>Not priced in this cost set</span><span class="chip">unpriced</span></div>' +
+            '<div class="tiny muted" style="margin-top:6px">An unpriced member makes the total incomplete, so this candidate is ranked by fairness and can never outrank a fully priced one.</div>') +
+        '<div class="formula" style="margin-top:6px">' + cost.formula + '</div>' +
+      '</div>' +
+      '<div class="notice">Hard violations are eligibility gates: a cheaper cost can never override them. Soft warnings stay selectable with a planner override. ' +
+      'Synthetic fixture data; the real feature calls the Rust rule engine and the built cost library and writes nothing.</div>'
+  }
+
+  renderBackdrop()
+})()
+</script>
+</body>
+</html>

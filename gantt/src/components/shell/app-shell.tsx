@@ -27,6 +27,7 @@ import { FlightDetailDialog } from '@/components/flight/flight-detail-dialog'
 import { FlightNaviDialog } from '@/components/flight-navi/flight-navi-dialog'
 import { GroundTaskDialog } from '@/components/roster/ground-task-dialog'
 import { RuleConfirmDialog } from '@/components/roster/rule-confirm-dialog'
+import { BestFitDialog } from '@/components/best-fit/best-fit-dialog'
 import { ScenarioContextMenu } from '@/components/scenario-gantt/scenario-context-menu'
 import { MandayInfoDialog } from '@/components/roster/manday-info-dialog'
 import { ScheduleDetailsDialog } from '@/components/roster/schedule-details-dialog'
@@ -34,6 +35,7 @@ import { DailyTaskCalendarDialog } from '@/components/roster/daily-task-calendar
 import { CrewInfoDialog } from '@/components/roster/crew-info-dialog'
 import { AutoAssignDialog } from '@/components/roster/auto-assign-dialog'
 import { GanttDayStatisticsDialog } from '@/components/gantt/gantt-day-statistics-dialog'
+import { CrewAbsenceDialog } from '@/components/roster/crew-absence-dialog'
 import { AiChatPanel } from '@/components/ai-chat/ai-chat-panel'
 import { useUrlSync } from '@/hooks/use-url-sync'
 
@@ -180,7 +182,11 @@ export const AppShell = () => {
       <DailyTaskCalendarDialog />
       <CrewInfoDialog />
       <AutoAssignDialog />
+      {/* Best-fit crew — same shell hoist as Auto-assign: read-only planner that
+          the Live pairing pane and its row context menu both drive. */}
+      <BestFitDialog />
       <GanttDayStatisticsDialog />
+      <CrewAbsenceDialog />
       {canAccessRbot && <AiChatPanel />}
     </div>
   )

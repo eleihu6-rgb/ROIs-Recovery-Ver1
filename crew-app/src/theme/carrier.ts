@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type CarrierPreset = 'sia' | 'thai' | 'emerald' | 'graphite' | 'altair';
+export type CarrierPreset = 'sia' | 'thai' | 'emerald' | 'emirates' | 'graphite' | 'altair';
 
 /** The four colour themes a crew can pick in Profile ▸ Preferences ▸ Appearance.
  *  Exactly the four swatches of the sign-off mock (Ver9 "Airline background").
@@ -14,12 +14,19 @@ export const THEME_LABELS: Record<CarrierPreset, string> = {
   sia: 'Reference blue',
   thai: 'Thai violet',
   emerald: 'Emerald',
+  emirates: 'Emirates red',
   graphite: 'Graphite',
   altair: 'Altair sage',
 };
 
 export function isThemePreset(value: unknown): value is ThemePreset {
   return typeof value === 'string' && (THEME_PRESETS as readonly string[]).includes(value);
+}
+
+/** Any preset we have a palette for — a crew-selectable theme OR a carrier-only
+ *  default such as Emirates red, which must never appear as a swatch. */
+function isCarrierPreset(value: unknown): value is CarrierPreset {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(PALETTES, value);
 }
 
 export interface CarrierPalette {
@@ -77,6 +84,9 @@ export const PALETTES: Record<CarrierPreset, CarrierPalette> = {
   sia: { g1: '#1e4a76', g2: '#2b6191', g3: '#4c82b2', g4: '#77a3cb', btn: '#2f6ba6', dockLight: '#adc8e0', dockInk: '#1e4a76', ...shared },
   thai: { g1: '#4a1670', g2: '#5e2a86', g3: '#8a4aa8', g4: '#b989cf', btn: '#7a3aa0', dockLight: '#d5b8e2', dockInk: '#4a1670', ...shared },
   emerald: { g1: '#14463c', g2: '#1f5c4e', g3: '#3d8270', g4: '#7fb3a3', btn: '#2a7461', dockLight: '#b2d1c8', dockInk: '#14463c', ...shared },
+  // Emirates' own red ground, so a UAE crew (K1003) never reads as Ethiopian.
+  // A carrier default only — the four selectable swatches are unchanged.
+  emirates: { g1: '#4a1013', g2: '#661a1f', g3: '#94303a', g4: '#c98187', btn: '#a81f27', dockLight: '#dfbcbe', dockInk: '#4a1013', ...shared },
   graphite: { g1: '#1f272e', g2: '#2b353d', g3: '#4a5761', g4: '#7f8d98', btn: '#3f4f5c', dockLight: '#b2bbc1', dockInk: '#1f272e', ...shared },
   altair: { g1: '#1e3d38', g2: '#2c5a52', g3: '#4a8074', g4: '#87b3a6', btn: '#3d7367', dockLight: '#b7d1c9', dockInk: '#1e3d38', ...shared },
 };
@@ -87,6 +97,8 @@ export function presetForAirline(code: string | null | undefined): CarrierPreset
       return 'sia';
     case 'ET':
       return 'emerald';
+    case 'EK':
+      return 'emirates';
     default:
       return 'sia';
   }
@@ -98,12 +110,12 @@ export function presetForAirline(code: string | null | undefined): CarrierPreset
 export function resolveTheme(
   chosen: ThemePreset | null | undefined,
   airline: string | null | undefined,
-): ThemePreset {
+): CarrierPreset {
   if (chosen && isThemePreset(chosen)) {
     return chosen;
   }
   const airlinePreset = presetForAirline(airline);
-  return isThemePreset(airlinePreset) ? airlinePreset : 'sia';
+  return isCarrierPreset(airlinePreset) ? airlinePreset : 'sia';
 }
 
 export function paletteFor(preset: CarrierPreset): CarrierPalette {

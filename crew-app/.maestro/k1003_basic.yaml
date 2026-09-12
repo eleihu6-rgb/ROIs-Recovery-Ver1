@@ -1,0 +1,111 @@
+# Basic-feature pass for EK crew K1003 (Khalid Al Nuaimi, CA, A380, DXB).
+#
+# WHY the ET carrier option is used: the Emirates option in this build fetches
+# its roster from the EVACC EK crew-app gateway (EKRosterApiBaseURL =
+# https://ai.rois.one/api -> /api/crew-app/v1/roster), whose dataset only holds
+# the synthetic C9000xx demo crews. Crew K1003 and the rest of the UAE batch
+# (K1001-K1040) live in the ROIS live DB, which the ET/F8 carrier option reads
+# via live-server POST /api/mobile-roster/session. So this flow signs in through
+# that path and still gets K1003's REAL Emirates roster (EK763/764, EK414/413,
+# EK201/202). See the run notes for the Emirates-carrier gap.
+#
+# Run: cd crew-app && maestro test .maestro/k1003_basic.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-ET"
+    timeout: 15000
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "K1003"
+- pressKey: Enter
+- takeScreenshot: k1003_00_login
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 240000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: k1003_01_home
+
+# R'Bot — answered from the loaded roster on the device.
+- tapOn:
+    id: "dock-rbot"
+- tapOn:
+    id: "rbot-input"
+- inputText: "what is my next duty?"
+- tapOn:
+    id: "rbot-send"
+- extendedWaitUntil:
+    visible:
+      id: "rbot-local-answer"
+    timeout: 20000
+- assertVisible: "Answered on your device"
+- takeScreenshot: k1003_02_rbot_local_answer
+- tapOn:
+    id: "rbot-input"
+- inputText: "show me my route map"
+- tapOn:
+    id: "rbot-send"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 90000
+- takeScreenshot: k1003_03_rbot_route_map
+
+# Schedule — timeline, calendar, route map on the real DXB network.
+# R'Bot already left the Schedule tab on the Roster view (route map), and that
+# view is remembered, so pick Timeline explicitly before asserting the list.
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-timeline"
+- extendedWaitUntil:
+    visible:
+      id: "sched-list"
+    timeout: 30000
+- takeScreenshot: k1003_04_sched_timeline
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "cal-grid"
+    timeout: 15000
+- takeScreenshot: k1003_05_calendar
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-route"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 15000
+- takeScreenshot: k1003_06_route_map
+
+# Profile — the crew's own identity, and the installed build (APP_VERSION).
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 20000
+- assertVisible: "Khalid Al Nuaimi"
+- takeScreenshot: k1003_07_profile

@@ -1,7 +1,14 @@
 <title>ROIS Crew App</title>
+<!-- Ver11 crew-app icon for the browser tab: the ROIs Altair paper plane drawn in WHITE
+     (so it drops onto any theme ground) + the golden guiding star kept from the Altair
+     compass mark, sitting on the Altair sage tile so it still reads on light browser chrome.
+     A bare white plane on a light tab strip is near-invisible, hence the tile. -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227.4%22%20fill%3D%22%231e443d%22%2F%3E%3Cpath%20d%3D%22M0%207.4A7.4%207.4%200%200%201%207.4%200h17.2A7.4%207.4%200%200%201%2032%207.4v6.2C24%2012%2010%2015%200%2022Z%22%20fill%3D%22%232c5a52%22%20opacity%3D%22.55%22%2F%3E%3Crect%20x%3D%22.4%22%20y%3D%22.4%22%20width%3D%2231.2%22%20height%3D%2231.2%22%20rx%3D%227%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.14%22%20stroke-width%3D%22.8%22%2F%3E%3Cg%20transform%3D%22translate(0.9%2010.5)%20scale(0.86)%22%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M22%202%202.5%209.8l9%202.9z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20fill-opacity%3D%22.84%22%20d%3D%22M22%202%2011.5%2012.7l3.2%208.8z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20fill-opacity%3D%22.66%22%20d%3D%22M11.5%2012.7v5.6l2.4-3z%22%2F%3E%3C%2Fg%3E%3Cpath%20transform%3D%22translate(24.4%207)%20scale(1.05)%22%20d%3D%22M0%20-6%20L1.6%20-1.6%20L6%200%20L1.6%201.6%20L0%206%20L-1.6%201.6%20L-6%200%20L-1.6%20-1.6Z%22%20fill%3D%22%23e0b24c%22%2F%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap">
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
 <style>
   :root{
     --font:"DM Sans",system-ui,-apple-system,sans-serif;
@@ -30,6 +37,13 @@
   .studio-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 28px;margin-bottom:22px}
   .studio-title{font-size:clamp(22px,3vw,28px);font-weight:600;margin:0;line-height:1;letter-spacing:-.01em}
   .studio-sub{color:var(--page-soft);font-size:13px;margin:6px 0 0;max-width:56ch;line-height:1.5}
+  /* Ver11: crew-app icon (the new logo) specimen — only present in Ver11 */
+  .iconchip{display:none;align-items:center;gap:11px}
+  body[data-ver="11"] .iconchip{display:flex}
+  .iconchip .ic-tile{width:46px;height:46px;border-radius:12px;flex:none;overflow:hidden;box-shadow:0 5px 12px rgba(14,38,33,.26),0 0 0 1px rgba(14,38,33,.10)}
+  .iconchip .ic-tile svg{width:100%;height:100%}
+  .iconchip .ic-name{display:block;font-size:13px;font-weight:700;letter-spacing:-.01em}
+  .iconchip .ic-sub{display:block;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--page-soft);font-weight:600;margin-top:2px}
   .controls{display:flex;flex-wrap:wrap;gap:18px;margin-left:auto;align-items:center}
   .ctl-label{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--page-soft);margin-bottom:7px;display:block;font-weight:600}
   .swatches{display:flex;gap:8px}
@@ -134,7 +148,66 @@
   .view[data-view="sched"]{padding:0 0 110px;display:none}
   .view[data-view="sched"].on{display:flex;flex-direction:column}
   .shead{position:sticky;top:0;z-index:4;padding:4px 22px 8px;background:linear-gradient(180deg,var(--g1) 70%,transparent)}
-  .stitle{display:flex;align-items:center;justify-content:space-between}
+  .stitle{display:flex;align-items:center;justify-content:space-between;position:relative}
+  .viewmenu{position:absolute;top:44px;right:0;z-index:20;background:var(--card);border:1px solid var(--card-line);border-radius:14px;padding:8px;width:220px;box-shadow:0 12px 28px rgba(0,0,0,.28)}
+  .viewmenu .vmLabel{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--card-soft);padding:4px 8px 6px}
+  .viewmenu .vmOpt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;padding:8px;border-radius:10px;background:transparent;color:var(--card-ink)}
+  .viewmenu .vmOpt span{font-size:14px;font-weight:600}
+  .viewmenu .vmOpt small{font-size:11px;color:var(--card-soft)}
+  .viewmenu .vmOpt.on{background:var(--btn)}
+  .viewmenu .vmOpt.on span,.viewmenu .vmOpt.on small{color:#fff}
+  /* Ver11: Calendar roster view (compact month grid + agenda, and a per-day timeline) */
+  .calview{padding:6px 22px 24px}
+  .calModeRow{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .calModeTitle{font-size:13px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em}
+  .calModeRow .icon-btn,.cdHead .icon-btn{color:var(--ink);width:34px;height:34px}
+  .calgrid{background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:12px;display:grid;grid-template-columns:repeat(7,1fr);gap:2px 0}
+  .calgrid .cgDow{font-size:11px;font-weight:700;color:var(--card-soft);text-align:center;padding-bottom:6px}
+  .calgrid .cgDay{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:10px;color:var(--card-ink);font-size:13px}
+  .calgrid .cgDay.today{font-weight:700}
+  .calgrid .cgDay.sel{background:var(--btn);color:#fff}
+  .calgrid .cgDay .dot{width:14px;height:9px;display:flex;align-items:center;justify-content:center}
+  .calgrid .cgDay .dot svg{width:12px;height:12px;color:var(--btn)}
+  .calgrid .cgDay.sel .dot svg{color:#fff}
+  .calgrid .cgDay .dot i{width:5px;height:5px;border-radius:50%;background:var(--btn);display:block}
+  .calgrid .cgDay.sel .dot i{background:#fff}
+  .calEventsList{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+  .calEventsList .ceCard{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--card-line);border-radius:14px;padding:10px 12px}
+  .calEventsList .ceIcon{width:34px;height:34px;border-radius:10px;background:var(--btn);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+  .calEventsList .ceIcon svg{width:18px;height:18px}
+  .calEventsList .ceBody{flex:1;min-width:0}
+  .calEventsList .ceTitle{font-size:14px;font-weight:600;color:var(--card-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .calEventsList .ceSub{font-size:12px;color:var(--card-soft)}
+  .calEventsList .ceTime{font-size:11px;font-weight:700;color:var(--card-soft);flex:none;text-align:right}
+  .calEventsList .ceEmpty{font-size:13px;color:var(--card-soft);text-align:center;padding:18px 0}
+  .caldetail{padding:6px 22px 24px}
+  .cdHead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .cdWeek{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cdWeek .cwDay{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--ink-soft);padding:4px 0;border-radius:10px}
+  .cdWeek .cwDay b{font-size:13px;color:var(--ink);font-weight:600}
+  .cdWeek .cwDay.sel{background:var(--btn)}
+  .cdWeek .cwDay.sel span,.cdWeek .cwDay.sel b{color:#fff}
+  .cdTimeline{position:relative;background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:10px 10px 10px 52px;overflow:hidden}
+  .cdTimeline .cdHour{position:relative;height:44px;border-top:1px solid var(--card-line)}
+  .cdTimeline .cdHour .cdHourLbl{position:absolute;left:-44px;top:-7px;width:38px;text-align:right;font-size:10px;color:var(--card-soft)}
+  .cdTimeline .cdEvent{position:absolute;left:8px;right:8px;border-radius:10px;padding:6px 8px;font-size:12px;line-height:1.3;overflow:hidden;border-left:3px solid var(--btn);background:rgba(255,255,255,.14)}
+  /* Ver11: Route map view (mapbox + month stats) */
+  .calroute{padding:6px 22px 24px}
+  .routeMap{height:230px;border-radius:16px;overflow:hidden;border:1px solid var(--frost-line);background:#0d1117;touch-action:none}
+  .routeMap .mapboxgl-canvas{filter:brightness(1.15) saturate(1.05)}
+  .routeStats{margin-top:16px;background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:14px}
+  .rsTitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--card-soft);margin-bottom:10px}
+  .rsGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .rsGrid .rsCell{text-align:center}
+  .rsGrid .rsVal{font-size:17px;font-weight:700;color:var(--card-ink)}
+  .rsGrid .rsLbl{font-size:10px;color:var(--card-soft);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+  .rsRows{display:flex;flex-direction:column;gap:0;margin-top:14px;border-top:1px solid var(--card-line)}
+  .rsRow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--card-line);font-size:13px}
+  .rsRow span:first-child{color:var(--card-soft)}
+  .rsRow span:last-child{font-weight:600;color:var(--card-ink)}
+  body[data-ver="11"] .cdTimeline .cdEvent.duty{background:var(--btn);color:#fff;border-left-color:#fff}
+  .cdTimeline .cdEvent.meet{background:rgba(255,255,255,.9);color:var(--card-ink);border-left-color:var(--card-soft)}
+  .cdTimeline .cdEvent b{display:block;font-weight:600}
   .stitle h1{font-size:18px;font-weight:600;margin:0 0 8px;flex:1;text-align:center;white-space:nowrap}
   .datestrip{display:flex;gap:8px;overflow-x:auto;margin:0 -22px;padding:4px 22px 6px;scroll-behavior:smooth}
   .datestrip::-webkit-scrollbar{height:0}
@@ -255,18 +328,29 @@
   .login.out{opacity:0;transform:scale(1.04);pointer-events:none}
   .login .hero{flex:none;display:flex;flex-direction:column;align-items:center;padding:78px 22px 26px;text-align:center}
   .login .mark{width:72px;height:72px}
-  .login .word{font-size:44px;font-weight:500;font-style:italic;letter-spacing:-.02em;line-height:1;margin-top:6px;font-family:Georgia,"Times New Roman",serif}
-  .login .tag{font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:var(--ink-soft);margin-top:12px;font-weight:600}
+  .login .appname{font-size:26px;font-weight:700;letter-spacing:.01em;line-height:1.1;margin-top:12px}
+  .login .tag{font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:var(--ink-soft);margin-top:10px;font-weight:600}
   .login .lcard{margin:0 22px;background:var(--card);color:var(--card-ink);border-radius:18px;padding:20px;box-shadow:0 14px 30px -18px rgba(0,0,0,.45)}
-  .login .lb{font-size:12px;font-weight:600;color:var(--card-soft);margin:0 0 6px;letter-spacing:.02em}
-  .login .lb+.lb{margin-top:14px}
-  .login .field{display:flex;align-items:center;gap:10px;height:48px;border:1.5px solid var(--card-line);border-radius:12px;padding:0 14px;background:#fff;font-size:15px;margin-bottom:14px}
-  .login .field input{flex:1;border:0;outline:0;font:inherit;background:none;color:var(--card-ink);min-width:0}
-  .login .field input::placeholder{color:#a3b1bf}
-  .login .field .code{font-size:11px;font-weight:700;background:var(--card);border-radius:6px;padding:4px 7px;color:var(--card-ink)}
-  .login .field .nm{flex:1}
-  .login .field .show{font-size:13px;color:var(--btn);font-weight:600}
-  .login .field svg{width:18px;height:18px;color:var(--card-soft)}
+  /* Ver11 login fields — portal sign-in rows (leading glyph · hairline divider · small
+     uppercase label over the value · hairline underline), re-skinned in the Altair card. */
+  /* The glyph + divider are centred on the value line, so the icon lines up with the
+     field rather than with the label above it (Ryan 2026-09-11). */
+  .login .fld{border-bottom:1.5px solid var(--card-line);padding:12px 0 10px}
+  .login .fld:last-of-type{border-bottom:0;padding-bottom:12px}
+  .login .fld .fline{display:flex;align-items:center}
+  .login .fld .fic{width:34px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--card-soft)}
+  .login .fld .fic svg{width:19px;height:19px}
+  .login .fld .fsplit{width:1.5px;height:26px;margin-right:14px;background:var(--card-line);flex:none}
+  .login .fld .fbody{flex:1;min-width:0}
+  .login .fld .flab{display:block;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--card-soft);margin:0 0 4px 48px}
+  .login .fld .fval{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:var(--card-ink)}
+  .login .fld input{flex:1;min-width:0;border:0;outline:0;font:inherit;font-size:16px;font-weight:500;background:none;color:var(--card-ink);padding:1px 0}
+  .login .fld input::placeholder{color:#a3b1bf}
+  .login .fld .code{font-size:11px;font-weight:700;background:var(--card);border:1px solid var(--card-line);border-radius:6px;padding:3px 7px;color:var(--card-ink)}
+  .login .fld .fchev{margin-left:auto;width:18px;height:18px;color:var(--card-soft);flex:none}
+  .login .fld .eye{margin-left:auto;flex:none;display:flex;color:var(--card-ink);cursor:pointer}
+  .login .fld .eye svg{width:20px;height:20px}
+  .login #airlineField{cursor:pointer}
   .login .keep{display:flex;align-items:center;gap:10px;font-size:13px;margin:2px 0 16px}
   .login .box{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--card-line);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px}
   .login .box.on{background:var(--btn);border-color:var(--btn)}
@@ -350,16 +434,55 @@ body[data-ver="1"] .dest img, body[data-ver="2"] .dest img, body[data-ver="3"] .
 body[data-ver="1"] .schedHead .credit, body[data-ver="2"] .schedHead .credit, body[data-ver="3"] .schedHead .credit { display:block; } /* two-line header pre-v4 */
 
 body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
+
+/* ===================== Ver10 = current app code (real, verified against source) =====================
+   Sourced from crew-app/src/features/v2/{HomeScreen,ScheduleScreen}.tsx at commit a76a429
+   ("fix(crew-app): round-2 review fixes"), Ryan's on-device J4002 review. Not reconstructed. */
+body[data-ver="10"] .tier, body[data-ver="11"] .tier { display:none; } /* Home: crew/base line removed — Home goes straight to the trip or Explore */
+body[data-ver="10"] #tripEmpty, body[data-ver="11"] #tripEmpty { display:none !important; } /* Home: the empty "no upcoming duty" card is gone entirely, not just hidden-by-default */
+body[data-ver="10"] .card, body[data-ver="10"] .dcard, body[data-ver="11"] .card, body[data-ver="11"] .dcard { background: rgba(241,245,249,0.8); } /* card surfaces drop to 20% transparency so the carrier ground shows through */
+/* Dock: frosted-glass (rgba(255,255,255,.2)) everywhere except Schedule, where PillDock.tsx
+   swaps to a solid light tint (palette.dockLight) with dark icon ink (palette.dockInk) so it
+   still reads over near-white duty cards. Approximated with the mock's own --card tint. */
+body[data-ver="10"] #dock.dock-onlight, body[data-ver="11"] #dock.dock-onlight { background: var(--card); border-color: rgba(0,0,0,.08); }
+body[data-ver="10"] #dock.dock-onlight .tab, body[data-ver="11"] #dock.dock-onlight .tab { color: var(--card-ink); }
+body[data-ver="10"] #dock.dock-onlight .tab svg, body[data-ver="11"] #dock.dock-onlight .tab svg { color: var(--card-ink); }
+body[data-ver="10"] #dock.dock-onlight .tab.on, body[data-ver="11"] #dock.dock-onlight .tab.on { background: var(--btn); }
+body[data-ver="10"] #dock.dock-onlight .tab.on svg, body[data-ver="10"] #dock.dock-onlight .tab.on .tl, body[data-ver="11"] #dock.dock-onlight .tab.on svg, body[data-ver="11"] #dock.dock-onlight .tab.on .tl { color: #fff; }
+
+/* Flight card: fleet-type reads as a bordered chip beside the flight number, not
+   plain "· A350" text (ScheduleScreen.tsx FlightCard: leg.fltNumber + leg.fleet chip) */
+body[data-ver="10"] .dcard .ac .fleetchip, body[data-ver="11"] .dcard .ac .fleetchip { font-size:12px; font-weight:600; letter-spacing:.6px; border:1px solid var(--card-line); border-radius:6px; padding:2px 6px; color:var(--card-soft); margin-left:8px; }
+
+/* iOS Calendar activity mockup (new proposal, not yet in shipped code): a synced
+   calendar event on a flight-duty day is pulled OUT of the flight ticket card into
+   its own small card directly above it — the flight card must stay a clean single
+   trip record. On a non-flight day the event still mixes into that day's existing
+   off/leave-style card (see renderMlist ver==='10' branch). */
+body[data-ver="10"] .dcard.meetcard, body[data-ver="11"] .dcard.meetcard { padding-bottom:2px; }
+body[data-ver="10"] .dcard.meetcard .meet, body[data-ver="11"] .dcard.meetcard .meet { margin-top:8px; background:rgba(255,255,255,.9); }
+body[data-ver="10"] .dcard.meetcard .art, body[data-ver="11"] .dcard.meetcard .art { display:none; }
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <!-- Ver11 crew-app icon: the ROIs Altair paper plane in WHITE (theme-safe: it drops onto
+       any of the airline grounds) + the golden guiding star kept from the Altair compass mark.
+       #i-altair-mark = bare mark (sits on the app's theme ground)
+       #i-altair-tile = the same mark on the Altair sage tile (browser tab / OS app icon) -->
+  <symbol id="i-altair-mark" viewBox="0 0 32 32"><g transform="translate(0.9 10.5) scale(0.86)"><path fill="#fff" d="M22 2 2.5 9.8l9 2.9z"/><path fill="#fff" fill-opacity=".84" d="M22 2 11.5 12.7l3.2 8.8z"/><path fill="#fff" fill-opacity=".66" d="M11.5 12.7v5.6l2.4-3z"/></g><path transform="translate(24.4 7) scale(1.05)" d="M0 -6 L1.6 -1.6 L6 0 L1.6 1.6 L0 6 L-1.6 1.6 L-6 0 L-1.6 -1.6Z" fill="#e0b24c"/></symbol>
+  <symbol id="i-altair-tile" viewBox="0 0 32 32"><rect width="32" height="32" rx="7.4" fill="#1e443d"/><path d="M0 7.4A7.4 7.4 0 0 1 7.4 0h17.2A7.4 7.4 0 0 1 32 7.4v6.2C24 12 10 15 0 22Z" fill="#2c5a52" opacity=".55"/><rect x=".4" y=".4" width="31.2" height="31.2" rx="7" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width=".8"/><g transform="translate(0.9 10.5) scale(0.86)"><path fill="#fff" d="M22 2 2.5 9.8l9 2.9z"/><path fill="#fff" fill-opacity=".84" d="M22 2 11.5 12.7l3.2 8.8z"/><path fill="#fff" fill-opacity=".66" d="M11.5 12.7v5.6l2.4-3z"/></g><path transform="translate(24.4 7) scale(1.05)" d="M0 -6 L1.6 -1.6 L6 0 L1.6 1.6 L0 6 L-1.6 1.6 L-6 0 L-1.6 -1.6Z" fill="#e0b24c"/></symbol>
   <!-- dock icons: clean, upright, 24-grid, 1.7 stroke -->
+  <!-- login field glyphs (pairs with crew-app Icon 'lock' / 'user' / 'globe') -->
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2.4"/><path d="M8.6 10.5V8a3.4 3.4 0 0 1 6.8 0v2.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 12S6.2 5.6 12 5.6 21.4 12 21.4 12 17.8 18.4 12 18.4 2.6 12 2.6 12Z"/><circle cx="12" cy="12" r="3.1"/></symbol>
+  <symbol id="i-eyeOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 12S6.2 5.6 12 5.6 21.4 12 21.4 12 17.8 18.4 12 18.4 2.6 12 2.6 12Z"/><circle cx="12" cy="12" r="3.1"/><path d="M4.5 19.5 19.5 4.5"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5"/></symbol>
   <!-- ascending airliner (svgrepo airplane-plane-flight), restyled to the shared 1.7 outline -->
   <symbol id="i-plane" viewBox="2 2 30 26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.398,18.689l-1.339,3.767c-0.139,0.391,0.231,0.771,0.625,0.643l1.258-0.408c0.1-0.033,0.188-0.096,0.249-0.181l5.854-8.01"/><path d="M25.597,8.714l-5.506,1.789l-7.974-5.61c-0.126-0.096-0.29-0.116-0.442-0.066l-1.531,0.497c-0.304,0.1-0.437,0.468-0.265,0.738l4.03,6.45l-6.115,1.986c-0.637,0.208-1.329,0.086-1.854-0.333l-1.783-1.408c-0.129-0.104-0.306-0.132-0.467-0.079l-0.97,0.314c-0.333,0.109-0.456,0.506-0.24,0.783l1.948,2.532c1.3,1.67,3.499,2.354,5.505,1.702l19.668-6.391c0.685-0.223,1.057-0.954,0.834-1.638C30.3,9.563,29.967,9.25,29.547,9.123l-1.632-0.458C27.152,8.451,26.349,8.47,25.597,8.714z"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 2.5 14.4 0 17M12 3.5c-2.5 2.6-2.5 14.4 0 17"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
   <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 0 0-12 0c0 6-2.5 7.5-2.5 7.5h17S18 14.5 18 8.5"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></symbol>
+  <symbol id="i-menu3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1A2 2 0 1 1 8.5 5.2l.1.1A1.7 1.7 0 0 0 11 4.6a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 11a2 2 0 1 1 0 4z"/></symbol>
   <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
   <symbol id="i-calcheck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M9 15.5l2 2 4-4"/></symbol>
@@ -399,6 +522,11 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
 
 <div class="studio">
   <div class="studio-head">
+    <!-- Ver11: the new crew-app logo — white Altair paper plane + golden guiding star -->
+    <div class="iconchip" id="verIcon">
+      <span class="ic-tile"><svg aria-label="Altair crew app icon"><use href="#i-altair-tile"/></svg></span>
+      <span><span class="ic-name">ROIs Altair</span><span class="ic-sub">Crew app icon · Ver11</span></span>
+    </div>
     <div>
       <h1 class="studio-title">ROIS Crew — Redesign Ver9</h1>
       <p class="studio-sub">Ver4 feedback applied: small simple plane, centered bottom dock with clean icons, full-month schedule with synced calendar strip and one card shape for every day, full-screen profile pages.</p>
@@ -406,7 +534,9 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
     <div class="controls">
       <div><span class="ctl-label">Mock version</span>
         <select id="mockVer" style="font:inherit;font-size:12px;font-weight:600;padding:5px 8px;border-radius:8px;border:1px solid rgba(0,0,0,.15)">
-          <option value="9">Ver9 — final (sign-off)</option>
+          <option value="11">Ver11 — proposal: Calendar roster view</option>
+          <option value="10">Ver10 — current app code (real, from source + review)</option>
+          <option value="9">Ver9 — final mock (sign-off)</option>
           <option value="8">Ver8 — alarm badge, Altair login, TG logo v1</option>
           <option value="7">Ver7 — pixel-compare gate added (= Ver6 visuals)</option>
           <option value="6">Ver6 — half-hole ticket, real cities, short fleet</option>
@@ -416,7 +546,7 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
           <option value="2">Ver2 — Dribbble-ref pass (spacing/colour only)</option>
           <option value="1">Ver1 — first draft</option>
         </select>
-        <div style="font-size:10px;color:var(--muted,#8a8f98);margin-top:4px;max-width:180px">Ver1–Ver8 reconstructed from the feedback log — best-effort, not pixel-exact history. Ver9 is the real sign-off state.</div>
+        <div style="font-size:10px;color:var(--muted,#8a8f98);margin-top:4px;max-width:180px">Ver1–Ver8 reconstructed from the feedback log — best-effort, not pixel-exact history. Ver9 is the real sign-off state. Ver10 is read from the actual crew-app source (commit a76a429, Ryan's on-device review) — real, not reconstructed.</div>
       </div>
       <div><span class="ctl-label">Airline background</span>
         <div class="swatches" id="swatches">
@@ -507,12 +637,51 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
         <div class="stitle">
           <button class="icon-btn" aria-label="Previous month" data-month="-1"><svg><use href="#i-back"/></svg></button>
           <h1 class="ided" data-id="209">Sched Sep 2026 · 63 Credit</h1>
-          <button class="icon-btn bell ided" data-id="201" aria-expanded="false" aria-label="Alerts"><svg><use href="#i-bell"/></svg><span class="badge" data-badge>3</span></button>
+          <button class="icon-btn bell ided" data-id="201" id="schedHeadBtn" aria-expanded="false" aria-label="Alerts"><svg><use href="#i-bell"/></svg><span class="badge" data-badge>3</span></button>
+          <div class="viewmenu" id="viewMenu" hidden>
+            <div class="vmLabel">Roster view</div>
+            <button class="vmOpt on" data-view-mode="timeline"><span>Timeline</span><small>Current — scrolling duty list</small></button>
+            <button class="vmOpt" data-view-mode="calendar"><span>Calendar</span><small>New — month grid + day timeline</small></button>
+            <button class="vmOpt" data-view-mode="route"><span>Route map</span><small>New — flown routes + month stats</small></button>
+          </div>
         </div>
         <div class="alerts ided" data-id="207" data-alerts></div>
         <div class="datestrip ided" data-id="202" id="datestrip"></div>
       </div>
       <div class="mlist ided" data-id="208" id="mlist"></div>
+
+      <!-- Ver11 proposal: alternate "Calendar" roster view, reached via the 3-line
+           menu that replaces the alerts bell on this tab only. -->
+      <div class="calview" id="calCompact" hidden>
+        <div class="calModeRow"><div class="calModeTitle">Month</div><button class="icon-btn" id="calToDetailBtn" aria-label="Switch to day timeline"><svg><use href="#i-clock"/></svg></button></div>
+        <div class="calgrid" id="calGrid"></div>
+        <div class="calEventsList" id="calEventsList"></div>
+      </div>
+      <div class="caldetail" id="calDetail" hidden>
+        <div class="cdHead">
+          <button class="icon-btn" id="calDetailBack" aria-label="Back to month"><svg><use href="#i-back"/></svg></button>
+          <div class="cdWeek" id="cdWeek"></div>
+          <button class="icon-btn" id="calToCompactBtn" aria-label="Switch to month grid"><svg><use href="#i-cal"/></svg></button>
+        </div>
+        <div class="cdTimeline" id="cdTimeline"></div>
+      </div>
+      <div class="calroute" id="calRoute" hidden>
+        <div class="routeMap" id="routeMapEl"></div>
+        <div class="routeStats">
+          <div class="rsTitle">Sep 2026 summary</div>
+          <div class="rsGrid">
+            <div class="rsCell"><div class="rsVal" id="rsFlights">–</div><div class="rsLbl">Flights</div></div>
+            <div class="rsCell"><div class="rsVal" id="rsDistance">–</div><div class="rsLbl">Distance</div></div>
+            <div class="rsCell"><div class="rsVal" id="rsBlock">–</div><div class="rsLbl">Block</div></div>
+            <div class="rsCell"><div class="rsVal" id="rsDuty">–</div><div class="rsLbl">Duty</div></div>
+          </div>
+          <div class="rsRows">
+            <div class="rsRow"><span>Routes</span><span id="rsRoutes">–</span></div>
+            <div class="rsRow"><span>Airports</span><span id="rsAirports">–</span></div>
+            <div class="rsRow"><span>Countries</span><span id="rsCountries">–</span></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ================= GLOBAL ================= -->
@@ -558,18 +727,35 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
     <div class="login ided" data-id="700" id="login" hidden>
       <div class="sky"><svg viewBox="0 0 200 200" fill="none" stroke="currentColor"><circle class="ring" cx="120" cy="80" r="78" stroke-width="1"/><path class="trail" d="M-10 175 C 60 150, 120 120, 205 15" stroke-width="2.5"/></svg></div>
       <div class="hero ided" data-id="701">
-        <!-- Altair compass: abstract aircraft pointing NE toward its golden guiding star (redrawn from altair-44-northeast-Ver1) -->
-        <svg class="mark" viewBox="0 0 72 72" aria-label="Altair"><path d="M14 58 L52 22 L38 44 L44 50 Z" fill="#fff"/><path d="M60 8 l1.6 4.4 L66 14 l-4.4 1.6 L60 20 l-1.6-4.4 L54 14 l4.4-1.6z" fill="#e0b24c"/></svg>
-        <div class="word">altair</div>
+        <!-- Ver11 crew-app logo: the ROIs Altair paper plane in white (theme-safe on every
+             carrier ground) + the golden guiding star kept from the Altair compass mark. -->
+        <svg class="mark" aria-label="Altair"><use href="#i-altair-mark"/></svg>
+        <div class="appname">ROIs Altair</div>
         <div class="tag">Always a way forward</div>
       </div>
       <div class="lcard ided" data-id="702">
-        <div class="lb">Airline</div>
-        <button class="field" id="airlineField" style="width:100%"><span class="code" id="alCode">TG</span><span class="nm" id="alName">THAI</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-        <div class="lb">Crew ID</div>
-        <label class="field"><input id="crewId" placeholder="Crew ID" value="35459" inputmode="numeric" autocomplete="username"></label>
-        <div class="lb">Password</div>
-        <label class="field"><input id="crewPw" type="password" placeholder="Password" value="••••••••" autocomplete="current-password"><button class="show" id="showPw" type="button">Show</button></label>
+        <!-- Ver11: portal-style sign-in rows (glyph · divider · label over the value ·
+             underline). The Airline row carries no label — "TG THAI" already says it. -->
+        <div class="fld" id="airlineField" role="button" tabindex="0">
+          <div class="fline">
+            <span class="fic"><svg><use href="#i-globe"/></svg></span><span class="fsplit"></span>
+            <div class="fbody"><div class="fval"><span class="code" id="alCode">TG</span><span id="alName">THAI</span><svg class="fchev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div></div>
+          </div>
+        </div>
+        <div class="fld">
+          <label class="flab" id="crewIdLab" for="crewId">Crew ID</label>
+          <div class="fline">
+            <span class="fic"><svg><use href="#i-user"/></svg></span><span class="fsplit"></span>
+            <div class="fbody"><input id="crewId" value="35459" inputmode="numeric" autocomplete="username" aria-labelledby="crewIdLab"></div>
+          </div>
+        </div>
+        <div class="fld">
+          <label class="flab" id="crewPwLab" for="crewPw">Password</label>
+          <div class="fline">
+            <span class="fic"><svg><use href="#i-lock"/></svg></span><span class="fsplit"></span>
+            <div class="fbody"><div class="fval"><input id="crewPw" type="password" value="••••••••" autocomplete="current-password" aria-labelledby="crewPwLab"><button class="eye" id="showPw" type="button" aria-label="Show password" aria-pressed="false"><svg><use href="#i-eye"/></svg></button></div></div>
+          </div>
+        </div>
         <button class="keep" id="keepRow"><span class="box on">✓</span> Keep me logged in</button>
         <button class="btn" id="signIn">Sign in</button>
       </div>
@@ -587,6 +773,20 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
     <ul><li><code>#099</code> plane: small, simple, header zone only</li><li><code>#113</code> dock: centered, bottom, clean icons</li><li><code>#202</code> calendar strip = whole month; tap a day → its card scrolls into view; scrolling the list moves the strip</li><li><code>#208</code> one card shape per day — flights, standby, training, and days off (with illustration)</li><li><code>#600</code> Profile rows, trip card, status line → full-screen page slides in from the right</li></ul>
     <h4>Default</h4>
     <ul><li>Today 11 Sep is a day off → opens on next duty (Fri 19)</li></ul>
+
+    <h4>Ver11 — dev notes (Schedule tab, proposal)</h4>
+    <ul>
+      <li><b>Scope:</b> Schedule tab only. Home tab's own alerts bell/panel (<code>HomeScreen.tsx</code>) is untouched — do not repurpose it.</li>
+      <li><b>Header swap:</b> in <code>ScheduleScreen.tsx</code>, the <code>IconButton name="bell" … testID="sched-alerts"</code> (line ~129) becomes a 3-line menu icon (<code>i-menu3</code> here) that opens a "Roster view" picker: <b>Timeline</b> (current scrolling duty list, unchanged) / <b>Calendar</b> / <b>Route map</b>. Alerts move behind that menu too, or need a new entry point — flag this trade-off to design before building, since the bell's badge count currently has no other home on this screen.</li>
+      <li><b>State:</b> one <code>schedViewMode</code> enum (<code>timeline | calendar-compact | calendar-detail | route</code>) drives which of 4 sibling views renders; switching away from <code>timeline</code> must not auto-open the alerts panel (regression we hit in this mock).</li>
+      <li><b>Calendar — compact:</b> month grid, one dot per day (small plane glyph on flight days, plain dot otherwise) sourced from the same <code>buildMonth()</code>/<code>useMonth()</code> model already powering Timeline — no second data model in the real app (this mock's <code>CAL</code> object is a mock-only stand-in). Tapping a day selects it and filters the agenda list below; tapping the already-selected day deselects it back to a full-month agenda. A second icon toggles compact ↔ detail.</li>
+      <li><b>Calendar — detail:</b> per-day vertical hour timeline (06:00–24:00), duty block + iOS-Calendar-synced meetings positioned by start/end time, same "separate card on a flight day, mixed on a non-flight day" rule already shipped for the iOS Calendar sync (Ver10).</li>
+      <li><b>No-duplication rule:</b> event/duty rows never repeat in text what their icon already says (e.g. plane icon + flight number/route is enough — no extra "Flight duty" label). Audit new cards against <code>crew-app/CLAUDE.md</code> → "No duplicated info on one screen" before merging.</li>
+      <li><b>Route map:</b> Mapbox GL JS (this mock pins <code>v3.6.0</code> UMD from the Mapbox CDN — the real RN app should use <code>@rnmapbox/maps</code> instead, not the web SDK). Style <code>mapbox://styles/mapbox/dark-v11</code>, centered on crew base; <b>dark-v11's default land/water reads near-black</b> — override the <code>background</code>/<code>land</code>/<code>landuse</code>/<code>water</code>/<code>water-shadow</code> layer paint (see <code>relight</code> map in this file) rather than relying on a CSS filter, and enable rotate/pinch-zoom + a zoom/compass control. One line per destination flown that month, drawn from base; markers at base + each destination.</li>
+      <li><b>Route map token:</b> mock uses a public demo-style Mapbox token inline for prototyping only — production needs a real token behind env config / secrets, never hard-coded client-side the way this mock does it.</li>
+      <li><b>Month summary card:</b> Flights / Distance / Block / Duty + Routes / Airports / Countries — derive from the same roster data Timeline/Calendar use (block minutes already computed by <code>buildMonth()</code>); distance needs a great-circle calc + airport coordinate lookup not currently in the codebase.</li>
+      <li><b>Crew-app icon (Ver11):</b> the app icon is the ROIs Altair paper plane drawn in <b>white</b> so it drops onto every airline/theme ground, plus the golden guiding star kept from the earlier Altair compass mark — reuse the <code>#i-altair-mark</code> (bare) / <code>#i-altair-tile</code> (tiled) symbols here. The <b>browser-tab</b> icon keeps the sage tile behind the plane because a bare white plane disappears on light browser chrome; the plane geometry is the same faceted dart as <code>gantt/public/favicon.svg</code>.</li>
+    </ul>
   </div>
   </div>
 </div>
@@ -613,7 +813,8 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
   renderAirlines();
   $('#airlineField').addEventListener('click',()=>$('#picker').classList.add('open'));
   $('#picker').addEventListener('click',e=>{const r=e.target.closest('[data-al]');if(r){loginAirline=r.dataset.al;renderAirlines();}if(r||e.target===$('#picker'))$('#picker').classList.remove('open');});
-  $('#showPw').addEventListener('click',()=>{const i=$('#crewPw');const s=i.type==='password';i.type=s?'text':'password';i.value=s?'tg-demo-2026':'••••••••';$('#showPw').textContent=s?'Hide':'Show';});
+  // Password reveal = eye glyph (Ryan 2026-09-11), mirroring the app's Icon 'eye' / 'eyeOff'.
+  $('#showPw').addEventListener('click',()=>{const i=$('#crewPw');const b=$('#showPw');const s=i.type==='password';i.type=s?'text':'password';i.value=s?'tg-demo-2026':'••••••••';b.querySelector('use').setAttribute('href',s?'#i-eyeOff':'#i-eye');b.setAttribute('aria-label',s?'Hide password':'Show password');b.setAttribute('aria-pressed',String(s));});
   $('#keepRow').addEventListener('click',()=>$('#keepRow .box').classList.toggle('on'));
   const showLogin=()=>{const l=$('#login');l.hidden=false;l.classList.remove('out');setPreset('altair');};
   const hideLogin=()=>{const l=$('#login');l.classList.add('out');setTimeout(()=>{l.hidden=true;},320);};
@@ -622,7 +823,12 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
   $('#idToggle').addEventListener('change',e=>document.body.classList.toggle('show-ids',e.target.checked));
   $('#noDuty').addEventListener('change',e=>{$('#tripCard').hidden=e.target.checked;$('#tripEmpty').hidden=!e.target.checked;});
 
-  const go=t=>{$$('.view').forEach(v=>v.classList.toggle('on',v.dataset.view===t));$$('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));$('.view.on').scrollTop=0;requestAnimationFrame(punch);if(t==='sched')setTimeout(()=>focusDay(defaultDay,false),0);};
+  const go=t=>{$$('.view').forEach(v=>v.classList.toggle('on',v.dataset.view===t));$$('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));$('.view.on').scrollTop=0;requestAnimationFrame(punch);if(t==='sched')setTimeout(()=>focusDay(defaultDay,false),0);
+    // Ver10 (real, PillDock.tsx): the frosted-glass dock is unreadable over Schedule's
+    // near-white duty cards, so that tab swaps it to a solid light tint of the theme
+    // with dark icon ink — every other tab keeps the frosted-glass look.
+    if(['10','11'].includes(document.body.getAttribute('data-ver')))$('#dock').classList.toggle('dock-onlight',t==='sched');
+  };
   $('#dock').addEventListener('click',e=>{const b=e.target.closest('.tab');if(b)go(b.dataset.tab);});
   $$('[data-tab-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.tabGo)));
 
@@ -638,7 +844,11 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
     $$('[data-badge]').forEach(d=>{d.hidden=!alerts.length;d.textContent=alerts.length;});
   };
   renderAlerts();
-  $$('.bell').forEach(b=>b.addEventListener('click',()=>{const panel=b.closest('.view').querySelector('[data-alerts]');const open=!panel.classList.contains('open');$$('.alerts').forEach(a=>a.classList.remove('open'));$$('.bell').forEach(x=>x.setAttribute('aria-expanded','false'));panel.classList.toggle('open',open);b.setAttribute('aria-expanded',open);}));
+  $$('.bell').forEach(b=>b.addEventListener('click',()=>{
+    // Ver11 repurposes the Schedule tab's bell into the roster-view menu button —
+    // it must not also pop the alerts panel underneath.
+    if(b.id==='schedHeadBtn'&&document.body.getAttribute('data-ver')==='11')return;
+    const panel=b.closest('.view').querySelector('[data-alerts]');const open=!panel.classList.contains('open');$$('.alerts').forEach(a=>a.classList.remove('open'));$$('.bell').forEach(x=>x.setAttribute('aria-expanded','false'));panel.classList.toggle('open',open);b.setAttribute('aria-expanded',open);}));
   document.addEventListener('click',e=>{const d=e.target.closest('[data-dismiss]');if(!d)return;alerts=d.dataset.dismiss==='all'?[]:alerts.filter((_,i)=>i!==+d.dataset.dismiss);renderAlerts();toast('Alert dismissed');});
 
   // ---- schedule: whole month
@@ -678,9 +888,186 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
   const isDuty=d=>!!M[d].flight||M[d].art==='art-standby'||M[d].art==='art-training';
   let defaultDay=isDuty(TODAY)?TODAY:[...Array(30)].map((_,i)=>i+1).find(d=>d>=TODAY&&M[d].flight)||TODAY;
   $('#datestrip').innerHTML=[...Array(30)].map((_,i)=>{const d=i+1;return `<button class="daychip${isDuty(d)?' has':''}${d===TODAY?' today':''}" data-day="${d}"><div class="dow">${dow(d)}</div><div class="dnum">${d}</div><div class="dot"></div></button>`}).join('');
-  $('#mlist').innerHTML=[...Array(30)].map((_,i)=>{const d=i+1,m=M[d];
-    const body=m.flight?`<div class="in">${m.meet||''}${m.flight}</div>`:`<div class="art"><svg><use href="#${m.art}"/></svg></div><div class="in">${m.body}</div>`;
-    return `<${m.flight?'button':'div'} class="dcard${m.flight?'':' off'}" data-day="${d}" ${m.flight?'data-page="trip"':''}><div class="in" style="padding:14px 18px 0;font-size:12px;color:var(--card-soft);font-weight:600;text-transform:uppercase;letter-spacing:.06em">${dow(d)} ${d} Sep${d===TODAY?' · Today':''}</div>${body.replace('class="in"','class="in" style="padding-top:10px"')}</${m.flight?'button':'div'}>`}).join('');
+  const dateLbl=(d)=>`<div class="in" style="padding:14px 18px 0;font-size:12px;color:var(--card-soft);font-weight:600;text-transform:uppercase;letter-spacing:.06em">${dow(d)} ${d} Sep${d===TODAY?' · Today':''}</div>`;
+  const renderMlist=(ver)=>{
+    $('#mlist').innerHTML=[...Array(30)].map((_,i)=>{const d=i+1,m=M[d];
+      // Ver10 mockup: a synced iOS Calendar event on a FLIGHT-duty day gets its own
+      // separate card (never nested inside the flight ticket). On a non-flight day
+      // (off/standby/etc.) it still mixes into that day's existing duty card.
+      if((ver==='10'||ver==='11')&&m.flight&&m.meet){
+        const meetCard=`<div class="dcard off meetcard" data-day="${d}">${dateLbl(d)}<div class="in" style="padding-top:10px">${m.meet}</div></div>`;
+        const flightCard=`<button class="dcard" data-day="${d}" data-page="trip">${dateLbl(d)}<div class="in" style="padding-top:10px">${m.flight}</div></button>`;
+        return meetCard+flightCard;
+      }
+      const body=m.flight?`<div class="in">${m.meet||''}${m.flight}</div>`:`<div class="art"><svg><use href="#${m.art}"/></svg></div><div class="in">${m.body}</div>`;
+      return `<${m.flight?'button':'div'} class="dcard${m.flight?'':' off'}" data-day="${d}" ${m.flight?'data-page="trip"':''}>${dateLbl(d)}${body.replace('class="in"','class="in" style="padding-top:10px"')}</${m.flight?'button':'div'}>`}).join('');
+  };
+  renderMlist(document.body.getAttribute('data-ver')||'9');
+
+  // ===== Ver11 proposal: Calendar roster view (compact month grid + agenda, and a per-day timeline) =====
+  // Reference: docs/.../v2Model.test.ts fixtures — reuses the same demo days as the
+  // Timeline view (11 off, 18 standby, 19-21 LHR rotation, 28 SIN turn) plus their
+  // iOS-Cal meetings, restated here as {start,end} pairs for the timeline layout.
+  const CAL={
+    3:{kind:'flight',dutyLabel:'TG610 BKK → HKG',dutyS:'07:15',dutyE:'08:35'},
+    4:{kind:'layover',dutyLabel:'Layover · HKG'},
+    5:{kind:'flight',dutyLabel:'TG609 HKG → BKK',dutyS:'21:40',dutyE:'23:20'},
+    11:{kind:'off',dutyLabel:'Day off',events:[{s:'15:00',e:'15:30',title:'Dentist',sub:'Silom clinic'}]},
+    13:{kind:'flight',dutyLabel:'TG676 BKK → NRT',dutyS:'23:55',dutyE:'23:59'},
+    14:{kind:'layover',dutyLabel:'Layover · NRT'},
+    15:{kind:'flight',dutyLabel:'TG677 NRT → BKK',dutyS:'12:20',dutyE:'17:35'},
+    18:{kind:'duty',dutyLabel:'Standby · Home',dutyS:'06:00',dutyE:'18:00',events:[{s:'14:00',e:'14:45',title:'CRM refresher (online)',sub:'Teams'}]},
+    19:{kind:'flight',dutyLabel:'TG920 BKK → LHR',dutyS:'22:45',dutyE:'23:59',events:[{s:'10:30',e:'11:15',title:'Fleet standardisation briefing',sub:'Ops Centre · Room 3B'}]},
+    20:{kind:'layover',dutyLabel:'Layover · LHR'},
+    21:{kind:'flight',dutyLabel:'TG911 LHR → BKK',dutyS:'11:30',dutyE:'12:30'},
+    28:{kind:'flight',dutyLabel:'TG403 BKK → SIN',dutyS:'00:30',dutyE:'01:00'},
+    29:{kind:'flight',dutyLabel:'TG402 SIN → BKK',dutyS:'20:10',dutyE:'21:35'},
+  };
+  let calSel=TODAY;
+  const timeToMin=t=>{const[h,m]=t.split(':').map(Number);return h*60+m;};
+  const renderCalGrid=()=>{
+    const g=$('#calGrid');if(!g)return;
+    g.innerHTML=DOW.map(d=>`<div class="cgDow">${d[0]}</div>`).join('')
+      +[...Array(30)].map((_,i)=>{const d=i+1,c=CAL[d];
+        const dot=c?(c.kind==='flight'?`<div class="dot"><svg><use href="#i-plane"/></svg></div>`:`<div class="dot"><i></i></div>`):'<div class="dot"></div>';
+        return `<button class="cgDay${d===TODAY?' today':''}${d===calSel?' sel':''}" data-cal-day="${d}">${d}${dot}</button>`;
+      }).join('');
+  };
+  const renderCalEvents=()=>{
+    const l=$('#calEventsList');if(!l)return;
+    // No date picked (tapping the selected date again deselects it) → the full
+    // month's duties + calendar events, each row dated, instead of one day's.
+    if(calSel==null){
+      const rows=[];
+      Object.keys(CAL).map(Number).sort((a,b)=>a-b).forEach(d=>{
+        const c=CAL[d];
+        // Sub-line stays to the date only — the icon (plane/house) already says
+        // what kind of duty this is, so "Flight duty"/"Rest day" would just repeat it.
+        if(c.dutyLabel)rows.push({d,icon:c.kind==='flight'?'i-plane':'i-house',title:c.dutyLabel,sub:`${dow(d)} ${d} Sep`,time:c.dutyS?`${c.dutyS}–${c.dutyE}`:''});
+        (c.events||[]).forEach(e=>rows.push({d,icon:'i-cal',title:e.title,sub:`${dow(d)} ${d} Sep · ${e.sub}`,time:`${e.s}–${e.e}`}));
+      });
+      l.innerHTML=rows.length?rows.map(r=>`<button class="ceCard" data-cal-detail="${r.d}"><div class="ceIcon"><svg><use href="#${r.icon}"/></svg></div><div class="ceBody"><div class="ceTitle">${r.title}</div><div class="ceSub">${r.sub}</div></div><div class="ceTime">${r.time}</div></button>`).join('')
+        :`<div class="ceEmpty">Nothing published this month</div>`;
+      return;
+    }
+    const c=CAL[calSel];
+    const rows=[];
+    // Single day already scoped by the header above — the icon carries the duty
+    // kind and the title carries the specifics, so no sub-line repeats either.
+    if(c&&c.dutyLabel)rows.push({icon:c.kind==='flight'?'i-plane':'i-house',title:c.dutyLabel,sub:'',time:c.dutyS?`${c.dutyS}–${c.dutyE}`:''});
+    (c&&c.events||[]).forEach(e=>rows.push({icon:'i-cal',title:e.title,sub:e.sub+' · iOS Cal',time:`${e.s}–${e.e}`}));
+    l.innerHTML=rows.length?rows.map(r=>`<button class="ceCard" data-cal-detail="${calSel}"><div class="ceIcon"><svg><use href="#${r.icon}"/></svg></div><div class="ceBody"><div class="ceTitle">${r.title}</div>${r.sub?`<div class="ceSub">${r.sub}</div>`:''}</div><div class="ceTime">${r.time}</div></button>`).join('')
+      :`<div class="ceEmpty">Nothing on ${dow(calSel)} ${calSel} Sep</div>`;
+  };
+  const renderCalCompact=()=>{renderCalGrid();renderCalEvents();};
+  const renderCalDetail=d=>{
+    calSel=d;
+    const weekStart=d-(new Date(2026,8,d).getDay());
+    $('#cdWeek').innerHTML=[...Array(7)].map((_,i)=>{const dd=weekStart+i;if(dd<1||dd>30)return '<div></div>';return `<button class="cwDay${dd===d?' sel':''}" data-cal-day="${dd}"><span>${DOW[i][0]}</span><b>${dd}</b></button>`}).join('');
+    const HSTART=6,HEND=24,ROWH=44;
+    const tl=$('#cdTimeline');
+    let html=[...Array(HEND-HSTART)].map((_,i)=>`<div class="cdHour"><span class="cdHourLbl">${String(HSTART+i).padStart(2,'0')}:00</span></div>`).join('');
+    const c=CAL[d];
+    const blocks=[];
+    if(c&&c.dutyS)blocks.push({s:c.dutyS,e:c.dutyE,title:c.dutyLabel,cls:'duty'});
+    (c&&c.events||[]).forEach(e=>blocks.push({s:e.s,e:e.e,title:e.title,sub:e.sub,cls:'meet'}));
+    const pxPerMin=ROWH/60;
+    const evHtml=blocks.map(b=>{
+      let top=(timeToMin(b.s)-HSTART*60)*pxPerMin, h=Math.max((timeToMin(b.e)-timeToMin(b.s))*pxPerMin,28);
+      top=Math.max(0,top);
+      return `<div class="cdEvent ${b.cls}" style="top:${top}px;height:${h}px"><b>${b.s}–${b.e}</b>${b.title}${b.sub?` · ${b.sub}`:''}</div>`;
+    }).join('');
+    tl.innerHTML=`<div style="position:relative">${html}<div style="position:absolute;inset:0;pointer-events:none">${evHtml}</div></div>`;
+  };
+  // Demo BKK-based rotation for the route map + month stats — mirrors the
+  // Calendar view's CAL object (HKG, NRT, LHR and SIN round trips this month).
+  const ROUTES=[
+    {to:[113.9185,22.3080],code:'BKK–HKG'},
+    {to:[140.3929,35.7647],code:'BKK–NRT'},
+    {to:[-0.4543,51.4700],code:'BKK–LHR'},
+    {to:[103.9915,1.3644],code:'BKK–SIN'},
+  ];
+  const CREW_BASE=[100.7501,13.6900];
+  let routeMap=null;
+  const renderCalRoute=()=>{
+    $('#rsFlights').textContent='8';
+    $('#rsDistance').textContent='21,200 mi';
+    $('#rsBlock').textContent='45:05';
+    $('#rsDuty').textContent='62:30';
+    $('#rsRoutes').textContent='4';
+    $('#rsAirports').textContent='5';
+    $('#rsCountries').textContent='5';
+    if(typeof mapboxgl==='undefined')return;
+    if(!routeMap){
+      mapboxgl.accessToken='MAPBOX_TOKEN_PLACEHOLDER';
+      routeMap=new mapboxgl.Map({container:'routeMapEl',style:'mapbox://styles/mapbox/dark-v11',center:CREW_BASE,zoom:1.6,attributionControl:false,dragRotate:true,touchZoomRotate:true,scrollZoom:true});
+      routeMap.touchZoomRotate.enableRotation();
+      routeMap.addControl(new mapboxgl.NavigationControl({visualizePitch:true}),'top-right');
+      routeMap.addControl(new mapboxgl.AttributionControl({compact:true}));
+      routeMap.on('load',()=>{
+        // dark-v11's default land/water are near-black — lift them a couple
+        // steps so the routes read on a legible ground instead of a void.
+        const relight=[
+          ['background','background-color','#2b3648'],
+          ['land','background-color','#2b3648'],
+          ['landuse','fill-color','#33405a'],
+          ['national-park','fill-color','#33405a'],
+          ['water','fill-color','#3d5273'],
+          ['water-shadow','fill-color','#3d5273'],
+        ];
+        relight.forEach(([id,prop,val])=>{try{if(routeMap.getLayer(id))routeMap.setPaintProperty(id,prop,val);}catch(e){}});
+        ROUTES.forEach((r,i)=>{
+          routeMap.addSource('route'+i,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:[CREW_BASE,r.to]}}});
+          routeMap.addLayer({id:'route'+i,type:'line',source:'route'+i,paint:{'line-color':'#8ecbff','line-width':1.6,'line-opacity':.85}});
+        });
+        const pts=[CREW_BASE,...ROUTES.map(r=>r.to)];
+        new mapboxgl.Marker({color:'#8ecbff'}).setLngLat(CREW_BASE).addTo(routeMap);
+        ROUTES.forEach(r=>new mapboxgl.Marker({color:'#5a7ba6'}).setLngLat(r.to).addTo(routeMap));
+        const bounds=pts.reduce((b,p)=>b.extend(p),new mapboxgl.LngLatBounds(pts[0],pts[0]));
+        routeMap.fitBounds(bounds,{padding:36,duration:0});
+      });
+    }else{
+      setTimeout(()=>routeMap.resize(),0);
+    }
+  };
+  let schedViewMode='timeline';
+  const setSchedView=mode=>{
+    schedViewMode=mode;
+    $('#datestrip').style.display=mode==='timeline'?'':'none';
+    $('#mlist').style.display=mode==='timeline'?'':'none';
+    $('#calCompact').hidden=mode!=='calendar-compact';
+    $('#calDetail').hidden=mode!=='calendar-detail';
+    $('#calRoute').hidden=mode!=='route';
+    if(mode==='calendar-compact')renderCalCompact();
+    if(mode==='calendar-detail')renderCalDetail(calSel||TODAY);
+    if(mode==='route')renderCalRoute();
+    if(mode!=='timeline'){
+      const v=document.querySelector('.view[data-view="sched"]');if(v)v.scrollTop=0;
+      // Entering Calendar shouldn't drag the alerts panel open behind it.
+      document.querySelector('.view[data-view="sched"] [data-alerts]')?.classList.remove('open');
+      $('#schedHeadBtn')?.setAttribute('aria-expanded','false');
+    }
+  };
+  document.body.addEventListener('click',e=>{
+    const menuBtn=e.target.closest('#schedHeadBtn');
+    const vm=$('#viewMenu');
+    if(menuBtn&&document.body.getAttribute('data-ver')==='11'){e.stopPropagation();vm.hidden=!vm.hidden;menuBtn.setAttribute('aria-expanded',String(!vm.hidden));return;}
+    const opt=e.target.closest('.vmOpt');
+    if(opt){$$('.vmOpt').forEach(o=>o.classList.toggle('on',o===opt));vm.hidden=true;const vmode=opt.dataset.viewMode;setSchedView(vmode==='calendar'?'calendar-compact':vmode==='route'?'route':'timeline');return;}
+    if(e.target.closest('#calToDetailBtn')){setSchedView('calendar-detail');return;}
+    if(e.target.closest('#calToCompactBtn')){setSchedView('calendar-compact');return;}
+    const cgDay=e.target.closest('[data-cal-day]');
+    if(cgDay){
+      const d=+cgDay.dataset.calDay;
+      if(schedViewMode==='calendar-detail'){calSel=d;renderCalDetail(calSel);}
+      else{calSel=(calSel===d)?null:d;renderCalGrid();renderCalEvents();}
+      return;
+    }
+    const ceCard=e.target.closest('[data-cal-detail]');
+    if(ceCard){calSel=+ceCard.dataset.calDetail;setSchedView('calendar-detail');return;}
+    if(e.target.closest('#calDetailBack')){setSchedView('calendar-compact');return;}
+    if(vm&&!vm.hidden&&!e.target.closest('.viewmenu'))vm.hidden=true;
+  });
   // ticket holes: cut the mask at each card's dashed line (re-run after any re-render)
   const punch=()=>$$('.dcard,.card.trip').forEach(c=>{const d=c.querySelector('.fdash,.dash');if(!d)return;const y=d.getBoundingClientRect().top-c.getBoundingClientRect().top;c.style.setProperty('--hole',y+'px');});
   requestAnimationFrame(punch);document.fonts&&document.fonts.ready.then(punch);
@@ -825,10 +1212,46 @@ body[data-ver="reconstructed-note"] {} /* marker for search; see JS banner */
   const verSel=$('#mockVer');
   const applyVer=v=>{
     document.body.setAttribute('data-ver',v);
+    renderMlist(v);
+    // Ver11: the sched-tab alerts bell becomes a 3-line "roster view" menu button;
+    // every other version keeps the plain alerts bell.
+    const schedBtnUse=document.querySelector('#schedHeadBtn use');
+    const schedBtnBadge=document.querySelector('#schedHeadBtn .badge');
+    if(schedBtnUse){
+      schedBtnUse.setAttribute('href',v==='11'?'#i-menu3':'#i-bell');
+      document.querySelector('#schedHeadBtn')?.setAttribute('aria-label',v==='11'?'Roster view':'Alerts');
+      if(schedBtnBadge)schedBtnBadge.style.display=v==='11'?'none':'';
+    }
+    if(v!=='11'){
+      $('#viewMenu').hidden=true;
+      if(typeof setSchedView==='function')setSchedView('timeline');
+    }
     if(v==='8'){$('#greet span').textContent='Good morning';$('#greet use').setAttribute('href','#i-sunrise');}
     else if(Number(v)<8){$('#greet').style.setProperty('display','flex');}
     else{greet();}
-    toast('Mock Ver'+v+(v==='9'?' (final)':' — reconstructed'));
+
+    // Sched header: real app title is month-only ("Sep 2026"), credit moved to Profile.
+    const schedH1=document.querySelector('.stitle h1');
+    if(schedH1){
+      if(!schedH1.dataset.orig)schedH1.dataset.orig=schedH1.textContent;
+      schedH1.textContent = (v==='10'||v==='11') ? schedH1.dataset.orig.replace(/\s*·\s*\d+\s*Credit\s*$/i,'') : schedH1.dataset.orig;
+    }
+    // Flight cards: "TG920 · A350" plain text -> flight number + bordered fleet chip.
+    $$('.dcard .ac').forEach(el=>{
+      if(!el.dataset.orig)el.dataset.orig=el.innerHTML;
+      if(v==='10'||v==='11'){
+        const m=el.dataset.orig.match(/^(.*?)\s*·\s*(.+)$/);
+        el.innerHTML = m ? `${m[1]}<span class="fleetchip">${m[2]}</span>` : el.dataset.orig;
+      } else {
+        el.innerHTML = el.dataset.orig;
+      }
+    });
+
+    // Sync the dock's light/dark state to whichever tab is already active.
+    const activeTab=document.querySelector('.tab.on')?.dataset.tab;
+    $('#dock')?.classList.toggle('dock-onlight', (v==='10'||v==='11') && activeTab==='sched');
+
+    toast('Mock Ver'+v+(v==='9'?' (final)':v==='10'?' (current app code)':v==='11'?' (proposal on top of current code)':' — reconstructed'));
   };
   verSel?.addEventListener('change',e=>applyVer(e.target.value));
   applyVer(verSel?.value||'9');

@@ -37,6 +37,7 @@ import dataRoutes from './routes/data/index.js'
 import metadataRoutes from './routes/metadata/index.js'
 import ruleRoutes from './routes/rule/index.js'
 import costLibraryRoutes from './routes/cost/cost-library.js'
+import bestFitRoutes from './routes/best-fit/best-fit.js'
 import aiRoutes from './routes/ai/index.js'
 import bullmqPlugin from './plugins/bullmq.js'
 import { startBatchCrewWorker } from './workers/batch-crew-worker.js'
@@ -73,6 +74,7 @@ import crewMemoRoutes from './routes/crew-memo/index.js'
 import resPairingRoutes from './routes/res-pairing/res-pairing.js'
 import mobileRosterRoutes from './routes/mobile-roster/mobile-roster.js'
 import crewNotifyRoutes from './routes/crew-notify/crew-notify.js'
+import absenceRoutes from './routes/absence/absence.js'
 import recoveryRoutes from './routes/recovery/recovery.js'
 import { bumpBackendVersion, formatAppVersion } from './utils/app-version.js'
 import { resolveFiliale } from './utils/filiale.js'
@@ -205,6 +207,7 @@ const start = async () => {
     await server.register(resPairingRoutes, { prefix: '/api' })
     await server.register(mobileRosterRoutes, { prefix: '/api/mobile-roster' })
     await server.register(crewNotifyRoutes, { prefix: '/api/crew-app/v1' })
+    await server.register(absenceRoutes, { prefix: '/api/absence' })
     await server.register(rosterRoutes)
     await server.register(ganttRoutes)
     await server.register(scenarioRoutes)
@@ -220,6 +223,7 @@ const start = async () => {
     await server.register(metadataRoutes, { prefix: '/api/metadata' })
     await server.register(ruleRoutes)
     await server.register(costLibraryRoutes, { prefix: '/api/cost-library' })
+    await server.register(bestFitRoutes, { prefix: '/api/best-fit' })
     await server.register(aiRoutes)
     await server.register(ruleCheckRouteGroup)
     await server.register(pbsRoutes)

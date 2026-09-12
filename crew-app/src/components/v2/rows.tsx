@@ -140,11 +140,15 @@ export interface RadioRowProps {
   palette: CarrierPalette;
   /** Optional right-aligned chip (e.g. the time-zone marker "13:00L"). */
   badge?: string;
+  /** Dims the row and marks it non-interactive to the eye (onPress can still be
+   *  a no-op or a "coming soon" toast — the caller decides). */
+  disabled?: boolean;
+  testID?: string;
 }
 
-export function RadioRow({ title, sub, selected, onPress, palette, badge }: RadioRowProps): React.JSX.Element {
+export function RadioRow({ title, sub, selected, onPress, palette, badge, disabled, testID }: RadioRowProps): React.JSX.Element {
   return (
-    <Pressable style={styles.radioRow} onPress={onPress}>
+    <Pressable style={[styles.radioRow, disabled ? styles.radioRowDisabled : undefined]} onPress={onPress} testID={testID}>
       <View
         style={[
           styles.radioCircle,
@@ -257,6 +261,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 10,
+  },
+  radioRowDisabled: {
+    opacity: 0.5,
   },
   radioCircle: {
     width: 20,

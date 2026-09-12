@@ -1,0 +1,66 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+# Ryan's review of the pushed Alerts screen (2026-09-11):
+#   1. no way back to Home, 2. plain text with no design, 3. a roster change
+#   should read BEFORE → AFTER rather than as a sentence.
+# This flow proves all three on ET J4002, whose real sick-leave stand-down
+# (pairing 151529 · ET895/ET894 ADD↔BJM) is the alert it renders.
+#
+# Run: cd crew-app && maestro test .maestro/et_j4002_alerts.yaml
+# Reset a remembered session first: xcrun simctl keychain <udid> reset
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- assertVisible:
+    id: "crew-id"
+- tapOn:
+    id: "toggle-pw"
+- scrollUntilVisible:
+    element:
+      id: "login-btn"
+    direction: DOWN
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 30000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: alerts-01-home-rest
+# Home ▸ bell → the pushed Alerts screen must carry its own way back.
+- tapOn:
+    id: "home-alerts"
+- extendedWaitUntil:
+    visible:
+      id: "alerts-back"
+    timeout: 15000
+- assertVisible: "Alerts"
+- assertVisible:
+    id: "notif-row"
+# NOTE: Maestro cannot assert text nested inside the alert's accessible Pressable
+# (RN merges the children into one element), so the before/after CONTENT is
+# covered by __tests__/features/rosterChange.test.ts + NotificationsScreen.test.tsx
+# and by the screenshot this flow captures; the flow asserts the structure only.
+- takeScreenshot: alerts-02-roster-change
+- tapOn:
+    id: "alerts-back"
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 15000
+# The polished Home: one swipe must clear the Quick actions card off the dock.
+- swipe:
+    start: 50%, 84%
+    end: 50%, 30%
+    duration: 400
+- takeScreenshot: alerts-04-home-quick-actions-clear

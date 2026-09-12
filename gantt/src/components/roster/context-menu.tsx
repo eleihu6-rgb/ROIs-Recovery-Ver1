@@ -5,7 +5,9 @@ import { useGanttViewStore } from '@/stores/gantt-view-store'
 import { usePaneStore } from '@/stores/pane-store'
 import { usePairingStore } from '@/stores/pairing-store'
 import { pairingApi } from '@/services/pairing-api'
-import { Edit, Trash2, ArrowRightLeft, Crosshair, Link2, PackagePlus, PackageSearch, Pin, PinOff, Plane, SquarePlus, ClipboardEdit, Users, StickyNote, CalendarClock, CalendarDays, UserRound, CalendarArrowDown, ShieldAlert, Wand2 } from 'lucide-react'
+import { Edit, Trash2, ArrowRightLeft, Crosshair, Link2, PackagePlus, PackageSearch, Pin, PinOff, Plane, SquarePlus, ClipboardEdit, Users, StickyNote, CalendarClock, CalendarDays, UserRound, CalendarArrowDown, ShieldAlert, Wand2, Sparkles } from 'lucide-react'
+import { buildBestFitPairingOptions } from '@/utils/best-fit-candidates'
+import { useBestFitStore } from '@/stores/best-fit-store'
 import { notify } from '@/utils/notify'
 import { useCrewMemoStore } from '@/stores/crew-memo-store'
 import { useRuleCheckStore } from '@/stores/rule-check-store'
@@ -425,6 +427,24 @@ export const ContextMenu = () => {
         label: 'View pairing detail',
         onClick: () => {
           useUiStore.getState().openPairingInfo(pairingId)
+          closeContextMenu()
+        },
+      },
+      // Entry 1 — Best-fit crew for THIS open pairing (preselected in the dialog).
+      // Read-only planning: it ranks crew, it never assigns.
+      {
+        icon: Sparkles,
+        label: 'Find best-fit crew…',
+        onClick: () => {
+          const options = buildBestFitPairingOptions(
+            usePairingStore.getState().items.filter((item) => item.pairing.id === pairingId),
+          )
+          if (options.length === 0) {
+            notify.info('This pairing is already fully staffed')
+            closeContextMenu()
+            return
+          }
+          useBestFitStore.getState().openWith(options, [pairingId])
           closeContextMenu()
         },
       },

@@ -17,6 +17,13 @@ export interface EkRosterCrew {
   base: string;
   rank: string;
   nationality?: string | null;
+  /**
+   * The crew's own carrier, resolved server-side from the flights they operate
+   * (e.g. "EK" for crew K1003, whose roster is Emirates even though the ROIS
+   * mobile-roster endpoint also answers the ET option). Optional: older servers
+   * do not send it, and the app then falls back to the signed-in airline.
+   */
+  carrier?: string | null;
 }
 
 export interface EkRosterFlight {
@@ -144,6 +151,19 @@ function isSupportedRosterAirline(airline: unknown): boolean {
   return typeof airline === 'string' && SUPPORTED_ROSTER_AIRLINES.has(airline);
 }
 
+/**
+ * The carrier the app should BRAND with for a loaded roster: the crew's own
+ * carrier when the server sent one, else the airline whose option signed in.
+ *
+ * The signed-in airline is only "which roster service answered" — the ET option
+ * and the F8 option hit the same ROIS endpoint — so branding must not come from
+ * it alone: UAE crew K1003 came back wearing the Ethiopian wordmark.
+ */
+export function crewCarrierOf(response: {airline: string; crew?: {carrier?: string | null}}): string {
+  const carrier = response.crew?.carrier?.trim();
+  return (carrier ? carrier : response.airline).toUpperCase();
+}
+
 const responseSchema = z.object({
   apiVersion: z.literal('1'),
   airline: z.enum(['EK', 'F8', 'ET']),
@@ -155,6 +175,9 @@ const responseSchema = z.object({
     rank: requiredString,
     // ISO-2 country code; older servers don't send it.
     nationality: z.string().nullable().optional(),
+    // The crew's real carrier (server-resolved from their flights); older
+    // servers don't send it and the app falls back to the signed-in airline.
+    carrier: z.string().nullable().optional(),
   }),
   pairings: z.array(pairingSchema),
   groundDuties: z.array(groundDutySchema),
@@ -316,6 +339,9 @@ export function mapEkRosterToTrips(value: unknown): Trip[] {
 
 export function mapEkRosterToDuties(value: unknown): PortalDuty[] {
   const response = parseEkRosterResponse(value);
+  // Duty cards carry the crew's own carrier so a duty label that needs a flight
+  // prefix (dutyDisplay) is numbered for the airline the crew actually flies.
+  const carrier = crewCarrierOf(response);
 
   return response.groundDuties.flatMap(duty => {
     // A duty with no window cannot be placed on a day. Skip it rather than
@@ -343,7 +369,7 @@ export function mapEkRosterToDuties(value: unknown): PortalDuty[] {
       endUTC: duty.endUtc,
       briefStart: duty.startUtc,
       crewId: response.crew.crewId,
-      carrier: response.airline,
+      carrier,
       baseOffsetMin: isMobileRosterAirline(response.airline) ? 0 : undefined,
       airportCode: duty.departureAirport ?? undefined,
       raw: duty,

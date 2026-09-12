@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Best-Fit Crew | Option B — docked workspace</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body data-option="b">
+
+<div class="reviewbar">
+  <strong>ROIS-AI · Best-Fit Crew for an Open Pairing</strong>
+  <nav>
+    <a href="option-a.html">Option A — modal</a>
+    <a href="#" aria-current="page">Option B — docked</a>
+  </nav>
+  <span class="sample">Synthetic sample data · nothing is assigned</span>
+</div>
+
+<div class="shellbar">
+  <strong>Altair</strong>
+  <span>Live Gantt</span>
+  <span>Scenario</span>
+  <span class="on">Live</span>
+  <span style="margin-left:auto" class="muted">Demo date 2026-09-11 · Roster period 2026RP09</span>
+</div>
+
+<div class="gantt" id="gantt">
+  <section class="pane">
+    <div class="panehead">
+      <strong>Pairings</strong>
+      <span class="count" id="pairing-count">0</span>
+      <span class="opencredit" id="open-credit">—</span>
+      <span class="cluster">
+        <button id="btn-queue" class="primary" data-testid="btn-queue">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          Best-fit queue (<span id="queue-n">0</span>)
+        </button>
+        <button class="icon" id="btn-show-ctx" title="Show the pairing row right-click menu">⋯</button>
+      </span>
+    </div>
+    <div id="pairing-rows"></div>
+  </section>
+  <section class="pane">
+    <div class="panehead"><strong>Roster · main</strong><span class="count">20 crew</span></div>
+    <div id="roster-rows"></div>
+  </section>
+</div>
+
+<div id="ctxmenu" class="ctxmenu" hidden></div>
+<div id="scrim" class="scrim" hidden></div>
+<div id="dockhost"></div>
+
+<script src="model.js"></script>
+<script>
+(function () {
+  'use strict'
+  const M = window.bestFitMockup
+  const $ = (s) => document.querySelector(s)
+
+  const FULL_PAIRINGS = [
+    { id: 41055, label: 'PA-41055', base: 'DXB', fleet: 'B777', division: 'P', depLocal: '2026-09-13 08:40', coverage: 'full', composition: [{ rank: 'CA', plan: 1, fill: 1 }, { rank: 'FO', plan: 1, fill: 1 }] },
+    { id: 41112, label: 'PA-41112', base: 'ADD', fleet: 'B787', division: 'P', depLocal: '2026-09-15 19:05', coverage: 'full', composition: [{ rank: 'CA', plan: 1, fill: 1 }] },
+  ]
+
+  const state = {
+    view: 'queue',            // 'queue' | 'pairing'
+    step: 1,
+    pairing: M.pairing,
+    basis: 'fairness',
+    onlyLegal: false,
+    rankSlot: '',
+    search: '',
+    maxCandidates: 40,
+    sim: { running: false, done: 0, total: 0, token: 0, settled: false },
+    expanded: null,
+    selected: null,
+    reviewLater: [],
+    acknowledged: false,
+  }
+
+  // ── backdrop + context menu ──────────────────────────────────────────────
+
+  function openSlotText(p) {
+    if (p.coverage === 'full') return 'Filled'
+    return M.openSlots(p).map((rank) => {
+      const slot = p.composition.find((s) => s.rank === rank)
+      return rank + ' ×' + Math.max(0, (slot.plan || 0) - (slot.fill || 0))
+    }).join(' · ')
+  }
+
+  function renderBackdrop() {
+    const queue = M.queueRows().slice(0, 5)
+    const mix = [queue[0], FULL_PAIRINGS[0], queue[1], queue[2], queue[3], FULL_PAIRINGS[1], queue[4]]
+    $('#pairing-rows').innerHTML = mix.map((p) => {
+      const open = p.coverage !== 'full'
+      return '<div class="prow' + (p.id === 41287 ? ' sel' : '') + '" data-pairing-id="' + p.id + '" data-open="' + open + '">' +
+        '<div class="lab"><b>' + p.label + '</b><span class="muted tiny">' + p.base + ' · ' + p.fleet + ' · ' +
+          (open ? '<span style="color:#915d07">' + openSlotText(p) + '</span>' : '<span>Full</span>') + '</span></div>' +
+        '<div class="track"><span class="puck">' + p.depLocal.slice(5, 10) + '  ' + p.fleet + '  ' + p.base + '</span></div>' +
+      '</div>'
+    }).join('')
+    $('#pairing-count').textContent = String(mix.length)
+    $('#open-credit').textContent = 'Open credit ' + M.formatMinutes(M.queueRows().reduce((s, r) => s + r.uncoveredCreditMin, 0))
+    $('#queue-n').textContent = String(M.queueRows().length)
+    $('#roster-rows').innerHTML = M.crews.slice(0, 8).map((c, i) =>
+      '<div class="rrow"><div class="lab"><b>' + c.crewId + '</b> ' + c.name.split(' ')[0] + '</div>' +
+      '<div class="track">' + (i % 3 === 0 ? '<span class="duty do">DO</span>' : '') +
+      '<span class="duty">' + c.base + '–' + (i % 2 ? 'LHR' : 'JNB') + '</span></div></div>').join('')
+  }
+
+  function showCtx(x, y, pairing) {
+    const open = pairing.coverage !== 'full'
+    const menu = $('#ctxmenu')
+    menu.innerHTML =
+      '<div class="item">View pairing detail</div><div class="item">Locate pairing</div><div class="sep"></div>' +
+      '<div class="item hf' + (open ? '' : ' disabled') + '" data-testid="ctx-bestfit"' + (open ? ' data-pairing-id="' + pairing.id + '"' : '') + '>Find best-fit crew…</div>' +
+      (open ? '' : '<div class="item disabled tiny">Pairing is fully staffed</div>')
+    menu.hidden = false
+    const rect = menu.getBoundingClientRect()
+    menu.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + 'px'
+    menu.style.top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)) + 'px'
+    if (open) menu.querySelector('[data-pairing-id]').addEventListener('click', () => { hideCtx(); openPairing(Number(pairing.id)) })
+  }
+  const hideCtx = () => { $('#ctxmenu').hidden = true }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#ctxmenu') && !e.target.closest('#pairing-rows')) hideCtx()
+  })
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideCtx(); closeDock() } })
+  $('#pairing-rows').addEventListener('contextmenu', (e) => {
+    const row = e.target.closest('.prow')
+    if (!row) return
+    e.preventDefault()
+    const pairing = M.queueRows().concat(FULL_PAIRINGS).find((p) => String(p.id) === row.dataset.pairingId)
+    showCtx(e.clientX, e.clientY, pairing)
+  })
+  $('#btn-show-ctx').addEventListener('click', (e) => {
+    e.stopPropagation()
+    const row = document.querySelector('.prow.sel') || document.querySelector('.prow')
+    const rect = row.getBoundingClientRect()
+    const pairing = M.queueRows().concat(FULL_PAIRINGS).find((p) => String(p.id) === row.dataset.pairingId)
+    showCtx(rect.left + 60, rect.bottom + 2, pairing)
+  })
+
+  // ── dock ─────────────────────────────────────────────────────────────────
+
+  $('#btn-queue').addEventListener('click', () => { hideCtx(); openQueue() })
+  $('#scrim').addEventListener('click', closeDock)
+
+  function openQueue() {
+    state.view = 'queue'
+    state.step = 1
+    state.sim = { running: false, done: 0, total: 0, token: state.sim.token + 1, settled: false }
+    $('#scrim').hidden = false
+    renderDock()
+  }
+
+  function openPairing(pairingId) {
+    const pairing = M.queueRows().find((p) => p.id === pairingId)
+    if (!pairing) return
+    state.pairing = pairing
+    state.view = 'pairing'
+    state.step = 1
+    state.expanded = null
+    state.selected = null
+    state.reviewLater = []
+    state.sim = { running: false, done: 0, total: 0, token: state.sim.token + 1, settled: false }
+    $('#scrim').hidden = false
+    renderDock()
+  }
+
+  function closeDock() {
+    $('#dockhost').innerHTML = ''
+    $('#scrim').hidden = true
+    state.sim.token += 1
+  }
+
+  const STEPS = [
+    { n: 1, t: 'Pairing' },
+    { n: 2, t: 'Filter' },
+    { n: 3, t: 'Legality' },
+    { n: 4, t: 'Rank' },
+  ]
+
+  function renderDock() {
+    $('#dockhost').innerHTML =
+      '<aside class="dock" data-testid="dock">' +
+        '<div class="titlebar"><h1 id="dock-title"></h1>' +
+          '<button class="icon" data-testid="dock-close" title="Close (Esc)">✕</button></div>' +
+        (state.view === 'queue' ? '' : stepsNav()) +
+        '<div class="stepbody" id="stepbody"></div>' +
+        '<div class="footer" id="dockfoot"></div>' +
+      '</aside>'
+    $('#dockhost').querySelector('[data-testid=dock-close]').addEventListener('click', closeDock)
+    $('#dock-title').textContent = state.view === 'queue'
+      ? 'Best-fit queue — open pairings'
+      : 'Best-fit crew — ' + state.pairing.label
+    if (state.view === 'queue') renderQueue()
+    else renderStep()
+  }
+
+  function stepsNav() {
+    return '<div class="steps">' + STEPS.map((s) => (
+      '<button data-step="' + s.n + '"' + (state.step === s.n ? ' aria-current="step"' : '') +
+        (state.step > s.n ? ' class="done"' : '') + '>' +
+        '<span class="n">' + (state.step > s.n ? '✓' : s.n) + '</span><span class="t">' + s.t + '</span></button>'
+    )).join('') + '</div>'
+  }
+
+  // ── Step: queue ──────────────────────────────────────────────────────────
+
+  function renderQueue() {
+    const rows = M.queueRows()
+    $('#stepbody').innerHTML =
+      '<div class="queuehead" style="padding:0 0 10px">' +
+        '<h2>Open / partially open pairings</h2>' +
+        '<span class="chip info"><b>' + rows.length + '</b> in scope</span>' +
+        '<span class="chip soft">Uncovered credit <b>' + M.formatMinutes(rows.reduce((s, r) => s + r.uncoveredCreditMin, 0)) + '</b></span>' +
+      '</div>' +
+      '<div class="grid2" style="margin-bottom:10px">' +
+        '<label class="field">Sort<select id="q-sort"><option value="departure">Earliest departure</option><option value="credit">Largest gap credit</option><option value="rank">Base → fleet → rank</option></select></label>' +
+        '<label class="field">Base<select><option>All bases</option><option>DXB</option><option>ADD</option><option>YEG</option></select></label>' +
+        '<label class="field">Fleet<select><option>All fleets</option><option>B777</option><option>B787</option><option>A350</option><option>B737</option></select></label>' +
+        '<label class="field">Coverage<select><option>Open + Partial</option><option>Open only</option><option>Partial only</option></select></label>' +
+      '</div>' +
+      rows.map((p) => (
+        '<div class="queuecard" data-testid="queue-card" data-pairing-id="' + p.id + '">' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+            '<b>' + p.label + '</b>' +
+            '<span class="chip ' + (p.coverage === 'open' ? 'hard' : 'soft') + '">' + (p.coverage === 'open' ? 'Open' : 'Partial') + '</span>' +
+            '<span class="muted small tnum">' + p.base + ' · ' + p.fleet + ' · ' + p.divisionLabel + ' · ' + p.assignmentGroup + '</span>' +
+            '<span class="urgency ' + (p.daysUntil <= 2 ? 'now' : p.daysUntil <= 4 ? 'soon' : '') + '" style="margin-left:auto">'
+              + (p.daysUntil <= 0 ? 'today' : p.daysUntil + 'd') + '</span>' +
+            '<button class="primary" data-testid="queue-card-action" data-pairing-id="' + p.id + '">Find best-fit →</button>' +
+          '</div>' +
+          '<div class="qrow">' +
+            '<span class="muted">Departs</span><b class="tnum">' + p.depLocal + '</b>' +
+            '<span class="muted">Open slots</span><b>' + p.openSlots.map((s) => s.rank + ' ×' + s.count).join(', ') + '</b>' +
+            '<span class="muted">Uncovered</span><b class="tnum">' + M.formatMinutes(p.uncoveredCreditMin) + '</b>' +
+            '<span class="muted" style="margin-left:auto">' + p.legalCount + ' legal · ' + p.hardCount + ' hard-blocked of ' + p.baseCount + ' matched</span>' +
+          '</div>' +
+        '</div>'
+      )).join('')
+    $('#dockfoot').innerHTML = '<span class="muted small">Read-only worklist. Multi-select and solving several pairings together is out of v1 (PBS solver territory).</span>'
+    $('#stepbody').querySelectorAll('[data-testid=queue-card-action]').forEach((btn) => {
+      btn.addEventListener('click', () => openPairing(Number(btn.dataset.pairingId)))
+    })
+  }
+
+  // ── Steps 1-4 ────────────────────────────────────────────────────────────
+
+  function renderStep() {
+    if (!$('#dockhost').querySelector('.steps')) {
+      $('#dockhost').querySelector('.dock').insertAdjacentHTML('afterbegin', stepsNav())
+    }
+    if (state.step === 1) renderStep1()
+    else if (state.step === 2) renderStep2()
+    else if (state.step === 3) renderStep3()
+    else renderStep4()
+    $('#dockhost').querySelectorAll('.steps button').forEach((b) => {
+      b.addEventListener('click', () => { state.step = Number(b.dataset.step); if (state.step < 3) state.sim.settled = false; renderDock() })
+    })
+  }
+
+  function foot(summary, nextLabel, nextHandler, extra) {
+    $('#dockfoot').innerHTML =
+      '<button data-testid="dock-back">' + (state.step === 1 ? '← Queue' : '← Back') + '</button>' +
+      '<span class="summary">' + summary + '</span>' +
+      (extra || '') +
+      (nextLabel ? '<button class="primary" data-testid="dock-next">' + nextLabel + '</button>' : '') +
+      '<button disabled title="Simulation only — this prototype writes nothing">Assign selected</button>'
+    $('#dockfoot').querySelector('[data-testid=dock-back]').addEventListener('click', () => {
+      if (state.step === 1) openQueue()
+      else { state.step -= 1; renderDock() }
+    })
+    const next = $('#dockfoot').querySelector('[data-testid=dock-next]')
+    if (next && nextHandler) next.addEventListener('click', nextHandler)
+  }
+
+  function renderStep1() {
+    const p = state.pairing
+    const f = M.funnel(p)
+    $('#stepbody').innerHTML =
+      '<h2>' + p.label + ' · #' + p.id + '</h2>' +
+      '<div class="muted small" style="margin-bottom:10px">Open pairing — ' + p.base + ' · ' + p.fleet + ' · ' + p.divisionLabel + ' · ' + p.assignmentGroup + '</div>' +
+      '<div class="queuecard">' +
+        '<div class="grid2">' +
+          '<div class="metric"><small>Departs (base local)</small><b class="tnum">' + p.depLocal + '</b></div>' +
+          '<div class="metric"><small>Returns</small><b class="tnum">' + p.arrLocal + '</b></div>' +
+          '<div class="metric"><small>TAFB</small><b class="tnum">' + M.formatMinutes(p.tafbMin) + '</b></div>' +
+          '<div class="metric"><small>Block</small><b class="tnum">' + M.formatMinutes(p.blockMin) + '</b></div>' +
+          '<div class="metric"><small>Duties / segments</small><b class="tnum">' + p.dutyCount + ' / ' + p.segCount + '</b></div>' +
+          '<div class="metric"><small>Coverage</small><b><span class="chip ' + (p.coverage === 'open' ? 'hard' : 'soft') + '">' + p.coverage + '</span></b></div>' +
+        '</div>' +
+      '</div>' +
+      '<h3 style="margin:14px 0 6px;font-size:12px">Composition — which slots are open</h3>' +
+      '<table class="list"><thead><tr><th>Rank</th><th>Plan</th><th>Fill</th><th>Open</th><th>Eligible crew (basic match)</th></tr></thead><tbody>' +
+        p.composition.map((s) => {
+          const open = Math.max(0, (s.plan || 0) - (s.fill || 0))
+          const rankCrew = M.crews.filter((c) => c.base === p.base && c.fleets.includes(p.fleet) && c.division === p.division && c.qualOk && c.status === 1 &&
+            (c.rank === s.rank || (s.rank === 'FO' && c.rank === 'CA'))).length
+          return '<tr><td><b>' + s.rank + '</b></td><td class="tnum">' + s.plan + '</td><td class="tnum">' + s.fill + '</td>' +
+            '<td>' + (open > 0 ? '<span class="chip soft">' + open + ' open</span>' : '<span class="chip pass">filled</span>') + '</td>' +
+            '<td class="tnum">' + rankCrew + '</td></tr>'
+        }).join('') +
+      '</tbody></table>' +
+      '<div class="locked" style="margin-top:12px"><span>🔒</span><div>Hard eligibility gates: crew base = pairing base, pairing fleet ∈ crew fleet quals, rank can fill the open slot (CA may act down to FO, FO may not act up), crew division matches. These are never waivable by cost.</div></div>'
+    foot(f.basic + ' crew pass the basic filter · ' + f.pass + ' legal · ' + f.soft + ' soft · ' + f.hard + ' hard-blocked', 'Find best-fit crew →', () => { state.step = 2; renderDock() })
+  }
+
+  function renderStep2() {
+    const p = state.pairing
+    const f = M.funnel(p)
+    $('#stepbody').innerHTML =
+      '<h2>Filter the crew universe</h2>' +
+      '<div class="muted small" style="margin-bottom:10px">Stage 1 — base + fleet + rank + division + active. Cheap, non-waivable, and it happens before the rule engine runs.</div>' +
+      '<div class="locked"><span>🔒</span><div><b>Applied eligibility filters (cannot be waived)</b><div style="margin-top:4px">' +
+        ['Base = ' + p.base, 'Fleet = ' + p.fleet, 'Division = ' + p.divisionLabel, 'Rank ∈ {' + M.openSlots(p).join(', ') + '}'].map((t) => '<span class="chip info">' + t + '</span>').join(' ') +
+      '</div></div></div>' +
+      '<div class="grid2" style="margin-top:12px">' +
+        '<label class="field">Rank slot<select id="s2-rank"><option value="">All open slots</option><option value="CA">CA only</option><option value="FO">FO only</option></select></label>' +
+        '<label class="field">Max candidates<select id="s2-max"><option>20</option><option selected>40</option></select></label>' +
+        '<label class="field">Active status<select><option>Active only</option><option>Include inactive</option></select></label>' +
+        '<label class="field">Qualification expiry<select><option>Valid on the working date</option><option>Any</option></select></label>' +
+        '<label class="field">Cost set<select id="s2-cost"><option>Daily Recovery · rev 3</option><option>Pilot Recovery · rev 1</option></select></label>' +
+        '<label class="field">Crew search<input id="s2-search" type="search" placeholder="crew id or name"></label>' +
+      '</div>' +
+      '<div style="margin-top:12px" class="chip info">Matched <b id="s2-count">' + effectiveRows().length + '</b> of ' + f.basic + ' basic matches · ' + f.universe + ' in the universe</div>' +
+      '<div style="margin-top:10px" class="small muted">Excluded by Stage 1: ' +
+        Object.entries(f.excluded).map(([k, v]) => k + ' ' + v).join(' · ') + '</div>'
+    const refresh = () => { $('#s2-count').textContent = String(effectiveRows().length) }
+    $('#s2-rank').addEventListener('change', (e) => { state.rankSlot = e.target.value; refresh() })
+    $('#s2-search').addEventListener('input', (e) => { state.search = e.target.value; refresh() })
+    $('#s2-max').addEventListener('change', (e) => { state.maxCandidates = Number(e.target.value); refresh() })
+    foot(effectiveRows().length + ' candidate' + (effectiveRows().length === 1 ? '' : 's') + ' ready for the legality simulation', 'Simulate legality →', () => {
+      state.step = 3
+      state.sim = { running: false, done: 0, total: effectiveRows().length, token: state.sim.token + 1, settled: false }
+      renderDock()
+      startSimulation()
+    })
+  }
+
+  function effectiveRows() {
+    let rows = M.rankCrews(state.basis)
+    if (state.onlyLegal) rows = rows.filter((r) => !r.blocked && r.legality.verdict === 'pass')
+    if (state.rankSlot) rows = rows.filter((r) => r.crew.rank === state.rankSlot || (state.rankSlot === 'FO' && r.crew.rank === 'CA'))
+    if (state.search) {
+      const q = state.search.toLowerCase()
+      rows = rows.filter((r) => r.crew.crewId.includes(q) || r.crew.name.toLowerCase().includes(q))
+    }
+    return rows.slice(0, state.maxCandidates)
+  }
+
+  function startSimulation() {
+    const rows = effectiveRows()
+    const token = ++state.sim.token
+    state.sim.total = rows.length
+    state.sim.done = 0
+    state.sim.settled = false
+    const tick = () => {
+      if (token !== state.sim.token) return
+      state.sim.done += 1
+      paintSimRow(rows[state.sim.done - 1], 'verdict')
+      paintProgress()
+      if (state.sim.done < rows.length) window.setTimeout(tick, 90)
+      else { state.sim.settled = true; paintProgress() }
+    }
+    rows.forEach((r, i) => window.setTimeout(() => { if (token === state.sim.token) paintSimRow(r, 'simulating') }, i * 90))
+    window.setTimeout(tick, 260)
+  }
+
+  function paintSimRow(row, phase) {
+    if (!row) return
+    const el = document.querySelector('[data-sim-cell="' + row.crew.crewId + '"]')
+    if (!el) return
+    if (phase === 'simulating') { el.innerHTML = '<span class="chip"><span class="spin"></span> simulating</span>'; return }
+    const v = row.legality.verdict
+    el.innerHTML = v === 'pass' ? '<span class="chip pass">✔ Pass</span>'
+      : v === 'soft' ? '<span class="chip soft">▲ Soft warning ' + row.legality.violations.length + '</span>'
+      : '<span class="chip hard">⛔ Hard block ' + row.legality.violations.length + '</span>'
+  }
+
+  function paintProgress() {
+    const bar = document.querySelector('#sim-bar')
+    const txt = document.querySelector('#sim-progress-text')
+    if (!bar) return
+    const pct = state.sim.total === 0 ? 100 : Math.round((state.sim.done / state.sim.total) * 100)
+    bar.querySelector('i').style.width = pct + '%'
+    txt.textContent = state.sim.done + ' / ' + state.sim.total + ' simulated · ' + (state.sim.settled ? 'settled' : 'running') + ' · 1 batched rule-engine call'
+  }
+
+  function renderStep3() {
+    const p = state.pairing
+    const f = M.funnel(p)
+    const rows = effectiveRows()
+    const blocked = rows.filter((r) => r.blocked)
+    const soft = rows.filter((r) => !r.blocked && r.legality.verdict === 'soft')
+    $('#stepbody').innerHTML =
+      '<h2>Legality simulation</h2>' +
+      '<div class="muted small" style="margin-bottom:10px">Stage 2 — one batched <code>preview-draft</code> call simulates "assign this pairing to each candidate" and reports only the <b>new</b> violations versus the crew\'s current roster. severity ≥ 3 = hard gate.</div>' +
+      '<div class="qprog"><div class="bar" id="sim-bar" style="flex:1"><i style="width:0%"></i></div>' +
+        '<span class="small muted" id="sim-progress-text">0 / ' + rows.length + '</span>' +
+        '<button id="btn-sim-rerun" data-testid="sim-rerun">Re-run</button>' +
+        '<button id="btn-sim-stop">Stop</button></div>' +
+      '<div style="display:flex;gap:8px;margin:10px 0"><span class="chip pass">' + f.pass + ' pass</span>' +
+        '<span class="chip soft">' + f.soft + ' soft warning</span>' +
+        '<span class="chip hard">' + f.hard + ' hard blocked</span>' +
+        '<span class="chip">' + f.universe + ' universe</span></div>' +
+      rows.filter((r) => !r.blocked).map((r) => (
+        '<div class="qrow" data-sim-row="' + r.crew.crewId + '" style="justify-content:space-between">' +
+          '<span><b>' + r.crew.crewId + '</b> ' + r.crew.name + ' <span class="muted small">' + r.crew.base + ' · ' + r.crew.rank + ' · MBH ' + r.mbh + '</span></span>' +
+          '<span data-sim-cell="' + r.crew.crewId + '"><span class="chip">queued</span></span>' +
+        '</div>'
+      )).join('') +
+      (soft.length ? '<div class="empty" style="margin-top:10px;text-align:left"><b>Review later tray</b><div style="margin-top:6px">' +
+        soft.map((r) => '<label style="display:block"><input type="checkbox" class="review-cb" data-crew-id="' + r.crew.crewId + '"> ' +
+          r.crew.crewId + ' ' + r.crew.name + ' — ' + r.legality.violations.map((v) => v.ruleCode).join(', ') + '</label>').join('') +
+        '</div></div>' : '') +
+      (blocked.length ? '<div style="margin-top:12px"><b style="font-size:12px;color:#b42318">Excluded (hard violation) — not selectable</b>' +
+        blocked.map((r) => '<div class="qrow" style="color:#7d423c"><span><b>' + r.crew.crewId + '</b> ' + r.crew.name + '</span>' +
+          '<span class="rulecodes">' + r.legality.violations.map((v) => v.ruleCode + ' ' + v.title).join(' · ') + '</span></div>').join('') + '</div>' : '')
+    $('#btn-sim-rerun').addEventListener('click', () => startSimulation())
+    $('#btn-sim-stop').addEventListener('click', () => { state.sim.token += 1; state.sim.settled = true; paintProgress() })
+    $('#stepbody').querySelectorAll('.review-cb').forEach((cb) => cb.addEventListener('change', () => {
+      state.reviewLater = Array.from($('#stepbody').querySelectorAll('.review-cb:checked')).map((x) => x.dataset.crewId)
+    }))
+    foot(f.eligible + ' selectable (' + f.soft + ' need an override reason) · ' + f.hard + ' excluded by hard rules',
+      'Continue to ranking →', () => { state.step = 4; renderDock() })
+    paintProgress()
+    rows.forEach((r) => paintSimRow(r, 'queued'))
+  }
+
+  function renderStep4() {
+    const rows = effectiveRows()
+    const maxMbh = Math.max.apply(null, rows.map((r) => r.crew.mbhMin).concat([1]))
+    const maxCost = Math.max.apply(null, rows.filter((r) => r.cost.status === 'priced').map((r) => r.cost.amount).concat([1]))
+    const f = M.funnel(state.pairing)
+    $('#stepbody').innerHTML =
+      '<h2>Ranked shortlist</h2>' +
+      '<div class="muted small" style="margin-bottom:10px">Stage 3 — only crew with no new violation, or soft warnings the planner may override. Hard-blocked crew stay excluded.</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">' +
+        '<span class="muted small">Rank by</span>' +
+        '<button id="b-fair" data-testid="basis-fairness">Fairness (lowest MBH)</button>' +
+        '<button id="b-cost" data-testid="basis-cost">Cost (cost library)</button>' +
+        '<label style="margin-left:auto" class="small muted"><input type="checkbox" id="b-legal"' + (state.onlyLegal ? ' checked' : '') + '> Only fully legal</label>' +
+      '</div>' +
+      rows.map((r) => {
+        const expanded = state.expanded === r.crew.crewId
+        const v = r.legality.verdict
+        return '<div class="card' + (state.selected === r.crew.crewId ? ' sel' : '') + (r.blocked ? ' blocked' : '') + '" data-testid="card" data-crew-id="' + r.crew.crewId + '" data-blocked="' + r.blocked + '">' +
+          '<div class="cardhead">' +
+            '<span class="badge">' + r.rank + '</span>' +
+            '<div style="min-width:0"><b>' + r.crew.crewId + '</b> ' + r.crew.name +
+              '<div class="tiny muted">' + r.why + '</div></div>' +
+            '<span style="margin-left:auto">' +
+              (v === 'pass' ? '<span class="chip pass">✔ Pass</span>' : v === 'soft' ? '<span class="chip soft">▲ Soft warning ' + r.legality.violations.length + '</span>' : '<span class="chip hard">⛔ Hard block</span>') +
+            '</span>' +
+            '<button class="ghost small" data-testid="card-expand" data-crew-id="' + r.crew.crewId + '">' + (expanded ? 'Hide' : 'Details') + '</button>' +
+          '</div>' +
+          '<div class="cardbody">' +
+            '<div class="metric"><small>MBH (fairness)</small><b class="tnum">' + r.mbh + '</b>' +
+              '<div class="bar fair" style="margin-top:4px"><i style="width:' + Math.round(r.crew.mbhMin / maxMbh * 100) + '%"></i></div></div>' +
+            '<div class="metric"><small>MCred · days off</small><b class="tnum">' + r.mcred + ' · ' + r.crew.mdo + '</b></div>' +
+            '<div class="metric"><small>Incremental cost · ' + r.cost.label + '</small><b class="tnum">' +
+              (r.cost.status === 'priced' ? M.formatMoney(r.cost.amount) : '<span class="chip">unpriced</span>') + '</b>' +
+              (r.cost.status === 'priced' ? '<div class="bar cost" style="margin-top:4px"><i style="width:' + Math.round(r.cost.amount / maxCost * 100) + '%"></i></div>' : '') + '</div>' +
+            '<div class="metric"><small>Rank / slot</small><b>' + r.crew.rank + ' · ' + (r.crew.rank === 'CA' ? 'CA or FO' : 'FO') + '</b>' +
+              '<div style="margin-top:4px"><button class="small" data-testid="card-select" data-crew-id="' + r.crew.crewId + '">' + (state.selected === r.crew.crewId ? 'Selected' : 'Select') + '</button></div></div>' +
+          '</div>' +
+          (expanded ? '<div class="expand" data-testid="card-detail">' + cardDetail(r) + '</div>' : '') +
+        '</div>'
+      }).join('')
+    $('#b-fair').className = state.basis === 'fairness' ? 'primary' : ''
+    $('#b-cost').className = state.basis === 'cost' ? 'primary' : ''
+    $('#b-fair').addEventListener('click', () => { state.basis = 'fairness'; renderDock() })
+    $('#b-cost').addEventListener('click', () => { state.basis = 'cost'; renderDock() })
+    $('#b-legal').addEventListener('change', (e) => { state.onlyLegal = e.target.checked; renderDock() })
+    $('#stepbody').querySelectorAll('[data-testid=card-expand]').forEach((btn) => btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      state.expanded = state.expanded === btn.dataset.crewId ? null : btn.dataset.crewId
+      renderDock()
+    }))
+    $('#stepbody').querySelectorAll('[data-testid=card-select]').forEach((btn) => btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      state.selected = btn.dataset.crewId
+      renderDock()
+    }))
+    foot(f.pass + ' legal · ' + f.soft + ' soft-warning · ' + f.hard + ' hard-blocked of ' + f.basic + ' matched' +
+      (state.selected ? ' · selected ' + state.selected : ''), null, null,
+      '<span class="chip">Not a real assignment</span>')
+  }
+
+  function cardDetail(r) {
+    const p = state.pairing
+    const cost = M.costTotal(r.crew.crewId)
+    return '<div class="simstrip"><div class="small muted">' + r.crew.crewId + ' · Sep 2026</div>' +
+        '<div class="line"><span class="duty do">DO</span><span class="duty">' + r.crew.base + '–LHR</span><span class="duty newp">+' + p.label + '</span></div>' +
+        '<div class="simnote">Simulation only — nothing is assigned.</div></div>' +
+      '<h3>Rust legality delta</h3>' +
+      (r.legality.violations.length === 0
+        ? '<div class="empty">No new violation versus the crew\'s current roster.</div>'
+        : r.legality.violations.map((v) => '<div class="viol' + (v.severity < 3 ? ' soft' : '') + '"><b>Rule ' + v.ruleCode + '/' + v.ruleInstance + ' · ' + v.title + ' · severity ' + v.severity + (v.severity >= 3 ? ' (hard)' : ' (soft)') + '</b>' + v.message +
+          '<div class="tiny muted">window ' + v.windowStart + ' → ' + v.windowEnd + '</div></div>').join('')) +
+      '<h3>Cost breakdown <span class="chip cost">' + cost.label + '</span></h3>' +
+      '<div class="costbox">' + (cost.status === 'priced'
+        ? cost.breakdown.map((b) => '<div class="costrow"><span>' + b.label + '</span><span class="tnum">' + b.value + '</span></div>').join('') +
+          '<div class="costrow total"><span>Incremental cost</span><span class="tnum">' + M.formatMoney(cost.amount) + '</span></div>'
+        : '<div class="costrow"><span>Not priced in this cost set</span><span class="chip">unpriced</span></div>') +
+        '<div class="formula" style="margin-top:6px">' + cost.formula + '</div></div>'
+  }
+
+  renderBackdrop()
+})()
+</script>
+</body>
+</html>

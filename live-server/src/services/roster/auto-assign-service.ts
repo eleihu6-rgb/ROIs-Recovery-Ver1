@@ -8,6 +8,7 @@ import { pairingSegment } from '../../models/pairing/pairing-segment.js'
 import { rule } from '../../models/rule/rule.js'
 import { notDeleted } from '../../utils/db.js'
 import { precheckAssignment } from '../assignment/precheck-service.js'
+import { buildPairingPreviewItems } from '../assignment/preview-roster-items.js'
 import {
   previewDraftLegality,
   type LegalityPreviewViolation,
@@ -401,38 +402,15 @@ const defaultDeps: AutoAssignDeps = {
 }
 
 // ── Segment → PreviewRosterItem expansion for an accepted pairing ────────────
-
-let syntheticId = -1
-const nextSyntheticId = (): number => syntheticId--
+// Shared with the Best-fit crew planner so both ask the rule engine about an
+// assignment in one identical shape (see services/assignment/preview-roster-items.ts).
 
 const expandAccepted = (
   cand: CandidatePairing,
   segs: SegmentRow[],
   crewId: string,
   actingRank: string,
-): PreviewRosterItem[] =>
-  segs.map((seg) => ({
-    id: nextSyntheticId(),
-    crewId,
-    pairingId: cand.id,
-    base: cand.base,
-    label: `${seg.fltNum} ${seg.depArp}-${seg.arvArp}`,
-    assignmentGroup: cand.assignmentGroup ?? 'FLY',
-    assignment: seg.segAssignment ?? cand.assignment,
-    division: cand.division,
-    flightActingRank: actingRank,
-    rosterActingRank: actingRank,
-    dutySeq: seg.dutySeq,
-    segSeq: seg.segSeq,
-    fltId: seg.fltId,
-    fltDt: toIso(seg.fltDt),
-    schStrDtUtc: toIso(seg.schStrDtUtc),
-    schEndDtUtc: toIso(seg.schEndDtUtc),
-    actStrDtUtc: toIso(seg.actStrDtUtc),
-    actEndDtUtc: toIso(seg.actEndDtUtc),
-    schCreditedMinutes: seg.schCreditedMinutesSeg ?? null,
-    source: 'MA',
-  }))
+): PreviewRosterItem[] => buildPairingPreviewItems(cand, segs, crewId, actingRank)
 
 // ── Per-crew planner ─────────────────────────────────────────────────────────
 

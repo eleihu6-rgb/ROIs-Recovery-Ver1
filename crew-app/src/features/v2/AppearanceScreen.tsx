@@ -10,6 +10,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useAppDispatch, useAppSelector } from '../../store';
+import { selectCrewCarrier } from '../auth/authSlice';
 import {
   PALETTES,
   THEME_LABELS,
@@ -93,7 +94,9 @@ export function AppearanceScreen() {
   const p = useCarrier();
   const dispatch = useAppDispatch();
   const chosen = useAppSelector(s => s.settings.themePreset);
-  const airline = useAppSelector(s => s.auth.airline) ?? '';
+  // "Your airline's colour" must be the carrier the crew actually flies (K1003 =
+  // EK), which the roster resolved — not the option they signed in through.
+  const airline = useAppSelector(selectCrewCarrier) ?? '';
   const airlinePreset = resolveTheme(null, airline);
   const active = resolveTheme(chosen, airline);
 

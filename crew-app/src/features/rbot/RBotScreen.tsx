@@ -19,6 +19,7 @@ import { Icon } from '../../components/v2/icons';
 import { CrewAvatar } from '../settings/avatars';
 import { RBOT_AVATAR_INDEX } from './RBotEntry';
 import { store, useAppDispatch, useAppSelector } from '../../store';
+import { selectCrewCarrier } from '../auth/authSlice';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { useV2Nav } from '../v2/nav';
 import { sendCrewChat } from './crewChatApi';
@@ -54,7 +55,9 @@ export function RBotScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const nav = useV2Nav();
   const dispatch = useAppDispatch();
-  const airline = useAppSelector(s => s.auth.airline) ?? '';
+  // R'Bot is told the carrier the crew actually flies (EK for K1003), so its
+  // answers and its action vocabulary match the roster on screen.
+  const airline = useAppSelector(selectCrewCarrier) ?? '';
   const crewId = useAppSelector(s => s.auth.crewId) ?? '';
   const firstName = useAppSelector(s => s.auth.firstName);
   const trips = useAppSelector(s => s.trips.trips);

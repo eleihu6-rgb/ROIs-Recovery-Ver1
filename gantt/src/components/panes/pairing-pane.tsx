@@ -24,6 +24,9 @@ import { timeToX, xToTime, formatBlockMinutes, parseIsoCached, buildCompositionS
 import { findPairingStartingAtDay } from '@/utils/locate-today-pairing'
 import { resolveBaseTimezone } from '@/utils/base-timezone'
 import { publishPairingOrder } from '@/utils/gantt-test-hook'
+import { buildBestFitPairingOptions } from '@/utils/best-fit-candidates'
+import { useBestFitStore } from '@/stores/best-fit-store'
+import { notify } from '@/utils/notify'
 import { HEADER_HEIGHT, MIN_TASK_WIDTH, PAIRING_ROW_HEIGHT as SEGMENT_ROW_HEIGHT, PAIRING_HEADER_HEIGHT, SEGMENT_FLIGHT_HEIGHT, SPLITTER_WIDTH } from '@/components/gantt/gantt-constants'
 import { useGanttViewStore } from '@/stores/gantt-view-store'
 import { usePaneStore } from '@/stores/pane-store'
@@ -1084,6 +1087,15 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
           onClearAll={clearFilters}
           onRemoveFilter={handleRemoveFilter}
           onResPairingClick={source?.pairing?.capabilities?.canCreateRes ? () => useResPlannerStore.getState().open() : undefined}
+          onBestFitClick={() => {
+            // Entry 2: every open/partial pairing currently in the pane.
+            const options = buildBestFitPairingOptions(reorderedPairingItems, globalPairingFilter.ranks ?? [])
+            if (options.length === 0) {
+              notify.info('No open pairings in the current scope')
+              return
+            }
+            useBestFitStore.getState().openWith(options)
+          }}
           onRoundtripPairingClick={source?.pairing?.capabilities?.canBuildRoundtrip ? () => useRoundtripBuilderStore.getState().open() : undefined}
           onClose={onClose}
         />

@@ -1066,6 +1066,17 @@ See [`docs/architecture/gantt-realtime-data-sync-standard.md`](../../architectur
 
 ## 15. Open / known issues & follow-ups
 
+**Best-fit preview design lesson (2026-09-11, design only):**
+`previewDraftLegality` evaluates a temporary roster and rolls back, but returns all
+after-state violations, not a before/after delta. Its empty-item shortcut does not
+compute a baseline. A batch of alternative pairing–crew assignments must not share
+one hypothetical roster: shared-crew and flight-complement rules can contaminate
+individual results. Use isolated evaluations under a consistent snapshot; only
+explicitly selected combinations are evaluated jointly. Cost guarantee inputs are
+credit hours, not MBH, and combined pay deltas must be recalculated per crew.
+Implementation requirements and current prototype are in
+`docs/superpowers/specs/2026-09-11-best-fit-crew-batch-design-Ver2.md`.
+
 1. **Toolbar + layout-grid forks remain** (Phase 4/5 of the plan). The shared `GanttToolbarControls`
    (ZoomControl + TimezoneSwitcher + pane toggles + AlertCenter) and a unified per-pane toolbar are designed
    but not fully landed; the layout grid is still per-view. Collapse them only when a concrete shared feature
@@ -1223,3 +1234,8 @@ Validation and retained IDs: `docs/test-cases/gantt/roundtrip-builder-acceptance
 Critical-step images: `docs/assets/screenshots/gantt/roundtrip-builder-*-Ver<N>.png`.
 The ten-write acceptance is not a harmless rerun: inspect its receipt and coordinate
 fresh available flights before running again.
+
+
+## Recovery cases 102–104 and reusable extension contract
+
+See [the recovery study](../crew-recovery/2026-09-12-cases-102-104-study-Ver1.md) for pushed-source provenance, overlap eligibility, shared options/Preview/Apply flow, complete-pairing mutations, cost adapter limitations and Save/ripple review gaps. Reuse the existing trigger, candidate, dialog, cost breakdown and draft contracts when adding a case. The online Help Recovery category contains the operational workflow, separate 19-type Cost Library introduction and numbered case walkthroughs. See [verification and public screenshots](../crew-recovery/2026-09-12-recovery-help-verification-Ver1.md) for the distinction between current Help validation and unverified live recovery persistence.

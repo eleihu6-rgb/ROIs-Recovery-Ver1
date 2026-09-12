@@ -38,6 +38,8 @@ export type IconName =
   | 'doc'
   | 'shield'
   | 'lock'
+  | 'eye'
+  | 'eyeOff'
   | 'book'
   | 'jet'
   | 'menu3'
@@ -344,6 +346,21 @@ export function Icon({ name, size = 24, color = '#fff', strokeWidth }: IconProps
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round" strokeLinejoin="round">
           <Rect x={5} y={10.5} width={14} height={9.5} rx={2.4} />
           <Path d="M8.6 10.5V8a3.4 3.4 0 0 1 6.8 0v2.5" />
+        </Svg>
+      );
+    case 'eye':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M2.6 12S6.2 5.6 12 5.6 21.4 12 21.4 12 17.8 18.4 12 18.4 2.6 12 2.6 12Z" />
+          <Circle cx={12} cy={12} r={3.1} />
+        </Svg>
+      );
+    case 'eyeOff':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M2.6 12S6.2 5.6 12 5.6 21.4 12 21.4 12 17.8 18.4 12 18.4 2.6 12 2.6 12Z" />
+          <Circle cx={12} cy={12} r={3.1} />
+          <Path d="M4.5 19.5 19.5 4.5" />
         </Svg>
       );
     case 'zoomOut':

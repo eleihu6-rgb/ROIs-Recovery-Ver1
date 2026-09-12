@@ -7,11 +7,13 @@ import { DashedLine } from '../../components/v2/TicketCard';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../store';
+import { selectCrewCarrier } from '../auth/authSlice';
 import { airlineByCode } from '../auth/airlines';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { NavRow, SectionLabel, ToggleRow } from '../../components/v2/rows';
 import type { IconName } from '../../components/v2/icons';
 import { PageShell, Hero, ListCard, KvRow, PrimaryButton } from './PageShell';
+import { AbsenceScreen } from './AbsenceScreen';
 import type { V2StackParamList, SpecPageId } from './nav';
 
 type Row =
@@ -57,10 +59,19 @@ function specFor(id: SpecPageId, ctx: { crewId: string; airlineName: string; nex
 
 type Props = NativeStackScreenProps<V2StackParamList, 'Spec'>;
 
-export function SpecPage({ route, navigation }: Props) {
+export function SpecPage(props: Props) {
+  // Crew Recovery Story 101: the absence quick action is a real submission
+  // flow now, not a data-driven mock — route it to its own screen before any
+  // of the mock-page hooks below run.
+  if (props.route.params.id === 'absence') {
+    return <AbsenceScreen {...props} />;
+  }
+  const { route, navigation } = props;
   const p = useCarrier();
   const crewId = useAppSelector(st => st.auth.crewId) ?? '';
-  const airline = useAppSelector(st => st.auth.airline) ?? '';
+  // Spec copy addresses the crew's own carrier (roster-resolved), so an EK crew
+  // never reads "Ethiopian Airlines" in a settings sentence.
+  const airline = useAppSelector(selectCrewCarrier) ?? '';
   const spec = specFor(route.params.id, { crewId, airlineName: airlineByCode(airline).name, nextFlight: 'Next flight' });
   return (
     <PageShell title={spec.title} testID={`page-${route.params.id}`}>

@@ -21,6 +21,7 @@ jest.mock('../../src/features/settings/settingsSlice', () => ({
 }));
 
 import {
+  crewCarrierOf,
   fetchEkRoster,
   mapEkRosterToDuties,
   mapEkRosterToTrips,
@@ -46,15 +47,21 @@ const duties = [{
 const response = {
   apiVersion: '1',
   airline: 'EK',
-  crew: {crewId: 'C900001', firstName: 'Amina', lastName: 'Khan', base: 'DXB', rank: 'FO'},
+  crew: {
+    crewId: 'C900001', firstName: 'Amina', lastName: 'Khan', base: 'DXB', rank: 'FO',
+    carrier: 'EK',
+  },
   pairings: [],
   groundDuties: [],
 };
+/** The carrier the roster resolved — what the app brands with. */
+const carrier = 'EK';
 
 describe('EK roster login transaction', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (fetchEkRoster as jest.Mock).mockResolvedValue(response);
+    (crewCarrierOf as jest.Mock).mockReturnValue(carrier);
     (mapEkRosterToTrips as jest.Mock).mockReturnValue(trips);
     (mapEkRosterToDuties as jest.Mock).mockReturnValue(duties);
     (commitEkRosterSnapshot as jest.Mock).mockResolvedValue(undefined);
@@ -75,7 +82,7 @@ describe('EK roster login transaction', () => {
     expect(commitEkRosterSnapshot).toHaveBeenCalledWith({
       trips,
       duties,
-      session: f8Params,
+      session: {...f8Params, carrier},
     }, undefined);
     expect(dispatch).toHaveBeenCalledWith({type: 'duties/setDuties', payload: duties});
   });
@@ -104,12 +111,14 @@ describe('EK roster login transaction', () => {
       {type: 'auth/setCrewBase', payload: 'DXB'},
       {type: 'auth/setCrewProfile', payload: {firstName: 'Amina', lastName: 'Khan', nationality: undefined}},
       {type: 'settings/setBaseTimeZone', payload: 'Asia/Dubai'},
-      {type: 'auth/publishPersistedSession', payload: params},
+      // The session carries the roster-resolved carrier so the brand mark and
+      // carrier theme follow the crew (EK), not the option that signed them in.
+      {type: 'auth/publishPersistedSession', payload: {...params, carrier}},
     ]);
     expect(commitEkRosterSnapshot).toHaveBeenCalledWith({
       trips,
       duties,
-      session: params,
+      session: {...params, carrier},
     }, undefined);
     expect(events).toEqual([
       'commit',
@@ -165,7 +174,7 @@ describe('EK roster login transaction', () => {
       {type: 'auth/setCrewBase', payload: 'DXB'},
       {type: 'auth/setCrewProfile', payload: {firstName: 'Amina', lastName: 'Khan', nationality: undefined}},
       {type: 'settings/setBaseTimeZone', payload: 'Asia/Dubai'},
-      {type: 'auth/publishEphemeralSession', payload: params},
+      {type: 'auth/publishEphemeralSession', payload: {...params, carrier}},
     ]);
   });
 

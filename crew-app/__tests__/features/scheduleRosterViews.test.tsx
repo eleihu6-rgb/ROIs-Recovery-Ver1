@@ -14,9 +14,11 @@ import settingsReducer from '../../src/features/settings/settingsSlice';
 import tripsReducer, { setTrips } from '../../src/features/travel/tripsSlice';
 import alarmsReducer from '../../src/features/alarms/alarmsSlice';
 import dutiesReducer from '../../src/features/roster/dutiesSlice';
+import { setDuties } from '../../src/features/roster/dutiesSlice';
 import meetingsReducer from '../../src/features/meetings/meetingsSlice';
 import notificationsReducer from '../../src/features/notifications/notificationsSlice';
 import type { Trip } from '../../src/features/travel/tripCsv';
+import type { PortalDuty } from '../../src/features/travel/portalCapture';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
@@ -91,6 +93,34 @@ function renderSchedule() {
 }
 
 describe('Schedule tab · roster-view menu', () => {
+  it('never prints a duty code twice on one card', () => {
+    // PR's rosters label a duty with its own code ("X", "EXAM"), which used to
+    // come out as the card title AND the note line underneath it.
+    const duties: PortalDuty[] = [
+      {
+        id: 'pr-x', assignment: 'X', fltNum: '', dutyType: 'X',
+        localStart: '2026-09-01 00:00', localEnd: '2026-09-01 23:59',
+        startUTC: '01 Sep 2026 0000', endUTC: '01 Sep 2026 2359', briefStart: '', crewId: '433535',
+        carrier: 'PR', baseOffsetMin: 480, airportCode: 'MNL', raw: {},
+      },
+      {
+        id: 'pr-exam', assignment: 'EXAM', fltNum: '', dutyType: 'EXAM',
+        localStart: '2026-09-02 02:00', localEnd: '2026-09-02 03:00',
+        startUTC: '02 Sep 2026 0200', endUTC: '02 Sep 2026 0300', briefStart: '', crewId: '433535',
+        carrier: 'PR', baseOffsetMin: 480, airportCode: 'MNL', raw: {},
+      },
+    ];
+    const store = makeStore();
+    store.dispatch(setDuties(duties));
+    const tree = render(
+      <Provider store={store}>
+        <ScheduleScreen />
+      </Provider>,
+    );
+    expect(tree.getAllByText('EXAM')).toHaveLength(1);
+    expect(tree.getAllByText('X')).toHaveLength(1);
+  });
+
   it('opens on the Timeline and offers the three views plus Alerts', () => {
     const tree = renderSchedule();
     expect(tree.getByTestId('sched-list')).toBeTruthy();

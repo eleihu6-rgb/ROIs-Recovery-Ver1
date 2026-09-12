@@ -30,6 +30,7 @@ import { dataValidationService } from '../../services/data/data-validation-servi
 import { dataSaveService } from '../../services/data/data-save-service.js'
 import { rosterPeriodService } from '../../services/base/roster-period-service.js'
 import { rosterPeriodConfig } from '../../models/base/roster-period.js'
+import { listCrewAbsences } from '../../services/absence/crew-absence-service.js'
 
 // ---------------------------------------------------------------------------
 // Catalog
@@ -66,6 +67,7 @@ const ALLOWED_CATALOG: { pageId: string; entityId: string; label: string }[] = [
   { pageId: 'crew.master',           entityId: 'crew_memo',          label: 'Crew Memo' },
   { pageId: 'crew.master',           entityId: 'crew_seniority',     label: 'Crew Seniority' },
   { pageId: 'crew.master',           entityId: 'crew_kpi_adjust',    label: 'Crew KPI Adjust' },
+  { pageId: 'crew.master',           entityId: 'crew_absence',       label: 'Crew Absence' },
   { pageId: 'basic.roster-period',   entityId: 'roster_period',      label: 'Roster Period' },
   { pageId: 'basic.roster-period',   entityId: 'roster_period_config', label: 'Roster Period Config' },
 ]
@@ -534,6 +536,13 @@ export default async function dataRoutes(fastify: FastifyInstance) {
         const crewIds = requireCrewIds()
         if (!crewIds) return success(reply, { rows: [], total: 0, page, pageSize })
         const rows = (await Promise.all(crewIds.map((id) => crewMemoService.list(fastify, id)))).flat()
+        return success(reply, slicePage(rows))
+      }
+
+      case 'crew_absence': {
+        const crewIds = requireCrewIds()
+        if (!crewIds) return success(reply, { rows: [], total: 0, page, pageSize })
+        const rows = (await Promise.all(crewIds.map((id) => listCrewAbsences(fastify, { crewId: id })))).flat()
         return success(reply, slicePage(rows))
       }
 
