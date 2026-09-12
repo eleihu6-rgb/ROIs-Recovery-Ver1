@@ -1,6 +1,6 @@
 ---
 name: 140-weekly-progress-report-updater
-description: Update the F8 (Flair) weekly project status workbook (F8-CMS-CrewWeeklyReport <DD>Aug<YYYY>.xlsx) — add a new dated tab for the current Tuesday meeting (copied from the most recent week's tab, prior weeks left untouched), roll its Report Date / Report Period forward, and refresh the High-Level Review progress sections (Rule Engine, Data & Integration, AI Core, Crew Portal, Admin Portal) from the week's raw notes. Use when the user says "update the weekly report", "update weekly progress", "roll the weekly status to today/this Tuesday", or pastes a week's dev notes to fold into the report. Preserves existing content, colours this week's new/changed items in blue, keeps section titles bold.
+description: Update the F8 weekly progress workbook for a new reporting week using project notes. Use for weekly report rollovers or status updates.
 ---
 
 # Weekly Progress Report Updater

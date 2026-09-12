@@ -1,6 +1,6 @@
 ---
 name: 126-noc-integration
-description: Canonical reference for NOC integration in ROIS-AI — how all crew/pairing/flight/roster/reserve/manday data was imported IN from the external NOC (Legend/F8) crewing source system, and the (not-yet-built) OUTBOUND requirement to export a PBS-solver-placed roster back OUT to NOC. Use when the user mentions "NOC", "NOC integration", "NOC import/export", "Legend", "connector-server", "external system integration", "roster export to NOC", "publish roster to NOC", "F8 import", "interface_id", "F8_IMPORT origin", or asks where imported data came from / where solver output goes. Living doc — append new NOC learnings here.
+description: Reference ROIS-AI integration with the external NOC/Legend crewing system. Use for NOC imports, source provenance, or solver roster export.
 ---
 
 # NOC Integration (ROIS-AI)

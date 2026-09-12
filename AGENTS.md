@@ -2,7 +2,7 @@
 
 ## Load the Right Context
 
-1. Read root `CLAUDE.md`, the canonical shared project guide for Claude, Codex, and other coding agents.
+1. Read the always-applicable sections of root `CLAUDE.md` listed in its **Shared Claude / Codex Rule Contract**, then read the sections relevant to this task. Root `CLAUDE.md` remains the canonical shared guide.
 2. Read `NEXT_CONTEXT.md` when resuming prior work. Context recovery instructions do not cancel an explicit current task.
 3. Before module edits, read its `AGENTS.md` / `AGENTS.override.md` and `CLAUDE.md` when present. Inspect the relevant source and tests, not every module.
 4. For ports and public routing, read `.agents/skills/005-routing-debug/SKILL.md` and, on Kimi's machine, the supplemental memo `/Users/kimi/.codex/local-memos/rois-port-usage.md`. Verify the current service configuration before starting a server.
@@ -22,8 +22,8 @@ Shared project rules belong in `CLAUDE.md` or referenced `docs/` files. Do not d
 
 ## Daily Workflow
 
-- Follow **MCP and Skills**, **Design Before Implementation**, **Senior Engineering Workflow**, and **§Model-Routing** (primary model for planning, core implementation, and final review; explicitly selected lower-cost subagents for bounded supporting tasks when supported and economical) in `CLAUDE.md`.
-- Apply the **Required delegation checkpoints** under §Model-Routing after feature planning, before verification, and before delivery; report actual delegation or a brief reason for keeping work local.
+- Follow **MCP and Skills**, **Design Before Implementation**, and **Senior Engineering Workflow** in `CLAUDE.md`. For substantial work with an independent supporting task, apply **§Model-Routing** when the runtime allows delegation.
+- Use §Model-Routing when a substantial task has independent supporting work and delegation is available and economical. Report delegated work and its review when used.
 - Prefer the codebase-memory graph for code discovery; check current tool availability and indexing. Use `rg` for docs/config/literals or insufficient graph results.
 - Resolve skills through the session catalog and read the applicable `SKILL.md`. Old model names, local installation paths, and prior transcripts are not capability guarantees.
 - Inspect the worktree before editing. Preserve other contributors' changes, including concurrent work.

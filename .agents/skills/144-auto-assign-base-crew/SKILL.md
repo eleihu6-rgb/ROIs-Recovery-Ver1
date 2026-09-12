@@ -1,6 +1,6 @@
 ---
 name: 144-auto-assign-base-crew
-description: Auto-assign open base+fleet-matched pairings to selected base crew, warning-clean, across the viewport calendar month. Use when touching the gantt roster context-menu "Auto-assign open pairings" action, the no-commit planner endpoint POST /api/roster/auto-assign/plan, the brain/hands split (backend decision trace + frontend replay), or when adapting the greedy legality-aware packer. Also the canonical note that the plan is validated by the SAME Rust engine (previewDraftLegality) the manual assign uses, so no rules are re-implemented.
+description: Add or maintain Gantt auto-assignment of open pairings to base- and fleet-matched crew. Use for the roster action or /api/roster/auto-assign/plan.
 ---
 
 # Auto-assign open pairings to base crew

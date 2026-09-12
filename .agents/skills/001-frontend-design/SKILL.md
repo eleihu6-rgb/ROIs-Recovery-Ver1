@@ -1,6 +1,6 @@
 ---
 name: 001-frontend-design
-description: ROIS-AI Gantt 排班系统前端界面设计与修复。当用户讨论 Gantt 界面布局、样式、Canvas 渲染、Pane 布局、交互效果时自动触发。
+description: Design or fix Gantt pane layout, Canvas rendering, and visual interaction. Use for Gantt-specific UI implementation.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent
 ---
 

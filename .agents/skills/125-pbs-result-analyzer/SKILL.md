@@ -1,6 +1,6 @@
 ---
 name: 125-pbs-result-analyzer
-description: Use when debugging a PBS / RO solver run result — a crew ended up with no flying and no RES duty (only DO / days off / blank), or any "why did the optimizer do/not do X for this crew" question on a finished scenario run. Walks a 5-step diagnostic ladder (scope → bids → eligibility → availability → assignment) over the real ro_input / *_SCORE.csv / result.json artifacts and gives a grounded verdict + suggestion. Triggers on "why no flying", "crew only has DO", "crew not assigned", "pbs result analyzer", "debug solver result", "no pairing score".
+description: Diagnose finished PBS solver assignments for a crew using run artifacts. Use when a crew has no flying or RES, or an expected pairing was not assigned.
 ---
 
 # PBS Result Analyzer

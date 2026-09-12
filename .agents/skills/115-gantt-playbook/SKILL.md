@@ -1,6 +1,6 @@
 ---
 name: 115-gantt-playbook
-description: Use when the user says "gantt playbook", or before starting ANY Live/Scenario gantt feature or gantt debugging task. Loads the canonical Live/Scenario Gantt reference (architecture, shared source layer, stores, panes, data model, filters, capabilities, backend endpoints, gotchas) so you work from accumulated knowledge instead of re-deriving it.
+description: Reference Live/Scenario Gantt architecture and shared data flow. Use for Gantt feature design or debugging that needs cross-pane or source-layer context.
 ---
 
 # Gantt Playbook

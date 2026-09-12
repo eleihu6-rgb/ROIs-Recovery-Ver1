@@ -1,6 +1,6 @@
 ---
 name: 108-npbs-bids-portal-simulation
-description: Use when mapping legacy NPBS-Legend crew bids (CLASS-BidsReport_*.txt) onto our pbs-portal bid properties, or when running/extending the Playwright simulation that logs in as each crew and replays their bids through the real portal UI. Also covers the R'Bot "create crew bids"/"add bids" chat trigger that spawns this simulation headed. Triggers on "NPBS bids", "legend bids", "crew bids report", "replay crew bids", "bid simulation", "create crew bids", "add bids", or extending the test to more crew/bases/ranks/months.
+description: Map NPBS-Legend crew bids into PBS Portal and replay them through the real UI. Use for legacy bid reports, bid simulation, or R'Bot create crew bids.
 ---
 
 # NPBS-Legend Bids → Portal Crew-Bids Playwright Simulation

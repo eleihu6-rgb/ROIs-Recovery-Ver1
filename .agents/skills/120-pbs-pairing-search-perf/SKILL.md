@@ -1,6 +1,6 @@
 ---
 name: 120-pbs-pairing-search-perf
-description: Optimize the pbs-server (:3002) interactive pairing-search hot path against the live pairing/pairing_segment tables — the missing base+period index, the non-sargable period predicate, and the per-row ×3 correlated segment subqueries. Use when the PBS pairing bid page / Pairing-Number autocomplete / SEARCH preview / pool counts / airport-options feels slow, or when adding/validating these query rewrites. Also the canonical recipe for proving a live-SQL rewrite byte-identical against the remote demo DB + EXPLAIN before/after.
+description: Optimize PBS pairing-search queries. Use for slow pairing bid search, pool counts, Pairing-Number autocomplete, or airport options.
 ---
 
 # PBS Pairing-Search Hot-Path Performance
