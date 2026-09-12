@@ -262,6 +262,39 @@ APP_VERSION 111 → 112.
    ("stream disconnected before completion"), writing nothing. Those two tasks
    are therefore not started and need either a retry later or local work.
 
+### 9.6 Reaching the phone (2026-09-11, after the first device build)
+
+The first iPhone build said *"Network request failed"*: the dev fallback is
+`http://127.0.0.1:3005`, and on a phone that is the phone. The device was also
+not on the dev machine's Wi-Fi, so the Metro-host derivation (below) could not
+help either.
+
+* **Resolution order** (`crewChatApi.ts`): an explicit
+  `RBotChatApiBaseURL` setting wins; otherwise development derives the host from
+  the Metro bundle URL (fast on the simulator and on a LAN phone); otherwise —
+  and as the fallback when that host cannot be reached — R'Bot calls
+  **`https://cr.rois.one/ai`**, the same origin the crew app already uses for its
+  crew API. Only a *network* failure falls through to the next origin; a real
+  answer (even a 5xx) does not, so a broken service is never masked.
+* **The route** lives on the existing `rois-one` Cloudflare tunnel: path rules
+  `^/ai/crew/` and `^/ai/health$` → `localhost:3005`. Deliberately narrow —
+  `/ai/regression/*` (which runs Playwright on the dev machine) and the Gantt's
+  `/ai/chat` stay closed; both verified 404 from the internet.
+* **Security gap to close next:** the published crew-chat route is
+  unauthenticated, so anyone who knows the URL can spend the model budget. A
+  shared token header (app sends, server checks) is the next hardening step.
+
+### 9.7 The app icon (same device build)
+
+The iPhone build had no icon because **only `AppIcon.appiconset/Contents.json`
+was tracked — the nine PNGs were untracked**, so any build from `main` had a
+catalog pointing at files that were not there. The artwork itself was already
+correct (full-bleed, opaque, exact sizes). Fixed by committing the iOS set, the
+Android mipmaps, `scripts/genAppIcons.mjs` and the two source SVGs, plus a guard
+test (`__tests__/features/appIcon.test.ts`) that fails when a file the catalog
+names is missing, when an icon carries alpha, when its pixel size disagrees with
+the entry, or when an Android density lacks `ic_launcher{,_round}.png`.
+
 ### Deployment note
 
 `ai-server` must be restarted for `/ai/crew/chat` to exist (the running instance
