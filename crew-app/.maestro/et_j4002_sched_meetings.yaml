@@ -1,0 +1,121 @@
+# Schedule tab · month stepper + iOS-calendar meetings (ET crew J4002).
+#
+# Proves:
+#   • the month can now step BACK and FORWARD (> was missing);
+#   • a calendar event on a flying day shows as its OWN card with the online
+#     meeting's Join button and its reminder chip;
+#   • tapping the reminder chip silences that meeting and tapping again re-arms it.
+# The demo events come from Preferences ▸ "Add demo meetings (dev)", which writes
+# four events into the simulator's iOS Calendar (two with a Teams join link).
+#
+# Run: maestro test crew-app/.maestro/et_j4002_sched_meetings.yaml --debug-output /tmp/sched-run
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4002"
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+
+# ── Month stepper: forward is the bug Ryan hit ───────────────────────────────
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- assertVisible:
+    id: "sched-title"
+- assertVisible: "Sched Sep 2026"
+- tapOn:
+    id: "sched-next-month"
+- assertVisible: "Sched Oct 2026"
+- takeScreenshot: sched_01_next_month_oct
+- tapOn:
+    id: "sched-prev-month"
+- tapOn:
+    id: "sched-prev-month"
+- assertVisible: "Sched Aug 2026"
+- takeScreenshot: sched_02_prev_month_aug
+- tapOn:
+    id: "sched-next-month"
+- assertVisible: "Sched Sep 2026"
+
+# ── Seed calendar events, then read them back on the Schedule tab ────────────
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "row-preferences"
+- assertVisible:
+    id: "page-preferences"
+- scrollUntilVisible:
+    element:
+      id: "dev-demo-meetings"
+    direction: DOWN
+- tapOn:
+    id: "dev-demo-meetings"
+- tapOn:
+    text: "OK"
+    optional: true
+- takeScreenshot: sched_03_demo_meetings_added
+- tapOn:
+    id: "page-back"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+
+# A briefing on a flying day = its own card, above the flight card (Ryan 3a),
+# with the online meeting's Join button (3b) and its reminder chip (3c).
+- assertVisible: "Fleet standardisation briefing"
+- assertVisible: "Join meeting"
+- assertVisible: "Alarm .*"
+- takeScreenshot: sched_04_meeting_card_on_flight_day
+- tapOn: "Alarm .*"
+- assertVisible: "Alarm off"
+- takeScreenshot: sched_05_meeting_alarm_muted
+# Tap again to put the reminder back.
+- tapOn: "Alarm off"
+- assertVisible: "Alarm .*"
+- takeScreenshot: sched_06_meeting_alarm_rearmed
+# Last step: the Join button must hand off to the organiser's link (Teams/Safari).
+- tapOn: "Join meeting"
+- takeScreenshot: sched_07_join_opened

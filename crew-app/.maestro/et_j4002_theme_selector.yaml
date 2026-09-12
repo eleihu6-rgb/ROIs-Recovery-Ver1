@@ -1,0 +1,184 @@
+# Appearance colour-theme selector for ET crew J4002.
+#
+# Walks all four themes (Reference blue / Thai violet / Emerald / Graphite) and
+# captures Appearance + Preferences + Home + Schedule + Profile for each, so the
+# screenshots prove every element repaints — including the Schedule dock, which
+# now uses a light tint of the theme instead of the old dark grey bar.
+# The final section relaunches the app and proves the last choice is remembered.
+#
+# Run: maestro test crew-app/.maestro/et_j4002_theme_selector.yaml --debug-output /tmp/theme-run
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4002"
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 30000
+- tapOn:
+    id: "row-preferences"
+- assertVisible:
+    id: "page-preferences"
+- takeScreenshot: theme_00_preferences_airline_default
+- tapOn:
+    id: "row-appearance"
+- assertVisible:
+    id: "page-appearance"
+- takeScreenshot: theme_01_appearance_airline_default
+- tapOn:
+    id: "theme-sia"
+- takeScreenshot: theme_10_appearance_reference_blue
+- tapOn:
+    id: "page-back"
+- takeScreenshot: theme_11_preferences_reference_blue
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-home"
+- takeScreenshot: theme_12_home_reference_blue
+- tapOn:
+    id: "tab-schedule"
+- takeScreenshot: theme_13_schedule_reference_blue
+- tapOn:
+    id: "tab-profile"
+- takeScreenshot: theme_14_profile_reference_blue
+- tapOn:
+    id: "row-preferences"
+- tapOn:
+    id: "row-appearance"
+- tapOn:
+    id: "theme-thai"
+- takeScreenshot: theme_20_appearance_thai_violet
+- tapOn:
+    id: "page-back"
+- takeScreenshot: theme_21_preferences_thai_violet
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-home"
+- takeScreenshot: theme_22_home_thai_violet
+- tapOn:
+    id: "tab-schedule"
+- takeScreenshot: theme_23_schedule_thai_violet
+- tapOn:
+    id: "tab-profile"
+- takeScreenshot: theme_24_profile_thai_violet
+- tapOn:
+    id: "row-preferences"
+- tapOn:
+    id: "row-appearance"
+- tapOn:
+    id: "theme-emerald"
+- takeScreenshot: theme_30_appearance_emerald
+- tapOn:
+    id: "page-back"
+- takeScreenshot: theme_31_preferences_emerald
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-home"
+- takeScreenshot: theme_32_home_emerald
+- tapOn:
+    id: "tab-schedule"
+- takeScreenshot: theme_33_schedule_emerald
+- tapOn:
+    id: "tab-profile"
+- takeScreenshot: theme_34_profile_emerald
+- tapOn:
+    id: "row-preferences"
+- tapOn:
+    id: "row-appearance"
+- tapOn:
+    id: "theme-graphite"
+- takeScreenshot: theme_40_appearance_graphite
+- tapOn:
+    id: "page-back"
+- takeScreenshot: theme_41_preferences_graphite
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-home"
+- takeScreenshot: theme_42_home_graphite
+- tapOn:
+    id: "tab-schedule"
+- takeScreenshot: theme_43_schedule_graphite
+- tapOn:
+    id: "tab-profile"
+- takeScreenshot: theme_44_profile_graphite
+# Relaunch: the choice must survive a cold start.
+- launchApp
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "login-screen"
+    commands:
+      - tapOn:
+          id: "airline-dropdown"
+      - tapOn:
+          id: "airline-ET"
+      - tapOn:
+          id: "crew-id"
+      - eraseText: 20
+      - inputText: "J4002"
+      - pressKey: Enter
+      - tapOn:
+          id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: theme_50_relaunch_home_graphite
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 30000
+- tapOn:
+    id: "row-preferences"
+- tapOn:
+    id: "row-appearance"
+- assertVisible:
+    id: "page-appearance"
+- takeScreenshot: theme_51_appearance_remembered_graphite

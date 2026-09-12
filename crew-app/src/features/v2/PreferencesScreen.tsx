@@ -7,7 +7,7 @@ import { isCalendarWriteAvailable, requestCalendarAccess, saveCalendarEvents } f
 import { setMeetingsEnabled, syncMeetings } from '../meetings/meetingsSlice';
 import { deviceTimeZone } from '../settings/timeFormat';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { useCarrier } from '../../theme/carrier';
+import { THEME_LABELS, resolveTheme, useCarrier } from '../../theme/carrier';
 import { NavRow, SectionLabel, ToggleRow } from '../../components/v2/rows';
 import { PageShell, ListCard, KvRow } from './PageShell';
 import { setExplorePrefs } from '../settings/settingsSlice';
@@ -21,6 +21,8 @@ export function PreferencesScreen() {
   const dispatch = useAppDispatch();
   const prefs = useAppSelector(s => s.settings.explorePrefs);
   const airline = useAppSelector(s => s.auth.airline) ?? '';
+  const themePreset = useAppSelector(s => s.settings.themePreset);
+  const themeLabel = THEME_LABELS[resolveTheme(themePreset, airline)];
   const [push, setPush] = useState(true);
   const [roster, setRoster] = useState(true);
   const divider = {};
@@ -29,6 +31,8 @@ export function PreferencesScreen() {
   // Dev-only: seed synthetic meetings into the iOS Calendar (EventKit write) so the
   // meeting reminder (AlarmKit) and Dynamic Island countdown can be exercised on a
   // simulator that has no synced calendar. First one lands 10 min out.
+  // Two of them carry a real Teams join link so the Schedule tab's "Join" button
+  // and the per-meeting reminder can be exercised on device too.
   const addDemoMeetings = async () => {
     if (!isCalendarWriteAvailable()) { Alert.alert('Calendar unavailable', 'This build has no EventKit module.'); return; }
     const access = await requestCalendarAccess();
@@ -40,9 +44,10 @@ export function PreferencesScreen() {
       return d;
     };
     const ev = (title: string, start: Date, mins: number, notes: string) => ({ title, startISO: start.toISOString(), endISO: new Date(start.getTime() + mins * 60000).toISOString(), timeZone: tz, notes });
+    const teams = 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_NDA2MjM4%40thread.v2/0?context=%7b%22Tid%22%3a%22demo%22%7d';
     const ids = await saveCalendarEvents([
-      ev('Fleet standardisation briefing', at(10), 60, 'Ops Centre · Room 3B'),
-      ev('CRM refresher (online)', at(0, 1, 14, 0), 45, 'Teams'),
+      ev('Fleet standardisation briefing', at(10), 60, `Ops Centre · Room 3B\nJoin: ${teams}`),
+      ev('CRM refresher (online)', at(0, 1, 14, 0), 45, `Teams\n${teams}`),
       ev('Crew scheduling sync', at(0, 5, 10, 30), 30, 'Crew Control'),
       ev('A350 recurrent ground school', at(0, 9, 8, 30), 480, 'Training Centre 2A'),
     ]);
@@ -60,7 +65,7 @@ export function PreferencesScreen() {
       </ListCard>
       <SectionLabel palette={p}>Display</SectionLabel>
       <ListCard palette={p}>
-        <View style={divider}><KvRow label="Appearance" value={airline === 'ET' ? 'Emerald' : 'Airline blue'} palette={p} last /><DashedLine color={p.cardLine} /></View>
+        <View style={divider}><NavRow icon="sliders" label="Appearance" value={themeLabel} palette={p} onPress={() => nav.navigate('Appearance')} testID="row-appearance" /><DashedLine color={p.cardLine} /></View>
         <NavRow icon="doc" label="Language" value="English" palette={p} onPress={() => nav.navigate('Spec', { id: 'lang' })} />
       </ListCard>
       <SectionLabel palette={p}>Explore</SectionLabel>

@@ -19,15 +19,18 @@ const ICON_BY_ROUTE: Record<string, IconName> = {
 export function PillDock({ state, descriptors, navigation, palette }: PillDockProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
   // The Schedule tab scrolls near-white duty cards right up to the bar, where the
-  // frosted glass look vanishes. That tab gets a solid dark pill instead; the icon
-  // and label treatment is identical, only the backing changes.
+  // frosted glass look vanishes. That tab gets a solid tint of the theme instead:
+  // light enough to belong to the page, dark theme ink for the icons/labels, and
+  // the active tab keeps a solid theme button so the current tab still reads first.
   const onLightContent = state.routes[state.index]?.name === 'Schedule';
 
   return (
     <View
       style={[
         styles.dock,
-        onLightContent ? styles.dockDark : null,
+        onLightContent
+          ? { backgroundColor: palette.dockLight, borderColor: 'rgba(255,255,255,.55)' }
+          : null,
         { bottom: Math.max(insets.bottom, 22) - 4 },
       ]}
     >
@@ -58,11 +61,21 @@ export function PillDock({ state, descriptors, navigation, palette }: PillDockPr
             testID={`tab-${route.name.toLowerCase()}`}
             style={[
               styles.tab,
-              isFocused ? styles.tabOn : styles.tabOff,
+              isFocused
+                ? onLightContent
+                  ? { backgroundColor: palette.btn, flex: 1.8 }
+                  : styles.tabOn
+                : styles.tabOff,
             ]}
           >
-            <Icon name={iconName} size={24} color="#fff" />
-            {isFocused ? <Text style={styles.tabLabel}>{label}</Text> : null}
+            <Icon
+              name={iconName}
+              size={24}
+              color={onLightContent ? (isFocused ? '#fff' : palette.dockInk) : '#fff'}
+            />
+            {isFocused ? (
+              <Text style={styles.tabLabel}>{label}</Text>
+            ) : null}
           </Pressable>
         );
       })}
@@ -92,11 +105,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  // Solid dark backing for tabs whose content is light (Schedule's duty cards).
-  dockDark: {
-    backgroundColor: 'rgba(26,34,32,0.9)',
-    borderColor: 'rgba(255,255,255,0.16)',
-  },
   tab: {
     flex: 1,
     height: 54,
@@ -114,6 +122,8 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 15,
     fontWeight: '500',
+    // White reads on both backings: the frosted pill and (on Schedule) the solid
+    // theme button behind the focused tab.
     color: '#fff',
   },
 });

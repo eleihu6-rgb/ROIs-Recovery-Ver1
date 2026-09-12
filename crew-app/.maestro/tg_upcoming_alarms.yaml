@@ -1,0 +1,52 @@
+# Upcoming Alarms · TG crew — the grouped-by-flight layout.
+# Run: maestro test crew-app/.maestro/tg_upcoming_alarms.yaml --debug-output /tmp/alarms-run
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+# The app remembers the last airline — pick TG explicitly (credentials prefilled).
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "home-alarms"
+- assertVisible:
+    id: "page-upcoming-alarms"
+- assertVisible: "iOS clock alarms"
+- takeScreenshot: alarms_00_grouped_by_flight
+# Arm the clocks (the list is dimmed while they are off) and capture again.
+- tapOn:
+    id: "upalarms-master"
+- tapOn:
+    text: "OK"
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
+- takeScreenshot: alarms_01_armed
+- swipe:
+    direction: UP
+- takeScreenshot: alarms_02_scrolled
+- tapOn:
+    id: "upalarms-settings"
+- assertVisible: "Alarms & Meetings"
+- takeScreenshot: alarms_03_settings

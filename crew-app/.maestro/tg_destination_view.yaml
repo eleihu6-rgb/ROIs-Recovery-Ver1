@@ -1,0 +1,67 @@
+# Destination viewer · TG crew (Thai Airways, portal-captured roster).
+#
+# Same walk as the ET flow, but on the OTHER carrier so the page is proven on
+# TG's own roster (portal capture, different cities, possibly a real hotel
+# booking). TG's login is prefilled, so it is a single tap.
+#
+# Run: maestro test crew-app/.maestro/tg_destination_view.yaml --debug-output /tmp/tgdest-run
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+# The app remembers the last airline, so pick TG explicitly (its credentials are
+# prefilled: crew 35459).
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: tgdest_00_home
+# First destination card on Home (id is dest-<airport>, so match any of them).
+- scrollUntilVisible:
+    element:
+      id: "dest-.*"
+    direction: DOWN
+- takeScreenshot: tgdest_01_home_destination_strip
+- tapOn:
+    id: "dest-.*"
+- assertVisible:
+    id: "page-destination"
+- assertVisible: "STD .*"
+- assertVisible: "ETD .*"
+- takeScreenshot: tgdest_02_city
+# Page the carousel both ways.
+- swipe:
+    direction: LEFT
+- takeScreenshot: tgdest_03_next_city
+- swipe:
+    direction: RIGHT
+- takeScreenshot: tgdest_04_back_to_first
+# Scroll the type-on-photo block to the hotel / transfer detail.
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 55%"
+- takeScreenshot: tgdest_05_hotel_transfer
+- tapOn:
+    id: "dest-trip-details"
+- assertVisible:
+    id: "page-trip-details"
+- assertVisible: "STD"
+- takeScreenshot: tgdest_06_trip_details

@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppDispatch } from '../../store';
 import { DEFAULT_EXPLORE_PREFS } from '../explore/explorePlaces';
+import { isThemePreset, type ThemePreset } from '../../theme/carrier';
 
 // ─── Time-zone display preference ─────────────────────────────────────────────
 // Controls how every flight/duty time renders throughout the app:
@@ -22,18 +23,23 @@ export interface SettingsState {
   /** Crew-picked cartoon avatar (index into settings/avatars). null = the stable
    *  avatar derived from the crew id. */
   avatarIndex: number | null;
+  /** Crew-picked colour theme (Profile ▸ Preferences ▸ Appearance). null = follow
+   *  the logged-in airline's own colour (ET → emerald, TG → reference blue). */
+  themePreset: ThemePreset | null;
 }
 
 const TZMODE_KEY = '@royce_tzmode';
 const BASETZ_KEY = '@royce_basetz';
 const EXPLORE_PREFS_KEY = '@royce_explore_prefs';
 const AVATAR_KEY = '@royce_avatar';
+const THEME_KEY = '@royce_theme';
 
 const initialState: SettingsState = {
   timeZoneMode: 'airport',
   baseTimeZone: 'Asia/Bangkok',
   explorePrefs: [...DEFAULT_EXPLORE_PREFS],
   avatarIndex: null,
+  themePreset: null,
 };
 
 const settingsSlice = createSlice({
@@ -51,6 +57,9 @@ const settingsSlice = createSlice({
     },
     _setAvatarIndex(state, action: PayloadAction<number | null>) {
       state.avatarIndex = action.payload;
+    },
+    _setThemePreset(state, action: PayloadAction<ThemePreset | null>) {
+      state.themePreset = action.payload;
     },
   },
 });
@@ -107,6 +116,20 @@ export function setAvatarIndex(index: number | null) {
   };
 }
 
+/** Persist the crew's colour theme (null = follow the airline default). */
+export function setThemePreset(preset: ThemePreset | null) {
+  return async (dispatch: AppDispatch) => {
+    dispatch(settingsSlice.actions._setThemePreset(preset));
+    try {
+      if (preset === null) {
+        await AsyncStorage.removeItem(THEME_KEY);
+      } else {
+        await AsyncStorage.setItem(THEME_KEY, JSON.stringify(preset));
+      }
+    } catch {}
+  };
+}
+
 export function loadSettings() {
   return async (dispatch: AppDispatch) => {
     try {
@@ -139,6 +162,17 @@ export function loadSettings() {
         const index = JSON.parse(raw);
         if (typeof index === 'number' && Number.isFinite(index)) {
           dispatch(settingsSlice.actions._setAvatarIndex(Math.trunc(index)));
+        }
+      }
+    } catch {}
+    try {
+      const raw = await AsyncStorage.getItem(THEME_KEY);
+      if (raw !== null) {
+        const preset = JSON.parse(raw);
+        // Guard against a stale/unknown value (e.g. a theme we later remove) so a
+        // bad key can never leave the app without a palette.
+        if (isThemePreset(preset)) {
+          dispatch(settingsSlice.actions._setThemePreset(preset));
         }
       }
     } catch {}

@@ -5,7 +5,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet, type ViewStyle } from 'r
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { GradientScreen } from '../../components/v2/GradientScreen';
-import { Icon } from '../../components/v2/icons';
+import { Icon, type IconName } from '../../components/v2/icons';
 import { DashedLine } from '../../components/v2/TicketCard';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 
@@ -47,10 +47,14 @@ export function ListCard({ children, palette, style }: { children: React.ReactNo
 }
 
 /** Key/value row (mock rows()). */
-export function KvRow({ label, value, palette, last }: { label: string; value: string; palette: CarrierPalette; last?: boolean }) {
+export function KvRow({ label, value, palette, last, icon }: { label: string; value: string; palette: CarrierPalette; last?: boolean; icon?: IconName }) {
   return (
     <View>
       <View style={s.kv}>
+        {/* `icon` makes a row icon-led: a thin line glyph carries the meaning so the
+            label can stay short and the page scans without reading (Ryan: "trip
+            details also apply the same, simple line icons for info"). */}
+        {icon ? <Icon name={icon} size={17} color={palette.cardSoft} strokeWidth={1.6} /> : null}
         <Text style={[s.kvLabel, { color: palette.cardInk }]}>{label}</Text>
         <Text style={[s.kvValue, { color: palette.cardSoft }]}>{value}</Text>
       </View>

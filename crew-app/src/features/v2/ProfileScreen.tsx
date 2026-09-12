@@ -139,7 +139,7 @@ const s = StyleSheet.create({
   numS: { fontSize: 10 },
   logout: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 26 },
   logoutText: { fontSize: 16, fontWeight: '500' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(8,14,12,0.55)', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 22 },
   sheet: { width: '100%', borderRadius: 22, padding: 18, maxHeight: '72%' },
   sheetTitle: { fontSize: 18, fontWeight: '600' },
   sheetSub: { fontSize: 12, marginTop: 4, marginBottom: 12 },

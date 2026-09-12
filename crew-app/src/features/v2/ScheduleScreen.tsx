@@ -3,18 +3,20 @@
 // date strip and the list stay in sync both ways. Opens on today if it holds a
 // duty, else the next flight.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, type ViewToken } from 'react-native';
+import { View, Text, FlatList, Linking, Pressable, StyleSheet, type ViewToken } from 'react-native';
 import Svg, { Rect, Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppSelector } from '../../store';
+import { useAppDispatch, useAppSelector } from '../../store';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon } from '../../components/v2/icons';
 import { TicketCard, DashedLine } from '../../components/v2/TicketCard';
 import { useMonth } from './useV2';
-import { hasDutyCard, MON, resolveCardIndex, type DayModel, type DayKind, type LegView } from './model';
+import { hasDutyCard, MON, resolveCardIndex, type DayMeeting, type DayModel, type DayKind, type LegView } from './model';
 import { useV2Nav } from './nav';
 import { IconButton } from './HomeScreen';
+import { MeetingCard, MeetingRow, type MeetingActions } from './MeetingCard';
+import { toggleMeetingMute } from '../meetings/meetingsSlice';
 import { codeAddsInfo, type GroundDuty } from '../roster/dutyDisplay';
 import type { TimeZoneMode } from '../settings/settingsSlice';
 import { hhmmForInstant, parseRosterUTC } from '../settings/timeFormat';
@@ -28,6 +30,7 @@ export function ScheduleScreen() {
   const p = useCarrier();
   const insets = useSafeAreaInsets();
   const nav = useV2Nav();
+  const dispatch = useAppDispatch();
   const alertCount = useAppSelector(s => s.notifications.notifications.length);
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
@@ -75,6 +78,21 @@ export function ScheduleScreen() {
     }
     strip.current?.scrollToIndex({ index: i, animated, viewPosition: 0.5 });
   }, [stripToList, listDays.length]);
+
+  // Calendar-event actions. "Join" opens the organiser's link (Teams, Zoom,
+  // Google Meet, Webex) in the browser / the Teams app; the alarm chip silences
+  // or re-arms just that one event's reminder (and its iOS alarm).
+  const meetingActions = useMemo<MeetingActions>(() => ({
+    onJoin: (m: DayMeeting) => {
+      if (m.joinUrl) {
+        Linking.openURL(m.joinUrl).catch(() => {});
+      }
+    },
+    onToggleAlarm: (m: DayMeeting) => {
+      dispatch(toggleMeetingMute(m.id));
+    },
+  }), [dispatch]);
+
   useEffect(() => { const t = setTimeout(() => focus(month.focusIndex, false), 50); return () => clearTimeout(t); }, [month.focusIndex, focus]);
 
   const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -87,6 +105,13 @@ export function ScheduleScreen() {
     strip.current?.scrollToIndex({ index: stripIndex, animated: true, viewPosition: 0.5 });
   }).current;
 
+  // Month stepper: previous AND next. Only the month/year pair is rolled, and
+  // the keypad-free step keeps the strip + list in sync via the focus effect.
+  const shiftMonth = (delta: number) => () => setYm(v => {
+    const m = v.m + delta;
+    return { y: v.y + Math.floor(m / 12), m: ((m % 12) + 12) % 12 };
+  });
+
   // Month only — the credit figure lives on Profile ▸ Block hours, and repeating
   // it in the title made the header read as a statistic instead of a date.
   const title = `Sched ${MON[ym.m]} ${ym.y}`;
@@ -94,8 +119,13 @@ export function ScheduleScreen() {
     <GradientScreen palette={p}>
       <View style={[s.head, { paddingTop: insets.top + 4 }]}>
         <View style={s.titleRow}>
-          <Pressable onPress={() => setYm(v => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))} style={s.iconBtn} testID="sched-prev-month"><Icon name="back" size={24} color={p.ink} strokeWidth={1.8} /></Pressable>
-          <Text style={[s.title, { color: p.ink }]} numberOfLines={1} testID="sched-title">{title}</Text>
+          {/* Empty spacer balances the bell so the month stays screen-centred. */}
+          <View style={s.iconBtn} />
+          <View style={s.monthNav}>
+            <Pressable onPress={shiftMonth(-1)} style={s.iconBtn} testID="sched-prev-month"><Icon name="back" size={24} color={p.ink} strokeWidth={1.8} /></Pressable>
+            <Text style={[s.title, { color: p.ink }]} numberOfLines={1} testID="sched-title">{title}</Text>
+            <Pressable onPress={shiftMonth(1)} style={s.iconBtn} testID="sched-next-month"><Icon name="chev" size={24} color={p.ink} strokeWidth={1.8} /></Pressable>
+          </View>
           <IconButton name="bell" badge={alertCount} palette={p} onPress={() => nav.navigate('Alerts')} testID="sched-alerts" />
         </View>
         <FlatList
@@ -117,7 +147,7 @@ export function ScheduleScreen() {
         onScrollToIndexFailed={info => setTimeout(() => list.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
         ListEmptyComponent={<Text style={[s.empty, { color: p.inkSoft }]}>No duties published for {MON[ym.m]} {ym.y}.</Text>}
         renderItem={({ item }) => (
-          <DayCard day={item} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} />
+          <DayCard day={item} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} actions={meetingActions} />
         )}
         testID="sched-list"
       />
@@ -125,20 +155,20 @@ export function ScheduleScreen() {
   );
 }
 
-function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip }: { day: DayModel; monthIdx: number; mode: TimeZoneMode; baseTz: string; palette: CarrierPalette; onTrip: (tripId: string) => void }) {
+function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions }: { day: DayModel; monthIdx: number; mode: TimeZoneMode; baseTz: string; palette: CarrierPalette; onTrip: (tripId: string) => void; actions: MeetingActions }) {
   const head = `${day.dow.toUpperCase()} ${day.day} ${MON[monthIdx].toUpperCase()}${day.isToday ? ' · TODAY' : ''}`;
-  const meetings = day.meetings.map(m => (
-    <View key={m.id} style={[s.meet, { backgroundColor: CARD_INSET }]}>
-      <Text style={[s.meetT, { color: p.cardInk }]}>{m.hhmm}</Text>
-      <View style={{ flex: 1 }}><Text style={[s.meetTitle, { color: p.cardInk }]} numberOfLines={2}>{m.title}</Text><Text style={{ color: p.cardSoft, fontSize: 12 }}>{m.where}</Text></View>
-      <Text style={[s.meetCal, { color: p.cardSoft, borderColor: p.cardLine }]}>iOS CAL</Text>
-    </View>
-  ));
   if (day.kind === 'flight') {
     return (
       <View style={s.card}>
+        {/* A briefing on a flying day must not read as part of the rotation, so
+            the calendar event gets its own card above the flight (mock Ver10). */}
+        {day.meetings.length > 0 ? (
+          <View style={{ marginBottom: 12 }}>
+            <MeetingCard head={head} meetings={day.meetings} palette={p} onJoin={actions.onJoin} onToggleAlarm={actions.onToggleAlarm} />
+          </View>
+        ) : null}
         {day.legs.map(({ leg, trip }, i) => (
-          <FlightCard key={`${trip.id}-${i}`} leg={leg} palette={p} onPress={() => onTrip(trip.id)} last={i === day.legs.length - 1} head={head} meetings={i === 0 ? meetings : null} />
+          <FlightCard key={`${trip.id}-${i}`} leg={leg} palette={p} onPress={() => onTrip(trip.id)} last={i === day.legs.length - 1} head={head} />
         ))}
       </View>
     );
@@ -155,7 +185,11 @@ function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip }: { day: Day
             <View><Text style={[s.ac, { color: p.cardInk }]}>{info.title}</Text><Text style={{ color: p.cardSoft, fontSize: 12, marginTop: 2 }}>{info.sub}</Text></View>
           </View>
           {!!info.note && <Text style={{ color: p.cardSoft, fontSize: 13, marginTop: 10, lineHeight: 19 }}>{info.note}</Text>}
-          {meetings}
+          {/* Non-flying day: the event mixes in with the day card (day off,
+              standby, training, layover). */}
+          {day.meetings.map(m => (
+            <MeetingRow key={m.id} meeting={m} palette={p} onJoin={actions.onJoin} onToggleAlarm={actions.onToggleAlarm} />
+          ))}
         </View>
       </TicketCard>
     </View>
@@ -165,12 +199,11 @@ function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip }: { day: Day
 const CARD_PAD = 18;
 
 /** One flight leg as a ticket card; the hole cut is measured from the dashed line's real position. */
-function FlightCard({ leg, palette: p, onPress, last, head, meetings }: { leg: LegView; palette: CarrierPalette; onPress: () => void; last: boolean; head: string; meetings: React.ReactNode }) {
+function FlightCard({ leg, palette: p, onPress, last, head }: { leg: LegView; palette: CarrierPalette; onPress: () => void; last: boolean; head: string }) {
   const [holeY, setHoleY] = useState<number | undefined>(undefined);
   return (
     <TicketCard palette={p} holeY={holeY} onPress={onPress} testID={`duty-${leg.fltNumber}`} style={{ padding: CARD_PAD, marginBottom: last ? 0 : 12 }}>
       <Text style={[s.dayHead, { color: p.cardSoft }]}>{head}</Text>
-      {meetings}
       <View style={s.dhead}>
         <View style={[s.logo, { backgroundColor: CARD_INSET }]}><Icon name="jet" size={24} color={p.btn} /></View>
         {/* The jet glyph already says "flight", so the word is dropped; the fleet
@@ -252,8 +285,9 @@ function Art({ kind, day }: { kind: DayKind; day: number }) {
 const s = StyleSheet.create({
   head: { paddingHorizontal: 22, paddingBottom: 8 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  monthNav: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  title: { textAlign: 'center', fontSize: 18, fontWeight: '600', marginBottom: 8, paddingHorizontal: 4 },
   strip: { paddingHorizontal: 22, gap: 8, paddingVertical: 4 },
   chip: { width: 52, paddingVertical: 10, borderRadius: 15, alignItems: 'center', borderWidth: 1 },
   dow: { fontSize: 10, fontWeight: '600', letterSpacing: 0.8 },
@@ -279,9 +313,5 @@ const s = StyleSheet.create({
   prep: { flexDirection: 'row', justifyContent: 'space-between', borderRadius: 12, padding: 12, marginTop: 14 },
   pk: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6 },
   pv: { fontSize: 16, fontWeight: '600', marginTop: 3 },
-  meet: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, marginTop: 10 },
-  meetT: { fontSize: 15, fontWeight: '600', width: 44 },
-  meetTitle: { fontSize: 13, fontWeight: '600' },
-  meetCal: { fontSize: 10, letterSpacing: 0.8, borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
   empty: { textAlign: 'center', fontSize: 14, marginTop: 60 },
 });

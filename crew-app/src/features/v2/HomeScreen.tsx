@@ -10,10 +10,8 @@ import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon, type IconName } from '../../components/v2/icons';
 import { BrandLogo } from '../../components/v2/BrandLogo';
 import { TicketCard, DashedLine } from '../../components/v2/TicketCard';
-import { classifyTrips } from '../travel/tripCsv';
-import { tripDestination } from '../home/cities';
 import { daysUntil, greetingFor, legView, tripStartMs, MON } from './model';
-import { useAlarms, useBase, useNextTrip } from './useV2';
+import { useAlarms, useDestinations, useNextTrip } from './useV2';
 import { useV2Nav } from './nav';
 
 const DOCK_CLEAR = 110;
@@ -27,8 +25,6 @@ export function HomeScreen() {
   const alarmsEnabled = useAppSelector(s => s.alarms.enabled);
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
-  const trips = useAppSelector(s => s.trips.trips);
-  const base = useBase();
 
   const [now, setNow] = useState(() => new Date());
   const [holeY, setHoleY] = useState<number | undefined>(undefined); // measured from the dashed line
@@ -40,14 +36,9 @@ export function HomeScreen() {
   const inDays = trip ? daysUntil(tripStartMs(trip), now) : 0;
   const alarmCount = alarmsEnabled ? alarms.reduce((n, a) => n + (a.wakeUp ? 1 : 0) + (a.leaveHome ? 1 : 0), 0) : 0;
 
-  // Explore: this month's upcoming rotations, one card per destination.
-  const destinations = useMemo(() => {
-    const up = classifyTrips(trips, now).upcoming.slice().sort((a, b) => tripStartMs(a) - tripStartMs(b));
-    const seen = new Set<string>();
-    return up.map(t => ({ trip: t, city: tripDestination(t, base), leg: legView(t.legs[0], t, mode, baseTz, byTrip[t.id]) }))
-      .filter(x => x.city.airport !== base && !seen.has(x.city.airport) && seen.add(x.city.airport))
-      .slice(0, 6);
-  }, [trips, now, base, mode, baseTz, byTrip]);
+  // Explore: this month's upcoming rotations, one card per destination. The same
+  // list backs the full-screen city viewer, so the tapped card is the page it opens.
+  const destinations = useDestinations(now);
 
   return (
     <GradientScreen palette={p}>
@@ -94,8 +85,8 @@ export function HomeScreen() {
         <View style={s.sec}><Text style={[s.secTitle, { color: p.ink }]}>Explore your destinations</Text><Text style={[s.secLink, { color: p.inkSoft }]}>See all</Text></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.destRow} style={{ marginHorizontal: -22 }}>
           {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
-          {destinations.map(d => (
-            <Pressable key={d.city.airport} style={s.dest} onPress={() => nav.navigate('TripDetails', { tripId: d.trip.id })} testID={`dest-${d.city.airport}`}>
+          {destinations.map((d, i) => (
+            <Pressable key={d.city.airport} style={s.dest} onPress={() => nav.navigate('Destination', { index: i })} testID={`dest-${d.city.airport}`}>
               <ImageBackground source={d.city.image} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: 14 }} />
               <View style={s.destGrad} />
               <View style={s.fav}><Icon name="heart" size={16} color="#fff" strokeWidth={1.8} /></View>
@@ -170,7 +161,9 @@ const s = StyleSheet.create({
   secLink: { fontSize: 14, fontWeight: '500' },
   destRow: { paddingHorizontal: 22, gap: 12 },
   dest: { width: 165, height: 215, borderRadius: 14, overflow: 'hidden' },
-  destGrad: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15,35,60,.45)' },
+  // Neutral black scrim over the destination photo — a tinted scrim would fight
+  // whichever theme the crew picked (theme coverage test).
+  destGrad: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,.45)' },
   fav: { position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,.18)', alignItems: 'center', justifyContent: 'center' },
   destBottom: { position: 'absolute', left: 14, right: 14, bottom: 14 },
   destCo: { fontSize: 11 },
