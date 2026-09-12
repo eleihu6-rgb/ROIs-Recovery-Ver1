@@ -8,6 +8,7 @@ import React from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { CrewAvatar } from '../settings/avatars';
+import { useAppSelector } from '../../store';
 import type { CarrierPalette } from '../../theme/carrier';
 import type { V2Nav } from '../v2/nav';
 
@@ -29,23 +30,34 @@ export function RBotEntry({
   // The entry is rendered by the tab bar, but R'Bot is a stack screen — the
   // action bubbles to the parent navigator, which owns 'RBot'.
   const nav = useNavigation<V2Nav>();
+  // R'Bot keeps working after the crew leaves the chat (an action navigated
+  // them): the dot says "I replied, come back and carry on".
+  const unread = useAppSelector(s => s.rbot.unread);
+  const boxColor = onLight ? palette.dockLight : 'rgba(255,255,255,.2)';
   return (
     <Pressable
       onPress={() => nav.navigate('RBot')}
       hitSlop={6}
       style={[
         styles.box,
-        {
-          backgroundColor: onLight ? palette.dockLight : 'rgba(255,255,255,.2)',
-          borderColor: onLight ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.14)',
-        },
+        {backgroundColor: boxColor, borderColor: onLight ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.14)'},
       ]}
       testID="dock-rbot"
-      accessibilityLabel="R'Bot AI assistant"
+      // The dot itself is inside an accessible container, so iOS folds it into
+      // this label: "new reply" is what a screen reader (and Maestro) can see.
+      accessibilityLabel={unread ? "R'Bot AI assistant, new reply" : "R'Bot AI assistant"}
       accessibilityRole="button"
     >
-      <View style={[styles.disc, { backgroundColor: palette.btn, borderColor: palette.frostLine }]}>
-        <CrewAvatar index={RBOT_AVATAR_INDEX} size={32} bare />
+      {/* The panda sits straight on the box: no theme-coloured disc behind it
+          (Ryan, 2026-09-11) — it already reads as R'Bot in the bar. */}
+      <View style={styles.avatar}>
+        <CrewAvatar index={RBOT_AVATAR_INDEX} size={34} bare />
+        {unread ? (
+          <View
+            style={[styles.dot, {borderColor: boxColor, backgroundColor: palette.crit}]}
+            testID="rbot-unread"
+          />
+        ) : null}
       </View>
       <Text style={[styles.tag, { color: onLight ? palette.dockInk : '#fff' }]}>AI</Text>
     </Pressable>
@@ -68,13 +80,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  disc: {
+  avatar: {
     width: 34,
     height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
   },
   tag: {
     fontSize: 10,

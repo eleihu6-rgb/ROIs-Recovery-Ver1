@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import settingsReducer, { loadSettings, setThemePreset } from '../src/features/settings/settingsSlice';
 import authReducer, { login } from '../src/features/auth/authSlice';
+import rbotReducer from '../src/features/rbot/rbotSlice';
 import { AppearanceScreen } from '../src/features/v2/AppearanceScreen';
 import { PreferencesScreen } from '../src/features/v2/PreferencesScreen';
 import { GradientScreen } from '../src/components/v2/GradientScreen';
@@ -47,7 +48,7 @@ const THEME_KEY = '@royce_theme';
 
 function makeStore(airline = 'ET') {
   const store = configureStore({
-    reducer: { auth: authReducer, settings: settingsReducer },
+    reducer: { auth: authReducer, settings: settingsReducer, rbot: rbotReducer },
     middleware: getDefaultMiddleware => getDefaultMiddleware({ serializableCheck: false }),
   });
   runThunk(store, login({ airline, crewId: 'J4002', password: 'Pier2026', keepLogin: false }));
@@ -263,18 +264,21 @@ describe('colour theme selector', () => {
     for (const preset of THEME_PRESETS) {
       const pal = PALETTES[preset];
       const tree = render(
-        <CarrierContext.Provider value={pal}>
-          <GradientScreen palette={pal} texture={false}>
-            <ListCard palette={pal}>
-              <ToggleRow label="Push notifications" value onValueChange={() => {}} palette={pal} />
-              <KvRow label="Version" value="1.0" palette={pal} />
-              <NavRow icon="doc" label="Language" value="English" palette={pal} onPress={() => {}} />
-            </ListCard>
-            <PrimaryButton label="Continue" palette={pal} />
-            <PillDock {...dockProps(pal)} />
-            <ContextProbe />
-          </GradientScreen>
-        </CarrierContext.Provider>,
+        <Provider store={makeStore()}>
+          <CarrierContext.Provider value={pal}>
+            <GradientScreen palette={pal} texture={false}>
+              <ListCard palette={pal}>
+                <ToggleRow label="Push notifications" value onValueChange={() => {}} palette={pal} />
+                <KvRow label="Version" value="1.0" palette={pal} />
+                <NavRow icon="doc" label="Language" value="English" palette={pal} onPress={() => {}} />
+              </ListCard>
+              <PrimaryButton label="Continue" palette={pal} />
+              {/* The dock renders R'Bot's entry, which reads its session store. */}
+              <PillDock {...dockProps(pal)} />
+              <ContextProbe />
+            </GradientScreen>
+          </CarrierContext.Provider>
+        </Provider>,
       );
       const colours = collectColours(tree.toJSON());
       const stops = collectGradientStops(tree.toJSON());

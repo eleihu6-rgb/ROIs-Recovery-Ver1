@@ -1,0 +1,107 @@
+# v2 · R'Bot SESSION — one conversation across R'Bot's own navigation.
+#
+# Proves the Phase-2 behaviour: R'Bot keeps interacting with the crew through a
+# chain the crew never has to restart:
+#   1. a roster question answered ON THE DEVICE (nothing sent to the model)
+#   2. "change my theme"      -> applied in place, confirmation chip
+#   3. "show me my calendar"  -> navigates away, chat closes
+#   4. reopen R'Bot           -> the earlier turns are still there, dock shows a dot
+#   5. "I'm sick tomorrow"    -> continues the same conversation, opens the
+#                                pre-filled absence request (crew still submits)
+#
+# Run: cd crew-app && maestro test .maestro/v2_tg_rbot_session.yaml
+# Requires: ai-server on :3005. Step 5 needs the Story-101 absence screen.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    # Fresh state so the crew's theme is still the airline default: "change my
+    # theme to graphite" then always has something to change (a previous run
+    # leaving graphite made R'Bot correctly answer "you're already on it").
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+# Picking the airline is what prefills the crew id + password after a state wipe
+# (the keychain remembers the carrier, not the fields).
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- assertVisible: "J4002"
+- scrollUntilVisible:
+    element:
+      id: "login-btn"
+    direction: DOWN
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 240000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: rbot2-Ver1-00_dock
+# 1. Answered from the roster on the phone — no model round-trip.
+- tapOn:
+    id: "dock-rbot"
+- tapOn:
+    id: "rbot-input"
+- inputText: "what is my next duty?"
+- tapOn:
+    id: "rbot-send"
+- extendedWaitUntil:
+    visible:
+      id: "rbot-local-answer"
+    timeout: 15000
+- assertVisible: "Answered on your device"
+- takeScreenshot: rbot2-Ver1-01_local-answer
+# 2. Step one of the chain: a setting change, applied in place.
+- tapOn:
+    id: "rbot-input"
+- inputText: "change my theme to graphite"
+- tapOn:
+    id: "rbot-send"
+- extendedWaitUntil:
+    visible:
+      id: "rbot-applied"
+    timeout: 60000
+# 3. Step two: R'Bot navigates the crew away from the chat.
+- tapOn:
+    id: "rbot-input"
+- inputText: "show me my calendar"
+- tapOn:
+    id: "rbot-send"
+- extendedWaitUntil:
+    visible:
+      id: "sched-title"
+    timeout: 60000
+- takeScreenshot: rbot2-Ver1-02_navigated-away
+# 4. The entry shows R'Bot replied; reopening keeps the conversation.
+# The dot appears a beat after the reply (R'Bot re-checks whether the crew was
+# still on the chat), so wait for it rather than asserting instantly. The dot
+# itself lives inside the entry's accessible container, so the proof the flow
+# can assert is the entry's own label.
+- extendedWaitUntil:
+    visible:
+      text: "R'Bot AI assistant, new reply"
+    timeout: 10000
+- takeScreenshot: rbot2-Ver1-03_dock-dot
+- tapOn:
+    id: "dock-rbot"
+- assertVisible: "change my theme to graphite"
+- assertVisible: "show me my calendar"
+- takeScreenshot: rbot2-Ver1-04_thread-survived
+# 5. Step three: "now <something>" continues the same session.
+- tapOn:
+    id: "rbot-input"
+- inputText: "now I am sick tomorrow, sort it out"
+- tapOn:
+    id: "rbot-send"
+- extendedWaitUntil:
+    visible:
+      id: "page-absence"
+    timeout: 60000
+- takeScreenshot: rbot2-Ver1-05_step3-absence

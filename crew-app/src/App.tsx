@@ -15,6 +15,7 @@ import { loadEnabled } from './features/alarms/alarmsSlice';
 import { loadMeetingsSettings, syncMeetings } from './features/meetings/meetingsSlice';
 import { loadFlightCalendar } from './features/calendar/flightCalendarSlice';
 import { loadTripTrade } from './features/tripTrade/tripTradeSlice';
+import { loadRbotThread } from './features/rbot/rbotSlice';
 import { login } from './features/auth/authSlice';
 import type { Trip } from './features/travel/tripCsv';
 
@@ -79,6 +80,7 @@ function Bootstrap() {
                                // the Get Ready / Leave Home chips on first launch.
       dispatch(loadFlightCalendar()); // which duties are already in the iOS calendar
       dispatch(loadTripTrade()); // restore Trip Trade publish/trade choices
+      dispatch(loadRbotThread()); // reopen the R'Bot conversation where it stopped
 
       // Hydrate meeting settings then read the calendar (EventKit) so meeting
       // cards show and their alarms arm on launch, even if the app then closes.

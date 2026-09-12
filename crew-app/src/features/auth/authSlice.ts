@@ -6,6 +6,7 @@ import { clearTrips } from '../travel/tripsSlice';
 import { clearStoredTrips } from '../travel/tripsPersistence';
 import { setDuties, clearStoredDuties } from '../roster/dutiesSlice';
 import { reconcileAlarms } from '../alarms/alarmsSlice';
+import { clearRbotSession } from '../rbot/rbotSlice';
 
 // Crew-portal login session (doc/App Flow Ver1). Replaces the old Google/Firebase
 // stub. The crew picks an airline and signs in to that airline's crew portal; the
@@ -155,6 +156,9 @@ export function logout() {
     // Crew-portal roster data: drop from Redux and from AsyncStorage.
     dispatch(clearTrips());
     dispatch(setDuties([]));
+    // The R'Bot conversation names duties and requests — it belongs to this
+    // crew's session, so the next login starts with an empty chat.
+    await dispatch(clearRbotSession());
     await clearStoredTrips();
     await clearStoredDuties();
     // Re-sync alarms now that the trips are gone: reconcileAlarms clears every

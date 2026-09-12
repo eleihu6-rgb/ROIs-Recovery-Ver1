@@ -13,15 +13,20 @@ import {
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon } from '../../components/v2/icons';
 import { CrewAvatar } from '../settings/avatars';
+import { RBOT_AVATAR_INDEX } from './RBotEntry';
 import { store, useAppDispatch, useAppSelector } from '../../store';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { useV2Nav } from '../v2/nav';
 import { sendCrewChat } from './crewChatApi';
 import { dispatchCrewAction } from './dispatch-crew-action';
+import { answerLocally } from './localAnswers';
+import { appendEntry, markSeen, markUnread, saveRbotThread } from './rbotSlice';
 import type { RbotContext, RbotThreadEntry } from './types';
+import { useBase } from '../v2/useV2';
 
 /** What R'Bot can honestly do today — the card is the contract with the crew. */
 const CAPABILITIES: { title: string; body: string }[] = [
@@ -52,11 +57,29 @@ export function RBotScreen(): React.JSX.Element {
   const airline = useAppSelector(s => s.auth.airline) ?? '';
   const crewId = useAppSelector(s => s.auth.crewId) ?? '';
   const firstName = useAppSelector(s => s.auth.firstName);
+  const trips = useAppSelector(s => s.trips.trips);
+  const tzMode = useAppSelector(s => s.settings.timeZoneMode);
+  const baseTz = useAppSelector(s => s.settings.baseTimeZone);
+  const base = useBase();
 
-  const [thread, setThread] = useState<RbotThreadEntry[]>([]);
+  const thread = useAppSelector(s => s.rbot.entries);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const scroller = useRef<ScrollView>(null);
+  // The reply lands after an action may have navigated away, so read focus
+  // through a ref rather than the value captured when `send` was created.
+  // `useFocusEffect` also fires its cleanup when this screen is POPPED, which is
+  // exactly the case that matters: R'Bot navigated the crew somewhere else.
+  const focusedRef = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      focusedRef.current = true;
+      dispatch(markSeen());
+      return () => {
+        focusedRef.current = false;
+      };
+    }, [dispatch]),
+  );
 
   const context = useMemo<RbotContext>(() => ({
     airline,
@@ -71,7 +94,15 @@ export function RBotScreen(): React.JSX.Element {
     if (!trimmed || busy) return;
     setInput('');
     const history: RbotThreadEntry[] = [...thread, {role: 'user', content: trimmed}];
-    setThread(history);
+    dispatch(appendEntry({entry: {role: 'user', content: trimmed}, seen: true}));
+    // Local-first: a roster fact ("what's my next duty?") is answered from the
+    // phone, so the schedule never leaves the device for those questions.
+    const local = answerLocally(trimmed, {now: new Date(), trips, mode: tzMode, baseTz, base});
+    if (local) {
+      dispatch(appendEntry({entry: {role: 'assistant', content: local.content, local: true}, seen: true}));
+      void dispatch(saveRbotThread());
+      return;
+    }
     setBusy(true);
     try {
       const resp = await sendCrewChat(
@@ -90,22 +121,30 @@ export function RBotScreen(): React.JSX.Element {
         });
         if (label) applied.push(label);
       }
-      setThread(t => [
-        ...t,
-        {role: 'assistant', content: resp.content, ...(applied.length ? {applied} : {})},
-      ]);
+      // A navigation action pops this screen before the reply is appended, so
+      // `focused` is already false and the dock entry grows a dot.
+      dispatch(appendEntry({
+        entry: {role: 'assistant', content: resp.content, ...(applied.length ? {applied} : {})},
+        seen: focusedRef.current,
+      }));
+      void dispatch(saveRbotThread());
+      // A navigation action closes this screen a beat after the reply lands, so
+      // re-check focus before deciding whether the crew saw the answer.
+      setTimeout(() => {
+        if (!focusedRef.current) dispatch(markUnread());
+      }, 600);
     } catch (e) {
-      setThread(t => [
-        ...t,
-        {
+      dispatch(appendEntry({
+        entry: {
           role: 'assistant',
           content: e instanceof Error ? e.message : 'R\'Bot is unavailable right now.',
         },
-      ]);
+        seen: focusedRef.current,
+      }));
     } finally {
       setBusy(false);
     }
-  }, [busy, context, dispatch, nav, thread]);
+  }, [base, baseTz, busy, context, dispatch, nav, thread, trips, tzMode]);
 
   useEffect(() => {
     const id = setTimeout(() => scroller.current?.scrollToEnd({animated: true}), 50);
@@ -122,8 +161,10 @@ export function RBotScreen(): React.JSX.Element {
         keyboardVerticalOffset={0}
       >
         <View style={[styles.head, {paddingTop: insets.top + 8}]}>
-          <View style={[styles.headDisc, {backgroundColor: p.btn, borderColor: p.frostLine}]}>
-            <CrewAvatar index={0} size={34} bare />
+          {/* Same R'Bot avatar as the dock entry — the panda, straight on the
+              surface (no theme-coloured disc behind it). */}
+          <View style={styles.headDisc}>
+            <CrewAvatar index={RBOT_AVATAR_INDEX} size={40} bare />
           </View>
           <View style={styles.headText}>
             <Text style={[styles.headTitle, {color: p.ink}]}>R&apos;Bot</Text>
@@ -192,6 +233,16 @@ export function RBotScreen(): React.JSX.Element {
                       <Text style={[styles.appliedText, {color: p.ink}]}>{a}</Text>
                     </View>
                   ))}
+                </View>
+              ) : null}
+              {m.local ? (
+                <View style={styles.appliedRow} testID="rbot-local-answer">
+                  <View style={[styles.applied, {borderColor: p.frostLine}]}>
+                    <Icon name="shield" size={13} color={p.ink} strokeWidth={1.8} />
+                    <Text style={[styles.appliedText, {color: p.ink}]}>
+                      Answered on your device
+                    </Text>
+                  </View>
                 </View>
               ) : null}
             </View>
