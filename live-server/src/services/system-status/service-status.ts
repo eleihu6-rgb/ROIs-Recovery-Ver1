@@ -46,21 +46,26 @@ export interface RustBinsStatus {
 }
 
 /**
- * The services the Altair Gantt needs. Keep in sync with
- * scripts/check-services.mjs (the same table, used by the CLI).
- * Mandatory = the app cannot do its job without it; optional entries are
- * reported but never fail the overall status.
+ * The services the Altair Gantt needs — single source of truth in
+ * `live-server/scripts/services.json`, shared with the root CLI
+ * (`scripts/check-services.mjs`) and this endpoint. Mandatory = the app cannot
+ * do its job without it; optional entries are reported but never fail the
+ * overall status.
  */
-export const SERVICE_TABLE: ServiceDefinition[] = [
-  { name: 'live-server', port: 3000, health: '/api/health', mandatory: true, note: 'Gantt + crew roster API' },
-  { name: 'rule-engine', port: 3001, mandatory: true, note: 'legality rule service' },
-  { name: 'pbs-server', port: 3002, health: '/api/health', mandatory: true, note: 'PBS backend' },
-  { name: 'pbs-portal', port: 3030, health: '/fpqe/pbs/', mandatory: false, note: 'PBS portal' },
-  { name: 'engine-server', port: 3103, health: '/health', mandatory: true, note: 'optimization engine' },
-  { name: 'connector-server', port: 3104, health: '/health', mandatory: true, note: 'external systems' },
-  { name: 'gantt', port: 5173, health: '/altair/', altPort: 5567, mandatory: true, note: 'Gantt Vite (5173 or 5567)' },
-  { name: 'redis', port: 6379, mandatory: true, tcpOnly: true, note: 'live-server cache/queue' },
-]
+export const SERVICES_MANIFEST = path.join(ROOT, 'live-server', 'scripts', 'services.json')
+
+let cachedTable: ServiceDefinition[] | null = null
+
+/** Loaded lazily so a missing/broken manifest degrades one endpoint, not the server. */
+export function serviceTable(): ServiceDefinition[] {
+  if (cachedTable) return cachedTable
+  const parsed = JSON.parse(fs.readFileSync(SERVICES_MANIFEST, 'utf8'))
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error(`services manifest is empty or not an array: ${SERVICES_MANIFEST}`)
+  }
+  cachedTable = parsed as ServiceDefinition[]
+  return cachedTable
+}
 
 const TIMEOUT_MS = 1500
 const HOST = '127.0.0.1'
@@ -95,7 +100,7 @@ async function httpStatus(port: number, healthPath: string, host = HOST): Promis
 
 export async function checkServiceTable(host = HOST): Promise<ServiceEntry[]> {
   const entries: ServiceEntry[] = []
-  for (const service of SERVICE_TABLE) {
+  for (const service of serviceTable()) {
     const ports = [service.port, ...(service.altPort ? [service.altPort] : [])]
     let livePort: number | null = null
     for (const port of ports) {

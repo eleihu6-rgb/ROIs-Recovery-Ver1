@@ -12,9 +12,6 @@
 //   node scripts/check-services.mjs            # human table, exit 1 on failure
 //   node scripts/check-services.mjs --json     # machine-readable
 //   node scripts/check-services.mjs --host 127.0.0.1
-//
-// Keep the service list in sync with live-server/src/services/system-status
-// (the UI indicator uses the same table through GET /api/system/services).
 
 import net from 'node:net'
 import fs from 'node:fs'
@@ -24,19 +21,20 @@ import { fileURLToPath } from 'node:url'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 /**
- * Mandatory = the Gantt cannot do its job without it. Optional entries are
- * reported but do not fail the run (e.g. the PBS portal is a separate app).
+ * Single source of truth, shared with the live-server endpoint
+ * (live-server/src/services/system-status → GET /api/system/services).
  */
-const SERVICES = [
-  { name: 'live-server', port: 3000, health: '/api/health', mandatory: true, note: 'Gantt + crew roster API' },
-  { name: 'rule-engine', port: 3001, mandatory: true, note: 'legality rule service' },
-  { name: 'pbs-server', port: 3002, health: '/api/health', mandatory: true, note: 'PBS backend' },
-  { name: 'pbs-portal', port: 3030, health: '/fpqe/pbs/', mandatory: false, note: 'PBS portal' },
-  { name: 'engine-server', port: 3103, health: '/health', mandatory: true, note: 'optimization engine' },
-  { name: 'connector-server', port: 3104, health: '/health', mandatory: true, note: 'external systems' },
-  { name: 'gantt', port: 5173, health: '/altair/', mandatory: true, altPort: 5567, note: 'Gantt Vite (5173 or 5567)' },
-  { name: 'redis', port: 6379, mandatory: true, tcpOnly: true, note: 'live-server cache/queue' },
-]
+const SERVICES_MANIFEST = path.join(ROOT, 'live-server', 'scripts', 'services.json')
+
+function loadServices() {
+  const parsed = JSON.parse(fs.readFileSync(SERVICES_MANIFEST, 'utf8'))
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error(`services manifest is empty or not an array: ${SERVICES_MANIFEST}`)
+  }
+  return parsed
+}
+
+const SERVICES = loadServices()
 
 const args = process.argv.slice(2)
 const asJson = args.includes('--json')

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  SERVICE_TABLE,
   checkRustBins,
   checkServiceTable,
+  serviceTable,
   tcpOpen,
 } from '../service-status.js'
 
@@ -22,7 +22,7 @@ describe('system service status', () => {
 
   it('returns exactly one entry per service in the table, with a valid state', async () => {
     const entries = await checkServiceTable()
-    expect(entries).toHaveLength(SERVICE_TABLE.length)
+    expect(entries).toHaveLength(serviceTable().length)
     for (const entry of entries) {
       expect(['up', 'down', 'warn', 'off']).toContain(entry.state)
       expect(typeof entry.detail).toBe('string')

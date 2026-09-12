@@ -1,0 +1,58 @@
+[
+  {
+    "name": "live-server",
+    "port": 3000,
+    "health": "/api/health",
+    "mandatory": true,
+    "note": "Gantt + crew roster API"
+  },
+  {
+    "name": "rule-engine",
+    "port": 3001,
+    "mandatory": true,
+    "note": "legality rule service"
+  },
+  {
+    "name": "pbs-server",
+    "port": 3002,
+    "health": "/api/health",
+    "mandatory": true,
+    "note": "PBS backend"
+  },
+  {
+    "name": "pbs-portal",
+    "port": 3030,
+    "health": "/fpqe/pbs/",
+    "mandatory": false,
+    "note": "PBS portal"
+  },
+  {
+    "name": "engine-server",
+    "port": 3103,
+    "health": "/health",
+    "mandatory": true,
+    "note": "optimization engine"
+  },
+  {
+    "name": "connector-server",
+    "port": 3104,
+    "health": "/health",
+    "mandatory": true,
+    "note": "external systems"
+  },
+  {
+    "name": "gantt",
+    "port": 5173,
+    "health": "/altair/",
+    "altPort": 5567,
+    "mandatory": true,
+    "note": "Gantt Vite (5173 or 5567)"
+  },
+  {
+    "name": "redis",
+    "port": 6379,
+    "mandatory": true,
+    "tcpOnly": true,
+    "note": "live-server cache/queue"
+  }
+]
