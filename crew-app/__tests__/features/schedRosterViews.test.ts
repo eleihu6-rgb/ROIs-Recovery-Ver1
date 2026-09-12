@@ -279,6 +279,9 @@ describe('calendar · agenda', () => {
     ]);
     // A leg row states the route; the date line keeps rows apart.
     expect(rows[3].sub).toBe('Sat 19 Sep');
+    // The mock's own outline plane carries "flight" — not the filled jet glyph.
+    expect(rows[3].icon).toBe('plane');
+    expect(rows[3].icon).toBe(rows[0].icon);
     // Times carry the app's own clock marker (L = airport local).
     expect(rows[3].time).toBe('22:45L–05:45L');
     expect(rows[4].time).toBe('15:00–15:45');

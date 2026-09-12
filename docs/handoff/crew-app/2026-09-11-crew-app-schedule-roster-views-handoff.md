@@ -84,13 +84,21 @@ list uses — there is no second month data structure.
 | Maestro `et_j4002_sched_roster_views.yaml` (ET J4002) | **PASS** — 30 steps |
 | Maestro `pr_sched_roster_views.yaml` (PR 433535) | **PASS** — 20 steps |
 
-Screenshots (`docs/assets/screenshots/crew-app/`):
-`schedviews-Ver1-00…08` (TG), `et-schedviews-Ver1-00…06` (ET) and
-`pr-schedviews-Ver1-00…02` (PR). TG proves the monthly network out of BKK
+Screenshots (`docs/assets/screenshots/crew-app/`) — `-Ver1` is the first pass,
+`-Ver2` re-validates after the Calendar glyph was switched to the mock's outline
+plane: `schedviews-Ver1/2-00…08` (TG), `et-schedviews-Ver1/2-00…06` (ET) and
+`pr-schedviews-Ver1/2-00…02` (PR). TG proves the monthly network out of BKK
 (4 routes / 35,631 km) and the pre-midnight duty block; ET proves the
 API-backed roster out of ADD (7 routes / 64,070 km) with the emerald theme; PR
 proves the third carrier centres on its own base (MNL, 4 routes) with none of
 TG's or ET's cities in its calendar or map — the cross-airline leak check.
+
+The Ver2 runs were driven from temporary copies of the flows in `/tmp`: a
+parallel change to `LoginScreen.tsx` (not committed here) replaces the airline
+dropdown with a searchable picker, so on that in-flight build the shipped flows'
+`airline-<code>` row step needs a search first. The committed flows still match
+`main`'s picker. Same reason `live-server` needed a nudge to come back up
+mid-session (its `tsx watch` was idling after a reload).
 
 ## Still open
 
