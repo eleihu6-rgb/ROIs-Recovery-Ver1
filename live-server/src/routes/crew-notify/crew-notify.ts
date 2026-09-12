@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { verifyMobileCrewCredentials } from '../../services/mobile-roster/mobile-roster-service.js'
 import { listForCrew, markRead } from '../../services/crew-notify/crew-notify-service.js'
+import { submitCrewAbsence } from '../../services/absence/crew-absence-service.js'
+import { liveSchemaName } from '../../utils/db-schema.js'
 import { error, fail, success } from '../../utils/response.js'
 
 /**
@@ -26,7 +28,14 @@ const listSchema = z.object({
   since: z.number().int().min(0).optional(),
 }).strict()
 
-/** Status codes carried by the shared service errors (roster + notify). */
+const absenceSchema = credentialsSchema.extend({
+  type: z.enum(['sick', 'emergency', 'personal']),
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  note: z.string().trim().max(500).optional(),
+}).strict()
+
+/** Status codes carried by the shared service errors (roster + notify + absence). */
 const statusCodeOf = (err: unknown): number | null => {
   if (err && typeof err === 'object' && 'statusCode' in err) {
     const code = (err as { statusCode?: unknown }).statusCode
@@ -99,6 +108,33 @@ export default async function crewNotifyRoutes(fastify: FastifyInstance) {
       return success(reply, { ok: true })
     } catch (err) {
       return replyWithError(fastify, reply, err, 'Unable to mark the notification read.')
+    }
+  })
+
+  // Crew recovery story 101: crew-submitted sick leave → Live auto stand-down.
+  fastify.post('/absence', async (request, reply) => {
+    const parsed = absenceSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.message)
+    }
+
+    try {
+      const { crewId } = await verifyMobileCrewCredentials(
+        { pgPool: fastify.pgPool },
+        parsed.data,
+      )
+      const result = await submitCrewAbsence(fastify, {
+        airline: parsed.data.airline,
+        crewId,
+        type: parsed.data.type,
+        fromDate: parsed.data.fromDate,
+        toDate: parsed.data.toDate,
+        note: parsed.data.note,
+        wsSchema: liveSchemaName(),
+      })
+      return success(reply, result)
+    } catch (err) {
+      return replyWithError(fastify, reply, err, 'Unable to submit the absence.')
     }
   })
 }

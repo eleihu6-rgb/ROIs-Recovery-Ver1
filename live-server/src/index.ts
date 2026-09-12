@@ -74,6 +74,7 @@ import crewMemoRoutes from './routes/crew-memo/index.js'
 import resPairingRoutes from './routes/res-pairing/res-pairing.js'
 import mobileRosterRoutes from './routes/mobile-roster/mobile-roster.js'
 import crewNotifyRoutes from './routes/crew-notify/crew-notify.js'
+import absenceRoutes from './routes/absence/absence.js'
 import recoveryRoutes from './routes/recovery/recovery.js'
 import recoveryCostRoutes from './routes/recovery/recovery-cost.js'
 import { bumpBackendVersion, formatAppVersion } from './utils/app-version.js'
@@ -207,6 +208,7 @@ const start = async () => {
     await server.register(resPairingRoutes, { prefix: '/api' })
     await server.register(mobileRosterRoutes, { prefix: '/api/mobile-roster' })
     await server.register(crewNotifyRoutes, { prefix: '/api/crew-app/v1' })
+    await server.register(absenceRoutes, { prefix: '/api/absence' })
     await server.register(rosterRoutes)
     await server.register(ganttRoutes)
     await server.register(scenarioRoutes)

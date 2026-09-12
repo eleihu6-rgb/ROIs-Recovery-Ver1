@@ -35,6 +35,7 @@ import { CrewInfoDialog } from '@/components/roster/crew-info-dialog'
 import { AutoAssignDialog } from '@/components/roster/auto-assign-dialog'
 import { BestFitDialog } from '@/components/best-fit/best-fit-dialog'
 import { GanttDayStatisticsDialog } from '@/components/gantt/gantt-day-statistics-dialog'
+import { CrewAbsenceDialog } from '@/components/roster/crew-absence-dialog'
 import { AiChatPanel } from '@/components/ai-chat/ai-chat-panel'
 import { useUrlSync } from '@/hooks/use-url-sync'
 
@@ -185,6 +186,7 @@ export const AppShell = () => {
           the Live pairing pane and its row context menu both drive. */}
       <BestFitDialog />
       <GanttDayStatisticsDialog />
+      <CrewAbsenceDialog />
       {canAccessRbot && <AiChatPanel />}
     </div>
   )

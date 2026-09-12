@@ -39,6 +39,7 @@ const PUBLIC_EXACT_ROUTES = [
   // mobile roster; the global JWT hook would otherwise reject them.
   { method: 'POST', path: '/api/crew-app/v1/notifications' },
   { method: 'POST', path: '/api/crew-app/v1/notifications/:notifId/read' },
+  { method: 'POST', path: '/api/crew-app/v1/absence' },
 ]
 
 /**

@@ -148,6 +148,7 @@ export const RosterPane = ({ paneId, draggable, onDragStart, onDragEnd, onClose 
     setHoveredCrew(rowId ?? '', cx, cy)
   }, [setHoveredCrew])
   const handleBulkDeleteOpen = useCallback(() => setBulkDeleteOpen(true), [])
+  const handleCrewAbsenceOpen = useCallback(() => useUiStore.getState().openCrewAbsenceDialog(), [])
 
   const toolbar = useMemo(() => (_rowCount: number) => (
     <PaneToolbar
@@ -182,12 +183,13 @@ export const RosterPane = ({ paneId, draggable, onDragStart, onDragEnd, onClose 
     sortFields,
     sortChips,
     dropTargetRow,
+    onCrewAbsenceClick: handleCrewAbsenceOpen,
     onRosterBulkDeleteClick: handleBulkDeleteOpen,
   }), [
     loading, crewLoading, rosterProgress, filterChips, queryMode, handleQueryModeToggle, handleRemoveFilter,
     handleFilterOpen, globalFilterChips, clearFilters,
     loadingMore, handleHeaderRowRightClick, handleViolationHover, sortFields,
-    sortChips, dropTargetRow, handleBulkDeleteOpen,
+    sortChips, dropTargetRow, handleBulkDeleteOpen, handleCrewAbsenceOpen,
   ])
 
   return (

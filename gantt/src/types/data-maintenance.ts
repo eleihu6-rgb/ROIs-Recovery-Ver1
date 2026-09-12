@@ -31,7 +31,7 @@ export type DataEntityId =
   | 'holiday'
   | 'crew' | 'crew_base' | 'crew_rank' | 'crew_fleet' | 'crew_qualification' | 'crew_team'
   | 'crew_status' | 'crew_certificate' | 'crew_license' | 'crew_lic_instructor' | 'crew_language'
-  | 'crew_entitlement' | 'crew_memo' | 'crew_profile' | 'crew_seniority' | 'crew_kpi_adjust'
+  | 'crew_entitlement' | 'crew_memo' | 'crew_profile' | 'crew_seniority' | 'crew_kpi_adjust' | 'crew_absence'
 
 export interface DataColumnConfig {
   key: string

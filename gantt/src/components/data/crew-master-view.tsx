@@ -18,7 +18,7 @@ const PRIMARY_SUB_ENTITIES: DataEntityId[] = [
 
 const SECONDARY_SUB_ENTITIES: DataEntityId[] = [
   'crew_status', 'crew_certificate', 'crew_license', 'crew_language',
-  'crew_entitlement', 'crew_memo', 'crew_seniority', 'crew_kpi_adjust',
+  'crew_entitlement', 'crew_memo', 'crew_seniority', 'crew_kpi_adjust', 'crew_absence',
 ]
 
 const ALL_SUB_ENTITIES: DataEntityId[] = [

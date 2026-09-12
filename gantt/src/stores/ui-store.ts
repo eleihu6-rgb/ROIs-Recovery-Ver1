@@ -156,6 +156,11 @@ interface UiStore {
   openAutoAssignDialog: (crewIds: string[], pane?: PaneType | null) => void
   closeAutoAssignDialog: () => void
 
+  /** Crew absence records dialog (roster pane toolbar). */
+  crewAbsenceOpen: boolean
+  openCrewAbsenceDialog: () => void
+  closeCrewAbsenceDialog: () => void
+
   /** Timeline day statistics dialog. */
   ganttDayStatisticsOpen: boolean
   ganttDayStatisticsDate: string | null
@@ -380,6 +385,10 @@ export const useUiStore = create<UiStore>((set) => ({
     set({ autoAssignOpen: true, autoAssignCrewIds: crewIds, autoAssignPane: pane }),
   closeAutoAssignDialog: () =>
     set({ autoAssignOpen: false, autoAssignCrewIds: [], autoAssignPane: null }),
+
+  crewAbsenceOpen: false,
+  openCrewAbsenceDialog: () => set({ crewAbsenceOpen: true }),
+  closeCrewAbsenceDialog: () => set({ crewAbsenceOpen: false }),
 
   ganttDayStatisticsOpen: false,
   ganttDayStatisticsDate: null,

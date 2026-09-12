@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { ArrowUpDown, Filter, Settings2, X, SlidersHorizontal, Navigation, Bell, Gauge, RefreshCw, ShieldPlus, ListX, Trash2, Route, Sparkles } from 'lucide-react'
+import { ArrowUpDown, Filter, Settings2, X, SlidersHorizontal, Navigation, Bell, Gauge, RefreshCw, ShieldPlus, ListX, Trash2, Route, CalendarOff, Sparkles } from 'lucide-react'
 import { ColumnConfigDialog } from '@/components/common/column-config-dialog'
 import { usePaneStore } from '@/stores/pane-store'
 import { SESSION_COLORS } from '@/stores/pairing-store'
@@ -40,6 +40,8 @@ interface PaneConditionStripProps {
   onViolationsClick?: () => void
   /** Count of violation messages currently loaded (badge on the alert button). */
   violationCount?: number
+  /** Open the Crew Absence records dialog (Live roster panes only). */
+  onCrewAbsenceClick?: () => void
   /** Open the Roster Quality Analyzer (scenario roster pane only). */
   onQualityClick?: () => void
   /** Count of crew with open quality findings (badge on the quality button). */
@@ -104,6 +106,7 @@ export const PaneConditionStrip = memo(({
   onNaviClick,
   onViolationsClick,
   violationCount,
+  onCrewAbsenceClick,
   onQualityClick,
   qualityIssueCount,
   onRecheck,
@@ -329,6 +332,16 @@ export const PaneConditionStrip = memo(({
               </button>
             )}
             {/* Legality Alert Center — lists loaded violation messages (roster panes only) */}
+            {onCrewAbsenceClick && (
+              <button
+                className="inline-flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-all duration-100 hover:bg-accent/60 hover:text-foreground active:scale-95"
+                onClick={onCrewAbsenceClick}
+                title="Crew Absence — records submitted from the crew app"
+                data-testid="crew-absence-button"
+              >
+                <CalendarOff className="h-3 w-3" />
+              </button>
+            )}
             {onViolationsClick && (
               <button
                 className="relative inline-flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-all duration-100 hover:bg-accent/60 hover:text-foreground active:scale-95"
