@@ -16,11 +16,14 @@ export type SpecPageId =
 export type V2StackParamList = {
   Tabs: undefined;
   Alerts: undefined;
+  /** Full-screen city viewer; `index` picks the page inside the destination list. */
+  Destination: { index: number };
   TripDetails: { tripId: string };
   UpcomingAlarms: undefined;
   AlarmsSettings: undefined;
   TimeZone: undefined;
   Preferences: undefined;
+  Appearance: undefined;
   PersonalInfo: undefined;
   Spec: { id: SpecPageId };
 };

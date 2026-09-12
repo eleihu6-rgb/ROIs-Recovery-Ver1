@@ -48,10 +48,16 @@ const etFlyingRows: MockRow[] = [
     flt_id: '9001',
     flt_num: 'ET805',
     fleet: '7M8',
+    register: 'ET-AVK',
     dep_arp: 'ADD',
     arv_arp: 'NBO',
     start_utc: '2026-09-01T12:30:00.000Z',
     end_utc: '2026-09-01T14:30:00.000Z',
+    est_start_utc: '2026-09-01T12:35:00.000Z',
+    est_end_utc: '2026-09-01T14:40:00.000Z',
+    act_start_utc: '2026-09-01T12:42:00.000Z',
+    act_end_utc: '2026-09-01T14:47:00.000Z',
+    blk_min: 120,
   },
   {
     pairing_id: '2001',
@@ -62,10 +68,16 @@ const etFlyingRows: MockRow[] = [
     flt_id: '9002',
     flt_num: 'ET802',
     fleet: '7M8',
+    register: null,
     dep_arp: 'NBO',
     arv_arp: 'ADD',
     start_utc: '2026-09-01T16:00:00.000Z',
     end_utc: '2026-09-01T18:00:00.000Z',
+    est_start_utc: null,
+    est_end_utc: null,
+    act_start_utc: null,
+    act_end_utc: null,
+    blk_min: 120,
   },
 ]
 
@@ -103,5 +115,22 @@ describe('authenticateAndLoadMobileRoster (ET carrier)', () => {
     // Fleet/type rides along with each flight so the crew app can print the
     // aircraft next to the flight number (it showed nothing before this).
     expect(result.pairings[0].flights.map(flight => flight.fleet)).toEqual(['7M8', '7M8'])
+    // Operational detail for the destination / trip-details pages: tail, ETD/ETA,
+    // ATD/ATA and block time come straight off the flight row.
+    expect(result.pairings[0].flights[0]).toMatchObject({
+      register: 'ET-AVK',
+      estStartUtc: '2026-09-01T12:35:00.000Z',
+      estEndUtc: '2026-09-01T14:40:00.000Z',
+      actStartUtc: '2026-09-01T12:42:00.000Z',
+      actEndUtc: '2026-09-01T14:47:00.000Z',
+      blockMinutes: 120,
+    })
+    // A flight with no estimate/actual yet stays null instead of inventing one.
+    expect(result.pairings[0].flights[1]).toMatchObject({
+      register: null,
+      estStartUtc: null,
+      actStartUtc: null,
+      blockMinutes: 120,
+    })
   })
 })

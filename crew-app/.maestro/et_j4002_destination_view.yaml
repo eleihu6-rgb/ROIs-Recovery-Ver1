@@ -1,0 +1,119 @@
+# Home ▸ Explore your destinations ▸ tap a picture → full-screen city view.
+#
+# Proves Ryan's 2026-09-11 asks:
+#   • the city picture opens almost full screen with ETD/ETA, ATD/ATA, gate and
+#     hotel/transfer detail (rows ordered STD → ETD → ATD);
+#   • swiping left/right moves to the next city;
+#   • Trip Details carries the same extra rows in event order.
+#
+# Run: maestro test crew-app/.maestro/et_j4002_destination_view.yaml --debug-output /tmp/dest-run
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+# The picker animates in; wait for the row before tapping it (this raced once).
+- extendedWaitUntil:
+    visible:
+      id: "airline-ET"
+    timeout: 10000
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4002"
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: "dest-DMM"
+    direction: DOWN
+- takeScreenshot: dest_00_home_destination_strip
+
+# The tapped city opens almost full screen.
+- tapOn:
+    id: "dest-DMM"
+- assertVisible:
+    id: "page-destination"
+- assertVisible:
+    id: "dest-city"
+- assertVisible: "STD .*"
+- assertVisible: "ETD .*"
+- assertVisible: "Gate .*"
+- takeScreenshot: dest_01_city_dmm
+
+# Scroll the detail panel (starting inside it) to the hotel + transfer block.
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 55%"
+- takeScreenshot: dest_01b_city_panel_hotel_transfer
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 55%"
+- takeScreenshot: dest_01c_city_panel_transfer_detail
+
+# Swipe to the next city and back.
+- swipe:
+    direction: LEFT
+- takeScreenshot: dest_02_city_next
+- swipe:
+    direction: RIGHT
+- takeScreenshot: dest_03_city_back_to_first
+
+# The same detail, plus the mocked pick-up / drop-off block, is on Trip Details.
+- tapOn:
+    id: "dest-trip-details"
+- assertVisible:
+    id: "page-trip-details"
+- assertVisible: "STD"
+- assertVisible: "ETD / ETA"
+- takeScreenshot: dest_04_trip_details_ops
+- swipe:
+    direction: UP
+- swipe:
+    direction: UP
+- takeScreenshot: dest_05_trip_details_hotel_transfer
+- swipe:
+    direction: UP
+- swipe:
+    direction: UP
+- takeScreenshot: dest_06_trip_details_transfer_detail
+
+# The DMM rotation is a same-day turn (no hotel) — the late-September Maputo
+# rotation is the real overnight, so prove the hotel + transfer block through
+# Schedule ▸ 29 Sep ▸ ET819 (a vertical list, unlike the Home strip).
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "dest-back"
+- tapOn:
+    id: "tab-schedule"
+- scrollUntilVisible:
+    element:
+      id: "duty-ET819"
+    direction: DOWN
+- tapOn:
+    id: "duty-ET819"
+- assertVisible:
+    id: "page-trip-details"
+- assertVisible: "Radisson .*"
+- swipe:
+    direction: UP
+- swipe:
+    direction: UP
+- takeScreenshot: dest_07_mpm_trip_details_hotel_transfer

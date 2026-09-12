@@ -32,6 +32,13 @@ export interface EkRosterFlight {
   fleet: string | null;
   registration: string | null;
   assignment: string;
+  /** Rolling operational times (null when the airline has none yet). */
+  estDepartureUtc?: string | null;
+  estArrivalUtc?: string | null;
+  actualDepartureUtc?: string | null;
+  actualArrivalUtc?: string | null;
+  /** Filed block time in minutes. */
+  blockMinutes?: number | null;
 }
 
 export interface EkRosterPairing {
@@ -98,6 +105,12 @@ const flightSchema = z.object({
   fleet: nullableString,
   registration: nullableString,
   assignment: requiredString,
+  // Operational detail (optional so the older EK crew-app API still validates).
+  estDepartureUtc: utcTimestamp.nullable().optional(),
+  estArrivalUtc: utcTimestamp.nullable().optional(),
+  actualDepartureUtc: utcTimestamp.nullable().optional(),
+  actualArrivalUtc: utcTimestamp.nullable().optional(),
+  blockMinutes: z.number().nullable().optional(),
 });
 const pairingSchema = z.object({
   pairingId: requiredString,
@@ -211,6 +224,13 @@ function normalizeF8RosterEnvelopeData(value: unknown): unknown {
             arrivalLocal: typeof flight.arrivalLocal === 'string' ? flight.arrivalLocal : null,
             fleet: typeof flight.fleet === 'string' ? flight.fleet : null,
             registration: typeof flight.registration === 'string' ? flight.registration : null,
+            // live-server sends `register` + est/act times off the flight row; the
+            // app's flight shape names them est/actual.
+            estDepartureUtc: typeof flight.estStartUtc === 'string' ? flight.estStartUtc : null,
+            estArrivalUtc: typeof flight.estEndUtc === 'string' ? flight.estEndUtc : null,
+            actualDepartureUtc: typeof flight.actStartUtc === 'string' ? flight.actStartUtc : null,
+            actualArrivalUtc: typeof flight.actEndUtc === 'string' ? flight.actEndUtc : null,
+            blockMinutes: typeof flight.blockMinutes === 'number' ? flight.blockMinutes : null,
             assignment: typeof flight.assignment === 'string' ? flight.assignment : pairingAssignment,
           };
         }),
@@ -282,6 +302,13 @@ export function mapEkRosterToTrips(value: unknown): Trip[] {
       hotel: '',
       ...(flight.departureLocal ? {localDepTime: flight.departureLocal} : {}),
       ...(flight.arrivalLocal ? {localArvTime: flight.arrivalLocal} : {}),
+      // Operational detail for the destination / trip-details pages.
+      ...(flight.registration ? {register: flight.registration} : {}),
+      ...(flight.estDepartureUtc ? {estDepUtc: flight.estDepartureUtc} : {}),
+      ...(flight.estArrivalUtc ? {estArvUtc: flight.estArrivalUtc} : {}),
+      ...(flight.actualDepartureUtc ? {actDepUtc: flight.actualDepartureUtc} : {}),
+      ...(flight.actualArrivalUtc ? {actArvUtc: flight.actualArrivalUtc} : {}),
+      ...(typeof flight.blockMinutes === 'number' ? {blockMinutes: flight.blockMinutes} : {}),
       assignment: flight.assignment,
     })),
   }));

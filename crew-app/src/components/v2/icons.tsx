@@ -13,6 +13,9 @@ export type IconName =
   | 'calcheck'
   | 'swap'
   | 'checkin'
+  | 'check'
+  | 'bed'
+  | 'car'
   | 'more'
   | 'heart'
   | 'chev'
@@ -120,6 +123,29 @@ export function Icon({ name, size = 24, color = '#fff', strokeWidth }: IconProps
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.6} strokeLinecap="round" strokeLinejoin="round">
           <Path d="M9 12l2 2 4-4" />
           <Rect x={3} y={4} width={18} height={16} rx={3} />
+        </Svg>
+      );
+    case 'check':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 2.2} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M5 12.5l4.5 4.5L19 7.5" />
+        </Svg>
+      );
+    // Line-style bed (crew hotel) and car (layover transfer) — same 24px grid and
+    // 1.6 stroke as the rest of the set.
+    case 'bed':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.6} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M3 19v-9M3 14h15.5a2.5 2.5 0 0 1 2.5 2.5V19" />
+          <Circle cx={7.5} cy={11.5} r={2.2} />
+        </Svg>
+      );
+    case 'car':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.6} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M4 13.5 5.6 9A2 2 0 0 1 7.5 7.7h9a2 2 0 0 1 1.9 1.3L20 13.5" />
+          <Rect x={3} y={13} width={18} height={4.6} rx={1.6} />
+          <Path d="M7 17.6v1.6M17 17.6v1.6" />
         </Svg>
       );
     case 'more':

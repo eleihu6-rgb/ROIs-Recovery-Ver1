@@ -7,6 +7,7 @@ import { classifyTrips, type Trip, type TripLeg } from '../travel/tripCsv';
 import { classifyGroundDuties, type GroundDuty } from '../roster/dutyDisplay';
 import type { PortalDuty } from '../travel/portalCapture';
 import {
+  deviceTimeZone,
   formatLegTime,
   hhmmForInstant,
   hhmmInZone,
@@ -19,7 +20,7 @@ import { alarmOptions, computeEffectiveAlarms, type EffectiveAlarm } from '../se
 import { airportZone } from '../settings/airportZones';
 import type { DutyAlarmOverride } from '../alarms/alarmsSlice';
 import { checkInHhmm } from '../travel/tripDisplay';
-import type { Meeting } from '../meetings/meetingSetup';
+import { DEFAULT_MEETING_MINUTES, meetingJoinUrl, type Meeting } from '../meetings/meetingSetup';
 import type { IconName } from '../../components/v2/icons';
 
 export const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -207,6 +208,21 @@ export interface DayMeeting {
   title: string;
   hhmm: string;
   where: string;
+  /** Start instant (ms) — used to order several meetings on one day. */
+  startMs: number;
+  /** Online-meeting join link (Teams / Zoom / Meet / Webex) or null for a
+   *  meeting with no link in its URL, location or invite body. */
+  joinUrl: string | null;
+  /** When the reminder for this meeting rings (HH:MM, display zone). */
+  alarmHhmm: string;
+  /** The crew silenced this meeting's reminder by tapping its alarm chip. */
+  muted: boolean;
+}
+
+/** Meeting reminder settings the Schedule tab needs to render a card. */
+export interface MeetingPrefs {
+  minutesBefore: number;
+  mutedIds: readonly string[];
 }
 
 export interface DayModel {
@@ -225,6 +241,25 @@ export interface DayModel {
 
 function ymd(d: Date): number {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+/**
+ * The zone a meeting's clock is shown in, following the app's Time-Zone setting
+ * so meetings read on the same clock as the duties around them. A meeting has no
+ * airport, so 'airport' mode means the event's OWN zone (Outlook writes the
+ * meeting's zone into EventKit) — the closest honest equivalent.
+ */
+function meetingZone(mode: TimeZoneMode, baseTz: string, eventTz: string | undefined): string {
+  if (mode === 'airport') {
+    return eventTz || deviceTimeZone();
+  }
+  if (mode === 'base') {
+    return baseTz;
+  }
+  if (mode === 'device') {
+    return deviceTimeZone();
+  }
+  return 'UTC';
 }
 
 /**
@@ -298,6 +333,7 @@ export function buildMonth(
   baseTz: string,
   alarms: Record<string, EffectiveAlarm>,
   now: Date,
+  meetingPrefs: MeetingPrefs = { minutesBefore: DEFAULT_MEETING_MINUTES, mutedIds: [] },
 ): MonthModel {
   const count = new Date(year, monthIdx + 1, 0).getDate();
   const todayKey = ymd(now);
@@ -349,17 +385,30 @@ export function buildMonth(
     }
   }
   for (const m of meetings) {
-    if (m.allDay) continue;
-    const start = new Date(m.startISO);
-    const dm = byKey.get(ymd(start));
-    if (dm) {
-      dm.meetings.push({
-        id: m.id, title: m.title, where: m.calendarTitle,
-        hhmm: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
-      });
-    }
+    // All-day events have no meaningful start, and a cancelled event is gone —
+    // same rule the reminder scheduler uses (computeMeetingAlarms).
+    if (m.allDay || m.cancelled) continue;
+    const startMs = Date.parse(m.startISO);
+    if (Number.isNaN(startMs)) continue;
+    const dm = byKey.get(ymd(new Date(startMs)));
+    if (!dm) continue;
+    const zone = meetingZone(mode, baseTz, m.timeZone);
+    dm.meetings.push({
+      id: m.id,
+      title: m.title,
+      where: m.calendarTitle,
+      startMs,
+      hhmm: hhmmInZone(new Date(startMs), zone),
+      joinUrl: meetingJoinUrl(m),
+      alarmHhmm: hhmmInZone(
+        new Date(startMs - meetingPrefs.minutesBefore * 60_000),
+        zone,
+      ),
+      muted: meetingPrefs.mutedIds.includes(m.id),
+    });
   }
   for (const dm of days) dm.legs.sort((a, b) => a.leg.depTime.localeCompare(b.leg.depTime));
+  for (const dm of days) dm.meetings.sort((a, b) => a.startMs - b.startMs);
 
   const isDuty = (dm: DayModel) => dm.kind !== 'off' && dm.kind !== 'layover';
   const todayIdx = days.findIndex(x => x.isToday);

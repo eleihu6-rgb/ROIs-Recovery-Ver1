@@ -18,10 +18,24 @@ export interface MobileRosterFlight {
   flightNumber: string
   /** Aircraft fleet/type code the flight is scheduled with (e.g. "7M8", "788"). */
   fleet: string | null
+  /** Aircraft tail/registration when the flight row carries one (e.g. "ET-AVK"). */
+  register: string | null
   departureAirport: string | null
   arrivalAirport: string | null
   startUtc: string
   endUtc: string
+  /**
+   * Rolling operational times from the same flight row (nullable — a planned
+   * flight has no estimate/actual yet):
+   *   est  → ETD / ETA (estimated departure / arrival)
+   *   act  → ATD / ATA (actual departure / arrival)
+   * `blockMinutes` is the planned block time the airline filed.
+   */
+  estStartUtc: string | null
+  estEndUtc: string | null
+  actStartUtc: string | null
+  actEndUtc: string | null
+  blockMinutes: number | null
 }
 
 export interface MobileRosterPairing {
@@ -96,10 +110,16 @@ type RosterRow = {
   flt_id: string | number | null
   flt_num: string | null
   fleet: string | null
+  register: string | null
   dep_arp: string | null
   arv_arp: string | null
   start_utc: string | null
   end_utc: string | null
+  est_start_utc: string | null
+  est_end_utc: string | null
+  act_start_utc: string | null
+  act_end_utc: string | null
+  blk_min: number | null
 }
 
 export class MobileRosterServiceError extends Error {
@@ -135,6 +155,18 @@ const toUtcString = (value: Date | string | null): string => {
   }
 
   return date.toISOString()
+}
+
+/**
+ * Same rendering as `toUtcString`, but for the operational columns that are
+ * legitimately absent (a planned flight has no estimate/actual yet).
+ */
+const optionalUtcString = (value: Date | string | null): string | null => {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
 const isWithinEffectiveWindow = (user: PbsUserRow, now: Date): boolean =>
@@ -270,10 +302,16 @@ export const authenticateAndLoadMobileRoster = async (
               rf.flt_id,
               f.flt_num,
               f.fleet,
+              f.register,
               coalesce(f.dep_arp, rf.dep_arp) as dep_arp,
               coalesce(f.arv_arp, rf.arv_arp) as arv_arp,
               ${utcIsoColumn('rf.sch_str_dt_utc')} as start_utc,
               ${utcIsoColumn('rf.sch_end_dt_utc')} as end_utc,
+              ${utcIsoColumn('f.est_dep_dt_utc')} as est_start_utc,
+              ${utcIsoColumn('f.est_arv_dt_utc')} as est_end_utc,
+              ${utcIsoColumn('f.act_dep_dt_utc')} as act_start_utc,
+              ${utcIsoColumn('f.act_arv_dt_utc')} as act_end_utc,
+              f.blk_min,
               rf.duty_seq,
               rf.seg_seq
        from ${liveSchema}.roster_flight rf
@@ -328,10 +366,16 @@ export const authenticateAndLoadMobileRoster = async (
             wr.flt_id,
             wr.flt_num,
             wr.fleet,
+            wr.register,
             wr.dep_arp,
             wr.arv_arp,
             wr.start_utc,
-            wr.end_utc
+            wr.end_utc,
+            wr.est_start_utc,
+            wr.est_end_utc,
+            wr.act_start_utc,
+            wr.act_end_utc,
+            wr.blk_min
      from window_rows wr
      left join pairing_boundaries pb on pb.pairing_id = wr.pairing_id
      order by wr.start_utc, wr.pairing_id, wr.duty_seq, wr.seg_seq`,
@@ -374,10 +418,16 @@ export const authenticateAndLoadMobileRoster = async (
       flightId,
       flightNumber: row.flt_num ?? '',
       fleet: row.fleet ?? null,
+      register: row.register?.trim() || null,
       departureAirport: row.dep_arp,
       arrivalAirport: row.arv_arp,
       startUtc: toUtcString(row.start_utc),
       endUtc: toUtcString(row.end_utc),
+      estStartUtc: optionalUtcString(row.est_start_utc),
+      estEndUtc: optionalUtcString(row.est_end_utc),
+      actStartUtc: optionalUtcString(row.act_start_utc),
+      actEndUtc: optionalUtcString(row.act_end_utc),
+      blockMinutes: row.blk_min === null ? null : Number(row.blk_min),
     })
   }
 

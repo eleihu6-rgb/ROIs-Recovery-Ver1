@@ -23,6 +23,16 @@ export interface TripLeg {
   assignment?: string;
   /** Full hotel booking detail when the leg has a layover hotel (from detailAll). */
   hotelBooking?: import('./portalCapture').HotelBooking;
+  // ── Operational detail (live-server flight row; absent on older captures) ──
+  /** Aircraft tail/registration, e.g. "ET-AVK". */
+  register?: string;
+  /** Absolute UTC instants (ISO-8601, explicit Z): estimates then actuals. */
+  estDepUtc?: string;
+  estArvUtc?: string;
+  actDepUtc?: string;
+  actArvUtc?: string;
+  /** Filed block time, minutes. */
+  blockMinutes?: number;
 }
 
 export interface Trip {
