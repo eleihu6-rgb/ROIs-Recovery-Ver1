@@ -34,7 +34,6 @@ import { ScheduleDetailsDialog } from '@/components/roster/schedule-details-dial
 import { DailyTaskCalendarDialog } from '@/components/roster/daily-task-calendar-dialog'
 import { CrewInfoDialog } from '@/components/roster/crew-info-dialog'
 import { AutoAssignDialog } from '@/components/roster/auto-assign-dialog'
-import { BestFitDialog } from '@/components/best-fit/best-fit-dialog'
 import { GanttDayStatisticsDialog } from '@/components/gantt/gantt-day-statistics-dialog'
 import { CrewAbsenceDialog } from '@/components/roster/crew-absence-dialog'
 import { AiChatPanel } from '@/components/ai-chat/ai-chat-panel'
