@@ -1,0 +1,50 @@
+# Extra IATA codes folded into the generated coordinate table on top of the
+# live `flight` ∪ `roster_flight` network.
+#
+# Why this file exists: a portal-captured roster (TG/PR) can carry a city the
+# sample SIT `flight` table never had, and the Route map must still draw it.
+# Extend this list whenever a simulator run shows an airport the map skipped.
+#
+# Source of the first block: the TG crew-35459 September 2026 roster captured in
+# the iOS Simulator (portal capture) — its destinations plus the hubs those
+# carriers connect through. All of them resolve in the live `airport` table.
+CGK
+DAC
+DPS
+ICN
+NGO
+NRT
+OSL
+PEK
+#
+# PR (Philippine Airlines) network + the hubs a return trip realistically passes
+# through, so a PR capture does not repeat this gap.
+BWN
+GES
+HNL
+KUL
+SGN
+TPE
+AMS
+CDG
+DFW
+DEL
+FCO
+FRA
+IAD
+IAH
+JFK
+LAX
+MEL
+MNL
+MUC
+MXP
+ORD
+SEA
+SFO
+SYD
+VIE
+YUL
+YVR
+YYZ
+ZRH

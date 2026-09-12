@@ -16,6 +16,10 @@ import { hasDutyCard, MON, resolveCardIndex, type DayMeeting, type DayModel, typ
 import { useV2Nav } from './nav';
 import { IconButton } from './HomeScreen';
 import { MeetingCard, MeetingRow, type MeetingActions } from './MeetingCard';
+import { CalendarView } from './CalendarView';
+import { RouteMapView } from './RouteMapView';
+import { SCHED_VIEWS, viewPick, type SchedViewMode, type SchedViewOption } from './schedView';
+import { useBase } from './useV2';
 import { toggleMeetingMute } from '../meetings/meetingsSlice';
 import { codeAddsInfo, type GroundDuty } from '../roster/dutyDisplay';
 import type { TimeZoneMode } from '../settings/settingsSlice';
@@ -38,6 +42,16 @@ export function ScheduleScreen() {
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const month = useMonth(ym.y, ym.m, now);
   const [active, setActive] = useState(month.focusIndex);
+  // Ver11 roster views: one enum decides which sibling view renders. Timeline is
+  // the default so nothing about today's screen changes for a crew who never
+  // opens the menu.
+  const [view, setView] = useState<SchedViewMode>('timeline');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const base = useBase();
+  // Calendar's selected day: opens on whatever day Timeline opens on (today when
+  // it holds a duty, else the next one) and re-seats when the month rolls.
+  const focusDay = month.days[month.focusIndex]?.day ?? null;
+  const [calDay, setCalDay] = useState<number | null>(focusDay);
   const list = useRef<FlatList<DayModel>>(null);
   const strip = useRef<FlatList<DayModel>>(null);
   const lock = useRef(0);
@@ -94,6 +108,11 @@ export function ScheduleScreen() {
   }), [dispatch]);
 
   useEffect(() => { const t = setTimeout(() => focus(month.focusIndex, false), 50); return () => clearTimeout(t); }, [month.focusIndex, focus]);
+  // Re-seat only when the month (or the day it opens on) changes — a live roster
+  // refresh must not throw away the day the crew is looking at.
+  useEffect(() => {
+    setCalDay(focusDay);
+  }, [ym.y, ym.m, focusDay]);
 
   const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (Date.now() - lock.current < 700) return;
@@ -117,41 +136,154 @@ export function ScheduleScreen() {
   const title = `Sched ${MON[ym.m]} ${ym.y}`;
   return (
     <GradientScreen palette={p}>
-      <View style={[s.head, { paddingTop: insets.top + 4 }]}>
+      {/* Tapping anywhere else dismisses the roster-view menu (the floating panel
+          has no scrim of its own in the mock). */}
+      {menuOpen ? (
+        <Pressable
+          style={[StyleSheet.absoluteFill, { zIndex: 15 }]}
+          onPress={() => setMenuOpen(false)}
+          testID="sched-view-menu-backdrop"
+          accessibilityLabel="Close roster view menu"
+        />
+      ) : null}
+      <View style={[s.head, { paddingTop: insets.top + 4, zIndex: 20 }]}>
         <View style={s.titleRow}>
-          {/* Empty spacer balances the bell so the month stays screen-centred. */}
+          {/* Empty spacer balances the menu button so the month stays screen-centred. */}
           <View style={s.iconBtn} />
           <View style={s.monthNav}>
             <Pressable onPress={shiftMonth(-1)} style={s.iconBtn} testID="sched-prev-month"><Icon name="back" size={24} color={p.ink} strokeWidth={1.8} /></Pressable>
             <Text style={[s.title, { color: p.ink }]} numberOfLines={1} testID="sched-title">{title}</Text>
             <Pressable onPress={shiftMonth(1)} style={s.iconBtn} testID="sched-next-month"><Icon name="chev" size={24} color={p.ink} strokeWidth={1.8} /></Pressable>
           </View>
-          <IconButton name="bell" badge={alertCount} palette={p} onPress={() => nav.navigate('Alerts')} testID="sched-alerts" />
+          {/* Ver11: the tab's own bell becomes the "Roster view" menu. Alerts keep
+              their entry point as a row inside that menu (with the same badge),
+              so nothing the bell did is lost. */}
+          <View>
+            <IconButton
+              name="menu3"
+              badge={alertCount}
+              palette={p}
+              onPress={() => setMenuOpen(o => !o)}
+              testID="sched-view-menu"
+            />
+            {menuOpen ? (
+              <RosterViewMenu
+                palette={p}
+                current={view}
+                alertCount={alertCount}
+                onPick={mode => {
+                  setView(mode);
+                  setMenuOpen(false);
+                }}
+                onAlerts={() => {
+                  setMenuOpen(false);
+                  nav.navigate('Alerts');
+                }}
+              />
+            ) : null}
+          </View>
         </View>
-        <FlatList
-          ref={strip} horizontal data={month.days} keyExtractor={d => String(d.key)} showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.strip} getItemLayout={(_, i) => ({ length: 60, offset: 60 * i, index: i })}
-          renderItem={({ item, index }) => (
-            <Pressable onPress={() => focus(index)} testID={`day-${item.day}`}
-              style={[s.chip, { backgroundColor: index === active ? '#fff' : p.frost, borderColor: index === active ? '#fff' : p.frostLine }]}>
-              <Text style={[s.dow, { color: index === active ? p.g2 : p.inkSoft }]}>{item.dow.toUpperCase()}</Text>
-              <Text style={[s.dnum, { color: index === active ? p.g1 : p.ink }, item.isToday && s.today]}>{item.day}</Text>
-              <View style={[s.dot, { backgroundColor: index === active ? p.g2 : '#fff', opacity: item.kind !== 'off' && item.kind !== 'layover' ? 1 : 0 }]} />
-            </Pressable>
-          )}
-        />
+        {/* The date strip belongs to the Timeline view only — Calendar and Route
+            map carry their own headers (mock Ver11). */}
+        {view === 'timeline' ? (
+          <FlatList
+            ref={strip} horizontal data={month.days} keyExtractor={d => String(d.key)} showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.strip} getItemLayout={(_, i) => ({ length: 60, offset: 60 * i, index: i })}
+            renderItem={({ item, index }) => (
+              <Pressable onPress={() => focus(index)} testID={`day-${item.day}`}
+                style={[s.chip, { backgroundColor: index === active ? '#fff' : p.frost, borderColor: index === active ? '#fff' : p.frostLine }]}>
+                <Text style={[s.dow, { color: index === active ? p.g2 : p.inkSoft }]}>{item.dow.toUpperCase()}</Text>
+                <Text style={[s.dnum, { color: index === active ? p.g1 : p.ink }, item.isToday && s.today]}>{item.day}</Text>
+                <View style={[s.dot, { backgroundColor: index === active ? p.g2 : '#fff', opacity: item.kind !== 'off' && item.kind !== 'layover' ? 1 : 0 }]} />
+              </Pressable>
+            )}
+          />
+        ) : null}
       </View>
-      <FlatList
-        ref={list} data={listDays} keyExtractor={d => String(d.key)} contentContainerStyle={s.list} showsVerticalScrollIndicator={false}
-        onViewableItemsChanged={onViewable} viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
-        onScrollToIndexFailed={info => setTimeout(() => list.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
-        ListEmptyComponent={<Text style={[s.empty, { color: p.inkSoft }]}>No duties published for {MON[ym.m]} {ym.y}.</Text>}
-        renderItem={({ item }) => (
-          <DayCard day={item} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} actions={meetingActions} />
-        )}
-        testID="sched-list"
-      />
+      {view === 'timeline' ? (
+        <FlatList
+          ref={list} data={listDays} keyExtractor={d => String(d.key)} contentContainerStyle={s.list} showsVerticalScrollIndicator={false}
+          onViewableItemsChanged={onViewable} viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
+          onScrollToIndexFailed={info => setTimeout(() => list.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
+          ListEmptyComponent={<Text style={[s.empty, { color: p.inkSoft }]}>No duties published for {MON[ym.m]} {ym.y}.</Text>}
+          renderItem={({ item }) => (
+            <DayCard day={item} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} actions={meetingActions} />
+          )}
+          testID="sched-list"
+        />
+      ) : null}
+      {view === 'calendar-compact' || view === 'calendar-detail' ? (
+        <CalendarView
+          month={month}
+          mode={view}
+          palette={p}
+          selectedDay={calDay}
+          onSelectDay={setCalDay}
+          onOpenDetail={day => {
+            setCalDay(day);
+            setView('calendar-detail');
+          }}
+          onBackToCompact={() => setView('calendar-compact')}
+          actions={meetingActions}
+        />
+      ) : null}
+      {view === 'route' ? <RouteMapView month={month} base={base} palette={p} /> : null}
     </GradientScreen>
+  );
+}
+
+/**
+ * The "Roster view" picker that replaces the Schedule tab's own bell (mock
+ * Ver11): the three views, then the Alerts entry point that used to live in that
+ * icon slot. Both the picker and the alerts row are reachable with one tap.
+ */
+function RosterViewMenu({
+  palette: p,
+  current,
+  alertCount,
+  onPick,
+  onAlerts,
+}: {
+  palette: CarrierPalette;
+  current: SchedViewMode;
+  alertCount: number;
+  onPick: (mode: SchedViewMode) => void;
+  onAlerts: () => void;
+}): React.JSX.Element {
+  const lit = viewPick(current);
+  const icons: Record<SchedViewOption['picks'], 'list' | 'cal' | 'map'> = { timeline: 'list', calendar: 'cal', route: 'map' };
+  return (
+    <View style={[s.menu, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]} testID="sched-view-menu-panel">
+      <Text style={[s.menuLabel, { color: p.cardSoft }]}>Roster view</Text>
+      {SCHED_VIEWS.map(v => {
+        const on = v.picks === lit;
+        return (
+          <Pressable
+            key={v.picks}
+            onPress={() => onPick(v.mode)}
+            testID={`sched-view-${v.picks}`}
+            style={[s.menuOpt, on ? { backgroundColor: p.btn } : null]}
+          >
+            <Icon name={icons[v.picks]} size={18} color={on ? '#fff' : p.cardInk} />
+            <View style={{ flex: 1 }}>
+              <Text style={[s.menuOptTitle, { color: on ? '#fff' : p.cardInk }]}>{v.label}</Text>
+              <Text style={[s.menuOptHint, { color: on ? '#fff' : p.cardSoft }]}>{v.hint}</Text>
+            </View>
+            {on ? <Icon name="check" size={16} color="#fff" /> : null}
+          </Pressable>
+        );
+      })}
+      <View style={[s.menuDivider, { backgroundColor: p.cardLine }]} />
+      <Pressable onPress={onAlerts} testID="sched-alerts" style={s.menuOpt}>
+        <Icon name="bell" size={18} color={p.cardInk} />
+        <Text style={[s.menuOptTitle, { color: p.cardInk, flex: 1 }]}>Alerts</Text>
+        {alertCount > 0 ? (
+          <View style={[s.menuBadge, { backgroundColor: p.crit }]}>
+            <Text style={s.menuBadgeText}>{alertCount}</Text>
+          </View>
+        ) : null}
+      </Pressable>
+    </View>
   );
 }
 
@@ -284,7 +416,10 @@ function Art({ kind, day }: { kind: DayKind; day: number }) {
 
 const s = StyleSheet.create({
   head: { paddingHorizontal: 22, paddingBottom: 8 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // zIndex keeps the whole title row (and the menu hanging off it) above the
+  // date strip rendered after it — otherwise the strip's day chips paint over
+  // the menu's first row.
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 30 },
   monthNav: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { textAlign: 'center', fontSize: 18, fontWeight: '600', marginBottom: 8, paddingHorizontal: 4 },
@@ -314,4 +449,13 @@ const s = StyleSheet.create({
   pk: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6 },
   pv: { fontSize: 16, fontWeight: '600', marginTop: 3 },
   empty: { textAlign: 'center', fontSize: 14, marginTop: 60 },
+  // ── Ver11 "Roster view" picker (floats under the Schedule header) ──
+  menu: { position: 'absolute', top: 42, right: 0, zIndex: 30, elevation: 12, width: 236, borderRadius: 14, borderWidth: 1, padding: 8, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
+  menuLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.7, textTransform: 'uppercase', paddingHorizontal: 8, paddingTop: 4, paddingBottom: 6 },
+  menuOpt: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 10 },
+  menuOptTitle: { fontSize: 14, fontWeight: '600' },
+  menuOptHint: { fontSize: 11, marginTop: 1 },
+  menuDivider: { height: 1, marginVertical: 6, marginHorizontal: 4 },
+  menuBadge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  menuBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 });

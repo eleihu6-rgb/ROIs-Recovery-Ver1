@@ -1,0 +1,92 @@
+# Schedule tab ▸ Roster view (Ver11) — ET crew J4002 (mobile-roster API).
+#
+# Same walk as the TG flow on the API-backed carrier: the roster arrives from
+# live-server, so the Route map must centre on ADD and draw the month's real
+# network (DMM / MPM / MGQ …), not a demo set.
+#
+# Run: maestro test crew-app/.maestro/et_j4002_sched_roster_views.yaml --debug-output /tmp/etsched-run
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-ET"
+    timeout: 10000
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4002"
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-list"
+    timeout: 20000
+- takeScreenshot: etsched_00_timeline
+- tapOn:
+    id: "sched-view-menu"
+- assertVisible: "Roster view"
+- takeScreenshot: etsched_01_menu
+- tapOn:
+    id: "sched-view-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "cal-grid"
+    timeout: 10000
+- takeScreenshot: etsched_02_calendar
+- tapOn:
+    id: "cal-to-detail"
+- extendedWaitUntil:
+    visible:
+      id: "cal-timeline"
+    timeout: 10000
+- takeScreenshot: etsched_03_day_timeline
+- tapOn:
+    id: "cal-to-compact"
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-route"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 10000
+- takeScreenshot: etsched_04_route_map
+- swipe:
+    start: "50%, 80%"
+    end: "50%, 45%"
+- takeScreenshot: etsched_05_route_stats
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-timeline"
+- extendedWaitUntil:
+    visible:
+      id: "sched-list"
+    timeout: 10000
+- takeScreenshot: etsched_06_back_to_timeline

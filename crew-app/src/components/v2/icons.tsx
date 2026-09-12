@@ -37,8 +37,14 @@ export type IconName =
   | 'house'
   | 'doc'
   | 'shield'
+  | 'lock'
   | 'book'
-  | 'jet';
+  | 'jet'
+  | 'menu3'
+  | 'map'
+  | 'list'
+  | 'zoomIn'
+  | 'zoomOut';
 
 export interface IconProps {
   name: IconName;
@@ -304,6 +310,46 @@ export function Icon({ name, size = 24, color = '#fff', strokeWidth }: IconProps
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
           <Path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" />
+        </Svg>
+      );
+    case 'menu3':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.9} strokeLinecap="round">
+          <Path d="M4 7h16M4 12h16M4 17h16" />
+        </Svg>
+      );
+    case 'list':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
+        </Svg>
+      );
+    case 'map':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6z" />
+          <Path d="M9 4v14M15 6v14" />
+        </Svg>
+      );
+    case 'zoomIn':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round">
+          <Circle cx={11} cy={11} r={6.5} />
+          <Path d="M11 8.5v5M8.5 11h5M16 16l4 4" />
+        </Svg>
+      );
+    case 'lock':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round" strokeLinejoin="round">
+          <Rect x={5} y={10.5} width={14} height={9.5} rx={2.4} />
+          <Path d="M8.6 10.5V8a3.4 3.4 0 0 1 6.8 0v2.5" />
+        </Svg>
+      );
+    case 'zoomOut':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round">
+          <Circle cx={11} cy={11} r={6.5} />
+          <Path d="M8.5 11h5M16 16l4 4" />
         </Svg>
       );
     default:

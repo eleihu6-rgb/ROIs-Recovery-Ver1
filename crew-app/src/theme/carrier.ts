@@ -35,6 +35,10 @@ export interface CarrierPalette {
   frostLine: string;
   frostStrong: string;
   card: string;
+  /** The card surface at (near-)full opacity — for UI that floats OVER a card
+   *  (the Schedule roster-view menu), where the translucent `card` would let the
+   *  content underneath read through. */
+  cardSolid: string;
   cardInk: string;
   cardSoft: string;
   cardLine: string;
@@ -60,6 +64,7 @@ const shared = {
   // dark gradient read as a hole punched in the screen (Ryan: "white card with 20%
   // more transparency, not pure white").
   card: 'rgba(241,245,249,0.8)',
+  cardSolid: 'rgba(247,250,253,0.97)',
   cardInk: '#1e3a5a',
   cardSoft: '#6c7f93',
   cardLine: '#c9d5e1',
