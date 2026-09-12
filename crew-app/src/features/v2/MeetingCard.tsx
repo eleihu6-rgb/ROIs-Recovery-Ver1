@@ -37,7 +37,9 @@ export function MeetingRow({
   return (
     <View style={[s.meet, { backgroundColor: CARD_INSET }]} testID={`meeting-${meeting.id}`}>
       <View style={s.head}>
-        <Text style={[s.time, { color: p.cardInk }]}>{meeting.hhmm}</Text>
+        <Text style={[s.time, { color: p.cardInk }]} numberOfLines={1}>
+          {meeting.hhmm}
+        </Text>
         <View style={{ flex: 1 }}>
           <Text style={[s.title, { color: p.cardInk }]} numberOfLines={2}>
             {meeting.title}
@@ -123,7 +125,10 @@ const s = StyleSheet.create({
   cardBody: { padding: 12, paddingTop: 8 },
   meet: { flexDirection: 'column', gap: 10, padding: 12, borderRadius: 12, marginTop: 8 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  time: { fontSize: 15, fontWeight: '600', width: 44 },
+  // Fixed enough to fit "HH:MM" at this weight/size without wrapping (was 44,
+  // one px short for bold "13:00" — Ryan, 2026-09-12); flexShrink 0 keeps the
+  // flex:1 title column from squeezing it further.
+  time: { fontSize: 15, fontWeight: '600', width: 50, flexShrink: 0 },
   title: { fontSize: 13, fontWeight: '600' },
   where: { fontSize: 12, marginTop: 2 },
   cal: { fontSize: 10, letterSpacing: 0.8, borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },

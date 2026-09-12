@@ -79,7 +79,7 @@ test.describe('Recovery Help — cases 102–104', () => {
 
     expect(requestedImages).toEqual([])
     const recoveryTopics = await page.locator('[data-testid^="help-topic-recovery-"]').evaluateAll(els => els.map(el => el.getAttribute('data-testid')))
-    expect(recoveryTopics).toEqual(['recovery-overview', 'recovery-cost-library', 'recovery-102', 'recovery-103', 'recovery-104', 'recovery-costs'].map(slug => `help-topic-${slug}`))
+    expect(recoveryTopics).toEqual(['recovery-overview', 'recovery-cost-library', 'recovery-102', 'recovery-103', 'recovery-104', 'recovery-costs', 'recovery-case-001'].map(slug => `help-topic-${slug}`))
 
     let article = await openTopic(page, 'recovery-overview')
     await expect(article).toContainText('Apply selected option')

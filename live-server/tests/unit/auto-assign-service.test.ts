@@ -100,6 +100,7 @@ const makeDeps = (over: Partial<AutoAssignDeps> = {}): AutoAssignDeps => {
       division: 'P',
     })),
     fetchCandidates: vi.fn(async () => [P1.cand, P2.cand]),
+    resolveBaseZone: vi.fn(async () => 'Africa/Addis_Ababa'),
     precheck: vi.fn(async () => ({ ok: true as const, actingRank: 'CA' })),
     fetchExistingRoster: vi.fn(async () => [] as PreviewRosterItem[]),
     fetchSegments: vi.fn(async (_f, ids: number[]) => {
@@ -310,5 +311,126 @@ describe('planAutoAssign', () => {
     // Explicit earliest: the three week-0 pairings, front-loaded.
     const earliest = await planAutoAssign(fakeFastify, { ...monthInput, distribution: 'earliest' }, spreadDeps())
     expect(earliest.crews[0].assigned.map((a) => a.pairingId)).toEqual([200, 201, 202])
+  })
+
+  // ── Auto-assign Duties: duty-type limits, RES pool, DO ground pass ─────────
+
+  const RES_AM = (id: number, day: string): CandidatePairing => ({
+    id,
+    label: `PRAM-1000-2200 ${day.slice(5)}`,
+    base: 'ADD',
+    fleet: '737',
+    division: 'P',
+    assignmentGroup: 'RES',
+    assignment: 'PRAM',
+    schStr: new Date(`${day}T07:00:00Z`),
+    schEnd: new Date(`${day}T19:00:00Z`),
+  })
+
+  /** Candidates by group, the way the real SQL filter would answer. */
+  const groupedCandidates = (res: CandidatePairing[] = []) =>
+    vi.fn(async (_f: unknown, args: { group?: string | null }) =>
+      args.group === 'RES' ? res : args.group === 'FLY' || args.group == null ? [P1.cand, P2.cand] : [],
+    )
+
+  const weekInput = { crewIds: ['J4001'], startDate: '2026-09-10', endDate: '2026-09-16' } // 7 days = one window
+
+  it('(g) legacy request (no dutyTypes) yields no outcome and no ground duties', async () => {
+    const plan = await planAutoAssign(fakeFastify, baseInput, makeDeps())
+    expect(plan.crews[0].outcome).toEqual([])
+    expect(plan.crews[0].assignedGround).toEqual([])
+    expect(plan.crews[0].assigned.map((a) => a.pairingId)).toEqual([151528, 151540])
+  })
+
+  it('(h) FLY every-7-days max blocks the second pairing in the same rolling window', async () => {
+    const deps = makeDeps({ fetchCandidates: groupedCandidates() as unknown as AutoAssignDeps['fetchCandidates'] })
+    const plan = await planAutoAssign(fakeFastify, { ...weekInput, dutyTypes: [{ group: 'FLY', every7Max: 1 }] }, deps)
+    const crew = plan.crews[0]
+    expect(crew.assigned.map((a) => a.pairingId)).toEqual([151528])
+    const skip = crew.skipped.find((s) => s.pairingId === 151540)
+    expect(skip?.reason).toBe('every7-max')
+    expect(crew.outcome[0]).toMatchObject({ group: 'FLY', existing: 0, assigned: 1, every7Max: 1 })
+    expect(crew.outcome[0].windows[0]).toMatchObject({ start: '2026-09-10', end: '2026-09-16', count: 1, maxHit: true })
+  })
+
+  it('(i) period max caps the whole range', async () => {
+    const deps = makeDeps({ fetchCandidates: groupedCandidates() as unknown as AutoAssignDeps['fetchCandidates'] })
+    const plan = await planAutoAssign(fakeFastify, { ...weekInput, dutyTypes: [{ group: 'FLY', periodMax: 1 }] }, deps)
+    expect(plan.crews[0].assigned).toHaveLength(1)
+    expect(plan.crews[0].skipped.find((s) => s.pairingId === 151540)?.reason).toBe('period-max')
+  })
+
+  it('(j) RES pool matches base + division (fleet ignored) and fills only to its every-7-days min', async () => {
+    const res = [RES_AM(9001, '2026-09-10'), RES_AM(9002, '2026-09-15')]
+    const fetchCandidates = groupedCandidates(res)
+    const deps = makeDeps({ fetchCandidates: fetchCandidates as unknown as AutoAssignDeps['fetchCandidates'] })
+    const plan = await planAutoAssign(
+      fakeFastify,
+      { ...weekInput, dutyTypes: [{ group: 'FLY' }, { group: 'RES', every7Min: 1, periodMax: 2 }] },
+      deps,
+    )
+    const resCall = fetchCandidates.mock.calls.find((c) => (c[1] as { group?: string }).group === 'RES')?.[1] as Record<string, unknown>
+    expect(resCall).toMatchObject({ group: 'RES', matchFleet: false, division: 'P', base: 'ADD' })
+    const crew = plan.crews[0]
+    // FLY first (both), then exactly one RES to satisfy min 1 in the single window.
+    expect(crew.assigned.map((a) => a.pairingId)).toEqual([151528, 151540, 9001])
+    expect(crew.assigned[2].group).toBe('RES')
+    expect(crew.outcome.find((o) => o.group === 'RES')).toMatchObject({ assigned: 1, windows: [{ count: 1, minUnmet: false }] })
+  })
+
+  it('(k) DO is placed on the latest free ADD-local day of the window as a full-day ground duty', async () => {
+    const deps = makeDeps({ fetchCandidates: groupedCandidates() as unknown as AutoAssignDeps['fetchCandidates'] })
+    const plan = await planAutoAssign(
+      fakeFastify,
+      { ...weekInput, dutyTypes: [{ group: 'FLY' }, { group: 'DO', every7Min: 1, every7Max: 2, periodMax: 8 }] },
+      deps,
+    )
+    const crew = plan.crews[0]
+    // FLY occupies 09-11..09-12 and 09-13..09-14; latest free day is 09-16.
+    expect(crew.assignedGround).toEqual([
+      {
+        group: 'DO',
+        assignment: 'DO',
+        day: '2026-09-16',
+        base: 'ADD',
+        startDtUtc: '2026-09-15T21:00:00.000Z', // ADD = UTC+3
+        endDtUtc: '2026-09-16T20:59:59.000Z',
+      },
+    ])
+    expect(crew.steps.some((s) => s.kind === 'ground')).toBe(true)
+    // The DO went through the engine together with the FLY survivors.
+    const lastCall = (deps.runLegality as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[1] as { afterItems: PreviewRosterItem[] }
+    expect(lastCall.afterItems.some((it) => it.pairingId == null && it.assignment === 'DO')).toBe(true)
+    expect(crew.summary.assignedCount).toBe(3)
+  })
+
+  it('(l) existing roster DO counts toward the min, so no new DO is added', async () => {
+    const existing: PreviewRosterItem[] = [
+      { id: 5, crewId: 'J4001', pairingId: null, assignmentGroup: 'GRD', assignment: 'DO', schStrDtUtc: '2026-09-14T21:00:00.000Z', schEndDtUtc: '2026-09-15T20:59:59.000Z' },
+    ]
+    const deps = makeDeps({
+      fetchCandidates: groupedCandidates() as unknown as AutoAssignDeps['fetchCandidates'],
+      fetchExistingRoster: vi.fn(async () => existing),
+    })
+    const plan = await planAutoAssign(fakeFastify, { ...weekInput, dutyTypes: [{ group: 'DO', every7Min: 1 }] }, deps)
+    expect(plan.crews[0].assignedGround).toEqual([])
+    expect(plan.crews[0].outcome[0]).toMatchObject({ group: 'DO', existing: 1, assigned: 0, windows: [{ count: 1, minUnmet: false }] })
+  })
+
+  it('(m) DO min stays unmet (warning step) when every day is occupied', async () => {
+    const busy: PreviewRosterItem[] = [
+      { id: 7, crewId: 'J4001', pairingId: 800, schStrDtUtc: '2026-09-09T21:00:00.000Z', schEndDtUtc: '2026-09-16T21:00:00.000Z' },
+    ]
+    const deps = makeDeps({
+      fetchCandidates: groupedCandidates() as unknown as AutoAssignDeps['fetchCandidates'],
+      fetchExistingRoster: vi.fn(async () => busy),
+    })
+    const plan = await planAutoAssign(fakeFastify, { ...weekInput, dutyTypes: [{ group: 'DO', every7Min: 1 }] }, deps)
+    const crew = plan.crews[0]
+    expect(crew.assignedGround).toEqual([])
+    const unmet = crew.steps.find((s) => s.kind === 'unmet') as { group: string; message: string } | undefined
+    expect(unmet?.group).toBe('DO')
+    expect(unmet?.message).toContain('no free day')
+    expect(crew.outcome[0].windows[0].minUnmet).toBe(true)
   })
 })

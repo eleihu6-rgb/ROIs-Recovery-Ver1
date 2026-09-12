@@ -204,6 +204,7 @@ describe("R'Bot send", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][0]).toBe('http://127.0.0.1:3005/ai/crew/chat');
     expect(fetchMock.mock.calls[1][0]).toBe(`${RBOT_PUBLIC_API_BASE}/ai/crew/chat`);
+    expect(fetchMock.mock.calls[1][0]).toBe('https://cr.rois.one/ai/crew/chat');
     expect(reply.content).toBe('Opening your route map.');
   });
 

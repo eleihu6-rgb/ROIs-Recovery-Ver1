@@ -12,7 +12,7 @@ import {
   mutationExclusiveService,
 } from '../../services/lock/mutation-exclusive-service.js'
 import { precheckAssignment } from '../../services/assignment/precheck-service.js'
-import { planAutoAssign } from '../../services/roster/auto-assign-service.js'
+import { listDutyGroups, planAutoAssign } from '../../services/roster/auto-assign-service.js'
 
 // Recompute window padding around the mutated task date (a pairing spans duties forward;
 // the back pad absorbs timezone skew where the local crew_base_dt is a day before UTC start).
@@ -448,6 +448,18 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
         policy: z.object({ skipOnSoft: z.boolean().optional() }).optional(),
         maxPerCrew: z.number().int().positive().max(200).optional(),
         distribution: z.enum(['even', 'earliest']).optional(),
+        dutyTypes: z
+          .array(
+            z.object({
+              group: z.string().trim().min(1).max(10),
+              periodMax: z.number().int().positive().nullable().optional(),
+              every7Min: z.number().int().positive().nullable().optional(),
+              every7Max: z.number().int().positive().nullable().optional(),
+            }),
+          )
+          .min(1)
+          .max(10)
+          .optional(),
       })
       .refine((b) => b.startDate <= b.endDate, { message: 'startDate must be <= endDate' })
       .refine((b) => (b.rpFrom == null) === (b.rpTo == null), {
@@ -462,6 +474,22 @@ export default async function rosterRoutes(fastify: FastifyInstance) {
     try {
       const plan = await planAutoAssign(fastify, parsed.data)
       return success(reply, plan)
+    } catch (err) {
+      return error(reply, 500, (err as Error).message)
+    }
+  })
+
+  // POST /api/roster/auto-assign/duty-groups — assignment-group catalogue with
+  // per-crew-matched open-pairing pool sizes for the Auto-assign Duties dialog.
+  fastify.post('/auto-assign/duty-groups', async (request, reply) => {
+    const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    const schema = z
+      .object({ crewIds: z.array(z.string().min(1)).min(1), startDate: ymd, endDate: ymd })
+      .refine((b) => b.startDate <= b.endDate, { message: 'startDate must be <= endDate' })
+    const parsed = schema.safeParse(request.body)
+    if (!parsed.success) return fail(reply, 400, parsed.error.message)
+    try {
+      return success(reply, await listDutyGroups(fastify, parsed.data))
     } catch (err) {
       return error(reply, 500, (err as Error).message)
     }

@@ -401,7 +401,7 @@ export const ContextMenu = () => {
         closeContextMenu()
       },
     })
-    // Auto-assign open pairings — operate on the multi-selected crew rows if the
+    // Auto-assign Duties — operate on the multi-selected crew rows if the
     // right-clicked row is part of the selection, otherwise just this one crew.
     // Same selection semantics as "Pin N Selected Rows".
     {
@@ -412,8 +412,8 @@ export const ContextMenu = () => {
           : [task.crewId!]
       const label =
         targetCrewIds.length > 1
-          ? `Auto-assign open pairings (${targetCrewIds.length} crew)`
-          : 'Auto-assign open pairings'
+          ? `Auto-assign Duties (${targetCrewIds.length} crew)`
+          : 'Auto-assign Duties'
       items.push({
         icon: Wand2,
         label,

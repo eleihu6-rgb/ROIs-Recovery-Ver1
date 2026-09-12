@@ -3,6 +3,8 @@ import type { FastifyInstance } from 'fastify'
 import { crew } from '../../models/crew/crew.js'
 import { crewBase } from '../../models/crew/crew-base.js'
 import { crewFleet } from '../../models/crew/crew-fleet.js'
+import { airport } from '../../models/base/airport.js'
+import { assignment as assignmentModel, assignmentGroup as assignmentGroupModel } from '../../models/base/assignment.js'
 import { pairing } from '../../models/pairing/pairing.js'
 import { pairingSegment } from '../../models/pairing/pairing-segment.js'
 import { rule } from '../../models/rule/rule.js'
@@ -39,16 +41,62 @@ export interface AutoAssignInput {
    *  - 'earliest': legacy greedy earliest-first pack.
    */
   distribution?: 'even' | 'earliest'
+  /**
+   * Duty-type configuration (Auto-assign Duties). Omitted ⇒ legacy behaviour:
+   * a single un-grouped pairing pass (base+fleet, no window/period limits).
+   * Rows are processed in order (default FLY → RES → DO).
+   */
+  dutyTypes?: DutyTypeConfig[]
 }
 
-export type StepKind = 'filter' | 'consider' | 'skip' | 'assign'
-export type SkipReason = 'overlap' | 'no-slot' | 'rule'
+export interface DutyTypeConfig {
+  /** assignment_group code, e.g. 'FLY' | 'RES' | 'DO'. */
+  group: string
+  /** Max occurrences across the whole date range (null = no limit). */
+  periodMax?: number | null
+  /** Min occurrences in EVERY rolling 7-day window inside the range (max-gap rule). */
+  every7Min?: number | null
+  /** Max occurrences in ANY rolling 7-day window inside the range. */
+  every7Max?: number | null
+}
+
+export interface DutyWindowOutcome {
+  start: string
+  end: string
+  count: number
+  minUnmet: boolean
+  maxHit: boolean
+}
+
+export interface DutyOutcome {
+  group: string
+  existing: number
+  assigned: number
+  periodMax: number | null
+  every7Min: number | null
+  every7Max: number | null
+  windows: DutyWindowOutcome[]
+}
+
+export interface AssignedGround {
+  group: string
+  assignment: string
+  /** Base-local calendar day (YYYY-MM-DD). */
+  day: string
+  base: string
+  startDtUtc: string
+  endDtUtc: string
+}
+
+export type StepKind = 'filter' | 'consider' | 'skip' | 'assign' | 'ground' | 'unmet'
+export type SkipReason = 'overlap' | 'no-slot' | 'rule' | 'period-max' | 'every7-max'
 
 export type Step =
-  | { kind: 'filter'; found: number; message: string }
-  | { kind: 'consider'; pairingId: number; label: string; startDt: string | null; endDt: string | null; rank: string }
+  | { kind: 'filter'; group?: string; found: number; message: string }
+  | { kind: 'consider'; group?: string; pairingId: number; label: string; startDt: string | null; endDt: string | null; rank: string }
   | {
       kind: 'skip'
+      group?: string
       pairingId: number
       label: string
       reason: SkipReason
@@ -57,10 +105,15 @@ export type Step =
       severity?: number
       message: string
     }
-  | { kind: 'assign'; pairingId: number; label: string; rank: string; startDt: string | null; endDt: string | null }
+  | { kind: 'assign'; group?: string; pairingId: number; label: string; rank: string; startDt: string | null; endDt: string | null }
+  /** A ground duty (e.g. DO) planned as a base-local full day. */
+  | { kind: 'ground'; group: string; assignment: string; day: string; startDt: string; endDt: string; message: string }
+  /** A rolling window whose every7Min could not be satisfied. */
+  | { kind: 'unmet'; group: string; start: string; end: string; count: number; message: string }
 
 export interface Assigned {
   pairingId: number
+  group?: string
   rosterActingRank: string
   label: string
   startDt: string | null
@@ -83,7 +136,11 @@ export interface CrewPlan {
   fleets: string[]
   steps: Step[]
   assigned: Assigned[]
+  /** Ground duties (DO, ...) to create via add-ground-task, in plan order. */
+  assignedGround: AssignedGround[]
   skipped: Skipped[]
+  /** Per duty-type accounting vs the configured limits (empty on the legacy path). */
+  outcome: DutyOutcome[]
   summary: { assignedCount: number; skippedCount: number; blockMinutes: number }
 }
 
@@ -144,8 +201,20 @@ export interface AutoAssignDeps {
   ) => Promise<CrewContext>
   fetchCandidates: (
     fastify: FastifyInstance,
-    args: { base: string; fleets: string[]; startDate: string; endDate: string },
+    args: {
+      base: string
+      fleets: string[]
+      startDate: string
+      endDate: string
+      /** assignment_group filter (null = any group, legacy). */
+      group?: string | null
+      /** When false the pool ignores fleet and matches crew division instead (RES). */
+      matchFleet?: boolean
+      division?: string | null
+    },
   ) => Promise<CandidatePairing[]>
+  /** IANA zone of a base airport (airport.zone_id), for base-local day maths. */
+  resolveBaseZone: (fastify: FastifyInstance, base: string) => Promise<string | null>
   precheck: typeof precheckAssignment
   fetchExistingRoster: (
     fastify: FastifyInstance,
@@ -262,8 +331,8 @@ const defaultDeps: AutoAssignDeps = {
     }
   },
 
-  async fetchCandidates(fastify, { base, fleets, startDate, endDate }) {
-    if (fleets.length === 0) return []
+  async fetchCandidates(fastify, { base, fleets, startDate, endDate, group = null, matchFleet = true, division = null }) {
+    if (matchFleet && fleets.length === 0) return []
     const rows = await fastify.db
       .select({
         id: pairing.id,
@@ -281,7 +350,9 @@ const defaultDeps: AutoAssignDeps = {
         and(
           notDeleted(pairing.isDeleted),
           eq(pairing.base, base),
-          inArray(pairing.fleet, fleets),
+          matchFleet ? inArray(pairing.fleet, fleets) : undefined,
+          !matchFleet && division ? eq(pairing.division, division) : undefined,
+          group ? eq(pairing.assignmentGroup, group) : undefined,
           // Same window semantics as pairing-service.list / the pairing pane:
           // a pairing belongs to the window if it STARTS inside it.
           between(pairing.schStrDtUtc, new Date(`${startDate}T00:00:00Z`), new Date(`${endDate}T23:59:59Z`)),
@@ -300,6 +371,15 @@ const defaultDeps: AutoAssignDeps = {
       schStr: r.schStr,
       schEnd: r.schEnd,
     }))
+  },
+
+  async resolveBaseZone(fastify, base) {
+    const [row] = await fastify.db
+      .select({ zoneId: airport.zoneId })
+      .from(airport)
+      .where(eq(airport.airport, base))
+      .limit(1)
+    return row?.zoneId ?? null
   },
 
   precheck: precheckAssignment,
@@ -412,13 +492,127 @@ const expandAccepted = (
   actingRank: string,
 ): PreviewRosterItem[] => buildPairingPreviewItems(cand, segs, crewId, actingRank)
 
+// ── Base-local day maths ─────────────────────────────────────────────────────
+// Ground duties (DO) are full base-local days and window/period counters are
+// keyed by the base-local calendar day a duty starts on.
+
+const fmtCache = new Map<string, Intl.DateTimeFormat>()
+const zoneFmt = (zone: string): Intl.DateTimeFormat => {
+  let f = fmtCache.get(zone)
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-CA', {
+      timeZone: zone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    })
+    fmtCache.set(zone, f)
+  }
+  return f
+}
+
+const zoneParts = (ms: number, zone: string): { ymd: string; wallMs: number } => {
+  const parts = zoneFmt(zone).formatToParts(new Date(ms))
+  const get = (t: string): number => Number(parts.find((p) => p.type === t)?.value ?? 0)
+  const y = get('year')
+  const mo = get('month')
+  const d = get('day')
+  const ymd = `${String(y).padStart(4, '0')}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  return { ymd, wallMs: Date.UTC(y, mo - 1, d, get('hour'), get('minute'), get('second')) }
+}
+
+/** Base-local calendar day (YYYY-MM-DD) of a UTC instant. */
+export const localYmd = (ms: number, zone: string): string => zoneParts(ms, zone).ymd
+
+/** UTC instant of base-local midnight starting `ymd`. */
+export const localMidnightUtcMs = (ymd: string, zone: string): number => {
+  const guess = Date.parse(`${ymd}T00:00:00Z`)
+  const off1 = zoneParts(guess, zone).wallMs - guess
+  let r = guess - off1
+  const off2 = zoneParts(r, zone).wallMs - r
+  if (off2 !== off1) r = guess - off2
+  return r
+}
+
+const dayList = (from: string, to: string): string[] => {
+  const out: string[] = []
+  for (let d = from; d <= to; d = addDays(d, 1)) out.push(d)
+  return out
+}
+
 // ── Per-crew planner ─────────────────────────────────────────────────────────
 
 interface AcceptedEntry {
-  cand: CandidatePairing
+  /** Stable key: pairing id for pairings, `ground:<group>:<day>` for ground duties. */
+  key: string
+  group: string
+  cand?: CandidatePairing
+  ground?: AssignedGround
   actingRank: string
   items: PreviewRosterItem[]
   blockMinutes: number
+  startMs: number
+  /** Base-local day index inside the range (−1 when outside). */
+  dayIdx: number
+}
+
+/** Legacy path marker: one un-grouped pairing pass, base+fleet, no limits. */
+const LEGACY_GROUP = '*'
+const FLY_FAMILY = new Set(['FLY', 'FLT'])
+const isFlyFamily = (g: string): boolean => g === LEGACY_GROUP || FLY_FAMILY.has(g)
+
+/** Rolling-window / period counters for one duty type. */
+class DutyCounter {
+  readonly counts: number[]
+  total = 0
+  constructor(
+    readonly cfg: DutyTypeConfig,
+    readonly nDays: number,
+  ) {
+    this.counts = new Array<number>(nDays).fill(0)
+  }
+  /** Windows are 7 consecutive days fully inside the range; a short range is one window. */
+  get windows(): Array<[number, number]> {
+    if (this.nDays <= 7) return [[0, this.nDays - 1]]
+    const out: Array<[number, number]> = []
+    for (let i = 0; i + 6 < this.nDays; i++) out.push([i, i + 6])
+    return out
+  }
+  windowCount(w: [number, number]): number {
+    let c = 0
+    for (let i = w[0]; i <= w[1]; i++) c += this.counts[i]
+    return c
+  }
+  windowsContaining(dayIdx: number): Array<[number, number]> {
+    return this.windows.filter(([a, b]) => dayIdx >= a && dayIdx <= b)
+  }
+  /** Why adding one occurrence on `dayIdx` would break a limit, or null when allowed. */
+  blocker(dayIdx: number): { reason: 'period-max' | 'every7-max'; message: string } | null {
+    const { periodMax, every7Max } = this.cfg
+    if (periodMax != null && this.total + 1 > periodMax) {
+      return { reason: 'period-max', message: `${this.cfg.group} period max ${periodMax} already reached` }
+    }
+    if (every7Max != null && dayIdx >= 0) {
+      for (const w of this.windowsContaining(dayIdx)) {
+        if (this.windowCount(w) + 1 > every7Max) {
+          return { reason: 'every7-max', message: `${this.cfg.group} every-7-days max ${every7Max} hit in window day ${w[0] + 1}..${w[1] + 1}` }
+        }
+      }
+    }
+    return null
+  }
+  add(dayIdx: number): void {
+    this.total++
+    if (dayIdx >= 0) this.counts[dayIdx]++
+  }
+  remove(dayIdx: number): void {
+    this.total--
+    if (dayIdx >= 0) this.counts[dayIdx]--
+  }
 }
 
 const planForCrew = async (
@@ -431,11 +625,15 @@ const planForCrew = async (
     skipOnSoft: boolean
     maxPerCrew: number
     distribution: 'even' | 'earliest'
+    dutyTypes: DutyTypeConfig[] | null
   },
   deps: AutoAssignDeps,
 ): Promise<CrewPlan> => {
   const steps: Step[] = []
   const skipped: Skipped[] = []
+  const legacy = input.dutyTypes == null
+  const dutyTypes: DutyTypeConfig[] = legacy ? [{ group: LEGACY_GROUP }] : input.dutyTypes!
+  const tag = (g: string): string | undefined => (g === LEGACY_GROUP ? undefined : g)
 
   const ctx = await deps.resolveCrewContext(fastify, crewId, input.fleets, input.startDate)
 
@@ -448,195 +646,102 @@ const planForCrew = async (
       fleets: ctx.fleets,
       steps,
       assigned: [],
+      assignedGround: [],
       skipped,
+      outcome: [],
       summary: { assignedCount: 0, skippedCount: 0, blockMinutes: 0 },
     }
   }
 
   if (!ctx.base) return emptyPlan(`Crew ${crewId} has no resolvable base — nothing to assign`)
-  if (ctx.fleets.length === 0) return emptyPlan(`Crew ${crewId} has no fleet qualifications — nothing to assign`)
+  if (legacy && ctx.fleets.length === 0) return emptyPlan(`Crew ${crewId} has no fleet qualifications — nothing to assign`)
 
-  const candidates = await deps.fetchCandidates(fastify, {
-    base: ctx.base,
-    fleets: ctx.fleets,
-    startDate: input.startDate,
-    endDate: input.endDate,
-  })
+  const zone = (await deps.resolveBaseZone(fastify, ctx.base)) ?? 'UTC'
+  const days = dayList(input.startDate, input.endDate)
+  const dayIndex = new Map<string, number>(days.map((d, i) => [d, i]))
+  const dayIdxOf = (ms: number): number => dayIndex.get(localYmd(ms, zone)) ?? -1
 
-  steps.push({
-    kind: 'filter',
-    found: candidates.length,
-    message: `Found ${candidates.length} open pairing(s) at base ${ctx.base}, fleet(s) ${ctx.fleets.join('/')} in ${input.startDate}..${input.endDate}`,
-  })
-
-  const accepted: AcceptedEntry[] = []
   const occupied: Array<{ start: number; end: number }> = []
+  const counters = new Map<string, DutyCounter>()
+  const existingCount = new Map<string, number>()
+  for (const t of dutyTypes) {
+    counters.set(t.group, new DutyCounter(t, days.length))
+    existingCount.set(t.group, 0)
+  }
 
-  // Seed occupancy from the existing running roster so we never double-book.
+  // Seed occupancy + per-type counters from the existing running roster.
   const existing = await deps.fetchExistingRoster(
     fastify,
     crewId,
     minYmd(addDays(input.startDate, -2), addDays(input.rpFrom, -1)),
     maxYmd(addDays(input.endDate, 2), addDays(input.rpTo, 1)),
   )
+  const seenPairing = new Set<number>()
   for (const it of existing) {
     const s = toMs(it.schStrDtUtc)
     const e = toMs(it.schEndDtUtc)
-    if (s != null && e != null) occupied.push({ start: s, end: e })
+    if (s == null || e == null) continue
+    occupied.push({ start: s, end: e })
+    if (legacy) continue
+    // One occurrence per pairing (roster_flight is crew×segment), one per ground row.
+    if (it.pairingId != null) {
+      if (seenPairing.has(it.pairingId)) continue
+      seenPairing.add(it.pairingId)
+    }
+    const g = (it.assignmentGroup ?? '').toUpperCase()
+    const a = (it.assignment ?? '').toUpperCase()
+    const t = dutyTypes.find((d) => d.group === g || d.group === a)
+    if (!t) continue
+    const idx = dayIdxOf(s)
+    if (idx < 0) continue
+    counters.get(t.group)!.add(idx)
+    existingCount.set(t.group, (existingCount.get(t.group) ?? 0) + 1)
   }
 
-  // ── Eligibility pass (candidate order): cheap precheck + time parse ─────────
-  // no-slot skips (division/open-slot/rank, or unscheduled) are emitted here;
-  // survivors carry their parsed window for the selection stage below.
-  const eligible: Array<{ cand: CandidatePairing; actingRank: string; startMs: number; endMs: number }> = []
-  for (const cand of candidates) {
-    const pre = await deps.precheck(fastify, crewId, cand.id)
-    if (!pre.ok) {
-      steps.push({ kind: 'skip', pairingId: cand.id, label: cand.label, reason: 'no-slot', message: pre.message })
-      skipped.push({ pairingId: cand.id, label: cand.label, reason: 'no-slot', message: pre.message })
-      continue
-    }
-    const startMs = toMs(cand.schStr)
-    const endMs = toMs(cand.schEnd)
-    if (startMs == null || endMs == null) {
-      const msg = 'Pairing has no scheduled time'
-      steps.push({ kind: 'skip', pairingId: cand.id, label: cand.label, reason: 'no-slot', message: msg })
-      skipped.push({ pairingId: cand.id, label: cand.label, reason: 'no-slot', message: msg })
-      continue
-    }
-    eligible.push({ cand, actingRank: pre.actingRank, startMs, endMs })
-  }
-
-  // Emit a consider step, then either reserve the window (accept) or overlap-skip.
-  const evaluate = (e: (typeof eligible)[number]): boolean => {
-    steps.push({
-      kind: 'consider',
-      pairingId: e.cand.id,
-      label: e.cand.label,
-      startDt: toIso(e.cand.schStr),
-      endDt: toIso(e.cand.schEnd),
-      rank: e.actingRank,
-    })
-    if (occupied.some((o) => timeRangesOverlap(e.startMs, e.endMs, o.start, o.end))) {
-      const msg = 'Time-overlaps a duty already on the roster (existing or just-picked)'
-      steps.push({ kind: 'skip', pairingId: e.cand.id, label: e.cand.label, reason: 'overlap', message: msg })
-      skipped.push({ pairingId: e.cand.id, label: e.cand.label, reason: 'overlap', message: msg })
-      return false
-    }
-    occupied.push({ start: e.startMs, end: e.endMs })
-    accepted.push({ cand: e.cand, actingRank: e.actingRank, items: [], blockMinutes: 0 })
-    return true
-  }
-
-  if (input.distribution === 'earliest') {
-    // ── Legacy greedy earliest-first pack ────────────────────────────────────
-    for (const e of eligible) {
-      if (accepted.length >= input.maxPerCrew) break
-      evaluate(e)
-    }
-  } else {
-    // ── Even pack: level block hours across 7-day week buckets ───────────────
-    // Bucket eligible by week index from startDate (candidate order = earliest-
-    // first within a week), then repeatedly feed the currently lightest week so
-    // flying hours spread across the month instead of front-loading week 1.
-    const WEEK_MS = 7 * 24 * 60 * 60 * 1000
-    const startDayMs = Date.parse(`${input.startDate}T00:00:00Z`)
-    const weekOf = (ms: number): number => Math.max(0, Math.floor((ms - startDayMs) / WEEK_MS))
-
-    const blockByPairing = await deps.fetchCandidateBlockMinutes(
-      fastify,
-      eligible.map((e) => e.cand.id),
-    )
-
-    const queues = new Map<number, Array<(typeof eligible)[number]>>()
-    for (const e of eligible) {
-      const w = weekOf(e.startMs)
-      const q = queues.get(w)
-      if (q) q.push(e)
-      else queues.set(w, [e])
-    }
-
-    // Seed each week's load from the existing roster's block minutes so weeks
-    // that already carry duty are treated as heavier.
-    const weekLoad = new Map<number, number>()
-    for (const it of existing) {
-      const s = toMs(it.schStrDtUtc)
-      const en = toMs(it.schEndDtUtc)
-      if (s != null && en != null && en > s) {
-        const w = weekOf(s)
-        weekLoad.set(w, (weekLoad.get(w) ?? 0) + (en - s) / 60_000)
-      }
-    }
-
-    while (accepted.length < input.maxPerCrew) {
-      const openWeeks = [...queues.entries()].filter(([, q]) => q.length > 0).map(([w]) => w)
-      if (openWeeks.length === 0) break
-      // Lightest week first; tie-break earliest week so the trace still reads
-      // chronologically when loads are equal.
-      openWeeks.sort((a, b) => (weekLoad.get(a) ?? 0) - (weekLoad.get(b) ?? 0) || a - b)
-      const w = openWeeks[0]
-      const e = queues.get(w)!.shift()!
-      if (evaluate(e)) {
-        weekLoad.set(w, (weekLoad.get(w) ?? 0) + (blockByPairing.get(e.cand.id) ?? 0))
-      }
-    }
-  }
-
-  // ── Expand accepted pairings to crew×segment PreviewRosterItem rows ────────
-  const acceptedIds = accepted.map((a) => a.cand.id)
-  const segMap = await deps.fetchSegments(fastify, acceptedIds)
-  for (const a of accepted) {
-    const segs = segMap.get(a.cand.id) ?? []
-    a.items = expandAccepted(a.cand, segs, crewId, a.actingRank)
-    a.blockMinutes = blockMinutesOf(segs)
-  }
-
-  // ── Validate assembled roster with the real engine, backtrack-trim ─────────
+  const fixed: AcceptedEntry[] = [] // survivors of earlier duty-type passes
   const ruleSkipSteps: Array<{ step: Extract<Step, { kind: 'skip' }>; ruleCode: string }> = []
-  let live = [...accepted]
 
-  const buildAfterItems = (): PreviewRosterItem[] => [...existing, ...live.flatMap((a) => a.items)]
-
-  if (live.length > 0) {
+  /** Validate existing + fixed + `live` with the real engine; trim `live` until clean. */
+  const validateAndTrim = async (live: AcceptedEntry[]): Promise<AcceptedEntry[]> => {
+    let cur = [...live]
+    if (cur.length === 0) return cur
     for (let iter = 0; iter < MAX_TRIM_ITERATIONS; iter++) {
       const { violations } = await deps.runLegality(fastify, {
         contextType: 'live',
         affectedCrewIds: [crewId],
-        afterItems: buildAfterItems(),
-        focusPairingIds: live.map((a) => a.cand.id),
+        afterItems: [...existing, ...fixed.flatMap((a) => a.items), ...cur.flatMap((a) => a.items)],
+        focusPairingIds: cur.map((a) => a.cand?.id).filter((id): id is number => id != null),
         rpFrom: input.rpFrom,
         rpTo: input.rpTo,
       })
-
       // severity 3 = hard (always remove); skipOnSoft also removes severity 1-2.
       const removable = violations.filter((v) => v.severity >= 3 || (input.skipOnSoft && v.severity >= 1))
       if (removable.length === 0) break
 
-      const liveIds = new Set(live.map((a) => a.cand.id))
-      const named = removable
-        .map((v) => v.pairingId)
-        .filter((id): id is number => id != null && liveIds.has(id))
+      const liveIds = new Set(cur.map((a) => a.cand?.id).filter((id): id is number => id != null))
+      const named = removable.map((v) => v.pairingId).filter((id): id is number => id != null && liveIds.has(id))
+      const byLatest = (x: AcceptedEntry, y: AcceptedEntry): number => y.startMs - x.startMs
 
       let target: AcceptedEntry | undefined
       let cause: LegalityPreviewViolation | undefined
       if (named.length > 0) {
         // Remove the latest-starting violating pairing (the most marginal add).
-        target = live
-          .filter((a) => named.includes(a.cand.id))
-          .sort((x, y) => (toMs(y.cand.schStr) ?? 0) - (toMs(x.cand.schStr) ?? 0))[0]
-        cause = removable.find((v) => v.pairingId === target!.cand.id) ?? removable[0]
+        target = cur.filter((a) => a.cand != null && named.includes(a.cand.id)).sort(byLatest)[0]
+        cause = removable.find((v) => v.pairingId === target!.cand!.id) ?? removable[0]
       } else {
         // No violation names one of our adds — drop the latest add to make progress.
-        target = [...live].sort((x, y) => (toMs(y.cand.schStr) ?? 0) - (toMs(x.cand.schStr) ?? 0))[0]
+        target = [...cur].sort(byLatest)[0]
         cause = removable[0]
       }
-
       if (!target) break
 
+      const pairingId = target.cand?.id ?? 0
+      const label = target.cand?.label ?? `${target.ground!.assignment} ${target.ground!.day}`
       const step: Extract<Step, { kind: 'skip' }> = {
         kind: 'skip',
-        pairingId: target.cand.id,
-        label: target.cand.label,
+        group: tag(target.group),
+        pairingId,
+        label,
         reason: 'rule',
         ruleCode: cause.ruleCode,
         severity: cause.severity,
@@ -644,20 +749,248 @@ const planForCrew = async (
       }
       steps.push(step)
       ruleSkipSteps.push({ step, ruleCode: cause.ruleCode })
-      skipped.push({
-        pairingId: target.cand.id,
-        label: target.cand.label,
-        reason: 'rule',
-        ruleCode: cause.ruleCode,
-        message: cause.message,
-      })
+      skipped.push({ pairingId, label, reason: 'rule', ruleCode: cause.ruleCode, message: cause.message })
+      counters.get(target.group)?.remove(target.dayIdx)
+      cur = cur.filter((a) => a.key !== target!.key)
+      if (cur.length === 0) break
+    }
+    return cur
+  }
 
-      live = live.filter((a) => a.cand.id !== target!.cand.id)
-      if (live.length === 0) break
+  // ── Pairing-backed pass (FLY / RES / …) ────────────────────────────────────
+  const runPairingPass = async (t: DutyTypeConfig): Promise<void> => {
+    const group = t.group
+    const counter = counters.get(group)!
+    const matchFleet = isFlyFamily(group)
+    if (matchFleet && ctx.fleets.length === 0) {
+      steps.push({ kind: 'filter', group: tag(group), found: 0, message: `Crew ${crewId} has no fleet qualifications — no ${group} pool` })
+      return
+    }
+    const candidates = await deps.fetchCandidates(fastify, {
+      base: ctx.base!,
+      fleets: ctx.fleets,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      group: group === LEGACY_GROUP ? null : group,
+      matchFleet,
+      division: ctx.division,
+    })
+    steps.push({
+      kind: 'filter',
+      group: tag(group),
+      found: candidates.length,
+      message: legacy
+        ? `Found ${candidates.length} open pairing(s) at base ${ctx.base}, fleet(s) ${ctx.fleets.join('/')} in ${input.startDate}..${input.endDate}`
+        : matchFleet
+          ? `${group}: found ${candidates.length} open pairing(s) at base ${ctx.base}, fleet(s) ${ctx.fleets.join('/')} in ${input.startDate}..${input.endDate}`
+          : `${group}: found ${candidates.length} open pairing(s) at base ${ctx.base}, division ${ctx.division ?? '?'} (fleet ignored) in ${input.startDate}..${input.endDate}`,
+    })
+
+    // Eligibility pass (candidate order): cheap precheck + time parse.
+    const eligible: Array<{ cand: CandidatePairing; actingRank: string; startMs: number; endMs: number }> = []
+    for (const cand of candidates) {
+      const pre = await deps.precheck(fastify, crewId, cand.id)
+      if (!pre.ok) {
+        steps.push({ kind: 'skip', group: tag(group), pairingId: cand.id, label: cand.label, reason: 'no-slot', message: pre.message })
+        skipped.push({ pairingId: cand.id, label: cand.label, reason: 'no-slot', message: pre.message })
+        continue
+      }
+      const startMs = toMs(cand.schStr)
+      const endMs = toMs(cand.schEnd)
+      if (startMs == null || endMs == null) {
+        const msg = 'Pairing has no scheduled time'
+        steps.push({ kind: 'skip', group: tag(group), pairingId: cand.id, label: cand.label, reason: 'no-slot', message: msg })
+        skipped.push({ pairingId: cand.id, label: cand.label, reason: 'no-slot', message: msg })
+        continue
+      }
+      eligible.push({ cand, actingRank: pre.actingRank, startMs, endMs })
+    }
+
+    const accepted: AcceptedEntry[] = []
+    const evaluate = (e: (typeof eligible)[number]): boolean => {
+      steps.push({ kind: 'consider', group: tag(group), pairingId: e.cand.id, label: e.cand.label, startDt: toIso(e.cand.schStr), endDt: toIso(e.cand.schEnd), rank: e.actingRank })
+      if (occupied.some((o) => timeRangesOverlap(e.startMs, e.endMs, o.start, o.end))) {
+        const msg = 'Time-overlaps a duty already on the roster (existing or just-picked)'
+        steps.push({ kind: 'skip', group: tag(group), pairingId: e.cand.id, label: e.cand.label, reason: 'overlap', message: msg })
+        skipped.push({ pairingId: e.cand.id, label: e.cand.label, reason: 'overlap', message: msg })
+        return false
+      }
+      const dayIdx = dayIdxOf(e.startMs)
+      const blocked = counter.blocker(dayIdx)
+      if (blocked) {
+        steps.push({ kind: 'skip', group: tag(group), pairingId: e.cand.id, label: e.cand.label, reason: blocked.reason, message: blocked.message })
+        skipped.push({ pairingId: e.cand.id, label: e.cand.label, reason: blocked.reason, message: blocked.message })
+        return false
+      }
+      occupied.push({ start: e.startMs, end: e.endMs })
+      counter.add(dayIdx)
+      accepted.push({ key: String(e.cand.id), group, cand: e.cand, actingRank: e.actingRank, items: [], blockMinutes: 0, startMs: e.startMs, dayIdx })
+      return true
+    }
+
+    // FLY packs as much as the caps allow; other types fill only to their min
+    // (RES stays a gap-filler) unless no min is set, in which case they pack too.
+    const fillToMinOnly = !isFlyFamily(group) && t.every7Min != null
+    const picked = new Set<number>()
+
+    if (!fillToMinOnly) {
+      if (input.distribution === 'earliest') {
+        for (const e of eligible) {
+          if (accepted.length >= input.maxPerCrew) break
+          evaluate(e)
+        }
+      } else {
+        // Even pack: level block hours across 7-day week buckets from startDate.
+        const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+        const startDayMs = Date.parse(`${input.startDate}T00:00:00Z`)
+        const weekOf = (ms: number): number => Math.max(0, Math.floor((ms - startDayMs) / WEEK_MS))
+        const blockByPairing = await deps.fetchCandidateBlockMinutes(fastify, eligible.map((e) => e.cand.id))
+        const queues = new Map<number, Array<(typeof eligible)[number]>>()
+        for (const e of eligible) {
+          const w = weekOf(e.startMs)
+          const q = queues.get(w)
+          if (q) q.push(e)
+          else queues.set(w, [e])
+        }
+        const weekLoad = new Map<number, number>()
+        for (const it of existing) {
+          const s = toMs(it.schStrDtUtc)
+          const en = toMs(it.schEndDtUtc)
+          if (s != null && en != null && en > s) {
+            const w = weekOf(s)
+            weekLoad.set(w, (weekLoad.get(w) ?? 0) + (en - s) / 60_000)
+          }
+        }
+        while (accepted.length < input.maxPerCrew) {
+          const openWeeks = [...queues.entries()].filter(([, q]) => q.length > 0).map(([w]) => w)
+          if (openWeeks.length === 0) break
+          openWeeks.sort((a, b) => (weekLoad.get(a) ?? 0) - (weekLoad.get(b) ?? 0) || a - b)
+          const w = openWeeks[0]
+          const e = queues.get(w)!.shift()!
+          if (evaluate(e)) weekLoad.set(w, (weekLoad.get(w) ?? 0) + (blockByPairing.get(e.cand.id) ?? 0))
+        }
+      }
+    } else {
+      // Min-fill: walk rolling windows in order; feed the first unmet window with
+      // the earliest eligible candidate starting inside it.
+      const min = t.every7Min!
+      for (const w of counter.windows) {
+        while (counter.windowCount(w) < min && accepted.length < input.maxPerCrew) {
+          const next = eligible.find((e) => {
+            if (picked.has(e.cand.id)) return false
+            const idx = dayIdxOf(e.startMs)
+            return idx >= w[0] && idx <= w[1]
+          })
+          if (!next) break
+          picked.add(next.cand.id)
+          evaluate(next)
+        }
+      }
+    }
+
+    // Expand accepted pairings to crew×segment rows, then engine-validate + trim.
+    const segMap = await deps.fetchSegments(fastify, accepted.map((a) => a.cand!.id))
+    for (const a of accepted) {
+      const segs = segMap.get(a.cand!.id) ?? []
+      a.items = expandAccepted(a.cand!, segs, crewId, a.actingRank)
+      a.blockMinutes = blockMinutesOf(segs)
+    }
+    const survivors = await validateAndTrim(accepted)
+    fixed.push(...survivors)
+  }
+
+  // ── Ground pass (DO / …): base-local full days into leftover free days ──────
+  const runGroundPass = async (t: DutyTypeConfig): Promise<void> => {
+    const group = t.group
+    const counter = counters.get(group)!
+    const min = t.every7Min
+    if (min == null) {
+      steps.push({ kind: 'filter', group, found: 0, message: `${group}: no every-7-days min set — nothing to place` })
+      return
+    }
+    const dayBounds = (idx: number): { start: number; end: number } => ({
+      start: localMidnightUtcMs(days[idx], zone),
+      end: localMidnightUtcMs(addDays(days[idx], 1), zone),
+    })
+    const isFree = (idx: number): boolean => {
+      const b = dayBounds(idx)
+      return !occupied.some((o) => timeRangesOverlap(b.start, b.end, o.start, o.end))
+    }
+    const accepted: AcceptedEntry[] = []
+    for (const w of counter.windows) {
+      while (counter.windowCount(w) < min) {
+        // Latest free day in the window that respects every7Max/periodMax.
+        let pickIdx = -1
+        for (let i = w[1]; i >= w[0]; i--) {
+          if (!isFree(i)) continue
+          if (counter.blocker(i)) continue
+          pickIdx = i
+          break
+        }
+        if (pickIdx < 0) {
+          const reason = counter.blocker(w[0]) ? counter.blocker(w[0])!.message : 'no free day left in window'
+          steps.push({ kind: 'unmet', group, start: days[w[0]], end: days[w[1]], count: counter.windowCount(w), message: `${group} min ${min} unmet in ${days[w[0]]}..${days[w[1]]}: ${reason}` })
+          break
+        }
+        const b = dayBounds(pickIdx)
+        const startDtUtc = new Date(b.start).toISOString()
+        const endDtUtc = new Date(b.end - 1000).toISOString()
+        const ground: AssignedGround = { group, assignment: group, day: days[pickIdx], base: ctx.base!, startDtUtc, endDtUtc }
+        occupied.push({ start: b.start, end: b.end })
+        counter.add(pickIdx)
+        accepted.push({
+          key: `ground:${group}:${days[pickIdx]}`,
+          group,
+          ground,
+          actingRank: '',
+          blockMinutes: 0,
+          startMs: b.start,
+          dayIdx: pickIdx,
+          items: [{
+            id: -(pickIdx + 1),
+            crewId,
+            pairingId: null,
+            base: ctx.base,
+            assignmentGroup: group,
+            assignment: group,
+            division: ctx.division,
+            schStrDtUtc: startDtUtc,
+            schEndDtUtc: endDtUtc,
+          }],
+        })
+        steps.push({ kind: 'ground', group, assignment: group, day: days[pickIdx], startDt: startDtUtc, endDt: endDtUtc, message: `${group} ${days[pickIdx]} ${ctx.base} local full day (latest free day in ${days[w[0]]}..${days[w[1]]})` })
+      }
+    }
+    const survivors = await validateAndTrim(accepted)
+    fixed.push(...survivors)
+  }
+
+  // Order = table order (default FLY → RES → DO). Pairing-backed types are those
+  // whose group appears on open pairings; DO (no pairings) is a ground type.
+  for (const t of dutyTypes) {
+    if (t.group === LEGACY_GROUP || isFlyFamily(t.group) || t.group === 'RES' || t.group === 'SBY') {
+      await runPairingPass(t)
+    } else {
+      await runGroundPass(t)
     }
   }
 
-  // ── Resolve human-readable rule names for the rule-skip steps ──────────────
+  // Report unmet windows for pairing-backed types (ground types report inline).
+  if (!legacy) {
+    for (const t of dutyTypes) {
+      if (t.every7Min == null || t.group === 'DO') continue
+      const c = counters.get(t.group)!
+      if (!(isFlyFamily(t.group) || t.group === 'RES' || t.group === 'SBY')) continue
+      for (const w of c.windows) {
+        const n = c.windowCount(w)
+        if (n < t.every7Min) {
+          steps.push({ kind: 'unmet', group: t.group, start: days[w[0]], end: days[w[1]], count: n, message: `${t.group} min ${t.every7Min} unmet in ${days[w[0]]}..${days[w[1]]}: ${n} placed (pool/limits exhausted)` })
+        }
+      }
+    }
+  }
+
+  // Resolve human-readable rule names for the rule-skip steps.
   if (ruleSkipSteps.length > 0) {
     const names = await deps.fetchRuleNames(fastify, ruleSkipSteps.map((r) => r.ruleCode))
     for (const { step, ruleCode } of ruleSkipSteps) {
@@ -666,25 +999,49 @@ const planForCrew = async (
     }
   }
 
-  // ── Final survivors → assigned[] + assign steps ────────────────────────────
-  const assigned: Assigned[] = live.map((a) => ({
-    pairingId: a.cand.id,
-    rosterActingRank: a.actingRank,
-    label: a.cand.label,
-    startDt: toIso(a.cand.schStr),
-    endDt: toIso(a.cand.schEnd),
-    blockMinutes: a.blockMinutes,
-  }))
-  for (const a of live) {
-    steps.push({
-      kind: 'assign',
-      pairingId: a.cand.id,
-      label: a.cand.label,
-      rank: a.actingRank,
-      startDt: toIso(a.cand.schStr),
-      endDt: toIso(a.cand.schEnd),
-    })
+  // Final survivors → assigned[] / assignedGround[] + assign steps (plan order).
+  const assigned: Assigned[] = []
+  const assignedGround: AssignedGround[] = []
+  for (const a of fixed) {
+    if (a.cand) {
+      assigned.push({
+        pairingId: a.cand.id,
+        group: tag(a.group),
+        rosterActingRank: a.actingRank,
+        label: a.cand.label,
+        startDt: toIso(a.cand.schStr),
+        endDt: toIso(a.cand.schEnd),
+        blockMinutes: a.blockMinutes,
+      })
+      steps.push({ kind: 'assign', group: tag(a.group), pairingId: a.cand.id, label: a.cand.label, rank: a.actingRank, startDt: toIso(a.cand.schStr), endDt: toIso(a.cand.schEnd) })
+    } else if (a.ground) {
+      assignedGround.push(a.ground)
+    }
   }
+
+  const outcome: DutyOutcome[] = legacy
+    ? []
+    : dutyTypes.map((t) => {
+        const c = counters.get(t.group)!
+        return {
+          group: t.group,
+          existing: existingCount.get(t.group) ?? 0,
+          assigned: c.total - (existingCount.get(t.group) ?? 0),
+          periodMax: t.periodMax ?? null,
+          every7Min: t.every7Min ?? null,
+          every7Max: t.every7Max ?? null,
+          windows: c.windows.map((w) => {
+            const n = c.windowCount(w)
+            return {
+              start: days[w[0]],
+              end: days[w[1]],
+              count: n,
+              minUnmet: t.every7Min != null && n < t.every7Min,
+              maxHit: t.every7Max != null && n >= t.every7Max,
+            }
+          }),
+        }
+      })
 
   const blockTotal = assigned.reduce((sum, a) => sum + a.blockMinutes, 0)
   return {
@@ -694,19 +1051,21 @@ const planForCrew = async (
     fleets: ctx.fleets,
     steps,
     assigned,
+    assignedGround,
     skipped,
-    summary: { assignedCount: assigned.length, skippedCount: skipped.length, blockMinutes: blockTotal },
+    outcome,
+    summary: { assignedCount: assigned.length + assignedGround.length, skippedCount: skipped.length, blockMinutes: blockTotal },
   }
 }
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
 /**
- * Base+fleet-matched, legality-aware auto-assign PLANNER.
+ * Duty-type aware, legality-aware auto-assign PLANNER.
  *
  * Read-only: builds a decision trace + plan per crew but persists nothing —
  * `previewDraftLegality` runs in a rolled-back transaction. Callers apply the
- * plan via the existing `/assign-pairing` path.
+ * plan via the existing `/assign-pairing` and `add-ground-task` draft paths.
  */
 export async function planAutoAssign(
   fastify: FastifyInstance,
@@ -718,6 +1077,9 @@ export async function planAutoAssign(
   const skipOnSoft = input.policy?.skipOnSoft ?? true
   const maxPerCrew = input.maxPerCrew ?? 50
   const distribution = input.distribution ?? 'even'
+  const dutyTypes = input.dutyTypes
+    ? input.dutyTypes.map((t) => ({ ...t, group: t.group.trim().toUpperCase() }))
+    : null
 
   const crews: CrewPlan[] = []
   // Sequential (crew display order): each crew's plan is independent, but the
@@ -726,7 +1088,7 @@ export async function planAutoAssign(
     const plan = await planForCrew(
       fastify,
       crewId,
-      { startDate: input.startDate, endDate: input.endDate, rpFrom, rpTo, fleets: input.fleets ?? null, skipOnSoft, maxPerCrew, distribution },
+      { startDate: input.startDate, endDate: input.endDate, rpFrom, rpTo, fleets: input.fleets ?? null, skipOnSoft, maxPerCrew, distribution, dutyTypes },
       deps,
     )
     crews.push(plan)
@@ -742,4 +1104,63 @@ export async function planAutoAssign(
   }
 }
 
-export const __test = { defaultDeps, timeRangesOverlap, blockMinutesOf, expandAccepted }
+// ── Duty-group catalogue + pool sizes (dialog configure step) ────────────────
+
+export interface DutyGroupInfo {
+  group: string
+  name: string | null
+  /** True when open pairings with this assignment_group exist in range. */
+  pairingBacked: boolean
+  /** Union pool size across the selected crew (null for ground-only groups). */
+  poolSize: number | null
+  /** Assignment code used when the group is placed as a ground duty (null = cannot). */
+  groundAssignment: string | null
+}
+
+/**
+ * Catalogue of assignment groups for the dialog's duty-type table, with the
+ * per-crew-matched open-pairing pool size for the selected crew + date range.
+ */
+export async function listDutyGroups(
+  fastify: FastifyInstance,
+  input: { crewIds: string[]; startDate: string; endDate: string },
+  deps: AutoAssignDeps = defaultDeps,
+): Promise<DutyGroupInfo[]> {
+  const groups = await fastify.db
+    .select({ group: assignmentGroupModel.assignmentGroup, name: assignmentGroupModel.name })
+    .from(assignmentGroupModel)
+    .orderBy(asc(assignmentGroupModel.assignmentGroup))
+  const codes = await fastify.db.select({ code: assignmentModel.assignment }).from(assignmentModel)
+  const assignmentCodes = new Set(codes.map((c) => c.code))
+
+  const ctxs = await Promise.all(input.crewIds.map((id) => deps.resolveCrewContext(fastify, id, null, input.startDate)))
+  const out: DutyGroupInfo[] = []
+  for (const g of groups) {
+    const pool = new Set<number>()
+    const matchFleet = isFlyFamily(g.group)
+    for (const c of ctxs) {
+      if (!c.base) continue
+      const cands = await deps.fetchCandidates(fastify, {
+        base: c.base,
+        fleets: c.fleets,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        group: g.group,
+        matchFleet,
+        division: c.division,
+      })
+      for (const p of cands) pool.add(p.id)
+    }
+    const pairingBacked = pool.size > 0
+    out.push({
+      group: g.group,
+      name: g.name ?? null,
+      pairingBacked,
+      poolSize: pairingBacked ? pool.size : null,
+      groundAssignment: assignmentCodes.has(g.group) ? g.group : null,
+    })
+  }
+  return out
+}
+
+export const __test = { defaultDeps, timeRangesOverlap, blockMinutesOf, expandAccepted, DutyCounter }

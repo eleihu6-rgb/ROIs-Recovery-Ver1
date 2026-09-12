@@ -93,7 +93,7 @@ test('Auto-assign even distribution — J4002 (ADD/7M8) spreads flying hours acr
     { button: 'right' },
   )
 
-  const menuItem = page.getByRole('button', { name: /Auto-assign open pairings/ })
+  const menuItem = page.getByRole('button', { name: /Auto-assign Duties/ })
   await expect(menuItem).toBeVisible({ timeout: 10_000 })
 
   // Clicking fires the no-commit planner (defaults to distribution: 'even').
@@ -105,6 +105,8 @@ test('Auto-assign even distribution — J4002 (ADD/7M8) spreads flying hours acr
 
   const dialog = page.getByTestId('auto-assign-dialog')
   await expect(dialog).toBeVisible({ timeout: 10_000 })
+  // Auto-assign Duties: configure phase first (RP range + FLY/RES/DO limits) → Analyse fires the planner.
+  await dialog.getByTestId('auto-assign-analyse').click()
 
   const planRes = await planPromise
   expect(planRes.status(), 'auto-assign plan must return 200').toBe(200)

@@ -129,6 +129,8 @@ test("R'Bot auto-assign - plain-English order fills T2004/T2005 September roster
   // 2. The real dialog opened for exactly those crew and planned against September.
   await expect(page.getByTestId('auto-assign-dialog')).toBeVisible()
   await expect(page.getByTestId('auto-assign-dialog')).toContainText('2026-09')
+  // Auto-assign Duties: R'Bot lands on the configure step; Analyse fires the planner.
+  await page.getByTestId('auto-assign-analyse').click()
   const trace = page.getByTestId('auto-assign-trace')
   await expect(trace).toContainText('T2004', { timeout: 60_000 })
   await expect(trace).toContainText('T2005')

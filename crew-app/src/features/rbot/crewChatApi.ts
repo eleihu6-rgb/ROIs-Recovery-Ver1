@@ -29,8 +29,10 @@ const RBOT_API_PORT = 3005;
  * already uses for its crew API (`cr.rois.one/api`), so a phone that is NOT on
  * the same Wi-Fi as the dev machine can still reach R'Bot. The route is scoped
  * to `/ai/crew/*` and `/ai/health` on the tunnel — not the whole ai-server.
+ * No `/ai` suffix here: `rbotChatUrl` appends the full `/ai/crew/chat` path,
+ * so adding it here doubled it to `/ai/ai/crew/chat` and 404'd on device.
  */
-export const RBOT_PUBLIC_API_BASE = 'https://cr.rois.one/ai';
+export const RBOT_PUBLIC_API_BASE = 'https://cr.rois.one';
 
 /**
  * The host the JS bundle was loaded from — i.e. the Mac running Metro. On a
