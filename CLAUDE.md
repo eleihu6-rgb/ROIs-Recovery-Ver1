@@ -9,13 +9,15 @@ This file is the canonical shared project guide for Claude, Codex, and other AI 
 
 Cold-start rule loading:
 
-1. Read this root `CLAUDE.md` before project work.
+1. Read this section and the always-applicable sections named below before project work. Read the remaining sections when the task touches their subject; use the headings in this file to locate them.
 2. Codex-specific startup and workflow rules live in root `AGENTS.md`; Codex must read that file as its entrypoint and then follow this file for shared project rules.
 3. Read `NEXT_CONTEXT.md` when recovering recent development context.
 4. Before module work, read the relevant module guide:
    - module `CLAUDE.md` when present
    - nested `AGENTS.md` when present
 5. Project-wide rules must be tracked in `CLAUDE.md`, `AGENTS.md`, or referenced files under `docs/`; local non-git memos may only supplement machine-specific runtime state.
+
+Always-applicable sections: **Agent Operating Defaults**, **MCP and Skills**, **Design Before Implementation**, **Senior Engineering Workflow**, **§No-Auto-Commit**, **§No-Illusion**, **§Minimal-First**, **§Surgical**, **开发注意事项**, and **信息安全规范**. Read **§Model-Routing** only when delegation is relevant. Read **Testing Discipline** and **§PW-Snapshot** for user-visible changes; **§First-Paint** and **§Gantt-Unify** for Gantt work; database, language, style, versioning, and engine sections when those areas are affected. Read the full guide when scope crosses several areas or the relevant sections are unclear. These are reading routes, not exemptions from any project rule.
 
 Keep shared rules here and link to them from `AGENTS.md`; avoid parallel copies. This file resolves duplicate shared rules between the two root guides. Module-specific guides apply within their scope. Session system/developer instructions and explicit user direction take precedence.
 
@@ -40,13 +42,7 @@ Keep shared rules here and link to them from `AGENTS.md`; avoid parallel copies.
 - **Git authorization is unchanged.** Delegation does not authorize commit, push, destructive commands, or history rewriting. Commit/push still require the user's explicit instruction; keep shared-state Git operations coordinated through the primary agent.
 - **Review before delivery.** The primary model reviews delegated changes and evidence, including required visual inspection. Every existing gate still applies — §Simulate-User, §No-Illusion (exact command + PASS/FAIL), and §PW-Snapshot (versioned screenshot, visually inspected). A delegated PASS summary alone does not replace the required evidence.
 
-### Required delegation checkpoints
-
-These are agent-executed workflow checks, not a background dispatcher or a new user-approval gate. Apply them to substantial feature development; keep small edits local when delegation overhead exceeds the benefit.
-
-1. **After planning, before core implementation:** identify bounded supporting work and check current delegation/model-selection capabilities. Delegate an eligible task to an explicitly selected lower-cost model when it can run alongside useful primary work and the handoff/review cost is justified. Briefly report the task and selected model after invoking the tool. If no task qualifies or the capability is unavailable, state the concrete reason and continue locally; do not ask for routine delegation permission.
-2. **Before verification:** reassess if test implementation or check execution has now become independent and economical to delegate. Fix the scenarios, assertions, commands, and evidence requirements before handing off. Coordinate shared files, test data, services, and Git state to avoid concurrent interference. Do not repeat completed work just to use a subagent.
-3. **Before delivery:** review delegated changes and required evidence, resolve failures, and report a concise delegation outcome (task, actual selected model, result, and primary review), or the reason work stayed local. Never claim a worker ran, a model switched, or a check passed without tool evidence. All existing delivery gates remain required.
+For substantial work, delegate a bounded, independent supporting task only when the current runtime permits it and the handoff and review cost is justified. Define scope, expected output, and acceptance checks first. The primary model reviews delegated changes and evidence before delivery. Keep small or tightly coupled tasks local. Delegation is not an approval gate and never relaxes verification or Git authorization.
 
 ## MCP and Skills
 

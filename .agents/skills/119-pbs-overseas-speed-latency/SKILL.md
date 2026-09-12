@@ -1,6 +1,6 @@
 ---
 name: 119-pbs-overseas-speed-latency
-description: Reduce overseas perceived latency for pbs-server (Fastify, :3002) and pbs-portal (React/Vite/TanStack Query) — response compression, low-cardinality route metrics, private ETags on stable GETs, a combined /portal/bootstrap endpoint, portal-layout prefetch, and a byte-aware perf baseline. Use when optimizing PBS transfer size / round trips / unmeasured backend latency, or when adding/maintaining any of those pieces. Also the canonical reference for how to write+run pbs-server (node:test) and pbs-portal (vitest) tests in THIS repo, including the environment gotchas that block them.
+description: Reduce pbs-server and pbs-portal latency from transfer size and round trips. Use for compression, ETags, bootstrap, prefetch, or route metrics.
 ---
 
 # PBS Overseas Speed & Latency

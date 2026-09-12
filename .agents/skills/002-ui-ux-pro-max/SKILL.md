@@ -1,6 +1,6 @@
 ---
 name: 002-ui-ux-pro-max
-description: 航空排班系统专业级 UI/UX 设计，包括多主题切换、人性化交互、专业视觉效果。当用户讨论界面美化、主题、样式、用户体验时自动触发。
+description: Design cross-product themes and visual standards for the aviation scheduling UI. Use for product-wide styling or UX decisions.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent
 ---
 

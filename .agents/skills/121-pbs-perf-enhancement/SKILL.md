@@ -1,6 +1,6 @@
 ---
 name: 121-pbs-perf-enhancement
-description: Canonical playbook for PBS performance enhancement — diagnosing and fixing slow pbs-server (:3002) / pbs-portal (:3030) paths (transfer size, round trips, unmeasured backend latency, live-table query cost) without changing the {code,data,message} contract. Use when "the PBS X page is slow", when adding indexes/caching/query rewrites to pbs-server, or to pick the right approach + verification discipline for any PBS perf work. Umbrella over skills 119 (overseas size/latency) and 120 (pairing-search hot path).
+description: Diagnose an unspecified PBS portal or server performance problem and route to the relevant specialist workflow. Use when the bottleneck is not yet known.
 ---
 
 # PBS Performance Enhancement Playbook

@@ -1,6 +1,6 @@
 ---
 name: 111-pbs-solver-roster-deassign
-description: Visualize and execute PBS-solver pre-assignment (PA) removal — the read-only de-assignment analysis that marks each to-be-removed crew duty (flying pairings + days off) with a crew-memo note icon on the live gantt, the planner confirms/corrects, then an explicit order soft-deletes the approved rosters. Use when the user says "remove pre-assignment (PA) for solver", "mark to-be-de-assigned duties", "crew memo", "memo icon", or wants to clear crew duties to make room for the PBS solver; or when extending the crew-memo CRUD / classifier / R'Bot prepare_pa_removal tool.
+description: Analyze and carry out planner-approved pre-assignment removal for PBS solver runs. Use for PA de-assignment, crew memos, or prepare_pa_removal.
 ---
 
 # PBS Solver Roster De-assignment (PA removal) + Crew Memo

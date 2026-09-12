@@ -1,6 +1,6 @@
 ---
 name: 139-uat-test-case-builder
-description: Build a customer-ready UAT (User Acceptance Test) test-case workbook (.xlsx) for ROIS-AI product surfaces, sourced from the product's own online help. Use when the user asks to "create UAT test cases", "make a UAT test case Excel", "add a tab/module to the UAT workbook", "bump the UAT test cases to ver N", or wants per-feature acceptance tests for Admin UI (Altair Live/Scenario), Legality, Crew Portal (PBS), or Integration (connector/NOC/S3). Produces a multi-round (UAT 1/2/3) workbook with an auto-computed summary tab, modelled on the customer reference files in docs/UAT/. Triggers on "UAT test case", "acceptance test", "UAT workbook", "test case excel".
+description: Create or update the ROIS-AI UAT test-case Excel workbook. Use for customer acceptance cases, module tabs, or workbook versions.
 ---
 
 # UAT Test Case Builder

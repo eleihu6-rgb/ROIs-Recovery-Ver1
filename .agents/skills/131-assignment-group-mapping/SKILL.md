@@ -1,6 +1,6 @@
 ---
 name: 131-assignment-group-mapping
-description: How ROIS models crew assignments → assignment groups, and how to reconcile the master tables (assignment, assignment_group, assignment_group_map) against the codes actually used in roster_flight. KEY FACT — the map is MANY-TO-MANY: one assignment can belong to MULTIPLE groups (e.g. DHD→FLY+GRD; VAC sits under GRD operationally). Triggers when the user mentions: "assignment group", "assignment_group_map", "assignment mapping", "reconcile assignments", "missing assignment", "roster_flight assignment values", or asks to make roster_flight codes resolve to master rows.
+description: Reconcile roster assignment codes with assignment groups and their many-to-many mapping. Use for assignment_group_map or missing roster_flight assignments.
 ---
 
 # Assignment ↔ Assignment-Group mapping (ROIS, f8 schema)
