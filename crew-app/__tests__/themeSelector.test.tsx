@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import settingsReducer, { loadSettings, setThemePreset } from '../src/features/settings/settingsSlice';
 import authReducer, { login } from '../src/features/auth/authSlice';
 import rbotReducer from '../src/features/rbot/rbotSlice';
+import flightCalendarReducer from '../src/features/calendar/flightCalendarSlice';
 import { AppearanceScreen } from '../src/features/v2/AppearanceScreen';
 import { PreferencesScreen } from '../src/features/v2/PreferencesScreen';
 import { GradientScreen } from '../src/components/v2/GradientScreen';
@@ -48,7 +49,7 @@ const THEME_KEY = '@royce_theme';
 
 function makeStore(airline = 'ET') {
   const store = configureStore({
-    reducer: { auth: authReducer, settings: settingsReducer, rbot: rbotReducer },
+    reducer: { auth: authReducer, settings: settingsReducer, rbot: rbotReducer, flightCalendar: flightCalendarReducer },
     middleware: getDefaultMiddleware => getDefaultMiddleware({ serializableCheck: false }),
   });
   runThunk(store, login({ airline, crewId: 'J4002', password: 'Pier2026', keepLogin: false }));

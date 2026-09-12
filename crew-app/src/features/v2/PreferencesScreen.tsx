@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { DashedLine } from '../../components/v2/TicketCard';
 import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import { isCalendarWriteAvailable, requestCalendarAccess, saveCalendarEvents } from '../meetings/calendarModule';
+import { setCalendarSyncAll } from '../calendar/flightCalendarSlice';
+import { describeCalendarSync } from '../calendar/dutyCalendarMessages';
 import { setMeetingsEnabled, syncMeetings } from '../meetings/meetingsSlice';
 import { deviceTimeZone } from '../settings/timeFormat';
 import { useAppDispatch, useAppSelector } from '../../store';
@@ -24,10 +26,22 @@ export function PreferencesScreen() {
   const airline = useAppSelector(selectCrewCarrier) ?? '';
   const themePreset = useAppSelector(s => s.settings.themePreset);
   const themeLabel = THEME_LABELS[resolveTheme(themePreset, airline)];
+  // Master switch: keeps every upcoming duty in the iOS calendar. The per-duty
+  // icon on the Schedule card stays the fine-grained control.
+  const calendarSync = useAppSelector(s => s.flightCalendar.syncAll);
+  const calendarSyncing = useAppSelector(s => s.flightCalendar.syncing);
   const [push, setPush] = useState(true);
   const [roster, setRoster] = useState(true);
   const divider = {};
   const toggle = (id: string) => dispatch(setExplorePrefs(prefs.includes(id) ? prefs.filter(x => x !== id) : [...prefs, id]));
+
+  const toggleCalendarSync = async (next: boolean) => {
+    const result = await dispatch(setCalendarSyncAll(next));
+    const message = describeCalendarSync(result);
+    if (message) {
+      Alert.alert(message.title, message.body);
+    }
+  };
 
   // Dev-only: seed synthetic meetings into the iOS Calendar (EventKit write) so the
   // meeting reminder (AlarmKit) and Dynamic Island countdown can be exercised on a
@@ -84,6 +98,22 @@ export function PreferencesScreen() {
       </ListCard>
       <SectionLabel palette={p}>Sync</SectionLabel>
       <ListCard palette={p}>
+        <View style={divider}>
+          <ToggleRow
+            label="iOS Calendar sync"
+            sub="Keep every upcoming duty in your iPhone Calendar. New duties are added as your roster updates."
+            value={calendarSync}
+            onValueChange={next => {
+              // Ignore a second tap while the first sync is still writing.
+              if (!calendarSyncing) {
+                void toggleCalendarSync(next);
+              }
+            }}
+            palette={p}
+            testID="pref-calendar-sync"
+          />
+          <DashedLine color={p.cardLine} />
+        </View>
         <KvRow label="Connected accounts" value="None" palette={p} last={!__DEV__} />
         {__DEV__ && <NavRow icon="cal" label="Add demo meetings (dev)" value="4 events" palette={p} onPress={addDemoMeetings} testID="dev-demo-meetings" />}
       </ListCard>

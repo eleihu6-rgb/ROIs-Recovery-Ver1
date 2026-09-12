@@ -33,6 +33,12 @@ class MeetingBackgroundSync: NSObject {
   static let taskId = "com.eleihuus.roycetravel.meetingrefresh"
   private static let store = EKEventStore()
 
+  // Entries the app itself wrote for a duty ("add this duty to Calendar") carry
+  // this URL scheme. The device calendar is both the meetings source and the
+  // write target, so they must not ring a meeting alarm. Mirrors
+  // FLIGHT_EVENT_URL_PREFIX in src/features/calendar/flightCalendar.ts.
+  private static let flightEventUrlPrefix = "royce://flight/"
+
   // Register the BGTask handler. Call once from didFinishLaunching.
   @objc static func register() {
     BGTaskScheduler.shared.register(forTaskWithIdentifier: taskId, using: nil) { task in
@@ -91,7 +97,8 @@ class MeetingBackgroundSync: NSObject {
       let predicate = store.predicateForEvents(withStart: now, end: end, calendars: nil)
       let events = store.events(matching: predicate)
 
-      for ev in events where !ev.isAllDay {
+      for ev in events where !ev.isAllDay
+        && !(ev.url?.absoluteString.hasPrefix(flightEventUrlPrefix) ?? false) {
         let fire = ev.startDate.addingTimeInterval(TimeInterval(-minutesBefore * 60))
         guard fire > Date().addingTimeInterval(60) else { continue }
         let id = deterministicUUID(from: ev.eventIdentifier ?? UUID().uuidString)

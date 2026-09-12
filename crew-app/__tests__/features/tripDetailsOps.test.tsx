@@ -10,6 +10,7 @@ import settingsReducer from '../../src/features/settings/settingsSlice';
 import tripsReducer, { setTrips } from '../../src/features/travel/tripsSlice';
 import alarmsReducer from '../../src/features/alarms/alarmsSlice';
 import dutiesReducer from '../../src/features/roster/dutiesSlice';
+import flightCalendarReducer from '../../src/features/calendar/flightCalendarSlice';
 import { TripDetailsScreen } from '../../src/features/v2/TripDetailsScreen';
 import type { Trip } from '../../src/features/travel/tripCsv';
 
@@ -80,6 +81,7 @@ function renderTrip(trip: Trip) {
       trips: tripsReducer,
       alarms: alarmsReducer,
       duties: dutiesReducer,
+      flightCalendar: flightCalendarReducer,
     },
     middleware: getDefaultMiddleware => getDefaultMiddleware({ serializableCheck: false }),
   });

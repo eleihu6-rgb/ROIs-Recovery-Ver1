@@ -13,7 +13,7 @@ import { setDuties, loadDuties } from './features/roster/dutiesSlice';
 import { loadSettings } from './features/settings/settingsSlice';
 import { loadEnabled } from './features/alarms/alarmsSlice';
 import { loadMeetingsSettings, syncMeetings } from './features/meetings/meetingsSlice';
-import { loadFlightCalendar } from './features/calendar/flightCalendarSlice';
+import { loadFlightCalendar, topUpCalendarSync } from './features/calendar/flightCalendarSlice';
 import { loadTripTrade } from './features/tripTrade/tripTradeSlice';
 import { loadRbotThread } from './features/rbot/rbotSlice';
 import { login } from './features/auth/authSlice';
@@ -51,6 +51,8 @@ const SEED_TRIPS: Trip[] = [
 function Bootstrap() {
   const dispatch = useAppDispatch();
   const trips = useAppSelector(s => s.trips.trips);
+  const calendarSyncAll = useAppSelector(s => s.flightCalendar.syncAll);
+  const calendarHydrated = useAppSelector(s => s.flightCalendar.hydrated);
   const firstRun = useRef(true);
 
   useEffect(() => {
@@ -100,6 +102,16 @@ function Bootstrap() {
     const sub = AppState.addEventListener('change', handler);
     return () => sub.remove();
   }, [dispatch]);
+
+  // "iOS Calendar sync" is on: keep the calendar in step with the roster. Runs
+  // once hydration finishes and again whenever trips change (a fresh roster
+  // capture). The thunk only writes duties it isn't already tracking, so it can
+  // never duplicate what the crew added by hand from a flight card.
+  useEffect(() => {
+    if (calendarHydrated && calendarSyncAll) {
+      dispatch(topUpCalendarSync());
+    }
+  }, [calendarHydrated, calendarSyncAll, trips, dispatch]);
 
   // Persist trips when they change, debounced so a bulk import writes once after
   // the final store update (skip the very first hydrate render).

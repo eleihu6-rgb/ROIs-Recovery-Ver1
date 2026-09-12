@@ -27,6 +27,7 @@ import { airlineByCode } from '../auth/airlines';
 import { alarmOptions, computeEffectiveAlarms } from '../settings/alarmSetup';
 import { setDutyOverride, reconcileAlarms, setAgendaFilter, type AgendaFilter } from '../alarms/alarmsSlice';
 import { toggleDutyCalendar } from '../calendar/flightCalendarSlice';
+import { describeCalendarToggle } from '../calendar/dutyCalendarMessages';
 import { colors, font, space } from '../../theme';
 import {
   SuitcaseIllustration,
@@ -248,35 +249,10 @@ export function MyTripsScreen() {
         return;
       }
       const result = await dispatch(toggleDutyCalendar(trip));
-      switch (result.status) {
-        case 'added':
-          Alert.alert(
-            'Added to Calendar',
-            `${result.count} entries added to your iPhone calendar — wake-up, leave home, check-in and ${
-              trip.legs.length === 1 ? 'the flight' : 'each flight'
-            }. Tap the icon again to remove them.`,
-          );
-          break;
-        case 'removed':
-          Alert.alert('Removed from Calendar', 'This duty is no longer in your iPhone calendar.');
-          break;
-        case 'denied':
-          Alert.alert(
-            'Calendar access needed',
-            'Allow calendar access in Settings → R’Bot to add your flights.',
-          );
-          break;
-        case 'unavailable':
-          Alert.alert('Not available', 'Adding flights to the calendar needs iOS.');
-          break;
-        case 'empty':
-          Alert.alert('Nothing to add', 'This duty has no usable departure time.');
-          break;
-        case 'error':
-          Alert.alert('Could not update Calendar', result.message ?? 'Please try again.');
-          break;
-        default:
-          break; // 'busy' — a tap already in flight, stay quiet.
+      // 'busy' (a tap already in flight) maps to null → stay quiet.
+      const message = describeCalendarToggle(result, trip);
+      if (message) {
+        Alert.alert(message.title, message.body);
       }
     },
     [dispatch, trips],

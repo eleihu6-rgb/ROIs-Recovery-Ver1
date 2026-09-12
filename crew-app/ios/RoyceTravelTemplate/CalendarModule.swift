@@ -135,6 +135,13 @@ class CalendarModule: NSObject {
       ev.startDate = start
       ev.endDate = end
       ev.notes = raw["notes"] as? String
+      // Marker the JS layer reads back: events we created for a duty carry this
+      // scheme, so the meetings reader (and the background refresh) never treat
+      // our own flight entries as Outlook/Exchange meetings. See
+      // flightCalendar.ts → FLIGHT_EVENT_URL_PREFIX.
+      if let urlString = raw["url"] as? String, let url = URL(string: urlString) {
+        ev.url = url
+      }
       if let tzName = raw["timeZone"] as? String, let tz = TimeZone(identifier: tzName) {
         ev.timeZone = tz
       }

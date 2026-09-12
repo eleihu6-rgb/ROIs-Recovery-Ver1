@@ -1,0 +1,53 @@
+# v2 · Profile ▸ Preferences ▸ Sync ▸ "iOS Calendar sync" (option B) — the
+# master switch that keeps every upcoming duty in the iPhone calendar, with the
+# Schedule flight card's icon still acting as the per-duty control.
+#
+# Run:  xcrun simctl privacy booted grant calendar org.reactjs.native.example.RoyceTravelTemplate
+#       maestro test .maestro/v2_tg_calendar_sync.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "row-preferences"
+- extendedWaitUntil:
+    visible: "Destination preferences.*"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: "pref-calendar-sync"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: crew_sync_01_preferences_sync_off
+# ON → every upcoming duty is written in one pass.
+- tapOn:
+    id: "pref-calendar-sync"
+- extendedWaitUntil:
+    visible: "Calendar sync on"
+    timeout: 60000
+- takeScreenshot: crew_sync_02_sync_on_alert
+- tapOn: "OK"
+- takeScreenshot: crew_sync_03_switch_on
+# OFF → deletes exactly what the sync wrote.
+- tapOn:
+    id: "pref-calendar-sync"
+- extendedWaitUntil:
+    visible: "Calendar sync off"
+    timeout: 60000
+- takeScreenshot: crew_sync_04_sync_off_alert
+- tapOn: "OK"
+- takeScreenshot: crew_sync_05_switch_off

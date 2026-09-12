@@ -1,0 +1,56 @@
+# v2 · airline schedule → iOS Calendar, second carrier (Ethiopian / J4002)
+# through the API-backed roster adapter — proves the restored toggle is not
+# TG-only, and exercises add + remove from the Schedule flight card.
+#
+# Run:  xcrun simctl privacy booted grant calendar org.reactjs.native.example.RoyceTravelTemplate
+#       maestro test .maestro/v2_et_flight_calendar.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    id: "tab-schedule"
+# The ET login leaves a "session snapshot was not persisted" LogBox overlay on
+# the simulator (keychain entitlement); it pops when the roster load finishes.
+# Dismiss it or it swallows the next tap.
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-toggle-.*"
+    timeout: 30000
+- takeScreenshot: crew_et_cal_01_schedule_icon
+- tapOn:
+    id: "calendar-toggle-.*"
+- extendedWaitUntil:
+    visible: "Added to Calendar"
+    timeout: 20000
+- takeScreenshot: crew_et_cal_02_added_alert
+- tapOn: "OK"
+- takeScreenshot: crew_et_cal_03_icon_ticked
+# Same tap again deletes exactly the entries it wrote — leaves the simulator
+# calendar as it found it.
+- tapOn:
+    id: "calendar-toggle-.*"
+- extendedWaitUntil:
+    visible: "Removed from Calendar"
+    timeout: 20000
+- takeScreenshot: crew_et_cal_04_removed

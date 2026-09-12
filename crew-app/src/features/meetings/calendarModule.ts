@@ -1,5 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import type { Meeting } from './meetingSetup';
+import { isFlightCalendarEvent } from '../calendar/flightCalendar';
 
 // Bridge to the native CalendarModule (Swift / EventKit). Reads the meetings
 // already synced onto the device from the crew's Exchange/Outlook account — no
@@ -38,6 +39,11 @@ interface CalendarNativeModule {
       endISO: string;
       timeZone: string;
       notes: string;
+      /**
+       * Marker URL (see flightCalendar's FLIGHT_EVENT_URL_PREFIX). Events the
+       * app wrote for a duty carry it so they are never read back as meetings.
+       */
+      url?: string;
     }>,
   ): Promise<string[]>;
   /** Delete events by identifier; resolves with how many were actually removed. */
@@ -76,18 +82,23 @@ export async function fetchMeetings(
   const startISO = noMs(now);
   const endISO = noMs(new Date(now.getTime() + daysAhead * 86_400_000));
   const raw = await native.getEvents(startISO, endISO);
-  return raw.map(e => ({
-    id: e.id,
-    title: e.title ?? '',
-    startISO: e.startISO,
-    endISO: e.endISO,
-    timeZone: e.timeZone || 'UTC',
-    calendarTitle: e.calendarTitle ?? '',
-    allDay: !!e.allDay,
-    url: e.url ?? '',
-    location: e.location ?? '',
-    notes: e.notes ?? '',
-  }));
+  return raw
+    // The device calendar is both the meetings source AND where "add this duty
+    // to Calendar" writes. Our own flight entries must not come back as
+    // Outlook/Exchange meetings (or arm a meeting alarm) — see flightCalendar.
+    .filter(e => !isFlightCalendarEvent(e.url))
+    .map(e => ({
+      id: e.id,
+      title: e.title ?? '',
+      startISO: e.startISO,
+      endISO: e.endISO,
+      timeZone: e.timeZone || 'UTC',
+      calendarTitle: e.calendarTitle ?? '',
+      allDay: !!e.allDay,
+      url: e.url ?? '',
+      location: e.location ?? '',
+      notes: e.notes ?? '',
+    }));
 }
 
 /**
@@ -106,6 +117,7 @@ export async function saveCalendarEvents(
     endISO: string;
     timeZone: string;
     notes: string;
+    url?: string;
   }>,
 ): Promise<string[]> {
   if (!native?.saveEvents || events.length === 0) {

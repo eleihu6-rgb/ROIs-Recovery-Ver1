@@ -9,6 +9,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '../../src/features/auth/authSlice';
 import settingsReducer from '../../src/features/settings/settingsSlice';
 import rbotReducer from '../../src/features/rbot/rbotSlice';
+import flightCalendarReducer from '../../src/features/calendar/flightCalendarSlice';
 import { SpecPage } from '../../src/features/v2/SpecPage';
 import { PreferencesScreen } from '../../src/features/v2/PreferencesScreen';
 import { APP_VERSION } from '../../src/version';
@@ -23,7 +24,7 @@ jest.mock('@react-navigation/native', () => ({
 
 function makeStore() {
   return configureStore({
-    reducer: {auth: authReducer, settings: settingsReducer, rbot: rbotReducer},
+    reducer: {auth: authReducer, settings: settingsReducer, rbot: rbotReducer, flightCalendar: flightCalendarReducer},
     middleware: getDefaultMiddleware => getDefaultMiddleware({serializableCheck: false}),
   });
 }

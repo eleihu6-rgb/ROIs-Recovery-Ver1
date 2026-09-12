@@ -11,7 +11,7 @@ import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon } from '../../components/v2/icons';
 import { TicketCard, DashedLine } from '../../components/v2/TicketCard';
-import { useMonth } from './useV2';
+import { useDutyCalendar, useMonth, type DutyCalendar } from './useV2';
 import { hasDutyCard, MON, resolveCardIndex, type DayMeeting, type DayModel, type DayKind, type LegView } from './model';
 import { useV2Nav } from './nav';
 import { IconButton } from './HomeScreen';
@@ -54,6 +54,11 @@ export function ScheduleScreen({ route }: Props = {}) {
   const [view, setView] = useState<SchedViewMode>('timeline');
   const [menuOpen, setMenuOpen] = useState(false);
   const base = useBase();
+  // Airline schedule → iOS Calendar: the same per-duty toggle the v1 flight card
+  // carried (see useDutyCalendar). Only today or a future duty offers it — a
+  // rotation that has already flown is a record, not something to calendar.
+  const calendar = useDutyCalendar();
+  const todayKey = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
   // Apply a requested roster view (R'Bot "show my route map"). Keyed on `viewAt`
   // so re-requesting the *same* view after the crew changed it by hand still
   // re-applies, while a plain tab tap never overrides a manual change.
@@ -221,7 +226,7 @@ export function ScheduleScreen({ route }: Props = {}) {
           onScrollToIndexFailed={info => setTimeout(() => list.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
           ListEmptyComponent={<Text style={[s.empty, { color: p.inkSoft }]}>No duties published for {MON[ym.m]} {ym.y}.</Text>}
           renderItem={({ item }) => (
-            <DayCard day={item} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} actions={meetingActions} />
+            <DayCard day={item} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} actions={meetingActions} calendar={calendar} todayKey={todayKey} />
           )}
           testID="sched-list"
         />
@@ -301,7 +306,7 @@ function RosterViewMenu({
   );
 }
 
-function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions }: { day: DayModel; monthIdx: number; mode: TimeZoneMode; baseTz: string; palette: CarrierPalette; onTrip: (tripId: string) => void; actions: MeetingActions }) {
+function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions, calendar, todayKey }: { day: DayModel; monthIdx: number; mode: TimeZoneMode; baseTz: string; palette: CarrierPalette; onTrip: (tripId: string) => void; actions: MeetingActions; calendar: DutyCalendar; todayKey: number }) {
   const head = `${day.dow.toUpperCase()} ${day.day} ${MON[monthIdx].toUpperCase()}${day.isToday ? ' · TODAY' : ''}`;
   if (day.kind === 'flight') {
     return (
@@ -314,7 +319,19 @@ function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions }: {
           </View>
         ) : null}
         {day.legs.map(({ leg, trip }, i) => (
-          <FlightCard key={`${trip.id}-${i}`} leg={leg} palette={p} onPress={() => onTrip(trip.id)} last={i === day.legs.length - 1} head={head} />
+          <FlightCard
+            key={`${trip.id}-${i}`}
+            leg={leg}
+            tripId={trip.id}
+            palette={p}
+            onPress={() => onTrip(trip.id)}
+            last={i === day.legs.length - 1}
+            head={head}
+            showCalendar={leg.firstLeg && day.key >= todayKey}
+            calendarAdded={calendar.isAdded(trip.id)}
+            calendarBusy={calendar.isBusy(trip.id)}
+            onToggleCalendar={() => calendar.toggle(trip)}
+          />
         ))}
       </View>
     );
@@ -345,7 +362,30 @@ function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions }: {
 const CARD_PAD = 18;
 
 /** One flight leg as a ticket card; the hole cut is measured from the dashed line's real position. */
-function FlightCard({ leg, palette: p, onPress, last, head }: { leg: LegView; palette: CarrierPalette; onPress: () => void; last: boolean; head: string }) {
+function FlightCard({
+  leg,
+  tripId,
+  palette: p,
+  onPress,
+  last,
+  head,
+  showCalendar,
+  calendarAdded,
+  calendarBusy,
+  onToggleCalendar,
+}: {
+  leg: LegView;
+  tripId: string;
+  palette: CarrierPalette;
+  onPress: () => void;
+  last: boolean;
+  head: string;
+  /** Duty-level, so it sits on the FIRST leg only (same rule as the markers). */
+  showCalendar: boolean;
+  calendarAdded: boolean;
+  calendarBusy: boolean;
+  onToggleCalendar: () => void;
+}) {
   const [holeY, setHoleY] = useState<number | undefined>(undefined);
   return (
     <TicketCard palette={p} holeY={holeY} onPress={onPress} testID={`duty-${leg.fltNumber}`} style={{ padding: CARD_PAD, marginBottom: last ? 0 : 12 }}>
@@ -358,6 +398,21 @@ function FlightCard({ leg, palette: p, onPress, last, head }: { leg: LegView; pa
           <Text style={[s.ac, { color: p.cardInk }]}>{leg.fltNumber}</Text>
           {!!leg.fleet && <Text style={[s.fleet, { color: p.cardSoft, borderColor: p.cardLine }]}>{leg.fleet}</Text>}
         </View>
+        {/* Airline schedule → iOS Calendar (v1 parity): one tap writes the whole
+            duty, a second tap removes what we wrote. The tick shows it's in. */}
+        {showCalendar ? (
+          <Pressable
+            onPress={onToggleCalendar}
+            disabled={calendarBusy}
+            hitSlop={10}
+            style={[s.calBtn, calendarBusy ? s.calBtnBusy : null]}
+            accessibilityRole="button"
+            accessibilityLabel={calendarAdded ? 'Remove this duty from your iPhone Calendar' : 'Add this duty to your iPhone Calendar'}
+            testID={`calendar-toggle-${tripId}`}
+          >
+            <Icon name={calendarAdded ? 'calcheck' : 'cal'} size={22} color={calendarAdded ? p.btn : p.cardSoft} />
+          </Pressable>
+        ) : null}
       </View>
             <View style={s.fleg}>
               <View style={s.port}><Text style={[s.code, { color: p.cardInk }]}>{leg.dep}</Text><Text style={[s.tm, { color: p.cardSoft }]}>{leg.depTime}</Text></View>
@@ -467,7 +522,9 @@ const s = StyleSheet.create({
   card: {},
   dayHead: { fontSize: 12, fontWeight: '600', letterSpacing: 0.7 },
   dhead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10, marginBottom: 16 },
-  fltRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  fltRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  calBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 17 },
+  calBtnBusy: { opacity: 0.4 },
   fleet: { fontSize: 12, fontWeight: '600', letterSpacing: 0.6, borderWidth: 1, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   logo: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   ac: { fontSize: 17, fontWeight: '600', marginTop: 1 },

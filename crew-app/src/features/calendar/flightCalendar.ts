@@ -41,6 +41,20 @@ export interface CalendarEventDraft {
   /** IANA zone the event is pinned to — the DEPARTURE airport's. */
   timeZone: string;
   notes: string;
+  /**
+   * Marker the app writes onto every event it creates. The device calendar is
+   * ALSO the source the meetings reader reads, so without this the flight
+   * markers come back as Outlook/Exchange "meetings" and arm a meeting alarm.
+   */
+  url: string;
+}
+
+/** Scheme of the marker above — anything the app wrote starts with this. */
+export const FLIGHT_EVENT_URL_PREFIX = 'royce://flight/';
+
+/** True for a calendar event the crew app itself created for a duty. */
+export function isFlightCalendarEvent(url: string | undefined): boolean {
+  return typeof url === 'string' && url.startsWith(FLIGHT_EVENT_URL_PREFIX);
 }
 
 /** Duration of the Wake Up / Leave Home / Check-in markers. */
@@ -119,6 +133,11 @@ function buildNotes(
   return [lines.join(' · '), ...flights, 'All times local to each airport.'].join('\n');
 }
 
+/** The marker URL for one duty — same scheme for every entry of that duty. */
+export function flightEventUrl(tripId: string): string {
+  return `${FLIGHT_EVENT_URL_PREFIX}${tripId}`;
+}
+
 /**
  * Build every calendar entry for one duty. Returns [] when the duty has no legs
  * or its first flight has no parseable departure — there is nothing to anchor
@@ -152,6 +171,7 @@ export function buildDutyCalendarEvents(
   const word = readyWord(toAlarmInstant(wordAt, depTz).local.hour);
 
   const notes = buildNotes(trip.legs, wakeAt, leaveAt, checkInAt, depTz, word);
+  const url = flightEventUrl(trip.id);
   const marker = (key: string, title: string, at: Date): CalendarEventDraft => ({
     key,
     title,
@@ -159,6 +179,7 @@ export function buildDutyCalendarEvents(
     endISO: iso(plusMinutes(at, MARKER_MINUTES)),
     timeZone: depTz,
     notes,
+    url,
   });
 
   const events: CalendarEventDraft[] = [];
@@ -185,6 +206,7 @@ export function buildDutyCalendarEvents(
       endISO: iso(legArv),
       timeZone: airportTimeZone(leg.depArp),
       notes,
+      url,
     });
   });
 

@@ -1,9 +1,12 @@
 // Hooks that bind the v2 view model to the store.
-import { useMemo } from 'react';
-import { useAppSelector } from '../../store';
+import { useCallback, useMemo } from 'react';
+import { Alert } from 'react-native';
+import { useAppDispatch, useAppSelector } from '../../store';
 import { airlineByCode } from '../auth/airlines';
 import { tripDestination, type CityCard } from '../home/cities';
 import { classifyTrips } from '../travel/tripCsv';
+import { describeCalendarToggle } from '../calendar/dutyCalendarMessages';
+import { toggleDutyCalendar } from '../calendar/flightCalendarSlice';
 import { alarmsByTrip, buildMonth, dutyAlarmsByTrip, legView, nextTrip, tripStartMs, type LegView, type MonthModel } from './model';
 import type { EffectiveAlarm } from '../settings/alarmSetup';
 import type { Trip } from '../travel/tripCsv';
@@ -95,4 +98,45 @@ export function useMonth(year: number, monthIdx: number, now: Date): MonthModel 
     }),
     [year, monthIdx, trips, duties, meetings, mode, baseTz, byTrip, now, meetingMinutes, mutedIds],
   );
+}
+
+// ─── Airline schedule → iOS Calendar ─────────────────────────────────────────
+
+export interface DutyCalendar {
+  /** True when this duty's entries are already written to the device calendar. */
+  isAdded: (tripId: string) => boolean;
+  /** True while that duty's calendar write/remove is in flight. */
+  isBusy: (tripId: string) => boolean;
+  /** Write the WHOLE duty to the iOS calendar, or delete what we wrote. */
+  toggle: (trip: Trip) => Promise<void>;
+}
+
+/**
+ * The v1 "calendar icon on the flight card" behaviour, restored for the v2 UI
+ * (Schedule ▸ Timeline + Trip Details). One tap writes the duty's Wake Up /
+ * Get Ready, Leave Home and Check-in markers plus one block per leg into the
+ * device's default calendar; a second tap removes exactly those events.
+ *
+ * Times follow the crew's live alarm settings (and this duty's override), so the
+ * calendar always agrees with the chips on the card. iOS-only: the thunk returns
+ * 'unavailable' and the crew is told, rather than failing silently.
+ */
+export function useDutyCalendar(): DutyCalendar {
+  const dispatch = useAppDispatch();
+  const eventIds = useAppSelector(s => s.flightCalendar.eventIds);
+  const busyDutyId = useAppSelector(s => s.flightCalendar.busyDutyId);
+
+  const toggle = useCallback(async (trip: Trip) => {
+    const result = await dispatch(toggleDutyCalendar(trip));
+    const message = describeCalendarToggle(result, trip);
+    if (message) {
+      Alert.alert(message.title, message.body);
+    }
+  }, [dispatch]);
+
+  return useMemo(() => ({
+    isAdded: (tripId: string) => (eventIds[tripId]?.length ?? 0) > 0,
+    isBusy: (tripId: string) => busyDutyId === tripId,
+    toggle,
+  }), [eventIds, busyDutyId, toggle]);
 }

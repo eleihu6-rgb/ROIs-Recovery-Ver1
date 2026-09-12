@@ -5,10 +5,10 @@ import { View, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../store';
 import { useCarrier } from '../../theme/carrier';
-import { SectionLabel } from '../../components/v2/rows';
+import { NavRow, SectionLabel } from '../../components/v2/rows';
 import { PageShell, Hero, ListCard, KvRow } from './PageShell';
 import { legView, MON } from './model';
-import { useBase, useDutyAlarms } from './useV2';
+import { useBase, useDutyAlarms, useDutyCalendar } from './useV2';
 import { hotelFor, hotelTransfer, legOps } from '../travel/opsInfo';
 import type { V2StackParamList } from './nav';
 
@@ -20,6 +20,9 @@ export function TripDetailsScreen({ route }: Props) {
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const base = useBase();
+  // Airline schedule → iOS Calendar (restored from v1): one row writes / removes
+  // this rotation's wake-up, leave-home, check-in and per-leg entries.
+  const calendar = useDutyCalendar();
   // Record view — a rotation that has already flown still lists the wake-up /
   // leave-home it was reportable against.
   const { byTrip } = useDutyAlarms();
@@ -30,6 +33,7 @@ export function TripDetailsScreen({ route }: Props) {
     ops: legOps(l, trip, mode, baseTz, { hasLayover: (trip.layoverHours ?? 0) > 0 }),
   }));
   const first = legs[0].v, last = legs[legs.length - 1].v;
+  const inCalendar = calendar.isAdded(trip.id);
   // Layover hotel: the roster's own booking when it has one, otherwise a
   // deterministic stand-in (the F8/NOC feed has no hotel table yet) — labelled
   // "expected" so it can never be mistaken for a confirmation.
@@ -45,6 +49,17 @@ export function TripDetailsScreen({ route }: Props) {
   return (
     <PageShell title="Trip Details" testID="page-trip-details">
       <Hero h1={`${first.fltNumber} · ${routing}`} h2={`${window} · ${legs.length} leg${legs.length === 1 ? '' : 's'}${trip.layoverHours ? ` · ${Math.round(trip.layoverHours)}h layover` : ''}`} palette={p} />
+      <SectionLabel palette={p}>iPhone Calendar</SectionLabel>
+      <ListCard palette={p}>
+        <NavRow
+          icon={inCalendar ? 'calcheck' : 'cal'}
+          label={inCalendar ? 'In your iPhone Calendar' : 'Add to iPhone Calendar'}
+          value={inCalendar ? 'Tap to remove' : 'Wake-up · leave home · check-in · flights'}
+          palette={p}
+          onPress={() => calendar.toggle(trip)}
+          testID="trip-calendar-toggle"
+        />
+      </ListCard>
       {legs.map(({ v, ops }, i) => (
         <View key={i}>
           {/* A single-leg trip already names the flight, route and date in the hero —

@@ -1,0 +1,61 @@
+# v2 · airline schedule → iOS Calendar (restored from v1).
+# The Schedule flight card's calendar icon writes the whole duty (wake-up /
+# leave home / check-in + one block per leg) into the device calendar; Trip
+# Details carries the same toggle as a labelled row.
+#
+# Run:  xcrun simctl privacy booted grant calendar org.reactjs.native.example.RoyceTravelTemplate
+#       maestro test .maestro/v2_tg_flight_calendar.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+# The form opens on the default carrier with empty fields — pick THAI, which
+# prefills the TG test crew (35459 / Pier2026), exactly like v2_et_login does.
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    id: "tab-schedule"
+# The icon is duty-level: it sits on the first leg of an upcoming duty.
+- extendedWaitUntil:
+    visible:
+      id: "calendar-toggle-.*"
+    timeout: 30000
+- takeScreenshot: crew_cal_01_schedule_icon
+- tapOn:
+    id: "calendar-toggle-.*"
+- extendedWaitUntil:
+    visible: "Added to Calendar"
+    timeout: 20000
+- takeScreenshot: crew_cal_02_added_alert
+- tapOn: "OK"
+- takeScreenshot: crew_cal_03_icon_ticked
+# The labelled half lives on the duty page.
+- tapOn:
+    id: "duty-.*-pressable"
+# Matches loosely: the iOS accessibility element merges the row's label + value.
+- extendedWaitUntil:
+    visible: "In your iPhone Calendar.*"
+    timeout: 20000
+- takeScreenshot: crew_cal_04_trip_details
+# Toggling it off from the duty page deletes exactly the entries we wrote, so the
+# flow leaves the simulator calendar as it found it.
+- tapOn:
+    id: "trip-calendar-toggle"
+- extendedWaitUntil:
+    visible: "Removed from Calendar"
+    timeout: 20000
+- tapOn: "OK"
+- extendedWaitUntil:
+    visible: "Add to iPhone Calendar.*"
+    timeout: 20000
+- takeScreenshot: crew_cal_05_removed

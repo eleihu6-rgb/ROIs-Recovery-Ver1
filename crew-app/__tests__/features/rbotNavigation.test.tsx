@@ -13,6 +13,7 @@ import alarmsReducer from '../../src/features/alarms/alarmsSlice';
 import dutiesReducer from '../../src/features/roster/dutiesSlice';
 import meetingsReducer from '../../src/features/meetings/meetingsSlice';
 import notificationsReducer from '../../src/features/notifications/notificationsSlice';
+import flightCalendarReducer from '../../src/features/calendar/flightCalendarSlice';
 import type { Trip } from '../../src/features/travel/tripCsv';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -53,6 +54,7 @@ function makeStore() {
       duties: dutiesReducer,
       meetings: meetingsReducer,
       notifications: notificationsReducer,
+      flightCalendar: flightCalendarReducer,
     },
     middleware: getDefaultMiddleware => getDefaultMiddleware({serializableCheck: false}),
   });
