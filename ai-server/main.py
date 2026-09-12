@@ -22,6 +22,9 @@ def health() -> dict[str, str]:
 from src.chat.routes import router as chat_router  # noqa: E402
 app.include_router(chat_router)
 
+from src.chat.crew_routes import router as crew_chat_router  # noqa: E402
+app.include_router(crew_chat_router)
+
 from src.regression.routes import router as regression_router  # noqa: E402
 app.include_router(regression_router)
 

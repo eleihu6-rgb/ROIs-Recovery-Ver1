@@ -43,6 +43,7 @@ export type IconName =
   | 'menu3'
   | 'map'
   | 'list'
+  | 'send'
   | 'zoomIn'
   | 'zoomOut';
 
@@ -350,6 +351,14 @@ export function Icon({ name, size = 24, color = '#fff', strokeWidth }: IconProps
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round">
           <Circle cx={11} cy={11} r={6.5} />
           <Path d="M8.5 11h5M16 16l4 4" />
+        </Svg>
+      );
+    // Paper-plane send: R'Bot's chat composer. Same 24-unit outline style as the
+    // rest of the nav-bar set (stroke 1.9, rounded joins, theme colour).
+    case 'send':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.9} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M4.2 11.6 19.4 4.6c.5-.2 1 .3.8.8l-6.9 15.1c-.2.5-1 .5-1.2 0l-2.2-5.2-5.2-2.2c-.5-.2-.5-.9 0-1.1Z" />
         </Svg>
       );
     default:

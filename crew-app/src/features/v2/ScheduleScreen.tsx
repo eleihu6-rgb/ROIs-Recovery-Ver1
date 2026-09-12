@@ -25,12 +25,18 @@ import { codeAddsInfo, type GroundDuty } from '../roster/dutyDisplay';
 import type { TimeZoneMode } from '../settings/settingsSlice';
 import { hhmmForInstant, parseRosterUTC } from '../settings/timeFormat';
 import { airportZone } from '../settings/airportZones';
+import type { V2TabParamList } from './nav';
 
 /** Inner surface (icon disc, marker strip, meeting row) — a touch lighter than the
  *  card itself, and equally translucent so the carrier ground shows through. */
 const CARD_INSET = 'rgba(255,255,255,0.72)';
 
-export function ScheduleScreen() {
+/** `route.params.view` is how an outside entry point (R'Bot) opens a specific
+ *  roster view; the tab navigator owns that param, and the effect below applies
+ *  it. Optional so the screen still renders standalone in tests. */
+type Props = { route?: { params?: V2TabParamList['Schedule'] } };
+
+export function ScheduleScreen({ route }: Props = {}) {
   const p = useCarrier();
   const insets = useSafeAreaInsets();
   const nav = useV2Nav();
@@ -48,6 +54,14 @@ export function ScheduleScreen() {
   const [view, setView] = useState<SchedViewMode>('timeline');
   const [menuOpen, setMenuOpen] = useState(false);
   const base = useBase();
+  // Apply a requested roster view (R'Bot "show my route map"). Keyed on `viewAt`
+  // so re-requesting the *same* view after the crew changed it by hand still
+  // re-applies, while a plain tab tap never overrides a manual change.
+  const requestedView = route?.params?.view;
+  const requestedAt = route?.params?.viewAt;
+  useEffect(() => {
+    if (requestedView) setView(requestedView);
+  }, [requestedView, requestedAt]);
   // Calendar's selected day: opens on whatever day Timeline opens on (today when
   // it holds a duty, else the next one) and re-seats when the month rolls.
   const focusDay = month.days[month.focusIndex]?.day ?? null;

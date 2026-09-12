@@ -1,0 +1,73 @@
+# v2 · R'Bot (crew app AI assistant) — TG crew, real UI.
+#
+# Proves the three things Ryan asked for, on the simulator, against the real
+# ai-server (DeepSeek): the nav-bar entry opens the chat, a chat order performs
+# an app action (alarms), and a spoken sentence opens a pre-filled absence form.
+#
+# Run: cd crew-app && maestro test .maestro/v2_tg_rbot.yaml
+# Requires: ai-server on :3005 (`cd ai-server && .venv/bin/python main.py`).
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp
+- runFlow:
+    when:
+      visible:
+        id: "login-screen"
+    commands:
+      - tapOn:
+          id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 240000
+- takeScreenshot: rbot-Ver1-00_dock-entry
+# 1. The nav-bar entry opens the chat, greeting + capability card + suggestions.
+- tapOn:
+    id: "dock-rbot"
+- assertVisible:
+    id: "rbot-welcome"
+- assertVisible: "What I can do for you"
+- assertVisible: "Get around"
+- takeScreenshot: rbot-Ver1-01_open
+# 2. An action that applies in place (a setting change never navigates), so the
+#    confirmation chip stays on screen.
+# 2. A navigation order straight from a suggestion chip: R'Bot opens the
+#    Schedule tab's route map. (Suggestions only exist on the first-run screen,
+#    so this happens before the first typed message.)
+- tapOn:
+    id: "rbot-suggestion-0"
+- extendedWaitUntil:
+    visible:
+      id: "sched-title"
+    timeout: 60000
+- takeScreenshot: rbot-Ver1-03_route-map
+- assertVisible:
+    id: "sched-title"
+# 3. An action typed in words, applied in place, with its confirmation chip.
+- tapOn:
+    id: "dock-rbot"
+- tapOn:
+    id: "rbot-input"
+- inputText: "change my theme to graphite"
+- tapOn:
+    id: "rbot-send"
+- extendedWaitUntil:
+    visible:
+      id: "rbot-applied"
+    timeout: 60000
+- assertVisible: "Theme set to graphite"
+- takeScreenshot: rbot-Ver1-02_action-applied
+# 4. A spoken sentence becomes a pre-filled absence request (never auto-submitted).
+#    (Still in the same thread: a settings change does not close the chat.)
+- tapOn:
+    id: "rbot-input"
+- inputText: "I am sick and cannot fly tomorrow"
+- tapOn:
+    id: "rbot-send"
+- extendedWaitUntil:
+    visible:
+      id: "page-absence"
+    timeout: 60000
+- assertVisible:
+    id: "absence-from"
+- takeScreenshot: rbot-Ver1-04_absence-prefill

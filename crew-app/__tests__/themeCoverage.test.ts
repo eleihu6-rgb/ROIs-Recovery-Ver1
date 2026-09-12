@@ -20,6 +20,7 @@ const SCAN_DIRS = [
   'src/components/v2',
   'src/features/notifications',
   'src/features/settings',
+  'src/features/rbot',
 ];
 
 const FULLY_EXEMPT: Record<string, string> = {
