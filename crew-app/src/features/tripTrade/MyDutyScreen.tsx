@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch, useAppSelector } from '../../store';
+import { selectCrewCarrier } from '../auth/authSlice';
 import { colors, font, radius, space, shadow } from '../../theme';
 import {
   publishAllDuties, toggleDutyPublished, addGenericWant, removeGenericWant,
@@ -29,7 +30,8 @@ export function MyDutyScreen() {
   const dispatch = useAppDispatch();
   const trips = useAppSelector(s => s.trips.trips);
   const crewId = useAppSelector(s => s.auth.crewId);
-  const airline = useAppSelector(s => s.auth.airline);
+  // The card labels the crew's own carrier (roster-resolved), not the sign-in option.
+  const airline = useAppSelector(selectCrewCarrier);
   const overlay = useAppSelector(s => s.tripTrade);
 
   // Real roster → duty cards, with the crew's publish/trade overlay applied.

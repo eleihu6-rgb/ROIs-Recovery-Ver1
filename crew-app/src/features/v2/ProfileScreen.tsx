@@ -11,7 +11,7 @@ import { Icon } from '../../components/v2/icons';
 import { NavRow } from '../../components/v2/rows';
 import { CrewAvatar, AVATAR_COUNT, avatarForCrew } from '../settings/avatars';
 import { airlineByCode } from '../auth/airlines';
-import { logout } from '../auth/authSlice';
+import { logout, selectCrewCarrier } from '../auth/authSlice';
 import { setAvatarIndex } from '../settings/settingsSlice';
 import { countryName } from '../settings/countries';
 import { ListCard } from './PageShell';
@@ -27,7 +27,9 @@ export function ProfileScreen() {
   const nav = useV2Nav();
   const dispatch = useAppDispatch();
   const crewId = useAppSelector(s => s.auth.crewId) ?? '';
-  const airline = useAppSelector(s => s.auth.airline) ?? '';
+  // The carrier chip names the airline the crew FLIES (K1003 = Emirates), which
+  // the roster resolved — not the option they signed in through.
+  const airline = useAppSelector(selectCrewCarrier) ?? '';
   const alertCount = useAppSelector(s => s.notifications.notifications.length);
   const alarmsEnabled = useAppSelector(s => s.alarms.enabled);
   const tz = useAppSelector(s => s.settings.timeZoneMode);

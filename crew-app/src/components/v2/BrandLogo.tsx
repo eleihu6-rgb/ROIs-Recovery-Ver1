@@ -5,6 +5,11 @@ import { Icon } from './icons';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ethiopianLogo = require('../../assets/brand/ethiopian-airlines-white.png');
+// Emirates mark: the official Arabic calligraphy + wordmark, recoloured pure
+// white (same treatment as the Ethiopian PNG) from the Wikimedia Commons vector
+// "File:Emirates logo.svg" so it drops onto any carrier ground.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const emiratesLogo = require('../../assets/brand/emirates-white.png');
 
 export interface BrandLogoProps {
   airline: string;
@@ -64,6 +69,18 @@ export function BrandLogo({ airline, height = 34 }: BrandLogoProps): React.JSX.E
         source={ethiopianLogo}
         resizeMode="contain"
         style={{ height: etHeight, width: etWidth }}
+      />
+    );
+  }
+  if (airline === 'EK') {
+    // The Emirates lockup is stacked (calligraphy over wordmark), so its aspect is
+    // ~1.45:1 — keep the requested height and let the width follow.
+    const ekWidth = (height * 690) / 475;
+    return (
+      <Image
+        source={emiratesLogo}
+        resizeMode="contain"
+        style={{ height, width: ekWidth }}
       />
     );
   }

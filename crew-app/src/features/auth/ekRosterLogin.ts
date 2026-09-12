@@ -2,13 +2,19 @@ import type {AppDispatch} from '../../store';
 import {setDuties} from '../roster/dutiesSlice';
 import {
   fetchEkRoster,
+  crewCarrierOf,
   mapEkRosterToDuties,
   mapEkRosterToTrips,
 } from '../travel/ekRosterApi';
 import type {Trip} from '../travel/tripCsv';
 import {setTrips} from '../travel/tripsSlice';
 import {airlineByCode} from './airlines';
-import {publishEphemeralSession, publishPersistedSession, setCrewBase, setCrewProfile} from './authSlice';
+import {
+  publishEphemeralSession,
+  publishPersistedSession,
+  setCrewBase,
+  setCrewProfile,
+} from './authSlice';
 import {setBaseTimeZone} from '../settings/settingsSlice';
 import {airportZone} from '../settings/airportZones';
 import {
@@ -77,13 +83,16 @@ export async function loadEkRosterSession(
     {airline: airline.code, crewId: params.crewId, password: params.password},
     signal,
   );
+  // The carrier the crew actually flies (EK for K1003) — the signed-in airline
+  // only picked the roster service, so branding must follow the roster.
+  const carrier = crewCarrierOf(response);
   const trips = mapEkRosterToTrips(response);
   const duties = mapEkRosterToDuties(response);
   throwIfAborted(signal);
 
   let persistenceError: Error | null = null;
   try {
-    await commitEkRosterSnapshot({trips, duties, session: params}, signal);
+    await commitEkRosterSnapshot({trips, duties, session: {...params, carrier}}, signal);
   } catch (error) {
     // Cancellation still wins over a partially staged snapshot.
     if (isEkRosterLoginAbortError(error) || signal?.aborted) {
@@ -121,8 +130,8 @@ export async function loadEkRosterSession(
   dispatch(setBaseTimeZone(airportZone(response.crew.base)));
   dispatch(
     persistenceError
-      ? publishEphemeralSession(params)
-      : publishPersistedSession(params),
+      ? publishEphemeralSession({...params, carrier})
+      : publishPersistedSession({...params, carrier}),
   );
   return {trips, persisted: persistenceError === null, persistenceError};
 }

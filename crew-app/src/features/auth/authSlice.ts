@@ -14,6 +14,12 @@ import { clearRbotSession } from '../rbot/rbotSlice';
 
 interface AuthState {
   airline: string;
+  /** The carrier the CREW actually flies, resolved from the loaded roster (EK for
+   *  crew K1003 even when the roster came through the ET option). Null until a
+   *  roster says otherwise — TG/PR capture logins never set it, so those
+   *  carriers keep branding from `airline`. Every brand/theme consumer must read
+   *  `carrier ?? airline`. */
+  carrier: string | null;
   crewId: string | null;
   /** Crew's home base from the loaded roster (ADD for the ET crews) — drives the
    *  base-time zone and the base shown on Home. Null before the roster loads. */
@@ -33,6 +39,7 @@ interface AuthState {
 
 const initialState: AuthState = {
   airline: DEFAULT_AIRLINE,
+  carrier: null,
   crewId: null,
   base: null,
   firstName: null,
@@ -46,6 +53,8 @@ const initialState: AuthState = {
 
 interface SessionPayload {
   airline: string;
+  /** Roster-resolved carrier, when the login path knows it. */
+  carrier?: string | null;
   crewId: string;
   password: string;
   keepLogin: boolean;
@@ -57,6 +66,7 @@ const authSlice = createSlice({
   reducers: {
     _setSession(state, action: PayloadAction<SessionPayload>) {
       state.airline = action.payload.airline;
+      state.carrier = action.payload.carrier ?? null;
       state.crewId = action.payload.crewId;
       state.password = action.payload.password;
       state.keepLogin = action.payload.keepLogin;
@@ -64,6 +74,7 @@ const authSlice = createSlice({
     },
     _clearSession(state) {
       state.crewId = null;
+      state.carrier = null;
       state.firstName = null;
       state.lastName = null;
       state.nationality = null;
@@ -89,7 +100,25 @@ const authSlice = createSlice({
   },
 });
 
-const { _setSession, _clearSession, _setHydrated, _setCrewBase, _setCrewProfile } = authSlice.actions;
+/**
+ * The carrier to BRAND with: the one the loaded roster belongs to (EK for the
+ * UAE crew K1003), falling back to the airline whose option signed in — which
+ * only names the roster service, since the ROIS mobile-roster endpoint answers
+ * the ET and F8 options alike. Ryan, 2026-09-11: "EK crew shows ET logo".
+ *
+ * Every crew-facing brand/theme/label reads this. Portal configuration (base
+ * airport, capture adapter, API base URL) keeps reading `state.auth.airline`.
+ */
+export const selectCrewCarrier = (state: {auth: {airline: string; carrier: string | null}}): string =>
+  state.auth.carrier ?? state.auth.airline;
+
+const {
+  _setSession,
+  _clearSession,
+  _setHydrated,
+  _setCrewBase,
+  _setCrewProfile,
+} = authSlice.actions;
 
 /** Roster-derived profile facts that are not part of the login parameters. */
 export function setCrewBase(base: string | null) {

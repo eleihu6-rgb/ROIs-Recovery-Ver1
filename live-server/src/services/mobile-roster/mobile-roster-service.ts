@@ -16,6 +16,12 @@ export interface MobileRosterLoginInput {
 export interface MobileRosterFlight {
   flightId: string
   flightNumber: string
+  /**
+   * Operating carrier of THIS flight (`flight.airline`, e.g. "EK" for a leg on
+   * an Emirates aircraft even when the crew signed in through another portal).
+   * Null when the roster row has no flight master row to read it from.
+   */
+  carrier: string | null
   /** Aircraft fleet/type code the flight is scheduled with (e.g. "7M8", "788"). */
   fleet: string | null
   /** Aircraft tail/registration when the flight row carries one (e.g. "ET-AVK"). */
@@ -67,6 +73,15 @@ export interface MobileRosterResponse {
     rank: string
     /** ISO-2 country code from `crew.nationality` (null when the roster has none). */
     nationality: string | null
+    /**
+     * The crew's own carrier, taken from the flights they operate in the loaded
+     * window (most common `flight.airline`). This is what the app brands with —
+     * the sign-in portal only says which roster service answered, so a UAE crew
+     * fetched through another carrier's option would otherwise be branded wrong
+     * (crew K1003 showed the Ethiopian wordmark). Null when the window has no
+     * flights at all (the app then falls back to the carrier it signed in with).
+     */
+    carrier: string | null
   }
   pairings: MobileRosterPairing[]
   groundDuties: MobileRosterGroundDuty[]
@@ -109,6 +124,7 @@ type RosterRow = {
   pairing_release_utc: string | null
   flt_id: string | number | null
   flt_num: string | null
+  carrier: string | null
   fleet: string | null
   register: string | null
   dep_arp: string | null
@@ -172,6 +188,48 @@ const optionalUtcString = (value: Date | string | null): string | null => {
 const isWithinEffectiveWindow = (user: PbsUserRow, now: Date): boolean =>
   new Date(user.eff_dt) <= now
   && (user.exp_dt === null || new Date(user.exp_dt) > now)
+
+/**
+ * The carrier the crew actually flies, from the flights in the loaded window:
+ * the most common `flight.airline`, ties broken by the earliest first leg. A
+ * crew that only has ground duties in the window has no carrier here (null) and
+ * the app falls back to the carrier it signed in with.
+ *
+ * Why the roster and not the sign-in airline: the login's `airline` field only
+ * picks which roster service answers, and both ROIS mobile-roster carriers share
+ * one endpoint — so a UAE crew (K1003) signed in through the ET option came back
+ * branded as Ethiopian. The roster itself knows the real carrier.
+ */
+const resolveCrewCarrier = (pairings: MobileRosterPairing[]): string | null => {
+  const tally = new Map<string, {count: number; firstIndex: number}>()
+  let index = 0
+  for (const pairing of pairings) {
+    for (const flight of pairing.flights) {
+      const carrier = flight.carrier?.trim().toUpperCase()
+      if (!carrier) {
+        continue
+      }
+      const seen = tally.get(carrier)
+      if (seen) {
+        seen.count += 1
+      } else {
+        tally.set(carrier, {count: 1, firstIndex: index})
+      }
+      index += 1
+    }
+  }
+  let best: string | null = null
+  let bestCount = 0
+  let bestIndex = Number.POSITIVE_INFINITY
+  for (const [carrier, seen] of tally) {
+    if (seen.count > bestCount || (seen.count === bestCount && seen.firstIndex < bestIndex)) {
+      best = carrier
+      bestCount = seen.count
+      bestIndex = seen.firstIndex
+    }
+  }
+  return best
+}
 
 const hasMobileRosterAccess = (user: PbsUserRow, now: Date): boolean =>
   user.status === 0
@@ -301,6 +359,7 @@ export const authenticateAndLoadMobileRoster = async (
               ${utcIsoColumn('ps.duty_sch_end_dt_utc')} as segment_release_utc,
               rf.flt_id,
               f.flt_num,
+              f.airline as carrier,
               f.fleet,
               f.register,
               coalesce(f.dep_arp, rf.dep_arp) as dep_arp,
@@ -365,6 +424,7 @@ export const authenticateAndLoadMobileRoster = async (
             coalesce(pb.pairing_release_utc, wr.segment_release_utc, wr.end_utc) as pairing_release_utc,
             wr.flt_id,
             wr.flt_num,
+            wr.carrier,
             wr.fleet,
             wr.register,
             wr.dep_arp,
@@ -417,6 +477,7 @@ export const authenticateAndLoadMobileRoster = async (
     pairing.flights.push({
       flightId,
       flightNumber: row.flt_num ?? '',
+      carrier: row.carrier?.trim() || null,
       fleet: row.fleet ?? null,
       register: row.register?.trim() || null,
       departureAirport: row.dep_arp,
@@ -431,6 +492,8 @@ export const authenticateAndLoadMobileRoster = async (
     })
   }
 
+  const orderedPairings = [...pairings.values()]
+
   return {
     apiVersion: '1',
     airline: input.airline,
@@ -441,8 +504,9 @@ export const authenticateAndLoadMobileRoster = async (
       base: profile.base ?? '',
       rank: profile.rank ?? '',
       nationality: profile.nationality ?? null,
+      carrier: resolveCrewCarrier(orderedPairings),
     },
-    pairings: [...pairings.values()],
+    pairings: orderedPairings,
     groundDuties,
   }
 }

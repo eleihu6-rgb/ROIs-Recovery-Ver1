@@ -6,6 +6,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAppSelector } from '../../store';
+import { selectCrewCarrier } from '../auth/authSlice';
 import { CarrierContext, paletteFor, resolveTheme } from '../../theme/carrier';
 import { PillDock } from '../../components/v2/PillDock';
 import { HomeScreen } from './HomeScreen';
@@ -41,9 +42,12 @@ function Tabs() {
 }
 
 export function V2Navigator() {
-  const airline = useAppSelector(s => s.auth.airline);
+  // Brand/theme with the carrier the crew actually flies when the roster said so
+  // (crew K1003 = EK, even though the ROIS roster service is reached through the
+  // ET option); otherwise the signed-in airline stays the carrier.
+  const carrier = useAppSelector(selectCrewCarrier);
   const chosenTheme = useAppSelector(s => s.settings.themePreset);
-  const palette = paletteFor(resolveTheme(chosenTheme, airline));
+  const palette = paletteFor(resolveTheme(chosenTheme, carrier));
   return (
     <CarrierContext.Provider value={palette}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>

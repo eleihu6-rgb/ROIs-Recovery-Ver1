@@ -1,6 +1,7 @@
 // Profile ▸ Personal Information — what the session knows about the crew.
 import React from 'react';
 import { useAppSelector } from '../../store';
+import { selectCrewCarrier } from '../auth/authSlice';
 import { useCarrier } from '../../theme/carrier';
 import { SectionLabel } from '../../components/v2/rows';
 import { PageShell, Hero, ListCard, KvRow } from './PageShell';
@@ -10,7 +11,9 @@ import { useBase } from './useV2';
 export function PersonalInfoScreen() {
   const p = useCarrier();
   const crewId = useAppSelector(s => s.auth.crewId) ?? '';
-  const airline = useAppSelector(s => s.auth.airline) ?? '';
+  // Crew-facing identity: name the carrier the crew flies (roster-resolved),
+  // not the sign-in option that fetched the roster.
+  const airline = useAppSelector(selectCrewCarrier) ?? '';
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const base = useBase();
   const a = airlineByCode(airline);

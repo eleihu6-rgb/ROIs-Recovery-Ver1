@@ -16,6 +16,8 @@ const KEYCHAIN_SERVICE = 'com.royce.crewportal';
 
 export interface SavedSession {
   airline: string;
+  /** Roster-resolved carrier (EK for crew K1003); absent for TG/PR sessions. */
+  carrier?: string | null;
   crewId: string;
   password: string;
   keepLogin: boolean;

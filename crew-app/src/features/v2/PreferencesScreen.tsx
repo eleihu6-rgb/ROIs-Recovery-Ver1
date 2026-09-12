@@ -7,6 +7,7 @@ import { isCalendarWriteAvailable, requestCalendarAccess, saveCalendarEvents } f
 import { setMeetingsEnabled, syncMeetings } from '../meetings/meetingsSlice';
 import { deviceTimeZone } from '../settings/timeFormat';
 import { useAppDispatch, useAppSelector } from '../../store';
+import { selectCrewCarrier } from '../auth/authSlice';
 import { THEME_LABELS, resolveTheme, useCarrier } from '../../theme/carrier';
 import { NavRow, SectionLabel, ToggleRow } from '../../components/v2/rows';
 import { PageShell, ListCard, KvRow } from './PageShell';
@@ -20,7 +21,8 @@ export function PreferencesScreen() {
   const nav = useV2Nav();
   const dispatch = useAppDispatch();
   const prefs = useAppSelector(s => s.settings.explorePrefs);
-  const airline = useAppSelector(s => s.auth.airline) ?? '';
+  // Theme rows name the crew's own carrier (K1003 = EK) once the roster resolved it.
+  const airline = useAppSelector(selectCrewCarrier) ?? '';
   const themePreset = useAppSelector(s => s.settings.themePreset);
   const themeLabel = THEME_LABELS[resolveTheme(themePreset, airline)];
   const [push, setPush] = useState(true);

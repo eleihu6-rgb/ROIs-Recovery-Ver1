@@ -13,6 +13,10 @@ export interface EkRosterSnapshotSession {
   crewId: string;
   password: string;
   keepLogin: boolean;
+  /** Roster-resolved carrier (EK for crew K1003) so a restored "Keep Login"
+   *  session keeps the right brand instead of falling back to the sign-in
+   *  airline. Optional: snapshots written before this field exist without it. */
+  carrier?: string | null;
 }
 
 export interface EkRosterSnapshotInput {
@@ -55,6 +59,11 @@ function parseStoredSnapshot(raw: string | null): StoredEkRosterSnapshot | null 
       || !API_ROSTER_AIRLINES.has(value.session.airline)
       || typeof value.session.crewId !== 'string'
       || typeof value.session.keepLogin !== 'boolean') {
+      return null;
+    }
+    // Older snapshots have no carrier; a bad one is dropped rather than trusted.
+    const carrier = (value.session as {carrier?: unknown}).carrier;
+    if (carrier !== undefined && carrier !== null && typeof carrier !== 'string') {
       return null;
     }
     return value as StoredEkRosterSnapshot;
@@ -108,6 +117,9 @@ export async function commitEkRosterSnapshot(
         airline: input.session.airline,
         crewId: input.session.crewId,
         keepLogin: input.session.keepLogin,
+        // Written only when the roster resolved one, so snapshots without a
+        // carrier keep the exact shape older builds wrote.
+        ...(input.session.carrier ? {carrier: input.session.carrier} : {}),
         keychainService,
       },
     };
@@ -154,6 +166,7 @@ export async function loadEkRosterSavedSession(): Promise<EkRosterSnapshotSessio
     crewId: snapshot.session.crewId,
     password: credentials.password,
     keepLogin: true,
+    ...(snapshot.session.carrier ? {carrier: snapshot.session.carrier} : {}),
   };
 }
 

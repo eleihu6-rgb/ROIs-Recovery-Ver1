@@ -5,6 +5,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, ImageBackground } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '../../store';
+import { selectCrewCarrier } from '../auth/authSlice';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon, type IconName } from '../../components/v2/icons';
@@ -20,7 +21,9 @@ export function HomeScreen() {
   const p = useCarrier();
   const insets = useSafeAreaInsets();
   const nav = useV2Nav();
-  const airline = useAppSelector(s => s.auth.airline) ?? 'TG';
+  // Brand with the crew's own carrier when the roster resolved one (crew K1003 =
+  // EK), else the airline they signed in with.
+  const airline = useAppSelector(selectCrewCarrier) ?? 'TG';
   const alertCount = useAppSelector(s => s.notifications.notifications.length);
   const alarmsEnabled = useAppSelector(s => s.alarms.enabled);
   const mode = useAppSelector(s => s.settings.timeZoneMode);
