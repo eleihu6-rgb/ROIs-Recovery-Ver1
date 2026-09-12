@@ -1,0 +1,115 @@
+# Schedule tab ▸ Roster view (Ver11) — TG crew (portal-captured roster).
+#
+# Proves the three Schedule views on the OTHER carrier:
+#   • the 3-line menu replaces the bell and still reaches Alerts;
+#   • Calendar: month grid, day selection scoping the agenda, day timeline;
+#   • Route map: great-circle lines from base + the month summary card;
+#   • switching back to Timeline leaves the original list intact.
+#
+# Run: maestro test crew-app/.maestro/tg_sched_roster_views.yaml --debug-output /tmp/schedviews-run
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+# Schedule tab (tap twice: the first tap can land while the dock is still animating).
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-list"
+    timeout: 20000
+- takeScreenshot: sched_00_timeline
+# The bell's slot is now the roster-view menu (Alerts live inside it).
+- tapOn:
+    id: "sched-view-menu"
+- assertVisible: "Roster view"
+# Text assertions use ids: a menu row's label and its hint are separate Texts in
+# one Pressable, and Maestro's text match is a full-string regex.
+- assertVisible:
+    id: "sched-view-timeline"
+- assertVisible:
+    id: "sched-view-calendar"
+- assertVisible:
+    id: "sched-view-route"
+# Alerts still reachable from this tab (the bell's old job).
+- assertVisible:
+    id: "sched-alerts"
+- takeScreenshot: sched_01_menu
+- tapOn:
+    id: "sched-view-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "cal-grid"
+    timeout: 10000
+- takeScreenshot: sched_02_calendar
+# Day timeline for the day the calendar opens on (a flying day: the report ->
+# release block on the hour axis).
+- tapOn:
+    id: "cal-to-detail"
+- extendedWaitUntil:
+    visible:
+      id: "cal-timeline"
+    timeout: 10000
+- takeScreenshot: sched_03_day_timeline
+# A published day off is an all-day chip, not a full-height block.
+- tapOn:
+    id: "cal-to-compact"
+- tapOn:
+    id: "cal-day-10"
+- takeScreenshot: sched_04_calendar_day
+- tapOn:
+    id: "cal-to-detail"
+- takeScreenshot: sched_05_day_off
+- tapOn:
+    id: "cal-to-compact"
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-route"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 10000
+- takeScreenshot: sched_06_route_map
+# The summary card sits under the map.
+- swipe:
+    start: "50%, 80%"
+    end: "50%, 45%"
+- takeScreenshot: sched_07_route_stats
+# Back to the view that shipped before this change.
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-timeline"
+- extendedWaitUntil:
+    visible:
+      id: "sched-list"
+    timeout: 10000
+- takeScreenshot: sched_08_back_to_timeline

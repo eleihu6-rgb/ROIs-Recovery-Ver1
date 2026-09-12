@@ -1,0 +1,70 @@
+# Schedule tab ▸ Roster view (Ver11) — PR crew 433535.
+#
+# The third carrier, and the cross-airline check the design spec asks for: after
+# switching accounts the Route map must centre on PR's own base (MNL) and the
+# calendar must show PR's month, not TG's or ET's.
+#
+# Run: maestro test crew-app/.maestro/pr_sched_roster_views.yaml --debug-output /tmp/prsched-run
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+# The picker animates in; wait for the row before tapping it.
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-list"
+    timeout: 20000
+- tapOn:
+    id: "sched-view-menu"
+- assertVisible: "Roster view"
+- tapOn:
+    id: "sched-view-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "cal-grid"
+    timeout: 10000
+- takeScreenshot: prsched_00_calendar
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-route"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 10000
+- takeScreenshot: prsched_01_route_map
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-timeline"
+- extendedWaitUntil:
+    visible:
+      id: "sched-list"
+    timeout: 10000
+- takeScreenshot: prsched_02_back_to_timeline

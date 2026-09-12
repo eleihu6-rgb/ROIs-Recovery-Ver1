@@ -210,6 +210,12 @@ export interface DayMeeting {
   where: string;
   /** Start instant (ms) — used to order several meetings on one day. */
   startMs: number;
+  /** End instant (ms) — the day timeline draws the event as a real block, so it
+   *  needs the length, not just the start. */
+  endMs: number;
+  /** End "HH:MM" on the SAME clock as `hhmm` (the meeting's display zone), so a
+   *  duration is never recomputed from the device's own timezone. */
+  endHhmm: string;
   /** Online-meeting join link (Teams / Zoom / Meet / Webex) or null for a
    *  meeting with no link in its URL, location or invite body. */
   joinUrl: string | null;
@@ -393,12 +399,18 @@ export function buildMonth(
     const dm = byKey.get(ymd(new Date(startMs)));
     if (!dm) continue;
     const zone = meetingZone(mode, baseTz, m.timeZone);
+    const endMs = Date.parse(m.endISO);
+    const safeEndMs = Number.isNaN(endMs) ? startMs + DEFAULT_MEETING_MINUTES * 60_000 : endMs;
     dm.meetings.push({
       id: m.id,
       title: m.title,
       where: m.calendarTitle,
       startMs,
+      // A meeting with no parsable end still gets a block: the calendar's own
+      // default length, so the timeline never draws a zero-height event.
+      endMs: safeEndMs,
       hhmm: hhmmInZone(new Date(startMs), zone),
+      endHhmm: hhmmInZone(new Date(safeEndMs), zone),
       joinUrl: meetingJoinUrl(m),
       alarmHhmm: hhmmInZone(
         new Date(startMs - meetingPrefs.minutesBefore * 60_000),
