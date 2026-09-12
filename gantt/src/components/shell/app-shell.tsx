@@ -33,6 +33,7 @@ import { ScheduleDetailsDialog } from '@/components/roster/schedule-details-dial
 import { DailyTaskCalendarDialog } from '@/components/roster/daily-task-calendar-dialog'
 import { CrewInfoDialog } from '@/components/roster/crew-info-dialog'
 import { AutoAssignDialog } from '@/components/roster/auto-assign-dialog'
+import { BestFitDialog } from '@/components/best-fit/best-fit-dialog'
 import { GanttDayStatisticsDialog } from '@/components/gantt/gantt-day-statistics-dialog'
 import { AiChatPanel } from '@/components/ai-chat/ai-chat-panel'
 import { useUrlSync } from '@/hooks/use-url-sync'
@@ -180,6 +181,9 @@ export const AppShell = () => {
       <DailyTaskCalendarDialog />
       <CrewInfoDialog />
       <AutoAssignDialog />
+      {/* Best-fit crew — same shell hoist as Auto-assign: read-only planner that
+          the Live pairing pane and its row context menu both drive. */}
+      <BestFitDialog />
       <GanttDayStatisticsDialog />
       {canAccessRbot && <AiChatPanel />}
     </div>

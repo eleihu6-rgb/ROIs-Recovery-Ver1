@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { ArrowUpDown, Filter, Settings2, X, SlidersHorizontal, Navigation, Bell, Gauge, RefreshCw, ShieldPlus, ListX, Trash2, Route } from 'lucide-react'
+import { ArrowUpDown, Filter, Settings2, X, SlidersHorizontal, Navigation, Bell, Gauge, RefreshCw, ShieldPlus, ListX, Trash2, Route, Sparkles } from 'lucide-react'
 import { ColumnConfigDialog } from '@/components/common/column-config-dialog'
 import { usePaneStore } from '@/stores/pane-store'
 import { SESSION_COLORS } from '@/stores/pairing-store'
@@ -55,6 +55,8 @@ interface PaneConditionStripProps {
   recheckStuck?: boolean
   /** Open the RES Pairing Creator planner (Live pairing pane only). */
   onResPairingClick?: () => void
+  /** Open the Best-fit crew dialog (Live pairing pane). */
+  onBestFitClick?: () => void
   onRoundtripPairingClick?: () => void
   /** Toggle compact overlap lanes in roster panes. */
   overlapLanes?: boolean
@@ -109,6 +111,7 @@ export const PaneConditionStrip = memo(({
   recheckStale,
   recheckStuck,
   onResPairingClick,
+  onBestFitClick,
   onRoundtripPairingClick,
   overlapLanes,
   onOverlapLanesToggle,
@@ -372,6 +375,17 @@ export const PaneConditionStrip = memo(({
                 data-testid="res-pairing-button"
               >
                 <ShieldPlus className="h-3 w-3" />
+              </button>
+            )}
+            {/* Best-fit crew for open pairings — Live pairing pane only */}
+            {onBestFitClick && (
+              <button
+                className="inline-flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-all duration-100 hover:bg-accent/60 hover:text-foreground active:scale-95"
+                onClick={onBestFitClick}
+                title="Best-fit crew for open pairings"
+                data-testid="best-fit-button"
+              >
+                <Sparkles className="h-3 w-3" />
               </button>
             )}
             {onRoundtripPairingClick && (
