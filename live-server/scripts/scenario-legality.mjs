@@ -1361,6 +1361,9 @@ export function scenarioSource(db, scenarioId, ctx) {
                   coalesce(nullif(rf.assignment, ''), rf.assignment_group, 'GRD') as assignment
              from scenario.roster_flight rf
             where rf.scenario_id = $1 and rf.is_deleted = 0 and rf.pairing_id is null
+              -- Callout Standby rows are the consumed-standby paper trail, not a
+              -- competing assignment — rule 1001 must not count them as overlap.
+              and coalesce(rf.exception_code, '') <> 'CALLOUT_STANDBY'
          ), rows as (
            select * from pairing_rows
            union all

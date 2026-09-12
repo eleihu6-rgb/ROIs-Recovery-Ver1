@@ -130,14 +130,37 @@ const money = (value: number, currency: string = 'CNY'): string => new Intl.Numb
 }).format(value)
 
 const optionBadge = (option: RecoveryOption): string => {
-  // Swap duty / Flight Delay are surfaced in the GUI only — their Apply path is
-  // not wired yet, so they read as "Preview only" rather than "Blocked".
-  if (option.mode === 'swap-duty' || option.mode === 'flight-delay') return 'Preview only'
   if (option.ruleCheck === 'pending') return 'Checking'
-  if (option.ruleCheck === 'passed' && option.localExecutable) return 'Executable'
+  // Flight Delay carries no crew-ownership Rule preview; an applicable delay is
+  // executable as soon as the plan exists.
+  if (option.localExecutable && (option.ruleCheck === 'passed' || option.mode === 'flight-delay')) return 'Executable'
   if (option.ruleCheck === 'failed') return 'Rule failed'
   return 'Blocked'
 }
+
+/**
+ * Whether Apply may run this option. Everything except Flight Delay needs the
+ * simulated Rule check to have passed; Flight Delay only edits flight times.
+ */
+const isApplicableOption = (option: RecoveryOption | null): option is RecoveryOption =>
+  !!option
+  && option.localExecutable
+  && (option.mode === 'flight-delay' || option.ruleCheck === 'passed')
+
+/**
+ * Soft constraints shown to the planner without blocking the option: the
+ * candidate-level aircraft-type mismatch and any fleet finding the local rule
+ * preview reported (8004 FLEET).
+ */
+const optionWarnings = (option: RecoveryOption): string[] => [
+  ...new Set([
+    ...(option.warnings ?? []),
+    // The preview's own 8004 FLEET line repeats the candidate-level mismatch without
+    // naming the receiving Crew, so it is dropped when the specific one is present.
+    ...(option.ruleWarnings ?? []).filter((line) =>
+      (option.warnings ?? []).length === 0 || !/fleet mismatch/i.test(line)),
+  ]),
+]
 
 const updatePlanGroupOption = (
   group: RecoveryPlans['roster'],
@@ -212,6 +235,13 @@ const planForType = (plans: RecoveryPlans, planType: RecoveryPlanType): Recovery
   const groups = visiblePlanGroups(plans)
   return groups.find((group) => group.id === planType) ?? groups[0]
 }
+
+/** The plan group a recovery mode belongs to (drives the left-rail selection). */
+const planTypeForMode = (mode: RecoveryOption['mode']): RecoveryPlanType =>
+  mode === 'standby' ? 'standby'
+    : mode === 'swap-duty' ? 'swap-duty'
+      : mode === 'flight-delay' ? 'flight-delay'
+        : mode.startsWith('cross-base') ? 'cross-base' : 'roster'
 
 const allOptions = (plans: RecoveryPlans): RecoveryOption[] =>
   // Include filtered candidates so `previewedOption` / `executionOption`
@@ -528,6 +558,10 @@ const RecoveryDetailDialog = memo(function RecoveryDetailDialog({
           <div>Added rosters: <span className="font-semibold text-foreground">{option.metrics.addedRosterCount}</span></div>
           <div>Follow-on impact: <span className="font-semibold text-foreground">{option.metrics.followOnImpactCount}</span></div>
         </div>
+        {optionWarnings(option).length > 0 && <div className="mb-2 flex items-start gap-1.5 rounded border border-amber-500/40 bg-amber-500/[0.08] p-2 text-2xs text-amber-800 dark:text-amber-200" data-testid="recovery-detail-warnings">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{optionWarnings(option).join(' ')}</span>
+        </div>}
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="text-xs font-semibold text-foreground">Before / after complete Roster changes</div>
           <div className="flex flex-wrap items-center gap-2 text-2xs text-muted-foreground" aria-label="Roster change color legend">
@@ -693,6 +727,22 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
         actingRank: composition.rank,
         plan: composition.plan,
       }))),
+      // Flight Delay (1001) lists the affected Pairing's segments straight from
+      // the Pairing pane detail so the flight numbers and the four time stamps
+      // come from the same source the Gantt renders.
+      pairingSegments: pairings.flatMap((entry) => (entry.segments ?? []).map((segment) => ({
+        pairingId: entry.pairing.id,
+        dutySeq: segment.dutySeq,
+        segSeq: segment.segSeq,
+        fltId: segment.fltId,
+        fltNum: segment.fltNum,
+        depArp: segment.depArp,
+        arvArp: segment.arvArp,
+        schStrDtUtc: segment.schStrDtUtc,
+        schEndDtUtc: segment.schEndDtUtc,
+        actStrDtUtc: segment.actStrDtUtc,
+        actEndDtUtc: segment.actEndDtUtc,
+      }))),
     }
     const next = selected.length === 1
       ? buildRecoveryPlans({ ...buildInput, alert: selected[0] })
@@ -762,9 +812,25 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
       return
     }
     setExecutionOptionId(option.id)
-    setSelectedPlanType(option.mode === 'standby' ? 'standby' : option.mode === 'cross-base-standby' || option.mode === 'cross-base-swap' || option.mode === 'cross-base-destination' || option.mode === 'cross-base-direct' ? 'cross-base' : 'roster')
+    setSelectedPlanType(planTypeForMode(option.mode))
     selectOption(option)
   }
+
+  // Flight Delay has no execution checkbox: its group holds a single option, so
+  // opening the group makes that option the Apply target. Leaving the group
+  // clears the selection so a delay is never applied while another method is on
+  // screen.
+  useEffect(() => {
+    if (!plans) return
+    if (selectedPlanType === 'flight-delay') {
+      const delayOption = plans.flightDelay.options[0] ?? null
+      setExecutionOptionId(delayOption?.localExecutable ? delayOption.id : null)
+      return
+    }
+    setExecutionOptionId((current) => current == null
+      ? current
+      : plans.flightDelay.options.some((option) => option.id === current) ? null : current)
+  }, [plans, selectedPlanType])
 
   const previewInLive = (option: RecoveryOption) => {
     setSelectedOptionId(option.id)
@@ -783,12 +849,12 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   }
 
   const apply = async () => {
-    if (!executionOption || !executionOption.localExecutable || executionOption.ruleCheck !== 'passed') return
+    if (!isApplicableOption(executionOption)) return
     setApplying(true)
     try {
       const leafOptions = executionOption.subOptions?.length ? executionOption.subOptions : [executionOption]
       const sourceLoaded = leafOptions.every((option) => items.some((item) => item.crewId === option.sourceCrewId && Number(item.pairingId) === option.sourcePairingId))
-      const targetLoaded = leafOptions.every((option) => !['swap', 'cross-base-swap'].includes(option.mode) || (option.targetPairingId != null && items.some((item) => item.crewId === option.targetCrewId && Number(item.pairingId) === option.targetPairingId)))
+      const targetLoaded = leafOptions.every((option) => !['swap', 'swap-duty', 'cross-base-swap'].includes(option.mode) || (option.targetPairingId != null && items.some((item) => item.crewId === option.targetCrewId && Number(item.pairingId) === option.targetPairingId)))
       if (!sourceLoaded || !targetLoaded) throw new Error('The selected Roster is no longer in the loaded Live data. Reopen Recovery and regenerate options.')
       const plan = buildRecoveryDraftPlan(executionOption, items)
       const locked = await useLockStore.getState().acquireLocks(plan.affectedCrewIds, plan.affectedPairingIds)
@@ -796,6 +862,8 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
       for (const operation of plan.operations) {
         const affectedPairingIds = operation.type === 'update'
           ? []
+          : operation.type === 'edit-flight'
+            ? plan.affectedPairingIds
           : operation.type === 'cross-base-recovery'
             ? plan.affectedPairingIds
           : operation.type === 'remove-pairing-from-crew' || operation.type === 'assign-pairing'
@@ -829,7 +897,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.repeat || event.key !== 'Enter' || !(event.ctrlKey || event.metaKey) || detailOpen || applying) return
-      if (!executionOption || !executionOption.localExecutable || executionOption.ruleCheck !== 'passed') return
+      if (!isApplicableOption(executionOption)) return
       event.preventDefault()
       void apply()
     }
@@ -848,17 +916,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
         ...(candidate.targetPairingId != null ? [candidate.targetPairingId] : []),
         ...(candidate.destinationSplit?.createsPairing ? [candidate.destinationSplit.createdPairingId] : []),
       ]))]
-      const beforeItems = items.filter((item) => affectedCrewIds.includes(item.crewId))
       const afterItems = option.afterItems.filter((item) => affectedCrewIds.includes(item.crewId) && item.assignmentGroup?.toUpperCase() !== 'DHD')
-      const before = await legalityPreviewApi.checkDraft({
-        contextType: 'live',
-        rulesetId: rulesetId ?? undefined,
-        affectedCrewIds,
-        afterItems: beforeItems,
-        focusPairingIds,
-        rpFrom: dateRange.start.toISOString().slice(0, 10),
-        rpTo: dateRange.end.toISOString().slice(0, 10),
-      })
       const after = await legalityPreviewApi.checkDraft({
         contextType: 'live',
         rulesetId: rulesetId ?? undefined,
@@ -868,12 +926,38 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
         rpFrom: dateRange.start.toISOString().slice(0, 10),
         rpTo: dateRange.end.toISOString().slice(0, 10),
       })
-      const ruleMessages = recoveryRuleFailures({ option, before: before.violations, after: after.violations })
+      // A Callout Standby keeps its standby task; that one overlap is allowed by the
+      // requirement, and the preview payload cannot carry the callout marker for
+      // ground rows, so the gate filters exactly that violation (see
+      // recoveryRuleFailures' calloutStandbyWindow contract).
+      const calloutStandbyTask = option.standbyTaskId != null
+        ? option.afterItems.find((item) => item.id === option.standbyTaskId)
+        : undefined
+      const calloutStandbyWindow = calloutStandbyTask?.schStrDtUtc && calloutStandbyTask.schEndDtUtc
+        ? {
+            startMs: new Date(calloutStandbyTask.schStrDtUtc).getTime(),
+            endMs: new Date(calloutStandbyTask.schEndDtUtc).getTime(),
+          }
+        : null
+      const { failures: ruleMessages, warnings: ruleWarnings } = recoveryRuleFailures({
+        option,
+        // No before-state preview is needed: this gate only judges violations anchored
+        // on the tuples the recovery CREATES — (target Crew, source Pairing) and, for a
+        // swap, (source Crew, target Pairing). Neither tuple exists before the option is
+        // applied, so a before-state run could never suppress one of them (verified on
+        // the real 1001 scenarios: the before list is empty on those anchors). Dropping
+        // it halves the dialog's rule-check latency — every preview evaluates the full
+        // ruleset over the Crew's whole loaded window.
+        before: [],
+        after: after.violations,
+        calloutStandbyWindow,
+      })
       setPlans((current) => current ? updateOption(current, option.id, (currentOption) => ({
         ...currentOption,
         ruleCheck: ruleMessages.length === 0 ? 'passed' : 'failed',
         localExecutable: currentOption.localExecutable && ruleMessages.length === 0,
         ruleMessages,
+        ruleWarnings,
       })) : current)
     } catch (err) {
       setPlans((current) => current ? updateOption(current, option.id, (currentOption) => ({
@@ -889,7 +973,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     if (!plans) return
     // Top-level options own the Rule result for a combined recovery. Child
     // options are descriptive details and must not be checked independently.
-    const pending = [plans.roster, plans.standby, plans.crossBase]
+    const pending = [plans.roster, plans.standby, plans.crossBase, plans.swapDuty]
       .flatMap((group) => group.options)
       .filter((option) => option.ruleCheck === 'pending' && option.localExecutable)
     if (pending.length === 0) return
@@ -903,7 +987,9 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   const executionLabel = executionOption?.subOptions?.length
     ? `Selected combined option · ${executionOption.subOptions.length} Crew decisions`
     : executionOption
-      ? `Selected Crew ${executionOption.targetCrewId}`
+      ? executionOption.mode === 'flight-delay'
+        ? `Selected Flight Delay · keep Crew ${executionOption.sourceCrewId} · ${executionOption.flightDelay?.segments.length ?? 0} flight${(executionOption.flightDelay?.segments.length ?? 0) === 1 ? '' : 's'}`
+        : `Selected Crew ${executionOption.targetCrewId}`
       : `Check one recovery option`
 
   return (
@@ -920,8 +1006,8 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
       footerClassName="py-1"
       modal={!previewCollapsed}
       footer={previewCollapsed && previewedOption
-         ? <div className="flex w-full items-center justify-between gap-2"><span className="truncate text-2xs text-muted-foreground">Preview only · not saved · {applyShortcutLabel} to Apply</span><div className="flex shrink-0 gap-2"><Button variant="ghost" className="h-7 gap-1 px-2" onClick={() => setPreviewCollapsed(false)} data-testid="recovery-return-to-options"><Maximize2 className="h-3.5 w-3.5" />Options</Button><span title={applyButtonTitle}><Button className="h-7 gap-1.5 px-3" disabled={applying || !executionOption || !executionOption.localExecutable || executionOption.ruleCheck !== 'passed'} onClick={() => void apply()} aria-keyshortcuts="Control+Enter Meta+Enter" data-testid="recovery-apply-preview"><CheckCircle2 className="h-3.5 w-3.5" />{applying ? 'Applying...' : 'Apply'}</Button></span><Button variant="ghost" className="h-7 px-2" onClick={() => { clearPreview(); onClose() }}>Close</Button></div></div>
-          : <div className="flex w-full items-center justify-between gap-2"><span className="text-2xs text-muted-foreground">{executionLabel} · {applyShortcutLabel} to Apply</span><div className="flex gap-2"><Button variant="ghost" className="h-7 px-2" onClick={onClose}>Close</Button><span title={applyButtonTitle}><Button className="h-7 gap-1.5 px-3" disabled={applying || !executionOption || !executionOption.localExecutable || executionOption.ruleCheck !== 'passed'} onClick={() => void apply()} aria-keyshortcuts="Control+Enter Meta+Enter" data-testid="recovery-apply"><CheckCircle2 className="h-3.5 w-3.5" />{applying ? 'Applying...' : 'Apply selected option'}</Button></span></div></div>}
+         ? <div className="flex w-full items-center justify-between gap-2"><span className="truncate text-2xs text-muted-foreground">Preview only · not saved · {applyShortcutLabel} to Apply</span><div className="flex shrink-0 gap-2"><Button variant="ghost" className="h-7 gap-1 px-2" onClick={() => setPreviewCollapsed(false)} data-testid="recovery-return-to-options"><Maximize2 className="h-3.5 w-3.5" />Options</Button><span title={applyButtonTitle}><Button className="h-7 gap-1.5 px-3" disabled={applying || !isApplicableOption(executionOption)} onClick={() => void apply()} aria-keyshortcuts="Control+Enter Meta+Enter" data-testid="recovery-apply-preview"><CheckCircle2 className="h-3.5 w-3.5" />{applying ? 'Applying...' : 'Apply'}</Button></span><Button variant="ghost" className="h-7 px-2" onClick={() => { clearPreview(); onClose() }}>Close</Button></div></div>
+          : <div className="flex w-full items-center justify-between gap-2"><span className="text-2xs text-muted-foreground">{executionLabel} · {applyShortcutLabel} to Apply</span><div className="flex gap-2"><Button variant="ghost" className="h-7 px-2" onClick={onClose}>Close</Button><span title={applyButtonTitle}><Button className="h-7 gap-1.5 px-3" disabled={applying || !isApplicableOption(executionOption)} onClick={() => void apply()} aria-keyshortcuts="Control+Enter Meta+Enter" data-testid="recovery-apply"><CheckCircle2 className="h-3.5 w-3.5" />{applying ? 'Applying...' : 'Apply selected option'}</Button></span></div></div>}
     >
       {previewCollapsed && previewedOption ? <div className="p-3" data-testid="recovery-preview-dock">
         <div className="flex items-start gap-2 rounded border border-emerald-500/30 bg-emerald-500/[0.08] p-3">
@@ -1004,10 +1090,86 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   )
 }
 
+/** UTC clock used by the Flight Delay table (times are stored/derived in UTC). */
+const delayClock = (iso: string | null | undefined): string => {
+  const ms = iso ? new Date(iso).getTime() : Number.NaN
+  if (!Number.isFinite(ms)) return '—'
+  const date = new Date(ms)
+  return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}Z`
+}
+
+/** A Flight Delay time cell: current value plus the delayed value when it moves. */
+const delayTimeCell = (current: string, delayed: string, testId: string) => {
+  const moved = new Date(current).getTime() !== new Date(delayed).getTime()
+  return moved
+    ? <span className="inline-flex items-center gap-1 tabular-nums" data-testid={testId}>
+        <span className="text-muted-foreground line-through">{delayClock(current)}</span>
+        <span aria-hidden="true">→</span>
+        <span className="font-semibold text-amber-700 dark:text-amber-300">{delayClock(delayed)}</span>
+      </span>
+    : <span className="tabular-nums" data-testid={testId}>{delayClock(current)}</span>
+}
+
+/**
+ * Flight Delay primary column: every flight of the affected Pairing with the
+ * flight number, airports and the four time stamps (STD/STA/ATD/ATA). ATD/ATA
+ * also show the value Apply will write when the delay moves them.
+ */
+const FlightDelayFlights = ({ option }: { option: RecoveryOption }) => {
+  const plan = option.flightDelay
+  const executable = option.localExecutable
+  const badgeClass = executable
+    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+    : option.ruleCheck === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'
+  return (
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-1.5 text-2xs font-semibold text-foreground">
+        <span>{option.title}</span>
+        <span className={['rounded px-1.5 py-0.5 text-2xs', badgeClass].join(' ')}>{optionBadge(option)}</span>
+        <span className="font-normal text-muted-foreground">
+          {plan
+            ? `Pairing ${option.sourcePairingId} · ${plan.segments.length} flight${plan.segments.length === 1 ? '' : 's'} · delay starts ${delayClock(plan.delayStartUtc)} (ground task ends ${delayClock(plan.groundTaskEndUtc)} + 1:01)`
+            : `Pairing ${option.sourcePairingId}`}
+        </span>
+      </div>
+      {plan && plan.segments.length > 0 ? (
+        <table className="mt-1 w-full border-collapse text-3xs" data-testid={`recovery-flight-delay-flights-${option.id}`}>
+          <thead>
+            <tr className="text-left uppercase tracking-wide text-muted-foreground">
+              <th className="py-0.5 pr-2 font-medium">Flight</th>
+              <th className="py-0.5 pr-2 font-medium">From</th>
+              <th className="py-0.5 pr-2 font-medium">To</th>
+              <th className="py-0.5 pr-2 font-medium">STD</th>
+              <th className="py-0.5 pr-2 font-medium">STA</th>
+              <th className="py-0.5 pr-2 font-medium">ATD</th>
+              <th className="py-0.5 font-medium">ATA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {plan.segments.map((segment) => (
+              <tr key={segment.flightId} className="border-t border-border/40" data-testid={`recovery-flight-delay-segment-${segment.flightId}`}>
+                <td className="py-0.5 pr-2 font-mono font-semibold text-foreground">{segment.fltNum}</td>
+                <td className="py-0.5 pr-2 font-mono">{segment.depArp || '—'}</td>
+                <td className="py-0.5 pr-2 font-mono">{segment.arvArp || '—'}</td>
+                <td className="py-0.5 pr-2 whitespace-nowrap">{delayClock(segment.stdUtc)}</td>
+                <td className="py-0.5 pr-2 whitespace-nowrap">{delayClock(segment.staUtc)}</td>
+                <td className="py-0.5 pr-2 whitespace-nowrap">{delayTimeCell(segment.atdUtc, segment.delayedAtdUtc, `recovery-flight-delay-atd-${segment.flightId}`)}</td>
+                <td className="py-0.5 whitespace-nowrap">{delayTimeCell(segment.ataUtc, segment.delayedAtaUtc, `recovery-flight-delay-ata-${segment.flightId}`)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div className="mt-0.5 text-3xs text-muted-foreground">{option.reasons.join(' ') || 'No flight is available for this option.'}</div>
+      )}
+    </div>
+  )
+}
+
 const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onToggleExecution, onDetail, onPreview, onShowCostBreakdown }: { group: RecoveryPlans['roster']; selectedOptionId: string | null; executionOptionId: string | null; onSelect: (option: RecoveryOption) => void; onToggleExecution: (option: RecoveryOption, checked: boolean) => void; onDetail: (option: RecoveryOption) => void; onPreview: (option: RecoveryOption) => void; onShowCostBreakdown: (option: RecoveryOption) => void }) => {
   const tone = planTone(group.id)
   const excludedCount = group.excludedOptions.length
-  const isExecutable = (option: RecoveryOption): boolean => option.localExecutable && option.ruleCheck === 'passed'
+  const isExecutable = (option: RecoveryOption): boolean => isApplicableOption(option)
   const executableOptions = group.options.filter(isExecutable)
   const [filter, setFilter] = useState<'all' | 'executable' | 'filtered'>('all')
   // Reset to 'all' when the user switches between Roster / Standby / Cross-base methods
@@ -1020,6 +1182,8 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
       : []
   const visibleFiltered: RecoveryOption[] = filter === 'filtered' ? group.excludedOptions : []
   const isFilteredTab = filter === 'filtered'
+  // Flight Delay lists the affected Pairing's flights instead of Crew candidates.
+  const isFlightDelayGroup = group.id === 'flight-delay'
   return (
     <section className={["flex min-h-0 min-w-0 flex-1 flex-col border border-l-4 bg-card", tone.section].join(' ')} data-testid={`recovery-options-${group.id}`}>
       <div className={['shrink-0 border-b border-border px-2.5 py-1.5', tone.header].join(' ')}>
@@ -1058,15 +1222,28 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
       {visibleOptions.length === 0 && !isFilteredTab ? <div className="min-h-0 flex-1 px-3 py-3 text-xs text-muted-foreground">{filter === 'executable' ? 'No executable Crew in this plan. Try a different recovery method or check the Filtered tab.' : 'No executable candidates in the current loaded data range.'}</div> : null}
       {isFilteredTab && visibleFiltered.length === 0 ? <div className="min-h-0 flex-1 px-3 py-3 text-xs text-muted-foreground">No options were filtered out by Rule check. Every candidate in this plan is potentially executable.</div> : null}
       {(visibleOptions.length > 0 || (isFilteredTab && visibleFiltered.length > 0)) && <div className="min-h-0 flex-1 overflow-auto">
-        <div className="sticky top-0 z-10 hidden grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px] gap-2 border-b border-border bg-background/95 px-3 py-1.5 text-3xs uppercase tracking-wide text-muted-foreground backdrop-blur sm:grid">
-          <span className="border-r border-border/60 pr-2">Crew / option</span><span className="text-center">Cancel</span><span className="text-center">Add</span><span className="text-center">Stability</span><span className="text-center">Cost</span><span className="text-right">Actions</span>
+        <div className={['sticky top-0 z-10 hidden gap-2 border-b border-border bg-background/95 px-3 py-1.5 text-3xs uppercase tracking-wide text-muted-foreground backdrop-blur sm:grid', isFlightDelayGroup ? 'grid-cols-[minmax(0,1fr)_180px]' : 'grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px]'].join(' ')}>
+          {isFlightDelayGroup
+            ? <><span className="border-r border-border/60 pr-2" data-testid="recovery-flight-delay-column">Flight</span><span className="text-right">Actions</span></>
+            : <><span className="border-r border-border/60 pr-2">Crew / option</span><span className="text-center">Cancel</span><span className="text-center">Add</span><span className="text-center">Stability</span><span className="text-center">Cost</span><span className="text-right">Actions</span></>}
         </div>
         <div className="divide-y divide-border/70">{visibleOptions.map((option) => {
           const selected = selectedOptionId === option.id
           const executionSelected = executionOptionId === option.id
           const executable = isExecutable(option)
           return <div key={option.id} className={["border-l-2 p-3", tone.section, selected ? tone.selectedRow : tone.row].join(' ')}>
-            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px] sm:items-center">
+            {option.mode === 'flight-delay'
+              ? <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-start">
+                  {/* No execution checkbox: while the Flight Delay group is open,
+                      this single option is the Apply target (see the dialog body). */}
+                  <FlightDelayFlights option={option} />
+                  <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
+                    <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onPreview(option)} data-testid={`recovery-preview-${option.id}`}><Eye className="h-3.5 w-3.5" />Preview</button>
+                    <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid="recovery-detail"><Eye className="h-3.5 w-3.5" />Detail</button>
+                    <span className={selected ? ['h-2 w-2 rounded-full', tone.dot].join(' ') : 'h-2 w-2 rounded-full bg-border'} aria-hidden="true" />
+                  </div>
+                </div>
+              : <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px] sm:items-center">
               <div className="flex min-w-0 items-start gap-2">
                 <label className="mt-0.5 flex shrink-0 items-center text-2xs text-muted-foreground" title="Select this Crew for execution">
                   <input type="checkbox" checked={executionSelected} disabled={!executable} onChange={(event) => onToggleExecution(option, event.target.checked)} aria-label={`Execute recovery with Crew ${option.targetCrewId}`} data-testid={`recovery-crew-checkbox-${option.targetCrewId}`} className="h-3.5 w-3.5 accent-primary" />
@@ -1092,7 +1269,7 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid="recovery-detail"><Eye className="h-3.5 w-3.5" />Detail</button>
                 <span className={selected ? ['h-2 w-2 rounded-full', tone.dot].join(' ') : 'h-2 w-2 rounded-full bg-border'} aria-hidden="true" />
               </div>
-            </div>
+            </div>}
             {option.subOptions && option.subOptions.length > 0 && <div className="mt-2 space-y-1 rounded border border-border/70 bg-background/60 p-2" data-testid={`recovery-suboptions-${option.id}`}>
               <div className="text-2xs font-semibold text-foreground">Crew decisions in this combined option</div>
               {option.subOptions.map((child) => <div key={child.id} className="grid gap-1 border-t border-border/50 pt-1 text-2xs sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
@@ -1102,6 +1279,7 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
               </div>)}
             </div>}
             {option.ruleMessages.length > 0 && <div className="mt-2 flex items-start gap-1.5 text-2xs text-destructive"><ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{option.ruleMessages.join(' ')}</span></div>}
+            {optionWarnings(option).length > 0 && <div className="mt-2 flex items-start gap-1.5 text-2xs text-amber-700 dark:text-amber-300" data-testid={`recovery-warnings-${option.id}`}><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{optionWarnings(option).join(' ')}</span></div>}
             {option.mode === 'standby' && option.standbyWindow && <div className="mt-2 text-2xs text-amber-700">SBY window: {option.standbyWindow} · original SBY retained · Callout icon in preview</div>}
             {option.destinationSplit && <div className="mt-2 grid gap-1 text-2xs text-indigo-700 dark:text-indigo-300 sm:grid-cols-2">
               <span>Destination base: <b>{option.destinationSplit.destinationBase}</b> · Acting Rank: <b>{option.destinationSplit.actingRank}</b></span>
@@ -1207,7 +1385,7 @@ const changeTypeClass = (changeType: RecoveryOption['changes'][number]['changeTy
 }
 
 const bestCost = (group: RecoveryPlans['roster']): string => {
-  const executable = group.options.filter((option) => option.ruleCheck === 'passed' && option.localExecutable)
+  const executable = group.options.filter((option) => isApplicableOption(option))
   const candidates = executable.length > 0 ? executable : group.options
   if (candidates.length === 0) return '—'
   const min = candidates.reduce((best, option) => option.metrics.totalCost < best.metrics.totalCost ? option : best)
@@ -1363,7 +1541,7 @@ const PlanSummary = ({
   const group = rows.find((g) => g.id === selectedPlanType) ?? rows[0]
   const selected = selectedPlanType === group.id
   const tone = planTone(group.id)
-  const executableCount = group.options.filter((option) => option.ruleCheck === 'passed' && option.localExecutable).length
+  const executableCount = group.options.filter((option) => isApplicableOption(option)).length
   const groupMin = minOptionCost(group.options)
   const isBest = group.id === bestGroupId
   return (

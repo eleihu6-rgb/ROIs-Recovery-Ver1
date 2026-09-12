@@ -1,7 +1,7 @@
 import { api } from './api'
 
 export interface DraftOp {
-  type: 'move' | 'swap' | 'add' | 'remove' | 'update' | 'remove-pairing' | 'remove-pairing-from-crew' | 'add-flight-to-pairing' | 'create-pairing-from-flights' | 'assign-pairing' | 'add-ground-task' | 'cross-base-recovery'
+  type: 'move' | 'swap' | 'add' | 'remove' | 'update' | 'remove-pairing' | 'remove-pairing-from-crew' | 'add-flight-to-pairing' | 'create-pairing-from-flights' | 'assign-pairing' | 'add-ground-task' | 'cross-base-recovery' | 'edit-flight'
   taskId?: number
   toCrewId?: string
   taskIdA?: number
@@ -17,6 +17,8 @@ export interface DraftOp {
   rosterActingRank?: string
   flightId?: number
   flightIds?: number[]
+  /** `edit-flight` payload — the full new time set of each edited flight. */
+  flightTimes?: FlightTimeEdit[]
   base?: string
   division?: string
   // add-ground-task fields
@@ -59,6 +61,15 @@ export interface DraftOp {
       createsPairing: boolean
     }
   }
+}
+
+/** One flight's new scheduled/actual times for a Draft `edit-flight` op. */
+export interface FlightTimeEdit {
+  flightId: number
+  schDepDtUtc: string
+  schArvDtUtc: string
+  actDepDtUtc: string
+  actArvDtUtc: string
 }
 
 /** Pairing ids covered by a remove-pairing draft op (single or batched). */

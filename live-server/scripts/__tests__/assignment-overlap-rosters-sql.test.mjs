@@ -37,12 +37,28 @@ function assertDutyBounds(sql, label) {
   )
 }
 
+/**
+ * A Callout Standby row is the paper trail of a standby consumed by Recovery —
+ * the crew is flying after the callout, so rule 1001 must not count that row as
+ * a competing assignment (crew-roster-recovery-requirements §7.2 allows exactly
+ * this one overlap). Regression guard for the "standby callout option is blocked
+ * by 1001 ASBY↔FLY" bug.
+ */
+function assertCalloutStandbyExcluded(sql, label) {
+  assert.match(
+    sql,
+    /coalesce\(rf\.exception_code, ''\) <> 'CALLOUT_STANDBY'/,
+    `${label} must exclude callout-standby rows from the 1001 overlap timeline`,
+  )
+}
+
 test('live assignmentOverlapRosters pairing rows use report/release', async () => {
   const db = captureDb()
   await liveSource(db, '2026-08-01', '2026-09-01').assignmentOverlapRosters()
   const sql = db.captured.at(-1)?.text ?? ''
   assertDutyBounds(sql, 'live')
   assert.match(sql, /join pairing_segment ps/)
+  assertCalloutStandbyExcluded(sql, 'live')
 })
 
 test('scenario assignmentOverlapRosters pairing rows use report/release with live segment fallback', async () => {
@@ -51,6 +67,7 @@ test('scenario assignmentOverlapRosters pairing rows use report/release with liv
   const sql = db.captured.at(-1)?.text ?? ''
   assertDutyBounds(sql, 'scenario')
   assert.match(sql, /f8\.pairing_segment lps/)
+  assertCalloutStandbyExcluded(sql, 'scenario')
 })
 
 test('seed assignmentOverlapRosters pairing rows use report/release', async () => {
@@ -59,4 +76,5 @@ test('seed assignmentOverlapRosters pairing rows use report/release', async () =
   const sql = db.captured.at(-1)?.text ?? ''
   assertDutyBounds(sql, 'seed')
   assert.match(sql, /f8\.pairing_segment ps/)
+  assertCalloutStandbyExcluded(sql, 'seed')
 })

@@ -34,6 +34,8 @@ export interface DraftLegalityPreviewResponse {
     endDt: string | null
     message: string
     flightId?: number | null
+    /** 8004 (or any rule with `operation_result`): which qualification dimension. */
+    dimension?: 'BASE' | 'RANK' | 'FLEET' | null
   }>
 }
 

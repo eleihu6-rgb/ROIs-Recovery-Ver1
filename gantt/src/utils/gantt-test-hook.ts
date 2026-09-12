@@ -300,6 +300,8 @@ export interface GanttTestApi {
   selectRosterTasks: (ids: number[]) => void
   /** Current Live draft save state, for timing-sensitive save regressions. */
   draftState: () => { opCount: number; saving: boolean }
+  /** Live rule-check gate state that disables Save/Undo/Delete in the toolbar. */
+  ruleCheckState: () => { checking: boolean; confirmDialogOpen: boolean; ruleGroupCode: string }
   /** Current Live draft operations, stripped to the payload sent on Save. */
   draftOps: () => Array<Record<string, unknown>>
   /** Live roster pane crew-row header selection (drives the left-panel row highlight). */
@@ -740,6 +742,10 @@ const roster = (): Array<Record<string, unknown>> =>
     dutySchRestMin: i.dutySchRestMin ?? null,
     dutyActRestMin: i.dutyActRestMin ?? null,
     actRestMin: i.actRestMin ?? null,
+    // Recovery Callout Standby marker: the renderer draws the yellow "C" from
+    // either field, so tests must be able to assert the same input it renders from.
+    exceptionCode: i.exceptionCode ?? null,
+    isCalloutStandby: i.isCalloutStandby ?? false,
   }))
 
 const rosterKeys = (): string[] => {
@@ -1474,6 +1480,15 @@ const selectRosterTasks = (ids: number[]): void =>
 const draftState = (): { opCount: number; saving: boolean } => {
   const draft = useDraftStore.getState()
   return { opCount: draft.operations.length, saving: draft.saving }
+}
+
+const ruleCheckState = (): { checking: boolean; confirmDialogOpen: boolean; ruleGroupCode: string } => {
+  const rule = useRuleCheckStore.getState()
+  return {
+    checking: rule.checking,
+    confirmDialogOpen: rule.confirmDialog.open,
+    ruleGroupCode: rule.ruleGroupCode,
+  }
 }
 
 const draftOps = (): Array<Record<string, unknown>> =>
@@ -2483,6 +2498,7 @@ export const installGanttTestHook = (): void => {
     selectedTaskIds,
     selectRosterTasks,
     draftState,
+    ruleCheckState,
     draftOps,
     liveRosterCrewRowIds,
     setLiveRosterCrewRow,

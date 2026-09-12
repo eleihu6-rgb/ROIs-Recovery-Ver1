@@ -3,6 +3,7 @@ import { draftApi, expandDraftOpsForCommit, pairingIdsFromRemoveOp } from '@/ser
 import type { DraftOp } from '@/services/draft-api'
 import { rosterApi } from '@/services/roster-api'
 import { pairingApi } from '@/services/pairing-api'
+import { flightApi } from '@/services/flight-api'
 import { useLockStore } from './lock-store'
 import { usePairingStore } from './pairing-store'
 import { useFilterStore } from './filter-store'
@@ -313,6 +314,21 @@ export const useDraftStore = create<DraftStore>((set, get) => ({
                 patchedItems.push(...created)
               }
               break
+            case 'edit-flight': {
+              const paneItems = rosterStore.main.rosterItems
+              for (const edit of op.flightTimes ?? []) {
+                await flightApi.updateTimes(edit.flightId, {
+                  schDepDtUtc: edit.schDepDtUtc,
+                  schArvDtUtc: edit.schArvDtUtc,
+                  actDepDtUtc: edit.actDepDtUtc,
+                  actArvDtUtc: edit.actArvDtUtc,
+                })
+                for (const item of paneItems.filter((entry) => Number(entry.fltId) === edit.flightId)) {
+                  patchedItems.push({ ...item, actStrDtUtc: edit.actDepDtUtc, actEndDtUtc: edit.actArvDtUtc })
+                }
+              }
+              break
+            }
             case 'assign-pairing': {
               const created = await rosterApi.assignPairing({ pairingId: op.pairingId!, crewId: op.crewId!, rosterActingRank: op.rosterActingRank ?? '' })
               // Replace all items for this crew (removes placeholders + adds real items)
@@ -520,6 +536,18 @@ export const useDraftStore = create<DraftStore>((set, get) => ({
             item.id === op.taskId ? { ...item, ...op.data } as RosterItem : item,
           )
           break
+
+        case 'edit-flight': {
+          if (!op.flightTimes?.length) break
+          const editByFlightId = new Map(op.flightTimes.map((edit) => [edit.flightId, edit]))
+          items = items.map((item) => {
+            const edit = item.fltId != null ? editByFlightId.get(Number(item.fltId)) : undefined
+            return edit
+              ? { ...item, actStrDtUtc: edit.actDepDtUtc, actEndDtUtc: edit.actArvDtUtc }
+              : item
+          })
+          break
+        }
       }
     }
 

@@ -77,6 +77,13 @@ export interface LegalityPreviewViolation {
   message: string
   /** Physical flight id for flight-grain rules (e.g. 8030 confirm grouping). */
   flightId?: number | null
+  /**
+   * For 8004 (and any rule emitting `operation_result`): which qualification
+   * dimension the finding is about — `BASE` / `RANK` / `FLEET`, or null when the
+   * rule does not report one. Recovery uses it to keep base/rank hard while
+   * treating a FLEET mismatch as a soft, displayable constraint.
+   */
+  dimension?: 'BASE' | 'RANK' | 'FLEET' | null
 }
 
 interface RuleSeverityRow {
@@ -255,6 +262,12 @@ export function normalizePreviewViolations(
         if (r.flight_id == null || r.flight_id === '') return null
         const n = Number(r.flight_id)
         return Number.isFinite(n) ? n : null
+      })(),
+      dimension: (() => {
+        const operationResult = r.operation_result
+        if (!operationResult || typeof operationResult !== 'object') return null
+        const strType = String((operationResult as Record<string, unknown>).strType ?? '').trim().toUpperCase()
+        return strType === 'BASE' || strType === 'RANK' || strType === 'FLEET' ? strType : null
       })(),
     }
   })

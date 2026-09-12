@@ -127,16 +127,29 @@ describe('Assignment Overlap (1001) plan set', () => {
     expect(swap?.mode).toBe('swap-duty')
     expect(swap?.targetCrewId).toBe('B')
     expect(swap?.targetPairingId).toBe(200)
-    // Apply is intentionally not wired for the new options yet.
-    expect(swap?.localExecutable).toBe(false)
+    // Apply is wired: a matched candidate goes through the standard Rule check.
+    expect(swap?.localExecutable).toBe(true)
+    expect(swap?.ruleCheck).toBe('pending')
   })
 
-  it('keeps a mismatched candidate in the list with the documented reason', () => {
-    const plans = buildPlans(overlapAlert, scenarioItems({}, 'YVR'))
+  it('keeps a base-mismatched candidate in the list with the documented reason', () => {
+    // Base and rank-seat stay hard filters (only the aircraft type became soft).
+    const plans = buildPlans(overlapAlert, scenarioItems({}, 'YYC'))
     const swap = plans.swapDuty.options[0]
     expect(swap).toBeDefined()
     expect(swap?.localExecutable).toBe(false)
-    expect(swap?.reasons).toContain("The return pairing does not match both crews' base, fleet and rank seat.")
+    expect(swap?.reasons).toContain("The return pairing does not match both crews' base and rank seat.")
+  })
+
+  it('offers a fleet-mismatched candidate as selectable with the mismatch displayed', () => {
+    // Both crews are A320-qualified while the Pairings are 7M8 — the aircraft-type
+    // mismatch in BOTH directions must not block the swap; it has to be visible.
+    const plans = buildPlans(overlapAlert, scenarioItems().map((entry) => ({ ...entry, fleetCode: '7M8' })))
+    const swap = plans.swapDuty.options[0]
+    expect(swap?.mode).toBe('swap-duty')
+    expect(swap?.localExecutable).toBe(true)
+    expect(swap?.warnings?.join(' ')).toContain('Fleet mismatch')
+    expect(swap?.warnings?.join(' ')).toContain('7M8')
   })
 
   it('drops a candidate whose Pairing reports before the ground task ends', () => {
@@ -153,9 +166,24 @@ describe('Assignment Overlap (1001) plan set', () => {
     const delay = plans.flightDelay.options[0]
     expect(delay?.mode).toBe('flight-delay')
     expect(delay?.targetCrewId).toBe('A')
-    expect(delay?.localExecutable).toBe(false)
+    // Ground task ends 12:00 → the flights are delayed to 13:01.
+    expect(delay?.localExecutable).toBe(true)
+    expect(delay?.flightDelay?.changesAnything).toBe(true)
+    expect(delay?.flightDelay?.segments).toHaveLength(1)
     expect(delay?.changes.length).toBeGreaterThan(0)
     expect(delay?.changes.every((change) => change.changeType === 'keep')).toBe(true)
+  })
+
+  it('does not surface the Flight Delay option as executable when nothing has to move', () => {
+    // Ground task 00:00-04:00 no longer overlaps the 06:00 flight window, so the
+    // 1001 trigger does not hold at all.
+    const earlyExcluded = scenarioItems().map((entry) =>
+      entry.crewId === 'A' && entry.pairingId == null
+        ? { ...entry, schEndDtUtc: '2026-09-05T05:00:00.000Z' }
+        : entry)
+    const plans = buildPlans(overlapAlert, earlyExcluded)
+    expect(plans.flightDelay.options[0]?.localExecutable).toBe(false)
+    expect(plans.flightDelay.options[0]?.reasons[0]).toContain('ground task')
   })
 })
 

@@ -123,6 +123,7 @@ describe('draft commit Manday recompute for swap operations', () => {
     expect(app.wsBroadcastAll).toHaveBeenCalledWith('f8', {
       type: 'roster-updated',
       crewIds: ['390', '391'],
+      pairingIds: [11012, 11013],
     })
     expect(recheckSpy).toHaveBeenCalledTimes(1)
     expect(recheckSpy.mock.calls[0][1]).toBeUndefined()
@@ -155,6 +156,7 @@ describe('draft commit Manday recompute for swap operations', () => {
       103,
       ['2026-06-12T03:00:00Z', '2026-06-13T04:00:00Z'],
       ['390', '391'],
+      'planner',
     )
     await app.close()
   })

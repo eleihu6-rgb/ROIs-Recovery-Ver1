@@ -1365,6 +1365,12 @@ export function liveSource(db, fromIso, toExclusiveIso) {
                   coalesce(nullif(rf.assignment, ''), rf.assignment_group, 'GRD') as assignment
              from roster_flight rf
             where rf.is_deleted = 0 and rf.sch_str_dt_utc >= $1 and rf.sch_str_dt_utc < $2 and rf.pairing_id is null
+              -- A Callout Standby row is the paper trail of a standby that was
+              -- consumed by Recovery, not a competing assignment: the crew is
+              -- flying after the callout. Rule 1001 must not count it as an
+              -- overlap (see crew-roster-recovery-requirements §7.2 "except the
+              -- explicitly allowed Callout SBY task").
+              and coalesce(rf.exception_code, '') <> 'CALLOUT_STANDBY'
          ), rows as (
            select * from pairing_rows
            union all

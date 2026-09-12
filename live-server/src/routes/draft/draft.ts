@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify'
 import { success, fail } from '../../utils/response.js'
 import { rosterService } from '../../services/roster/roster-service.js'
 import { pairingService } from '../../services/pairing/pairing-service.js'
+import { flightService } from '../../services/flight/flight-service.js'
 import { lockService } from '../../services/lock/lock-service.js'
 import { mandayMutationWindow } from '../../services/manday/manday-mutation-window.js'
 import { recheckLiveRosterMutation } from '../../services/rule/legality-recheck.js'
@@ -118,6 +119,23 @@ const crossBaseRecoverySchema = z.object({
   mockItems: z.array(z.record(z.unknown())).optional(),
 })
 
+/**
+ * Flight Delay (Rule 1001 recovery) — one op carries every flight of the
+ * affected Pairing. Replayed through the same service the Flight Detail edit
+ * dialog uses, so the pairing_segment / roster_flight cascade and the duty
+ * window recalculation stay in one place (§Flight-Change-Ripple-Required).
+ */
+const editFlightSchema = z.object({
+  type: z.literal('edit-flight'),
+  flightTimes: z.array(z.object({
+    flightId: z.number().int().positive(),
+    schDepDtUtc: z.string().datetime({ offset: true }),
+    schArvDtUtc: z.string().datetime({ offset: true }),
+    actDepDtUtc: z.string().datetime({ offset: true }),
+    actArvDtUtc: z.string().datetime({ offset: true }),
+  })).min(1).max(20),
+})
+
 const draftOpSchema = z.discriminatedUnion('type', [
   movePayloadSchema,
   swapPayloadSchema,
@@ -131,6 +149,7 @@ const draftOpSchema = z.discriminatedUnion('type', [
   assignPairingSchema,
   addGroundTaskSchema,
   crossBaseRecoverySchema,
+  editFlightSchema,
 ])
 
 const commitSchema = z.object({
@@ -246,6 +265,21 @@ export default async function draftRoutes(fastify: FastifyInstance) {
                   returnFlightId: op.crossBase.returnFlightId,
                   username,
                 }))
+              }
+              break
+            }
+            case 'edit-flight': {
+              for (const edit of op.flightTimes) {
+                const result = await flightService.update(fastify, edit.flightId, {
+                  schDepDtUtc: new Date(edit.schDepDtUtc),
+                  schArvDtUtc: new Date(edit.schArvDtUtc),
+                  actDepDtUtc: new Date(edit.actDepDtUtc),
+                  actArvDtUtc: new Date(edit.actArvDtUtc),
+                }, username)
+                if (!result) throw new Error(`Flight ${edit.flightId} was not found; the delay could not be applied`)
+                for (const date of result.referenceDates) {
+                  refDates.add(date instanceof Date ? date.toISOString() : String(date))
+                }
               }
               break
             }

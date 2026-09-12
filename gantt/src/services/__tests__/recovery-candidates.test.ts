@@ -237,7 +237,14 @@ describe('buildRecoveryPlans', () => {
 
     const option = plans.standby.options.find((candidate) => candidate.targetCrewId === 'B')
     expect(option?.localExecutable).toBe(true)
-    expect(option?.afterItems.find((entry) => entry.id === 2)).toMatchObject({ crewId: 'B', isCalloutStandby: true })
+    // The retained standby is marked as the CALLED-OUT standby both for the
+    // renderer (isCalloutStandby) and for rule 1001 (exceptionCode), which is
+    // exactly the value the Draft commit writes on Save.
+    expect(option?.afterItems.find((entry) => entry.id === 2)).toMatchObject({
+      crewId: 'B',
+      isCalloutStandby: true,
+      exceptionCode: 'CALLOUT_STANDBY',
+    })
     expect(option?.beforeItems.find((entry) => entry.id === 1)).toMatchObject({ crewId: 'A', isRecoveryAffected: true })
     expect(option?.afterItems.find((entry) => entry.id === 1)).toMatchObject({ crewId: 'B', isRecoveryAffected: true })
   })
@@ -281,7 +288,7 @@ describe('buildRecoveryPlans', () => {
       sourcePairingId: 100,
       targetPairingId: null,
     }
-    const failures = recoveryRuleFailures({
+    const { failures } = recoveryRuleFailures({
       option,
       before: [{ crewId: 'A', pairingId: 100, ruleCode: '8004', message: 'A is not qualified' }],
       after: [
@@ -292,6 +299,82 @@ describe('buildRecoveryPlans', () => {
 
     expect(failures).toContain('8004: Crew B remains unqualified for Pairing 100.')
     expect(failures).toContain('7001: New rest violation')
+  })
+
+  it('allows exactly the Callout Standby overlap that Recovery itself creates', () => {
+    // A standby callout keeps the standby task, so rule 1001 reports an
+    // "ASBY × FLY" overlap on the received Pairing. That single overlap is the
+    // documented exception; the preview cannot carry the callout marker for
+    // ground rows, so the gate has to drop precisely that violation.
+    const option = {
+      mode: 'standby' as const,
+      sourceCrewId: 'A',
+      targetCrewId: 'B',
+      sourcePairingId: 136149,
+      targetPairingId: null,
+      standbyTaskId: 261,
+    }
+    const standbyWindow = {
+      startMs: new Date('2026-09-16T11:00:00.000Z').getTime(),
+      endMs: new Date('2026-09-16T17:00:00.000Z').getTime(),
+    }
+    const { failures } = recoveryRuleFailures({
+      option,
+      before: [],
+      after: [
+        {
+          crewId: 'B',
+          pairingId: 136149,
+          ruleCode: '1001',
+          message: 'Row 1: Overlapping assignments between ASBY (2026-09-16) and FLY (2026-09-16) are not allowed.',
+          startDt: '2026-09-16T13:50:00.000Z',
+          endDt: '2026-09-16T17:00:00.000Z',
+        },
+        {
+          crewId: 'B',
+          pairingId: 136149,
+          ruleCode: '3007',
+          message: 'Row 1: Flight duty period (07:55) exceeds the limitation (13:00) on 2026-09-16.',
+          startDt: '2026-09-16T13:50:00.000Z',
+          endDt: '2026-09-16T21:45:00.000Z',
+        },
+      ],
+      calloutStandbyWindow: standbyWindow,
+    })
+
+    // The callout overlap is allowed, the unrelated 3007 finding is not.
+    expect(failures).toEqual(['3007: Row 1: Flight duty period (07:55) exceeds the limitation (13:00) on 2026-09-16.'])
+  })
+
+  it('keeps a 1001 overlap that is NOT the retained callout standby task', () => {
+    const option = {
+      mode: 'standby' as const,
+      sourceCrewId: 'A',
+      targetCrewId: 'B',
+      sourcePairingId: 136149,
+      targetPairingId: null,
+      standbyTaskId: 261,
+    }
+    const { failures } = recoveryRuleFailures({
+      option,
+      before: [],
+      after: [{
+        crewId: 'B',
+        pairingId: 136149,
+        ruleCode: '1001',
+        // Overlap window runs past the retained standby (e.g. a second, longer task).
+        message: 'Row 1: Overlapping assignments between SBY (2026-09-16) and FLY (2026-09-16) are not allowed.',
+        startDt: '2026-09-16T13:50:00.000Z',
+        endDt: '2026-09-16T23:30:00.000Z',
+      }],
+      calloutStandbyWindow: {
+        startMs: new Date('2026-09-16T11:00:00.000Z').getTime(),
+        endMs: new Date('2026-09-16T17:00:00.000Z').getTime(),
+      },
+    })
+
+    expect(failures).toHaveLength(1)
+    expect(failures[0]).toContain('1001:')
   })
 
   it('does not treat a new violation on an unrelated Crew/Pairing as introduced by Recovery', () => {
@@ -310,7 +393,7 @@ describe('buildRecoveryPlans', () => {
       sourcePairingId: 100,
       targetPairingId: null,
     }
-    const failures = recoveryRuleFailures({
+    const { failures } = recoveryRuleFailures({
       option,
       before: [
         { crewId: 'A', pairingId: 100, ruleCode: '8004', message: 'A is not qualified' },
@@ -343,7 +426,7 @@ describe('buildRecoveryPlans', () => {
     const baseline = (ruleCode: string, crewId: string, pairingId: number, message: string) => ({
       crewId, pairingId, ruleCode, message,
     })
-    const failures = recoveryRuleFailures({
+    const { failures } = recoveryRuleFailures({
       option,
       before: [
         baseline('8004', 'A', 100, 'A is not qualified'),
@@ -384,11 +467,16 @@ describe('buildRecoveryPlans', () => {
       now: testNow,
     })
 
-    expect(plans.roster.options.some((option) => option.targetCrewId === '1464')).toBe(false)
-    expect(plans.standby.options.some((option) => option.targetCrewId === '1464')).toBe(false)
+    // Aircraft type is a SOFT constraint: the candidate stays selectable, and the
+    // partial code still must NOT count as a qualification — it surfaces as a warning.
+    const option = plans.roster.options.find((candidate) => candidate.targetCrewId === '1464')
+    expect(option).toBeDefined()
+    expect(option?.localExecutable).toBe(true)
+    expect(option?.warnings?.join(' ')).toContain('Fleet mismatch')
+    expect(option?.warnings?.join(' ')).toContain('7M8')
   })
 
-  it('requires every loaded flight fleet in the affected Roster', () => {
+  it('reports every loaded flight fleet the receiving Crew does not hold as a soft warning', () => {
     const plans = buildRecoveryPlans({
       alert: { ...alert, fleet: 'A320' },
       items: [
@@ -400,7 +488,11 @@ describe('buildRecoveryPlans', () => {
       now: testNow,
     })
 
-    expect(plans.roster.options.some((option) => option.targetCrewId === 'B')).toBe(false)
+    // Fleet is soft: the option is offered and selectable, the missing 7M8 is shown.
+    const option = plans.roster.options.find((candidate) => candidate.targetCrewId === 'B')
+    expect(option).toBeDefined()
+    expect(option?.localExecutable).toBe(true)
+    expect(option?.warnings?.join(' ')).toContain('7M8')
   })
 
   it('does not generate recovery options for a completed Roster', () => {

@@ -49,6 +49,23 @@ export const buildRecoveryDraftPlan = (option: RecoveryOption, items: RosterItem
   ])]
   const operations: DraftOp[] = []
 
+  if (option.mode === 'flight-delay') {
+    // Keep the Crew, delay every flight of the affected Pairing. The Gantt
+    // renders the delayed actual times immediately; Save replays the same edit
+    // through the existing flight-edit cascade (pairing_segment + roster_flight).
+    operations.push({
+      type: 'edit-flight',
+      flightTimes: (option.flightDelay?.segments ?? []).map((segment) => ({
+        flightId: segment.flightId,
+        schDepDtUtc: segment.stdUtc,
+        schArvDtUtc: segment.staUtc,
+        actDepDtUtc: segment.delayedAtdUtc,
+        actArvDtUtc: segment.delayedAtaUtc,
+      })),
+    })
+    return { operations, affectedCrewIds: [option.sourceCrewId], affectedPairingIds: [option.sourcePairingId] }
+  }
+
   if (option.mode === 'cross-base-destination' && option.destinationSplit) {
     const destinationItems = option.afterItems
       .filter((item) => item.crewId === option.targetCrewId
@@ -130,7 +147,7 @@ export const buildRecoveryDraftPlan = (option: RecoveryOption, items: RosterItem
     crewId: option.sourceCrewId,
   })
 
-  if (option.mode === 'swap' && option.targetPairingId != null) {
+  if ((option.mode === 'swap' || option.mode === 'swap-duty') && option.targetPairingId != null) {
     operations.push({
       type: 'remove-pairing-from-crew',
       pairingId: option.targetPairingId,
@@ -147,7 +164,7 @@ export const buildRecoveryDraftPlan = (option: RecoveryOption, items: RosterItem
       .map((task) => ({ ...task, crewId: option.targetCrewId })),
   })
 
-  if (option.mode === 'swap' && option.targetPairingId != null) {
+  if ((option.mode === 'swap' || option.mode === 'swap-duty') && option.targetPairingId != null) {
     operations.push({
       type: 'assign-pairing',
       pairingId: option.targetPairingId,

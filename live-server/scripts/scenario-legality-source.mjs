@@ -1020,6 +1020,9 @@ export function buildSeedSource(db, scenarioId, ctx) {
                   coalesce(nullif(rf.assignment, ''), rf.assignment_group, 'GRD') as assignment
              from f8.roster_flight rf
             where ${W('rf')} and rf.pairing_id is null
+              -- Callout Standby rows are the consumed-standby paper trail, not a
+              -- competing assignment — rule 1001 must not count them as overlap.
+              and coalesce(rf.exception_code, '') <> 'CALLOUT_STANDBY'
          ), rows as (
            select * from pairing_rows
            union all

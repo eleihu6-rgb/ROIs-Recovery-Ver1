@@ -47,6 +47,53 @@ export interface RecoveryDestinationSplit {
   dhdCostSavings: number
 }
 
+/**
+ * One flight of the affected Pairing as shown in the Flight Delay option.
+ * `atdUtc`/`ataUtc` are the current actual times; `delayedAtdUtc`/`delayedAtaUtc`
+ * are what Apply writes (equal to the current value when the segment needs no
+ * delay).
+ */
+export interface RecoveryFlightDelaySegment {
+  flightId: number
+  fltNum: string
+  depArp: string
+  arvArp: string
+  dutySeq: number
+  segSeq: number
+  stdUtc: string
+  staUtc: string
+  atdUtc: string
+  ataUtc: string
+  delayedAtdUtc: string
+  delayedAtaUtc: string
+}
+
+/** Everything the Flight Delay option needs to render and to Apply. */
+export interface RecoveryFlightDelayPlan {
+  /** Earliest ATD the delay pushes the flights to = ground-task end + 61 minutes. */
+  delayStartUtc: string
+  /** Latest end of the source Crew's ground tasks overlapping the affected Pairing. */
+  groundTaskEndUtc: string
+  /** False when every segment already departs after `delayStartUtc` (no-op option). */
+  changesAnything: boolean
+  segments: RecoveryFlightDelaySegment[]
+}
+
+/** Pairing segment snapshot used to build the Flight Delay option. */
+export interface RecoveryPairingSegmentSnapshot {
+  pairingId: number
+  dutySeq: number
+  segSeq: number
+  fltId: number | null
+  fltNum: string
+  depArp: string
+  arvArp: string
+  schStrDtUtc: string | null
+  schEndDtUtc: string | null
+  actStrDtUtc: string | null
+  actEndDtUtc: string | null
+}
+
 export interface RecoveryAlertSnapshot {
   id: string
   ruleCode: string
@@ -133,6 +180,15 @@ export interface RecoveryOption {
   crossRole: boolean
   localExecutable: boolean
   reasons: string[]
+  /**
+   * Soft constraints that do NOT block the option but must be shown to the planner.
+   * Currently: aircraft-type (fleet) qualification mismatches — a crew that is not
+   * qualified for the received Pairing's fleet stays selectable, with the mismatch
+   * spelled out (requirement decision 2026-09-12).
+   */
+  warnings?: string[]
+  /** Soft findings reported by the local legality preview (e.g. 8004 FLEET). */
+  ruleWarnings?: string[]
   beforeItems: RosterItem[]
   afterItems: RosterItem[]
   changes: RecoveryChange[]
@@ -141,6 +197,8 @@ export interface RecoveryOption {
   ruleMessages: string[]
   positioning: RecoveryPositioning | null
   destinationSplit?: RecoveryDestinationSplit | null
+  /** Flight Delay only — the affected Pairing's delayed flight plan. */
+  flightDelay?: RecoveryFlightDelayPlan | null
   /** Child recovery decisions for a multi-alert combination option. */
   subOptions?: RecoveryOption[]
 }
@@ -152,6 +210,14 @@ export interface RecoveryPreviewViolation {
   ruleInstance?: string | null
   scopeKey?: string | null
   message: string
+  /** Overlap/duty window as returned by the legality preview API (rule 1001 uses it). */
+  startDt?: string | null
+  endDt?: string | null
+  /**
+   * Qualification dimension for 8004 findings as returned by the preview API:
+   * `BASE` / `RANK` / `FLEET`. Aircraft type (`FLEET`) is a soft constraint.
+   */
+  dimension?: 'BASE' | 'RANK' | 'FLEET' | null
 }
 
 export interface RecoveryPlanGroup {
@@ -251,6 +317,8 @@ export interface BuildRecoveryPlansInput {
   /** Flights from the currently loaded Pairing details only. */
   flights?: RecoveryFlightSnapshot[]
   pairingCompositions?: RecoveryPairingCompositionSnapshot[]
+  /** Segments of the loaded Pairings, used by the Flight Delay option. */
+  pairingSegments?: RecoveryPairingSegmentSnapshot[]
   crossBaseConfig?: CrossBaseRecoveryConfig
   /** Injectable clock for deterministic expiry checks; defaults to the current instant. */
   now?: number
@@ -362,14 +430,28 @@ export const recoveryRuleFailures = (input: {
   }
   before: RecoveryPreviewViolation[]
   after: RecoveryPreviewViolation[]
-}): string[] => {
+  /**
+   * Window of the standby task a Callout Standby keeps. That task is the single
+   * overlap a Recovery is allowed to create: the standby is the paper trail of the
+   * callout (the Crew flies afterwards), and the requirement allows exactly this one
+   * pair (crew-roster-recovery-requirements §7.2, "except the explicitly allowed
+   * Callout SBY task").
+   *
+   * The legality preview cannot carry that marker for ground rows — the draft overlay
+   * only replaces Pairing rows, so the retained standby reaches the engine with
+   * `exception_code` still empty — therefore the gate drops precisely the 1001
+   * violation whose overlap window sits inside this standby window. Genuine standby
+   * overlaps (another SBY, a longer standby) stay blocked.
+   */
+  calloutStandbyWindow?: { startMs: number; endMs: number } | null
+}): { failures: string[]; warnings: string[] } => {
   // Anchor "new violation" detection to the (crewId, pairingId) tuples this option
   // actually receives. Alerts on a different Crew or a different Pairing are not
   // introduced by this Recovery and must not filter the option out.
   const options = input.option.subOptions?.length ? input.option.subOptions : [input.option]
   const received = options.flatMap((option) => [
     { crewId: option.targetCrewId, pairingId: option.destinationSplit?.createdPairingId ?? option.sourcePairingId },
-    ...((option.mode === 'swap' || option.mode === 'cross-base-swap') && option.targetPairingId != null
+    ...((option.mode === 'swap' || option.mode === 'swap-duty' || option.mode === 'cross-base-swap') && option.targetPairingId != null
       ? [{ crewId: option.sourceCrewId, pairingId: option.targetPairingId }]
       : []),
   ])
@@ -381,10 +463,33 @@ export const recoveryRuleFailures = (input: {
     violation.ruleCode.trim().toUpperCase() === '8004' && received.some((assignment) =>
       String(assignment.crewId) === String(violation.crewId) && String(assignment.pairingId) === String(violation.pairingId)),
   )
+  const calloutStandby = input.calloutStandbyWindow
+  const isAllowedCalloutStandbyOverlap = (violation: RecoveryPreviewViolation): boolean => {
+    if (!calloutStandby) return false
+    if (violation.ruleCode.trim().toUpperCase() !== '1001') return false
+    const start = violation.startDt ? new Date(violation.startDt).getTime() : Number.NaN
+    const end = violation.endDt ? new Date(violation.endDt).getTime() : Number.NaN
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return false
+    const slackMs = 60_000
+    return start >= calloutStandby.startMs - slackMs && end <= calloutStandby.endMs + slackMs
+  }
   const messages = new Set<string>()
-  for (const violation of newViolations) messages.add(`${violation.ruleCode}: ${violation.message}`)
-  for (const violation of unresolved8004) messages.add(`8004: Crew ${violation.crewId} remains unqualified for Pairing ${violation.pairingId}.`)
-  return [...messages]
+  const warningMessages = new Set<string>()
+  // Aircraft type is a SOFT constraint (product decision 2026-09-12): an 8004
+  // FLEET finding never blocks the option, it is surfaced as a warning. BASE and
+  // RANK findings (and every other rule) keep blocking.
+  const isFleetMismatch = (violation: RecoveryPreviewViolation): boolean =>
+    violation.ruleCode.trim().toUpperCase() === '8004' && violation.dimension === 'FLEET'
+  for (const violation of newViolations) {
+    if (isAllowedCalloutStandbyOverlap(violation)) continue
+    if (isFleetMismatch(violation)) warningMessages.add(`Fleet mismatch (8004): ${violation.message}`)
+    else messages.add(`${violation.ruleCode}: ${violation.message}`)
+  }
+  for (const violation of unresolved8004) {
+    if (isFleetMismatch(violation)) warningMessages.add(`Fleet mismatch (8004): ${violation.message}`)
+    else messages.add(`8004: Crew ${violation.crewId} remains unqualified for Pairing ${violation.pairingId}.`)
+  }
+  return { failures: [...messages], warnings: [...warningMessages] }
 }
 
 const firstFollowingRoster = (groups: RosterGroup[], crewId: string, end: number, ignoredPairingIds: Set<number>): RosterGroup | null =>
@@ -409,6 +514,14 @@ const qualifiesForFleet = (crew: RecoveryCrewSnapshot, fleet: string | null | un
     return normalized === wanted
   })
 }
+
+/**
+ * Aircraft-type (fleet) qualification is a SOFT constraint in Recovery: a
+ * mismatch never blocks the option, it is reported so the planner can decide.
+ * Kept in one place so every method words it the same way.
+ */
+const fleetMismatchWarning = (crewRole: string, crewId: string, fleet: string, context?: string): string =>
+  `Fleet mismatch: ${crewRole} ${crewId} is not qualified for aircraft type ${fleet}${context ? ` (${context})` : ''}.`
 
 const cloneForCrew = (
   items: RosterItem[],
@@ -630,12 +743,21 @@ const buildAfterItems = (
   standbyTaskId: number | null,
   positioning: RecoveryPositioning | null,
   destinationSplit: RecoveryDestinationSplit | null,
+  flightDelay: RecoveryFlightDelayPlan | null,
   optionId: string,
 ): RosterItem[] => {
   if (mode === 'flight-delay') {
-    // Flight Delay keeps the original Crew and every loaded assignment as-is;
-    // the option only exists to show the affected Pairing's flights.
-    return allItems.map((item) => ({ ...item, isRecoveryAffected: source.items.some((entry) => entry.id === item.id) }))
+    // Flight Delay keeps the original Crew and every assignment; only the
+    // affected Pairing's ATD/ATA move to the delayed values.
+    const delayedByFlightId = new Map((flightDelay?.segments ?? []).map((segment) => [segment.flightId, segment]))
+    return allItems.map((item) => {
+      const delayed = item.fltId != null ? delayedByFlightId.get(Number(item.fltId)) : undefined
+      return {
+        ...item,
+        ...(delayed ? { actStrDtUtc: delayed.delayedAtdUtc, actEndDtUtc: delayed.delayedAtaUtc } : {}),
+        isRecoveryAffected: source.items.some((entry) => entry.id === item.id),
+      }
+    })
   }
   const sourceIds = new Set(source.items.map((item) => item.id))
   const targetIds = isSwapLike(mode) ? new Set(target?.items.map((item) => item.id) ?? []) : new Set<number>()
@@ -674,7 +796,11 @@ const buildAfterItems = (
   const dhdItems = positioning ? makeDhdItems(positioning, targetCrew, source.items[0]?.rosterActingRank || source.items[0]?.flightActingRank || 'CREW', optionId, source.pairingId, source.items) : []
   return kept.map((item) =>
     item.crewId === targetCrewId && item.pairingId == null && item.id === standbyTaskId
-      ? { ...item, isCalloutStandby: true }
+      // The retained standby is a CALLED-OUT standby: mark it exactly the way the
+      // Draft commit writes it (`exceptionCode: 'CALLOUT_STANDBY'`), because rule
+      // 1001 treats that exception code — not a competing assignment — as the one
+      // allowed overlap of a Recovery (see requirement §7.2).
+      ? { ...item, isCalloutStandby: true, exceptionCode: 'CALLOUT_STANDBY' }
       : item,
   ).concat(moved, dhdItems)
 }
@@ -714,6 +840,7 @@ const buildChanges = (
   mode: RecoveryOptionMode,
   positioning: RecoveryPositioning | null,
   destinationSplit: RecoveryDestinationSplit | null,
+  flightDelay: RecoveryFlightDelayPlan | null,
 ): RecoveryChange[] => {
   const sourceName = names(crewsById.get(source.crewId), source.crewId)
   const targetName = names(crewsById.get(targetCrewId), targetCrewId)
@@ -723,16 +850,17 @@ const buildChanges = (
   const targetStartMs = target ? firstItemStartMs(target.items) : null
   const isSwap = isSwapLike(mode)
   if (mode === 'flight-delay') {
-    // Keep-the-Crew option: one row per affected flight, no ownership change.
-    return sortChangesByStartTime(source.items.map((item) => ({
+    // Keep-the-Crew option: one row per affected flight with the current and the
+    // delayed actual times, no ownership change.
+    return sortChangesByStartTime((flightDelay?.segments ?? []).map((segment) => ({
       crewId: source.crewId,
       crewName: sourceName,
       rosterId: `R${source.pairingId}`,
       pairingId: source.pairingId,
-      before: rosterLabel([item]),
-      after: `${rosterLabel([item])} · delayed (Crew ${source.crewId} retained)`,
+      before: `Flight ${segment.fltNum} · ATD ${segment.atdUtc} · ATA ${segment.ataUtc}`,
+      after: `Flight ${segment.fltNum} · ATD ${segment.delayedAtdUtc} · ATA ${segment.delayedAtaUtc} · delayed (Crew ${source.crewId} retained)`,
       changeType: 'keep' as const,
-      startTimeMs: finiteTime(item.schStrDtUtc) || null,
+      startTimeMs: finiteTime(segment.stdUtc) || null,
     })))
   }
   if (mode === 'cross-base-destination' && destinationSplit) {
@@ -920,14 +1048,17 @@ const makeOption = (
     crossDivision: boolean
     crossRole: boolean
     reasons: string[]
+    warnings?: string[]
     positioning: RecoveryPositioning | null
     destinationSplit: RecoveryDestinationSplit | null
+    flightDelay?: RecoveryFlightDelayPlan | null
   },
 ): RecoveryOption => {
   const { source, target, targetCrew, sourceCrew, mode } = input
   const isSwap = isSwapLike(mode)
+  const flightDelay = input.flightDelay ?? null
   const optionId = `${mode}-${source.pairingId}-${targetCrew.crewId}-${target?.pairingId ?? input.standbyTaskId ?? 'none'}`
-  const afterItems = buildAfterItems(input.allItems, source, target, targetCrew.crewId, targetCrew, mode, input.standbyTaskId, input.positioning, input.destinationSplit, optionId)
+  const afterItems = buildAfterItems(input.allItems, source, target, targetCrew.crewId, targetCrew, mode, input.standbyTaskId, input.positioning, input.destinationSplit, flightDelay, optionId)
   const affectedItemIds = new Set([
     ...source.items.map((item) => item.id),
     ...(target?.items.map((item) => item.id) ?? []),
@@ -951,19 +1082,24 @@ const makeOption = (
     sameBase: input.sameBase,
     crossDivision: input.crossDivision,
     crossRole: input.crossRole,
-    // Swap duty / Flight Delay are GUI-only for now: they are listed and
-    // previewable, but their Apply path is intentionally not wired yet, so they
-    // never become executable.
-    localExecutable: input.reasons.length === 0 && mode !== 'swap-duty' && mode !== 'flight-delay',
+    // Swap duty carries no hard filter: it is executable as soon as the
+    // two-way base/fleet/rank-seat match passes (`reasons` empty), exactly like
+    // the other roster methods. Flight Delay is executable once a real delay
+    // exists — it needs no crew-ownership rule check.
+    localExecutable: input.reasons.length === 0,
     reasons: input.reasons,
+    warnings: input.warnings ?? [],
     beforeItems,
     afterItems,
-    changes: buildChanges(source, target, crewsById, targetCrew.crewId, mode, input.positioning, input.destinationSplit),
+    changes: buildChanges(source, target, crewsById, targetCrew.crewId, mode, input.positioning, input.destinationSplit, flightDelay),
     metrics: buildMetrics(source, target, input.allGroups, targetCrew, sourceCrew, mode, input.positioning, input.destinationSplit),
-    ruleCheck: input.reasons.length === 0 && mode !== 'swap-duty' && mode !== 'flight-delay' ? 'pending' : 'not-run',
+    // Flight Delay edits flight times only, so the crew-ownership rule preview
+    // does not apply to it; the flight-edit cascade validates it on Save.
+    ruleCheck: mode === 'flight-delay' || input.reasons.length > 0 ? 'not-run' : 'pending',
     ruleMessages: [],
     positioning: input.positioning,
     destinationSplit: input.destinationSplit,
+    flightDelay,
   }
 }
 
@@ -1191,6 +1327,135 @@ const crewFreeForPositioning = (
     && finiteTime(item.schEndDtUtc) > start)
 }
 
+/** Delay applied after the overlapping ground task ends before the flights may depart. */
+export const FLIGHT_DELAY_GAP_AFTER_GROUND_TASK_MINUTES = 61
+
+const msOrNull = (value: string | null | undefined): number | null => {
+  const ms = value ? new Date(value).getTime() : Number.NaN
+  return Number.isFinite(ms) ? ms : null
+}
+
+const isoFromMs = (ms: number): string => new Date(ms).toISOString()
+
+/** The delay-relevant fields of one flight segment (before the plan is computed). */
+export type RecoveryFlightDelayInputSegment = Omit<RecoveryFlightDelaySegment, 'delayedAtdUtc' | 'delayedAtaUtc'>
+
+/**
+ * Flight Delay plan for an Assignment Overlap (Rule 1001).
+ *
+ * Every flight of the affected Pairing must leave after the Crew's overlapping
+ * ground task, so the earliest ATD is `groundTaskEnd + 61 minutes`. Two floors
+ * keep the result flyable and predictable:
+ *   1. a segment never departs earlier than it originally did (a delay must not
+ *      become an advance), and
+ *   2. consecutive segments keep their original turnaround (gap), so the pairing
+ *      shape — and therefore its duty/rest legality — is preserved instead of
+ *      collapsing every segment onto the same new departure time.
+ *
+ * Returns null when the plan cannot be built (no ground task end, no segments,
+ * or a segment without usable times / block duration).
+ */
+export const planFlightDelay = (input: {
+  segments: RecoveryFlightDelayInputSegment[]
+  groundTaskEndUtc: string | null | undefined
+}): RecoveryFlightDelayPlan | null => {
+  const groundTaskEnd = msOrNull(input.groundTaskEndUtc)
+  if (groundTaskEnd == null) return null
+  const ordered = [...input.segments].sort((a, b) =>
+    a.dutySeq - b.dutySeq || a.segSeq - b.segSeq)
+  if (ordered.length === 0) return null
+
+  const parsed: Array<{ segment: RecoveryFlightDelayInputSegment; std: number; sta: number; atd: number; ata: number }> = []
+  for (const segment of ordered) {
+    const std = msOrNull(segment.stdUtc)
+    const sta = msOrNull(segment.staUtc)
+    const atd = msOrNull(segment.atdUtc) ?? std
+    const ata = msOrNull(segment.ataUtc) ?? sta
+    if (std == null || sta == null || atd == null || ata == null || ata <= atd) return null
+    parsed.push({ segment, std, sta, atd, ata })
+  }
+
+  const delayStart = groundTaskEnd + FLIGHT_DELAY_GAP_AFTER_GROUND_TASK_MINUTES * 60_000
+  const segments: RecoveryFlightDelaySegment[] = []
+  let changesAnything = false
+  let previousDelayedAta: number | null = null
+  for (const [index, entry] of parsed.entries()) {
+    // Original turnaround between this segment and the previous one (negative
+    // gaps cannot be preserved and are floored at zero).
+    const originalGap = index === 0
+      ? 0
+      : Math.max(0, entry.atd - parsed[index - 1].ata)
+    const earliestAtd = Math.max(
+      delayStart,
+      entry.atd,
+      previousDelayedAta == null ? Number.NEGATIVE_INFINITY : previousDelayedAta + originalGap,
+    )
+    const delayedAtd = earliestAtd
+    const delayedAta = delayedAtd + (entry.ata - entry.atd)
+    if (delayedAtd !== entry.atd) changesAnything = true
+    segments.push({
+      ...entry.segment,
+      stdUtc: isoFromMs(entry.std),
+      staUtc: isoFromMs(entry.sta),
+      atdUtc: isoFromMs(entry.atd),
+      ataUtc: isoFromMs(entry.ata),
+      delayedAtdUtc: isoFromMs(delayedAtd),
+      delayedAtaUtc: isoFromMs(delayedAta),
+    })
+    previousDelayedAta = delayedAta
+  }
+
+  return {
+    delayStartUtc: isoFromMs(delayStart),
+    groundTaskEndUtc: isoFromMs(groundTaskEnd),
+    changesAnything,
+    segments,
+  }
+}
+
+/**
+ * Segments of the affected Pairing, preferring the loaded Pairing pane detail
+ * (full `pairing_segment` rows) and falling back to the Roster rows, which are
+ * the only source left when the Pairing of a finished Roster is out of the
+ * loaded window.
+ */
+const flightDelaySegmentsFor = (
+  source: RosterGroup,
+  pairingSegments: RecoveryPairingSegmentSnapshot[] | undefined,
+): RecoveryFlightDelayInputSegment[] => {
+  const fromPairing = (pairingSegments ?? [])
+    .filter((segment) => Number(segment.pairingId) === source.pairingId && segment.fltId != null)
+    .map((segment) => ({
+      flightId: Number(segment.fltId),
+      fltNum: segment.fltNum?.trim() || '—',
+      depArp: segment.depArp?.trim().toUpperCase() ?? '',
+      arvArp: segment.arvArp?.trim().toUpperCase() ?? '',
+      dutySeq: segment.dutySeq,
+      segSeq: segment.segSeq,
+      stdUtc: segment.schStrDtUtc ?? '',
+      staUtc: segment.schEndDtUtc ?? '',
+      atdUtc: segment.actStrDtUtc ?? segment.schStrDtUtc ?? '',
+      ataUtc: segment.actEndDtUtc ?? segment.schEndDtUtc ?? '',
+    }))
+  if (fromPairing.length > 0) return fromPairing
+  return source.items
+    .filter((item) => item.fltId != null && item.schStrDtUtc && item.schEndDtUtc)
+    .map((item) => ({
+      flightId: Number(item.fltId),
+      // Roster labels look like "1888 YVR-LAX" — keep only the flight number,
+      // the airports have their own columns.
+      fltNum: item.label?.trim().split(/\s+/)[0] || item.assignment?.trim() || '—',
+      depArp: item.depArp?.trim().toUpperCase() ?? '',
+      arvArp: item.arvArp?.trim().toUpperCase() ?? '',
+      dutySeq: item.dutySeq ?? 0,
+      segSeq: item.segSeq ?? 0,
+      stdUtc: item.schStrDtUtc ?? '',
+      staUtc: item.schEndDtUtc ?? '',
+      atdUtc: item.actStrDtUtc ?? item.schStrDtUtc ?? '',
+      ataUtc: item.actEndDtUtc ?? item.schEndDtUtc ?? '',
+    }))
+}
+
 const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: RecoveryAlertSnapshot }): RecoveryPlans => {
   const groups = buildGroups(input.items)
   const now = input.now ?? Date.now()
@@ -1285,7 +1550,10 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
     const baseReasons: string[] = []
     if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) baseReasons.push('Target Crew Rank is lower than the required Rank or has no rank mapping.')
     const missingFleet = requiredFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
-    if (missingFleet) baseReasons.push(`Target Crew is not qualified for fleet ${missingFleet}.`)
+    // Aircraft type is a SOFT constraint: the candidate stays listed and applyable,
+    // the mismatch is displayed instead of blocking it.
+    const warnings: string[] = []
+    if (missingFleet) warnings.push(fleetMismatchWarning('Target Crew', targetCrew.crewId, missingFleet))
 
     // Direct transfer retains all target Crew Roster assignments, so none may overlap
     // the received Roster. Invalid candidates are excluded instead of presented as plans.
@@ -1293,7 +1561,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       rosterOptions.push(makeOption({
         allItems: input.items, allGroups: activeGroups, source, target: targetRoster, targetCrew, sourceCrew, mode: 'transfer', standbyTaskId: null,
         standbyWindow: null, timeDistanceMinutes: targetRoster ? Math.round(Math.abs(targetRoster.start - source.start) / 60000) : null,
-        sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning: null, destinationSplit: null,
+        sameRank, sameBase, crossDivision, crossRole, reasons: [], warnings, positioning: null, destinationSplit: null,
       }))
     }
 
@@ -1308,7 +1576,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         rosterOptions.push(makeOption({
           allItems: input.items, allGroups: activeGroups, source, target: targetRoster, targetCrew, sourceCrew, mode: 'swap', standbyTaskId: null,
           standbyWindow: null, timeDistanceMinutes: Math.round(Math.abs(targetRoster.start - source.start) / 60000),
-          sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning: null, destinationSplit: null,
+          sameRank, sameBase, crossDivision, crossRole, reasons: [], warnings, positioning: null, destinationSplit: null,
         }))
       }
     }
@@ -1337,7 +1605,8 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
     const reasons: string[] = []
     if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) reasons.push('Standby Crew Rank is lower than the required Rank or has no rank mapping.')
     const missingFleet = requiredFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
-    if (missingFleet) reasons.push(`Standby Crew is not qualified for fleet ${missingFleet}.`)
+    const warnings: string[] = []
+    if (missingFleet) warnings.push(fleetMismatchWarning('Standby Crew', targetCrew.crewId, missingFleet))
     // The one explicit overlap exception is the SBY task selected for this callout.
     // A second SBY task, ground task, or any Roster that overlaps remains disqualifying.
     const otherTasks = itemsOf(targetCrewId).filter((item) => item.id !== standbyTask.id)
@@ -1346,7 +1615,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       standbyOptions.push(makeOption({
         allItems: input.items, allGroups: activeGroups, source, target: null, targetCrew, sourceCrew, mode: 'standby', standbyTaskId: standbyTask.id,
         standbyWindow: `${standbyTask.schStrDtUtc ?? ''} - ${standbyTask.schEndDtUtc ?? ''}`,
-        timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning: null, destinationSplit: null,
+        timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], warnings, positioning: null, destinationSplit: null,
       }))
     }
   }
@@ -1357,19 +1626,23 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
   // candidate entirely; a failed two-way base/fleet/rank-seat match (5-7) keeps
   // the candidate in the list but marks it unavailable.
   const swapDutyOptions: RecoveryOption[] = []
+  // Latest end of the source Crew's ground tasks overlapping the affected
+  // Pairing. Drives both the Swap-duty "reports later" filter and the Flight
+  // Delay "+61 minutes" delay start.
+  const groundOverlapEnd = trigger === 'assignment-overlap'
+    ? input.items
+      .filter((item) => String(item.crewId) === source.crewId
+        && isGroundTask(item)
+        && finiteTime(item.schStrDtUtc) < source.end
+        && finiteTime(item.schEndDtUtc) > source.start)
+      .reduce((latest, item) => Math.max(latest, finiteTime(item.schEndDtUtc)), Number.NEGATIVE_INFINITY)
+    : Number.NEGATIVE_INFINITY
   if (trigger === 'assignment-overlap') {
     const businessDate = (
       input.alert.flightDate && input.alert.flightDate !== '—'
         ? input.alert.flightDate
         : source.items[0]?.fltDt ?? source.items[0]?.schStrDtUtc?.slice(0, 10) ?? ''
     ).slice(0, 10)
-    // Latest end of the source Crew's ground tasks that overlap the affected Pairing.
-    const groundOverlapEnd = input.items
-      .filter((item) => String(item.crewId) === source.crewId
-        && isGroundTask(item)
-        && finiteTime(item.schStrDtUtc) < source.end
-        && finiteTime(item.schEndDtUtc) > source.start)
-      .reduce((latest, item) => Math.max(latest, finiteTime(item.schEndDtUtc)), Number.NEGATIVE_INFINITY)
     const sourceDivision = (source.items.find((item) => item.division)?.division ?? '').trim().toUpperCase()
     const sourceBaseCode = (source.items.find((item) => item.base)?.base ?? sourceCrew.base ?? '').trim().toUpperCase()
     const sourceFleetCode = (source.items.find((item) => item.fleetCode)?.fleetCode ?? input.alert.fleet ?? '').trim().toUpperCase()
@@ -1386,7 +1659,8 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       if (Number.isFinite(groundOverlapEnd) && candidate.start <= groundOverlapEnd) continue
 
       const reasons: string[] = []
-      // 5-7. two-way base / fleet / rank-seat match.
+      // 5-7. two-way base / fleet / rank-seat match. Base and rank-seat stay hard
+      // filters; the aircraft type is a SOFT constraint (see `warnings` below).
       const candidateDivision = (candidate.items.find((item) => item.division)?.division ?? candidateCrew.division ?? '').trim().toUpperCase()
       const candidateBaseCode = (candidate.items.find((item) => item.base)?.base ?? candidateCrew.base ?? '').trim().toUpperCase()
       const candidateFleetCode = (candidate.items.find((item) => item.fleetCode)?.fleetCode ?? '').trim().toUpperCase()
@@ -1398,10 +1672,9 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         && (input.rankOrder.get(sourceRankSeat) == null || requiredOrder <= input.rankOrder.get(sourceRankSeat)!)
       const returnPairingMatches = sourceDivision !== '' && sourceDivision === candidateDivision
         && sourceBaseCode !== '' && sourceBaseCode === candidateBaseCode
-        && sourceFleetCode !== '' && sourceFleetCode === candidateFleetCode
         && candidateRankSeatOk && sourceRankSeatOk
       if (!returnPairingMatches) {
-        reasons.push("The return pairing does not match both crews' base, fleet and rank seat.")
+        reasons.push("The return pairing does not match both crews' base and rank seat.")
       } else {
         // 8. re-check both directions for other task conflicts after the swap.
         const candidateHasConflict = hasAnyOverlapExcept(itemsOf(candidate.crewId), source, new Set([candidate.pairingId]))
@@ -1409,6 +1682,17 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         if (candidateHasConflict || sourceHasConflict) {
           reasons.push('The swap would overlap another task for one of the two Crews.')
         }
+      }
+
+      // Aircraft type mismatch never blocks the swap: the candidate Crew must be
+      // qualified for the Pairing it receives and vice versa, so report both
+      // directions when they do not match.
+      const warnings: string[] = []
+      if (sourceFleetCode !== '' && !qualifiesForFleet(candidateCrew, sourceFleetCode)) {
+        warnings.push(fleetMismatchWarning('Crew', candidateCrew.crewId, sourceFleetCode, `receives Pairing ${source.pairingId}`))
+      }
+      if (candidateFleetCode !== '' && !qualifiesForFleet(sourceCrew, candidateFleetCode)) {
+        warnings.push(fleetMismatchWarning('Crew', sourceCrew.crewId, candidateFleetCode, `receives Pairing ${candidate.pairingId}`))
       }
 
       swapDutyOptions.push(makeOption({
@@ -1427,6 +1711,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         crossDivision: sourceDivision !== '' && sourceDivision !== candidateDivision,
         crossRole: sourceRankSeat !== '' && sourceRankSeat !== candidateRankSeat,
         reasons,
+        warnings,
         positioning: null,
         destinationSplit: null,
       }))
@@ -1434,29 +1719,39 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
   }
 
   // ── Flight Delay (Assignment Overlap / Rule 1001) ───────────────────────────
-  // Keeps the original Crew; the option exists so the dialog can show every
-  // flight of the affected Pairing. Display-only for now (Apply not wired).
-  const flightDelayOptions: RecoveryOption[] = trigger === 'assignment-overlap'
-    ? [makeOption({
-        allItems: input.items,
-        allGroups: activeGroups,
-        source,
-        target: null,
-        targetCrew: sourceCrew,
-        sourceCrew,
-        mode: 'flight-delay',
-        standbyTaskId: null,
-        standbyWindow: null,
-        timeDistanceMinutes: null,
-        sameRank: true,
-        sameBase: true,
-        crossDivision: false,
-        crossRole: false,
-        reasons: ['Flight Delay keeps the original Crew and is display-only until the delay apply path is wired.'],
-        positioning: null,
-        destinationSplit: null,
-      })]
-    : []
+  // Keeps the original Crew and lists every flight of the affected Pairing;
+  // Apply pushes their ATD/ATA past the overlapping ground task.
+  let flightDelayOptions: RecoveryOption[] = []
+  if (trigger === 'assignment-overlap') {
+    const delayPlan = planFlightDelay({
+      segments: flightDelaySegmentsFor(source, input.pairingSegments),
+      groundTaskEndUtc: Number.isFinite(groundOverlapEnd) ? new Date(groundOverlapEnd).toISOString() : null,
+    })
+    const reasons: string[] = []
+    if (!Number.isFinite(groundOverlapEnd)) reasons.push('No overlapping ground task remains for this Pairing; no delay is required.')
+    else if (!delayPlan) reasons.push('The affected Pairing has no loaded flight segment that can be delayed.')
+    else if (!delayPlan.changesAnything) reasons.push('Every flight already departs after the overlapping ground task; no delay is required.')
+    flightDelayOptions = [makeOption({
+      allItems: input.items,
+      allGroups: activeGroups,
+      source,
+      target: null,
+      targetCrew: sourceCrew,
+      sourceCrew,
+      mode: 'flight-delay',
+      standbyTaskId: null,
+      standbyWindow: null,
+      timeDistanceMinutes: null,
+      sameRank: true,
+      sameBase: true,
+      crossDivision: false,
+      crossRole: false,
+      reasons,
+      positioning: null,
+      destinationSplit: null,
+      flightDelay: delayPlan,
+    })]
+  }
 
   const crossBaseOptions: RecoveryOption[] = []
   const crossBaseConfig = input.crossBaseConfig ?? DEFAULT_CROSS_BASE_RECOVERY_CONFIG
@@ -1499,7 +1794,8 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
     if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) reasons.push('Destination Crew Rank is lower than the required Rank or has no rank mapping.')
     const destinationFleets = [...new Set(destinationItems.map((item) => item.fleetCode?.trim().toUpperCase()).filter((fleet): fleet is string => Boolean(fleet)))]
     const missingFleet = destinationFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
-    if (missingFleet) reasons.push(`Destination Crew is not qualified for fleet ${missingFleet}.`)
+    const warnings: string[] = []
+    if (missingFleet) warnings.push(fleetMismatchWarning('Destination Crew', targetCrew.crewId, missingFleet))
     if (hasAnyOverlapExcept(targetItems, destinationGroup, new Set())) reasons.push('Destination Crew has an existing task overlapping the split Roster.')
     if (reasons.length > 0) continue
     crossBaseOptions.push(makeOption({
@@ -1518,6 +1814,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       crossDivision,
       crossRole,
       reasons,
+      warnings,
       positioning: null,
       destinationSplit,
     }))
@@ -1554,7 +1851,9 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         baseReasons.push('Support Crew Rank is lower than the required Rank or has no rank mapping.')
       }
       const missingFleet = requiredFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
-      if (missingFleet) baseReasons.push(`Support Crew is not qualified for fleet ${missingFleet}.`)
+      // Fleet stays soft for the support Crew too: rank is the hard gate below.
+      const warnings: string[] = []
+      if (missingFleet) warnings.push(fleetMismatchWarning('Support Crew', targetCrew.crewId, missingFleet))
       if (baseReasons.length > 0) {
         trace.hardRejection = baseReasons.join(' | ')
         crossBaseTrace.push(trace)
@@ -1590,7 +1889,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
           allItems: input.items, allGroups: activeGroups, source, target: null, targetCrew, sourceCrew,
           mode: 'cross-base-standby', standbyTaskId: standbyTasks[0].id,
            standbyWindow: `${standbyTasks[0].schStrDtUtc ?? ''} - ${standbyTasks[0].schEndDtUtc ?? ''}`,
-           timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning, destinationSplit: null,
+           timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], warnings, positioning, destinationSplit: null,
         }))
         trace.surfacedModes.push('cross-base-standby')
       }
@@ -1607,7 +1906,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
           allItems: input.items, allGroups: activeGroups, source, target: targetRoster, targetCrew, sourceCrew,
            mode: 'cross-base-swap', standbyTaskId: null, standbyWindow: null,
            timeDistanceMinutes: Math.round(Math.abs(targetRoster.start - source.start) / 60000),
-           sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning, destinationSplit: null,
+           sameRank, sameBase, crossDivision, crossRole, reasons: [], warnings, positioning, destinationSplit: null,
         }))
         trace.surfacedModes.push('cross-base-swap')
       }
@@ -1618,32 +1917,29 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       // a cross-base option for crews whose future is currently empty (e.g.
       // 1568/247 on 9.10-9.16 — no FLY pairings after 6.22, only GRD days).
       if (trace.surfacedModes.length === 0) {
-        // Fleet check: the source Pairing's fleet (which the candidate will fly
-        // during the operating legs) must be in their qualification list.
+        // Fleet check for the direct mode: a mismatch is reported as a warning
+        // (soft constraint) instead of rejecting the candidate.
         const sourceFleets = [...new Set(source.items
           .map((item) => item.fleetCode?.trim().toUpperCase())
           .filter((fleet): fleet is string => Boolean(fleet)))]
         const missingSourceFleet = sourceFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
-        if (missingSourceFleet) {
-          trace.hardRejection = trace.hardRejection
-            ? trace.hardRejection + ' | Direct: not qualified for source fleet ' + missingSourceFleet
-            : 'Direct: not qualified for source fleet ' + missingSourceFleet
+        const directWarnings = missingSourceFleet
+          ? [...warnings, fleetMismatchWarning('Crew', targetCrew.crewId, missingSourceFleet)]
+          : warnings
+        // Conflict re-check (same window, no exclusion since the candidate has
+        // no active roster to swap out anyway).
+        const directFree = crewFreeForPositioning(input.items, targetCrew.crewId, positioning, null)
+        if (directFree) {
+          crossBaseOptions.push(makeOption({
+            allItems: input.items, allGroups: activeGroups, source, target: null, targetCrew, sourceCrew,
+            mode: 'cross-base-direct', standbyTaskId: null, standbyWindow: null,
+            timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], warnings: directWarnings, positioning, destinationSplit: null,
+          }))
+          trace.surfacedModes.push('cross-base-direct')
         } else {
-          // Conflict re-check (same window, no exclusion since the candidate has
-          // no active roster to swap out anyway).
-          const directFree = crewFreeForPositioning(input.items, targetCrew.crewId, positioning, null)
-          if (directFree) {
-            crossBaseOptions.push(makeOption({
-              allItems: input.items, allGroups: activeGroups, source, target: null, targetCrew, sourceCrew,
-              mode: 'cross-base-direct', standbyTaskId: null, standbyWindow: null,
-              timeDistanceMinutes: null, sameRank, sameBase, crossDivision, crossRole, reasons: [], positioning, destinationSplit: null,
-            }))
-            trace.surfacedModes.push('cross-base-direct')
-          } else {
-            trace.hardRejection = trace.hardRejection
-              ? trace.hardRejection + ' | Direct: positioning window conflicts with existing Roster'
-              : 'Direct: positioning window conflicts with existing Roster'
-          }
+          trace.hardRejection = trace.hardRejection
+            ? trace.hardRejection + ' | Direct: positioning window conflicts with existing Roster'
+            : 'Direct: positioning window conflicts with existing Roster'
         }
       }
       // Record actual positioning-window freedom (not just "any mode surfaced").

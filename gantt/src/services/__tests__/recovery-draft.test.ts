@@ -114,6 +114,77 @@ describe('buildRecoveryDraftPlan', () => {
     expect(plan.affectedPairingIds).toEqual([100, 200])
   })
 
+  it('builds both sides of a Swap duty (Assignment Overlap) exchange', () => {
+    const plan = buildRecoveryDraftPlan(option('swap-duty', 200), [item(1, 'A', 100), item(2, 'B', 200)])
+
+    expect(plan.operations.map((operation) => operation.type)).toEqual([
+      'remove-pairing-from-crew',
+      'remove-pairing-from-crew',
+      'assign-pairing',
+      'assign-pairing',
+    ])
+    expect(plan.operations[0]).toMatchObject({ type: 'remove-pairing-from-crew', pairingId: 100, crewId: 'A' })
+    expect(plan.operations[1]).toMatchObject({ type: 'remove-pairing-from-crew', pairingId: 200, crewId: 'B' })
+    // The affected Pairing moves to the candidate Crew and the candidate's
+    // Pairing comes back to the source Crew — a full two-way exchange.
+    expect(plan.operations[2]).toMatchObject({ type: 'assign-pairing', pairingId: 100, crewId: 'B', rosterActingRank: 'CA' })
+    expect(plan.operations[3]).toMatchObject({ type: 'assign-pairing', pairingId: 200, crewId: 'A', rosterActingRank: 'CA' })
+    expect(plan.affectedCrewIds).toEqual(['A', 'B'])
+    expect(plan.affectedPairingIds).toEqual([100, 200])
+  })
+
+  it('encodes a Flight Delay as one edit-flight operation carrying every delayed segment', () => {
+    const delayOption = {
+      ...option('flight-delay'),
+      targetCrewId: 'A',
+      targetCrewName: 'A',
+      flightDelay: {
+        delayStartUtc: '2026-09-16T16:01:00.000Z',
+        groundTaskEndUtc: '2026-09-16T15:00:00.000Z',
+        changesAnything: true,
+        segments: [
+          {
+            flightId: 78053, fltNum: '1888', depArp: 'YVR', arvArp: 'LAX', dutySeq: 1, segSeq: 1,
+            stdUtc: '2026-09-16T14:50:00.000Z', staUtc: '2026-09-16T17:45:00.000Z',
+            atdUtc: '2026-09-16T14:50:00.000Z', ataUtc: '2026-09-16T17:45:00.000Z',
+            delayedAtdUtc: '2026-09-16T16:01:00.000Z', delayedAtaUtc: '2026-09-16T18:56:00.000Z',
+          },
+          {
+            flightId: 78059, fltNum: '1889', depArp: 'LAX', arvArp: 'YVR', dutySeq: 1, segSeq: 2,
+            stdUtc: '2026-09-16T18:30:00.000Z', staUtc: '2026-09-16T21:30:00.000Z',
+            atdUtc: '2026-09-16T18:30:00.000Z', ataUtc: '2026-09-16T21:30:00.000Z',
+            delayedAtdUtc: '2026-09-16T19:41:00.000Z', delayedAtaUtc: '2026-09-16T22:41:00.000Z',
+          },
+        ],
+      },
+    } as RecoveryOption
+
+    const plan = buildRecoveryDraftPlan(delayOption, [item(1, 'A', 100)])
+
+    expect(plan.operations).toHaveLength(1)
+    expect(plan.operations[0].type).toBe('edit-flight')
+    // The scheduled times ride along untouched — the delay is an actual-time edit.
+    expect(plan.operations[0].flightTimes).toEqual([
+      {
+        flightId: 78053,
+        schDepDtUtc: '2026-09-16T14:50:00.000Z',
+        schArvDtUtc: '2026-09-16T17:45:00.000Z',
+        actDepDtUtc: '2026-09-16T16:01:00.000Z',
+        actArvDtUtc: '2026-09-16T18:56:00.000Z',
+      },
+      {
+        flightId: 78059,
+        schDepDtUtc: '2026-09-16T18:30:00.000Z',
+        schArvDtUtc: '2026-09-16T21:30:00.000Z',
+        actDepDtUtc: '2026-09-16T19:41:00.000Z',
+        actArvDtUtc: '2026-09-16T22:41:00.000Z',
+      },
+    ])
+    // Keeping the Crew: only the source Crew / Pairing are touched.
+    expect(plan.affectedCrewIds).toEqual(['A'])
+    expect(plan.affectedPairingIds).toEqual([100])
+  })
+
   it('retains the SBY task and marks it as Callout Standby in the draft', () => {
     const plan = buildRecoveryDraftPlan(option('standby', null, 9), [item(1, 'A', 100), item(9, 'B', null, 'SBY')])
 
