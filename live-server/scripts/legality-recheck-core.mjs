@@ -915,6 +915,13 @@ export async function rule8056(source, ctx) {
   if (!instances.length) { ctx.log('8056: no instances in rule set — skipped'); return [] }
   const groupSet = new Set()
   const codeSet = new Set()
+  // flyByPairing() ORs the accumulated group/code sets into one shared filter
+  // (group IN groupSet OR assignment IN codeSet). If any row leaves Group A/B,
+  // Assignment A/B and Qualifier A/B *all* wildcard, that row needs to see every
+  // duty regardless of group/assignment — narrowing via another row's values
+  // would silently drop the activity that wildcard row is meant to catch.
+  let hasFullyWildcardDutyRow = false
+  let dutyFilterNarrowed = false
   const validRows = []
   let needsTeamMap = false
   let needsQualRows = false
@@ -922,8 +929,19 @@ export async function rule8056(source, ctx) {
     const H = headerIndexer(inst.header)
     if (!inst.rows?.length) { ctx.log(`skip 8056/${inst.instance}: no param rows`); continue }
     for (const [rowIndex, row] of (inst.rows ?? []).entries()) {
-      for (const key of ['Assignment Group A', 'Assignment Group B']) filterValues(row[H(key)]).forEach((g) => groupSet.add(g))
-      for (const key of ['Assignment A', 'Assignment B', 'Qualifier A', 'Qualifier B']) filterValues(row[H(key)]).forEach((c) => codeSet.add(c))
+      const dutyKeys = ['Assignment Group A', 'Assignment Group B', 'Assignment A', 'Assignment B', 'Qualifier A', 'Qualifier B']
+      const rowValues = dutyKeys.map((key) => filterValues(row[H(key)]))
+      if (rowValues.every((values) => values.length === 0)) {
+        hasFullyWildcardDutyRow = true
+      } else {
+        dutyFilterNarrowed = true
+        rowValues[0].forEach((g) => groupSet.add(g))
+        rowValues[1].forEach((g) => groupSet.add(g))
+        rowValues[2].forEach((c) => codeSet.add(c))
+        rowValues[3].forEach((c) => codeSet.add(c))
+        rowValues[4].forEach((c) => codeSet.add(c))
+        rowValues[5].forEach((c) => codeSet.add(c))
+      }
     }
     inst.rows.forEach((row, rowIndex) => {
       const space = Number(row[H('Space')])
@@ -997,7 +1015,11 @@ export async function rule8056(source, ctx) {
     })
   }
   if (!validRows.length) return []
-  const rows = await source.flyByPairing(groupSet.size ? [...groupSet] : undefined, codeSet.size ? [...codeSet] : undefined)
+  const dutySqlPrefilter = !(hasFullyWildcardDutyRow && dutyFilterNarrowed)
+  const rows = await source.flyByPairing(
+    dutySqlPrefilter && groupSet.size ? [...groupSet] : undefined,
+    dutySqlPrefilter && codeSet.size ? [...codeSet] : undefined,
+  )
   const qualRows = needsQualRows ? await source.crewQualEntries() : []
   const teamMap = needsTeamMap ? await source.crewTeams() : null
   const qualLines = []
@@ -1105,6 +1127,16 @@ export async function rule8071(source, ctx) {
   let groupPrefilterNarrowed = false
   let hasWildcardAssignmentRow = false
   let assignmentPrefilterNarrowed = false
+  // Same class of bug as the group/assignment/country prefilters above: when one
+  // 8071 row narrows Flights/Destinations/Positions and another row uses wildcards
+  // for that dimension, ANDing the narrowed set onto the shared activity population
+  // would silently drop activity the wildcard row needs to see.
+  let hasWildcardFlightRow = false
+  let flightPrefilterNarrowed = false
+  let hasWildcardDestinationRow = false
+  let destinationPrefilterNarrowed = false
+  let hasWildcardPositionRow = false
+  let positionPrefilterNarrowed = false
   const positionSet = new Set()
   const ruleLines = []
   const meta = []
@@ -1136,8 +1168,20 @@ export async function rule8071(source, ctx) {
         assignmentPrefilterNarrowed = true
         for (const value of filterValues(assignmentsRaw)) assignmentSet.add(value)
       }
-      for (const value of filterValues(row[H('Flights')])) flightSet.add(value)
-      for (const value of filterValues(row[H('Destinations')])) destinationSet.add(value)
+      const flightsRaw = String(row[H('Flights')] ?? '').trim()
+      if (!flightsRaw || flightsRaw === '*') {
+        hasWildcardFlightRow = true
+      } else {
+        flightPrefilterNarrowed = true
+        for (const value of filterValues(flightsRaw)) flightSet.add(value)
+      }
+      const destinationsRaw = String(row[H('Destinations')] ?? '').trim()
+      if (!destinationsRaw || destinationsRaw === '*') {
+        hasWildcardDestinationRow = true
+      } else {
+        destinationPrefilterNarrowed = true
+        for (const value of filterValues(destinationsRaw)) destinationSet.add(value)
+      }
       const countrySpec = parseCountryFilter(row[H('Countries')])
       if (countrySpec.kind === 'disabled') {
         hasWildcardCountryRow = true
@@ -1158,7 +1202,13 @@ export async function rule8071(source, ctx) {
       } else if (countrySpec.kind === 'invalid') {
         countryFilterInvalid = true
       }
-      for (const value of filterValues(row[H('Positions')])) positionSet.add(value)
+      const positionsRaw = String(row[H('Positions')] ?? '').trim()
+      if (!positionsRaw || positionsRaw === '*') {
+        hasWildcardPositionRow = true
+      } else {
+        positionPrefilterNarrowed = true
+        for (const value of filterValues(positionsRaw)) positionSet.add(value)
+      }
       const teams = rawOrStar(row[H('Crew Teams')])
       if (hasNonWildcard(teams)) {
         if (!source.crewTeams) {
@@ -1187,6 +1237,9 @@ export async function rule8071(source, ctx) {
   const countrySqlPrefilter = !(hasWildcardCountryRow && countryPrefilterNarrowed)
   const groupSqlPrefilter = !(hasWildcardGroupRow && groupPrefilterNarrowed)
   const assignmentSqlPrefilter = !(hasWildcardAssignmentRow && assignmentPrefilterNarrowed)
+  const flightSqlPrefilter = !(hasWildcardFlightRow && flightPrefilterNarrowed)
+  const destinationSqlPrefilter = !(hasWildcardDestinationRow && destinationPrefilterNarrowed)
+  const positionSqlPrefilter = !(hasWildcardPositionRow && positionPrefilterNarrowed)
   const countries = !countrySqlPrefilter || countryFilterInvalid ? [] : [...countryIncludeSet]
   const countryNot = !countrySqlPrefilter || countryFilterInvalid ? [] : [...(countryExcludeSet ?? [])]
   // Under-min rows must see crews with rosters that do NOT match the row's
@@ -1195,11 +1248,11 @@ export async function rule8071(source, ctx) {
   const rows = await source.rosterProperties({
     groups: requiresFullRosterPopulation || !groupSqlPrefilter ? [] : [...groupSet],
     assignments: requiresFullRosterPopulation || !assignmentSqlPrefilter ? [] : [...assignmentSet],
-    flights: requiresFullRosterPopulation ? [] : [...flightSet],
-    destinations: requiresFullRosterPopulation ? [] : [...destinationSet],
+    flights: requiresFullRosterPopulation || !flightSqlPrefilter ? [] : [...flightSet],
+    destinations: requiresFullRosterPopulation || !destinationSqlPrefilter ? [] : [...destinationSet],
     countries: requiresFullRosterPopulation ? [] : countries,
     countryNot: requiresFullRosterPopulation ? [] : countryNot,
-    positions: requiresFullRosterPopulation ? [] : [...positionSet],
+    positions: requiresFullRosterPopulation || !positionSqlPrefilter ? [] : [...positionSet],
   })
   const teamMap = needsTeams ? await source.crewTeams() : null
   const activityLines = rows.map((r) => ['A',
@@ -1257,6 +1310,18 @@ export async function rule8072(source, ctx) {
   const fleetSet = new Set()
   const depSet = new Set()
   const arrSet = new Set()
+  // Same wildcard-row leak as 8071's SQL prefilter: these four dimensions are
+  // ANDed independently in qualificationFlightSegments(), so a row that narrows
+  // e.g. Dep must not have its narrow set applied to another row that leaves
+  // Dep wildcard.
+  let hasWildcardGroupRow = false
+  let groupPrefilterNarrowed = false
+  let hasWildcardFleetRow = false
+  let fleetPrefilterNarrowed = false
+  let hasWildcardDepRow = false
+  let depPrefilterNarrowed = false
+  let hasWildcardArrRow = false
+  let arrPrefilterNarrowed = false
   const ruleLines = []
   const meta = []
   for (const inst of instances) {
@@ -1272,10 +1337,34 @@ export async function rule8072(source, ctx) {
         ctx.log(`skip 8072/${inst.instance}: missing Required Qualifications/Min Limits/Max Limits`)
         continue
       }
-      for (const value of filterValues(row[H('Flight Assignment Groups')])) groupSet.add(value)
-      for (const value of filterValues(row[H('Flight Fleets')])) fleetSet.add(value)
-      for (const value of filterValues(row[H('Dep')])) depSet.add(value)
-      for (const value of filterValues(row[H('Arr')])) arrSet.add(value)
+      const groupsRaw = String(row[H('Flight Assignment Groups')] ?? '').trim()
+      if (!groupsRaw || groupsRaw === '*') {
+        hasWildcardGroupRow = true
+      } else {
+        groupPrefilterNarrowed = true
+        for (const value of filterValues(groupsRaw)) groupSet.add(value)
+      }
+      const fleetsRaw = String(row[H('Flight Fleets')] ?? '').trim()
+      if (!fleetsRaw || fleetsRaw === '*') {
+        hasWildcardFleetRow = true
+      } else {
+        fleetPrefilterNarrowed = true
+        for (const value of filterValues(fleetsRaw)) fleetSet.add(value)
+      }
+      const depRaw = String(row[H('Dep')] ?? '').trim()
+      if (!depRaw || depRaw === '*') {
+        hasWildcardDepRow = true
+      } else {
+        depPrefilterNarrowed = true
+        for (const value of filterValues(depRaw)) depSet.add(value)
+      }
+      const arrRaw = String(row[H('Arr')] ?? '').trim()
+      if (!arrRaw || arrRaw === '*') {
+        hasWildcardArrRow = true
+      } else {
+        arrPrefilterNarrowed = true
+        for (const value of filterValues(arrRaw)) arrSet.add(value)
+      }
       const idx = meta.length
       const sk = `${rawOrStar(row[H('Required Qualifications')])}:${rawOrStar(row[H('Flight Assignment Groups')])}:${minLimits}-${maxLimits}`.slice(0, 40)
       meta.push({ inst, row, H, sk, minLimits, maxLimits, rowIndex })
@@ -1283,11 +1372,15 @@ export async function rule8072(source, ctx) {
     }
   }
   if (!ruleLines.length) return []
+  const groupSqlPrefilter = !(hasWildcardGroupRow && groupPrefilterNarrowed)
+  const fleetSqlPrefilter = !(hasWildcardFleetRow && fleetPrefilterNarrowed)
+  const depSqlPrefilter = !(hasWildcardDepRow && depPrefilterNarrowed)
+  const arrSqlPrefilter = !(hasWildcardArrRow && arrPrefilterNarrowed)
   const rows = await source.qualificationFlightSegments({
-    groups: [...groupSet],
-    fleets: [...fleetSet],
-    deps: [...depSet],
-    arrs: [...arrSet],
+    groups: groupSqlPrefilter ? [...groupSet] : [],
+    fleets: fleetSqlPrefilter ? [...fleetSet] : [],
+    deps: depSqlPrefilter ? [...depSet] : [],
+    arrs: arrSqlPrefilter ? [...arrSet] : [],
     focusPairingIds: Array.isArray(ctx.focusPairingIds) ? ctx.focusPairingIds : [],
   })
   const inputLines = [...ruleLines]
