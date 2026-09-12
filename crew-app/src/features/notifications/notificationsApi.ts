@@ -14,7 +14,7 @@
 //   POST /crew-app/v1/discretion/{discretionId}         {airline,crewId,password}
 //   POST /crew-app/v1/discretion/{discretionId}/decision {airline,crewId,password,decision,idempotencyKey,reason?}
 import {z} from 'zod';
-import {isMobileRosterAirline} from '../travel/ekRosterApi';
+import {usesLiveServerEnvelope} from '../travel/ekRosterApi';
 
 export interface CrewNotifyCredentials {
   airline: string;
@@ -113,7 +113,7 @@ const envelopeSchema = z
   .passthrough();
 
 function unwrapLiveServerEnvelope(raw: unknown, airline: string): unknown {
-  if (!isMobileRosterAirline(airline)) {
+  if (!usesLiveServerEnvelope(airline)) {
     return raw;
   }
   const parsed = envelopeSchema.safeParse(raw);

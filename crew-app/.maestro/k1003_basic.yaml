@@ -1,13 +1,9 @@
 # Basic-feature pass for EK crew K1003 (Khalid Al Nuaimi, CA, A380, DXB).
 #
-# WHY the ET carrier option is used: the Emirates option in this build fetches
-# its roster from the EVACC EK crew-app gateway (EKRosterApiBaseURL =
-# https://ai.rois.one/api -> /api/crew-app/v1/roster), whose dataset only holds
-# the synthetic C9000xx demo crews. Crew K1003 and the rest of the UAE batch
-# (K1001-K1040) live in the ROIS live DB, which the ET/F8 carrier option reads
-# via live-server POST /api/mobile-roster/session. So this flow signs in through
-# that path and still gets K1003's REAL Emirates roster (EK763/764, EK414/413,
-# EK201/202). See the run notes for the Emirates-carrier gap.
+# Signs in through the Emirates option itself: EK now reads the ROIS live DB via
+# live-server POST /api/mobile-roster/session (the EVACC C9000xx demo gateway is
+# retired for rosters), and the EK default login IS crew K1003. K1003's REAL
+# Emirates roster is EK763/764, EK414/413, EK201/202.
 #
 # Run: cd crew-app && maestro test .maestro/k1003_basic.yaml
 appId: org.reactjs.native.example.RoyceTravelTemplate
@@ -20,15 +16,12 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     id: "airline-dropdown"
 - extendedWaitUntil:
     visible:
-      id: "airline-ET"
+      id: "airline-EK"
     timeout: 15000
 - tapOn:
-    id: "airline-ET"
-- tapOn:
-    id: "crew-id"
-- eraseText: 20
-- inputText: "K1003"
-- pressKey: Enter
+    id: "airline-EK"
+# The Emirates picker pre-fills its default login — real crew K1003.
+- assertVisible: "K1003"
 - takeScreenshot: k1003_00_login
 - tapOn:
     id: "login-btn"

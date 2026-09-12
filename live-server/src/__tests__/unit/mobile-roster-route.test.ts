@@ -48,18 +48,23 @@ const buildApp = async () => {
 describe('POST /api/mobile-roster/session', () => {
   afterEach(() => vi.resetAllMocks())
 
-  it('rejects unsupported airlines before loading a roster', async () => {
+  it('accepts Emirates (EK), whose roster now comes from this live-server contract', async () => {
+    const ekResponse = { ...mobileRosterResponse, airline: 'EK' as const }
+    mobileRosterService.authenticateAndLoadMobileRoster.mockResolvedValue(ekResponse)
     const app = await buildApp()
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/mobile-roster/session',
-      payload: { airline: 'EK', crewId: '113', password: 'not-a-real-password' },
+      payload: { airline: 'EK', crewId: 'K1003', password: 'Pier2026' },
     })
 
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({ code: 400, data: null })
-    expect(mobileRosterService.authenticateAndLoadMobileRoster).not.toHaveBeenCalled()
+    expect(response.json()).toEqual({ code: 200, data: ekResponse, message: 'ok' })
+    expect(mobileRosterService.authenticateAndLoadMobileRoster).toHaveBeenCalledWith(
+      { pgPool: expect.anything() },
+      { airline: 'EK', crewId: 'K1003', password: 'Pier2026' },
+    )
     await app.close()
   })
 

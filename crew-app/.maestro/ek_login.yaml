@@ -1,3 +1,13 @@
+# Emirates default-login + Schedule proof.
+#
+# The Emirates option no longer reads the retired EVACC C9000xx demo gateway:
+# it signs the crew in through the ROIS live-server mobile-roster contract
+# (POST /api/mobile-roster/session), so a REAL Emirates crew can log in "as EK".
+# The picker's default login is crew K1003 (Khalid Al Nuaimi, CA, A380, DXB).
+# This flow proves: login-screen → EK → default K1003 prefill → log in → Home →
+# Schedule tab shows the crew's real September 2026 Emirates roster.
+#
+# Run: cd crew-app && maestro test .maestro/ek_login.yaml
 appId: org.reactjs.native.example.RoyceTravelTemplate
 ---
 - launchApp:
@@ -6,47 +16,74 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     id: "login-screen"
 - tapOn:
     id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-EK"
+    timeout: 15000
 - tapOn:
     id: "airline-EK"
+# Choosing Emirates pre-fills the EK default crew id — real crew K1003.
 - assertVisible:
     id: "crew-id"
-- assertVisible: "C900001"
+- assertVisible: "K1003"
 - assertVisible:
     id: "crew-pw"
+- takeScreenshot: ek_login_00_default
 - tapOn:
     id: "login-btn"
+- tapOn:
+    text: "OK"
+    optional: true
 - extendedWaitUntil:
-    visible: "Next Adventure"
+    visible:
+      id: "home-screen"
+    timeout: 240000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- takeScreenshot: ek_login_01_home
+
+# Schedule — the crew's real Emirates roster (DXB base).
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-list"
     timeout: 30000
-- tapOn: "tab-agenda"
 - assertVisible:
-    id: "agenda-screen"
-# Upcoming — the two future pairings Ryan added (EK448/449 dep 2026-08-21,
-# EK434/435 dep 2026-08-26). EK448/449 are unique so they unambiguously prove
-# the future roster bucketed into Upcoming.
-- tapOn:
-    id: "tab-upcoming"
-- assertVisible:
-    id: "trip-list"
-- assertVisible: "EK448"
-- assertVisible: "EK449"
-- takeScreenshot: maestro_ek_upcoming
-- tapOn:
-    id: "tab-past"
-- assertVisible:
-    id: "trip-list"
-- assertVisible: "EK225"
-- assertVisible: "EK226"
+    id: "sched-title"
+- takeScreenshot: ek_login_02_schedule
+# Find a duty in the month list: EK763 (DXB→JNB) is on K1003's real roster.
 - scrollUntilVisible:
     element:
-      text: "EK434"
+      id: "duty-EK763"
     direction: DOWN
-    timeout: 20000
-- assertVisible: "EK435"
-- scrollUntilVisible:
-    element:
-      text: "EK5"
-    direction: DOWN
-    timeout: 20000
-- assertVisible: "EK6"
-- takeScreenshot: maestro_ek_roster
+    timeout: 30000
+- assertVisible:
+    id: "duty-EK763"
+- takeScreenshot: ek_login_03_schedule_ek763
+
+# The other two Schedule views render from the same month model.
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "cal-grid"
+    timeout: 15000
+- takeScreenshot: ek_login_04_calendar
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-route"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 15000
+- takeScreenshot: ek_login_05_route_map

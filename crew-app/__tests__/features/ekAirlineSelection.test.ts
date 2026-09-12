@@ -10,9 +10,12 @@ import {
 } from '../../src/features/auth/airlines';
 
 describe('EK airline selection', () => {
-  it('wires Emirates to the API adapter and simulator endpoint', () => {
+  it('wires Emirates to the API adapter with the ROIS live-server roster base', () => {
     expect(airlineByCode('EK')).toMatchObject({
       code: 'EK', name: 'Emirates', carrier: 'EK', portalKind: 'rois-api',
+      // Roster: ROIS live-server mobile-roster contract (real EK crews, K1003).
+      rosterApiBaseUrl: 'http://127.0.0.1:3000/api',
+      // Notifications / discretion: still the EVACC crew-app gateway.
       apiBaseUrl: 'http://127.0.0.1:8000/api',
     });
     expect(loginRouteForAirline('EK')).toBe('EkRoster');
@@ -28,9 +31,10 @@ describe('EK airline selection', () => {
   });
 
   it('prefills the approved EK test credentials', () => {
-    expect(TEST_CREDENTIALS.EK).toEqual({crewId: 'C900001', password: 'Pier2026'});
+    // K1003 (Khalid Al Nuaimi) is a real Emirates crew, the default EK login.
+    expect(TEST_CREDENTIALS.EK).toEqual({crewId: 'K1003', password: 'Pier2026'});
     expect(prefillForAirline('EK', '35459', 'Pier2026')).toEqual({
-      crewId: 'C900001', password: 'Pier2026',
+      crewId: 'K1003', password: 'Pier2026',
     });
   });
 

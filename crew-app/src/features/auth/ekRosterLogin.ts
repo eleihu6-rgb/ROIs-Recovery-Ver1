@@ -75,11 +75,15 @@ export async function loadEkRosterSession(
   signal?: AbortSignal,
 ): Promise<EkRosterLoadResult> {
   const airline = airlineByCode(params.airline);
-  if (airline.portalKind !== 'rois-api' || !airline.apiBaseUrl) {
+  // The roster may live on a different service than the crew's other API calls:
+  // EK's roster is answered by the ROIS live-server while its notifications /
+  // discretion stay on the EVACC crew-app gateway (see Airline.rosterApiBaseUrl).
+  const rosterApiBaseUrl = airline.rosterApiBaseUrl ?? airline.apiBaseUrl;
+  if (airline.portalKind !== 'rois-api' || !rosterApiBaseUrl) {
     throw new Error(`${airline.name} roster service is not configured`);
   }
   const response = await fetchEkRoster(
-    airline.apiBaseUrl,
+    rosterApiBaseUrl,
     {airline: airline.code, crewId: params.crewId, password: params.password},
     signal,
   );

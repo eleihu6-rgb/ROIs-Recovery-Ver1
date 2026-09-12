@@ -3,7 +3,15 @@ import type { QueryResultRow } from 'pg'
 import { env } from '../../config/index.js'
 import { quoteIdentifier } from '../../utils/db-schema.js'
 
-export type MobileRosterAirline = 'F8' | 'ET'
+/**
+ * Carriers whose crew roster is served by this mobile-roster contract: F8 and
+ * ET (the crew recovery solution) plus EK since 2026-09-12 — the Emirates
+ * sign-in option now reaches real Emirates crews (e.g. K1003) instead of the
+ * retired EVACC C9000xx demo dataset. The service itself is carrier-agnostic
+ * (it authenticates `pbs_user` and reads the live roster tables), so `airline`
+ * only echoes back as the response scope.
+ */
+export type MobileRosterAirline = 'F8' | 'ET' | 'EK'
 
 export interface MobileRosterLoginInput {
   airline: MobileRosterAirline

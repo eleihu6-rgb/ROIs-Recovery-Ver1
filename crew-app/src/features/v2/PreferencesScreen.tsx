@@ -1,4 +1,4 @@
-// Profile ▸ Preferences — Language / Appearance / Connected accounts / Version
+// Profile ▸ Preferences — Language / Appearance / Connected accounts
 // plus Explore destination preferences (settings.explorePrefs), re-homed.
 import React, { useState } from 'react';
 import { DashedLine } from '../../components/v2/TicketCard';
@@ -13,7 +13,6 @@ import { NavRow, SectionLabel, ToggleRow } from '../../components/v2/rows';
 import { PageShell, ListCard, KvRow } from './PageShell';
 import { setExplorePrefs } from '../settings/settingsSlice';
 import { EXPLORE_CATEGORIES } from '../explore/explorePlaces';
-import { APP_VERSION } from '../../version';
 import { useV2Nav } from './nav';
 
 export function PreferencesScreen() {
@@ -88,8 +87,6 @@ export function PreferencesScreen() {
         <KvRow label="Connected accounts" value="None" palette={p} last={!__DEV__} />
         {__DEV__ && <NavRow icon="cal" label="Add demo meetings (dev)" value="4 events" palette={p} onPress={addDemoMeetings} testID="dev-demo-meetings" />}
       </ListCard>
-      <SectionLabel palette={p}>About</SectionLabel>
-      <ListCard palette={p}><KvRow label="Version" value={String(APP_VERSION)} palette={p} last /></ListCard>
     </PageShell>
   );
 }

@@ -20,7 +20,7 @@
 // back to a generic per-status message only when the body can't be read.
 import {z} from 'zod';
 import {airlineByCode} from '../auth/airlines';
-import {isMobileRosterAirline} from '../travel/ekRosterApi';
+import {usesLiveServerEnvelope} from '../travel/ekRosterApi';
 
 export type AbsenceType = 'sick';
 
@@ -86,7 +86,7 @@ export async function submitAbsence(
   signal?: AbortSignal,
 ): Promise<SubmitAbsenceResult> {
   const normalized = normalizeCredentials(params);
-  if (!isMobileRosterAirline(normalized.airline)) {
+  if (!usesLiveServerEnvelope(normalized.airline)) {
     throw new Error(`${airlineByCode(normalized.airline).name} crew app does not support absence requests yet`);
   }
   const apiBaseUrl = airlineByCode(normalized.airline).apiBaseUrl;

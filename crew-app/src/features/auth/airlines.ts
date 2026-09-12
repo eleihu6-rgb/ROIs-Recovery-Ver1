@@ -87,6 +87,12 @@ export interface Airline {
   portalUrl: string | null;
   /** API base URL, when the airline uses an API-backed roster adapter. */
   apiBaseUrl?: string | null;
+  /** Roster API base URL when the roster is NOT served by `apiBaseUrl`.
+   *  Emirates is the only case today: its roster comes from the ROIS
+   *  live-server mobile-roster contract (`rosterApiBaseUrl`) while its
+   *  crew-app notifications / FDP discretion still use the EVACC gateway
+   *  (`apiBaseUrl`). Defaults to `apiBaseUrl` when omitted. */
+  rosterApiBaseUrl?: string | null;
   /** Flight-number prefix / carrier code used to build flight numbers (e.g. TG319). */
   carrier: string;
   /** Capture/parse adapter for this portal, or null when no portal yet. */
@@ -120,10 +126,19 @@ const WIRED: Airline[] = [
     portalConfig: { baseAirport: 'MNL', baseOffsetMin: 480, loginOutCaptcha: '202604' },
   },
   {
+    // Emirates is a ROIS mobile-roster carrier (like F8/ET): the crew's REAL
+    // roster (e.g. K1003, Khalid Al Nuaimi, CA/A380/DXB) is served by
+    // live-server POST /api/mobile-roster/session. The old EVACC crew-app
+    // gateway (ai.rois.one -> /api/crew-app/v1/roster) only ever held the
+    // synthetic C9000xx demo crews, so a genuine EK crew could never sign in
+    // "as EK" (Ryan, 2026-09-12 — set EK's default login to K1003 and prove
+    // the schedule). The crew-app notifications / discretion still use that
+    // gateway, so only the ROSTER moved.
     code: 'EK',
     name: 'Emirates',
     portalUrl: null,
     apiBaseUrl: ekRosterApiBaseUrl,
+    rosterApiBaseUrl: f8RosterApiBaseUrl,
     carrier: 'EK',
     portalKind: 'rois-api',
   },
@@ -212,7 +227,9 @@ export const TEST_CREW_PW = 'Pier2026';
 export const TEST_CREDENTIALS: Record<string, { crewId: string; password: string }> = {
   TG: { crewId: TEST_CREW_ID, password: TEST_CREW_PW },
   PR: { crewId: '433535', password: 'Pier2020' },
-  EK: { crewId: 'C900001', password: 'Pier2026' },
+  // K1003 (Khalid Al Nuaimi, CA, A380, DXB) is EK's default login: a real
+  // Emirates crew from the ROIS live DB, not an EVACC C9000xx demo account.
+  EK: { crewId: 'K1003', password: 'Pier2026' },
   F8: { crewId: '113', password: '' },
   ET: { crewId: 'J4002', password: 'Pier2026' },
 };
@@ -233,7 +250,7 @@ export function prefillForAirline(code: string, crewId: string, password: string
   return next && untouched ? next : { crewId, password };
 }
 
-// Carriers whose crew IDs are alphanumeric (EK C900001, ET J4002); every other
+// Carriers whose crew IDs are alphanumeric (EK K1003, ET J4002); every other
 // wired carrier uses purely numeric staff numbers and gets the number pad.
 const ALPHANUMERIC_CREW_ID_AIRLINES = new Set(['EK', 'ET']);
 export function crewIdKeyboardType(code: string): 'default' | 'number-pad' {
