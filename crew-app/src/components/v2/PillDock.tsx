@@ -3,6 +3,7 @@ import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Icon, type IconName } from './icons';
+import { RBotEntry } from '../../features/rbot/RBotEntry';
 import type { CarrierPalette } from '../../theme/carrier';
 
 export interface PillDockProps extends BottomTabBarProps {
@@ -26,68 +27,82 @@ export function PillDock({ state, descriptors, navigation, palette }: PillDockPr
 
   return (
     <View
-      style={[
-        styles.dock,
-        onLightContent
-          ? { backgroundColor: palette.dockLight, borderColor: 'rgba(255,255,255,.55)' }
-          : null,
-        { bottom: Math.max(insets.bottom, 22) - 4 },
-      ]}
+      style={[styles.row, { bottom: Math.max(insets.bottom, 22) - 4 }]}
+      pointerEvents="box-none"
     >
-      {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const isFocused = state.index === index;
-        const iconName = ICON_BY_ROUTE[route.name] ?? 'home';
-        const label =
-          typeof options.tabBarLabel === 'string' ? options.tabBarLabel : route.name;
+      <View
+        style={[
+          styles.dock,
+          onLightContent
+            ? { backgroundColor: palette.dockLight, borderColor: 'rgba(255,255,255,.55)' }
+            : null,
+        ]}
+      >
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
+          const iconName = ICON_BY_ROUTE[route.name] ?? 'home';
+          const label =
+            typeof options.tabBarLabel === 'string' ? options.tabBarLabel : route.name;
 
-        const onPress = (): void => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
+          const onPress = (): void => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
 
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
-          }
-        };
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
 
-        return (
-          <Pressable
-            key={route.key}
-            onPress={onPress}
-            accessibilityLabel={`tab-${route.name.toLowerCase()}`}
-            testID={`tab-${route.name.toLowerCase()}`}
-            style={[
-              styles.tab,
-              isFocused
-                ? onLightContent
-                  ? { backgroundColor: palette.btn, flex: 1.8 }
-                  : styles.tabOn
-                : styles.tabOff,
-            ]}
-          >
-            <Icon
-              name={iconName}
-              size={24}
-              color={onLightContent ? (isFocused ? '#fff' : palette.dockInk) : '#fff'}
-            />
-            {isFocused ? (
-              <Text style={styles.tabLabel}>{label}</Text>
-            ) : null}
-          </Pressable>
-        );
-      })}
+          return (
+            <Pressable
+              key={route.key}
+              onPress={onPress}
+              accessibilityLabel={`tab-${route.name.toLowerCase()}`}
+              testID={`tab-${route.name.toLowerCase()}`}
+              style={[
+                styles.tab,
+                isFocused
+                  ? onLightContent
+                    ? { backgroundColor: palette.btn, flex: 1.8 }
+                    : styles.tabOn
+                  : styles.tabOff,
+              ]}
+            >
+              <Icon
+                name={iconName}
+                size={24}
+                color={onLightContent ? (isFocused ? '#fff' : palette.dockInk) : '#fff'}
+              />
+              {isFocused ? (
+                <Text style={styles.tabLabel}>{label}</Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+      {/* R'Bot is its OWN box beside the bar — same glass treatment, separate box,
+          so it can never be mistaken for a fifth tab (Ryan, 2026-09-11). */}
+      <RBotEntry palette={palette} onLight={onLightContent} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  dock: {
+  // The floating row: the pill dock owns the four tabs, R'Bot owns its own box.
+  row: {
     position: 'absolute',
     left: 22,
     right: 22,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  dock: {
+    flex: 1,
     height: 66,
     borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,.2)',

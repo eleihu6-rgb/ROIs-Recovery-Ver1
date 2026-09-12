@@ -22,6 +22,7 @@ import { PreferencesScreen } from './PreferencesScreen';
 import { AppearanceScreen } from './AppearanceScreen';
 import { PersonalInfoScreen } from './PersonalInfoScreen';
 import { NotificationsScreen } from '../notifications/NotificationsScreen';
+import { RBotScreen } from '../rbot/RBotScreen';
 import type { V2StackParamList, V2TabParamList } from './nav';
 
 const Tab = createBottomTabNavigator<V2TabParamList>();
@@ -47,6 +48,15 @@ export function V2Navigator() {
     <CarrierContext.Provider value={palette}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name="Tabs" component={Tabs} />
+        <Stack.Screen
+          name="RBot"
+          component={RBotScreen}
+          // Full-height (card), not a modal: a modal screen is inset from the
+          // top, so KeyboardAvoidingView over-pads and the composer ends up
+          // behind the keyboard — the crew could not see what they typed
+          // (Ryan, 2026-09-11). Still slides up like a sheet.
+          options={{ animation: 'slide_from_bottom' }}
+        />
         <Stack.Screen name="Alerts" component={NotificationsScreen} />
         <Stack.Screen name="TripDetails" component={TripDetailsScreen} />
         <Stack.Screen
