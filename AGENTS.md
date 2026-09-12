@@ -2,7 +2,7 @@
 
 ## Load the Right Context
 
-1. Read the always-applicable sections of root `CLAUDE.md` listed in its **Shared Claude / Codex Rule Contract**, then read the sections relevant to this task. Root `CLAUDE.md` remains the canonical shared guide.
+1. Read root `CLAUDE.md` in full (it is a short router), then open the `docs/ai/rules/` file its task table points to for the current task. Root `CLAUDE.md` remains the canonical shared guide.
 2. Read `NEXT_CONTEXT.md` when resuming prior work. Context recovery instructions do not cancel an explicit current task.
 3. Before module edits, read its `AGENTS.md` / `AGENTS.override.md` and `CLAUDE.md` when present. Inspect the relevant source and tests, not every module.
 4. For ports and public routing, read `.agents/skills/005-routing-debug/SKILL.md` and, on Kimi's machine, the supplemental memo `/Users/kimi/.codex/local-memos/rois-port-usage.md`. Verify the current service configuration before starting a server.

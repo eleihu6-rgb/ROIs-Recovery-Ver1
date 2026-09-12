@@ -16,3 +16,10 @@ Compare a small documentation change, a Gantt bug fix, and a PBS performance inv
 ## Known limitation
 
 The skill-creator `quick_validate.py` helper requires `PyYAML`, which is absent from the active Python environment. Validate frontmatter with Ruby's installed YAML parser and inspect the edited descriptions against their skill bodies.
+
+## Ver2 (2026-09-12, later the same day) — root `CLAUDE.md` converted to a router
+
+- Root `CLAUDE.md` was 54,436 chars (over the 40k harness limit) and is now 10,410 chars. Every §-rule name is kept as an anchor in the root file with its hard boundary and one-line requirement.
+- Full rule text moved verbatim, no wording weakened, into `docs/ai/rules/`: `testing-discipline.md`, `ui-standards.md`, `database.md`, `coding-conventions.md`, `agent-workflow.md`. The root file's task table says which file to open for which task.
+- The cold-start "read ten sections first" list is replaced by a task→file table (blog point: contextual doc pointers, no mandatory full read before a small edit).
+- `AGENTS.md` step 1 updated to match. Skill-description trimming (point 3 of the blog) was done in Ver1 and is unchanged here.
