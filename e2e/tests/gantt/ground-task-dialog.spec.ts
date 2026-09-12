@@ -257,13 +257,16 @@ test.describe('Create Ground Task dialog', () => {
     }).toBeGreaterThan(1)
     test.skip(await select.locator('option[value="DO"]').count() === 0, 'DO assignment option is unavailable')
     await select.selectOption('DO')
+    // DO carries a fixed full-day window: selecting it auto-fills 00:00–23:59 and locks
+    // the time fields (rendered as read-only pills, not editable time inputs).
+    await expect(dialog.getByTestId('ground-task-start-time')).toHaveAttribute('data-value', '00:00')
+    await expect(dialog.getByTestId('ground-task-end-time')).toHaveAttribute('data-value', '23:59')
+    await expect(dialog.getByTestId('ground-task-fixed-day-hint')).toContainText('Full day')
     await dialog.getByTestId('ground-task-dep-arp').fill('YVR')
     await dialog.getByTestId('ground-task-arv-arp').fill('YYZ')
 
     await setEnglishDatePicker(page, dialog.getByTestId('ground-task-start-date'), 'Ground task start date', date)
-    await dialog.getByTestId('ground-task-start-time').fill('00:00')
     await setEnglishDatePicker(page, dialog.getByTestId('ground-task-end-date'), 'Ground task end date', date)
-    await dialog.getByTestId('ground-task-end-time').fill('23:59')
 
     await dialog.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(heading).toHaveCount(0)
@@ -433,7 +436,7 @@ test.describe('Create Ground Task dialog', () => {
     expect(update?.data?.actCreditedMinutes).toBe('210')
   })
 
-  test('GroundTask-IMP — imported ground task opens as view-only Ground Editor', async ({ page }) => {
+  test('GroundTask-IMP — imported ground task opens as an editable Edit dialog (view-only removed 2026-09-11)', async ({ page }) => {
     const existing = (await rosterObjects(page))[0]
     const groundTask = {
       ...existing,
@@ -471,15 +474,32 @@ test.describe('Create Ground Task dialog', () => {
       hook.openGroundTaskEdit(task)
     }, groundTask)
 
-    const heading = page.getByRole('heading', { name: 'Ground Task' })
+    // Since 2026-09-11 an imported (IMP) row is edited in place like any other row — it opens
+    // as the editable "Edit Ground Task #<id>" dialog, not the old read-only Ground Editor.
+    const heading = page.getByRole('heading', { name: 'Edit Ground Task #987654322' })
     await expect(heading).toBeVisible({ timeout: 5_000 })
     const dialog = page.getByTestId('ground-task-dialog')
 
-    await expect(dialog.getByTestId('ground-task-view-only')).toBeVisible()
-    await expect(dialog.getByTestId('ground-task-assignment')).toContainText('SIM')
-    await expect(dialog.getByTestId('ground-task-dep-arp')).toContainText('YVR')
-    await expect(dialog.getByTestId('ground-task-arv-arp')).toContainText('YYZ')
-    await expect(dialog.getByTestId('ground-task-save-btn')).toHaveCount(0)
+    // The read-only badge is gone and the fields are real editable controls.
+    await expect(dialog.getByTestId('ground-task-view-only')).toHaveCount(0)
+
+    const depArp = dialog.getByTestId('ground-task-dep-arp')
+    const arvArp = dialog.getByTestId('ground-task-arv-arp')
+    expect(await depArp.evaluate((el) => el.tagName)).toBe('INPUT')
+    await expect(depArp).toHaveValue('YVR')
+    await expect(arvArp).toHaveValue('YYZ')
+    await expect(depArp).toBeEditable()
+
+    // Assignment is an editable <select> seeded to the imported row's SIM code.
+    const select = dialog.getByTestId('ground-task-assignment')
+    expect(await select.evaluate((el) => el.tagName)).toBe('SELECT')
+    await expect.poll(async () => select.locator('option').count(), { timeout: 15_000 }).toBeGreaterThan(1)
+    if ((await select.locator('option[value="SIM"]').count()) > 0) {
+      await expect(select).toHaveValue('SIM')
+    }
+
+    // In-place edit exposes Save + Delete (the old view-only mode had neither Save nor an editable form).
+    await expect(dialog.getByTestId('ground-task-save-btn')).toBeEnabled()
     await expect(dialog.getByTestId('ground-task-delete-btn')).toBeEnabled()
   })
 

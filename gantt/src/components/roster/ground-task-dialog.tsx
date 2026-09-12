@@ -17,6 +17,21 @@ export interface AssignmentOption {
   restTime: number | null
   fixedCreditMin?: number | string | null
   dpPct?: number | string | null
+  /** Fixed wall-clock window (base-local HH:mm); when both set the task spans that window. */
+  fixedStrTm?: string | null
+  fixedEndTm?: string | null
+}
+
+const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/
+
+/** Fixed start/end HH:mm for an assignment when both are valid wall-clock times, else null. */
+export const assignmentFixedWindow = (
+  option: AssignmentOption | undefined,
+): { start: string; end: string } | null => {
+  const start = option?.fixedStrTm?.trim()
+  const end = option?.fixedEndTm?.trim()
+  if (start && end && HHMM_RE.test(start) && HHMM_RE.test(end)) return { start, end }
+  return null
 }
 
 interface AirportOption {
@@ -190,6 +205,49 @@ const AirportInput = ({
   )
 }
 
+/**
+ * Time field for the Start/End rows. When the selected assignment carries a fixed
+ * window (AL / DO full day) the time is auto-filled and locked — rendered as a read-only
+ * pill instead of a native time picker, which also avoids the 12h AM/PM overflow the
+ * narrow native control showed. Otherwise it's an editable 24h time input.
+ */
+const GroundTaskTimeField = ({
+  value,
+  onChange,
+  locked,
+  disabled,
+  testId,
+}: {
+  value: string
+  onChange: (value: string) => void
+  locked: boolean
+  disabled: boolean
+  testId: string
+}) => {
+  if (locked) {
+    return (
+      <div
+        className="flex h-8 w-28 items-center justify-center gap-1.5 rounded-md border border-dashed border-border bg-muted/30 font-mono text-xs"
+        data-testid={testId}
+        data-value={value}
+      >
+        <span className="font-semibold text-foreground">{value}</span>
+        <Lock className="h-3 w-3 text-muted-foreground/60" />
+      </div>
+    )
+  }
+  return (
+    <Input
+      type="time"
+      className="h-8 w-28 text-center font-mono text-xs"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      data-testid={testId}
+    />
+  )
+}
+
 /** Ground task create/edit dialog — standard AppDialog chrome (draggable title bar). */
 export const GroundTaskDialog = () => {
   const open = useUiStore((s) => s.groundTaskDialogOpen)
@@ -298,10 +356,23 @@ export const GroundTaskDialog = () => {
 
   const duration = calcDuration(startDate, startTime, endDate, endTime)
 
+  const selectedOption = useMemo(
+    () => assignments.find((a) => a.assignment === assignment),
+    [assignments, assignment],
+  )
+  // Assignments like AL / DO carry a fixed full-day window — auto-fill and lock the
+  // times so schedulers don't have to (and can't) edit them per Ryan's request.
+  const fixedWindow = assignmentFixedWindow(selectedOption)
+
   const handleAssignmentChange = (val: string) => {
     setAssignment(val)
     const opt = assignments.find((a) => a.assignment === val)
     setAssignmentGroup(opt?.defaultAssignmentGroup ?? '')
+    const window = assignmentFixedWindow(opt)
+    if (window) {
+      setStartTime(window.start)
+      setEndTime(window.end)
+    }
     if (!dpMinTouched) setDpMin(String(assignmentDpMin(opt, duration)))
     if (mode === 'create' || (mode === 'edit' && editItem && editableCreditSources.has(String(editItem.source ?? '').toUpperCase()))) {
       const fixedCredit = assignmentFixedCredit(opt)
@@ -620,7 +691,7 @@ export const GroundTaskDialog = () => {
               <label className="text-xs text-muted-foreground">Start *</label>
               <div className="flex items-center gap-1.5">
                 <GanttEnglishDatePicker ariaLabel="Ground task start date" className="flex-1" buttonClassName="h-8 w-full" value={startDate} onValueChange={setStartDate} disabled={readOnly} testId="ground-task-start-date" />
-                <Input type="time" className="h-8 w-24 text-center font-mono text-xs" value={startTime} onChange={(e) => setStartTime(e.target.value)} disabled={readOnly} data-testid="ground-task-start-time" />
+                <GroundTaskTimeField value={startTime} onChange={setStartTime} locked={!!fixedWindow} disabled={readOnly} testId="ground-task-start-time" />
                 <span className="text-2xs font-mono text-primary/70">{timezoneAirport}</span>
               </div>
             </div>
@@ -649,9 +720,14 @@ export const GroundTaskDialog = () => {
               <div>
                 <div className="flex items-center gap-1.5">
                   <GanttEnglishDatePicker ariaLabel="Ground task end date" className="flex-1" buttonClassName="h-8 w-full" value={endDate} onValueChange={setEndDate} disabled={readOnly} testId="ground-task-end-date" />
-                  <Input type="time" className="h-8 w-24 text-center font-mono text-xs" value={endTime} onChange={(e) => setEndTime(e.target.value)} disabled={readOnly} data-testid="ground-task-end-time" />
+                  <GroundTaskTimeField value={endTime} onChange={setEndTime} locked={!!fixedWindow} disabled={readOnly} testId="ground-task-end-time" />
                   <span className="text-2xs font-mono text-primary/70">{timezoneAirport}</span>
                 </div>
+                {fixedWindow && (
+                  <p className="mt-1 text-2xs text-muted-foreground" data-testid="ground-task-fixed-day-hint">
+                    Full day — times fixed by {assignment}; pick the date{startDate !== endDate ? ' range' : ''}.
+                  </p>
+                )}
                 {duration && duration !== 'warn' && (
                   <p className="mt-1 text-xs text-green-500">✓ Duration: {duration}</p>
                 )}
