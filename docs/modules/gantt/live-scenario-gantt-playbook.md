@@ -1262,4 +1262,126 @@ overlapping the flying Pairing).
    blank. Hard-refresh (Ctrl+Shift+R) before testing — several "it still does not
    work" reports were a stale bundle, not the fix.
 
+### Applying the 1001 options (added 2026-09-12)
+
+All three Assignment-Overlap methods are executable through the normal
+"Apply → unsaved Gantt Draft → Save" path:
+
+| Method | Draft ops | Gate |
+|---|---|---|
+| Standby Crew callout | `remove-pairing-from-crew` + `assign-pairing` + `update(CALLOUT_STANDBY)` | local Rule preview (`ruleCheck`) |
+| Swap duty | `remove-pairing-from-crew` ×2 + `assign-pairing` ×2 (full two-way exchange) | local Rule preview |
+| Flight Delay | one `edit-flight` op carrying every leg | no owner-rule preview — pick the Flight Delay group and Apply |
+
+6. **Flight Delay is an ATD/ATA edit, not a Roster change.** `planFlightDelay()`
+   pushes each leg to `ground-task end + 61 min`, never earlier than the leg's own
+   ATD, and keeps the original inter-leg turnaround. The draft op (`edit-flight`)
+   is replayed by `flightService.update`, so the pairing_segment / roster_flight
+   cascade and the Manday window stay on the existing flight-edit path. Flight
+   Delay rows intentionally have **no execution checkbox** — opening the group
+   makes its single option the Apply target.
+7. **A swap-duty candidate must survive BOTH filters.** Hard filters (business
+   date + reports later than the ground task) decide whether the candidate is
+   listed at all; the two-way base/fleet/rank-seat match and the overlap re-check
+   only mark it unavailable. Candidates with `ruleCheck='not-run'` are never
+   dropped into `excludedOptions`, which is what keeps the documented "keep it,
+   mark it Blocked" behaviour.
+8. **`dev_live.roster_flight` has duplicate `id`s (no PK on the deployed table).**
+   The client merges roster items by `id` (`loadRosterBatched` → `Map.set`,
+   `patchItems` / `replaceCrewItems`), so a duplicate id silently drops one row —
+   including the ground task a 1001 alert needs. Symptom: the Alert Center 1001
+   row renders `data-recoverable="false"` with the "no ground task overlapping"
+   reason even though `/api/roster` returns the ground task. Example: crew 113's
+   MTG row `id=258` on 2026-09-16 collides with crew 73's row `id=258`. For E2E,
+   pick a window without an in-window collision (crew 113 / pairing 135672 on
+   2026-09-08 works); fix the data before trusting Crew 113's 9/16 1001 gate.
+9. **The Alert Center lists the same 1001 alert once per anchor** (pairing +
+   crew), and the same Pairing can also carry 3007/8004 rows. Select it by
+   `[data-testid="violation-list-row"][data-crew-id=…][data-rule-code="1001"][data-recoverable="true"]`,
+   never by the checkbox testid alone.
+10. **The toolbar date pickers are gone** — E2E setup must call the gantt test
+    hook `setDateRange(page, from, to)` (see `e2e/utils/gantt-hook.ts`) instead of
+    filling `date-range-from` / `date-range-to`.
+11. **The Callout Standby's own overlap is allowed — the gate must say so explicitly.**
+    A standby callout keeps the SBY row and marks it `exception_code='CALLOUT_STANDBY'`
+    (renderer draws the yellow C), so rule 1001 sees "ASBY × FLY" on the received
+    Pairing. That single overlap is the documented exception
+    (crew-roster-recovery-requirements §7.2). Two layers must honour it:
+    * the 1001 timeline SQL (`assignmentOverlapRosters()` in
+      `live-server/scripts/{live-legality,scenario-legality,scenario-legality-source}.mjs`)
+      excludes `CALLOUT_STANDBY` ground rows — this is what the post-Save live
+      recheck reads;
+    * the draft-preview overlay only replaces **Pairing** rows
+      (`resolvePreviewRosterOverlay`, `mode='pairing'`), so a ground row's
+      `exception_code` never reaches the engine in preview — `recoveryRuleFailures`
+      therefore takes `calloutStandbyWindow` and drops exactly the 1001 violation
+      whose overlap window sits inside the retained standby task. Anything wider
+      (a longer SBY, a second task) stays blocked.
+12. **Check the ruleset's own parameters before blaming Recovery for an
+    unselectable option.** The dev `Recovery Demo RuleSet` currently carries
+    `3007/001 MAX FDP = 01:00`, so every received Pairing produces a "new" 3007
+    FDP finding and *every* pairing-assigning option (standby/swap/roster/
+    cross-base) lands in the Filtered tab. The preview gate is doing its job —
+    the parameter is the problem. Read the effective params from
+    `dev_live.rule.param_json` for rules 3007 / 2107 / 1001 before debugging the
+    dialog. Likewise, a swap needs fleets to match in **both** directions
+    (crew 113 is 737-only while every YVR pilot Pairing in the window is 7M8, so a
+    swap always creates 8004).
+13. **Aircraft type is a SOFT constraint (decision 2026-09-12).** A fleet
+    mismatch must never hide or disable an option: it is offered *and* selectable,
+    with the mismatch displayed. Base, rank seat and task conflicts stay hard.
+    * candidate level: `RecoveryOption.warnings` (see `fleetMismatchWarning()`),
+      rendered amber in the option row and in the Detail dialog;
+    * gate level: `recoveryRuleFailures` returns `{ failures, warnings }` — an
+      `8004` whose preview `dimension === 'FLEET'` becomes a warning, everything
+      else still blocks. `dimension` comes from the engine's
+      `operation_result.strType` (`BASE`/`RANK`/`FLEET`) via
+      `normalizePreviewViolations`, so never match on the message text.
+14. **"Save does nothing" on a long-running dev server — restart Vite, a hard
+    refresh is not enough.** After many hot updates the Vite module graph can serve
+    HMR-timestamped module URLs (`…/stores/roster-store.ts?t=…`) on a *fresh* page,
+    which yields **two instances of `draft-store`**: the dialog writes the draft op
+    into one while `DraftToolbar` subscribes to the other. Symptom: the Save button
+    stays `disabled` with **no change-count badge** even though
+    `__ganttTest.draftState()` reports `opCount: 1` (and `ruleCheckState()` shows
+    `checking=false, confirmDialogOpen=false`). Diagnosis: read the badge/disabled
+    state in the DOM next to the store state; a mismatch means two store instances.
+    Fix: restart the gantt dev server (`taskkill` the 5566 process, `pnpm run dev`).
+15. **Creating a ground task that overlaps a flying Pairing first asks for a soft
+    1001 confirmation.** The Create Ground Task dialog sits at "Saving…" (≈20-25 s,
+    two `/api/legality/preview-draft` rounds) and then a nested **"Rule Violations
+    Detected"** dialog appears — `SOFT 1001/001 Overlapping assignments between FLY
+    and MTG` — with *Cancel* / *Continue Anyway*. Continue Anyway queues the draft
+    op (then Gantt Save commits it); Cancel closes the create dialog **silently**,
+    with no row and no message, which reads as "the save never worked". E2E must
+    click Continue Anyway (and expect it only after the ~20 s preview).
+16. **The rule-engine service (port 3001) is not part of this workspace's two
+    services.** Without it every `/altair/rule/check/batch` fails (500) and both
+    `ruleCheckStore.preCheck` (the Save-time gate) and `checkCrews` silently degrade
+    to "no violations" — saves then bypass the legality gate entirely. Start it via
+    `service.sh` (rule-engine → 3001) when the save gate must be real.
+17. **Recovery options show "Checking" for tens of seconds before their checkbox
+    becomes usable — that is the rule pre-check, not a blocked option.** Each option
+    runs `/api/legality/preview-draft`, which evaluates the whole ruleset over the
+    Crew's *entire loaded window* (~8-11 s per call on the demo data, 85 findings for
+    crew 113), and the dialog checks every pending option at once — the live-server
+    serializes them because the Rust bin runner is concurrency-limited. Measured on
+    the real 1001 scenario: 6 previews → standby options selectable at t+36 s / t+46 s.
+    Plan A (implemented 2026-09-12) removed the redundant **before-state** preview in
+    the recovery gate: the gate only judges violations anchored on the tuples the
+    option CREATES — `(target Crew, source Pairing)` and, for a swap,
+    `(source Crew, target Pairing)` — and neither exists beforehand, so the before run
+    could never suppress them (verified: it returns an empty list on those anchors).
+    Result: 3 previews, standby selectable at t+13 s / t+23 s, same verdicts
+    (`Executable`, `Filtered 0`). Remaining options if this is still too slow: check
+    options lazily (only the one the planner opened) or narrow the preview window
+    server-side around the recovery window (rest/cumulative rules need care).
+18. **A ground task that overlaps a flying Pairing is a 1001 by design.** So a test
+    must not hard-code the planner's ground-task window: create/edit flows legitimately
+    change it (crew 113's 9/16 MTG went 14:00-15:00 → 09:00-15:00 on 2026-09-12).
+    Assert the ground task is *unchanged by the recovery* (compare with the pre-Apply
+    snapshot) and keep the absolute numbers only where the feature's contract needs
+    them (the delay start = ground-task end + 1:01).
+
 Design + scope: `docs/superpowers/specs/2026-09-11-swap-duty-and-flight-delay-recovery-design.md`.
+Apply + Flight Delay redesign: `docs/superpowers/specs/2026-09-12-recovery-apply-swap-duty-and-flight-delay.md`.
