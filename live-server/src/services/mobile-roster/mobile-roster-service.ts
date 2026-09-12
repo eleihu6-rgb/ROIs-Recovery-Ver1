@@ -168,6 +168,23 @@ export class MobileRosterServiceError extends Error {
 const utcIsoColumn = (column: string): string =>
   `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`
 
+/**
+ * Duty check-in (report) / check-out (release) instants.
+ *
+ * `pairing_segment.duty_sch_str_dt_utc` is NOT the crew's report time on every
+ * pairing: airline-imported rows (source='F8') store the report time there, but
+ * pairings written by the gantt build service (source='MANUAL') store the duty's
+ * first scheduled DEPARTURE, which made the crew app print a check-in identical to
+ * the flight time (K1003 pairing 152375, EK414 DXB–SYD: both 02:00L). The dedicated
+ * brief/debrief columns hold the real report (first departure − brief) and release
+ * (last arrival + debrief) on BOTH — the same anchors the gantt draws the duty box
+ * from — so they must win.
+ */
+const dutyReportExpr = (alias: string): string =>
+  `coalesce(${alias}.brief_start_utc, ${alias}.pickup_start_utc, ${alias}.duty_sch_str_dt_utc)`
+const dutyReleaseExpr = (alias: string): string =>
+  `coalesce(${alias}.debrief_end_utc, ${alias}.dropoff_end_utc, ${alias}.duty_sch_end_dt_utc)`
+
 const toUtcString = (value: Date | string | null): string => {
   if (value === null) {
     throw new MobileRosterServiceError(500, 'Roster row is missing a required timestamp.')
@@ -363,8 +380,8 @@ export const authenticateAndLoadMobileRoster = async (
        select rf.pairing_id,
               coalesce(p.pairing_label, rf.label) as pairing_label,
               rf.assignment,
-              ${utcIsoColumn('ps.duty_sch_str_dt_utc')} as segment_check_in_utc,
-              ${utcIsoColumn('ps.duty_sch_end_dt_utc')} as segment_release_utc,
+              ${utcIsoColumn(dutyReportExpr('ps'))} as segment_check_in_utc,
+              ${utcIsoColumn(dutyReleaseExpr('ps'))} as segment_release_utc,
               rf.flt_id,
               f.flt_num,
               f.airline as carrier,
@@ -401,7 +418,7 @@ export const authenticateAndLoadMobileRoster = async (
      ), pairing_boundaries as (
        select distinct wr.pairing_id,
               coalesce(
-                (select ${utcIsoColumn('min(ps_all.duty_sch_str_dt_utc)')}
+                (select ${utcIsoColumn(`min(${dutyReportExpr('ps_all')})`)}
                  from ${liveSchema}.pairing_segment ps_all
                  where ps_all.pairing_id = wr.pairing_id
                    and coalesce(ps_all.is_deleted, 0) = 0),
@@ -412,7 +429,7 @@ export const authenticateAndLoadMobileRoster = async (
                    and rf_all.is_deleted = 0)
               ) as pairing_check_in_utc,
               coalesce(
-                (select ${utcIsoColumn('max(ps_all.duty_sch_end_dt_utc)')}
+                (select ${utcIsoColumn(`max(${dutyReleaseExpr('ps_all')})`)}
                  from ${liveSchema}.pairing_segment ps_all
                  where ps_all.pairing_id = wr.pairing_id
                    and coalesce(ps_all.is_deleted, 0) = 0),

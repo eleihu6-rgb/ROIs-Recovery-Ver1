@@ -1,0 +1,78 @@
+# Duty-timing validation (Ryan 2026-09-12): the crew app must print the duty's
+# REPORT time as Check-in — never the flight's departure time — with Wake up /
+# Leave home / Check-in forming a real counts-down before the STD.
+#
+# Run for both wired mobile-roster crews (EK + ET):
+#   maestro test .maestro/crew_timing_card.yaml -e AIRLINE=EK -e CREW_ID=K1003 -e DUTY=EK763 -e SHOT=timing-ek
+#   maestro test .maestro/crew_timing_card.yaml -e AIRLINE=ET -e CREW_ID=J4002 -e DUTY=ET805 -e SHOT=timing-et
+#
+# The ET app remembers a session in the iOS Keychain, which `clearState` does not
+# wipe — before a repeat ET run: `xcrun simctl keychain <udid> reset`.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-${AIRLINE}"
+    timeout: 15000
+- tapOn:
+    id: "airline-${AIRLINE}"
+- assertVisible: "${CREW_ID}"
+- takeScreenshot: ${SHOT}-00_login
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "OK"
+    optional: true
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 240000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+# Home's trip card carries the two times the crew compares first.
+- assertVisible:
+    text: "Ready .*"
+- assertVisible:
+    text: "Check-in .*"
+- takeScreenshot: ${SHOT}-01_home
+
+# Schedule ▸ the duty card names all four anchors: WAKE UP / LEAVE HOME / CHECK-IN
+# plus the flight's own STD/STA block.
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-list"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "duty-${DUTY}"
+    direction: DOWN
+    timeout: 30000
+- assertVisible:
+    id: "duty-${DUTY}"
+- takeScreenshot: ${SHOT}-02_schedule_duty
+
+# Trip Details lists wake up → leave home → check-in/report → STD, in that order.
+- tapOn:
+    id: "duty-${DUTY}"
+- extendedWaitUntil:
+    visible:
+      id: "page-trip-details"
+    timeout: 15000
+- takeScreenshot: ${SHOT}-03_trip_details

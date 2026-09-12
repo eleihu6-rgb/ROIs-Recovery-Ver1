@@ -79,6 +79,15 @@ const serviceOptions = (pgPool: ReturnType<typeof createPool>) => ({
   now: NOW,
 })
 
+// The duty report / release anchors the roster read must prefer: the brief start
+// (first departure − brief) and the debrief end (last arrival + debrief) win over
+// `duty_sch_str_dt_utc` / `duty_sch_end_dt_utc`, which the gantt build service
+// fills with the duty's first departure / last arrival.
+const REPORT_EXPR = 'coalesce(ps.brief_start_utc, ps.pickup_start_utc, ps.duty_sch_str_dt_utc)'
+const RELEASE_EXPR = 'coalesce(ps.debrief_end_utc, ps.dropoff_end_utc, ps.duty_sch_end_dt_utc)'
+const REPORT_EXPR_ALL = 'coalesce(ps_all.brief_start_utc, ps_all.pickup_start_utc, ps_all.duty_sch_str_dt_utc)'
+const RELEASE_EXPR_ALL = 'coalesce(ps_all.debrief_end_utc, ps_all.dropoff_end_utc, ps_all.duty_sch_end_dt_utc)'
+
 describe('authenticateAndLoadMobileRoster', () => {
   it('authenticates crew 113 through pbs_user password_hash and maps flying pairing', async () => {
     const pgPool = createPool([[await activePbsUser()], [crewProfile], flyingRows])
@@ -245,15 +254,43 @@ describe('authenticateAndLoadMobileRoster', () => {
 
     expect(rosterQuery).toContain(`${utcIso('rf.sch_str_dt_utc')} as start_utc`)
     expect(rosterQuery).toContain(`${utcIso('rf.sch_end_dt_utc')} as end_utc`)
-    expect(rosterQuery).toContain(`${utcIso('ps.duty_sch_str_dt_utc')} as segment_check_in_utc`)
-    expect(rosterQuery).toContain(`${utcIso('ps.duty_sch_end_dt_utc')} as segment_release_utc`)
-    expect(rosterQuery).toContain(utcIso('min(ps_all.duty_sch_str_dt_utc)'))
-    expect(rosterQuery).toContain(utcIso('max(ps_all.duty_sch_end_dt_utc)'))
+    expect(rosterQuery).toContain(`${utcIso(REPORT_EXPR)} as segment_check_in_utc`)
+    expect(rosterQuery).toContain(`${utcIso(RELEASE_EXPR)} as segment_release_utc`)
+    expect(rosterQuery).toContain(utcIso(`min(${REPORT_EXPR_ALL})`))
+    expect(rosterQuery).toContain(utcIso(`max(${RELEASE_EXPR_ALL})`))
     expect(rosterQuery).toContain(utcIso('min(rf_all.sch_str_dt_utc)'))
     expect(rosterQuery).toContain(utcIso('max(rf_all.sch_end_dt_utc)'))
     // The crew app prints the aircraft type next to the flight number; the fleet
     // code has to come from the flight row the roster segment points at.
     expect(rosterQuery).toContain('f.fleet')
+  })
+
+  // Regression (Ryan 2026-09-12, crew K1003 / pairing 152375 EK414 DXB–SYD): the Home
+  // card printed "Check-in 02:00L" — identical to the 02:00L DXB departure — because the
+  // roster read `duty_sch_str_dt_utc`, which the gantt build service fills with the duty's
+  // FIRST DEPARTURE while the airline-imported rows put the report time there. The crew's
+  // real check-in is the brief start (dep − 2h); release is the debrief end (arr + 15m).
+  it('reads duty check-in/release from the brief/debrief anchors, not the flight times', async () => {
+    const pgPool = createPool([[await activePbsUser()], [crewProfile], flyingRows])
+
+    await authenticateAndLoadMobileRoster(serviceOptions(pgPool), {
+      airline: 'EK',
+      crewId: '113',
+      password: 'Pier2026',
+    })
+
+    const queryCalls = pgPool.query.mock.calls as unknown as Array<[string, unknown[]]>
+    const rosterQuery = queryCalls[2]?.[0] ?? ''
+
+    // The brief (report) anchor outranks the departure column everywhere it is read.
+    expect(rosterQuery.indexOf('ps.brief_start_utc')).toBeGreaterThan(-1)
+    expect(rosterQuery).toContain(REPORT_EXPR)
+    expect(rosterQuery).toContain(REPORT_EXPR_ALL)
+    expect(rosterQuery).not.toContain('min(ps_all.duty_sch_str_dt_utc)')
+    expect(rosterQuery).not.toContain('max(ps_all.duty_sch_end_dt_utc)')
+    // Release likewise: debrief/dropoff end before the duty's last scheduled arrival column.
+    expect(rosterQuery).toContain(RELEASE_EXPR)
+    expect(rosterQuery).toContain(RELEASE_EXPR_ALL)
   })
 
   // Regression: the month window must be compared UTC-to-UTC. Passing the ISO

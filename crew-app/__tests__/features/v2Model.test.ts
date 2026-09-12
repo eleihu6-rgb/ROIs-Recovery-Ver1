@@ -217,4 +217,42 @@ describe('legView duty markers', () => {
     const baseView = legView(et.legs[0], et, 'base', 'Africa/Addis_Ababa', undefined);
     expect(baseView.depTime).toBe('10:10B');
   });
+
+  // Regression (Ryan 2026-09-12, crew K1003 pairing 152375): the Home card read
+  // "Check-in 02:00L" — the same clock time as the 02:00L DXB departure — because the
+  // server sent the duty's first departure as the check-in. The roster check-in is the
+  // duty report time (dep − 2h → 00:00L here) and must never collapse onto the departure.
+  it('keeps check-in distinct from the departure time on the EK414 DXB–SYD duty', () => {
+    const ek: Trip = {
+      id: '152375', crewId: 'K1003',
+      // report 2026-09-10T20:00Z = 00:00L 11 Sep DXB; EK414 departs 22:00Z = 02:00L.
+      checkInDateUTC: '10 Sep 2026 2000',
+      legs: [{
+        crewId: 'K1003', fltNumber: 'EK414', flightDateUTC: '10 Sep 2026 2200',
+        depArp: 'DXB', arvDateUTC: '11 Sep 2026 1200', arvArp: 'SYD',
+        fleet: 'A380', hotel: '', assignment: 'FLY',
+      }],
+    };
+
+    const view = legView(ek.legs[0], ek, 'airport', 'Asia/Dubai', undefined);
+    expect(view.depTime).toBe('02:00L');
+    expect(view.checkIn).toBe('00:00L');
+    expect(view.checkIn).not.toBe(view.depTime);
+
+    // Ready / leave-home stay anchored to the departure (Wake Up −4h, Leave Home −3h)
+    // and therefore sit before the check-in, giving a coherent counts-down sequence.
+    const { byTrip } = dutyAlarmsByTrip([ek], 4, 3, {});
+    const marked = legView(ek.legs[0], ek, 'airport', 'Asia/Dubai', byTrip[ek.id]);
+    expect(marked.ready).toBe('22:00L');
+    expect(marked.leaveHome).toBe('23:00L');
+    // The markers run across midnight (ready 22:00 on the 10th → check-in 00:00 on the
+    // 11th), so unwrap each clock time forward from the first marker before ordering.
+    const hhmm = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
+    let prev = hhmm(marked.ready);
+    for (const next of [marked.leaveHome, marked.checkIn].map(hhmm)) {
+      const unwrapped = next < prev % 1440 ? next + 1440 : next;
+      expect(unwrapped).toBeGreaterThan(prev);
+      prev = unwrapped;
+    }
+  });
 });
