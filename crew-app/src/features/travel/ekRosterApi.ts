@@ -359,20 +359,37 @@ export async function fetchEkRoster(
   const airline = credentials.airline?.trim().toUpperCase() || 'EK';
   const path = isMobileRosterAirline(airline) ? '/mobile-roster/session' : '/crew-app/v1/roster';
   const url = `${apiBaseUrl.replace(/\/$/, '')}${path}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      airline,
-      crewId: credentials.crewId.trim().toUpperCase(),
-      password: credentials.password,
-    }),
-    signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        airline,
+        crewId: credentials.crewId.trim().toUpperCase(),
+        password: credentials.password,
+      }),
+      signal,
+    });
+  } catch (error) {
+    // A cancelled login is not a failure — the caller unwinds on AbortError.
+    if (signal?.aborted || (error as Error | undefined)?.name === 'AbortError') {
+      throw error;
+    }
+    // No HTTP answer at all (service down, tunnel down, no connectivity). React
+    // Native's own "Network request failed" tells the crew nothing about which
+    // carrier is unreachable.
+    throw new Error(`Cannot reach the ${airline} roster service. Check your connection and try again.`);
+  }
   if (!response.ok) {
     if (response.status === 401) throw new Error('Invalid crew credentials');
     if (response.status === 404) throw new Error('Crew roster not found');
-    throw new Error('EK roster service unavailable');
+    // The roster service behind the API is down / restarting (502 from the
+    // public tunnel, 5xx from the API itself). This used to read "EK roster
+    // service unavailable" for EVERY carrier — on 2026-09-11 an ET (J4002)
+    // login failure was first read as an Emirates problem. Name the carrier and
+    // the status so the next one is diagnosable from the screenshot alone.
+    throw new Error(`${airline} roster service unavailable (HTTP ${response.status})`);
   }
   const payload = await response.json();
   return isMobileRosterAirline(airline) ? parseF8RosterEnvelope(payload) : parseEkRosterResponse(payload);
