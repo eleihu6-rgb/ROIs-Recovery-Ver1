@@ -7,7 +7,7 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     clearState: true
 - assertVisible:
     id: "login-screen"
-- assertVisible: "altair"
+- assertVisible: "ROIs Altair"
 - takeScreenshot: v2_tg_01_login
 - tapOn:
     id: "login-btn"

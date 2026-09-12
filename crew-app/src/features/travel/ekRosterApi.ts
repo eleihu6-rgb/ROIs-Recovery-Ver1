@@ -140,12 +140,22 @@ const groundDutySchema = z.object({
   departureAirport: nullableString.optional(),
   arrivalAirport: nullableString.optional(),
 });
-// Carriers served by the ROIS live-server `/mobile-roster/session` envelope
-// (F8 plus ET for the crew recovery solution). EK uses the older crew-app API.
-const MOBILE_ROSTER_AIRLINES = new Set(['F8', 'ET']);
+// Carriers whose ROSTER is served by the ROIS live-server
+// `/mobile-roster/session` envelope: F8 + ET (the crew recovery solution) and
+// EK since 2026-09-12 — the Emirates option now signs in real Emirates crews
+// (K1003) instead of the retired EVACC C9000xx demo dataset.
+const MOBILE_ROSTER_AIRLINES = new Set(['F8', 'ET', 'EK']);
 const SUPPORTED_ROSTER_AIRLINES = new Set(['EK', ...MOBILE_ROSTER_AIRLINES]);
 export function isMobileRosterAirline(airline: unknown): boolean {
   return typeof airline === 'string' && MOBILE_ROSTER_AIRLINES.has(airline);
+}
+// Notify / absence responses only carry the ROIS live-server envelope for
+// F8/ET. EK's notifications and FDP discretion still come RAW from the EVACC
+// crew-app gateway, so they must not be unwrapped as a live-server envelope
+// even though EK's roster now is one.
+const LIVE_SERVER_ENVELOPE_AIRLINES = new Set(['F8', 'ET']);
+export function usesLiveServerEnvelope(airline: unknown): boolean {
+  return typeof airline === 'string' && LIVE_SERVER_ENVELOPE_AIRLINES.has(airline);
 }
 function isSupportedRosterAirline(airline: unknown): boolean {
   return typeof airline === 'string' && SUPPORTED_ROSTER_AIRLINES.has(airline);

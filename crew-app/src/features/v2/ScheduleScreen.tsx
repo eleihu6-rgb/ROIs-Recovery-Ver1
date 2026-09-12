@@ -373,8 +373,11 @@ function FlightCard({ leg, palette: p, onPress, last, head }: { leg: LegView; pa
           check-in are the same instant, so check-in carries the report time. Alarm
           cells with no value (a duty that has already started — alarms are computed
           for upcoming duties only) are dropped rather than shown as dashes. */}
+      {/* The markers sit on the card itself: the perforation line above already
+          separates them from the rotation, so a second white box just added a
+          slab to the card (Ryan, 2026-09-11). */}
       {leg.firstLeg && (leg.ready !== '—' || leg.leaveHome !== '—' || leg.checkIn !== '—') ? (
-        <View style={[s.prep, { backgroundColor: CARD_INSET }]}>
+        <View style={s.prep}>
           {leg.ready !== '—' ? <View><Text style={[s.pk, { color: p.cardSoft }]}>{leg.readyWord.toUpperCase()}</Text><Text style={[s.pv, { color: p.btn }]}>{leg.ready}</Text></View> : null}
           {leg.leaveHome !== '—' ? <View><Text style={[s.pk, { color: p.cardSoft }]}>LEAVE HOME</Text><Text style={[s.pv, { color: p.cardInk }]}>{leg.leaveHome}</Text></View> : null}
           {leg.checkIn !== '—' ? <View><Text style={[s.pk, { color: p.cardSoft }]}>CHECK-IN</Text><Text style={[s.pv, { color: p.cardInk }]}>{leg.checkIn}</Text></View> : null}
@@ -388,16 +391,33 @@ function dayInfo(d: DayModel, mode: TimeZoneMode, baseTz: string): { icon: 'hous
   const g = d.ground;
   const window = g ? dutyWindow(g, mode, baseTz) : '';
   // Never print a code the title already spells out ("Annual Leave" + "AL",
-  // "Day Off" + "DO"). Only a code we had to guess at still carries meaning.
-  const code = g && codeAddsInfo(g.code) ? g.code : '';
+  // "Day Off" + "DO", or a duty the airline named with its own code, "EXAM").
+  // Only a code we had to guess at still carries meaning.
+  const code = g && codeAddsInfo(g.code, g.label) ? g.code : '';
+  /** First note line that is neither the title nor the time window — a card is
+   *  not allowed to spend a row repeating what another row already says. */
+  const note = (title: string, ...candidates: Array<string | undefined>): string => {
+    const seen = new Set([norm(title), norm(window)]);
+    for (const c of candidates) {
+      const value = (c ?? '').trim();
+      if (!value || seen.has(norm(value))) continue;
+      return value;
+    }
+    return '';
+  };
   switch (d.kind) {
-    case 'standby': return { icon: 'clock', title: g?.label ?? 'Standby', sub: window, note: g?.code === 'RES' ? 'Reserve duty.' : 'Be reachable. Call-out within 90 minutes.' };
-    case 'training': return { icon: 'book', title: g?.label ?? 'Training', sub: window, note: g?.detail ?? code };
-    case 'ground': return { icon: g?.category === 'leave' ? 'house' : 'clock', title: g?.label ?? 'Duty', sub: window, note: g?.detail ?? code };
+    case 'standby': return { icon: 'clock', title: g?.label ?? 'Standby', sub: window, note: note(g?.label ?? 'Standby', g?.code === 'RES' ? 'Reserve duty.' : 'Be reachable. Call-out within 90 minutes.', g?.detail, code) };
+    case 'training': return { icon: 'book', title: g?.label ?? 'Training', sub: window, note: note(g?.label ?? 'Training', g?.detail, code) };
+    case 'ground': return { icon: g?.category === 'leave' ? 'house' : 'clock', title: g?.label ?? 'Duty', sub: window, note: note(g?.label ?? 'Duty', g?.detail, code) };
     case 'layover': { const h = d.layoverTrip?.legs[0]?.hotel; return { icon: 'house', title: `Layover${d.layoverTrip ? ' · ' + (d.layoverTrip.legs[0]?.arvArp ?? '') : ''}`, sub: h || 'Hotel', note: '' }; }
     // An explicit airline days-off row — the only kind of day off that gets a card.
-    default: return { icon: 'house', title: g?.label ?? 'Day Off', sub: window || 'Off', note: code };
+    default: return { icon: 'house', title: g?.label ?? 'Day Off', sub: window || 'Off', note: note(g?.label ?? 'Day Off', code) };
   }
+}
+
+/** Comparison form for "does this row repeat that one" checks. */
+function norm(text: string): string {
+  return String(text || '').replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
 /** Local window of a ground duty, in the crew's chosen time display mode. */
@@ -459,7 +479,8 @@ const s = StyleSheet.create({
   midLine: { flexDirection: 'row', alignItems: 'center', gap: 6, width: '100%' },
   dash: { flex: 1 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  prep: { flexDirection: 'row', justifyContent: 'space-between', borderRadius: 12, padding: 12, marginTop: 14 },
+  // No surface of its own — the dashed perforation above is the separator.
+  prep: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 2, paddingTop: 6 },
   pk: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6 },
   pv: { fontSize: 16, fontWeight: '600', marginTop: 3 },
   empty: { textAlign: 'center', fontSize: 14, marginTop: 60 },

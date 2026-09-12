@@ -136,9 +136,15 @@ export function categorise(assignment: string): { category: DutyCategory; label:
  * schedule drops it; a code we could only guess at (the fuzzy fallback) is the
  * duty's only identity, so that one stays on the card.
  */
-export function codeAddsInfo(assignment: string): boolean {
+export function codeAddsInfo(assignment: string, label?: string): boolean {
   const code = (assignment || '').toUpperCase().trim();
   if (!code) {
+    return false;
+  }
+  // The label IS the code — a duty whose code we could not humanise is labelled
+  // with the code itself (PR's rosters carry "X" and "EXAM"), so printing it
+  // again under the title is the same duplication one step later.
+  if ((label || '').toUpperCase().replace(/\s+/g, ' ').trim() === code) {
     return false;
   }
   return CODE_MAP[code] === undefined;

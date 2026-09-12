@@ -15,6 +15,7 @@ import type { IconName } from '../../components/v2/icons';
 import { PageShell, Hero, ListCard, KvRow, PrimaryButton } from './PageShell';
 import { AbsenceScreen } from './AbsenceScreen';
 import type { V2StackParamList, SpecPageId } from './nav';
+import { APP_VERSION } from '../../version';
 
 type Row =
   | { kind: 'kv'; label: string; value: string }
@@ -50,7 +51,12 @@ function specFor(id: SpecPageId, ctx: { crewId: string; airlineName: string; nex
     case 'privacy': return { title: 'Privacy & Security', groups: [{ rows: [{ kind: 'toggle', label: 'Face ID', on: true }, { kind: 'toggle', label: 'Store roster on device only', on: true }] },
       { title: 'Sessions', rows: [{ kind: 'kv', label: 'This iPhone', value: 'Active now' }] }], cta: { label: 'Change password', toast: 'Coming soon' } };
     case 'help': return { title: 'Help & Support', hero: { h1: 'Crew Control · 24/7', h2: 'Call or message the duty controller.' },
-      groups: [{ rows: [{ kind: 'nav', icon: 'headset', label: 'Call Crew Control', to: 'help' }, { kind: 'nav', icon: 'doc', label: 'Report an app issue', to: 'help' }, { kind: 'nav', icon: 'book', label: 'FAQ', to: 'help' }] }] };
+      groups: [
+        { rows: [{ kind: 'nav', icon: 'headset', label: 'Call Crew Control', to: 'help' }, { kind: 'nav', icon: 'doc', label: 'Report an app issue', to: 'help' }, { kind: 'nav', icon: 'book', label: 'FAQ', to: 'help' }] },
+        // The installed build identifies itself here (moved off Preferences) so
+        // the crew can read the version where they go for support.
+        { title: 'About', rows: [{ kind: 'kv', label: 'App version', value: String(APP_VERSION) }] },
+      ] };
     case 'settings': return { title: 'Settings', groups: [{ rows: [{ kind: 'kv', label: 'Cache', value: 'Clear roster cache' }, { kind: 'kv', label: 'Diagnostics', value: 'Send logs' }] }] };
     case 'lang': return { title: 'Language', groups: [{ rows: [{ kind: 'pick', label: 'English', selected: true }, { kind: 'pick', label: 'ไทย' }, { kind: 'pick', label: '中文' }] }] };
     case 'limits': return { title: 'Duty & Rest Limits', groups: [{ title: 'This period', rows: [{ kind: 'kv', label: '7-day duty', value: '—' }, { kind: 'kv', label: '28-day block', value: '—' }, { kind: 'kv', label: 'Rest before next duty', value: '—' }] }] };

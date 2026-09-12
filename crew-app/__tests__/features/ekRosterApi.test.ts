@@ -251,14 +251,19 @@ describe('EK roster API adapter', () => {
     expect(() => mapEkRosterToTrips(malformed as never)).toThrow(/EK roster response|Unsupported/);
   });
 
-  it('posts normalized credentials to the configured base URL', async () => {
-    global.fetch = jest.fn().mockResolvedValue({ok: true, json: async () => response}) as jest.Mock;
-    await fetchEkRoster('http://127.0.0.1:8000/api/', {crewId: 'c900001', password: 'Pier2026'});
+  it('posts normalized EK credentials to the mobile roster session endpoint', async () => {
+    // Emirates' roster comes from the ROIS live-server contract now (real crews
+    // like K1003), not the retired EVACC /crew-app/v1/roster demo gateway.
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({code: 200, data: response, message: 'ok'}),
+    }) as jest.Mock;
+    await fetchEkRoster('https://cr.rois.one/api/', {crewId: 'k1003', password: 'Pier2026'});
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:8000/api/crew-app/v1/roster',
+      'https://cr.rois.one/api/mobile-roster/session',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({airline: 'EK', crewId: 'C900001', password: 'Pier2026'}),
+        body: JSON.stringify({airline: 'EK', crewId: 'K1003', password: 'Pier2026'}),
       }),
     );
   });
@@ -437,12 +442,16 @@ describe('EK roster API adapter', () => {
   it('validates the complete response before returning it to persistence callers', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({...response, pairings: [{...response.pairings[0], flights: null}]}),
+      json: async () => ({
+        code: 200,
+        message: 'ok',
+        data: {...response, pairings: [{...response.pairings[0], flights: null}]},
+      }),
     }) as jest.Mock;
 
-    await expect(fetchEkRoster('http://127.0.0.1:8000/api', {
-      crewId: 'C900001', password: 'Pier2026',
-    })).rejects.toThrow('Invalid EK roster response');
+    await expect(fetchEkRoster('https://cr.rois.one/api', {
+      airline: 'EK', crewId: 'K1003', password: 'Pier2026',
+    })).rejects.toThrow('Invalid F8 roster envelope');
   });
 });
 

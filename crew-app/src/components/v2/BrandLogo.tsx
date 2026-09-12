@@ -1,7 +1,6 @@
 import React from 'react';
-import { Image, Text, View, StyleSheet } from 'react-native';
+import { Image, View } from 'react-native';
 import Svg, { Defs, Mask, Rect, Path, G } from 'react-native-svg';
-import { Icon } from './icons';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ethiopianLogo = require('../../assets/brand/ethiopian-airlines-white.png');
@@ -84,37 +83,33 @@ export function BrandLogo({ airline, height = 34 }: BrandLogoProps): React.JSX.E
       />
     );
   }
+  // No carrier logo asset for this airline (PR, F8): fall back to OUR mark
+  // rather than a generic jet glyph or a code the theme already implies. The
+  // Altair mark is white + gold precisely so it reads on any carrier ground.
+  // The airline code stays as the accessible label, not as another wordmark.
   return (
-    <View style={styles.fallback}>
-      <Icon name="jet" size={30} color="#fff" />
-      <Text style={styles.fallbackText}>{airline}</Text>
+    <View accessibilityRole="image" accessibilityLabel={airline}>
+      <AltairMark size={height + 2} />
     </View>
   );
 }
 
 export function AltairMark({ size = 72 }: { size?: number }): React.JSX.Element {
   return (
-    <Svg width={size} height={size} viewBox="0 0 72 72">
-      <Path d="M14 58 L52 22 L38 44 L44 50 Z" fill="#fff" />
+    // Ver11 identity (Ryan 2026-09-11): the ROIs Altair paper plane in white — it drops
+    // onto any carrier/theme ground — plus the golden guiding star kept from the old
+    // compass mark. Same geometry as docs/design/altair-crew-app-mark.svg.
+    <Svg width={size} height={size} viewBox="0 0 32 32">
+      <G transform="translate(0.9 10.5) scale(0.86)">
+        <Path d="M22 2 2.5 9.8l9 2.9z" fill="#fff" />
+        <Path d="M22 2 11.5 12.7l3.2 8.8z" fill="#fff" fillOpacity={0.84} />
+        <Path d="M11.5 12.7v5.6l2.4-3z" fill="#fff" fillOpacity={0.66} />
+      </G>
       <Path
-        d="M60 8 l1.6 4.4 L66 14 l-4.4 1.6 L60 20 l-1.6-4.4 L54 14 l4.4-1.6z"
+        transform="translate(24.4 7) scale(1.05)"
+        d="M0 -6 L1.6 -1.6 L6 0 L1.6 1.6 L0 6 L-1.6 1.6 L-6 0 L-1.6 -1.6Z"
         fill="#e0b24c"
       />
     </Svg>
   );
 }
-
-const styles = StyleSheet.create({
-  fallback: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  fallbackText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 11,
-    letterSpacing: 1.3,
-    textTransform: 'uppercase',
-  },
-});

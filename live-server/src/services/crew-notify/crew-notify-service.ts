@@ -44,6 +44,10 @@ export interface CrewNotificationDto {
   /** Always null here — the FDP-discretion concept is EK/EVACC only. Kept for
    *  contract parity so the app keeps one notification shape. */
   discretionId: null
+  /** Structured detail behind the alert. For a `roster_change` this carries the
+   *  before/after sides the app renders (see crew-absence-service); every other
+   *  type — and every row written before the payload existed — is `{}`. */
+  payload: Record<string, unknown>
 }
 
 export interface AppendNotificationInput {
@@ -76,6 +80,7 @@ type NotificationRow = {
   related_pairing_id: string | null
   related_flight_id: string | null
   related_duty_id: string | null
+  payload: unknown
 }
 
 /** One page is the whole history a fresh install needs; older rows stay in the
@@ -83,9 +88,16 @@ type NotificationRow = {
 const MAX_PAGE = 200
 
 const COLUMNS = `seq, airline, crew_id, notif_id, notif_type, created_utc, title, body,
-                 status, read_utc, related_pairing_id, related_flight_id, related_duty_id`
+                 status, read_utc, related_pairing_id, related_flight_id, related_duty_id, payload`
 
 const toIso = (value: Date | string): string => new Date(value).toISOString()
+
+/** The column is `jsonb not null default '{}'`, but a driver/legacy row can still
+ *  hand back null or a scalar; the app contract is always an object. */
+const toPayload = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  return value as Record<string, unknown>
+}
 
 const toDto = (row: NotificationRow): CrewNotificationDto => ({
   notifId: row.notif_id,
@@ -101,6 +113,7 @@ const toDto = (row: NotificationRow): CrewNotificationDto => ({
   relatedFlightId: row.related_flight_id,
   relatedDutyId: row.related_duty_id,
   discretionId: null,
+  payload: toPayload(row.payload),
 })
 
 const liveSchemaOf = (options: CrewNotifyServiceOptions): string =>

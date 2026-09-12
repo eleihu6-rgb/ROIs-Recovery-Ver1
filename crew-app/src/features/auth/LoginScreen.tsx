@@ -31,6 +31,8 @@ import type { Airline } from './airlines';
 import { colors, font, space, radius } from '../../theme';
 import { GradientScreen } from '../../components/v2/GradientScreen';
 import { AltairMark } from '../../components/v2/BrandLogo';
+import { Icon } from '../../components/v2/icons';
+import type { IconName } from '../../components/v2/icons';
 import { PALETTES } from '../../theme/carrier';
 
 // v2 login palette: Altair sage/teal ground, white card, teal button.
@@ -84,62 +86,75 @@ export function LoginScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           {/* Hero */}
-          {/* Hero — Altair compass (neutral brand before an airline is chosen). */}
+          {/* Hero — Altair mark + the product name (neutral brand before an airline is
+              chosen). Ryan 2026-09-11: the app name sits under the logo, not the wordmark. */}
           <View style={styles.hero}>
             <AltairMark size={72} />
-            <Text style={styles.title}>altair</Text>
+            <Text style={styles.appName}>ROIs Altair</Text>
             <Text style={styles.subtitle}>ALWAYS A WAY FORWARD</Text>
           </View>
 
           {/* Card */}
           <View style={styles.card}>
-            <Text style={styles.label}>Airline</Text>
-            <TouchableOpacity
-              style={styles.dropdown}
-              onPress={() => setPickerOpen(true)}
-              activeOpacity={0.7}
-              testID="airline-dropdown">
-              <View style={styles.dropdownCode}>
-                <Text style={styles.dropdownCodeText}>{airlineByCode(airline).code}</Text>
-              </View>
-              <Text style={styles.dropdownText} numberOfLines={1}>
-                {airlineByCode(airline).name}
-              </Text>
-              <Svg width={18} height={18} viewBox="0 0 24 24">
-                <Path d="M7 10l5 5 5-5z" fill={colors.muted} />
-              </Svg>
-            </TouchableOpacity>
+            {/* No "Airline" label: the value (code + carrier name) already says it. */}
+            <FieldRow icon="globe">
+              <TouchableOpacity
+                style={styles.rowValueRow}
+                onPress={() => setPickerOpen(true)}
+                activeOpacity={0.7}
+                testID="airline-dropdown">
+                <View style={styles.dropdownCode}>
+                  <Text style={styles.dropdownCodeText}>{airlineByCode(airline).code}</Text>
+                </View>
+                <Text style={styles.rowValue} numberOfLines={1}>
+                  {airlineByCode(airline).name}
+                </Text>
+                <Svg width={18} height={18} viewBox="0 0 24 24">
+                  <Path d="M7 10l5 5 5-5z" fill={colors.muted} />
+                </Svg>
+              </TouchableOpacity>
+            </FieldRow>
 
-            <Text style={styles.label}>Crew ID</Text>
-            <TextInput
-              style={styles.input}
-              value={crewId}
-              onChangeText={setCrewId}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType={crewIdKeyboardType(airline)}
-              placeholder="Crew ID"
-              placeholderTextColor={colors.faint}
-              testID="crew-id"
-            />
-
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.pwRow}>
+            {/* The field's own name IS the placeholder: a label above an empty
+                box said the same thing twice and pushed the two fields apart
+                (Ryan, 2026-09-11). */}
+            <FieldRow icon="user">
               <TextInput
-                style={styles.pwInput}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPw}
+                style={styles.rowInput}
+                value={crewId}
+                onChangeText={setCrewId}
+                placeholder="Crew ID"
+                placeholderTextColor={colors.muted}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="Password"
-                placeholderTextColor={colors.faint}
-                testID="crew-pw"
+                keyboardType={crewIdKeyboardType(airline)}
+                testID="crew-id"
               />
-              <TouchableOpacity onPress={() => setShowPw(v => !v)} hitSlop={10}>
-                <Text style={styles.showPw}>{showPw ? 'Hide' : 'Show'}</Text>
-              </TouchableOpacity>
-            </View>
+            </FieldRow>
+
+            <FieldRow icon="lock" last>
+              <View style={styles.pwRow}>
+                <TextInput
+                  style={styles.rowInput}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Password"
+                  placeholderTextColor={colors.muted}
+                  secureTextEntry={!showPw}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  testID="crew-pw"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPw(v => !v)}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPw ? 'Hide password' : 'Show password'}
+                  testID="toggle-pw">
+                  <Icon name={showPw ? 'eyeOff' : 'eye'} size={20} color={LOGIN.g1} />
+                </TouchableOpacity>
+              </View>
+            </FieldRow>
 
             <TouchableOpacity
               style={styles.keepRow}
@@ -155,10 +170,6 @@ export function LoginScreen({ navigation }: Props) {
             <TouchableOpacity style={styles.loginBtn} onPress={onLogin} testID="login-btn">
               <Text style={styles.loginBtnText}>Log in</Text>
             </TouchableOpacity>
-
-            <Text style={styles.hint}>
-              You’ll sign in securely on {airlineByCode(airline).name}’s own crew portal.
-            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -177,6 +188,33 @@ export function LoginScreen({ navigation }: Props) {
       />
     </SafeAreaView>
     </GradientScreen>
+  );
+}
+
+// One login field, drawn in the portal sign-in style Ryan referenced on 2026-09-11:
+// leading glyph · hairline divider · the value line · hairline underline. The
+// field's name is its placeholder, never a label above it (Ryan, 2026-09-11).
+// Re-skinned in the Altair palette so it stays our own look.
+function FieldRow({
+  icon,
+  last,
+  children,
+}: {
+  icon: IconName;
+  last?: boolean;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <View style={[styles.field, last && styles.fieldLast]}>
+      {/* Glyph + divider are centred on the value line. */}
+      <View style={styles.fieldLine}>
+        <View style={styles.fieldIcon}>
+          <Icon name={icon} size={19} color={LOGIN.g2} />
+        </View>
+        <View style={styles.fieldSplit} />
+        <View style={styles.fieldBody}>{children}</View>
+      </View>
+    </View>
   );
 }
 
@@ -290,9 +328,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: space.lg16,
   },
-  // Mock #701: italic serif wordmark + spaced uppercase tagline.
-  title: { fontSize: 44, fontWeight: '500', fontStyle: 'italic', fontFamily: 'Georgia', color: colors.onPrimary, letterSpacing: -0.8, marginTop: 6 },
-  subtitle: { fontSize: 10, fontWeight: '600', letterSpacing: 3.2, color: LOGIN.inkSoft, marginTop: 12 },
+  // Hero: logo, then the product name, then the spaced uppercase tagline.
+  appName: { ...font.h1, color: colors.onPrimary, letterSpacing: 0.3, marginTop: 12 },
+  subtitle: { fontSize: 10, fontWeight: '600', letterSpacing: 3.2, color: LOGIN.inkSoft, marginTop: 10 },
 
   card: {
     backgroundColor: colors.card,
@@ -305,26 +343,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 6,
   },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: LOGIN.g2,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: space.sm8,
-    marginTop: space.lg16,
+  // ── Field rows (portal sign-in style, Altair palette) ──
+  field: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(30,61,56,.22)',
+    paddingTop: space.md12,
+    paddingBottom: 10,
   },
-  dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: LOGIN.g4,
-    paddingHorizontal: space.md12,
-    paddingVertical: 11,
-    gap: space.md12,
+  fieldLast: { borderBottomWidth: 0, paddingBottom: space.md12 },
+  fieldLine: { flexDirection: 'row', alignItems: 'center' },
+  fieldIcon: { width: 34, alignItems: 'center' },
+  fieldSplit: {
+    width: StyleSheet.hairlineWidth,
+    height: 26,
+    backgroundColor: 'rgba(30,61,56,.22)',
+    marginRight: 14,
   },
+  fieldBody: { flex: 1, minWidth: 0 },
+
+  rowValueRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm8, paddingTop: 3 },
+  rowValue: { flex: 1, fontSize: 16, fontWeight: '600', color: LOGIN.g1 },
   dropdownCode: {
     minWidth: 40,
     paddingHorizontal: 8,
@@ -334,7 +372,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dropdownCodeText: { fontSize: 13, fontWeight: '800', color: LOGIN.g1 },
-  dropdownText: { flex: 1, fontSize: 16, color: LOGIN.g1, fontWeight: '600' },
+  rowInput: { flex: 1, fontSize: 16, color: LOGIN.g1, paddingVertical: 3, paddingHorizontal: 0 },
 
   // ── Airline picker sheet ──
   sheet: { flex: 1 },
@@ -389,29 +427,9 @@ const styles = StyleSheet.create({
   pickCheck: { fontSize: 16, fontWeight: '900', color: LOGIN.ink },
   pickEmpty: { textAlign: 'center', color: LOGIN.inkFaint, marginTop: space.xxl32, fontSize: 14 },
 
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: radius.md,
-    paddingHorizontal: space.lg16,
-    paddingVertical: 13,
-    fontSize: 16,
-    color: LOGIN.g1,
-    borderWidth: 1.5,
-    borderColor: 'rgba(30,61,56,.16)',
-  },
-  pwRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: radius.md,
-    paddingHorizontal: space.lg16,
-    borderWidth: 1.5,
-    borderColor: 'rgba(30,61,56,.16)',
-  },
-  pwInput: { flex: 1, paddingVertical: 13, fontSize: 16, color: LOGIN.g1 },
-  // The Show/Hide link is part of the "airline / code / select box" cluster the
-  // login page is themed around — it used to stay app-theme purple.
-  showPw: { color: LOGIN.g1, fontWeight: '700', fontSize: 13 },
+  pwRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm8 },
+  // The reveal control is an eye glyph (Ryan 2026-09-11) — the old Show/Hide text
+  // link repeated what the icon now says.
 
   keepRow: { flexDirection: 'row', alignItems: 'center', gap: space.md12, marginTop: space.xl24 },
   checkbox: {
@@ -435,5 +453,4 @@ const styles = StyleSheet.create({
     marginTop: space.xl24,
   },
   loginBtnText: { color: colors.onPrimary, fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
-  hint: { fontSize: 11, color: 'rgba(30,61,56,.55)', textAlign: 'center', marginTop: space.lg16, lineHeight: 16 },
 });

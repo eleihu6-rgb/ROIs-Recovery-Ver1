@@ -15,7 +15,11 @@ import { daysUntil, greetingFor, legView, tripStartMs, MON } from './model';
 import { useAlarms, useDestinations, useNextTrip } from './useV2';
 import { useV2Nav } from './nav';
 
-const DOCK_CLEAR = 110;
+// The dock floats over the page, so the scroll content carries its own clearance.
+// 110 (dock height + the bottom inset) left the Quick actions card half-under the
+// pill at rest and only ~14pt clear after a full scroll; 150 clears it and still
+// reads as one page (Ryan, 2026-09-11).
+const DOCK_CLEAR = 150;
 
 export function HomeScreen() {
   const p = useCarrier();
@@ -138,13 +142,13 @@ function QA({ icon, label, onPress, palette }: { icon: IconName; label: string; 
 
 const s = StyleSheet.create({
   body: { paddingHorizontal: 22 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 999, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   badgeText: { fontSize: 10, fontWeight: '700' },
-  greet: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 26 },
+  greet: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22 },
   greetText: { fontSize: 34, fontWeight: '600', letterSpacing: -0.3 },
-  trip: { marginTop: 18, padding: 20 },
+  trip: { marginTop: 16, padding: 16 },
   uh: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   uhText: { fontSize: 19, fontWeight: '600' },
   sub: { fontSize: 13 },
@@ -159,11 +163,13 @@ const s = StyleSheet.create({
   btn: { flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   btnSq: { width: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  sec: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 12 },
+  sec: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 8 },
   secTitle: { fontSize: 17, fontWeight: '500' },
   secLink: { fontSize: 14, fontWeight: '500' },
   destRow: { paddingHorizontal: 22, gap: 12 },
-  dest: { width: 165, height: 215, borderRadius: 14, overflow: 'hidden' },
+  // 190 tall (was 215): with the trip card above it the page used to end under the
+  // dock, and every destination's own content still fits the shorter tile.
+  dest: { width: 165, height: 172, borderRadius: 14, overflow: 'hidden' },
   // Neutral black scrim over the destination photo — a tinted scrim would fight
   // whichever theme the crew picked (theme coverage test).
   destGrad: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,.45)' },
@@ -173,8 +179,8 @@ const s = StyleSheet.create({
   destCity: { fontSize: 19, fontWeight: '600', color: '#fff', marginTop: 1 },
   destFrom: { fontSize: 10, letterSpacing: 0.5, marginTop: 8 },
   destFlt: { fontSize: 14, fontWeight: '600', color: '#fff', marginTop: 1 },
-  qa: { marginTop: 22, borderRadius: 18, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 14 },
-  qaTitle: { fontSize: 17, fontWeight: '500', marginBottom: 14 },
+  qa: { marginTop: 14, borderRadius: 18, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 10 },
+  qaTitle: { fontSize: 17, fontWeight: '500', marginBottom: 12 },
   qaGrid: { flexDirection: 'row', gap: 8 },
   qaItem: { flex: 1, alignItems: 'center', gap: 10 },
   qaLabel: { fontSize: 12, fontWeight: '500', textAlign: 'center' },

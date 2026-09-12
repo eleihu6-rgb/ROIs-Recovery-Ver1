@@ -1,0 +1,90 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+# Crew Recovery Story 101 — Quick actions › Absence (sick leave) form, on ET J4002.
+#
+# Deliberately stops BEFORE "Submit request": submitting stands the crew down on
+# SIT (soft-deletes the overlapping pairings, inserts ILL days). The write path is
+# proved by live-server/src/services/absence/__tests__/crew-absence-service.test.ts
+# and the recorded crew_absence row; this flow proves the crew-app UI and the
+# "Affects" preview render and step correctly.
+#
+# Run: cd crew-app && maestro test .maestro/et_j4002_absence.yaml
+# The app remembers the last airline in the Keychain across `clearState`, so the
+# picker is tapped explicitly. Reset a stale session first with:
+#   xcrun simctl keychain <udid> reset
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- assertVisible:
+    id: "crew-id"
+- assertVisible: "J4002"
+- tapOn:
+    id: "toggle-pw"
+- assertVisible: "Pier2026"
+- scrollUntilVisible:
+    element:
+      id: "login-btn"
+    direction: DOWN
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 30000
+# The dev LogBox keychain warning covers the dock after login.
+- tapOn:
+    text: "Dismiss"
+    optional: true
+# Home scrolls under the floating dock; the Quick actions panel is the last block.
+- swipe:
+    start: 50%, 84%
+    end: 50%, 30%
+    duration: 400
+- tapOn:
+    id: "qa-absence"
+- assertVisible:
+    id: "page-absence"
+- assertVisible: "Report an absence"
+- assertVisible:
+    id: "absence-type-sick"
+- assertVisible:
+    id: "absence-type-emergency"
+- assertVisible:
+    id: "absence-type-personal"
+- assertVisible:
+    id: "absence-from"
+- assertVisible:
+    id: "absence-to"
+- takeScreenshot: absence-01-form
+# Widen the range one day at each end; the "Affects" list must follow.
+- tapOn:
+    id: "absence-from-inc"
+- takeScreenshot: absence-02-from-plus-one
+- tapOn:
+    id: "absence-to-inc"
+- takeScreenshot: absence-03-range-two-days
+- scrollUntilVisible:
+    element:
+      id: "absence-note"
+    direction: DOWN
+- tapOn:
+    id: "absence-note"
+- inputText: "Flu - crew control please call"
+- hideKeyboard
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: "absence-submit"
+    direction: DOWN
+- assertVisible: "Submit request"
+- takeScreenshot: absence-04-submit-ready

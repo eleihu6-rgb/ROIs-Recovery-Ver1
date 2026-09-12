@@ -29,6 +29,7 @@ const row = (overrides: MockRow = {}): MockRow => ({
   related_pairing_id: '12345',
   related_flight_id: null,
   related_duty_id: null,
+  payload: {},
   ...overrides,
 })
 
@@ -137,6 +138,35 @@ describe('appendNotification', () => {
     expect(pool.calls[0]!.text).toContain('on conflict (notif_id) do nothing')
     expect(pool.calls[0]!.values).toContain('F8')
     expect(pool.calls[0]!.values).toContain('n-1')
+    // The select list must read the payload back, or the crew app can never
+    // render a roster change's before/after sides.
+    expect(pool.calls[0]!.text).toContain('payload')
+    expect(stored.payload).toEqual({})
+  })
+
+  it('returns the structured payload a roster change carries', async () => {
+    const payload = {
+      kind: 'absence',
+      absenceId: 3,
+      before: [{ pairingId: 151529, date: '2026-09-11', legs: [] }],
+      after: [{ date: '2026-09-11', assignment: 'ILL', label: 'Sick leave', base: 'ADD' }],
+    }
+    const pool = createPool([{ rows: [row({ payload })] }])
+
+    const stored = await listForCrew(options(pool), { airline: 'F8', crewId: '113' })
+
+    expect(stored.notifications[0]!.payload).toEqual(payload)
+  })
+
+  it('normalises a missing or malformed payload column to an empty object', async () => {
+    const pool = createPool([
+      { rows: [row({ payload: null }), row({ notif_id: 'n-2', seq: 8, payload: ['nope'] })] },
+    ])
+
+    const feed = await listForCrew(options(pool), { airline: 'F8', crewId: '113' })
+
+    // Older rows and any non-object value must still satisfy the app contract.
+    expect(feed.notifications.map((n) => n.payload)).toEqual([{}, {}])
   })
 
   it('returns the existing row when the idempotency key was already stored', async () => {

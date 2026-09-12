@@ -7,7 +7,7 @@ description: Use when a ROIS scenario run, scen run, scenario optimization, Lega
 
 ## Core Rule
 
-Use `superpowers:systematic-debugging` first. Find the first failing boundary before proposing a fix. A top-level `fetch failed` is only a symptom.
+Find the first failing boundary using the request, logs, and artifacts before proposing a fix. A top-level `fetch failed` is only a symptom.
 
 Treat remote PostgreSQL/CoreServer as authoritative for scenario, PBS, and solver-material debugging unless the user explicitly says local. Never write DB passwords, JWTs, SSH passwords, or production tokens into docs, logs, or skill resources.
 

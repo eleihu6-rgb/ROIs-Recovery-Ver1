@@ -14,7 +14,7 @@
 //   POST /crew-app/v1/discretion/{discretionId}         {airline,crewId,password}
 //   POST /crew-app/v1/discretion/{discretionId}/decision {airline,crewId,password,decision,idempotencyKey,reason?}
 import {z} from 'zod';
-import {isMobileRosterAirline} from '../travel/ekRosterApi';
+import {usesLiveServerEnvelope} from '../travel/ekRosterApi';
 
 export interface CrewNotifyCredentials {
   airline: string;
@@ -24,6 +24,10 @@ export interface CrewNotifyCredentials {
 
 export type NotificationType =
   | 'flight_change'
+  /** Live roster write the crew did not make themselves (sick-leave stand-down,
+   *  a planner de-assign, a duty swap). Carries a structured before/after
+   *  `payload` so the alert can lay the two sides out instead of prose. */
+  | 'roster_change'
   | 'fdp_discretion'
   | 'fdp_update'
   | 'info';
@@ -53,6 +57,9 @@ const notificationSchema = z
     relatedFlightId: z.string().nullable().optional(),
     relatedDutyId: z.string().nullable().optional(),
     discretionId: z.string().nullable().optional(),
+    /** Live-server roster-change detail ({kind, before[], after[], …}). `{}` for
+     *  every other type, and for rows written before the payload existed. */
+    payload: z.record(z.unknown()).optional().default({}),
   })
   .passthrough();
 
@@ -106,7 +113,7 @@ const envelopeSchema = z
   .passthrough();
 
 function unwrapLiveServerEnvelope(raw: unknown, airline: string): unknown {
-  if (!isMobileRosterAirline(airline)) {
+  if (!usesLiveServerEnvelope(airline)) {
     return raw;
   }
   const parsed = envelopeSchema.safeParse(raw);

@@ -85,6 +85,17 @@ describe('categorise — every assignment code maps to a sensible category', () 
     expect(codeAddsInfo('OFFICE X')).toBe(true); // fuzzy find → code is the detail
     expect(codeAddsInfo('NEWSBY')).toBe(true); // unknown → the code IS the detail
   });
+
+  // PR's rosters name some duties with their own code, so the label and the code
+  // are the same string — the card then printed it twice (title "EXAM" + note
+  // "EXAM"). A code that IS the label adds nothing.
+  it('drops a code that is already the duty label', () => {
+    expect(codeAddsInfo('EXAM', 'EXAM')).toBe(false);
+    expect(codeAddsInfo('X', 'X')).toBe(false);
+    expect(codeAddsInfo('exam', 'Exam')).toBe(false);
+    expect(codeAddsInfo('EXAM', 'Examination board')).toBe(true); // label says something else
+    expect(codeAddsInfo('EXAM')).toBe(true); // no label given → cannot assume
+  });
 });
 
 describe('SIM/DHD/standby no longer leak in as flight cards (the bug)', () => {

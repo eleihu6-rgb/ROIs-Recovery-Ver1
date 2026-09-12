@@ -7,7 +7,7 @@ description: Use when Cloudflare 502/Bad Gateway, flair.rois.cloud, ai.rois.one,
 
 ## Core Rule
 
-Use `superpowers:systematic-debugging` first. A public 502 is a symptom; find the first failing boundary before changing configs or restarting services.
+A public 502 is a symptom; use the active route configuration, listener state, and HTTP responses to find the first failing boundary before changing configs or restarting services.
 
 Before routing/port work, read:
 
