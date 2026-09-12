@@ -51,11 +51,11 @@ export function V2Navigator() {
         <Stack.Screen
           name="RBot"
           component={RBotScreen}
-          // Full-height (card), not a modal: a modal screen is inset from the
-          // top, so KeyboardAvoidingView over-pads and the composer ends up
-          // behind the keyboard — the crew could not see what they typed
-          // (Ryan, 2026-09-11). Still slides up like a sheet.
-          options={{ animation: 'slide_from_bottom' }}
+          // Slides in from the right like every other pushed page (Ryan,
+          // 2026-09-11). Full-height card, NOT a modal: a modal is inset from the
+          // top, so KeyboardAvoidingView over-pads and the composer hides behind
+          // the keyboard — the crew could not see what they typed.
+          options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen name="Alerts" component={NotificationsScreen} />
         <Stack.Screen name="TripDetails" component={TripDetailsScreen} />

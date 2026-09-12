@@ -196,6 +196,72 @@ roster API resolvers.
 Screenshots (TG): `crew-app-rbot-Ver1-00_dock-entry.png` … `-05_composer-above-keyboard.png`;
 ET: `crew-app-rbot-et-Ver1-00_home-dock.png`, `-01_open.png`, `-02_roster-calendar.png`.
 
+## 9. Phase 2 (2026-09-11, after the first merge)
+
+### 9.1 R'Bot keeps interacting — one session across its own navigation
+
+Request (Ryan): "change theme, then switch to calendar, then submit an absence
+request" must be ONE conversation, not three.
+
+The thread moved out of the chat screen into the store
+(`features/rbot/rbotSlice.ts`), because R'Bot's own actions navigate the crew
+away: any reply that landed after the screen closed used to be lost, and the
+next "now do X" had no context.
+
+* `rbotSlice`: `entries` + `unread`, capped at `MAX_STORED_ENTRIES` (40) and aged
+  out after `SESSION_TTL_MS` (12h), persisted to AsyncStorage and rehydrated in
+  `App.tsx`; **wiped on logout** (the conversation names duties and requests).
+* `useFocusEffect` tracks real focus — a *popped* screen is the case that
+  matters — so a reply that arrives after R'Bot navigated sets `unread`, which
+  shows as a dot on the dock entry (also exposed as the entry's accessibility
+  label, "…, new reply", because iOS folds the dot into that container).
+* The model still receives the last 12 turns, so "now …" resolves against what
+  was just done.
+
+### 9.2 Local-first roster answers
+
+`features/rbot/localAnswers.ts` answers the roster facts a crew asks most —
+next duty, report/check-in time (today/tomorrow), hotel, day off, destinations —
+**on the device**, before any network call. Nothing about the crew's schedule
+leaves the phone for those questions, and the reply carries an "Answered on your
+device" chip. Anything else falls through to the assistant unchanged.
+
+Conservative by design: an unmatched or essay-length message returns null and
+goes to the model, because a slow right answer beats a fast wrong one.
+`route()` deliberately reads base → the rotation's *first non-base* arrival: a
+round trip's last leg returns to base, so the naive reading printed "ADD→ADD"
+(real bug, caught in the simulator on ET422 ADD→DMM).
+
+### 9.3 UI decisions this round
+
+* The panda sits **straight on** the entry box — no theme-coloured disc behind it
+  (Ryan, 2026-09-11); the chat header uses the same panda (`RBOT_AVATAR_INDEX`),
+  so one avatar means R'Bot everywhere.
+* The chat slides in **from the right** like every other pushed page (Ryan),
+  still a full-height card so the composer stays above the keyboard.
+
+### 9.4 Evidence
+
+| Check | Command | Result |
+|---|---|---|
+| crew-app unit | `cd crew-app && npx jest` | **66 suites / 628 tests passed** |
+| types | `cd crew-app && npx tsc --noEmit` | PASS |
+| the chain, real UI | `cd crew-app && maestro test .maestro/v2_tg_rbot_session.yaml` | **PASS** — local answer → theme change (chip) → "show me my calendar" (navigates, chat closes) → dock dot → reopen with **the earlier turns still there** → "now I am sick tomorrow, sort it out" → pre-filled absence form |
+| ai-server prompt | `curl /ai/crew/chat` for "show me my calendar" 3 ways | each returns `navigate roster_calendar` |
+| ai-server tests | `.venv/bin/python -m pytest tests/test_crew_chat_routes.py tests/test_crew_chat_tools.py -q` | 20 passed |
+
+Screenshots: `docs/assets/screenshots/crew-app/crew-app-rbot-session-Ver1-*.png`.
+APP_VERSION 111 → 112.
+
+### 9.5 Still open
+
+1. Production ai-server URL for the phone (§7.1) — unchanged, needs the decision.
+2. Voice input, streaming, server-side memory — not started.
+3. **Delegation note:** three sub-agents spawned for the ET landmark images and
+   the PR/EK white-logo skill all died with the same runtime error
+   ("stream disconnected before completion"), writing nothing. Those two tasks
+   are therefore not started and need either a retry later or local work.
+
 ### Deployment note
 
 `ai-server` must be restarted for `/ai/crew/chat` to exist (the running instance

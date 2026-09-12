@@ -9,6 +9,7 @@ import { RBotScreen } from '../../src/features/rbot/RBotScreen';
 import settingsReducer from '../../src/features/settings/settingsSlice';
 import alarmsReducer from '../../src/features/alarms/alarmsSlice';
 import tripsReducer from '../../src/features/travel/tripsSlice';
+import rbotReducer from '../../src/features/rbot/rbotSlice';
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
@@ -17,6 +18,13 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({navigate: mockNavigate, goBack: mockGoBack}),
+  useIsFocused: () => true,
+  // Runs the effect body like a focused screen would (the cleanup only matters
+  // on blur/pop, which the Maestro session flow exercises for real).
+  useFocusEffect: (cb: () => void | (() => void)) => {
+    const React = require('react');
+    React.useEffect(cb, [cb]);
+  },
 }));
 
 function makeStore() {
@@ -28,6 +36,7 @@ function makeStore() {
       settings: settingsReducer,
       alarms: alarmsReducer,
       trips: tripsReducer,
+      rbot: rbotReducer,
     },
     middleware: getDefaultMiddleware => getDefaultMiddleware({serializableCheck: false}),
   });

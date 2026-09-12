@@ -107,4 +107,6 @@ export interface RbotChatResponse {
 /** A thread entry plus the confirmation chips of the actions that were applied. */
 export interface RbotThreadEntry extends RbotChatMessage {
   applied?: string[];
+  /** True when R'Bot answered from the roster on the phone — nothing was sent. */
+  local?: boolean;
 }
