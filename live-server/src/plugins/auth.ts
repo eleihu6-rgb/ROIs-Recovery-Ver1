@@ -28,6 +28,7 @@ const PUBLIC_PATHS = [
   '/api/auth/sso/logout', // IdP-initiated logout redirect target
   '/api/health',          // Basic health check (for monitoring)
   '/api/health/detail',   // Detailed health check (for monitoring)
+  '/api/system/services', // Aggregated stack status for the Gantt indicator
   '/api/version',         // Public build/runtime version metadata
   '/api/public/config',   // Public system config (for login page)
 ]

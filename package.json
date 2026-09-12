@@ -7,6 +7,7 @@
     "check:altair-login": "cd e2e && npm run test:altair-login",
     "check:flair-altair-login": "cd e2e && npm run test:flair-altair-login",
     "check:ui": "node scripts/check-ui-standard.mjs",
+    "check:services": "node scripts/check-services.mjs",
     "check:legality-messages": "node scripts/check-legality-message-coverage.mjs",
     "check:ui:e2e": "cd e2e && npx playwright test --config=config/perf.config.ts -g 'UI Standard' --reporter=list",
     "audit:prod": "for d in live-server pbs-server connector-server gantt pbs-portal; do echo \"== npm audit --omit=dev: $d ==\"; (cd \"$d\" && npm audit --omit=dev) || true; done",

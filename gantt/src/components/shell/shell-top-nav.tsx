@@ -5,6 +5,7 @@ import {
   LogOut, HelpCircle, Megaphone, Scale, Wrench, CalendarCog, Settings2,
 } from 'lucide-react'
 import { ScenarioNavDropdown } from '@/components/shell/scenario-nav-dropdown'
+import { ServiceStatusPill } from '@/components/shell/service-status-pill'
 import { ThemeSwitcher } from '@/components/common/theme-switcher'
 import { AirlineLogo } from '@/components/common/airline-logo'
 import { useAppVersionStore } from '@/services/app-version-service'
@@ -130,6 +131,8 @@ export const ShellTopNav = () => {
         <div className="flex-1" />
 
         {/* Right controls */}
+        <ServiceStatusPill />
+        <NavDivider />
         <ThemeSwitcher />
         <NavDivider />
 

@@ -19,6 +19,7 @@ import notFoundPlugin from './plugins/not-found.js'
 import metricsPlugin from './plugins/metrics.js'
 import healthRoutes from './routes/health.js'
 import versionRoutes from './routes/version.js'
+import systemStatusRoutes from './routes/system/system-status.js'
 import publicConfigRoutes from './routes/public-config.js'
 import baseRoutes from './routes/base/index.js'
 import crewRoutes from './routes/crew/index.js'
@@ -199,6 +200,7 @@ const start = async () => {
 
     // 路由
     await server.register(healthRoutes)
+    await server.register(systemStatusRoutes)
     await server.register(versionRoutes)
     await server.register(publicConfigRoutes)
     await server.register(baseRoutes)
