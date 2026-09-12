@@ -144,6 +144,15 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
 
   async function handleSubmit() {
     if (busy) return;
+    // A guest has no crew record to report the absence against — sending one
+    // would fail server-side, so say so instead of raising a request error.
+    if (!crewId) {
+      Alert.alert(
+        'Airline sign-in needed',
+        'Reporting an absence needs your crew ID. Sign in with your airline on Profile first.',
+      );
+      return;
+    }
     setBusy(true);
     try {
       const result = await submitAbsence({

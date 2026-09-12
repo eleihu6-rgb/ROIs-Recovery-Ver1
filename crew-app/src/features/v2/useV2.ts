@@ -13,6 +13,12 @@ export function useBase(): string {
   // portal is not API-backed (TG=BKK, PR=MNL).
   const rosterBase = useAppSelector(s => s.auth.base);
   const airline = useAppSelector(s => s.auth.airline);
+  const guest = useAppSelector(s => s.auth.mode === 'guest');
+  // A guest is based nowhere: don't borrow an airline's base airport (which is
+  // what a blank airline code would otherwise resolve to).
+  if (guest && !rosterBase) {
+    return '';
+  }
   return rosterBase || airlineByCode(airline ?? '').portalConfig?.baseAirport || 'BKK';
 }
 

@@ -7,7 +7,8 @@ import { DashedLine } from '../../components/v2/TicketCard';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../store';
-import { selectCrewCarrier } from '../auth/authSlice';
+import { selectCrewCarrier, selectIsGuest } from '../auth/authSlice';
+import { sessionDisplayName } from '../auth/identity';
 import { airlineByCode } from '../auth/airlines';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { NavRow, SectionLabel, ToggleRow } from '../../components/v2/rows';
@@ -75,10 +76,18 @@ export function SpecPage(props: Props) {
   const { route, navigation } = props;
   const p = useCarrier();
   const crewId = useAppSelector(st => st.auth.crewId) ?? '';
+  // A guest session has no crew id; the mock pages below still address someone,
+  // so they address the identity the session actually carries.
+  const identityName = useAppSelector(st => sessionDisplayName(st.auth.displayName, st.auth.provider));
+  const guest = useAppSelector(selectIsGuest);
   // Spec copy addresses the crew's own carrier (roster-resolved), so an EK crew
   // never reads "Ethiopian Airlines" in a settings sentence.
   const airline = useAppSelector(selectCrewCarrier) ?? '';
-  const spec = specFor(route.params.id, { crewId, airlineName: airlineByCode(airline).name, nextFlight: 'Next flight' });
+  const spec = specFor(route.params.id, {
+    crewId: crewId || identityName,
+    airlineName: guest ? 'No airline' : airlineByCode(airline).name,
+    nextFlight: 'Next flight',
+  });
   return (
     <PageShell title={spec.title} testID={`page-${route.params.id}`}>
       {spec.hero && <Hero h1={spec.hero.h1} h2={spec.hero.h2} palette={p} />}

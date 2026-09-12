@@ -5,7 +5,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, ImageBackground } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '../../store';
-import { selectCrewCarrier } from '../auth/authSlice';
+import { selectCrewCarrier, selectIsGuest } from '../auth/authSlice';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon, type IconName } from '../../components/v2/icons';
@@ -32,6 +32,7 @@ export function HomeScreen() {
   const alarmsEnabled = useAppSelector(s => s.alarms.enabled);
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
+  const guest = useAppSelector(selectIsGuest);
 
   const [now, setNow] = useState(() => new Date());
   const [holeY, setHoleY] = useState<number | undefined>(undefined); // measured from the dashed line
@@ -62,6 +63,21 @@ export function HomeScreen() {
           <Icon name={greet.icon} size={34} color={p.ink} />
           <Text style={[s.greetText, { color: p.ink }]} testID="home-greeting">{greet.text}</Text>
         </View>
+
+        {/* Why the roster is empty: this session has no airline behind it, and
+            Profile holds the way to add one (Ryan 2026-09-12). */}
+        {guest ? (
+          <Pressable
+            style={[s.guestStrip, { backgroundColor: p.frost }]}
+            onPress={() => nav.navigate('Tabs', { screen: 'Profile' })}
+            testID="home-guest-strip">
+            <Icon name="user" size={20} color={p.ink} />
+            <Text style={[s.guestStripText, { color: p.ink }]}>
+              Browsing as a guest — sign in with your airline on Profile to see your roster.
+            </Text>
+            <Icon name="chev" size={18} color={p.inkSoft} />
+          </Pressable>
+        ) : null}
         {/* The crew/airline/base line that used to sit here is on Profile ▸ the crew
             row now; Home goes straight to the trip (or straight to Explore when
             nothing is published). */}
@@ -148,6 +164,17 @@ const s = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '700' },
   greet: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22 },
   greetText: { fontSize: 34, fontWeight: '600', letterSpacing: -0.3 },
+  // Guest strip: says why the roster is empty and opens Profile.
+  guestStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  guestStripText: { flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 18 },
   trip: { marginTop: 16, padding: 16 },
   uh: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   uhText: { fontSize: 19, fontWeight: '600' },

@@ -335,3 +335,39 @@ rule-engine-rs/target
 ./scripts/memory/wakeup-rois-ai.sh rois-ai
 git status --short
 ```
+
+## 追加（同一轮，设备实测后）
+**Bug：guest 会话在真机/模拟器上不保持。** 首次 Maestro 重启用例失败：重启回到登录页。
+排查：AsyncStorage 是 `Library/Application Support/<bundle>/RCTAsyncLocalStorage_V1/manifest.json`
+（不是 Preferences plist；plist 里那两个 royce_* 是历史遗留，误导过一次）。用临时探针把错误写进
+AsyncStorage 后拿到根因：
+
+    @royce_probe = error Error: Internal error when a required entitlement isn't present.
+
+即 **iOS Keychain 调用被拒（errSecMissingEntitlement，iOS 26 模拟器上出现）**。原实现在写会话**之前**
+先做 `Keychain.resetGenericPassword` 清理旧机组密码，Keychain 抛错被 catch 吞掉 → 整个 guest 会话
+（含 AsyncStorage 写入）被丢掉 → 下次启动回到登录页。
+
+修复（sessionStore.saveIdentitySession）：**先写会话，清理动作放最后且各自 best-effort**；
+`clearSession()` 的 Keychain 重置同样改为 best-effort，避免登出 thunk 被拒。
+回归测试：`guestLogin.test.tsx` 新增 "still stores the session when the device Keychain refuses"，
+已用「临时还原旧顺序」验证它在旧代码上 **FAIL**、在新代码上 PASS。
+
+设备证据（修复后）：
+- `.maestro/guest_login.yaml` PASS；随后不 clearState 直接重启 —— `.maestro` 临时用例
+  `/tmp/guest_resume.yaml` PASS：回到 Home 且 `home-guest-strip` 在、`login-screen` 不在。
+- app 容器 manifest.json 实测：`@royce_auth_mode = guest`，
+  `@royce_identity = {"provider":"guest","displayName":null,...}`。
+- 截图新增 `crew-app-guest-login-Ver1-05_relaunch-guest-session-restored.png`。
+
+## 第二轮（Ryan 2026-09-12 看真机后）
+1. `Log in` → **`Login As Crew`**（旁边是 guest 这条不同性质的入口，旧文案没说清登录的是"机组"）。
+2. **Login as Guest 改成与 Login As Crew 完全同一个按钮**：JSX 直接用 `style={[styles.loginBtn, styles.guestBtnGap]}`，
+   只差 marginTop。填色/圆角/高度/字重/字色单一来源，两者不会再各自漂移（新增测试断言 resolved style 相同）。
+3. 删掉 guest 按钮下面的说明行（"No airline sign-in needed …"）。空态与 Profile 的
+   "Sign in with your airline" 已经解释了 guest 模式。
+- 验证：`npx jest` 70 suites / 666 tests PASS；`npx tsc --noEmit` PASS；
+  `.maestro/guest_login.yaml` PASS；APP_VERSION 118 → 119。
+- 截图：`docs/assets/screenshots/crew-app/crew-app-guest-login-Ver2-00_login.png`
+  （像素核实：两个按钮填色均 `#3d7367`、均 51pt 高 × 339pt 宽；guest 按钮下方卡片内无任何文字；
+  OCR 读到 "Login As Crew" / "Login as Guest" / "Or"）。

@@ -4,7 +4,16 @@
 //   3. the "You'll sign in securely on …" footnote is gone
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import { LoginScreen } from '../../src/features/auth/LoginScreen';
+import authReducer from '../../src/features/auth/authSlice';
+import tripsReducer from '../../src/features/travel/tripsSlice';
+import dutiesReducer from '../../src/features/roster/dutiesSlice';
+import settingsReducer from '../../src/features/settings/settingsSlice';
+import notificationsReducer from '../../src/features/notifications/notificationsSlice';
+import alarmsReducer from '../../src/features/alarms/alarmsSlice';
+import meetingsReducer from '../../src/features/meetings/meetingsSlice';
 
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children?: React.ReactNode }) => children,
@@ -14,7 +23,26 @@ jest.mock('react-native-safe-area-context', () => ({
 const navigation = { navigate: jest.fn() } as never;
 const route = { key: 'Login', name: 'Login', params: undefined } as never;
 
-const renderLogin = () => render(<LoginScreen navigation={navigation} route={route} />);
+// The page now dispatches its guest/social entry (Ryan 2026-09-12), so the
+// login screen renders inside a store like it does in the app.
+const renderLogin = () =>
+  render(
+    <Provider
+      store={configureStore({
+        reducer: {
+          auth: authReducer,
+          trips: tripsReducer,
+          duties: dutiesReducer,
+          settings: settingsReducer,
+          notifications: notificationsReducer,
+          alarms: alarmsReducer,
+          meetings: meetingsReducer,
+        },
+        middleware: getDefaultMiddleware => getDefaultMiddleware({ serializableCheck: false }),
+      })}>
+      <LoginScreen navigation={navigation} route={route} />
+    </Provider>,
+  );
 
 describe('LoginScreen', () => {
   it('shows the product name and tagline under the logo', () => {

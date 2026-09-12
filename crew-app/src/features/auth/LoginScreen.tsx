@@ -17,6 +17,17 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/RootNavigator';
+import { useAppDispatch } from '../../store';
+import { loginAsGuest, loginWithIdentity } from './authSlice';
+import { SOCIAL_PROVIDERS, PROVIDER_LABELS } from './identity';
+import type { SocialProvider } from './identity';
+import {
+  SocialAuthUnavailableError,
+  isProviderConfigured,
+  isSocialAuthCancel,
+  signInWith,
+} from './socialAuth';
+import { ProviderGlyph } from './ProviderGlyph';
 import {
   AIRLINES,
   DEFAULT_AIRLINE,
@@ -41,6 +52,7 @@ const LOGIN = PALETTES.altair;
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export function LoginScreen({ navigation }: Props) {
+  const dispatch = useAppDispatch();
   const [airline, setAirline] = useState(DEFAULT_AIRLINE);
   // The form starts empty: the app no longer opens with a remembered/last login
   // pre-filled into the fields (Ryan, 2026-09-11).
@@ -49,6 +61,40 @@ export function LoginScreen({ navigation }: Props) {
   const [keepLogin, setKeepLogin] = useState(true);
   const [showPw, setShowPw] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Which provider is mid-flow, so a second tap cannot start it twice.
+  const [socialBusy, setSocialBusy] = useState<SocialProvider | null>(null);
+
+  // "Login as Guest": skip the airline portal entirely. The session is still a
+  // real, persisted login, so everything that does not need a roster (alarms,
+  // meetings/iOS calendar, time zone, Explore, R'Bot) works as usual.
+  const onGuest = () => {
+    dispatch(loginAsGuest({ keepLogin }));
+  };
+
+  // Continue with Google / Apple / Facebook. A build without the provider's SDK
+  // or client id says exactly what is missing instead of pretending to sign in.
+  const onSocial = async (provider: SocialProvider) => {
+    if (socialBusy) {
+      return;
+    }
+    setSocialBusy(provider);
+    try {
+      const profile = await signInWith(provider);
+      await dispatch(loginWithIdentity(profile, { keepLogin }));
+    } catch (error) {
+      if (isSocialAuthCancel(error)) {
+        return;
+      }
+      Alert.alert(
+        error instanceof SocialAuthUnavailableError
+          ? 'Not available yet'
+          : `${PROVIDER_LABELS[provider]} sign-in failed`,
+        error instanceof Error ? error.message : 'Try again.',
+      );
+    } finally {
+      setSocialBusy(null);
+    }
+  };
 
   const onLogin = () => {
     const selected = airlineByCode(airline);
@@ -168,7 +214,51 @@ export function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.loginBtn} onPress={onLogin} testID="login-btn">
-              <Text style={styles.loginBtnText}>Log in</Text>
+              <Text style={styles.loginBtnText}>Login As Crew</Text>
+            </TouchableOpacity>
+
+            {/* Guest + social entry (Ryan 2026-09-12, per the reference crop):
+                the Or rule and the provider marks sit right below Login As Crew,
+                with the guest action — the way in without an airline account —
+                last, wearing the SAME button as the crew login so the two read as
+                a matched pair rather than a primary action and a stray outline. */}
+            <View style={styles.orRow}>
+              <View style={styles.orRule} />
+              {/* Capital-O "Or", as the reference crop labels it. */}
+              <Text style={styles.orText}>Or</Text>
+              <View style={styles.orRule} />
+            </View>
+
+            <View style={styles.socialRow}>
+              {SOCIAL_PROVIDERS.map(provider => {
+                const configured = isProviderConfigured(provider);
+                const label = PROVIDER_LABELS[provider];
+                return (
+                  <TouchableOpacity
+                    key={provider}
+                    style={styles.socialBtn}
+                    onPress={() => onSocial(provider)}
+                    disabled={socialBusy !== null}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      configured
+                        ? `Continue with ${label}`
+                        : `Continue with ${label} — not set up in this build`
+                    }
+                    testID={`social-${provider}`}>
+                    <ProviderGlyph provider={provider} size={26} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.loginBtn, styles.guestBtnGap]}
+              onPress={onGuest}
+              activeOpacity={0.8}
+              testID="guest-login">
+              <Text style={styles.loginBtnText}>Login as Guest</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -453,4 +543,33 @@ const styles = StyleSheet.create({
     marginTop: space.xl24,
   },
   loginBtnText: { color: colors.onPrimary, fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+
+  // ── Guest + social entry ──
+  orRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md12,
+    marginTop: space.xl24,
+  },
+  orRule: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(30,61,56,.22)',
+  },
+  // Inside the white card the palette's `ink`/`inkSoft` are white-on-gradient
+  // tokens and would vanish; muted is the card's own secondary text colour.
+  orText: { fontSize: 13, fontWeight: '600', color: colors.muted },
+  // The reference crop spaces the three brand marks well apart with no chrome
+  // around them, so each is a bare 48pt tap target.
+  socialRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 30,
+    marginTop: space.lg16,
+  },
+  socialBtn: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  // Only the spacing differs: the button itself is `loginBtn`, so the two entries
+  // into the app can never drift apart in fill, height or radius.
+  guestBtnGap: { marginTop: space.md12 },
 });

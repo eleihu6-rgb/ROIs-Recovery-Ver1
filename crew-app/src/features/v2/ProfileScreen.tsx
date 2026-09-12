@@ -11,7 +11,8 @@ import { Icon } from '../../components/v2/icons';
 import { NavRow } from '../../components/v2/rows';
 import { CrewAvatar, AVATAR_COUNT, avatarForCrew } from '../settings/avatars';
 import { airlineByCode } from '../auth/airlines';
-import { logout, selectCrewCarrier } from '../auth/authSlice';
+import { logout, selectCrewCarrier, selectIsGuest } from '../auth/authSlice';
+import { PROVIDER_LABELS, sessionDisplayName } from '../auth/identity';
 import { setAvatarIndex } from '../settings/settingsSlice';
 import { countryName } from '../settings/countries';
 import { ListCard } from './PageShell';
@@ -30,6 +31,12 @@ export function ProfileScreen() {
   // The carrier chip names the airline the crew FLIES (K1003 = Emirates), which
   // the roster resolved — not the option they signed in through.
   const airline = useAppSelector(selectCrewCarrier) ?? '';
+  // A guest (or a social sign-in) has no airline behind the session: the chip
+  // names the way they came in and the name comes from the provider.
+  const guest = useAppSelector(selectIsGuest);
+  const provider = useAppSelector(s => s.auth.provider);
+  const identityName = useAppSelector(s => sessionDisplayName(s.auth.displayName, s.auth.provider));
+  const email = useAppSelector(s => s.auth.email);
   const alertCount = useAppSelector(s => s.notifications.notifications.length);
   const alarmsEnabled = useAppSelector(s => s.alarms.enabled);
   const tz = useAppSelector(s => s.settings.timeZoneMode);
@@ -48,9 +55,19 @@ export function ProfileScreen() {
     { text: 'Cancel', style: 'cancel' }, { text: 'Log out', style: 'destructive', onPress: () => dispatch(logout()) },
   ]);
 
+  // The way back for a guest: sign out of the roster-less session and land on the
+  // airline login. Nothing else changes — the guest keeps their settings.
+  const onAddAirline = () => Alert.alert(
+    'Sign in with your airline',
+    'You will return to the login screen to sign in with your crew ID and pull your roster.',
+    [{ text: 'Cancel', style: 'cancel' }, { text: 'Continue', onPress: () => dispatch(logout()) }],
+  );
+
   // Name on top, then the roster facts (id · base · nationality). The crew id stays
   // visible — it was just never the right thing to lead with.
-  const meta = [crewId, crewBase, countryName(nationality)].filter(Boolean).join(' · ');
+  const meta = guest
+    ? [email, 'No airline account'].filter(Boolean).join(' · ')
+    : [crewId, crewBase, countryName(nationality)].filter(Boolean).join(' · ');
 
   return (
     <GradientScreen palette={p}>
@@ -70,17 +87,37 @@ export function ProfileScreen() {
             </View>
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={[s.name, { color: p.ink }]} testID="profile-crew-name">{crewName || crewId}</Text>
+            <Text style={[s.name, { color: p.ink }]} testID="profile-crew-name">
+              {guest ? identityName : crewName || crewId}
+            </Text>
             <Text style={[s.meta, { color: p.inkSoft }]} testID="profile-crew-meta">{meta}</Text>
-            <View style={[s.chip, { backgroundColor: p.frost, borderColor: p.frostLine }]}><Text style={[s.chipText, { color: p.ink }]}>{airlineByCode(airline).name}</Text><Icon name="star" size={12} color="#f2c14e" /></View>
+            <View style={[s.chip, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
+              <Text style={[s.chipText, { color: p.ink }]} testID="profile-provider-chip">
+                {guest ? PROVIDER_LABELS[provider ?? 'guest'] : airlineByCode(airline).name}
+              </Text>
+              {guest ? null : <Icon name="star" size={12} color="#f2c14e" />}
+            </View>
           </View>
         </View>
 
+        {guest ? (
+          <Pressable style={[s.status, { backgroundColor: p.frost }]} onPress={onAddAirline} testID="profile-add-airline">
+            <View style={s.statusIc}><Icon name="globe" size={22} color={p.ink} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.statusT, { color: p.ink }]}>Sign in with your airline</Text>
+              <Text style={[s.statusS, { color: p.inkSoft }]}>
+                Add your crew ID to see your roster, block hours and trip trade.
+              </Text>
+            </View>
+            <Icon name="chev" size={20} color={p.inkSoft} />
+          </Pressable>
+        ) : (
         <Pressable style={[s.status, { backgroundColor: p.frost }]} onPress={() => nav.navigate('Spec', { id: 'limits' })} testID="profile-block-hours">
           <View style={s.statusIc}><Icon name="crown" size={22} color="#e9a53a" /></View>
           <View style={{ flex: 1 }}><Text style={[s.statusT, { color: p.ink }]}>Block hours this month</Text><Text style={[s.statusS, { color: p.inkSoft }]}>{month.flightCount} flights · rolling 28-day limit 100h</Text></View>
           <View style={{ alignItems: 'flex-end' }}><Text style={s.num}>{hours}</Text><Text style={[s.numS, { color: p.inkSoft }]}>OF 100 H</Text></View>
         </Pressable>
+        )}
 
         <ListCard palette={p} style={{ marginTop: 22 }}>
           <View style={divider}><NavRow icon="user" label="Personal Information" palette={p} onPress={() => nav.navigate('PersonalInfo')} testID="row-personal" /><DashedLine color={p.cardLine} /></View>

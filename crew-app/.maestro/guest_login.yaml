@@ -1,0 +1,48 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+# Guest entry (Ryan 2026-09-12): the login page's "Login as Guest" opens the app
+# without an airline portal — no roster pull — and the Profile names the session
+# "Guest" and offers the way back to the airline login.
+# Run: maestro test .maestro/guest_login.yaml
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- scrollUntilVisible:
+    element:
+      id: "guest-login"
+    direction: DOWN
+- takeScreenshot: guest_00_login
+- tapOn:
+    id: "guest-login"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 30000
+- assertVisible:
+    id: "home-guest-strip"
+- takeScreenshot: guest_01_home
+# The strip is the way to Profile for a guest.
+- tapOn:
+    id: "home-guest-strip"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 10000
+- assertVisible: "Guest"
+- assertVisible:
+    id: "profile-add-airline"
+# A guest keeps every non-roster feature.
+- assertVisible:
+    id: "row-alarms"
+- assertVisible:
+    id: "row-timezone"
+- assertVisible:
+    id: "row-preferences"
+- takeScreenshot: guest_02_profile
+- tapOn:
+    id: "row-personal"
+- assertVisible:
+    id: "page-personal"
+- assertVisible: "Not signed in to an airline"
+- takeScreenshot: guest_03_personal

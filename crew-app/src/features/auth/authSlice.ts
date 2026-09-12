@@ -7,10 +7,17 @@ import { clearStoredTrips } from '../travel/tripsPersistence';
 import { setDuties, clearStoredDuties } from '../roster/dutiesSlice';
 import { reconcileAlarms } from '../alarms/alarmsSlice';
 import { clearRbotSession } from '../rbot/rbotSlice';
+import type { AuthMode, IdentityProfile, IdentityProvider } from './identity';
 
 // Crew-portal login session (doc/App Flow Ver1). Replaces the old Google/Firebase
 // stub. The crew picks an airline and signs in to that airline's crew portal; the
 // session can be persisted ("Keep Login") so the app skips login next launch.
+//
+// A session is either a CREW session (the portal login above) or a GUEST session:
+// `mode: 'guest'` covers both "Login as Guest" and the social providers, because
+// neither carries an airline roster. `provider` says which way the person came in,
+// and `displayName` / `email` / `photoUrl` are what a provider handed back — a
+// guest has none of them, so Profile falls back to the word "Guest".
 
 interface AuthState {
   airline: string;
@@ -29,6 +36,14 @@ interface AuthState {
   firstName: string | null;
   lastName: string | null;
   nationality: string | null;
+  /** 'crew' = signed in to an airline portal; 'guest' = no airline roster. */
+  mode: AuthMode;
+  /** How this session was established ('guest' for the anonymous path). */
+  provider: IdentityProvider | null;
+  /** Human name from a provider; null for the anonymous guest. */
+  displayName: string | null;
+  email: string | null;
+  photoUrl: string | null;
   /** In-memory only (loaded from Keychain when keepLogin) — used to re-auth/refresh. */
   password: string | null;
   keepLogin: boolean;
@@ -45,6 +60,11 @@ const initialState: AuthState = {
   firstName: null,
   lastName: null,
   nationality: null,
+  mode: 'crew',
+  provider: null,
+  displayName: null,
+  email: null,
+  photoUrl: null,
   password: null,
   keepLogin: false,
   loggedIn: false,
@@ -58,6 +78,11 @@ interface SessionPayload {
   crewId: string;
   password: string;
   keepLogin: boolean;
+  mode?: AuthMode;
+  provider?: IdentityProvider | null;
+  displayName?: string | null;
+  email?: string | null;
+  photoUrl?: string | null;
 }
 
 const authSlice = createSlice({
@@ -70,14 +95,27 @@ const authSlice = createSlice({
       state.crewId = action.payload.crewId;
       state.password = action.payload.password;
       state.keepLogin = action.payload.keepLogin;
+      state.mode = action.payload.mode ?? 'crew';
+      state.provider = action.payload.provider ?? null;
+      state.displayName = action.payload.displayName ?? null;
+      state.email = action.payload.email ?? null;
+      state.photoUrl = action.payload.photoUrl ?? null;
       state.loggedIn = true;
     },
     _clearSession(state) {
       state.crewId = null;
       state.carrier = null;
+      // The roster facts belong to the session that loaded them — a stale base
+      // must not leak into the next login (e.g. a crew logging out, then a guest).
+      state.base = null;
       state.firstName = null;
       state.lastName = null;
       state.nationality = null;
+      state.mode = 'crew';
+      state.provider = null;
+      state.displayName = null;
+      state.email = null;
+      state.photoUrl = null;
       state.password = null;
       state.keepLogin = false;
       state.loggedIn = false;
@@ -111,6 +149,15 @@ const authSlice = createSlice({
  */
 export const selectCrewCarrier = (state: {auth: {airline: string; carrier: string | null}}): string =>
   state.auth.carrier ?? state.auth.airline;
+
+/**
+ * True when the session has NO airline behind it — "Login as Guest" AND the
+ * social providers (they identify the person, not a crew record). Roster-backed
+ * surfaces read this to explain why they are empty, and Profile offers the way
+ * back to the airline login.
+ */
+export const selectIsGuest = (state: {auth: {mode: AuthMode}}): boolean =>
+  state.auth.mode === 'guest';
 
 const {
   _setSession,
@@ -172,6 +219,38 @@ export function login(payload: SessionPayload) {
     dispatch(_setSession(payload));
     await saveSession(payload);
   };
+}
+
+// Open the app without an airline account (the login page's "Login as Guest").
+// No portal, no roster pull: the session carries no crew id and no airline, so
+// the roster-backed surfaces stay empty while alarms, meetings/calendar, time
+// zone, Explore and R'Bot keep working off the device and the store.
+export function loginAsGuest(payload: { keepLogin: boolean }) {
+  return login({
+    airline: '',
+    crewId: '',
+    password: '',
+    keepLogin: payload.keepLogin,
+    mode: 'guest',
+    provider: 'guest',
+  });
+}
+
+// Continue with Google / Apple / Facebook: the same roster-less session, but
+// carrying the name (and email/photo) the provider returned so Profile has a
+// human identity to show instead of "Guest".
+export function loginWithIdentity(profile: IdentityProfile, payload: { keepLogin: boolean }) {
+  return login({
+    airline: '',
+    crewId: '',
+    password: '',
+    keepLogin: payload.keepLogin,
+    mode: 'guest',
+    provider: profile.provider,
+    displayName: profile.displayName,
+    email: profile.email,
+    photoUrl: profile.photoUrl,
+  });
 }
 
 // Log out: clear the CREW-PORTAL data only — trips, duties, scheduled flight

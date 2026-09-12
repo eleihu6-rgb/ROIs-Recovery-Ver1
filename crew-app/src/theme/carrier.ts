@@ -92,6 +92,13 @@ export const PALETTES: Record<CarrierPreset, CarrierPalette> = {
 };
 
 export function presetForAirline(code: string | null | undefined): CarrierPreset {
+  // A guest / social session carries an EMPTY airline code (it belongs to no
+  // carrier): keep the Altair sage the login page already wears rather than
+  // borrowing an arbitrary carrier's colour. An absent code keeps the old
+  // default so callers that genuinely don't know the carrier are unchanged.
+  if (code === '') {
+    return 'altair';
+  }
   switch (code) {
     case 'TG':
       return 'sia';
