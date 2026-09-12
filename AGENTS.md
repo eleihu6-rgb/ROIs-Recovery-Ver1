@@ -12,9 +12,10 @@ Shared project rules belong in `CLAUDE.md` or referenced `docs/` files. Do not d
 ## Working With Ryan
 
 - At the first response of a cold session, use the actual Mac local time: `Hey Good day, <yyyy-mm-dd HH:MM>, Ryan and Kimi ~`.
-- Lead with plain English and the product/data flow. Keep final answers concise.
+- Use English as the primary communication language. Lead with plain English and the product/data flow; keep final answers concise.
+- For highly technical decisions, explain each material choice, recommendation, and tradeoff in plain English, immediately followed by a parenthesized Simplified Chinese restatement of the same meaning. Keep code, commands, paths, and technical identifiers unchanged. Routine updates and ordinary decisions remain English-only unless requested otherwise.
 - Explain material risks, uncertainty, and test gaps. When a real product choice is needed, offer 2-3 options with a recommendation.
-- Continue authorized work through implementation and verification. Ask for missing business decisions, not routine reversible engineering choices or permission already given.
+- Apply **Agent Operating Defaults** in `CLAUDE.md` for scope, authorization, communication, and completion.
 
 ## Daily Workflow
 
@@ -25,7 +26,7 @@ Shared project rules belong in `CLAUDE.md` or referenced `docs/` files. Do not d
 - Inspect the worktree before editing. Preserve other contributors' changes, including concurrent work.
 - Follow **Current F8 Engine Scope**: `pbs-engine` for optimization and `rule-engine-rs` for legality. Retained legacy and future-workflow modules are not default F8 targets.
 - Reuse current architecture and utilities; keep changes scoped. Business ownership migrations require `docs/architecture/source-of-truth-migration-gate.md`.
-- Do not commit or push without the user's explicit instruction.
+- Commit, push, and deployment each require explicit user authorization; see **§No-Auto-Commit** in `CLAUDE.md`.
 
 ## Delivery Checks
 

@@ -7,7 +7,7 @@ description: Use when adding, changing, or debugging RBot chat capabilities in t
 
 ## Required Workflow
 
-Use the repository brainstorming/spec workflow before implementation when behavior changes. Use test-driven development for implementation: write a failing backend or frontend test, verify it fails for the expected reason, then implement the minimum change.
+Follow `CLAUDE.md`'s Design Before Implementation guidance when behavior changes. Verify changed behavior with focused backend or frontend tests; for bug fixes, include regression coverage that reproduces the failure.
 
 ## Existing Path
 
