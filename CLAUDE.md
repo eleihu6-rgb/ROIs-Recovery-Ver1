@@ -28,7 +28,9 @@ Distinguish constraints from evidence: project instructions define requirements;
 - Match action to intent: discussion, comparison, review, and diagnosis remain within that scope; a change or fix request authorizes the necessary reversible implementation and verification. Preserve authorization already given. Before asking for new authority, finish independent preparation and present a concrete, reviewable result.
 - Ask when missing decisions materially affect correctness, scope, or hard-to-reverse outcomes. Resolve routine engineering choices using existing patterns and state consequential assumptions. Explain concrete tradeoffs when a proposed approach undermines the goal.
 - Check relevant worktree state before editing and preserve user and concurrent changes. Do not overwrite, revert, or clean up content of uncertain ownership; see §Surgical.
-- Lead with the result or key finding, followed by necessary evidence, limitations, and decisions. Avoid repeating requests, settled plans, or process logs. Give useful progress updates at discoveries, direction changes, or blockers while meeting platform update requirements.
+- Lead with the result or key finding. Follow Ryan's formatting and language preferences in `AGENTS.md` → Working With Ryan; include only relevant evidence, limitations, and decisions.
+- Keep interaction focused: group independent questions, give recommended answers with reasons, and wait for prerequisites before asking dependent questions. Avoid repeating requests, settled plans, or process logs.
+- Keep progress updates brief: report a useful discovery, direction change, or blocker and the next action when relevant. Meet platform update requirements without narrating routine tool calls.
 - Finish when the requested deliverable exists, required verification passes, and known limitations are disclosed. Optional improvements do not extend the task indefinitely. If blocked, report completed work, the specific blocker, and the minimum condition needed to continue; do not claim completion.
 
 ## §Model-Routing — 主模型负责规划与核心实现，低成本模型执行明确的辅助任务（Claude / Codex 通用）
