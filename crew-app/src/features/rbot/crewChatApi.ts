@@ -21,6 +21,29 @@ import type {
 } from './types';
 
 const RBOT_API_SIMULATOR_FALLBACK = 'http://127.0.0.1:3005';
+/** ai-server's port, for deriving the dev host from the Metro bundle URL. */
+const RBOT_API_PORT = 3005;
+
+/**
+ * The public origin ai-server is published on: the same host the crew app
+ * already uses for its crew API (`cr.rois.one/api`), so a phone that is NOT on
+ * the same Wi-Fi as the dev machine can still reach R'Bot. The route is scoped
+ * to `/ai/crew/*` and `/ai/health` on the tunnel — not the whole ai-server.
+ */
+export const RBOT_PUBLIC_API_BASE = 'https://cr.rois.one/ai';
+
+/**
+ * The host the JS bundle was loaded from — i.e. the Mac running Metro. On a
+ * real iPhone that is the Mac's LAN address (`http://192.168.1.24:8081/…`),
+ * while on the simulator it is localhost. R'Bot must call ai-server on the SAME
+ * machine: a hard-coded 127.0.0.1 makes the phone call itself, which is exactly
+ * how a device build ends up saying "Network request failed" (Ryan, 2026-09-11).
+ */
+export function devApiBaseFromScriptUrl(scriptUrl: string | undefined): string | null {
+  const match = scriptUrl?.match(/^https?:\/\/(\[[^\]]+\]|[^/:]+)(?::\d+)?\//i);
+  const host = match?.[1];
+  return host ? `http://${host}:${RBOT_API_PORT}` : null;
+}
 
 /**
  * Resolves the ai-server base URL. Same rules as the roster API resolvers in
@@ -31,10 +54,13 @@ const RBOT_API_SIMULATOR_FALLBACK = 'http://127.0.0.1:3005';
 export function resolveRbotApiBaseUrl(
   configuredUrl: string | null | undefined,
   development: boolean,
+  devScriptUrl?: string,
 ): string | null {
   const raw = configuredUrl?.trim();
   if (!raw) {
-    return development ? RBOT_API_SIMULATOR_FALLBACK : null;
+    if (!development) return null;
+    // Dev: prefer the machine serving the bundle (works on device AND sim).
+    return devApiBaseFromScriptUrl(devScriptUrl) ?? RBOT_API_SIMULATOR_FALLBACK;
   }
   // Hermes' URL does not implement `.protocol`; read the scheme off the string.
   const scheme = raw.match(/^([a-z][a-z0-9+.-]*):\/\//i)?.[1]?.toLowerCase() ?? null;
@@ -49,10 +75,29 @@ export function resolveRbotApiBaseUrl(
 
 const configuredRbotApiUrl = NativeModules.SettingsManager?.settings
   ?.RBotChatApiBaseURL as string | undefined;
-const rbotApiBaseUrl = resolveRbotApiBaseUrl(configuredRbotApiUrl, __DEV__);
+export const devScriptUrl = NativeModules.SourceCode?.scriptURL as string | undefined;
 
 export function rbotChatUrl(baseUrl: string | null): string | null {
   return baseUrl ? `${baseUrl}/ai/crew/chat` : null;
+}
+
+/**
+ * Every base R'Bot may call, in order. Local first (fast: same machine as the
+ * dev bundle), then the public origin — which is what makes an off-LAN phone
+ * work without anyone setting a build flag.
+ */
+export function rbotApiBaseCandidates(
+  configuredUrl: string | null | undefined,
+  development: boolean,
+  devScriptUrl?: string,
+): string[] {
+  const explicit = resolveRbotApiBaseUrl(configuredUrl, development, devScriptUrl);
+  const configured = configuredUrl?.trim();
+  // An explicitly configured base is the only one to use: someone who set it
+  // knows their environment, and silently falling back would hide a typo.
+  if (configured) return explicit ? [explicit] : [];
+  const local = explicit ?? (development ? RBOT_API_SIMULATOR_FALLBACK : null);
+  return local ? [local, RBOT_PUBLIC_API_BASE] : [RBOT_PUBLIC_API_BASE];
 }
 
 const NAV_TARGETS: readonly RbotNavTarget[] = [
@@ -185,8 +230,10 @@ export async function sendCrewChat(
   context: RbotContext,
   signal?: AbortSignal,
 ): Promise<RbotChatResponse> {
-  const url = rbotChatUrl(rbotApiBaseUrl);
-  if (!url) {
+  const urls = rbotApiBaseCandidates(configuredRbotApiUrl, __DEV__, devScriptUrl)
+    .map(rbotChatUrl)
+    .filter((u): u is string => !!u);
+  if (urls.length === 0) {
     throw new Error('R\'Bot is not configured for this build');
   }
   // Only the recent turns travel — the same bound the server applies, applied
@@ -196,12 +243,28 @@ export async function sendCrewChat(
     content: m.content.slice(0, 4000),
   }));
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({messages: trimmed, context}),
-    signal,
-  });
+  let response: Response | null = null;
+  const tried: string[] = [];
+  for (const url of urls) {
+    tried.push(url);
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({messages: trimmed, context}),
+        signal,
+      });
+      break;
+    } catch {
+      // This origin is not reachable from where the phone is (a device off the
+      // LAN cannot see the dev machine) — try the next one.
+    }
+  }
+  if (!response) {
+    // React Native's own message ("Network request failed") does not say where
+    // it tried — name every URL so a device-build problem is diagnosable.
+    throw new Error(`R'Bot could not reach the AI service (tried ${tried.join(', ')})`);
+  }
 
   let payload: unknown = null;
   try {

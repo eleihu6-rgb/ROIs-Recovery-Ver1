@@ -1,8 +1,11 @@
 // R'Bot chat client: URL resolution, the defensive action parse (a hallucinated
 // action must be a no-op, not a wrong screen), and the request bounds.
 import {
+  devApiBaseFromScriptUrl,
   parseChatResponse,
   parseRbotAction,
+  RBOT_PUBLIC_API_BASE,
+  rbotApiBaseCandidates,
   resolveRbotApiBaseUrl,
   rbotChatUrl,
   sendCrewChat,
@@ -19,8 +22,37 @@ describe("R'Bot api base url", () => {
     expect(resolveRbotApiBaseUrl('  ', true)).toBe('http://127.0.0.1:3005');
   });
 
-  it('has no default outside development — a production URL must be configured', () => {
-    expect(resolveRbotApiBaseUrl(undefined, false)).toBeNull();
+  // A device build loads its bundle from the Mac's LAN address, so ai-server has
+  // to be called on that same host — not on 127.0.0.1, which is the phone.
+  it('follows the Metro host in development (device builds)', () => {
+    expect(devApiBaseFromScriptUrl('http://192.168.1.24:8081/index.bundle?platform=ios'))
+      .toBe('http://192.168.1.24:3005');
+    expect(devApiBaseFromScriptUrl('http://localhost:8081/index.bundle'))
+      .toBe('http://localhost:3005');
+    expect(devApiBaseFromScriptUrl(undefined)).toBeNull();
+    expect(resolveRbotApiBaseUrl(undefined, true, 'http://10.0.0.7:8081/index.bundle'))
+      .toBe('http://10.0.0.7:3005');
+  });
+
+  it('lets an explicit setting override the derived dev host', () => {
+    expect(resolveRbotApiBaseUrl('https://ai.example.com', true, 'http://10.0.0.7:8081/x'))
+      .toBe('https://ai.example.com');
+  });
+
+  // A phone that is NOT on the dev machine's Wi-Fi cannot reach the Metro host,
+  // so the public route is tried after it (Ryan's iPhone, 2026-09-11).
+  it('offers the local host first and the public origin second', () => {
+    expect(rbotApiBaseCandidates(undefined, true, 'http://192.168.1.24:8081/index.bundle'))
+      .toEqual(['http://192.168.1.24:3005', RBOT_PUBLIC_API_BASE]);
+    // Production without config: the public origin only.
+    expect(rbotApiBaseCandidates(undefined, false)).toEqual([RBOT_PUBLIC_API_BASE]);
+    // An explicit base is honoured alone — no silent fallback hiding a typo.
+    expect(rbotApiBaseCandidates('https://ai.example.com', true, 'http://10.0.0.7:8081/x'))
+      .toEqual(['https://ai.example.com']);
+  });
+
+  it('has no dev host outside development (the candidate list offers the public origin)', () => {
+    expect(resolveRbotApiBaseUrl(undefined, false, 'http://10.0.0.7:8081/x')).toBeNull();
   });
 
   it('accepts https anywhere and http only in development', () => {
@@ -153,5 +185,32 @@ describe("R'Bot send", () => {
   it('surfaces an unreachable service as a readable error', async () => {
     global.fetch = jest.fn().mockResolvedValue({ok: false, status: 503, json: async () => null}) as unknown as typeof fetch;
     await expect(sendCrewChat([{role: 'user', content: 'hi'}], context)).rejects.toThrow(/unavailable \(503\)/);
+  });
+
+  it('names the URL it could not reach, instead of RN\'s bare network error', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as unknown as typeof fetch;
+    await expect(sendCrewChat([{role: 'user', content: 'hi'}], context))
+      .rejects.toThrow(/could not reach the AI service \(tried http/);
+  });
+
+  it('falls back to the public origin when the local dev host is unreachable', async () => {
+    const fetchMock = jest.fn()
+      .mockRejectedValueOnce(new TypeError('Network request failed'))
+      .mockResolvedValueOnce(okJson({content: 'Opening your route map.', actions: []}));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const reply = await sendCrewChat([{role: 'user', content: 'route map'}], context);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toBe('http://127.0.0.1:3005/ai/crew/chat');
+    expect(fetchMock.mock.calls[1][0]).toBe(`${RBOT_PUBLIC_API_BASE}/ai/crew/chat`);
+    expect(reply.content).toBe('Opening your route map.');
+  });
+
+  it('does not retry another origin when the service itself answers', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ok: false, status: 503, json: async () => null});
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await expect(sendCrewChat([{role: 'user', content: 'hi'}], context)).rejects.toThrow(/503/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

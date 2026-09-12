@@ -142,6 +142,10 @@ describe("R'Bot chat screen", () => {
     await act(async () => {
       fireEvent.press(getByTestId('rbot-send'));
     });
-    await waitFor(() => expect(getByText('Network request failed')).toBeTruthy());
+    // Every origin was tried (local dev host, then the public one), so the
+    // bubble names what R'Bot attempted instead of RN's bare network error.
+    await waitFor(() => expect(
+      getByText(/could not reach the AI service \(tried http/),
+    ).toBeTruthy());
   });
 });
