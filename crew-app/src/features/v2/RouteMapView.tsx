@@ -138,35 +138,47 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
   );
 }
 
+/**
+ * The month's numbers as ONE grid in two tiers: flights / distance / block / duty
+ * on top, the month's reach — routes / airports / countries — below it.
+ *
+ * The breakdown used to be three stacked label/value rows whose value hugged the
+ * card's right edge, while the totals above were left-aligned inside equal
+ * columns: two alignment rules in one card, so `145:05` ended 19 pt short of the
+ * `8` under it (measured on the simulator, 1088 px vs 1145 px @3x). Both tiers are
+ * now equal-column flex rows inside the same 14 pt card padding, so they share one
+ * grid and both edges, and the numbers use tabular figures so a changing count
+ * cannot shift a column.
+ */
 function StatsCard({ stats, month, palette: p }: { stats: ReturnType<typeof monthStats>; month: MonthModel; palette: CarrierPalette }): React.JSX.Element {
-  const cells: Array<[string, string]> = [
-    [String(stats.flights), 'Flights'],
+  const totals: Array<{ id: string; value: string; label: string }> = [
+    { id: 'flights', value: String(stats.flights), label: 'Flights' },
     // Distances are long; the unit lives in the label so four cells fit one row.
-    [Math.round(stats.km).toLocaleString('en-US'), 'Distance km'],
-    [formatHM(stats.blockMinutes), 'Block'],
-    [formatHM(stats.dutyMinutes), 'Duty'],
+    { id: 'distance', value: Math.round(stats.km).toLocaleString('en-US'), label: 'Distance km' },
+    { id: 'block', value: formatHM(stats.blockMinutes), label: 'Block' },
+    { id: 'duty', value: formatHM(stats.dutyMinutes), label: 'Duty' },
   ];
-  const rows: Array<[string, string]> = [
-    ['Routes', String(stats.routes)],
-    ['Airports', String(stats.airports)],
-    ['Countries', String(stats.countries)],
+  const counts: Array<{ id: string; value: string; label: string }> = [
+    { id: 'routes', value: String(stats.routes), label: 'Routes' },
+    { id: 'airports', value: String(stats.airports), label: 'Airports' },
+    { id: 'countries', value: String(stats.countries), label: 'Countries' },
   ];
   return (
     <View style={[s.stats, { backgroundColor: p.card, borderColor: p.cardLine }]} testID="route-stats">
       <Text style={[s.statsTitle, { color: p.cardSoft }]}>{`${MON[month.monthIdx]} ${month.year} summary`}</Text>
-      <View style={s.statsGrid}>
-        {cells.map(([value, label]) => (
-          <View key={label} style={s.statsCell}>
-            <Text style={[s.statsValue, { color: p.cardInk }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{value}</Text>
-            <Text style={[s.statsLabel, { color: p.cardSoft }]}>{label}</Text>
+      <View style={s.statsGrid} testID="route-stat-totals">
+        {totals.map(cell => (
+          <View key={cell.id} style={s.statsCell} testID={`route-stat-${cell.id}`}>
+            <Text style={[s.statsValue, { color: p.cardInk }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{cell.value}</Text>
+            <Text style={[s.statsLabel, { color: p.cardSoft }]}>{cell.label}</Text>
           </View>
         ))}
       </View>
-      <View style={[s.statsRows, { borderTopColor: p.cardLine }]}>
-        {rows.map(([label, value]) => (
-          <View key={label} style={[s.statsRow, { borderBottomColor: p.cardLine }]}>
-            <Text style={[s.statsRowLabel, { color: p.cardSoft }]}>{label}</Text>
-            <Text style={[s.statsRowValue, { color: p.cardInk }]}>{value}</Text>
+      <View style={[s.statsCounts, { borderTopColor: p.cardLine }]} testID="route-stat-counts">
+        {counts.map(cell => (
+          <View key={cell.id} style={s.statsCell} testID={`route-stat-${cell.id}`}>
+            <Text style={[s.statsCountValue, { color: p.cardInk }]} numberOfLines={1}>{cell.value}</Text>
+            <Text style={[s.statsLabel, { color: p.cardSoft }]}>{cell.label}</Text>
           </View>
         ))}
       </View>
@@ -204,13 +216,13 @@ const s = StyleSheet.create({
   stats: { borderRadius: 16, borderWidth: 1, padding: 14 },
   statsTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' },
   statsGrid: { flexDirection: 'row', marginTop: 10, gap: 8 },
+  // The second tier of the same grid: one hairline between the tiers, no rule
+  // after the last one (the card used to end on a border).
+  statsCounts: { flexDirection: 'row', marginTop: 12, paddingTop: 12, gap: 8, borderTopWidth: 1 },
   statsCell: { flex: 1, minWidth: 0 },
-  statsValue: { fontSize: 16, fontWeight: '700' },
+  statsValue: { fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  statsCountValue: { fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
   statsLabel: { fontSize: 10, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 },
-  statsRows: { marginTop: 12, borderTopWidth: 1 },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1 },
-  statsRowLabel: { fontSize: 13 },
-  statsRowValue: { fontSize: 13, fontWeight: '600' },
   listHead: { fontSize: 12, fontWeight: '700', letterSpacing: 0.7, marginTop: 6 },
   routeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, borderWidth: 1, padding: 10 },
   routeCode: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crew app · Schedule ▸ Route map — month summary card, 3 options</title>
+<style>
+  /* ─── Real app tokens (crew-app/src/theme/carrier.ts) ──────────────────────
+     Four selectable presets + the Emirates carrier default. The app renders the
+     card as rgba(241,245,249,.8) over the carrier gradient, so a frame here
+     must reproduce the gradient too — the card's apparent colour comes from it. */
+  .theme-graphite { --g1:#1f272e; --g2:#2b353d; --g3:#4a5761; --g4:#7f8d98; --btn:#3f4f5c; --dock-light:#b2bbc1; --dock-ink:#1f272e; }
+  .theme-sia      { --g1:#1e4a76; --g2:#2b6191; --g3:#4c82b2; --g4:#77a3cb; --btn:#2f6ba6; --dock-light:#adc8e0; --dock-ink:#1e4a76; }
+  .theme-thai     { --g1:#4a1670; --g2:#5e2a86; --g3:#8a4aa8; --g4:#b989cf; --btn:#7a3aa0; --dock-light:#d5b8e2; --dock-ink:#4a1670; }
+  .theme-emerald  { --g1:#14463c; --g2:#1f5c4e; --g3:#3d8270; --g4:#7fb3a3; --btn:#2a7461; --dock-light:#b2d1c8; --dock-ink:#14463c; }
+  .theme-emirates { --g1:#4a1013; --g2:#661a1f; --g3:#94303a; --g4:#c98187; --btn:#a81f27; --dock-light:#dfbcbe; --dock-ink:#4a1013; }
+
+  :root {
+    --ink:#fff; --ink-soft:rgba(255,255,255,.82); --ink-faint:rgba(255,255,255,.6);
+    --frost:rgba(255,255,255,.14); --frost-line:rgba(255,255,255,.22);
+    --card:rgba(241,245,249,.8); --card-solid:rgba(247,250,253,.97);
+    --card-ink:#1e3a5a; --card-soft:#6c7f93; --card-line:#c9d5e1;
+    /* geometry copied from RouteMapView.tsx */
+    --frame-w:420px; --wrap-pad:22px; --card-pad:14px; --card-r:16px; --gap:8px;
+  }
+
+  * { box-sizing:border-box; }
+  html,body { margin:0; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+    background:#11151a; color:#e8edf2; padding:20px 20px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1 { font-size:17px; font-weight:600; margin:0 0 4px; }
+  .sub { font-size:12.5px; color:#98a4b0; margin:0 0 16px; line-height:1.5; max-width:1180px; }
+  .sub b { color:#cfd8e0; font-weight:600; }
+
+  .toolbar {
+    position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center;
+    background:#171d24; border:1px solid #253039; border-radius:12px; padding:10px 14px; margin-bottom:18px;
+  }
+  .toolbar .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#8b98a4; font-weight:600; }
+  button.chip {
+    font:inherit; font-size:12px; font-weight:600; color:#cfd8e0; background:#222c35; border:1px solid #2f3c47;
+    border-radius:999px; padding:6px 12px; cursor:pointer;
+  }
+  button.chip:hover { background:#2a3540; }
+  button.chip[aria-pressed="true"] { background:#3d6ea8; border-color:#4d80bd; color:#fff; }
+  label.switch { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600; color:#cfd8e0; cursor:pointer; }
+  input[type=checkbox] { accent-color:#3d6ea8; width:14px; height:14px; }
+
+  .row { display:flex; gap:26px; align-items:flex-start; overflow-x:auto; padding-bottom:14px; }
+  .col { flex:0 0 auto; width:var(--frame-w); }
+  .col > header { margin-bottom:10px; }
+  .col h2 { font-size:13px; font-weight:700; margin:0 0 3px; letter-spacing:.01em; }
+  .col .tag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+              color:#9fb0bf; background:#1e2831; border:1px solid #2c3843; border-radius:5px; padding:2px 6px; margin-left:6px; vertical-align:1px; }
+  .col p { font-size:11.5px; line-height:1.45; color:#93a0ac; margin:0; }
+  .col p b { color:#cdd7df; font-weight:600; }
+
+  /* ─── the phone frame: 420pt wide, 1pt = 1px, exactly the iPhone Air sim ─── */
+  .phone {
+    width:var(--frame-w); border-radius:26px; overflow:hidden; position:relative;
+    background:linear-gradient(170deg, var(--g1) 0%, var(--g2) 42%, var(--g3) 100%);
+  }
+  .statusbar { height:54px; display:flex; align-items:center; justify-content:space-between; padding:0 26px;
+    font-size:15px; font-weight:600; color:#fff; }
+  /* drawn, not typed: a fake status bar with glyphs reads as a broken mock */
+  .sysicons { display:flex; align-items:center; gap:6px; }
+  .sysicons .bars { display:flex; align-items:flex-end; gap:2px; height:11px; }
+  .sysicons .bars i { width:3px; background:#fff; border-radius:1px; display:block; }
+  .sysicons .bars i:nth-child(1) { height:4px; } .sysicons .bars i:nth-child(2) { height:6px; }
+  .sysicons .bars i:nth-child(3) { height:8px; } .sysicons .bars i:nth-child(4) { height:11px; }
+  .sysicons .wifi { width:15px; height:11px; background:#fff; clip-path:polygon(50% 100%, 0 32%, 50% 0, 100% 32%); }
+  .sysicons .batt { width:25px; height:12px; border:1.5px solid rgba(255,255,255,.9); border-radius:4px; padding:1.5px; }
+  .sysicons .batt i { display:block; width:72%; height:100%; background:#fff; border-radius:2px; }
+  .navhead { display:flex; align-items:center; justify-content:center; gap:10px; padding:2px 0 14px; color:#fff; }
+  .navhead .t { font-size:20px; font-weight:600; }
+  .navhead .chev { font-size:19px; opacity:.9; }
+  .wrap { padding:0 var(--wrap-pad) 26px; }
+
+  /* map card — a flat stand-in; only its size matters for the rhythm */
+  .mapcard { height:240px; border-radius:16px; border:1px solid var(--frost-line); background:var(--g1); position:relative; overflow:hidden; }
+  .mapcard svg { display:block; width:100%; height:100%; }
+  /* Keep the stand-in routes on the theme's own colour without touching the markup:
+     a stylesheet rule beats an SVG presentation attribute. */
+  .mapcard g[stroke="#b2bbc1"] path { stroke:var(--dock-light); }
+  .mapcard g[fill="#b2bbc1"] circle { fill:var(--dock-light); }
+  .mapcard > svg > circle { fill:var(--g1); stroke:var(--dock-light); }
+  .mapbadge { position:absolute; left:10px; top:10px; background:rgba(0,0,0,.45); border-radius:8px;
+              padding:4px 8px; color:#fff; font-size:10px; font-weight:700; letter-spacing:.5px; }
+  .zoomcol { position:absolute; right:8px; bottom:8px; display:flex; flex-direction:column; gap:8px; }
+  .zoombtn { width:32px; height:32px; border-radius:10px; background:var(--card); color:var(--card-ink);
+             display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; }
+
+  /* ─── the card itself ─── */
+  .card { margin-top:10px; background:var(--card); border:1px solid var(--card-line); border-radius:var(--card-r); padding:14px; position:relative; }
+  .rs-title { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--card-soft); }
+  .hair { height:1px; background:var(--card-line); }
+  .num { font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
+
+  /* tier 1 · four totals */
+  .t1 { display:flex; gap:var(--gap); margin-top:10px; }
+  .t1 .cell { flex:1; min-width:0; }
+  .t1 .v { font-size:16px; font-weight:700; color:var(--card-ink); white-space:nowrap; }
+  .t1 .l { font-size:10px; letter-spacing:.4px; text-transform:uppercase; color:var(--card-soft); margin-top:2px; }
+  .t1.right { text-align:right; }
+
+  /* tier 2 · breakdown */
+  .t2 { display:flex; gap:var(--gap); padding-top:12px; margin-top:12px; border-top:1px solid var(--card-line); }
+  .t2 .cell { flex:1; min-width:0; }
+  .t2 .v { font-size:15px; font-weight:700; color:var(--card-ink); }
+  .t2 .l { font-size:10px; letter-spacing:.4px; text-transform:uppercase; color:var(--card-soft); margin-top:2px; }
+  .t2.right { justify-content:flex-end; }
+
+  /* option B · stacked rows */
+  .rows { margin-top:12px; border-top:1px solid var(--card-line); }
+  .rowline { display:flex; align-items:baseline; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--card-line); }
+  .rowline:last-child { border-bottom:0; }
+  /* "Today" keeps the code's redundant trailing rule so the frame is honest. */
+  .rows.verbatim .rowline:last-child { border-bottom:1px solid var(--card-line); }
+  .rowline .l { font-size:13px; color:var(--card-soft); }
+  .rowline .v { font-size:13px; font-weight:600; color:var(--card-ink); }
+
+  /* option B · totals pushed onto the value rail */
+  .t1.rail .cell { text-align:right; }
+  .t1.rail { gap:var(--gap); }
+
+  /* option C · 2x2 hero */
+  .hero { display:grid; grid-template-columns:1fr 1fr; margin-top:12px; }
+  .hero .cell { padding:10px 0; }
+  .hero .cell:nth-child(odd) { padding-right:14px; }
+  .hero .cell:nth-child(even) { padding-left:14px; border-left:1px solid var(--card-line); }
+  .hero .cell:nth-child(n+3) { border-top:1px solid var(--card-line); }
+  .hero .v { font-size:22px; font-weight:700; color:var(--card-ink); letter-spacing:-.2px; }
+  .hero .l { font-size:10px; letter-spacing:.4px; text-transform:uppercase; color:var(--card-soft); margin-top:3px; }
+  .bar { display:flex; margin-top:2px; border-top:1px solid var(--card-line); }
+  .bar .cell { flex:1; padding-top:12px; }
+  .bar .cell + .cell { border-left:1px solid var(--card-line); padding-left:14px; }
+  .bar .v { font-size:16px; font-weight:700; color:var(--card-ink); }
+  .bar .l { font-size:10px; letter-spacing:.4px; text-transform:uppercase; color:var(--card-soft); margin-top:2px; }
+
+  /* routes list under the card */
+  .listhead { font-size:12px; font-weight:700; letter-spacing:.7px; color:var(--ink-soft); margin:16px 0 10px; }
+  .rrow { display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--card-line);
+          border-radius:14px; padding:10px; margin-bottom:10px; }
+  .rrow .code { width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,.72); color:var(--btn);
+                display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+  .rrow .mid { flex:1; min-width:0; }
+  .rrow .ttl { font-size:14px; font-weight:600; color:var(--card-ink); }
+  .rrow .sub2 { font-size:12px; color:var(--card-soft); margin-top:2px; }
+  .rrow .r { text-align:right; }
+  .rrow .km { font-size:13px; font-weight:700; color:var(--card-ink); }
+  .rrow .legs { font-size:12px; color:var(--card-soft); margin-top:2px; }
+
+  /* ─── measurement layer (toggle) ─── */
+  .guides .card { outline:1px dashed rgba(61,110,168,.9); outline-offset:-15px; }
+  .guides .col-guide { position:absolute; top:14px; bottom:14px; width:1px;
+    background:repeating-linear-gradient(180deg, rgba(61,110,168,.85) 0 4px, transparent 4px 8px); }
+  .guides .rail { position:absolute; top:14px; bottom:14px; width:1px; background:rgba(210,80,60,.95); }
+  .guides .rail::after { content:"value rail"; position:absolute; top:-9px; right:3px; font-size:8.5px;
+    font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#d2503c; white-space:nowrap; }
+  .guides .t1 .cell, .guides .t2 .cell, .guides .rowline { position:relative; }
+  .measure { font-size:10.5px; color:#8b98a4; margin-top:8px; line-height:1.5; font-variant-numeric:tabular-nums; }
+  .measure code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:10.5px; color:#b8c4cf; }
+  .legend { max-width:1180px; margin-top:26px; font-size:12px; color:#93a0ac; line-height:1.65; }
+  .legend h3 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:#cfd8e0; margin:0 0 8px; }
+  .legend code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; color:#b8c4cf; }
+  .legend ul { margin:0; padding-left:18px; }
+  .legend li { margin-bottom:5px; }
+</style>
+</head>
+<body class="theme-graphite">
+
+<h1>Schedule ▸ Route map — “Aug 2026 summary” card, 3 options</h1>
+<p class="sub">
+  Same data, same card, three alignment rules. Every frame is <b>420&nbsp;pt wide (1&nbsp;pt = 1&nbsp;px)</b> — the iPhone&nbsp;Air
+  simulator the screenshot came from — with the real card geometry (<code>22&nbsp;pt</code> page padding, <code>14&nbsp;pt</code> card padding,
+  <code>16&nbsp;pt</code> radius, <code>8&nbsp;pt</code> grid gap) and the real theme tokens, so a card that looks aligned here is aligned on device.
+  <b>Switch the palette</b> to check the design survives all four crew-selectable themes. <b>Turn on guides</b> to see the column rails
+  and the one value rail the numbers should share.
+</p>
+
+<div class="toolbar">
+  <span class="lbl">Palette</span>
+  <button class="chip" data-theme="graphite" aria-pressed="true">Graphite (your screenshot)</button>
+  <button class="chip" data-theme="sia" aria-pressed="false">Reference blue</button>
+  <button class="chip" data-theme="thai" aria-pressed="false">Thai violet</button>
+  <button class="chip" data-theme="emerald" aria-pressed="false">Emerald</button>
+  <button class="chip" data-theme="emirates" aria-pressed="false">Emirates red</button>
+  <span style="width:10px"></span>
+  <label class="switch"><input type="checkbox" id="guides"> Show alignment guides</label>
+</div>
+
+<div class="row">
+
+  <!-- ══════════════════ 0 · what ships today ══════════════════ -->
+  <div class="col">
+    <header>
+      <h2>Today<span class="tag">current</span></h2>
+      <p>Totals <b>left</b>-aligned in equal columns; breakdown values <b>right</b>-aligned to the card edge — two rules in one card, so
+         <code>145:05</code> ends ≈20&nbsp;pt short of <code>8/9/8</code> (19&nbsp;pt on your screenshot). And the card ends on a rule.</p>
+    </header>
+    <div class="phone">
+      <div class="statusbar"><span class="clock">11:34</span><span class="sysicons"><span class="bars"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="batt"><i></i></span></span></div>
+      <div class="navhead"><span class="chev">‹</span><span class="t">Sched Aug 2026</span><span class="chev">›</span></div>
+      <div class="wrap">
+        <div class="mapcard">
+          <svg viewBox="0 0 1000 600" preserveAspectRatio="none">
+            <g stroke="rgba(255,255,255,.10)" stroke-width="1.5">
+              <line x1="0" y1="150" x2="1000" y2="150"/><line x1="0" y1="300" x2="1000" y2="300"/>
+              <line x1="0" y1="450" x2="1000" y2="450"/><line x1="250" y1="0" x2="250" y2="600"/>
+              <line x1="500" y1="0" x2="500" y2="600"/><line x1="750" y1="0" x2="750" y2="600"/>
+            </g>
+            <g fill="rgba(255,255,255,.10)">
+              <path d="M120 170 q60 -40 120 -6 q50 30 20 70 q-60 40 -120 10 q-50 -30 -20 -74Z"/>
+              <path d="M430 140 q90 -46 190 -10 q70 26 40 76 q-90 50 -190 12 q-70 -28 -40 -78Z"/>
+              <path d="M640 330 q70 -26 120 12 q40 34 -10 74 q-70 30 -120 -10 q-40 -34 10 -76Z"/>
+            </g>
+            <g fill="none" stroke="#b2bbc1" stroke-width="2.2">
+              <path d="M180 210 Q420 120 700 300"/><path d="M180 210 Q430 240 660 250"/>
+              <path d="M180 210 Q430 330 620 430"/>
+            </g>
+            <g fill="#b2bbc1"><circle cx="700" cy="300" r="5"/><circle cx="660" cy="250" r="5"/><circle cx="620" cy="430" r="5"/></g>
+            <circle cx="180" cy="210" r="7" fill="#1f272e" stroke="#b2bbc1" stroke-width="2.5"/>
+          </svg>
+          <div class="mapbadge">BKK · BASE</div>
+          <div class="zoomcol"><div class="zoombtn">+</div><div class="zoombtn">−</div></div>
+        </div>
+
+        <div class="card">
+          <div class="rs-title">Aug 2026 summary</div>
+          <div class="t1">
+            <div class="cell"><div class="v num">20</div><div class="l">Flights</div></div>
+            <div class="cell"><div class="v num">65,845</div><div class="l">Distance km</div></div>
+            <div class="cell"><div class="v num">96:15</div><div class="l">Block</div></div>
+            <div class="cell"><div class="v num">145:05</div><div class="l">Duty</div></div>
+          </div>
+          <div class="rows verbatim">
+            <div class="rowline"><span class="l">Routes</span><span class="v num">8</span></div>
+            <div class="rowline"><span class="l">Airports</span><span class="v num">9</span></div>
+            <div class="rowline"><span class="l">Countries</span><span class="v num">8</span></div>
+          </div>
+        </div>
+
+        <div class="listhead">Routes</div>
+        <div class="rrow">
+          <div class="code">SIN</div>
+          <div class="mid"><div class="ttl">BKK → SIN</div><div class="sub2">Singapore Changi</div></div>
+          <div class="r"><div class="km num">1,417 km</div><div class="legs">2 legs</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="measure">rail check → <code>145:05</code> glyph ends at <code>x=1088</code>, <code>8</code> at <code>x=1145</code> (px @3x) · 19&nbsp;pt apart</div>
+  </div>
+
+  <!-- ══════════════════ A · unified stat grid ══════════════════ -->
+  <div class="col">
+    <header>
+      <h2>A · Unified stat grid<span class="tag">recommended</span></h2>
+      <p>Keeps the card’s height and its two tiers, but the breakdown becomes a <b>3-up bar on the same grid</b>: both tiers run flush
+         to the card’s left and right content edges, one hairline between them, no trailing rule. Every number is tabular, so digits
+         line up when the counts change.</p>
+    </header>
+    <div class="phone">
+      <div class="statusbar"><span class="clock">11:34</span><span class="sysicons"><span class="bars"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="batt"><i></i></span></span></div>
+      <div class="navhead"><span class="chev">‹</span><span class="t">Sched Aug 2026</span><span class="chev">›</span></div>
+      <div class="wrap">
+        <div class="mapcard">
+          <svg viewBox="0 0 1000 600" preserveAspectRatio="none">
+            <g stroke="rgba(255,255,255,.10)" stroke-width="1.5">
+              <line x1="0" y1="150" x2="1000" y2="150"/><line x1="0" y1="300" x2="1000" y2="300"/>
+              <line x1="0" y1="450" x2="1000" y2="450"/><line x1="250" y1="0" x2="250" y2="600"/>
+              <line x1="500" y1="0" x2="500" y2="600"/><line x1="750" y1="0" x2="750" y2="600"/>
+            </g>
+            <g fill="rgba(255,255,255,.10)">
+              <path d="M120 170 q60 -40 120 -6 q50 30 20 70 q-60 40 -120 10 q-50 -30 -20 -74Z"/>
+              <path d="M430 140 q90 -46 190 -10 q70 26 40 76 q-90 50 -190 12 q-70 -28 -40 -78Z"/>
+              <path d="M640 330 q70 -26 120 12 q40 34 -10 74 q-70 30 -120 -10 q-40 -34 10 -76Z"/>
+            </g>
+            <g fill="none" stroke="#b2bbc1" stroke-width="2.2">
+              <path d="M180 210 Q420 120 700 300"/><path d="M180 210 Q430 240 660 250"/>
+              <path d="M180 210 Q430 330 620 430"/>
+            </g>
+            <g fill="#b2bbc1"><circle cx="700" cy="300" r="5"/><circle cx="660" cy="250" r="5"/><circle cx="620" cy="430" r="5"/></g>
+            <circle cx="180" cy="210" r="7" fill="#1f272e" stroke="#b2bbc1" stroke-width="2.5"/>
+          </svg>
+          <div class="mapbadge">BKK · BASE</div>
+          <div class="zoomcol"><div class="zoombtn">+</div><div class="zoombtn">−</div></div>
+        </div>
+
+        <div class="card">
+          <div class="rs-title">Aug 2026 summary</div>
+          <div class="t1">
+            <div class="cell"><div class="v num">20</div><div class="l">Flights</div></div>
+            <div class="cell"><div class="v num">65,845</div><div class="l">Distance km</div></div>
+            <div class="cell"><div class="v num">96:15</div><div class="l">Block</div></div>
+            <div class="cell"><div class="v num">145:05</div><div class="l">Duty</div></div>
+          </div>
+          <div class="t2">
+            <div class="cell"><div class="v num">8</div><div class="l">Routes</div></div>
+            <div class="cell"><div class="v num">9</div><div class="l">Airports</div></div>
+            <div class="cell"><div class="v num">8</div><div class="l">Countries</div></div>
+          </div>
+        </div>
+
+        <div class="listhead">Routes</div>
+        <div class="rrow">
+          <div class="code">SIN</div>
+          <div class="mid"><div class="ttl">BKK → SIN</div><div class="sub2">Singapore Changi</div></div>
+          <div class="r"><div class="km num">1,417 km</div><div class="legs">2 legs</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="measure">3-up pitch <code>117.3&nbsp;pt</code> · tier 2 flush to both content edges · <b>55&nbsp;pt shorter</b> than today (197 → 142)</div>
+  </div>
+
+  <!-- ══════════════════ B · one value rail ══════════════════ -->
+  <div class="col">
+    <header>
+      <h2>B · One value rail<span class="tag">smallest diff</span></h2>
+      <p>Structure untouched — the breakdown stays three stacked label/value rows. The totals are right-aligned inside their columns, so
+         <b>every number in the card lands on one vertical rail</b> and <code>8/9/8</code> sits directly under <code>145:05</code>.
+         Cheapest change (styles only) and the most “ledger”-like, at the cost of a ragged left edge.</p>
+    </header>
+    <div class="phone">
+      <div class="statusbar"><span class="clock">11:34</span><span class="sysicons"><span class="bars"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="batt"><i></i></span></span></div>
+      <div class="navhead"><span class="chev">‹</span><span class="t">Sched Aug 2026</span><span class="chev">›</span></div>
+      <div class="wrap">
+        <div class="mapcard">
+          <svg viewBox="0 0 1000 600" preserveAspectRatio="none">
+            <g stroke="rgba(255,255,255,.10)" stroke-width="1.5">
+              <line x1="0" y1="150" x2="1000" y2="150"/><line x1="0" y1="300" x2="1000" y2="300"/>
+              <line x1="0" y1="450" x2="1000" y2="450"/><line x1="250" y1="0" x2="250" y2="600"/>
+              <line x1="500" y1="0" x2="500" y2="600"/><line x1="750" y1="0" x2="750" y2="600"/>
+            </g>
+            <g fill="rgba(255,255,255,.10)">
+              <path d="M120 170 q60 -40 120 -6 q50 30 20 70 q-60 40 -120 10 q-50 -30 -20 -74Z"/>
+              <path d="M430 140 q90 -46 190 -10 q70 26 40 76 q-90 50 -190 12 q-70 -28 -40 -78Z"/>
+              <path d="M640 330 q70 -26 120 12 q40 34 -10 74 q-70 30 -120 -10 q-40 -34 10 -76Z"/>
+            </g>
+            <g fill="none" stroke="#b2bbc1" stroke-width="2.2">
+              <path d="M180 210 Q420 120 700 300"/><path d="M180 210 Q430 240 660 250"/>
+              <path d="M180 210 Q430 330 620 430"/>
+            </g>
+            <g fill="#b2bbc1"><circle cx="700" cy="300" r="5"/><circle cx="660" cy="250" r="5"/><circle cx="620" cy="430" r="5"/></g>
+            <circle cx="180" cy="210" r="7" fill="#1f272e" stroke="#b2bbc1" stroke-width="2.5"/>
+          </svg>
+          <div class="mapbadge">BKK · BASE</div>
+          <div class="zoomcol"><div class="zoombtn">+</div><div class="zoombtn">−</div></div>
+        </div>
+
+        <div class="card">
+          <div class="rs-title">Aug 2026 summary</div>
+          <div class="t1 right">
+            <div class="cell"><div class="v num">20</div><div class="l">Flights</div></div>
+            <div class="cell"><div class="v num">65,845</div><div class="l">Distance km</div></div>
+            <div class="cell"><div class="v num">96:15</div><div class="l">Block</div></div>
+            <div class="cell"><div class="v num">145:05</div><div class="l">Duty</div></div>
+          </div>
+          <div class="rows">
+            <div class="rowline"><span class="l">Routes</span><span class="v num">8</span></div>
+            <div class="rowline"><span class="l">Airports</span><span class="v num">9</span></div>
+            <div class="rowline"><span class="l">Countries</span><span class="v num">8</span></div>
+          </div>
+        </div>
+
+        <div class="listhead">Routes</div>
+        <div class="rrow">
+          <div class="code">SIN</div>
+          <div class="mid"><div class="ttl">BKK → SIN</div><div class="sub2">Singapore Changi</div></div>
+          <div class="r"><div class="km num">1,417 km</div><div class="legs">2 legs</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="measure">one rail at <code>x=362</code> (card-local) for all 7 numbers · trailing rule removed</div>
+  </div>
+
+  <!-- ══════════════════ C · hero board ══════════════════ -->
+  <div class="col">
+    <header>
+      <h2>C · Hero board<span class="tag">most premium</span></h2>
+      <p>Totals become a 2×2 matrix with hairline dividers — enough room that <code>20</code> and <code>65,845</code> stop fighting over
+         equal columns — and the breakdown is a 3-up bar. Biggest visual upgrade; the card grows ~28&nbsp;pt, so the Routes list starts
+         lower.</p>
+    </header>
+    <div class="phone">
+      <div class="statusbar"><span class="clock">11:34</span><span class="sysicons"><span class="bars"><i></i><i></i><i></i><i></i></span><span class="wifi"></span><span class="batt"><i></i></span></span></div>
+      <div class="navhead"><span class="chev">‹</span><span class="t">Sched Aug 2026</span><span class="chev">›</span></div>
+      <div class="wrap">
+        <div class="mapcard">
+          <svg viewBox="0 0 1000 600" preserveAspectRatio="none">
+            <g stroke="rgba(255,255,255,.10)" stroke-width="1.5">
+              <line x1="0" y1="150" x2="1000" y2="150"/><line x1="0" y1="300" x2="1000" y2="300"/>
+              <line x1="0" y1="450" x2="1000" y2="450"/><line x1="250" y1="0" x2="250" y2="600"/>
+              <line x1="500" y1="0" x2="500" y2="600"/><line x1="750" y1="0" x2="750" y2="600"/>
+            </g>
+            <g fill="rgba(255,255,255,.10)">
+              <path d="M120 170 q60 -40 120 -6 q50 30 20 70 q-60 40 -120 10 q-50 -30 -20 -74Z"/>
+              <path d="M430 140 q90 -46 190 -10 q70 26 40 76 q-90 50 -190 12 q-70 -28 -40 -78Z"/>
+              <path d="M640 330 q70 -26 120 12 q40 34 -10 74 q-70 30 -120 -10 q-40 -34 10 -76Z"/>
+            </g>
+            <g fill="none" stroke="#b2bbc1" stroke-width="2.2">
+              <path d="M180 210 Q420 120 700 300"/><path d="M180 210 Q430 240 660 250"/>
+              <path d="M180 210 Q430 330 620 430"/>
+            </g>
+            <g fill="#b2bbc1"><circle cx="700" cy="300" r="5"/><circle cx="660" cy="250" r="5"/><circle cx="620" cy="430" r="5"/></g>
+            <circle cx="180" cy="210" r="7" fill="#1f272e" stroke="#b2bbc1" stroke-width="2.5"/>
+          </svg>
+          <div class="mapbadge">BKK · BASE</div>
+          <div class="zoomcol"><div class="zoombtn">+</div><div class="zoombtn">−</div></div>
+        </div>
+
+        <div class="card">
+          <div class="rs-title">Aug 2026 summary</div>
+          <div class="hero">
+            <div class="cell"><div class="v num">20</div><div class="l">Flights</div></div>
+            <div class="cell"><div class="v num">65,845</div><div class="l">Distance km</div></div>
+            <div class="cell"><div class="v num">96:15</div><div class="l">Block</div></div>
+            <div class="cell"><div class="v num">145:05</div><div class="l">Duty</div></div>
+          </div>
+          <div class="bar">
+            <div class="cell"><div class="v num">8</div><div class="l">Routes</div></div>
+            <div class="cell"><div class="v num">9</div><div class="l">Airports</div></div>
+            <div class="cell"><div class="v num">8</div><div class="l">Countries</div></div>
+          </div>
+        </div>
+
+        <div class="listhead">Routes</div>
+        <div class="rrow">
+          <div class="code">SIN</div>
+          <div class="mid"><div class="ttl">BKK → SIN</div><div class="sub2">Singapore Changi</div></div>
+          <div class="r"><div class="km num">1,417 km</div><div class="legs">2 legs</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="measure">2×2 hero <code>22&nbsp;pt</code> values · card <code>+28&nbsp;pt</code> tall vs today (197 → 225)</div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <h3>What changes in the code</h3>
+  <ul>
+    <li><b>All three:</b> <code>fontVariant:['tabular-nums']</code> on the numbers, <code>adjustsFontSizeToFit</code> dropped where the column
+        is wide enough, and the last row’s redundant bottom border removed (today the card ends on a rule).</li>
+    <li><b>A:</b> <code>StatsCard</code>’s <code>statsRows</code> stack becomes a 3-up flex row inside the same <code>padding:14</code> box as the totals.
+        No new data — <code>monthStats()</code> already returns <code>routes/airports/countries</code>.</li>
+    <li><b>B:</b> style-only: <code>statsCell</code> + <code>statsRowLabel</code>/<code>statsRowValue</code> become right-aligned. No JSX change.</li>
+    <li><b>C:</b> <code>statsGrid</code> becomes a 2-column grid; the 3 counts move into a bar; the map card may drop 12–16&nbsp;pt to keep
+        the first route row above the dock.</li>
+    <li><b>A+ (optional, needs your call):</b> add a 4th count — <code>Legs</code>, already computable as the sum of
+        <code>monthRoutes().legs</code> — so both tiers share the <i>identical</i> 4-column grid and the numbers stack in perfect vertical
+        columns. It is a new metric on the card, so it is a product decision, not a layout one.</li>
+  </ul>
+  <h3>Notes for whoever implements</h3>
+  <ul>
+    <li><b>Why your screenshot looks bigger than the file:</b> every size in it measures ≈1.13× its token — totals digit height 13.3&nbsp;pt
+        (≈19&nbsp;pt type) vs the <code>16</code> in <code>RouteMapView.tsx</code>, labels 8&nbsp;pt cap vs <code>10</code>. That is iOS
+        Larger&nbsp;Text / Dynamic&nbsp;Type, not a different build; I reproduced the same screen on the sim today and it matches the file.
+        The mock uses the file’s numbers. Note the 4-up row still needs <code>adjustsFontSizeToFit</code> for a scaled-up
+        <code>DISTANCE KM</code> column.</li>
+    <li>Variant A/B/C all keep the same <code>testID="route-stats"</code> and the same 7 values, so the Maestro assertions
+        (<code>sched_07_route_stats</code>) stay valid; only the layout changes.</li>
+  </ul>
+</div>
+
+<script>
+  const body = document.body;
+  document.querySelectorAll('.toolbar button.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.toolbar button.chip').forEach(b => b.setAttribute('aria-pressed', 'false'));
+      btn.setAttribute('aria-pressed', 'true');
+      body.className = body.className.replace(/theme-\w+/g, '').trim() + ' theme-' + btn.dataset.theme;
+    });
+  });
+
+  // Guides: column rails for tier 1 (4 columns), tier 2 (3-up bar), plus the single
+  // value rail every number in the card is supposed to sit on.
+  //
+  // Coordinates are measured from the card's PADDING box (an absolutely positioned
+  // child's containing block), so:
+  //   content left  = 14 (card padding)
+  //   content width = 420 - 2*22 (page padding) - 2*1 (card border) - 2*14 (card padding) = 346
+  //   content right = 14 + 346 = 360   ← the value rail
+  const GAP = 8, CONTENT_LEFT = 14, CONTENT_W = 346;
+  const rail = (n, i) => CONTENT_LEFT + ((CONTENT_W - GAP * (n - 1)) / n + GAP) * i;
+  document.querySelectorAll('.phone').forEach(phone => {
+    const card = phone.querySelector('.card');
+    if (!card) return;
+    const mk = (cls, left) => {
+      const d = document.createElement('div');
+      d.className = cls;
+      d.style.left = left + 'px';
+      card.appendChild(d);
+    };
+    for (let i = 1; i < 4; i++) mk('col-guide', rail(4, i));       // tier 1 · 4 columns
+    if (phone.querySelector('.t2') || phone.querySelector('.bar')) {
+      for (let i = 1; i < 3; i++) mk('col-guide', rail(3, i));     // tier 2 · 3-up bar
+    }
+    mk('rail', CONTENT_LEFT + CONTENT_W);                          // the one value rail
+  });
+
+  document.getElementById('guides').addEventListener('change', e => {
+    document.body.classList.toggle('guides', e.target.checked);
+  });
+</script>
+</body>
+</html>
