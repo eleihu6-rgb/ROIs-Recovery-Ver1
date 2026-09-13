@@ -52,6 +52,11 @@ New first phase before the existing `planning` phase.
 ### 3.3 Phase `planned` (review)
 Existing trace list stays. Add above it a **per-crew outcome table**: one row per duty type with `assigned / existing / period max` and the worst rolling-window status (`ok`, `min unmet in N windows`, `max hit`). Windows that miss a min are listed under the row as warning chips (`Sep 08–14: 0 FLY`). Footer: Cancel · **Apply to gantt (n)**. Apply is enabled whenever n > 0.
 
+Below the outcome table (mock: **"September at a glance"**): a one-cell-per-day month strip in crew-base
+local days, tinted by duty group (FLY / RES / DO, legend + a `free` swatch). Planned adds are solid;
+duties **already on the roster are outlined**. Backed by `crew.glance` from the planner (see §4), so the
+strip needs no frontend timezone maths and stays source-neutral.
+
 ### 3.4 Phase `applying` / `done`
 Unchanged replay driver, extended so a DO step dispatches the `add-ground-task` draft op instead of `assign-pairing`.
 
@@ -128,6 +133,12 @@ Decisions that changed or were added while making the ADD and DXB runs pass on h
 - **RES catalogue.** `RES` has no `assignment_group` master row; the duty-groups endpoint unions groups present on open pairings.
 - **Replay failures are visible.** The dialog lists steps skipped on replay with the reason; the e2e asserts that list is empty.
 - **Legacy specs.** J4001/J4002/J4006/J4007 now configure FLY-only with no limits before Analyse (legacy shape) and reset the crew's September first; R'Bot spec waits longer for the three-pass plan.
+- **Month strip restored (2026-09-12).** The mock's "September at a glance" strip was in the design but
+  missed by the first build; it is back as `crew.glance` (planner-emitted base-local cells: `{day, group,
+  existing}`) + the review-step strip in `auto-assign-dialog.tsx`. Existing duties are outlined
+  (`ring-1 ring-inset ring-foreground/70`), planned adds are tinted (FLY `bg-primary`, RES `bg-violet-500`,
+  DO `bg-slate-400`); verified in the ADD and DXB e2e by cell `data-group`/`data-existing` + a
+  browser-computed-colour check, plus an element screenshot `auto-assign-duties-{add,dxb}-glance-Ver2.png`.
 - **Environment traps hit today** (not code): `rule-engine-rs/target` was a self-referential symlink (all sync roster mutations 500) and `e2e/node_modules/@playwright` was a symlink into a subagent sandbox. Both fixed; see memory `env-traps-ruletool-symlink-and-e2e-playwright`.
 
 Validation receipts: `e2e/tests/gantt/auto-assign-duties.spec.ts` (ADD J4020/J4021/J4022 PASS, DXB K1001/K1002/K1003 PASS), legacy J4001/J4002/J4006/J4007/R'Bot PASS (workers=1), Vitest 16/16, `npm run check:ui` PASS. Screenshots: `docs/assets/screenshots/gantt/auto-assign-duties-{add,dxb}-{configure,analyse,applied}-Ver1.png`.

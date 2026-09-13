@@ -342,6 +342,13 @@ describe('planAutoAssign', () => {
     expect(plan.crews[0].outcome).toEqual([])
     expect(plan.crews[0].assignedGround).toEqual([])
     expect(plan.crews[0].assigned.map((a) => a.pairingId)).toEqual([151528, 151540])
+    // Month strip: legacy pairings paint as plain FLY days (base-local), not "existing".
+    expect(plan.crews[0].glance.map((g) => [g.day, g.group, g.existing])).toEqual([
+      ['2026-09-11', 'FLY', false],
+      ['2026-09-12', 'FLY', false],
+      ['2026-09-13', 'FLY', false],
+      ['2026-09-14', 'FLY', false],
+    ])
   })
 
   it('(h) FLY every-7-days max blocks the second pairing in the same rolling window', async () => {
@@ -399,6 +406,7 @@ describe('planAutoAssign', () => {
         endDtUtc: '2026-09-16T20:59:59.000Z',
       },
     ])
+    expect(crew.glance).toContainEqual({ day: '2026-09-16', group: 'DO', existing: false })
     expect(crew.steps.some((s) => s.kind === 'ground')).toBe(true)
     // The DO went through the engine together with the FLY survivors.
     const lastCall = (deps.runLegality as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[1] as { afterItems: PreviewRosterItem[] }
@@ -417,6 +425,8 @@ describe('planAutoAssign', () => {
     const plan = await planAutoAssign(fakeFastify, { ...weekInput, dutyTypes: [{ group: 'DO', every7Min: 1 }] }, deps)
     expect(plan.crews[0].assignedGround).toEqual([])
     expect(plan.crews[0].outcome[0]).toMatchObject({ group: 'DO', existing: 1, assigned: 0, windows: [{ count: 1, minUnmet: false }] })
+    // The pre-existing DO row paints as an outlined (existing) day on the strip.
+    expect(plan.crews[0].glance).toContainEqual({ day: '2026-09-15', group: 'DO', existing: true })
   })
 
   it('(m) DO min stays unmet (warning step) when every day is occupied', async () => {

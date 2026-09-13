@@ -51,6 +51,26 @@ const countDays = (from: string, to: string): number =>
 
 const isYmd = (v: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(v)
 
+/** Inclusive list of YYYY-MM-DD days from → to (UTC arithmetic, day-granular). */
+const daysInRange = (from: string, to: string): string[] => {
+  if (!isYmd(from) || !isYmd(to) || from > to) return []
+  const out: string[] = []
+  for (let ms = Date.parse(`${from}T00:00:00Z`); ms <= Date.parse(`${to}T00:00:00Z`); ms += 86_400_000) {
+    out.push(new Date(ms).toISOString().slice(0, 10))
+  }
+  return out
+}
+
+/** Month-strip paint per duty group; unknown groups fall back to a muted tint. */
+const GLANCE_TINT: Record<string, string> = {
+  FLY: 'bg-primary',
+  FLT: 'bg-primary',
+  RES: 'bg-violet-500',
+  SBY: 'bg-sky-500',
+  DO: 'bg-slate-400',
+}
+const glanceTint = (group: string): string => GLANCE_TINT[group.toUpperCase()] ?? 'bg-muted-foreground/60'
+
 /**
  * Auto-assign Duties — the visible "brain + hands" flow.
  *
@@ -194,6 +214,12 @@ export const AutoAssignDialog = () => {
   const appliedCount = replayLog.filter((s) => s.ok).length
   const nDays = isYmd(from) && isYmd(to) && from <= to ? countDays(from, to) : 0
   const nWindows = nDays <= 7 ? (nDays > 0 ? 1 : 0) : nDays - 6
+  const glanceDays = daysInRange(from, to)
+  const glanceMonth =
+    glanceDays.length > 0 && from.slice(0, 7) === to.slice(0, 7)
+      ? new Date(`${from}T00:00:00Z`).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })
+      : null
+  const glanceTitle = glanceMonth ? `${glanceMonth} at a glance` : 'Range at a glance'
 
   const footer =
     phase === 'configure' ? (
@@ -431,6 +457,8 @@ export const AutoAssignDialog = () => {
           <div className="min-h-0 flex-1 space-y-2 overflow-auto" data-testid="auto-assign-trace">
             {plan.crews.map((crew) => {
               const unmet = crew.steps.filter((s) => s.kind === 'unmet')
+              const glance = crew.glance ?? []
+              const glanceGroups = [...new Set(glance.map((g) => g.group))]
               return (
                 <div key={crew.crewId} className="rounded-md border border-border" data-testid="auto-assign-crew">
                   <div className="flex items-center justify-between border-b border-border bg-muted/60 px-2 py-1">
@@ -517,6 +545,55 @@ export const AutoAssignDialog = () => {
                           <span className="font-mono tabular-nums">{w.ruleCode}</span> · {w.message}
                         </span>
                       ))}
+                    </div>
+                  )}
+
+                  {/* "<month> at a glance" — one cell per base-local day in range */}
+                  {glanceDays.length > 0 && (
+                    <div className="border-t border-border px-2 py-1.5" data-testid={`auto-assign-glance-${crew.crewId}`}>
+                      <div className="flex items-center gap-1.5 text-2xs font-medium">
+                        <CalendarDays className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        {glanceTitle}
+                        <span className="ml-auto font-normal text-muted-foreground">outlined = already on roster</span>
+                      </div>
+                      <div
+                        className="mt-1 grid gap-px"
+                        style={{ gridTemplateColumns: `repeat(${glanceDays.length}, minmax(0, 1fr))` }}
+                      >
+                        {glanceDays.map((d) => {
+                          const cell = glance.find((g) => g.day === d)
+                          return (
+                            <i
+                              key={d}
+                              title={cell ? `${d} · ${cell.group}${cell.existing ? ' · already on roster' : ''}` : `${d} · free`}
+                              data-testid={`auto-assign-glance-cell-${crew.crewId}-${d.slice(8)}`}
+                              data-group={cell?.group ?? ''}
+                              data-existing={cell?.existing ? 'true' : 'false'}
+                              className={`h-3.5 rounded-sm ${cell ? glanceTint(cell.group) : 'bg-muted'} ${cell?.existing ? 'ring-1 ring-inset ring-foreground/70' : ''}`}
+                            />
+                          )
+                        })}
+                      </div>
+                      <div
+                        className="mt-0.5 grid gap-px font-mono text-3xs tabular-nums text-muted-foreground"
+                        style={{ gridTemplateColumns: `repeat(${glanceDays.length}, minmax(0, 1fr))` }}
+                      >
+                        {glanceDays.map((d) => (
+                          <span key={d} className="text-center">{Number(d.slice(8))}</span>
+                        ))}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-3xs text-muted-foreground">
+                        {glanceGroups.map((g) => (
+                          <span key={g} className="inline-flex items-center gap-1">
+                            <i className={`h-2.5 w-2.5 rounded-sm ${glanceTint(g)}`} />
+                            {g}
+                          </span>
+                        ))}
+                        <span className="inline-flex items-center gap-1">
+                          <i className="h-2.5 w-2.5 rounded-sm bg-muted" />
+                          free
+                        </span>
+                      </div>
                     </div>
                   )}
 

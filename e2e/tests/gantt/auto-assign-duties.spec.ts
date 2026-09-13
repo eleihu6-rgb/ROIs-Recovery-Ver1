@@ -21,7 +21,7 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import { GanttDashboardPage } from '../../pages/gantt/gantt-dashboard-page'
 import {
   applyFilterLight,
@@ -57,6 +57,7 @@ interface PlanResponse {
     base: string
     assigned: Array<{ pairingId: number; group?: string; label: string }>
     assignedGround: Array<{ group: string; assignment: string; day: string; startDtUtc: string; endDtUtc: string }>
+    glance: Array<{ day: string; group: string; existing: boolean }>
     outcome: Array<{
       group: string
       existing: number
@@ -231,9 +232,45 @@ const runFor = (base: 'ADD' | 'DXB', crewIds: string[], expectedResPool: number,
       if (c!.warnings.length > 0) {
         await expect(dialog.getByTestId(`auto-assign-warnings-${crewId}`)).toContainText(c!.warnings[0].ruleCode)
       }
+
+      // "<month> at a glance" — one cell per base-local day, painted from the plan:
+      // existing duties outlined, planned adds solid. Every planned duty must be
+      // visible on the strip (the whole point of the review step).
+      const glance = dialog.getByTestId(`auto-assign-glance-${crewId}`)
+      await glance.scrollIntoViewIfNeeded()
+      await expect(glance).toContainText('September at a glance')
+      await expect(glance.getByTestId(/^auto-assign-glance-cell-/)).toHaveCount(30)
+      expect(c!.glance.length, `${crewId} paints its existing + planned duty days`).toBeGreaterThan(0)
+      for (const g of c!.glance) {
+        const cell = glance.getByTestId(`auto-assign-glance-cell-${crewId}-${g.day.slice(8)}`)
+        await expect(cell).toHaveAttribute('data-group', g.group)
+        await expect(cell).toHaveAttribute('data-existing', g.existing ? 'true' : 'false')
+      }
+      for (const g of c!.assignedGround) {
+        await expect(glance.getByTestId(`auto-assign-glance-cell-${crewId}-${g.day.slice(8)}`), `${crewId} DO ${g.day} is on the strip`).toHaveAttribute('data-group', 'DO')
+      }
+      // Real-browser paint check: every planned duty group gets an opaque tint that
+      // differs from a free day, and existing duties carry the outline ring.
+      const bg = (cell: Locator) => cell.evaluate((el) => getComputedStyle(el).backgroundColor)
+      const freeDay = glance.locator('[data-group=""]').first()
+      const freeBg = (await freeDay.count()) > 0 ? await bg(freeDay) : null
+      for (const group of new Set(c!.glance.map((g) => g.group))) {
+        const painted = glance.locator(`[data-group="${group}"]`).first()
+        const paintedBg = await bg(painted)
+        expect(paintedBg, `${crewId} ${group} cells are tinted, not blank`).not.toBe(freeBg)
+        expect(paintedBg, `${crewId} ${group} tint is opaque`).not.toMatch(/rgba?\([^)]*,\s*0\)$/)
+      }
+      const existingCell = glance.locator('[data-existing="true"]').first()
+      if ((await existingCell.count()) > 0) {
+        await expect(existingCell).not.toHaveCSS('box-shadow', 'none')
+      }
     }
     await expect(dialog.getByTestId('auto-assign-crew')).toHaveCount(crewIds.length)
     await expect(dialog.getByTestId('auto-assign-summary')).toContainText(`${plan.summary.assignedTotal} to assign`)
+    // Sheet the month strip for the record, then restore the top for the overview shot.
+    await dialog.getByTestId(`auto-assign-glance-${crewIds[0]}`).scrollIntoViewIfNeeded()
+    await dialog.getByTestId(`auto-assign-glance-${crewIds[0]}`).screenshot({ path: shot(`${tag}-glance`) })
+    await dialog.getByTestId('auto-assign-trace').evaluate((el) => { el.scrollTop = 0 })
     await page.screenshot({ path: shot(`${tag}-analyse`) })
 
     // ── Apply → draft ops → Save ──────────────────────────────────────────────

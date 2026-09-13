@@ -59,6 +59,14 @@ export interface AutoAssignAssignedGround {
   endDtUtc: string
 }
 
+/** One day cell of the review step's "<month> at a glance" strip (crew-base local). */
+export interface AutoAssignGlanceCell {
+  day: string
+  group: string
+  /** True = already on the roster (rendered outlined); false = planned by this run. */
+  existing: boolean
+}
+
 export interface AutoAssignSkipped {
   pairingId: number
   label: string
@@ -100,6 +108,8 @@ export interface AutoAssignCrewPlan {
   assigned: AutoAssignAssigned[]
   assignedGround: AutoAssignAssignedGround[]
   skipped: AutoAssignSkipped[]
+  /** Per-day month strip: existing duties + planned adds, in base-local days. */
+  glance: AutoAssignGlanceCell[]
   outcome: AutoAssignDutyOutcome[]
   /** Soft violations kept on purpose (accepted by the dispatcher at Apply). */
   warnings: AutoAssignPlanWarning[]

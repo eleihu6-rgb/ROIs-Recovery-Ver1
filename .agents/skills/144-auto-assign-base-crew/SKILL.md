@@ -143,3 +143,17 @@ Design: `docs/superpowers/specs/2026-09-12-auto-assign-duties-design.md` (+ §9 
 - `POST /api/roster/auto-assign/plan` accepts `dutyTypes[]`; omitted ⇒ legacy single FLY pass with no limits (R'Bot `auto_assign_pairings` and the J400x specs use that shape, configured in the dialog by removing RES/DO rows and clearing the FLY limits).
 - Planner rules: rolling 7-day windows (max-gap min), existing roster counts, FLY first → RES (base + division, fleet ignored) → DO (latest free base-local day), free-day reservation for ground minima (`reserve-day` skip), cross-crew slot tracking (`no-slot … already taken by an earlier crew`), FLY row pool = FLY+FLT family.
 - Tests: `live-server/tests/unit/auto-assign-service.test.ts` cases (g)–(p); `e2e/tests/gantt/auto-assign-duties.spec.ts` (ADD J4020–J4022, DXB K1001–K1003; DXB RES seeded by `res-pairing-dxb-sep2026-seed.spec.ts`). Run e2e from `e2e/` with `--workers=1` against the tunnel; parallel workers starve the gantt ("panes never showed objects").
+
+### 2026-09-12 (later) — "at a glance" month strip restored
+The review step now renders the mock's **"<month> at a glance"** strip that the first build missed: one
+cell per base-local day, tinted by duty group (FLY `bg-primary`, RES `bg-violet-500`, DO `bg-slate-400`,
+`bg-muted` = free) with **existing roster duties outlined** (`ring-1 ring-inset ring-foreground/70`).
+- Data: `crew.glance: {day, group, existing}[]` emitted by the planner (base-local; existing painted first,
+  then planned adds) — `auto-assign-service.ts` `paint(...)`; no frontend tz maths.
+- UI: `auto-assign-dialog.tsx` (per-crew block, between the outcome table/warnings and the decision trace),
+  `data-testid` `auto-assign-glance-<crew>` / `auto-assign-glance-cell-<crew>-<DD>` + `data-group`/`data-existing`.
+- Proof: unit cases (g)/(k)/(l) assert the cells; the duties e2e asserts 30 cells + `data-group`/`data-existing`
+  parity with the plan and that painted cells are opaque and differ from a free day. Screenshots
+  `docs/assets/screenshots/gantt/auto-assign-duties-{add,dxb}-glance-Ver2.png` (element capture of the strip).
+- Open gap: there is still no in-app Help topic for Auto-assign Duties (pre-existing; the feature is only in
+  the roster context menu).

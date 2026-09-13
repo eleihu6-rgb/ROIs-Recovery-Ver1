@@ -95,6 +95,20 @@ export interface AssignedGround {
   endDtUtc: string
 }
 
+/**
+ * One day cell of the dialog's "<month> at a glance" strip: the crew-base local
+ * day, the duty group painted on it, and whether that duty was already on the
+ * roster before this plan (rendered outlined) or is one of the planned adds.
+ */
+export interface GlanceCell {
+  /** Base-local calendar day (YYYY-MM-DD). */
+  day: string
+  /** Duty group painted on the day (FLY | RES | DO | …). */
+  group: string
+  /** True = already on the roster; false = added by this plan. */
+  existing: boolean
+}
+
 export type StepKind = 'filter' | 'consider' | 'skip' | 'assign' | 'ground' | 'unmet'
 export type SkipReason = 'overlap' | 'no-slot' | 'rule' | 'period-max' | 'every7-max' | 'reserve-day'
 
@@ -146,6 +160,8 @@ export interface CrewPlan {
   /** Ground duties (DO, ...) to create via add-ground-task, in plan order. */
   assignedGround: AssignedGround[]
   skipped: Skipped[]
+  /** Per-day month strip (base-local): existing duties + planned adds. */
+  glance: GlanceCell[]
   /** Per duty-type accounting vs the configured limits (empty on the legacy path). */
   outcome: DutyOutcome[]
   /**
@@ -694,6 +710,7 @@ const planForCrew = async (
       assigned: [],
       assignedGround: [],
       skipped,
+      glance: [],
       outcome: [],
       warnings: [],
       summary: { assignedCount: 0, skippedCount: 0, blockMinutes: 0 },
@@ -737,6 +754,18 @@ const planForCrew = async (
     existingCount.set(t.group, 0)
   }
 
+  /**
+   * "<month> at a glance" strip — one cell per base-local day in range. Existing
+   * roster duties are painted first (outlined in the UI); planned adds fill the
+   * remaining free days. Keyed by day so a day carries exactly one duty.
+   */
+  const glanceCells = new Map<string, GlanceCell>()
+  const paint = (startMs: number, endMs: number, group: string, existing: boolean): void => {
+    for (const d of spanDays(startMs, endMs)) {
+      if (dayIndex.has(d) && !glanceCells.has(d)) glanceCells.set(d, { day: d, group, existing })
+    }
+  }
+
   // Seed occupancy + per-type counters from the existing running roster.
   const existing = await deps.fetchExistingRoster(
     fastify,
@@ -750,6 +779,11 @@ const planForCrew = async (
     const e = toMs(it.schEndDtUtc)
     if (s == null || e == null) continue
     occupy(s, e)
+    // Paint the existing duty's days on the strip before any planned add.
+    const gEx = (it.assignmentGroup ?? '').toUpperCase()
+    const aEx = (it.assignment ?? '').toUpperCase()
+    const exGroup = dutyTypes.find((d) => d.group === gEx || d.group === aEx)?.group ?? (it.pairingId != null ? 'FLY' : aEx || gEx)
+    if (exGroup) paint(s, e, exGroup, true)
     if (legacy) continue
     // One occurrence per pairing (roster_flight is crew×segment), one per ground row.
     if (it.pairingId != null) {
@@ -1129,6 +1163,10 @@ const planForCrew = async (
   const assignedGround: AssignedGround[] = []
   for (const a of fixed) {
     if (a.cand) {
+      const grp = a.group === LEGACY_GROUP ? 'FLY' : a.group
+      const startMs = toMs(a.cand.schStr)
+      const endMs = toMs(a.cand.schEnd)
+      if (startMs != null && endMs != null) paint(startMs, endMs, grp, false)
       assigned.push({
         pairingId: a.cand.id,
         group: tag(a.group),
@@ -1141,6 +1179,9 @@ const planForCrew = async (
       steps.push({ kind: 'assign', group: tag(a.group), pairingId: a.cand.id, label: a.cand.label, rank: a.actingRank, startDt: toIso(a.cand.schStr), endDt: toIso(a.cand.schEnd) })
     } else if (a.ground) {
       assignedGround.push(a.ground)
+      if (dayIndex.has(a.ground.day) && !glanceCells.has(a.ground.day)) {
+        glanceCells.set(a.ground.day, { day: a.ground.day, group: a.ground.group, existing: false })
+      }
     }
   }
 
@@ -1178,6 +1219,7 @@ const planForCrew = async (
     assigned,
     assignedGround,
     skipped,
+    glance: [...glanceCells.values()].sort((x, y) => (x.day < y.day ? -1 : x.day > y.day ? 1 : 0)),
     outcome,
     warnings,
     summary: { assignedCount: assigned.length + assignedGround.length, skippedCount: skipped.length, blockMinutes: blockTotal },
