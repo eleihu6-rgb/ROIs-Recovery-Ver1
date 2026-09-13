@@ -41,6 +41,10 @@ const PUBLIC_EXACT_ROUTES = [
   { method: 'POST', path: '/api/crew-app/v1/notifications' },
   { method: 'POST', path: '/api/crew-app/v1/notifications/:notifId/read' },
   { method: 'POST', path: '/api/crew-app/v1/absence' },
+  // The crew's own submitted absence history (same body-credential pattern).
+  { method: 'POST', path: '/api/crew-app/v1/absences' },
+  { method: 'POST', path: '/api/crew-app/v1/discretion/:discretionId' },
+  { method: 'POST', path: '/api/crew-app/v1/discretion/:discretionId/decision' },
 ]
 
 /**

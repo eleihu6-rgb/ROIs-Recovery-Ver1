@@ -56,7 +56,7 @@ const feed = {
 
 const buildApp = async () => {
   const app = Fastify()
-  app.decorate('pgPool', { query: vi.fn() } as never)
+  app.decorate('pgPool', { query: vi.fn().mockResolvedValue({ rows: [] }) } as never)
   await app.register(authPlugin)
   await app.register(crewNotifyRoutes, { prefix: '/api/crew-app/v1' })
   return app
@@ -124,7 +124,7 @@ describe('POST /api/crew-app/v1/notifications', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/crew-app/v1/notifications',
-      payload: { ...credentials, airline: 'EK' },
+      payload: { ...credentials, airline: 'TG' },
     })
 
     expect(response.statusCode).toBe(200)
@@ -168,5 +168,29 @@ describe('POST /api/crew-app/v1/notifications/:notifId/read', () => {
 
     expect(response.statusCode).toBe(404)
     expect(response.json()).toMatchObject({ code: 404, data: null })
+  })
+})
+
+describe('FDP request authentication boundaries', () => {
+  afterEach(() => vi.resetAllMocks())
+  it('never exposes controller send or feedback without JWT', async () => {
+    const app = await buildApp()
+    for (const [method, url] of [
+      ['POST', '/api/crew-app/v1/discretion-requests'],
+      ['GET', '/api/crew-app/v1/discretion-requests/11111111-1111-4111-8111-111111111111'],
+      ['GET', '/api/crew-app/v1/discretion-duty/1/1'],
+    ] as const) {
+      expect((await app.inject({ method, url })).statusCode).toBe(401)
+    }
+    await app.close()
+  })
+  it('crew decision routes require verified credentials even without JWT', async () => {
+    mobileRosterService.verifyMobileCrewCredentials.mockRejectedValue(new mobileRosterService.MobileRosterServiceError(401, 'Invalid credentials'))
+    const app = await buildApp()
+    const url = '/api/crew-app/v1/discretion/11111111-1111-4111-8111-111111111111'
+    expect((await app.inject({ method: 'POST', url, payload: credentials })).statusCode).toBe(401)
+    expect((await app.inject({ method: 'POST', url: `${url}/decision`, payload: { ...credentials, decision: 'accept', idempotencyKey: 'attempt' } })).statusCode).toBe(401)
+    expect(mobileRosterService.verifyMobileCrewCredentials).toHaveBeenCalledTimes(2)
+    await app.close()
   })
 })

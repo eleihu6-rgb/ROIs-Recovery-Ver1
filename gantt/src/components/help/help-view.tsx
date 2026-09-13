@@ -40,6 +40,8 @@ const TOPIC_MAP: Record<string, ComponentType> = {
   'recovery-104': lazy(() => import('./topics/recovery/recovery-104')),
   'recovery-costs': lazy(() => import('./topics/recovery/recovery-costs')),
   'recovery-case-001': lazy(() => import('./topics/recovery/recovery-case-001')),
+  'recovery-case-002': lazy(() => import('./topics/recovery/recovery-case-002')),
+  'recovery-case-003': lazy(() => import('./topics/recovery/recovery-case-003')),
   // Scenario
   'scenario-overview': lazy(() => import('./topics/scenario/scenario-overview')),
   'scenario-browse':   lazy(() => import('./topics/scenario/scenario-browse')),

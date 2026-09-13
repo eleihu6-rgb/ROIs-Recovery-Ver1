@@ -239,15 +239,15 @@ export const SharedRosterPane = ({
   useEffect(() => {
     if (!isLive || livePaneType !== 'roster-main') return
     const onRecoveryOpen = (event: Event) => {
-      const snapshot = (event as CustomEvent<RecoveryAlertSnapshot>).detail
-      // Accept every alert type the Recovery trigger owns: 8004 (aircraft
-      // qualification) and 1001 (Assignment Overlap). Restricting this to 8004
-      // silently dropped the newer entry points (Roster context menu + hover
-      // tooltip), so the menu item appeared but no dialog opened.
-      if (!snapshot || snapshot.pairingId == null || recoveryTriggerFor(snapshot.ruleCode) == null) return
+      const detail = (event as CustomEvent<RecoveryAlertSnapshot | RecoveryAlertSnapshot[]>).detail
+      const snapshots = (Array.isArray(detail) ? detail : detail ? [detail] : [])
+        .filter((snapshot) => snapshot.pairingId != null && recoveryTriggerFor(snapshot.ruleCode) != null)
+      // Accept every alert type Recovery trigger owns: 8004 (aircraft
+      // qualification), 1001 (Assignment Overlap), and 3007 published delay.
+      if (snapshots.length === 0) return
       setAlertCenterOpen(false)
       setCrewBellCrewId(null)
-      setRecoveryAlert([snapshot])
+      setRecoveryAlert(snapshots)
     }
     window.addEventListener('recovery:open', onRecoveryOpen)
     return () => window.removeEventListener('recovery:open', onRecoveryOpen)
@@ -260,7 +260,7 @@ export const SharedRosterPane = ({
         recoveryTriggerFor(candidate.ruleCode) != null && candidate.pairingId != null && candidate.canRecover === true,
       )
       if (recoverableRows.length === 0) {
-        notify.info('No recoverable 8004 or Assignment Overlap (1001) alert in the loaded Live data.')
+        notify.info('No recoverable 8004, Assignment Overlap (1001) or Published Delay (3007) alert in the loaded Live data.')
         return
       }
       setAlertCenterOpen(false)
@@ -270,6 +270,7 @@ export const SharedRosterPane = ({
         ruleCode: row.ruleCode,
         severity: row.severity,
         crewId: row.crewId,
+        affectedCrewIds: row.affectedCrewIds,
         pairingId: row.pairingId!,
         flightDate: row.flightDate ?? '—',
         flightNumber: row.flightNumber ?? '—',
@@ -422,6 +423,7 @@ export const SharedRosterPane = ({
       ruleCode: row.ruleCode,
       severity: row.severity,
       crewId: row.crewId,
+      affectedCrewIds: row.affectedCrewIds,
       pairingId: row.pairingId!,
       flightDate: row.flightDate ?? '—',
       flightNumber: row.flightNumber ?? '—',

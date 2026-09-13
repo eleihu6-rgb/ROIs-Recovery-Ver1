@@ -1,0 +1,51 @@
+{
+  "groups": [
+    {
+      "label": "Ethiopia / ADD / 788 (Case 3)",
+      "idPrefix": "L",
+      "idStart": 3001,
+      "count": 10,
+      "caCount": 5,
+      "nationality": "ET",
+      "filiale": "F8",
+      "emplBaseDate": "2024-01-08",
+      "base": {
+        "code": "ADD",
+        "name": "Bole International Airport",
+        "icao": "HAAB",
+        "city": "ADD",
+        "dir": "I",
+        "zoneId": "Africa/Addis_Ababa",
+        "utcOffsetMin": 180,
+        "country": "ET"
+      },
+      "fleet": {
+        "code": "788",
+        "description": "Boeing 787-8",
+        "fleetGrp": "B787",
+        "acType": "788",
+        "marketAcType": "Boeing 787-8 Dreamliner",
+        "restfacility": 0,
+        "body": "W"
+      },
+      "ranks": {
+        "CA": { "code": "CA", "division": "P", "description": "Captain", "position": "CA" },
+        "FO": { "code": "FO", "division": "P", "description": "First Officer", "position": "FO" }
+      },
+      "names": {
+        "maleFirst": [
+          "Abebe", "Dawit", "Eyob", "Fikru", "Girma", "Hailu", "Iyasu", "Kebede",
+          "Lemma", "Mulugeta", "Negasi", "Obsa", "Petros", "Samuel", "Tesfaye"
+        ],
+        "femaleFirst": [
+          "Selam", "Tigist", "Hana", "Meron", "Rahel", "Sara", "Eden", "Lidya",
+          "Mahlet", "Betelhem", "Fikirte", "Genet"
+        ],
+        "last": [
+          "Tesfaye", "Alemu", "Assefa", "Desta", "Gebre", "Lemma", "Negash",
+          "Tesema", "Worku", "Yohannes", "Zeleke", "Hunde", "Bekele", "Getachew"
+        ]
+      }
+    }
+  ]
+}

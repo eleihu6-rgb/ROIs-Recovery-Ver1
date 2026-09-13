@@ -1,14 +1,142 @@
 ---
 name: 145-crew-recovery-case-study
-description: Build and test repeatable crew recovery demo cases, record detailed UI evidence, publish Gantt Help case studies, and restore the demo baseline.
+description: Prepare and test crew recovery cases for unavailability, flight delay and related disruptions; select applicable recovery approaches, isolate fixtures, record UI evidence, publish supported Help and restore baselines.
 ---
 
 # Crew recovery case studies
 
-Use this skill when documenting a concrete crew-unavailable/recovery incident for
+Use this skill when preparing or documenting a concrete crew-unavailable, flight-delay or related recovery incident for
 Gantt Help, especially when the case must be reproduced through the real mobile
 crew UI and the real controller/Recovery UI. This is a case-study workflow, not
 a generic recovery explanation and not permission to mutate unrelated roster data.
+
+## Choose the approach from the incident
+
+Establish the disruption's effective time, crew's physical location, flown versus
+future legs, complete duty/report history, qualification and seat requirements,
+previous/following rest, and all linked crews/pairings before choosing a method.
+Distinguish the operational trigger from a recovery action: publishing a delay
+that creates FDP exceedance is different from delaying a flight to clear an overlap.
+
+| Incident | Approaches to evaluate | Decisive constraints |
+|---|---|---|
+| Before-report illness/no-show | Standby, available-crew move-up, delay with a qualified replacement, cancellation | Keep source assignments for the approved SL/1001 workflow. An unavailable crew cannot receive the donor duty during the absence; a move-up may need a third crew or leave an explicit vacancy. |
+| Qualification expiry/mismatch | Qualified replacement, compatible duty swap, positioned replacement | Verify effective qualifications and rank on every received segment. An enabled button or soft fleet warning does not prove compliance. |
+| Published delay before departure | Discretion where permitted, standby, compatible swap, cancellation | Recompute complete FDP and downstream rest using the revised estimate. Both crews must be at the handover location and legal for their received duties. |
+| Outstation delay/AOG or illness after departure | Local ready reserve/donor, positioned replacement, eligible rest/split-duty plan, cancellation/release | Preserve flown legs. Include positioning time/duty and connections; home-base reserve is not local reserve. Do not exchange already-operated complete pairings. |
+| Extended ground hold | Split duty or delayed reporting only where the applicable rules allow; replacement/cancellation | Verify qualifying break, facilities, notice and actual report history. A long wait is not automatically rest or an FDP reset. |
+| Diversion/misconnection | Future-leg reassignment, positioning, revised connection, cancellation/release | Use actual arrival airport/time, minimum connections and remaining FDP; protect the operated history and evaluate donor coverage. |
+| Stranding/pay-protected release | Release with onward recovery/transport/accommodation as needed | Validate governing contract/pay policy separately from roster legality. A roster removal or GH estimate does not establish pay protection or a booking. |
+
+These are evaluation routes, not claims that each is implemented. Inspect current
+UI/service support and the active governing rules before promising execution.
+Record rejected strategies with reasons; do not force a narrative's fixed number
+of feasible candidates. Discretion cannot exceed the legally permitted extended
+limit even with consent. Augmentation requires the applicable staffing, facilities
+and rule conditions; extra crew or a later departure alone does not establish it.
+
+Distinguish **swap** (two-way future-duty exchange) from **move-up** (replacement
+with donor coverage handled separately). Show all removed/received duties, required
+seats, and residual vacancies. Legal assigned duties with an open required seat
+are a Partial recovery, not a fully covered departure. Reassignment never resets
+elapsed FDP or supplies physical positioning by itself.
+
+## Protect existing cases; reuse creation functions
+
+For Case 2, Ryan explicitly requires Case 1 to remain uninterrupted and a different
+crew set. Exclude the source, reserve and donor crews from the protected Case 1
+manifest, not just J4002. Use separate pairings/rosters and physical flight records:
+distinct pairing IDs alone do not isolate a shared-flight delay cascade. Keep
+Case 2 setup/reset manifests independent and compare Case 1 before/after writes.
+Apply equivalent isolation to later cases when earlier demos must remain available.
+
+Use existing application functions to create needed pairings and roster assignments,
+as authorized for Case 2; discover the current build/assign paths and their module
+instructions first. Use complete base-to-base fixtures with valid rank/seat/fleet
+coverage. Verify any candidate crew's other assignments before reuse. Do not clone
+Case 1 IDs, introduce a parallel creator, or bypass application invariants with raw
+inserts. Exercise user-facing creation/recovery through real UI and validate its
+visible outcome; record separately any authorized fixture setup done through services.
+
+## Published-delay cases: source and execution boundaries
+
+### Reuse the existing recovery framework
+
+Ryan directs Case 2 to reuse QIUXIA81's functions and substantially the same UI as
+Case 1. The [implementation study](../../../docs/modules/crew-recovery/2026-09-12-cases-102-104-study-Ver1.md)
+maps QIUXIA81 to Git author `xigang.hang`; commits `dcc2cb5` and `6237137` contain
+the overlap trigger, swap/delay options and Apply integration. Verify current source,
+since later shared-framework and cost fixes supersede parts of that historical study.
+
+Reuse `recovery-trigger.ts` for entry eligibility, `recovery-candidates.ts` for
+candidate/before-after models, `RecoveryViolationDialog` for the option tree,
+All/Executable/Filtered lists, details, cost breakdown and Preview, and
+`buildRecoveryDraftPlan` in `recovery-draft.ts` for execution plans. Preserve the
+existing lock acquisition, draft store, Undo and Save paths. Swap duty uses two
+removals plus two assignments; flight edits use the existing propagation service.
+Do not build a separate Case 2 dialog or bypass the draft/Save boundary.
+
+Adapt only the genuine case-specific trigger, eligibility, legal checks and option
+data where existing functions need extension. Do not fabricate a 1001 overlap to
+stand in for FDP exceedance or relabel the overlap delay method as S2 support.
+The study's method numbers 102/103/104 are standby/swap/delay documentation IDs;
+they are not incident numbers S1/S2 or proof of four S2 strategies.
+
+For S2 preparation read the [case-specific feasibility record](../../../docs/superpowers/specs/2026-09-12-1744-S2-flight-delay-preparation-Ver1.md).
+It leaves a business choice open between a before-departure SIN swap and the supplied
+HKG-stranding story, which requires a physically reachable replacement. Do not
+silently change the incident's location to make a candidate work.
+
+At the September 2026 source review, Recovery's entry/method routing supports
+1001/8004; `planFlightDelay` in `gantt/src/services/recovery-candidates.ts` handles a
+ground-task overlap using ATD/ATA-shaped fields. Do not reuse that as proof of
+published-ETD → FDP-alert recovery. Recheck current code before implementation.
+`live-server/src/services/flight/flight-delay-propagation-service.ts` propagates a
+physical flight change to linked pairing/roster records; manual and imported duty
+windows have different handling. Inspect the flight route's recompute hooks and
+verify the whole estimate → duty calculation → alert chain, including failures.
+
+Keep scheduled, estimated and actual timestamps semantically distinct. Never write
+a forecast as an actual departure merely to trigger a supported cascade. Preserve
+report history and completed segments, and discover all linked duties before saving
+the incident. Use the authoritative rule calculation per affected crew; do not infer
+FDP legality from turnaround preservation or a generic maximum-hours constant.
+
+Filter feasibility before ranking. Record direct-cost components, currency, roster
+changes, reserve hours and passenger impact with actual configured scoring weights
+and normalization. Missing commercial inputs remain Unpriced; GH-only savings do
+not prove lowest total composite cost. Keep eligibility, legality, pricing and
+execution state separate so a cheap invalid plan cannot become the recommendation.
+
+Test publication, alert visibility and options readiness as distinct timestamped
+events. User-story seconds are targets until measured. For multi-crew recovery,
+verify Save/reload and failure behavior, no partially applied exchange, full required
+coverage or explicit remaining work, and downstream rest. Keep notification/job
+queued, sent, delivered, acknowledged and completed states distinct; customs/APIS,
+passenger rebooking and pay posting require their own observed integration evidence.
+
+## Discretion agreement: communication is not execution
+
+Use the current crew-notify/mobile notification flow rather than a parallel inbox.
+The controller sends one immutable proposal to **every assigned recipient**; crew
+see the exact before/proposed report, release and FDP, requested extension, reason
+and deadline, then reply Yes or No. Preserve recipient, actor, time and idempotency
+key. One No, a missing reply, expiry or a changed operational snapshot prevents
+reusing that consent. A new proposal supersedes the old one without deleting its
+original decisions. Reloaded feedback must refer to the original requested snapshot,
+not silently substitute current duty values.
+
+Current S2 implementation is in `discretion-consent-service.ts`, the crew-app Alerts
+screen, and the reusable `DiscretionConsentComposer` mounted under **Edit Duty
+Nodes → Request FDP agreement**. It is not yet an Option 1 entry in Recovery.
+Controller feedback and returning to review do not apply a roster change: the
+server's `proceedAllowed` remains false until an independent, authoritative legality
+execution contract exists. Verify the integration before describing it as supported.
+Tests using identical before/after windows establish communication only; they do not
+prove revised-ETD recalculation, extension eligibility or delay recovery. Do not
+invent an extension limit, infer one from the requested minutes, or use consent to
+bypass a failed extended-FDP check. Check active crew-app session credentials as
+well as remembered-login credentials when validating receipt and reply.
 
 ## Required references
 
@@ -36,7 +164,7 @@ Historical failed mobile submission and stand-down evidence stays in internal
 execution memos; it is not the current client-facing story. Do not recycle old
 request IDs or reset scripts as the current incident baseline.
 
-## Approved crew-to-controller workflow
+## Case 1 retained-duty contract
 
 The user-approved behavior is: **crew submits SL → original flying duty remains
 assigned → SL/flying overlap triggers rule 1001 → controller opens Recovery →
@@ -185,6 +313,16 @@ honest audit timestamps; baseline restoration does not mean erasing audit histor
 
 ## GH comparison and candidate visibility
 
+- Case 2 requires **at least six selectable candidates per crew-based method**
+  (standby and swap/move-up) with materially distinct calculated costs. Filtered rows
+  do not count. Build valid distinct crew/roster contexts using existing functions
+  and pricing inputs; do not invent prices or change shared tariffs/rules to force
+  differences. Verify each breakdown and preview in fresh UI from the same incident.
+  Six individual pilots do not prove six complete augmented-crew solutions: track
+  every required seat and distinguish individual choices from complete team plans.
+  Discretion/cancellation have no replacement-crew selection requirement. A story
+  claiming no qualified reserve must be revised if its fixture supplies six choices;
+  do not present both claims as the same incident. See the S2 preparation for scope.
 - Use saved **calendar-month** roster credit from the existing manday driver, not
   RP MCred or invented aggregate edits. Assigned future credit is not already-flown hours.
 - Airport standby pricing deducts the previously credited ASBY duty. Swap-duty

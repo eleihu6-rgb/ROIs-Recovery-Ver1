@@ -690,7 +690,8 @@ export const SharedPairingPane = ({
         pairing.selectRow?.(rowId)
         pairing.markDirty?.()
       }
-      const mockTask = { id: -1 } as never
+    const pairingId = Number(rowId)
+    const mockTask = { id: -1, pairingId: Number.isFinite(pairingId) ? pairingId : null } as never
       useUiStore.getState().openContextMenu(cx, cy, mockTask, 'pairing', ri, scenarioIdForActions)
     },
     [pairing, rawSelectedRowIds, scenarioIdForActions],

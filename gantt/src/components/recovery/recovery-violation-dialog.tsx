@@ -20,6 +20,7 @@ import { flightApi } from '@/services/flight-api'
 import { buildRecoveryDraftPlan } from '@/services/recovery-draft'
 import { recoveryTraceApi } from '@/services/recovery-api'
 import { RecoveryCostBreakdownDialog } from './recovery-cost-breakdown-dialog'
+import { DiscretionConsentComposer } from './discretion-consent-panel'
 import { buildRecoveryPlans, enrichPlansWithLibraryCosts, isRosterCompleted, recoveryRuleFailures, ROSTER_STABILITY_FORMULA, type CrossBaseCandidateTrace, type RecoveryAlertSnapshot, type RecoveryFlightSnapshot, type RecoveryLibraryCostFetcher, type RecoveryOption, type RecoveryPlans } from '@/services/recovery-candidates'
 import { recoveryCostApi } from '@/services/recovery-api'
 import { notify } from '@/utils/notify'
@@ -118,6 +119,18 @@ const toViolationRows = (
   return rows.sort((a, b) => b.severity - a.severity || a.ruleCode.localeCompare(b.ruleCode) || a.crewId.localeCompare(b.crewId))
 }
 
+
+const isSingleIncidentPlan = (plans: RecoveryPlans): boolean => plans.alerts.length > 1
+  && plans.alerts.every((entry) => entry.ruleCode === plans.alert.ruleCode && entry.pairingId === plans.alert.pairingId && entry.flightNumber === plans.alert.flightNumber && entry.flightDate === plans.alert.flightDate)
+
+const recoveryIncidentTitle = (plans: RecoveryPlans): string => isSingleIncidentPlan(plans) || plans.alerts.length === 1
+  ? `Rule ${plans.alert.ruleCode} · ${plans.alert.flightNumber} · ${plans.alert.flightDate}`
+  : `${plans.alerts.length} selected alerts · combined recovery`
+
+const recoveryIncidentDetail = (plans: RecoveryPlans): string => isSingleIncidentPlan(plans) || plans.alerts.length === 1
+  ? plans.alert.detail
+  : 'Each option contains one complete recovery decision for every selected alert. Conflicting Crew/Roster assignments are filtered out.'
+
 const metric = (label: string, value: string | number) => (
   <div className="min-w-0">
     <div className="text-2xs text-muted-foreground">{label}</div>
@@ -130,6 +143,7 @@ const money = (value: number, currency: string = 'CNY'): string => new Intl.Numb
 }).format(value)
 
 const optionBadge = (option: RecoveryOption): string => {
+  if (option.mode === 'fdp-discretion') return 'Crew consent'
   if (option.ruleCheck === 'pending') return 'Checking'
   // Flight Delay carries no crew-ownership Rule preview; an applicable delay is
   // executable as soon as the plan exists.
@@ -145,7 +159,8 @@ const optionBadge = (option: RecoveryOption): string => {
 const isApplicableOption = (option: RecoveryOption | null): option is RecoveryOption =>
   !!option
   && option.localExecutable
-  && (option.mode === 'flight-delay' || option.ruleCheck === 'passed')
+  && option.mode !== 'fdp-discretion'
+&& (option.mode === 'flight-delay' || option.ruleCheck === 'passed')
 
 /**
  * Soft constraints shown to the planner without blocking the option: the
@@ -520,11 +535,13 @@ const RecoveryDetailDialog = memo(function RecoveryDetailDialog({
   open,
   onOpenChange,
   onPreview,
+rulesetId,
 }: {
   option: RecoveryOption | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onPreview: (option: RecoveryOption) => void
+rulesetId: number
 }) {
   if (!option) return null
   const hasPositioning = option.positioning != null
@@ -562,6 +579,10 @@ const RecoveryDetailDialog = memo(function RecoveryDetailDialog({
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>{optionWarnings(option).join(' ')}</span>
         </div>}
+{option.mode === 'fdp-discretion' && option.fdpDiscretion && <div className="mb-3 rounded border border-blue-500/30 bg-blue-500/[0.04] p-3" data-testid="recovery-fdp-discretion-panel">
+<div className="mb-2 text-xs font-semibold text-foreground">Crew FDP agreement request</div>
+<DiscretionConsentComposer pairingId={option.sourcePairingId} dutySeq={option.fdpDiscretion.dutySeq} ruleSetId={rulesetId} onReturnToReview={() => onOpenChange(false)} />
+</div>}
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="text-xs font-semibold text-foreground">Before / after complete Roster changes</div>
           <div className="flex flex-wrap items-center gap-2 text-2xs text-muted-foreground" aria-label="Roster change color legend">
@@ -687,7 +708,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     const selected = selectedRows.filter((row) =>
       row.pairingId != null && row.canRecover === true && recoveryTriggerFor(row.ruleCode) != null)
     if (selected.length === 0) {
-      notify.info('Select at least one recoverable 8004 or Assignment Overlap (1001) alert to generate recovery options.')
+      notify.info('Select at least one recoverable 8004, Assignment Overlap (1001) or Published Delay (3007) alert to generate recovery options.')
       return
     }
     setBuilding(true)
@@ -1065,7 +1086,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
             />
             {/* ── Right column: alert + summary (top) + PlanGroup option list (bottom) ── */}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-hidden">
-              <div className="shrink-0 border border-destructive/30 bg-destructive/[0.035] p-2"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-xs font-semibold">{plans.alerts.length > 1 ? `${plans.alerts.length} selected alerts · combined recovery` : `Rule ${plans.alert.ruleCode} · ${plans.alert.flightNumber}`}<span className="font-mono text-2xs font-normal text-muted-foreground">{[...new Set(plans.alerts.map((entry) => entry.crewId))].length} Crew · {[...new Set(plans.alerts.map((entry) => entry.pairingId))].length} Roster</span></div><div className="mt-0.5 text-3xs leading-3 text-muted-foreground line-clamp-1">{plans.alerts.length > 1 ? 'Each option contains one complete recovery decision for every selected alert. Conflicting Crew/Roster assignments are filtered out.' : plans.alert.detail}</div></div></div></div>
+              <div className="shrink-0 border border-destructive/30 bg-destructive/[0.035] p-2"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-xs font-semibold">{recoveryIncidentTitle(plans)}<span className="font-mono text-2xs font-normal text-muted-foreground">{[...new Set(plans.alerts.map((entry) => entry.crewId))].length} Crew · {[...new Set(plans.alerts.map((entry) => entry.pairingId))].length} Roster</span></div><div className="mt-0.5 text-3xs leading-3 text-muted-foreground line-clamp-1">{recoveryIncidentDetail(plans)}</div></div></div></div>
               <PlanSummary
                 plans={plans}
                 selectedPlanType={selectedPlanType}
@@ -1078,7 +1099,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
         </section>
       </div>}
 
-      {detailOpen && selectedOption && <RecoveryDetailDialog option={selectedOption} open={detailOpen} onOpenChange={setDetailOpen} onPreview={previewInLive} />}
+      {detailOpen && selectedOption && <RecoveryDetailDialog option={selectedOption} open={detailOpen} onOpenChange={setDetailOpen} onPreview={previewInLive} rulesetId={rulesetId ?? 1} />}
       <RecoveryCostBreakdownDialog
         open={costBreakdownOption !== null}
         onOpenChange={(open) => { if (!open) setCostBreakdownOption(null) }}

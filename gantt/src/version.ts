@@ -15,7 +15,7 @@
  * 目前仅在 gantt 前端展示（ThemeSwitcher 下拉里）。
  */
 export const BACKEND_VERSION = 231  // GET /rules returns updated_by for the Update By column
-export const FRONTEND_VERSION = 449 // Full Data, Legality, System, and PBS Help menu coverage
+export const FRONTEND_VERSION = 451 // Recovery Help Case 3 - 8004 crew-fleet mismatch
 export const RULE_VERSION = 40  // rule-engine-rs: RuleSet-driven enabled_functions gate in check_line
 
 /** 展示用版本串，如 `Ver:B1/F1/R1`。 */

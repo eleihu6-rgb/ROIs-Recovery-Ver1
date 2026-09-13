@@ -1,6 +1,6 @@
 import type { RosterItem } from '@/types'
 import type { CostLibraryBreakdownRow, RecoveryOptionMode } from './recovery-api'
-import { isGroundTask, recoveryTriggerFor, type RecoveryTrigger } from './recovery-rules'
+import { RECOVERY_RULE_PUBLISHED_DELAY_FDP, isGroundTask, recoveryTriggerFor, type RecoveryTrigger } from './recovery-rules'
 import { CROSS_BASE_DHD_COST_PER_MINUTE, DEFAULT_CROSS_BASE_RECOVERY_CONFIG, type CrossBaseRecoveryConfig } from '@/config/recovery-cross-base'
 
 export interface RecoveryFlightSnapshot {
@@ -99,6 +99,8 @@ export interface RecoveryAlertSnapshot {
   ruleCode: string
   severity: number
   crewId: string
+  /** Pairing-level alerts such as S2 published delay may affect every crew assigned to the pairing. */
+  affectedCrewIds?: string[]
   pairingId: number
   flightDate: string
   flightNumber: string
@@ -199,6 +201,8 @@ export interface RecoveryOption {
   destinationSplit?: RecoveryDestinationSplit | null
   /** Flight Delay only — the affected Pairing's delayed flight plan. */
   flightDelay?: RecoveryFlightDelayPlan | null
+  /** FDP discretion only — duty sequence used by crew-app consent communication. */
+  fdpDiscretion?: { dutySeq: number } | null
   /** Child recovery decisions for a multi-alert combination option. */
   subOptions?: RecoveryOption[]
 }
@@ -221,7 +225,7 @@ export interface RecoveryPreviewViolation {
 }
 
 export interface RecoveryPlanGroup {
-  id: 'roster' | 'standby' | 'cross-base' | 'swap-duty' | 'flight-delay' | 'mixed'
+  id: 'roster' | 'standby' | 'cross-base' | 'fdp-discretion' | 'swap-duty' | 'flight-delay' | 'mixed'
   title: string
   description: string
   options: RecoveryOption[]
@@ -283,6 +287,7 @@ export interface RecoveryPlans {
   standby: RecoveryPlanGroup
   crossBase: RecoveryPlanGroup
   /** Swap the affected Pairing with another Crew's later-reporting Pairing. */
+  fdpDiscretion: RecoveryPlanGroup
   swapDuty: RecoveryPlanGroup
   /** Keep the original Crew and list every flight of the affected Pairing. */
   flightDelay: RecoveryPlanGroup
@@ -849,6 +854,18 @@ const buildChanges = (
   const sourceStartMs = firstItemStartMs(source.items)
   const targetStartMs = target ? firstItemStartMs(target.items) : null
   const isSwap = isSwapLike(mode)
+  if (mode === 'fdp-discretion') {
+    return sortChangesByStartTime([{
+      crewId: source.crewId,
+      crewName: sourceName,
+      rosterId: `R${source.pairingId}`,
+      pairingId: source.pairingId,
+      before: sourceBefore,
+      after: 'Request crew FDP extension agreement · no roster ownership change',
+      changeType: 'keep',
+      startTimeMs: sourceStartMs,
+    }])
+  }
   if (mode === 'flight-delay') {
     // Keep-the-Crew option: one row per affected flight with the current and the
     // delayed actual times, no ownership change.
@@ -959,6 +976,21 @@ const buildMetrics = (
   positioning: RecoveryPositioning | null,
   destinationSplit: RecoveryDestinationSplit | null,
 ): RecoveryMetrics => {
+  if (mode === 'fdp-discretion') {
+    return {
+      affectedCrewCount: new Set(source.items.map((item) => item.crewId)).size || 1,
+      cancelledRosterCount: 0,
+      addedRosterCount: 0,
+      changedRosterCount: 0,
+      followOnImpactCount: 0,
+      rosterStability: 100,
+      directCost: 0,
+      dhdFlightCost: 0,
+      dhdCostSavings: 0,
+      totalCost: 0,
+      currency: 'CNY',
+    }
+  }
   if (mode === 'flight-delay') {
     // Keeping the original Crew changes no Roster; the option only surfaces the
     // affected Pairing's flights (and later the delay cost) for the planner.
@@ -1052,11 +1084,14 @@ const makeOption = (
     positioning: RecoveryPositioning | null
     destinationSplit: RecoveryDestinationSplit | null
     flightDelay?: RecoveryFlightDelayPlan | null
+  /** FDP discretion only — duty sequence used by crew-app consent communication. */
+  fdpDiscretion?: { dutySeq: number } | null
   },
 ): RecoveryOption => {
   const { source, target, targetCrew, sourceCrew, mode } = input
   const isSwap = isSwapLike(mode)
   const flightDelay = input.flightDelay ?? null
+  const fdpDiscretion = input.fdpDiscretion ?? null
   const optionId = `${mode}-${source.pairingId}-${targetCrew.crewId}-${target?.pairingId ?? input.standbyTaskId ?? 'none'}`
   const afterItems = buildAfterItems(input.allItems, source, target, targetCrew.crewId, targetCrew, mode, input.standbyTaskId, input.positioning, input.destinationSplit, flightDelay, optionId)
   const affectedItemIds = new Set([
@@ -1069,7 +1104,7 @@ const makeOption = (
   return {
     id: `${mode}-${source.pairingId}-${targetCrew.crewId}-${target?.pairingId ?? input.standbyTaskId ?? 'none'}`,
     mode,
-    title: mode === 'standby' ? `Callout ${targetCrew.crewId}` : mode === 'swap' ? `Swap with ${targetCrew.crewId}` : mode === 'swap-duty' ? `Swap duty with ${targetCrew.crewId}` : mode === 'flight-delay' ? `Flight Delay · keep ${sourceCrew.crewId}` : mode === 'cross-base-standby' ? `Cross-base Callout ${targetCrew.crewId}` : mode === 'cross-base-swap' ? `Cross-base Swap ${targetCrew.crewId}` : mode === 'cross-base-destination' ? `Destination-base Split ${targetCrew.crewId}` : mode === 'cross-base-direct' ? `Cross-base Direct Assign ${targetCrew.crewId}` : `Transfer to ${targetCrew.crewId}`,
+    title: mode === 'standby' ? `Callout ${targetCrew.crewId}` : mode === 'swap' ? `Swap with ${targetCrew.crewId}` : mode === 'swap-duty' ? `Swap duty with ${targetCrew.crewId}` : mode === 'fdp-discretion' ? `FDP Discretion · request crew agreement` : mode === 'flight-delay' ? `Flight Delay · keep ${sourceCrew.crewId}` : mode === 'cross-base-standby' ? `Cross-base Callout ${targetCrew.crewId}` : mode === 'cross-base-swap' ? `Cross-base Swap ${targetCrew.crewId}` : mode === 'cross-base-destination' ? `Destination-base Split ${targetCrew.crewId}` : mode === 'cross-base-direct' ? `Cross-base Direct Assign ${targetCrew.crewId}` : `Transfer to ${targetCrew.crewId}`,
     targetCrewId: targetCrew.crewId,
     targetCrewName: targetCrew.crewName,
     sourceCrewId: sourceCrew.crewId,
@@ -1095,11 +1130,12 @@ const makeOption = (
     metrics: buildMetrics(source, target, input.allGroups, targetCrew, sourceCrew, mode, input.positioning, input.destinationSplit),
     // Flight Delay edits flight times only, so the crew-ownership rule preview
     // does not apply to it; the flight-edit cascade validates it on Save.
-    ruleCheck: mode === 'flight-delay' || input.reasons.length > 0 ? 'not-run' : 'pending',
+    ruleCheck: mode === 'flight-delay' || mode === 'fdp-discretion' || input.reasons.length > 0 ? 'not-run' : 'pending',
     ruleMessages: [],
     positioning: input.positioning,
     destinationSplit: input.destinationSplit,
     flightDelay,
+    fdpDiscretion,
   }
 }
 
@@ -1470,7 +1506,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
   // ended (the planner reviews yesterday's overlap). The 1001 strategy must still
   // resolve that Roster — otherwise the dialog opens with no options at all —
   // while 8004 keeps its "finished Roster is not a Recovery target" rule.
-  const sourceScope = trigger === 'assignment-overlap' ? groups : activeGroups
+  const sourceScope = trigger === 'assignment-overlap' || trigger === 'published-delay-fdp' ? groups : activeGroups
   const source = sourceScope.find((group) => group.crewId === input.alert.crewId && group.pairingId === input.alert.pairingId)
   if (!source) {
     const completed = groups.some((group) => group.crewId === input.alert.crewId && group.pairingId === input.alert.pairingId && group.end < now)
@@ -1486,6 +1522,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       standby: empty('standby', 'Standby Crew callout'),
       crossBase: empty('cross-base', 'Cross-base positioning'),
       swapDuty: empty('swap-duty', 'Swap duty'),
+      fdpDiscretion: empty('fdp-discretion', 'FDP Discretion'),
       flightDelay: empty('flight-delay', 'Flight Delay'),
       mixed: emptyMixedGroup(),
       crossBaseTrace: [],
@@ -1531,6 +1568,33 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
     input.alert.fleet,
     ...source.items.map((item) => item.fleetCode),
   ].map((value) => value?.trim().toUpperCase()).filter((value): value is string => Boolean(value)))]
+  const firstDutySeq = Number(
+    [...source.items]
+      .sort((a, b) => finiteTime(a.schStrDtUtc) - finiteTime(b.schStrDtUtc))
+      .find((item) => item.dutySeq != null)?.dutySeq ?? 1,
+  )
+  const fdpDiscretionOptions: RecoveryOption[] = trigger === 'published-delay-fdp' ? [makeOption({
+    allItems: input.items,
+    allGroups: activeGroups,
+    source,
+    target: null,
+    targetCrew: sourceCrew,
+    sourceCrew,
+    mode: 'fdp-discretion',
+    standbyTaskId: null,
+    standbyWindow: null,
+    timeDistanceMinutes: null,
+    sameRank: true,
+    sameBase: true,
+    crossDivision: false,
+    crossRole: false,
+    reasons: [],
+    warnings: ['Crew agreement communication only; Apply remains disabled until independent FDP legality execution is implemented.'],
+    positioning: null,
+    destinationSplit: null,
+    flightDelay: null,
+    fdpDiscretion: { dutySeq: Number.isFinite(firstDutySeq) && firstDutySeq > 0 ? firstDutySeq : 1 },
+  })] : []
   const rosterOptions: RecoveryOption[] = []
   const targetCrews = input.crews.filter((crew) => crew.crewId !== source.crewId)
   // Swap-duty candidates are also drawn from the same scope: the business-date
@@ -1637,7 +1701,7 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         && finiteTime(item.schEndDtUtc) > source.start)
       .reduce((latest, item) => Math.max(latest, finiteTime(item.schEndDtUtc)), Number.NEGATIVE_INFINITY)
     : Number.NEGATIVE_INFINITY
-  if (trigger === 'assignment-overlap') {
+  if (trigger === 'assignment-overlap' || trigger === 'published-delay-fdp') {
     const businessDate = (
       input.alert.flightDate && input.alert.flightDate !== '—'
         ? input.alert.flightDate
@@ -1996,6 +2060,13 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
       options: sortedCrewCandidates(crossBaseOptions, crewsById, sourceCrew),
       excludedOptions: [],
     },
+ fdpDiscretion: {
+ id: 'fdp-discretion',
+ title: 'FDP Discretion',
+ description: 'Request crew agreement for regulated FDP extension before any roster execution.',
+ options: fdpDiscretionOptions,
+ excludedOptions: [],
+ },
     swapDuty: {
       id: 'swap-duty',
       title: 'Swap duty',
@@ -2201,12 +2272,27 @@ export const buildRecoveryPlans = (input: BuildRecoveryPlansInput & {
   alert?: RecoveryAlertSnapshot
   alerts?: RecoveryAlertSnapshot[]
 }): RecoveryPlans => {
-  const alerts = [...new Map((input.alerts?.length ? input.alerts : input.alert ? [input.alert] : [])
+  const expandedAlerts = (input.alerts?.length ? input.alerts : input.alert ? [input.alert] : []).flatMap((alert) => {
+    const crewIds = [...new Set([alert.crewId, ...(alert.affectedCrewIds ?? [])].filter(Boolean))]
+    if (crewIds.length <= 1) return [alert]
+    return crewIds.map((crewId) => ({
+      ...alert,
+      crewId,
+      id: `${alert.id}-${crewId}`,
+      affectedCrewIds: crewIds,
+    }))
+  })
+  const alerts = [...new Map(expandedAlerts
     .map((alert) => [`${alert.crewId}:${alert.pairingId}:${alert.ruleCode}:${alert.id}`, alert] as const)).values()]
-  if (alerts.length === 0) throw new Error('At least one recovery alert is required.')
+  if (alerts.length === 0) throw new Error('At least one recovery alert required.')
   if (alerts.length === 1) {
     const single = buildSingleRecoveryPlans({ ...input, alert: alerts[0] })
     return { ...single, mixed: emptyMixedGroup() }
+  }
+  const isSinglePublishedDelayPairing = alerts.every((alert) => alert.ruleCode === RECOVERY_RULE_PUBLISHED_DELAY_FDP && alert.pairingId === alerts[0].pairingId)
+  if (isSinglePublishedDelayPairing) {
+    const single = buildSingleRecoveryPlans({ ...input, alert: alerts[0] })
+    return { ...single, alerts, mixed: emptyMixedGroup() }
   }
 
   const childPlans = alerts.map((alert) => buildSingleRecoveryPlans({ ...input, alert }))
@@ -2237,6 +2323,7 @@ export const buildRecoveryPlans = (input: BuildRecoveryPlansInput & {
     roster: makeGroup('roster', 'roster', 'Roster transfer or exchange', 'Each option contains one complete recovery decision per selected alert.'),
     standby: makeGroup('standby', 'standby', 'Standby Crew callout', 'Each option contains one complete recovery decision per selected alert.'),
     crossBase: makeGroup('cross-base', 'crossBase', 'Cross-base positioning', 'Each option contains one complete recovery decision per selected alert.'),
+ fdpDiscretion: emptyPlanGroup('fdp-discretion', 'FDP Discretion', 'FDP Discretion is available for a single published-delay FDP alert.'),
     swapDuty: emptyPlanGroup('swap-duty', 'Swap duty', 'Swap duty is available for a single Assignment Overlap alert.'),
     flightDelay: emptyPlanGroup('flight-delay', 'Flight Delay', 'Flight Delay is available for a single Assignment Overlap alert.'),
     // Mixed (best-per-alert) — each alert independently picks the cheapest
@@ -2282,7 +2369,9 @@ const emptyPlanGroup = (id: RecoveryPlanGroup['id'], title: string, description:
  * (plus mixed for multi-alert runs).
  */
 export const visiblePlanGroups = (plans: RecoveryPlans): RecoveryPlanGroup[] =>
-  plans.trigger === 'assignment-overlap'
+  plans.trigger === 'published-delay-fdp'
+    ? [plans.fdpDiscretion, plans.standby, plans.swapDuty, plans.flightDelay]
+    : plans.trigger === 'assignment-overlap'
     ? [plans.standby, plans.swapDuty, plans.flightDelay]
     : plans.alerts.length > 1
       ? [plans.roster, plans.standby, plans.crossBase, plans.mixed]
@@ -2348,7 +2437,7 @@ export const optionToLibraryCostInput = (
     crossBase: isCrossBase ? 1 : 0,
     crossDivision: option.metrics.followOnImpactCount >= 0 && option.mode.includes('cross-division') ? 1 : 0,
     crossRole: isSwap ? 1 : 0,
-    changed: isSwap || option.mode === 'swap-duty' ? 2 : 1,
+    changed: option.mode === 'fdp-discretion' || option.mode === 'flight-delay' ? 0 : isSwap || option.mode === 'swap-duty' ? 2 : 1,
     followOnImpactCount: option.metrics.followOnImpactCount,
     dhdOutboundSectors: option.positioning ? 1 : 0,
     dhdFlightCost: option.metrics.dhdFlightCost,
@@ -2509,6 +2598,7 @@ export const enrichPlansWithLibraryCosts = async (
     roster: enrichGroup(plans.roster),
     standby: enrichGroup(plans.standby),
     crossBase: enrichGroup(plans.crossBase),
+    fdpDiscretion: plans.fdpDiscretion,
     swapDuty: enrichGroup(plans.swapDuty),
     flightDelay: enrichGroup(plans.flightDelay),
     mixed: enrichGroup(plans.mixed),

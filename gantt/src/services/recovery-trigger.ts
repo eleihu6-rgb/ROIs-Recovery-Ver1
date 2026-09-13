@@ -2,8 +2,10 @@ import type { RosterItem } from '@/types'
 import { isRosterCompleted } from './recovery-candidates'
 import {
   RECOVERY_RULE_ASSIGNMENT_OVERLAP,
+  RECOVERY_RULE_PUBLISHED_DELAY_FDP,
   RECOVERY_RULE_QUALIFICATION,
   hasGroundTaskFlyOverlap,
+  hasPairingActualDelay,
   isGroundTask,
   recoveryTriggerFor,
 } from './recovery-rules'
@@ -20,7 +22,7 @@ import {
  * Everything else stays non-recoverable so an unrelated alert can never be run
  * through the 8004 recovery strategy.
  */
-export { RECOVERY_RULE_ASSIGNMENT_OVERLAP, RECOVERY_RULE_QUALIFICATION, hasGroundTaskFlyOverlap, isGroundTask, recoveryTriggerFor }
+export { RECOVERY_RULE_ASSIGNMENT_OVERLAP, RECOVERY_RULE_PUBLISHED_DELAY_FDP, RECOVERY_RULE_QUALIFICATION, hasGroundTaskFlyOverlap, hasPairingActualDelay, isGroundTask, recoveryTriggerFor }
 
 /**
  * Single recovery-entry gate shared by the Gantt canvas, the Alert Center list,
@@ -39,6 +41,14 @@ export const canRecoverViolation = (input: {
   if (trigger == null) return false
   if (trigger === 'roster-qualification') {
     return !isRosterCompleted(items, String(crewId), Number(pairingId), now)
+  }
+  if (trigger === 'published-delay-fdp') {
+    // A published delay is only recoverable while the affected duty is still in
+    // the future — Recovery never rewrites a completed Roster (team rule: the
+    // framework only acts on future tasks). This also keeps the Alert-Center
+    // published-delay row from surfacing historical delayed Pairings.
+    return hasPairingActualDelay(items, Number(pairingId))
+      && !isRosterCompleted(items, String(crewId), Number(pairingId), now)
   }
   return hasGroundTaskFlyOverlap(items, String(crewId), Number(pairingId))
 }

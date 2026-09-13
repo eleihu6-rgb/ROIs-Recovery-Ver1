@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { verifyMobileCrewCredentials } from '../../services/mobile-roster/mobile-roster-service.js'
 import { listForCrew, markRead } from '../../services/crew-notify/crew-notify-service.js'
-import { submitCrewAbsence } from '../../services/absence/crew-absence-service.js'
+import { listCrewAbsences, submitCrewAbsence, type CrewAbsenceDto } from '../../services/absence/crew-absence-service.js'
+import { createConsent, decideConsent, discretionProposalSchema, getControllerConsent, getCrewConsent, listOpenConsents, prepareConsent } from '../../services/crew-notify/discretion-consent-service.js'
 import { liveSchemaName } from '../../utils/db-schema.js'
 import { error, fail, success } from '../../utils/response.js'
 
@@ -34,6 +35,26 @@ const absenceSchema = credentialsSchema.extend({
   toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   note: z.string().trim().max(500).optional(),
 }).strict()
+
+const absenceHistorySchema = credentialsSchema.extend({
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+}).strict()
+
+/**
+ * Crew-facing projection of a `crew_absence` row. Name, source and the retained
+ * pairing ids stay controller-side: the crew only reads what they submitted.
+ */
+const toCrewAbsence = (row: CrewAbsenceDto) => ({
+  id: row.id,
+  absenceType: row.absenceType,
+  assignment: row.assignment,
+  fromDate: row.fromDate,
+  toDate: row.toDate,
+  status: row.status,
+  note: row.note,
+  createdAt: row.createdAt,
+})
 
 /** Status codes carried by the shared service errors (roster + notify + absence). */
 const statusCodeOf = (err: unknown): number | null => {
@@ -76,7 +97,7 @@ export default async function crewNotifyRoutes(fastify: FastifyInstance) {
         { pgPool: fastify.pgPool },
         { airline: parsed.data.airline, crewId, since: parsed.data.since },
       )
-      return success(reply, feed)
+      return success(reply, { ...feed, openDiscretions: await listOpenConsents({ pgPool: fastify.pgPool }, parsed.data.airline, crewId) })
     } catch (err) {
       return replyWithError(fastify, reply, err, 'Unable to load crew notifications.')
     }
@@ -111,6 +132,51 @@ export default async function crewNotifyRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // Controller endpoints retain normal JWT authentication. Crew endpoints use
+  // exactly the existing mobile credential verifier and recipient ownership.
+  fastify.get('/discretion-duty/:pairingId/:dutySeq', async (request, reply) => {
+    if (!request.authUser) return error(reply, 401, 'Authentication required.')
+    const params = z.object({ pairingId: z.coerce.number().int().positive(), dutySeq: z.coerce.number().int().positive() }).safeParse(request.params)
+    if (!params.success) return fail(reply, 400, params.error.message)
+    try { return success(reply, await prepareConsent({ pgPool: fastify.pgPool }, params.data.pairingId, params.data.dutySeq, request.authUser.userCode)) }
+    catch (err) { return replyWithError(fastify, reply, err, 'Unable to load duty details.') }
+  })
+  fastify.post('/discretion-requests', async (request, reply) => {
+    if (!request.authUser) return error(reply, 401, 'Authentication required.')
+    const parsed = discretionProposalSchema.safeParse(request.body)
+    if (!parsed.success) return fail(reply, 400, parsed.error.message)
+    try {
+      return success(reply, await createConsent({ pgPool: fastify.pgPool }, parsed.data, request.authUser.userCode))
+    } catch (err) { return replyWithError(fastify, reply, err, 'Unable to send FDP request.') }
+  })
+  fastify.get('/discretion-requests/:proposalId', async (request, reply) => {
+    if (!request.authUser) return error(reply, 401, 'Authentication required.')
+    const params = z.object({ proposalId: z.string().uuid() }).safeParse(request.params)
+    if (!params.success) return fail(reply, 400, params.error.message)
+    try {
+      return success(reply, await getControllerConsent({ pgPool: fastify.pgPool }, params.data.proposalId, request.authUser.userCode))
+    } catch (err) { return replyWithError(fastify, reply, err, 'Unable to load crew feedback.') }
+  })
+  for (const isDecision of [false, true]) {
+    fastify.post(`/discretion/:discretionId${isDecision ? '/decision' : ''}`, async (request, reply) => {
+      const bodySchema = isDecision ? credentialsSchema.extend({
+        decision: z.enum(['accept', 'reject']), idempotencyKey: z.string().min(1).max(150),
+        reason: z.string().max(500).optional(),
+      }) : credentialsSchema
+      const parsed = bodySchema.safeParse(request.body)
+      const params = z.object({ discretionId: z.string().uuid() }).safeParse(request.params)
+      if (!parsed.success || !params.success) return fail(reply, 400, 'Invalid FDP request.')
+      try {
+        const { crewId } = await verifyMobileCrewCredentials({ pgPool: fastify.pgPool }, parsed.data)
+        const input = { ...parsed.data, crewId, discretionId: params.data.discretionId }
+        const result = isDecision
+          ? await decideConsent({ pgPool: fastify.pgPool }, { ...input, ...z.object({ decision: z.enum(['accept', 'reject']), idempotencyKey: z.string(), reason: z.string().optional() }).parse(parsed.data) })
+          : await getCrewConsent({ pgPool: fastify.pgPool }, input)
+        return success(reply, result)
+      } catch (err) { return replyWithError(fastify, reply, err, 'Unable to process FDP agreement.') }
+    })
+  }
+
   // Crew recovery story 101: crew-submitted sick leave → retained-duty overlap for Live Recovery.
   fastify.post('/absence', async (request, reply) => {
     const parsed = absenceSchema.safeParse(request.body)
@@ -135,6 +201,34 @@ export default async function crewNotifyRoutes(fastify: FastifyInstance) {
       return success(reply, result)
     } catch (err) {
       return replyWithError(fastify, reply, err, 'Unable to submit the absence.')
+    }
+  })
+
+  // Crew Recovery Story 101 follow-up (Ryan, 2026-09-13): the crew reviews what
+  // they already submitted. The window is the caller's (the app scopes it to the
+  // current calendar month); ownership comes from the verified credential, never
+  // from the body, so a crew can only read their own rows. Rows overlapping the
+  // window come back, cancelled ones included — the crew must see a recovery
+  // cancellation rather than silence.
+  fastify.post('/absences', async (request, reply) => {
+    const parsed = absenceHistorySchema.safeParse(request.body)
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.message)
+    }
+
+    try {
+      const { crewId } = await verifyMobileCrewCredentials(
+        { pgPool: fastify.pgPool },
+        parsed.data,
+      )
+      const rows = await listCrewAbsences(fastify, {
+        crewId,
+        fromDate: parsed.data.fromDate,
+        toDate: parsed.data.toDate,
+      })
+      return success(reply, { absences: rows.map(toCrewAbsence) })
+    } catch (err) {
+      return replyWithError(fastify, reply, err, 'Unable to load the absence history.')
     }
   })
 }

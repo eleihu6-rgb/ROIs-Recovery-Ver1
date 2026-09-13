@@ -44,7 +44,7 @@ export const recoveryTraceApi = {
 export interface RecoveryLibraryCostApiInput {
   swapContext?: { sourceCrewId: string; sourcePairingId: number; targetCrewId: string; targetPairingId: number }
   standbyContext?: { crewId: string; pairingId: number; standbyTaskId: number }
-  mode: 'transfer' | 'swap' | 'standby' | 'swap-duty' | 'flight-delay' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
+  mode: 'transfer' | 'swap' | 'standby' | 'swap-duty' | 'flight-delay' | 'fdp-discretion' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
   crossBase: number
   crossDivision: number
   crossRole: number
@@ -93,7 +93,7 @@ export const recoveryCostApi = {
 
 export type RecoveryPlanId = 'standby' | 'swap' | 'cross-base'
 
-export type RecoveryOptionMode = 'transfer' | 'swap' | 'standby' | 'swap-duty' | 'flight-delay' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
+export type RecoveryOptionMode = 'transfer' | 'swap' | 'standby' | 'swap-duty' | 'flight-delay' | 'fdp-discretion' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
 
 /**
  * Which alert type opened the Recovery dialog. Determines the visible plan set:
@@ -232,6 +232,7 @@ const applyOption = (input: RecoveryApplyOption): Promise<RecoveryMethodMutation
   if (input.mode === 'cross-base-standby' || input.mode === 'cross-base-swap' || input.mode === 'cross-base-destination' || input.mode === 'cross-base-direct') {
     return Promise.reject(new Error('Cross-base recovery requires positioning flight details; use recoveryApi.crossBase().'))
   }
+ if (input.mode === 'fdp-discretion') return Promise.reject(new Error('FDP Discretion requires crew consent; roster Apply is not wired.'))
   if (input.mode === 'standby') {
     if (input.standbyTaskId == null) return Promise.reject(new Error('standbyTaskId is required for Callout Standby'))
     return recoveryApi.calloutStandby({

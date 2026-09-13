@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { DiscretionConsentComposer } from '@/components/recovery/discretion-consent-panel'
+import { useLegalityStore } from '@/stores/legality-store'
 import { useUiStore } from '@/stores/ui-store'
 import { useTimezoneStore } from '@/stores/timezone-store'
 import { pairingApi } from '@/services/pairing-api'
@@ -94,6 +96,9 @@ export function DutyNodeDialog() {
   const tz        = useTimezoneStore((s) => s.timezone)
   const tzAirport = useTimezoneStore((s) => s.timezoneAirport)
 
+  const rulesetId = useLegalityStore(s => s.selectedId)
+  const [consentDuty, setConsentDuty] = useState<number | null>(null)
+
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState<string | null>(null)
   const [label,    setLabel]    = useState<string>('')
@@ -118,6 +123,7 @@ export function DutyNodeDialog() {
     setLoading(true)
     setError(null)
     setDirty(false)
+    setConsentDuty(null)
     pairingApi.getDetail(pairingId)
       .then(({ pairing, segments }) => {
         setLabel(pairing.pairingLabel ?? `Pairing #${pairingId}`)
@@ -300,6 +306,15 @@ export function DutyNodeDialog() {
                 <span className="text-sm font-semibold">{firstSeg?.dutyStrArp} &rarr; {lastSeg?.dutyEndArp}</span>
                 <span className="font-mono text-xs text-muted-foreground">{fltNums}</span>
               </div>
+
+              <Button size="sm" variant="outline" disabled={dirty || saving || !rulesetId}
+                title={dirty ? 'Save duty edits before requesting crew agreement' : !rulesetId ? 'Select a rule group first' : 'Request agreement from every assigned crew member'}
+                onClick={() => setConsentDuty(consentDuty === dutySeq ? null : dutySeq)}>
+                {consentDuty === dutySeq ? 'Hide crew agreement' : 'Request FDP agreement'}
+              </Button>
+              {consentDuty === dutySeq && pairingId && rulesetId && !dirty && (
+                <DiscretionConsentComposer onReturnToReview={handleClose} pairingId={pairingId} dutySeq={dutySeq} ruleSetId={rulesetId} />
+              )}
 
               {/* Gantt bar */}
               <DutyNodeGanttBar

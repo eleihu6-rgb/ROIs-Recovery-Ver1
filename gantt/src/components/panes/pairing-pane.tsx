@@ -1156,7 +1156,8 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
             useGanttViewStore.getState().markDirty()
           }}
           onRowRightClick={(ri, cx, cy) => {
-            const mockTask = { id: -1 } as never
+            const pairingId = Number(reorderedPairingItems[ri]?.pairing.id)
+            const mockTask = { id: -1, pairingId: Number.isFinite(pairingId) ? pairingId : null } as never
             useUiStore.getState().openContextMenu(cx, cy, mockTask, legacyPaneType, ri)
           }}
         />

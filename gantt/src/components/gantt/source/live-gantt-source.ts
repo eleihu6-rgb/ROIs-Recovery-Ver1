@@ -50,7 +50,7 @@ import { getAllEffective } from '@/utils/crew-history'
 import { computeValidityBlock } from '@/utils/crew-validity'
 import { formatSeniority } from '@/utils/format-seniority'
 import { buildRankOrderMap, compareRosterDefault } from '@/utils/roster-default-sort'
-import { canRecoverViolation } from '@/services/recovery-trigger'
+import { canRecoverViolation, hasPairingActualDelay, RECOVERY_RULE_PUBLISHED_DELAY_FDP } from '@/services/recovery-trigger'
 import { READ_ONLY_CAPABILITIES, EMPTY_LOCK_MAP, type GanttPaneSource, type FlightPaneSource, type PairingPaneSource, type RosterPaneSource } from './gantt-pane-source'
 import type { CrewViolationRow } from '@/components/panes/violation-list-dialog'
 import type { FlightItem, FlightCompositionStatus, Flight } from '@/types/flight'
@@ -546,7 +546,6 @@ function buildLiveAlertRows(
   crewItems: ReturnType<typeof useCrewStore.getState>['items'],
   pairingItems: PairingItem[] = [],
 ): CrewViolationRow[] {
-  if (displayViolations.size === 0) return []
   const detail = new Map<string, { base: string; rank: string }>()
   for (const ci of crewItems) {
     const c = ci.crew
@@ -593,6 +592,58 @@ function buildLiveAlertRows(
           }),
         })
       }
+    }
+  }
+  // ── Published-delay (FDP) synthetic rows — Alert Center entry point #3 ──
+  // Rule 3007 is not an active/configured rule in this ruleset (see rule table),
+  // so the engine never persists a 3007 violation and the Alert Center would be
+  // blind to a published delay. Mirror the Roster/Pairing right-click entries
+  // (context-menu.tsx) and surface ONE preparation row per affected, loaded crew
+  // once the Pairing's actual time is later than scheduled, so the planner can
+  // open Recovery (FDP Discretion) from the Alert Center too. This is a
+  // preparation/entry row, not a regulatory finding — it never claims an FDP
+  // exceedance and Apply stays disabled until authoritative FDP execution exists.
+  const itemsByPairing = new Map<number, RosterItem[]>()
+  for (const item of items) {
+    const pid = Number(item.pairingId)
+    if (!Number.isFinite(pid) || pid <= 0) continue
+    const list = itemsByPairing.get(pid)
+    if (list) list.push(item)
+    else itemsByPairing.set(pid, [item])
+  }
+  for (const [pid, group] of itemsByPairing) {
+    if (!hasPairingActualDelay(items, pid)) continue
+    const delayedAnchor = group.find((item) => {
+      const scheduled = item.schStrDtUtc ? new Date(item.schStrDtUtc).getTime() : Number.NaN
+      const actual = item.actStrDtUtc ? new Date(item.actStrDtUtc).getTime() : Number.NaN
+      return Number.isFinite(scheduled) && Number.isFinite(actual) && actual > scheduled
+    }) ?? group[0]
+    for (const cid of [...new Set(group.map((it) => String(it.crewId)).filter(Boolean))]) {
+      if (!loadedCrewIds.has(cid)) continue
+      const dedupKey = `${cid}|${RECOVERY_RULE_PUBLISHED_DELAY_FDP}||published-delay`
+      if (seen.has(dedupKey)) continue
+      if (!canRecoverViolation({ ruleCode: RECOVERY_RULE_PUBLISHED_DELAY_FDP, items, crewId: cid, pairingId: pid })) continue
+      seen.add(dedupKey)
+      const d = detail.get(cid)
+      const pairAnchor = group.find((it) => String(it.crewId) === cid) ?? delayedAnchor
+      const pairing = pairingItems.find((item) => Number(item.pairing.id) === pid)
+      const affectedCrewIds = [...new Set(group.map((it) => String(it.crewId)).filter(Boolean))]
+      out.push({
+        crewId: cid,
+        base: d?.base ?? '',
+        rank: d?.rank ?? '',
+        ruleCode: RECOVERY_RULE_PUBLISHED_DELAY_FDP,
+        ruleInstance: null,
+        severity: 3,
+        message: 'Published delay: actual departure is later than scheduled; open Recovery preparation to review FDP impact and request crew agreement (FDP Discretion).',
+        pairingId: pid,
+        flightDate: pairAnchor?.fltDt ?? pairAnchor?.schStrDtUtc?.slice(0, 10) ?? null,
+        flightNumber: (pairAnchor?.label ?? pairAnchor?.assignment ?? '').split(/\s+/)[0] || null,
+        fleet: pairAnchor?.fleetCode ?? pairing?.pairing.fleet ?? null,
+        requiredRank: pairAnchor?.flightActingRank ?? null,
+        canRecover: true,
+        affectedCrewIds,
+      })
     }
   }
   return out

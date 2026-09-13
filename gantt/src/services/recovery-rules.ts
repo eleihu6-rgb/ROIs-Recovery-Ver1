@@ -11,8 +11,9 @@ export const RECOVERY_RULE_QUALIFICATION = '8004'
 
 /** Assignment Overlap — accepted as a Recovery entry only with a ground/fly overlap. */
 export const RECOVERY_RULE_ASSIGNMENT_OVERLAP = '1001'
+export const RECOVERY_RULE_PUBLISHED_DELAY_FDP = '3007'
 
-export type RecoveryTrigger = 'roster-qualification' | 'assignment-overlap'
+export type RecoveryTrigger = 'roster-qualification' | 'assignment-overlap' | 'published-delay-fdp'
 
 /** Which recovery strategy an alert maps to, or null when it is not a Recovery alert. */
 export const recoveryTriggerFor = (ruleCode: string): RecoveryTrigger | null =>
@@ -20,6 +21,8 @@ export const recoveryTriggerFor = (ruleCode: string): RecoveryTrigger | null =>
     ? 'roster-qualification'
     : ruleCode === RECOVERY_RULE_ASSIGNMENT_OVERLAP
       ? 'assignment-overlap'
+      : ruleCode === RECOVERY_RULE_PUBLISHED_DELAY_FDP
+        ? 'published-delay-fdp'
       : null
 
 /** Flying duty groups — kept identical to the legality input builder's definition. */
@@ -67,6 +70,16 @@ export const hasGroundTaskFlyOverlap = (
       return groundRange != null && groundRange.start < pairingRange.end && groundRange.end > pairingRange.start
     })
 }
+
+export const hasPairingActualDelay = (items: RosterItem[], pairingId: number): boolean =>
+  items
+    .filter((item) => Number(item.pairingId) === Number(pairingId))
+    .some((item) => {
+      if (!item.schStrDtUtc || !item.actStrDtUtc) return false
+      const scheduled = new Date(item.schStrDtUtc).getTime()
+      const actual = new Date(item.actStrDtUtc).getTime()
+      return Number.isFinite(scheduled) && Number.isFinite(actual) && actual > scheduled
+    })
 
 /**
  * Flying Pairing ids of this Crew whose time range overlaps the given task.

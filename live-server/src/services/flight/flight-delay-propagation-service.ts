@@ -197,10 +197,22 @@ export const propagateFlightChange = async (
         const checkInStart = addMinutes(dutySchStrDtUtc, -CHECKIN_MIN)
         const checkOutEnd = addMinutes(dutyActEndDtUtc, CHECKOUT_MIN)
         const restMin = Math.max(REST_FLOOR_MIN, Math.round(minutesBetween(checkInStart, checkOutEnd)))
+        // The duty period just changed, so the stored FDP (duty_sch_fdp_min — what rule 3007
+        // compares, see legality-recheck-core's fdpDuties() → check-3007 `pln_fdp_min`) must be
+        // refreshed. The app's convention for this column is the duty PERIOD, check-in start →
+        // release (verified against imported F8 data: 27,342 / 27,409 duties have
+        // duty_sch_fdp_min == brief_start → debrief_end). Keeping the report time and slipping
+        // the departure therefore has to extend the FDP — for a single-leg duty too; leaving the
+        // pre-delay value (or clearing it so the engine's node-sum fallback runs) both
+        // understate the crew's duty period and would hide a 3007 exceedance.
+        const releaseEnd = touchedIsLast
+          ? addMinutes(dutyActEndDtUtc, DEBRIEF_MIN)
+          : (lastSeg.debriefEndUtc ?? addMinutes(dutyActEndDtUtc, DEBRIEF_MIN))
+        const dutyPeriodMin = Math.round(minutesBetween(checkInStart, releaseEnd))
         for (const s of dutySegs) {
           await tx
             .update(pairingSegment)
-            .set({ dutyActRestMin: restMin, ...audit })
+            .set({ dutyActRestMin: restMin, dutySchFdpMin: dutyPeriodMin, ...audit })
             .where(eq(pairingSegment.id, s.id))
         }
       }

@@ -29,6 +29,12 @@ export interface CrewViolationRow {
   requiredRank?: string | null
   /** False when the associated Roster has already ended and needs no Recovery. */
   canRecover?: boolean
+  /**
+   * Published-delay (3007) rows only: every crew on the affected Pairing, so a
+   * single Alert-Center row opens the pairing-level Recovery view (matching the
+   * Roster/Pairing right-click entries) instead of a single-crew view.
+   */
+  affectedCrewIds?: string[]
 }
 
 /** Display id: "8002/006" when the instance is known, else just "8002". */
@@ -101,11 +107,11 @@ const isRecoverable = (row: CrewViolationRow): boolean =>
 /** Human-readable reason why a row cannot be selected for recovery. */
 const notRecoverableReason = (row: CrewViolationRow): string => {
   if (recoveryTriggerFor(row.ruleCode) == null) {
-    return 'Only Rule 8004 and Assignment Overlap (1001) alerts are recoverable (this is ' + row.ruleCode + ').'
+    return 'Only Rule 8004, Assignment Overlap (1001) and Published Delay (3007) alerts are recoverable (this is ' + row.ruleCode + ').'
   }
   if (row.pairingId == null) return 'This alert is not bound to a specific Pairing; only Pairing-anchored alerts are recoverable.'
   if (row.canRecover !== true) {
-    return `This ${row.ruleCode} alert is not eligible for Recovery (a 8004 Roster may have already ended, or a 1001 alert has no ground task overlapping its flying Pairing).`
+    return `This ${row.ruleCode} alert is not eligible for Recovery (a 8004 Roster may have already ended, a 1001 alert has no ground task overlapping its flying Pairing, or a 3007 Pairing has no published delay yet).`
   }
   return ""
 }

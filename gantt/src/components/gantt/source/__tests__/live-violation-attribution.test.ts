@@ -85,4 +85,53 @@ describe('Live violation crew attribution', () => {
       }),
     ])
   })
+
+  it('synthesizes a published-delay (3007) Alert Center row for every crew on a future delayed Pairing', () => {
+    const delayed = (id: number, crewId: string, pairingId: number): RosterItem => ({
+      ...rosterItem(id, crewId, pairingId),
+      label: 'ET2681 ADD-DXB',
+      fltDt: '2099-09-29',
+      schStrDtUtc: '2099-09-29T04:00:00.000Z',
+      schEndDtUtc: '2099-09-29T12:00:00.000Z',
+      actStrDtUtc: '2099-09-29T06:00:00.000Z',
+      actEndDtUtc: '2099-09-29T14:00:00.000Z',
+    } as unknown as RosterItem)
+    const items = [
+      delayed(1, 'T2001', 152675),
+      delayed(2, 'T2021', 152675),
+      delayed(3, 'T2022', 152675),
+    ]
+
+    const rows = buildLiveAlertRowsForTest(new Map(), items, [
+      { crew: { crewId: 'T2001', panelBase: 'ADD', panelRank: 'CA' } },
+      { crew: { crewId: 'T2021', panelBase: 'ADD', panelRank: 'FO' } },
+      { crew: { crewId: 'T2022', panelBase: 'ADD', panelRank: 'FO' } },
+    ] as never)
+
+    expect(rows.map((r) => `${r.ruleCode}:${r.crewId}:${r.pairingId}:${r.canRecover}`)).toEqual([
+      '3007:T2001:152675:true',
+      '3007:T2021:152675:true',
+      '3007:T2022:152675:true',
+    ])
+    expect(rows[0].affectedCrewIds).toEqual(['T2001', 'T2021', 'T2022'])
+  })
+
+  it('does not synthesize a published-delay row for a completed Pairing (Recovery is future-only)', () => {
+    const completed = {
+      ...rosterItem(1, 'T2001', 152675),
+      label: 'ET168 ADD-GDQ',
+      schStrDtUtc: '2000-09-01T12:20:00.000Z',
+      schEndDtUtc: '2000-09-01T18:00:00.000Z',
+      actStrDtUtc: '2000-09-01T16:20:00.000Z',
+      actEndDtUtc: '2000-09-01T22:00:00.000Z',
+    } as unknown as RosterItem
+
+    const rows = buildLiveAlertRowsForTest(
+      new Map(),
+      [completed],
+      [{ crew: { crewId: 'T2001', panelBase: 'ADD', panelRank: 'CA' } }] as never,
+    )
+
+    expect(rows).toEqual([])
+  })
 })

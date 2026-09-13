@@ -14,7 +14,7 @@ import { useCrewMemoStore } from '@/stores/crew-memo-store'
 import { useRuleCheckStore } from '@/stores/rule-check-store'
 import { useSessionViolationStore } from '@/stores/session-violation-store'
 import type { RecoveryAlertSnapshot } from '@/services/recovery-candidates'
-import { findRecoverableAlert, recoverablePairingsForCrew, recoveryTriggerFor } from '@/services/recovery-trigger'
+import { RECOVERY_RULE_PUBLISHED_DELAY_FDP, canRecoverViolation, findRecoverableAlert, hasPairingActualDelay, recoverablePairingsForCrew, recoveryTriggerFor } from '@/services/recovery-trigger'
 import { overlappingPairingIdsForTask } from '@/services/recovery-rules'
 import { findCrewToTop } from '@/utils/find-crew'
 import { bringPairingIdToTop, bringFlightIdToTop, findPairingsByFlight, liveHasFlightPaneOpen } from '@/utils/bring-matches-to-top'
@@ -153,24 +153,43 @@ export const ContextMenu = () => {
     return candidates.flatMap((pairingId) => {
       // A Pairing can carry several alerts (8004 + 1001); take the first whose
       // entry condition actually holds rather than gating on an arbitrary one.
-      const hit = findRecoverableAlert({
+      // S2 published delay can be opened directly from the roster duty as soon
+      // as the revised actual time is visible, even if Alert Center has not yet
+      // loaded/persisted the synthetic 3007 row.
+      let hit = findRecoverableAlert({
         crewId,
         pairingId,
         items: allItems,
         liveViolations: ruleViolationsMap.values(),
         persistedViolations: persistedViolationsMap,
       })
+      if (!hit && canRecoverViolation({
+        ruleCode: RECOVERY_RULE_PUBLISHED_DELAY_FDP,
+        items: allItems,
+        crewId,
+        pairingId: Number(pairingId),
+      })) {
+        hit = {
+          ruleCode: RECOVERY_RULE_PUBLISHED_DELAY_FDP,
+          severity: 3,
+          message: 'Published delay: actual departure later than scheduled; open Recovery preparation for FDP impact review.',
+        }
+      }
       if (!hit) return []
       const pairingItems = allItems
         .filter((item) => String(item.crewId) === crewId && Number(item.pairingId) === pairingId)
         .sort((a, b) => new Date(a.schStrDtUtc ?? 0).getTime() - new Date(b.schStrDtUtc ?? 0).getTime())
       const anchor = pairingItems[0] ?? task
       const label = anchor.label ?? anchor.assignment ?? ''
+      const affectedCrewIds = hit.ruleCode === RECOVERY_RULE_PUBLISHED_DELAY_FDP
+        ? [...new Set(allItems.filter((item) => Number(item.pairingId) === Number(pairingId)).map((item) => String(item.crewId)).filter(Boolean))]
+        : undefined
       return [{
         id: `context-${crewId}-${pairingId}-${hit.ruleCode}`,
         ruleCode: hit.ruleCode,
         severity: hit.severity,
         crewId,
+        affectedCrewIds,
         pairingId,
         flightDate: anchor.fltDt ?? anchor.schStrDtUtc?.slice(0, 10) ?? '—',
         flightNumber: label.split(/\s+/)[0] || '—',
@@ -180,6 +199,78 @@ export const ContextMenu = () => {
       }]
     })
   }, [paneType, task, ruleViolationsMap, persistedViolationsMap, mainRosterItems, subRosterItems])
+
+  const pairingRecoverySnapshot = useMemo<RecoveryAlertSnapshot | null>(() => {
+    if (!task || paneType !== 'pairing') return null
+    const pairingId = Number(task.pairingId ?? task.id)
+    if (!Number.isFinite(pairingId) || pairingId <= 0) return null
+    const allItems = [...mainRosterItems, ...subRosterItems]
+    const pairingItems = allItems
+      .filter((item) => Number(item.pairingId) === pairingId)
+      .sort((a, b) => new Date(a.schStrDtUtc ?? 0).getTime() - new Date(b.schStrDtUtc ?? 0).getTime())
+    // ── Roster-based alert (8004 aircraft qualification / 1001 overlap) ──
+    // Same entry gate as the Roster right-click and the Alert Center: resolve a
+    // recoverable alert for any Crew assigned to this Pairing. This is what makes
+    // the Pairing pane a Recovery entry point for an 8004 fleet mismatch — the
+    // published-delay block below only covers Rule 3007.
+    for (const item of pairingItems) {
+      const crewId = String(item.crewId ?? '')
+      if (!crewId) continue
+      const hit = findRecoverableAlert({
+        crewId,
+        pairingId,
+        items: allItems,
+        liveViolations: ruleViolationsMap.values(),
+        persistedViolations: persistedViolationsMap,
+      })
+      if (!hit) continue
+      const label = item.label ?? item.assignment ?? ''
+      return {
+        id: `context-pairing-${crewId}-${pairingId}-${hit.ruleCode}`,
+        ruleCode: hit.ruleCode,
+        severity: hit.severity,
+        crewId,
+        pairingId,
+        flightDate: item.fltDt ?? item.schStrDtUtc?.slice(0, 10) ?? '—',
+        flightNumber: label.split(/\s+/)[0] || `Pairing ${pairingId}`,
+        detail: hit.message,
+        fleet: item.fleetCode ?? null,
+        requiredRank: item.flightActingRank || null,
+      }
+    }
+    if (!hasPairingActualDelay(allItems, pairingId)) return null
+    const delayed = pairingItems.find((item) => {
+      if (!item.schStrDtUtc || !item.actStrDtUtc) return false
+      const scheduled = new Date(item.schStrDtUtc).getTime()
+      const actual = new Date(item.actStrDtUtc).getTime()
+      return Number.isFinite(scheduled) && Number.isFinite(actual) && actual > scheduled
+    })
+    const anchor = delayed ?? pairingItems[0]
+    if (!anchor?.crewId) return null
+    // Same entry gate as the Roster right-click and the Alert Center: a published
+    // delay is recoverable only while its duty is still in the future.
+    if (!canRecoverViolation({
+      ruleCode: RECOVERY_RULE_PUBLISHED_DELAY_FDP,
+      items: allItems,
+      crewId: String(anchor.crewId),
+      pairingId,
+    })) return null
+    const label = anchor.label ?? anchor.assignment ?? ''
+    const affectedCrewIds = [...new Set(pairingItems.map((item) => String(item.crewId)).filter(Boolean))]
+    return {
+      id: `context-pairing-delay-${pairingId}`,
+      ruleCode: RECOVERY_RULE_PUBLISHED_DELAY_FDP,
+      severity: 3,
+      crewId: String(anchor.crewId),
+      affectedCrewIds,
+      pairingId,
+      flightDate: anchor.fltDt ?? anchor.schStrDtUtc?.slice(0, 10) ?? '—',
+      flightNumber: label.split(/\s+/)[0] || `Pairing ${pairingId}`,
+      detail: 'Published delay: actual departure is later than scheduled; open Recovery preparation for FDP impact review.',
+      fleet: anchor.fleetCode ?? null,
+      requiredRank: anchor.flightActingRank || null,
+    }
+  }, [paneType, task, mainRosterItems, subRosterItems, ruleViolationsMap, persistedViolationsMap])
 
   // Scenario right-clicks carry a scenarioId — the ScenarioContextMenu handles those.
   // The Live menu only renders for Live mode (scenarioId === null).
@@ -423,10 +514,18 @@ export const ContextMenu = () => {
         },
       })
     }
-  } else if (paneType === 'pairing' && hasTask) {
-    // Pairing pane actions — task.id is segment ID; task.pairingId is the actual pairing ID
-    const pairingId = task.pairingId ?? task.id
+  } else if (paneType === 'pairing' && Number.isFinite(Number(task.pairingId ?? task.id)) && Number(task.pairingId ?? task.id) > 0) {
+    // Pairing pane actions: task.id may be a segment/mock ID; task.pairingId is the actual pairing ID when provided.
+    const pairingId = Number(task.pairingId ?? task.id)
     items.push(
+      ...(pairingRecoverySnapshot ? [{
+        icon: ShieldAlert,
+        label: 'Recovery',
+        onClick: () => {
+          window.dispatchEvent(new CustomEvent('recovery:open', { detail: pairingRecoverySnapshot }))
+          closeContextMenu()
+        },
+      }] : []),
       {
         icon: Link2,
         label: 'View pairing detail',
