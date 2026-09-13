@@ -31,16 +31,41 @@ fixture provenance in before/after manifests. Do not blend another base,
 pairing, or prior regression into the case as a continuation. If another issue
 is relevant, link it as a separate case rather than silently enlarging this one.
 
-The current Case 1 observation is recorded, not a claim of resolution:
+Case 1 is ET captain Getnet Kifle, `J4002`, ADD, pairing `152056`, six legs.
+Historical failed mobile submission and stand-down evidence stays in internal
+execution memos; it is not the current client-facing story. Do not recycle old
+request IDs or reset scripts as the current incident baseline.
 
-- ET captain Getnet Kifle; crew identifier `J4002` (this is the crew, not a
-  flight number); ADD base; pairing `152056`; six legs.
-- Sick-leave request `9`, 25–26 September, persisted; the mobile app reported
-  “Unable to submit” despite a committed stand-down, and notification `absence-9` was
-  not present.
-- Standby, swap, and delay were blocked by a missing recovery entry.
-- The user requested restoration. Never imply that the incident is fixed or the
-  demo reset is complete unless the later real-UI evidence proves it.
+## Approved crew-to-controller workflow
+
+The user-approved behavior is: **crew submits SL → original flying duty remains
+assigned → SL/flying overlap triggers rule 1001 → controller opens Recovery →
+compares standby, swap and delay → Preview → Apply draft → Save**. Retaining the
+duty preserves the recovery source; submitting SL must not itself de-assign it.
+The 2026-09-12 real Maestro submission showed “Request submitted” and “Sick leave
+added. Original duties remain assigned pending Crew Control recovery.” Owned absence
+10 / ILL row 1355740 preserved all six original source rows; controller Playwright
+verified genuine ILL/FLY 1001 and three selectable standby candidates. Public Help
+was checked separately. See the [retained-duty execution and reset receipt](../../../docs/test-cases/crew-recovery/2026-09-12-1730-S1-retained-duty-help-reset-Ver1.md)
+for final evidence. A separate fresh-UI reset check verified the prepared controller
+incident baseline: six original legs, CA 2/2 and FO 2/2 coverage, zero drafts,
+prepared timed SL as the sole recoverable 1001, six swaps and three standby choices.
+Submission success alone does not establish a completed reset. A controller/API-created SL is a separate setup method, never
+evidence of successful mobile submission.
+
+Distinguish absence windows: the mobile inclusive-date request creates a whole-day
+ILL. In this fixture it leaves **zero same-day swap candidates**. The prepared timed
+SL ends early enough for **six** same-day swaps. These are different test starting
+conditions, not an engine change or interchangeable screenshots. Explain the timed
+variant explicitly when demonstrating swap; never shorten real sick leave merely
+to manufacture a candidate or infer medical fitness from a recorded end time.
+
+Before submission capture the source assignment IDs, coverage and existing SL.
+After submission assert one owned request and its linked SL, unchanged active
+source assignments, and a recoverable 1001 in a freshly loaded Alert Center.
+Only claim notifications, automatic recheck or crew-app confirmation when observed.
+Test controller recovery one option at a time from an equivalent incident state;
+an enabled candidate is not proof of successful committed execution.
 
 ## Evidence workflow
 
@@ -60,19 +85,47 @@ The current Case 1 observation is recorded, not a claim of resolution:
 
 ## Cleanup and demo reset
 
-Cleanup is limited to the exact request-owned records and duties established by
-the manifests. Do not “clean up” earlier absences, unrelated crew duties, or
-unaffected pairings. Restore the requested baseline, then verify the restoration
-through the real UI (mobile and controller as applicable), not only SQL/API
-checks. A reset is incomplete until the UI shows the expected state. Stop and
-report any mismatch instead of broadening deletion or restoration.
+Maintain two explicit checkpoints: **prepared pre-submit baseline** (source duty,
+reserve/donor duties and GH-credit fixtures) and **incident baseline** (same state
+plus the owned submitted SL/request and 1001). State which checkpoint is left for
+the client. Immediate controller replay needs the incident; a whole-story replay
+needs pre-submit. Do not silently leave temporary SL behind or remove prepared
+candidate duties that the next demonstration needs.
+
+Reset in stages:
+1. Undo unsaved drafts using the UI; assert zero draft operations.
+2. For a saved option, preflight exact IDs and expected current values against the
+   incident manifest. Restore only test-created target assignments, original source
+   assignments and changed standby exception flags. A swap also requires the donor
+   pairing and both crews. A saved delay requires a captured expanded baseline of
+   affected flights, linked pairings and every impacted crew before execution.
+3. Restore affected coverage, authoritative manday credit and legality using current
+   application utilities; invalidate the caches listed below. Preserve audit history.
+4. Compare owned and neighbouring records, reload Live, and assert original coverage,
+   assignments, the expected incident alert and zero draft.
+5. For whole-story replay, remove only this run's request/SL using the supported
+   lifecycle, preserving older absences; verify pre-submit state in crew and controller
+   UIs. If the lifecycle is unavailable, document the bounded reset and its receipt.
+
+Stop on concurrent-state mismatch rather than expanding cleanup. Never restore an
+obsolete fixture over another user's edits. SQL/API equality alone is not UI reset
+verification, and cleanup does not authorize erasing audit or unrelated notifications.
+
+For the retained-duty run, no absence cancellation endpoint was available: the
+owned ILL was removed through `rosterApi.remove`, then the exact absence ID and owned
+note were checked before marking that request cancelled. The soft-deleted ILL and
+original submission notification were retained as audit. This is an internal scoped
+reset, not a crew-app cancellation feature or a generic SQL recipe. The existing
+full-month manday driver recomputed J4002 to 77:35. The manifest comparison preserved
+older rows; `node .local/s1-sl/final-check.cjs` passed after fresh reload and saved
+filter application. The remaining timed SL is the prepared controller-replay incident,
+not the cancelled mobile ILL and not a claim of a pre-submit/no-absence baseline.
 
 ## Source and data traps
 
-- At the Case 1 baseline, Recovery used `1001` ground/flying overlap or `8004`
-  qualification alerts on assigned pairings. Absence stand-down removed the
-  source assignment, so those entrances did not provide an open-seat recovery
-  search. Recheck current code and actual UI before assuming that limitation persists.
+- Recovery entry and candidate discovery depend on current assigned-pairing alert
+  support (`1001` overlap and `8004` qualification in the Case 1 implementation).
+  Do not de-assign the source as fixture preparation for this overlap workflow.
 - For date/timestamp fields that have no timezone, query or compare as
   `column::text` where appropriate. Avoid machine-local timezone conversion
   changing the observed date.
@@ -92,6 +145,13 @@ them at the user-supplied/versioned locations, inspect them, and keep unrelated
 topic images unloaded until the topic is opened. Run the focused Help checks and
 report exact PASS/FAIL receipts and any unrun UI/reset verification.
 
+For a client-facing case, narrate the current operational path and decision, not
+obsolete defect investigation. Omit the historical “Unable to submit” screenshot
+and stand-down failure narrative from Case 1 as requested. Keep those original
+artifacts/internal memos rather than deleting history. Separately label verification
+scope: previewed, applied/undone, saved/reloaded, and restored. A clean narrative
+does not permit claiming untested Save, CCX, APIS, crew acceptance or payroll posting.
+
 ## Reusable case record
 
 For each new case, record:
@@ -110,7 +170,8 @@ For each new case, record:
   notification/execution state and reset receipt. Use “not generated” rather than zero
   when costs or candidates are unavailable.
 - Separate functional pass, blocked workflow, and client-demo readiness. Include
-  replay instructions and outstanding defects, not just the happy-path narrative.
+  replay instructions and operational limitations; retain investigation details and
+  outstanding defect evidence in the internal execution memo.
 
 Start each option from an equivalent incident state. Undo unsaved drafts through
 existing UI controls; restore committed option effects only using a scoped,
@@ -121,3 +182,27 @@ pairing detail/composition **and pairing-list caches** using current invalidatio
 utilities. Case 1's first reset left a stale CA(2:1) list badge despite CA 2/2 in SQL.
 Assert displayed coverage as well as assignment IDs after a fresh UI load. Preserve
 honest audit timestamps; baseline restoration does not mean erasing audit history.
+
+## GH comparison and candidate visibility
+
+- Use saved **calendar-month** roster credit from the existing manday driver, not
+  RP MCred or invented aggregate edits. Assigned future credit is not already-flown hours.
+- Airport standby pricing deducts the previously credited ASBY duty. Swap-duty
+  pricing must calculate **both** crews' `Pay(before − removed + added) − Pay(before)`
+  through the Cost Library guarantee calculator, retaining source savings. Show
+  GH-only estimates as such; they exclude other operational costs.
+- Read `standby-gh-cost.ts` / `swap-gh-cost.ts` under live-server recovery services
+  for current supported context and policy rules; unsupported/missing data is
+  Unpriced, never a free option. Do not map an incomplete swap into ordinary fees.
+- Check donor **fleet on every segment**, effective crew qualifications, base-return
+  routing, report date in the actual UI business date, and both crews' rule results.
+  A fleet warning can coexist with an Executable badge. Later UTC report can fall
+  on the next base-local date and disappear from same-day candidate search.
+- Fill only available rank seats. Multiple candidates may legitimately hold
+  different captain seats on one donor pairing; do not overfill or manufacture duties.
+- Recovery currently searches loaded Live crew/roster data. If a second browser
+  shows fewer candidates, refresh its roster scope (including candidate crews) and
+  reopen Recovery; an already-open dialog can retain an old snapshot. The preview
+  shows the two affected crews, not the full candidate list.
+- See the [six-candidate swap evidence](../../../docs/test-cases/crew-recovery/2026-09-12-1445-S1-swap-gh-six-candidates-Ver1.md)
+  for the case-specific fixture, failures corrected, and Apply/Undo versus Save limits.

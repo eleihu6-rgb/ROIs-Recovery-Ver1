@@ -22,17 +22,22 @@
  *   standby activation        → 1007  Day-off recall (fixed)
  *
  * If a configured revision is `unpriced` or `disabled`, the calculator
- * returns `amount: null` and the bridge treats that as 0 cash but keeps
- * the row in the breakdown so analysts can see which tariffs are missing.
+ * returns `amount: null`; incomplete totals remain unpriced, with breakdown
+ * rows retained. Saved pilot ASBY identity context uses the airport standby
+ * calculator and its pinned GH policy, not the legacy fixed recall mapping.
  */
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { success, error } from '../../utils/response.js'
 import { CostLibraryError } from '../../services/cost/cost-library-service.js'
 import { calculateCost } from '../../services/cost/cost-calculator.js'
+import { calculateSwapGhCost } from '../../services/recovery/swap-gh-cost.js'
+import { calculateStandbyGhCost } from '../../services/recovery/standby-gh-cost.js'
 import { validateParameters } from '../../services/cost/cost-validation.js'
 
 const costInputSchema = z.object({
+  swapContext: z.object({ sourceCrewId: z.string().min(1).max(40), sourcePairingId: z.number().int().positive(), targetCrewId: z.string().min(1).max(40), targetPairingId: z.number().int().positive() }).optional(),
+  standbyContext: z.object({ crewId: z.string().min(1).max(40), pairingId: z.number().int().positive(), standbyTaskId: z.number().int().positive() }).optional(),
   // `swap-duty` (Assignment Overlap) prices like a swap; `flight-delay` keeps the
   // Crew and is priced as a delay-only option (no roster-change components).
   mode: z.enum(['transfer', 'swap', 'standby', 'swap-duty', 'flight-delay', 'cross-base-standby', 'cross-base-swap', 'cross-base-destination', 'cross-base-direct']),
@@ -61,7 +66,7 @@ interface CostRow {
 }
 
 interface RecoveryCostBreakdown {
-  directCost: number
+  directCost: number | null
   currency: string
   breakdown: CostRow[]
   /** Optional notes for the UI (e.g. "fallback to other-airline because own-airline unpriced"). */
@@ -151,9 +156,19 @@ const buildCalculatorInputs = (
 
 export default async function recoveryCostRoutes(fastify: FastifyInstance): Promise<void> {
   const calculate = async (input: CostInput): Promise<RecoveryCostBreakdown> => {
+    if (input.mode === 'standby' && input.standbyContext) {
+      return calculateStandbyGhCost(fastify.pgPool, input.standbyContext)
+    }
+    if (input.mode === 'swap-duty') {
+      if (!input.swapContext) return { directCost: null, currency: 'USD', breakdown: [], notes: ['Swap GH pricing requires both saved crew and pairing identities.'] }
+      if (input.crossBase || input.crossDivision || input.crossRole || input.followOnImpactCount || input.dhdOutboundSectors || input.dhdFlightCost || input.dhdCostSavings) {
+        return { directCost: null, currency: 'USD', breakdown: [], notes: ['Swap GH estimate does not cover cross-base, cross-role, positioning or follow-on changes.'] }
+      }
+      return calculateSwapGhCost(fastify.pgPool, input.swapContext)
+    }
     const components = buildComponents(input)
     if (components.length === 0) {
-      return { directCost: 0, currency: 'CNY', breakdown: [], notes: ['No cost components for the given input.'] }
+      return { directCost: null, currency: 'CNY', breakdown: [], notes: ['No complete cost estimate is configured for this option.'] }
     }
     const typeCodes = [...new Set(components.map((c) => c.typeCode))]
     const instancesResult = await fastify.pgPool.query<TypeRow & { instance_id: number }>(
@@ -316,7 +331,8 @@ export default async function recoveryCostRoutes(fastify: FastifyInstance): Prom
         currencyCode: firstCurrency,
       })
     }
-    return { directCost, currency: firstCurrency, breakdown, notes }
+    const complete = breakdown.length > 0 && breakdown.every(row => row.status === 'priced') && new Set(breakdown.map(row => row.currencyCode)).size <= 1
+    return { directCost: complete ? directCost : null, currency: firstCurrency, breakdown, notes }
   }
 
   fastify.post('/calculate-cost', async (request: FastifyRequest, reply) => {
@@ -340,7 +356,7 @@ export default async function recoveryCostRoutes(fastify: FastifyInstance): Prom
     try {
       const results = await Promise.all(parsed.data.inputs.map((input) => calculate(input).catch((err) => {
         const message = err instanceof Error ? err.message : 'unknown'
-        return { directCost: 0, currency: 'CNY', breakdown: [], notes: [`Calculation failed: ${message}`] } satisfies RecoveryCostBreakdown
+        return { directCost: null, currency: 'CNY', breakdown: [], notes: [`Calculation unavailable: ${message}`] } satisfies RecoveryCostBreakdown
       })))
       return success(reply, { results })
     } catch (err) {

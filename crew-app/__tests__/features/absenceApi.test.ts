@@ -25,7 +25,8 @@ const successResult = {
   assignment: 'ILL',
   fromDate: '2026-09-14',
   toDate: '2026-09-15',
-  removedPairingIds: [151614],
+  removedPairingIds: [],
+  retainedPairingIds: [151614],
   groundDays: 2,
   notificationId: 'absence-12',
 };

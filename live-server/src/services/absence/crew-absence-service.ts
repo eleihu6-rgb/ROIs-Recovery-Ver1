@@ -1,9 +1,6 @@
 import type { FastifyInstance } from 'fastify'
-import type { QueryResultRow } from 'pg'
 import { env } from '../../config/index.js'
 import { quoteIdentifier } from '../../utils/db-schema.js'
-import { invalidate } from '../../utils/cache.js'
-import { refreshPairingCompositionFillBulk } from '../../utils/composition-fill.js'
 import { recheckLiveRosterMutation } from '../rule/legality-recheck.js'
 import { recomputeMandayAndNotify } from '../manday/manday-operation-service.js'
 import { mandayMutationWindow } from '../manday/manday-mutation-window.js'
@@ -11,16 +8,10 @@ import { notifyRosterTasksChanged } from '../roster/roster-change-notifier.js'
 import { appendNotification } from '../crew-notify/crew-notify-service.js'
 
 /**
- * Crew recovery story 101 — crew-app sick leave → Live auto stand-down.
- *
- * One transaction: record the absence, soft-delete every flying pairing that
- * overlaps the range (whole pairing, crew×leg rows are not a legal unit), and
- * insert one `ILL` ground row per crew-base local day. Post-commit side effects
- * mirror `routes/roster` + `routes/draft`: composition fill (reopens the slot),
- * Rust legality recheck, manday recompute, `roster-updated` broadcast, and the
- * crew notification (logged, never fails the request).
- *
- * Spec: docs/superpowers/specs/2026-09-11-crew-recovery-story-101-sick-leave-stand-down.md
+ * Crew-app sick leave records unavailability without changing flying assignments.
+ * The overlap remains visible to legality / Recovery; only controller Apply +
+ * Save reassigns duties. One transaction writes the absence and per-local-day
+ * ILL rows. Post-commit effects must never turn a saved request into a failure.
  */
 
 export class CrewAbsenceServiceError extends Error {
@@ -63,27 +54,9 @@ export interface SubmitCrewAbsenceResult {
   fromDate: string
   toDate: string
   removedPairingIds: number[]
+  retainedPairingIds: number[]
   groundDays: number
   notificationId: string | null
-}
-
-/** One leg of a rotation the crew lost — the "before" side of the alert. */
-export interface BeforeDutyLeg {
-  fltNum: string | null
-  dep: string | null
-  arv: string | null
-  /** ISO-8601 UTC. */
-  std: string | null
-  sta: string | null
-  register: string | null
-  fleet: string | null
-}
-
-/** A whole removed rotation, dated by the crew-base local day it started on. */
-export interface BeforeDuty {
-  pairingId: number
-  date: string
-  legs: BeforeDutyLeg[]
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -124,10 +97,6 @@ const localToUtc = (dayUtc: Date, seconds: number, zoneId: string): Date => {
 }
 
 const END_OF_DAY_SECONDS = 23 * 3600 + 59 * 60 + 59
-
-/** Crew-base local date (`YYYY-MM-DD`) of a UTC instant. */
-const localDateOf = (utc: Date, zoneId: string): string =>
-  isoDate(new Date(utc.getTime() + offsetAt(utc, zoneId) * 60_000))
 
 export interface ListCrewAbsencesInput {
   crewId?: string
@@ -209,74 +178,6 @@ export const listCrewAbsences = async (
   }))
 }
 
-/**
- * Read the flying rotations that a stand-down is about to remove, grouped per
- * pairing, with the flight identity/times the crew recognises. Read inside the
- * transaction but before the soft-delete, so the "before" side matches what the
- * crew actually had on their roster.
- */
-const readRemovedDuties = async (
-  client: { query<T extends QueryResultRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }> },
-  schema: string,
-  crewId: string,
-  pairingIds: number[],
-  zoneId: string,
-): Promise<BeforeDuty[]> => {
-  if (pairingIds.length === 0) return []
-
-  const result = await client.query<{
-    pairing_id: number | string
-    sch_str_dt_utc: Date | string
-    sch_end_dt_utc: Date | string | null
-    flt_num: string | null
-    dep_arp: string | null
-    arv_arp: string | null
-    register: string | null
-    fleet: string | null
-  }>(
-    `select rf.pairing_id, rf.sch_str_dt_utc, rf.sch_end_dt_utc,
-            f.flt_num, f.dep_arp, f.arv_arp, f.register, f.fleet
-       from ${schema}.roster_flight rf
-       left join ${schema}.flight f on f.id = rf.flt_id
-      where rf.crew_id = $1
-        and rf.pairing_id = any($2::bigint[])
-        and rf.is_deleted = 0
-      order by rf.pairing_id, rf.sch_str_dt_utc`,
-    [crewId, pairingIds],
-  )
-
-  const iso = (value: Date | string | null): string | null => {
-    if (value === null) return null
-    const d = new Date(value)
-    return Number.isNaN(d.getTime()) ? null : d.toISOString()
-  }
-
-  const byPairing = new Map<number, BeforeDuty>()
-  for (const row of result.rows) {
-    const pairingId = Number(row.pairing_id)
-    const start = new Date(row.sch_str_dt_utc)
-    let duty = byPairing.get(pairingId)
-    if (!duty) {
-      duty = {
-        pairingId,
-        date: Number.isNaN(start.getTime()) ? '' : localDateOf(start, zoneId),
-        legs: [],
-      }
-      byPairing.set(pairingId, duty)
-    }
-    duty.legs.push({
-      fltNum: row.flt_num ?? null,
-      dep: row.dep_arp ?? null,
-      arv: row.arv_arp ?? null,
-      std: iso(row.sch_str_dt_utc),
-      sta: iso(row.sch_end_dt_utc),
-      register: row.register ?? null,
-      fleet: row.fleet ?? null,
-    })
-  }
-  return [...byPairing.values()]
-}
-
 export const submitCrewAbsence = async (
   fastify: FastifyInstance,
   input: SubmitCrewAbsenceInput,
@@ -302,9 +203,7 @@ export const submitCrewAbsence = async (
   let committed: {
     absenceId: number
     base: string
-    removedPairingIds: number[]
-    before: BeforeDuty[]
-    removedDates: Date[]
+    retainedPairingIds: number[]
     startUtc: Date
     endUtc: Date
   }
@@ -350,15 +249,9 @@ export const submitCrewAbsence = async (
         order by pairing_id`,
       [crewId, startUtc.toISOString(), endUtc.toISOString()],
     )
-    const removedPairingIds = pairingsRes.rows.map((row) => Number(row.pairing_id))
+    const retainedPairingIds = pairingsRes.rows.map((row) => Number(row.pairing_id))
 
-    // 3b. Snapshot the flying duties the crew is about to lose, BEFORE the
-    //     soft-delete below. The crew notification shows these as the "before"
-    //     side of the change, so the crew sees the rotation they had next to the
-    //     sick-leave day they gained instead of reading prose.
-    const before = await readRemovedDuties(client, schema, crewId, removedPairingIds, zoneId)
-
-    // 4. Absence record (carries the removed pairing ids for the absence window / best-fit).
+    // 4. Historical removed_pairing_ids means actual removals, never merely affected duties.
     const absenceRes = await client.query<{ id: number }>(
       `insert into ${schema}.crew_absence
          (created_by, updated_by, airline, crew_id, absence_type, assignment,
@@ -366,23 +259,11 @@ export const submitCrewAbsence = async (
        values ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'CREW_APP', $12::bigint[])
        returning id`,
       [username, input.airline, crewId, input.type, assignment, input.fromDate, input.toDate,
-        startUtc.toISOString(), endUtc.toISOString(), baseRow.base, note, removedPairingIds],
+        startUtc.toISOString(), endUtc.toISOString(), baseRow.base, note, []],
     )
     const absenceId = Number(absenceRes.rows[0]!.id)
 
-    // 5. Stand down: soft-delete every row of those pairings for this crew.
-    let removedDates: Date[] = []
-    if (removedPairingIds.length > 0) {
-      const removed = await client.query<{ sch_str_dt_utc: Date }>(
-        `update ${schema}.roster_flight
-            set is_deleted = 1, request_source = 'CREW_APP', request_id = $3,
-                updated_by = $4, updated_at = now()
-          where crew_id = $1 and pairing_id = any($2::bigint[]) and is_deleted = 0
-          returning sch_str_dt_utc`,
-        [crewId, removedPairingIds, absenceId, username],
-      )
-      removedDates = removed.rows.map((row) => new Date(row.sch_str_dt_utc))
-    }
+    // 5. Keep every original duty row unchanged. Crew Control owns recovery.
 
     // 6. One ILL ground row per local day — same shape as rosterService.createGroundTask.
     const assignRes = await client.query<{ fixed_credit_min: number | null; dp_pct: number | null; rest_time: number | null }>(
@@ -414,7 +295,7 @@ export const submitCrewAbsence = async (
 
     await client.query('commit')
     committed = {
-      absenceId, base: baseRow.base, removedPairingIds, before, removedDates, startUtc, endUtc,
+      absenceId, base: baseRow.base, retainedPairingIds, startUtc, endUtc,
     }
   } catch (err) {
     await client.query('rollback').catch(() => undefined)
@@ -423,34 +304,30 @@ export const submitCrewAbsence = async (
     client.release()
   }
 
-  // ---- Post-commit side effects (same order as the roster/draft routes). ----
-  if (committed.removedPairingIds.length > 0) {
-    await refreshPairingCompositionFillBulk(fastify.db, committed.removedPairingIds, username)
-      .catch((err) => fastify.log.error(err, 'refreshPairingCompositionFill failed after crew absence'))
-    await Promise.all(committed.removedPairingIds.flatMap((id) => [
-      invalidate(fastify.redis, `pairing:${id}`),
-      invalidate(fastify.redis, `pairing:comp:${id}`),
-    ]))
+  // Each hook is independent: committed absence remains successful even if
+  // legality, manday or realtime infrastructure is temporarily unavailable.
+  const afterCommit = async (name: string, action: () => Promise<unknown>): Promise<void> => {
+    try { await action() } catch (err) { fastify.log.error(err, `crew absence ${name} failed after commit`) }
   }
-
-  const touchedDates = [committed.startUtc, committed.endUtc, ...committed.removedDates]
-  await recheckLiveRosterMutation(fastify, undefined, touchedDates, [crewId])
-  const window = await mandayMutationWindow(fastify, [crewId], touchedDates, {
-    backDays: MANDAY_BACK_DAYS, forwardDays: MANDAY_FWD_DAYS,
-  })
-  if (window) {
-    await recomputeMandayAndNotify(fastify, {
-      crewIds: [crewId], startDt: window.startDt, endDt: window.endDt, updatedBy: username,
+  const touchedDates = [committed.startUtc, committed.endUtc]
+  await afterCommit('legality recheck', () => recheckLiveRosterMutation(fastify, undefined, touchedDates, [crewId]))
+  await afterCommit('manday recompute', async () => {
+    const window = await mandayMutationWindow(fastify, [crewId], touchedDates, {
+      backDays: MANDAY_BACK_DAYS, forwardDays: MANDAY_FWD_DAYS,
     })
-    fastify.wsBroadcastAll(input.wsSchema, { type: 'manday-updated', crewIds: [crewId] })
-  }
-  await notifyRosterTasksChanged(fastify, {
-    schema: input.wsSchema, crewIds: [crewId], pairingIds: committed.removedPairingIds,
+    if (window) {
+      await recomputeMandayAndNotify(fastify, {
+        crewIds: [crewId], startDt: window.startDt, endDt: window.endDt, updatedBy: username,
+      })
+      fastify.wsBroadcastAll(input.wsSchema, { type: 'manday-updated', crewIds: [crewId] })
+    }
   })
+  await afterCommit('roster notification', () => notifyRosterTasksChanged(fastify, {
+    schema: input.wsSchema, crewIds: [crewId], pairingIds: [],
+  }))
 
-  // Crew notification: emit only after commit; never fail the stand-down on it.
+  // Crew notification: emit only after commit; never fail the recorded absence on it.
   let notificationId: string | null = `absence-${committed.absenceId}`
-  const removedCount = committed.removedPairingIds.length
   try {
     await appendNotification({ pgPool: fastify.pgPool }, {
       airline: input.airline,
@@ -458,10 +335,8 @@ export const submitCrewAbsence = async (
       notifId: notificationId,
       type: 'roster_change',
       title: 'Sick leave recorded',
-      body: removedCount > 0
-        ? `${removedCount} flight dut${removedCount === 1 ? 'y' : 'ies'} removed for ${input.fromDate} – ${input.toDate}; ${assignment} added to your roster.`
-        : `${assignment} added to your roster for ${input.fromDate} – ${input.toDate}. No flight duties were affected.`,
-      relatedPairingId: removedCount > 0 ? String(committed.removedPairingIds[0]) : null,
+      body: `Sick leave recorded for ${input.fromDate} – ${input.toDate}; ${assignment} added. Original flight duties remain assigned pending Crew Control recovery.`,
+      relatedPairingId: committed.retainedPairingIds.length > 0 ? String(committed.retainedPairingIds[0]) : null,
       payload: {
         // Shape consumed by the crew app's alert card (features/notifications/
         // rosterChange.ts): it renders `before` and `after` side by side, so both
@@ -470,10 +345,11 @@ export const submitCrewAbsence = async (
         absenceId: committed.absenceId,
         absenceType: input.type,
         assignment,
-        removedPairingIds: committed.removedPairingIds,
+        removedPairingIds: [],
+        retainedPairingIds: committed.retainedPairingIds,
         fromDate: input.fromDate,
         toDate: input.toDate,
-        before: committed.before,
+        before: [],
         after: Array.from({ length: dayCount }, (_, i) => ({
           date: isoDate(new Date(from.getTime() + i * 86_400_000)),
           assignment,
@@ -492,7 +368,8 @@ export const submitCrewAbsence = async (
     assignment,
     fromDate: input.fromDate,
     toDate: input.toDate,
-    removedPairingIds: committed.removedPairingIds,
+    removedPairingIds: [],
+    retainedPairingIds: committed.retainedPairingIds,
     groundDays: dayCount,
     notificationId,
   }

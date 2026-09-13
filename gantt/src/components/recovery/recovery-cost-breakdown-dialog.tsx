@@ -5,7 +5,7 @@ import { ReceiptText, AlertTriangle, Info } from 'lucide-react'
 import type { CostLibraryBreakdownRow } from '@/services/recovery-api'
 
 const money = (amount: number, currency: string = 'CNY'): string =>
-  new Intl.NumberFormat('zh-CN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
+  new Intl.NumberFormat('zh-CN', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount)
 
 export interface RecoveryCostBreakdownDialogProps {
   /** Controlled open state. */
@@ -106,7 +106,7 @@ export const RecoveryCostBreakdownDialog = ({
           <div className="text-right">
             <div className="text-3xs uppercase tracking-wide text-muted-foreground">Priced total</div>
             <div className="text-sm font-semibold tabular-nums text-foreground" data-testid={`${testIdPrefix}-total`}>
-              {money(total, currency)}
+              {enrichmentFailed ? 'Unpriced' : money(total, currency)}
             </div>
           </div>
         </div>
@@ -136,7 +136,7 @@ export const RecoveryCostBreakdownDialog = ({
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <div>
               Cost library unreachable. Showing the hard-coded estimate
-              ({money(total, currency)}) without per-component breakdown.
+              ({enrichmentFailed ? 'Unpriced' : money(total, currency)}) without per-component breakdown.
             </div>
           </div>
         )}

@@ -1,6 +1,6 @@
 // Crew Recovery Story 101: sick-leave submission. Replaces the static
-// SpecPage#absence mock with a real form that posts to live-server and stands
-// the crew down on success. Kept in the same visual language as SpecPage
+// SpecPage#absence mock with a real form that posts to live-server and retains
+// original duties for Crew Control recovery. Kept in the same visual language as SpecPage
 // (PageShell/Hero/ListCard/KvRow/PrimaryButton, SectionLabel + RadioRow from
 // components/v2/rows) so the screen still looks like the rest of the app.
 import React, { useMemo, useState } from 'react';
@@ -155,7 +155,7 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
     }
     setBusy(true);
     try {
-      const result = await submitAbsence({
+      await submitAbsence({
         airline,
         crewId,
         password,
@@ -166,7 +166,7 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
       });
       Alert.alert(
         'Request submitted',
-        `${result.removedPairingIds.length} duty removed, sick leave added`,
+        'Sick leave added. Original duties remain assigned pending Crew Control recovery.',
       );
       navigation.goBack();
     } catch (e) {
@@ -180,7 +180,7 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
     <PageShell title="Absence Request" testID="page-absence">
       <Hero
         h1="Report an absence"
-        h2="Crew Control is notified instantly and affected duties reassigned."
+        h2="Sick leave is recorded. Original duties remain assigned until Crew Control completes recovery."
         palette={p}
       />
 

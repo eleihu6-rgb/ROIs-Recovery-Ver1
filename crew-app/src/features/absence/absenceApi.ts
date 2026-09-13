@@ -8,7 +8,7 @@
 // src/routes/crew-notify/crew-notify.ts):
 //   POST /crew-app/v1/absence { airline, crewId, password, type, fromDate, toDate, note? }
 //   -> { code, data: { absenceId, assignment, fromDate, toDate, removedPairingIds,
-//        groundDays, notificationId }, message }
+//        retainedPairingIds, groundDays, notificationId }, message }
 //
 // The route validates the body with zod BEFORE auth: a malformed body (e.g. bad
 // date format) comes back as HTTP 200 with envelope `code: 400` and the zod
@@ -43,6 +43,7 @@ const absenceResultSchema = z
     fromDate: z.string(),
     toDate: z.string(),
     removedPairingIds: z.array(z.number()).default([]),
+    retainedPairingIds: z.array(z.number()).optional(),
     groundDays: z.number(),
     notificationId: z.string().nullable(),
   })

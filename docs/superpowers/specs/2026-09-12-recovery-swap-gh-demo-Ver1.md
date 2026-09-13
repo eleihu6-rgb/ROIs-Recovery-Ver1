@@ -1,0 +1,15 @@
+# S1 — Five additional swap candidates with GH comparison
+
+Authorized scope: extend the existing J4002/ADD/152056 overlap demo, keeping J4005 and adding five prepared ADD captain candidates. Reuse existing J4014–J4018 crew masters rather than duplicating people. Assign open, base-returning existing pairings normally; some candidate rosters have low credit, others approach/exceed the existing 85h GH threshold. No artificial aggregate credit, policy changes, or candidate/rule bypasses.
+
+## Cost/data flow
+
+Current swap bridge is Unpriced and does not feed saved roster credit to the GH calculator. Add optional identity context for same-base pilot `swap-duty` only: source crew/pairing and target crew/donor pairing. Server validates complete saved ownership, same-base/rank pilot context, single base-local calendar month, available per-duty credits, and effective default GH policy (type1002 instance1). Reuse CostLibraryService.calculate with `beforeCredit`, `removedCredit`, `addedCredit` for each crew; sum signed Pay(after)-Pay(before), including source savings. Do not count incoming legs repeatedly, ignore outgoing credit, clamp savings, or substitute RP MCred. Reject unsupported/missing/partial data as Unpriced. Current scope excludes cross-base, positioning and downstream-removal costs; do not silently price those with the narrow bridge.
+
+Display both crews' before/after GH credit and two breakdown rows; explicit label/notes say incremental GH estimate, not total operational cost. Default GH policy is existing library configuration, not an asserted personal employment contract. Effective policy picked at source departure; both pairings must fit its effective range. No payroll posting or medical/seniority compliance claim.
+
+## Fixtures and verification
+
+Capture baseline/owned assignment receipts before writes. Add five September24 later-reporting ADD round-trip donor assignments, sharing a donor pairing only within its configured captain-seat capacity; add real nonoverlapping September duties for selected high-credit candidates, recompute via existing Rust manday driver. Preserve J4002 incident and all standby fixtures. Check every candidate's current Recovery rule gate; adjust only newly owned duties if needed. Real headed Playwright asserts six swap choices (existing + five), visible correct prices, both-crew breakdowns and each before/after preview. Any execution test must start from equivalent incident baseline and restore exact owned changes. Save screenshots under versioned crew-recovery paths and inspect them.
+
+Focused backend tests cover both-crew delta, zero, crossing85/90, source savings, missing baseline, partial assignment, cross-month, disabled/missing policy and non-finite results. Frontend tests cover identity mapping, two changes and priced sorting. EXPLAIN all added static parameterized SQL against configured SIT plus authenticated cost API smoke. Run check:ui and focused existing regression suites. Record actual fixture/cost results and replay status. No commit/push.

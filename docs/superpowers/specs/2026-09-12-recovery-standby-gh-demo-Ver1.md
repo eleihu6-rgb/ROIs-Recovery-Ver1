@@ -1,0 +1,11 @@
+# Standby GH candidate comparison
+
+User requests multiple standby candidates with different GH overage costs. Scope: existing Live S1 J4002/152056, preserve SL and donor fixture, create airport standby for suitable ADD CA 7M8 crews, use genuine roster-derived credit. No recovery Apply/Save; candidate setup remains for replay.
+
+Existing policy: default airport standby type1003 revision17 links GH revision1 (85h, USD100/h, 1.2 through90h then1.5). No tariff changes. Existing recovery erroneously maps all standby to fixed day-off recall1007.
+
+Implementation: optional standby identity context (candidate crew, source pairing, standby row) in existing recovery cost batch. Server reads authoritative persisted standalone ASBY window, pairing per-duty credit, and crew-base-date daily credit summed for calendar month. Do not confuse RP-based MCred with calendar-month GH. Existing cost-library service calculates pinned standby/GH revisions; no duplicate payroll arithmetic. Deduct credited baseline standby to avoid double counting. Only single-calendar-month pairing supported initially; missing/multi-month context is unpriced, never silently zero. Explain input values, month, policy revisions and formula in breakdown notes and candidate row. No medical/seniority/legality claims.
+
+Ordinary non-ASBY recovery remains legacy pricing; no broader optimization, FX conversion, delay pricing or policy redesign. Qualifying ASBY costs replace fixed recall fee, not add it. Recovery uses saved data; unsaved baseline differences must be stated. Cost failures return null, display Unpriced and cannot win cheapest ranking. Currency-aware labels, no mixed-currency best star. Within standby show lowest priced incremental-pay first. Existing draft/apply mechanics unchanged.
+
+Validation: focused service and mapping tests, real PG read/EXPLAIN + API smoke; Playwright show >=3 selectable standby options and before/after GH costs; inspect versioned screenshots; no original roster mutations; preserve exact new setup ownership manifest. Seed actual safe duties if needed, never edit credit aggregate tables to fake thresholds. If operational fixtures cannot reach desired thresholds safely, report limitation rather than forge pay totals.

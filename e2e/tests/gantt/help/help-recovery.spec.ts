@@ -15,7 +15,7 @@ const openTopic = async (page: Page, slug: string): Promise<Locator> => {
   const article = page.getByRole('article')
   await expect(article).toBeVisible({ timeout: 5_000 })
   const images = article.locator('img')
-  const imageCount = slug === 'recovery-cost-library' ? 5 : ['recovery-103', 'recovery-104'].includes(slug) ? 1 : 0
+  const imageCount = slug === 'recovery-cost-library' ? 5 : slug === 'recovery-case-001' ? 4 : ['recovery-102', 'recovery-103', 'recovery-104'].includes(slug) ? 1 : 0
   await expect(images).toHaveCount(imageCount)
   if (imageCount) {
     for (const img of await images.all()) {

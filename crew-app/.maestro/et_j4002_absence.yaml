@@ -1,8 +1,8 @@
 appId: org.reactjs.native.example.RoyceTravelTemplate
 # Crew Recovery Story 101 — Quick actions › Absence (sick leave) form, on ET J4002.
 #
-# Deliberately stops BEFORE "Submit request": submitting stands the crew down on
-# SIT (soft-deletes the overlapping pairings, inserts ILL days). The write path is
+# Deliberately stops BEFORE "Submit request": submitting writes an absence and
+# full-day ILL tasks on SIT, retaining original flying duties. The write path is
 # proved by live-server/src/services/absence/__tests__/crew-absence-service.test.ts
 # and the recorded crew_absence row; this flow proves the crew-app UI and the
 # "Affects" preview render and step correctly.

@@ -111,7 +111,7 @@ export default async function crewNotifyRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // Crew recovery story 101: crew-submitted sick leave → Live auto stand-down.
+  // Crew recovery story 101: crew-submitted sick leave → retained-duty overlap for Live Recovery.
   fastify.post('/absence', async (request, reply) => {
     const parsed = absenceSchema.safeParse(request.body)
     if (!parsed.success) {

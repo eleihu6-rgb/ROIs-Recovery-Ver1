@@ -153,7 +153,8 @@ describe('AbsenceScreen', () => {
       assignment: 'ILL',
       fromDate: '2026-09-14',
       toDate: '2026-09-14',
-      removedPairingIds: [151614],
+      removedPairingIds: [],
+      retainedPairingIds: [151614],
       groundDays: 1,
       notificationId: 'absence-12',
     };
@@ -178,7 +179,7 @@ describe('AbsenceScreen', () => {
     expect(call.fromDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(call.toDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
-    expect(Alert.alert).toHaveBeenCalledWith('Request submitted', '1 duty removed, sick leave added');
+    expect(Alert.alert).toHaveBeenCalledWith('Request submitted', 'Sick leave added. Original duties remain assigned pending Crew Control recovery.');
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
   });
 

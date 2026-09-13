@@ -2302,6 +2302,8 @@ export const visiblePlanGroups = (plans: RecoveryPlans): RecoveryPlanGroup[] =>
  * network blip never blanks the UI.
  */
 export interface RecoveryLibraryCostInput {
+  swapContext?: { sourceCrewId: string; sourcePairingId: number; targetCrewId: string; targetPairingId: number }
+  standbyContext?: { crewId: string; pairingId: number; standbyTaskId: number }
   mode: RecoveryOptionMode
   crossBase: number
   crossDivision: number
@@ -2323,7 +2325,7 @@ export interface RecoveryLibraryCostResult {
 }
 
 export const optionToLibraryCostInput = (
-  option: Pick<RecoveryOption, 'mode' | 'metrics' | 'positioning'>,
+  option: Pick<RecoveryOption, 'mode' | 'metrics' | 'positioning'> & Partial<Pick<RecoveryOption, 'targetCrewId' | 'sourceCrewId' | 'sourcePairingId' | 'targetPairingId' | 'standbyTaskId'>>,
 ): RecoveryLibraryCostInput => {
   // `directCost` components mirror what `buildMetrics` already computes:
   //   crossBase (1 if mode starts with `cross-base`)
@@ -2339,10 +2341,14 @@ export const optionToLibraryCostInput = (
   const isCrossBase = option.mode.startsWith('cross-base')
   return {
     mode: option.mode,
+    ...(option.mode === 'standby' && option.targetCrewId && option.sourcePairingId && option.standbyTaskId != null
+      ? { standbyContext: { crewId: option.targetCrewId, pairingId: option.sourcePairingId, standbyTaskId: option.standbyTaskId } } : {}),
+    ...(option.mode === 'swap-duty' && option.sourceCrewId && option.targetCrewId && option.sourcePairingId && option.targetPairingId
+      ? { swapContext: { sourceCrewId: option.sourceCrewId, sourcePairingId: option.sourcePairingId, targetCrewId: option.targetCrewId, targetPairingId: option.targetPairingId } } : {}),
     crossBase: isCrossBase ? 1 : 0,
     crossDivision: option.metrics.followOnImpactCount >= 0 && option.mode.includes('cross-division') ? 1 : 0,
     crossRole: isSwap ? 1 : 0,
-    changed: isSwap ? 2 : 1,
+    changed: isSwap || option.mode === 'swap-duty' ? 2 : 1,
     followOnImpactCount: option.metrics.followOnImpactCount,
     dhdOutboundSectors: option.positioning ? 1 : 0,
     dhdFlightCost: option.metrics.dhdFlightCost,
@@ -2416,7 +2422,9 @@ const recomputeCombinedMetrics = (subOptions: RecoveryOption[], baselineItems: R
 
 const resortGroupByDirectCost = (group: RecoveryPlanGroup): RecoveryPlanGroup => {
   const ranked = [...group.options].sort((a, b) => {
-    const dc = a.metrics.directCost - b.metrics.directCost
+    const unavailable = Number(!!a.metrics.costEnrichmentFailed) - Number(!!b.metrics.costEnrichmentFailed)
+    if (unavailable) return unavailable
+    const dc = a.metrics.currency === b.metrics.currency ? a.metrics.directCost - b.metrics.directCost : 0
     if (dc !== 0) return dc
     return a.id.localeCompare(b.id)
   })

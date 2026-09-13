@@ -126,7 +126,7 @@ const metric = (label: string, value: string | number) => (
 )
 
 const money = (value: number, currency: string = 'CNY'): string => new Intl.NumberFormat('zh-CN', {
-  style: 'currency', currency, maximumFractionDigits: 0,
+  style: 'currency', currency, maximumFractionDigits: 2,
 }).format(value)
 
 const optionBadge = (option: RecoveryOption): string => {
@@ -551,7 +551,7 @@ const RecoveryDetailDialog = memo(function RecoveryDetailDialog({
           {metric('Crew impact', option.metrics.affectedCrewCount)}
           {metric('Roster impact', option.metrics.changedRosterCount)}
           {metric('Stability', `${option.metrics.rosterStability}%`)}
-          {metric('Cost', money(option.metrics.totalCost, option.metrics.currency))}
+          {metric('Cost', optionCostLabel(option))}
         </div>
         <div className="mb-2 grid grid-cols-2 gap-2 text-2xs text-muted-foreground sm:grid-cols-3">
           <div>Cancelled rosters: <span className="font-semibold text-foreground">{option.metrics.cancelledRosterCount}</span></div>
@@ -620,6 +620,8 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   const bestGroupId = useMemo<RecoveryPlans['roster']['id'] | null>(() => {
     if (!plans) return null
     const rows = visiblePlanGroups(plans)
+    const currencies = new Set(rows.flatMap(g => g.options.filter(o => !o.metrics.costEnrichmentFailed).map(o => o.metrics.currency)))
+    if (currencies.size > 1) return null
     let bestId: RecoveryPlans['roster']['id'] | null = null
     let bestCost = Number.POSITIVE_INFINITY
     for (const group of rows) {
@@ -699,7 +701,9 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
     // buildRecoveryPlans.
     const sourceCrewIds = new Set(selected.map((row) => row.crewId))
     const crewSnapshots = crews
-      .filter((entry) => !sourceCrewIds.has(entry.crew.crewId))
+      // Single-case builders exclude the source from candidate selection themselves.
+      // Keep its metadata so rank/base/fleet comparisons do not use an empty fallback.
+      .filter((entry) => selected.length === 1 || !sourceCrewIds.has(entry.crew.crewId))
       .map((entry) => ({
         crewId: entry.crew.crewId,
         crewName: crewNameOf(entry.crew.crewId, crews),
@@ -1021,7 +1025,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
            {metric('Affected Crew', previewedOption.subOptions?.length ? [...new Set(previewedOption.subOptions.flatMap((candidate) => [candidate.sourceCrewId, candidate.targetCrewId]))].join(', ') : previewedOption.targetCrewId)}
           {metric('Method', previewedOption.mode === 'standby' ? 'Callout SBY' : 'Roster transfer / swap')}
           {metric('Roster impact', previewedOption.metrics.changedRosterCount)}
-          {metric('Total cost', money(previewedOption.metrics.totalCost, previewedOption.metrics.currency))}
+          {metric('Total cost', optionCostLabel(previewedOption))}
         </div>
         <Button variant="ghost" className="mt-3 h-7 gap-1 px-2 text-2xs" onClick={() => setPreviewCollapsed(false)} data-testid="recovery-expand-options"><Minimize2 className="h-3.5 w-3.5" />Return to recovery options</Button>
       </div> : <div className={alert
@@ -1258,11 +1262,11 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <span className="sm:hidden text-2xs text-muted-foreground">Cancel <b className="text-foreground">{option.metrics.cancelledRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
-                <span className="sm:hidden text-2xs text-muted-foreground">Cost <button type="button" className="font-semibold text-foreground underline-offset-2 hover:underline" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button></span>
+                <span className="sm:hidden text-2xs text-muted-foreground">Cost <button type="button" className="font-semibold text-foreground underline-offset-2 hover:underline" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{optionCostLabel(option)}</button></span>
                 <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
                 <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
                 <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
-                <button type="button" className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button>
+                <button type="button" className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{optionCostLabel(option)}</button>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onPreview(option)} data-testid={`recovery-preview-${option.id}`}><Eye className="h-3.5 w-3.5" />Preview</button>
@@ -1270,6 +1274,8 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <span className={selected ? ['h-2 w-2 rounded-full', tone.dot].join(' ') : 'h-2 w-2 rounded-full bg-border'} aria-hidden="true" />
               </div>
             </div>}
+            {option.mode === 'swap-duty' && option.metrics.costNotes?.[0]?.startsWith('Swap GH estimate') && <div className="mt-1 space-y-0.5 text-2xs text-muted-foreground" data-testid={`recovery-swap-gh-${option.targetCrewId}`}><p>Incremental GH pay estimate · both crews</p>{option.metrics.costNotes.slice(1, 3).map(note => <p key={note}>{note}</p>)}</div>}
+            {option.mode === 'standby' && option.metrics.costNotes?.[1] && <p className="mt-1 text-2xs text-muted-foreground" data-testid={`recovery-gh-${option.targetCrewId}`}>{option.metrics.costNotes[1]}</p>}
             {option.subOptions && option.subOptions.length > 0 && <div className="mt-2 space-y-1 rounded border border-border/70 bg-background/60 p-2" data-testid={`recovery-suboptions-${option.id}`}>
               <div className="text-2xs font-semibold text-foreground">Crew decisions in this combined option</div>
               {option.subOptions.map((child) => <div key={child.id} className="grid gap-1 border-t border-border/50 pt-1 text-2xs sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
@@ -1308,11 +1314,11 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <span className="sm:hidden text-2xs text-muted-foreground">Cancel <b className="text-foreground">{option.metrics.cancelledRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Add <b className="text-foreground">{option.metrics.addedRosterCount}</b></span>
                 <span className="sm:hidden text-2xs text-muted-foreground">Stability <b className="text-foreground">{option.metrics.rosterStability}%</b></span>
-                <span className="sm:hidden text-2xs text-muted-foreground">Cost <button type="button" className="font-semibold text-foreground underline-offset-2 hover:underline" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button></span>
+                <span className="sm:hidden text-2xs text-muted-foreground">Cost <button type="button" className="font-semibold text-foreground underline-offset-2 hover:underline" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{optionCostLabel(option)}</button></span>
                 <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.cancelledRosterCount}</span>
                 <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.addedRosterCount}</span>
                 <span className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums sm:block">{option.metrics.rosterStability}%</span>
-                <button type="button" className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{money(option.metrics.totalCost, option.metrics.currency)}</button>
+                <button type="button" className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{optionCostLabel(option)}</button>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid={`recovery-detail-${option.id}`}><Eye className="h-3.5 w-3.5" />Detail</button>
@@ -1384,10 +1390,12 @@ const changeTypeClass = (changeType: RecoveryOption['changes'][number]['changeTy
   return 'inline-flex rounded border border-slate-400/20 bg-slate-500/10 px-1.5 py-0.5 text-2xs font-medium text-slate-700 dark:text-slate-300'
 }
 
+const optionCostLabel = (option: RecoveryOption): string => option.metrics.costEnrichmentFailed ? 'Unpriced' : money(option.metrics.totalCost, option.metrics.currency)
+
 const bestCost = (group: RecoveryPlans['roster']): string => {
   const executable = group.options.filter((option) => isApplicableOption(option))
-  const candidates = executable.length > 0 ? executable : group.options
-  if (candidates.length === 0) return '—'
+  const candidates = (executable.length > 0 ? executable : group.options).filter(o => !o.metrics.costEnrichmentFailed)
+  if (candidates.length === 0) return group.options.length ? 'Unpriced' : '—'
   const min = candidates.reduce((best, option) => option.metrics.totalCost < best.metrics.totalCost ? option : best)
   return money(min.metrics.totalCost, min.metrics.currency)
 }
@@ -1419,12 +1427,15 @@ const PlanTree = ({
   // alerts.length <= 1 so single-alert flows (right-click → Recovery, single
   // Alert Center row) never expose a no-op entry.
   const rows = visiblePlanGroups(plans)
+  const currencies = new Set(rows.flatMap(g => g.options.filter(o => !o.metrics.costEnrichmentFailed).map(o => o.metrics.currency)))
+  const currency = currencies.size === 1 ? [...currencies][0] : null
   const costTiers = useMemo(() => {
+    if (!currency) return []
     const tiers = [
-      { key: 'free', label: '¥0', test: (cost: number) => cost === 0 },
-      { key: 'low', label: '¥0–10k', test: (cost: number) => cost > 0 && cost <= 10000 },
-      { key: 'mid', label: '¥10k–50k', test: (cost: number) => cost > 10000 && cost <= 50000 },
-      { key: 'high', label: '¥50k+', test: (cost: number) => cost > 50000 },
+      { key: 'free', label: `${currency} 0`, test: (cost: number) => cost === 0 },
+      { key: 'low', label: `${currency} 0–10k`, test: (cost: number) => cost > 0 && cost <= 10000 },
+      { key: 'mid', label: `${currency} 10k–50k`, test: (cost: number) => cost > 10000 && cost <= 50000 },
+      { key: 'high', label: `${currency} 50k+`, test: (cost: number) => cost > 50000 },
     ]
     return tiers.map((tier) => ({
       ...tier,
@@ -1432,7 +1443,7 @@ const PlanTree = ({
         .map((group) => ({ group, minCost: minOptionCost(group.options) }))
         .filter((entry) => entry.minCost != null && tier.test(entry.minCost)),
     }))
-  }, [rows])
+  }, [rows, currency])
   return (
     <nav
       className="flex w-[240px] shrink-0 flex-col border border-border bg-muted/15"
@@ -1486,7 +1497,7 @@ const PlanTree = ({
                 {tier.groups.length === 0 && (
                   <li className="px-2 py-0.5 text-2xs text-muted-foreground/60">—</li>
                 )}
-                {tier.groups.map(({ group, minCost }) => {
+                {tier.groups.map(({ group }) => {
                   const selected = selectedPlanType === group.id
                   const best = group.id === bestGroupId
                   return (
@@ -1504,7 +1515,7 @@ const PlanTree = ({
                           <span className="truncate">{group.title}</span>
                           {best && <span className="shrink-0 rounded bg-emerald-500/15 px-1 text-2xs font-bold text-emerald-700 dark:text-emerald-300">★</span>}
                         </span>
-                        <span className="shrink-0 font-mono tabular-nums">{money(minCost ?? 0)}</span>
+                        <span className="shrink-0 font-mono tabular-nums">{bestCost(group)}</span>
                       </button>
                     </li>
                   )
@@ -1514,7 +1525,7 @@ const PlanTree = ({
           ))}
         </ul>
         <div className="mt-3 border-t border-border pt-2 text-2xs text-muted-foreground">
-          <span className="font-semibold text-emerald-700 dark:text-emerald-300">★</span> = lowest total cost across all plans.
+          <span className="font-semibold text-emerald-700 dark:text-emerald-300">★</span> = lowest available priced estimate; unpriced options excluded.
         </div>
       </div>
     </nav>
@@ -1542,7 +1553,6 @@ const PlanSummary = ({
   const selected = selectedPlanType === group.id
   const tone = planTone(group.id)
   const executableCount = group.options.filter((option) => isApplicableOption(option)).length
-  const groupMin = minOptionCost(group.options)
   const isBest = group.id === bestGroupId
   return (
     <article
@@ -1557,7 +1567,7 @@ const PlanSummary = ({
     >
       {isBest && (
         <span className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded bg-emerald-500 px-2 py-0.5 text-2xs font-bold uppercase tracking-wide text-white shadow-sm">
-          ★ Best cost · {money(groupMin ?? 0)}
+          ★ Best cost · {bestCost(group)}
         </span>
       )}
       <span className="flex items-start justify-between gap-2 pl-1">
@@ -1584,6 +1594,7 @@ const PlanSummary = ({
 const minOptionCost = (options: RecoveryOption[]): number | null => {
   let best: number | null = null
   for (const option of options) {
+    if (option.metrics.costEnrichmentFailed || !isApplicableOption(option)) continue
     const cost = option.metrics?.totalCost
     if (typeof cost !== 'number' || !Number.isFinite(cost)) continue
     if (best == null || cost < best) best = cost

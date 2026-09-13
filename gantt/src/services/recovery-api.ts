@@ -42,6 +42,8 @@ export const recoveryTraceApi = {
 }
 
 export interface RecoveryLibraryCostApiInput {
+  swapContext?: { sourceCrewId: string; sourcePairingId: number; targetCrewId: string; targetPairingId: number }
+  standbyContext?: { crewId: string; pairingId: number; standbyTaskId: number }
   mode: 'transfer' | 'swap' | 'standby' | 'swap-duty' | 'flight-delay' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
   crossBase: number
   crossDivision: number

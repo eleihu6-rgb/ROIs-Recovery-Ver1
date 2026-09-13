@@ -215,7 +215,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
       { slug: 'recovery-103', title: '103 — Swap duty', categorySlug: 'recovery', stepCount: 5, isNew: true, overview: 'Exchange complete pairings with a later-reporting crew to resolve a ground-task overlap. Review both directions, fleet warnings and cost limitations.' },
       { slug: 'recovery-104', title: '104 — Flight Delay (Partial)', categorySlug: 'recovery', stepCount: 5, isNew: true, overview: 'Keep the original crew and delay all affected pairing flights after the ground task. Review STD, STA, ATD, ATA, connections, cost gaps and legality limits.' },
       { slug: 'recovery-costs', title: 'Comparing recovery costs (Partial)', categorySlug: 'recovery', stepCount: 4, isNew: true, overview: 'Understand Cost breakdown, Best cost, stability, cost library pricing, missing tariffs, standby credit, swap quantities, delay costs, currency conversion and mixed currencies.' },
-      { slug: 'recovery-case-001', title: 'Case study 1 — J4002 unavailable at ADD (Partial)', categorySlug: 'recovery', stepCount: 12, isNew: true, overview: 'Real ET captain Getnet Kifle (crew J4002, not flight J4002) at ADD base, pairing 152056, Sep 25–26 sick leave: a recorded mobile error despite committed stand-down, with standby, swap, and delay blocked at a missing recovery entry.' },
+      { slug: 'recovery-case-001', title: 'Case study 1 — J4002 unavailable at ADD', categorySlug: 'recovery', stepCount: 12, isNew: true, overview: 'Crew J4002, Getnet Kifle at ADD: sick leave with retained duties, 1001 overlap, three standby and six swap candidates, guaranteed-hours GH costs, Flight Delay, Preview, Apply, Save and demo replay for pairing 152056.' },
     ],
   },
   {
