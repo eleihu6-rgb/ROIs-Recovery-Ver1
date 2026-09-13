@@ -60,6 +60,24 @@ test('Auto-assign even distribution — J4002 (ADD/7M8) spreads flying hours acr
   test.setTimeout(300_000)
   await page.setViewportSize({ width: 1920, height: 1080 })
   const token = await seedGanttAuth(page, request)
+  const auth = { headers: { Authorization: `Bearer ${token}` } }
+
+  // ── Setup (API, not the operation under test): clear CREW's Sep 2026 roster so
+  // the auto-assign below starts from a clean slate and the test is re-runnable. ──
+  const preRoster = await request.get(`${ganttApiUrl}/api/roster?crewIds=${CREW_ID}&startDate=2026-09-01&endDate=2026-09-30`, auth)
+  expect(preRoster.ok()).toBeTruthy()
+  const preRaw = ((await preRoster.json()) as { data: unknown }).data
+  const preRows: Array<{ id: number; pairingId?: number | null }> = Array.isArray(preRaw)
+    ? preRaw
+    : (Object.values(preRaw as Record<string, unknown>).flat() as Array<{ id: number; pairingId?: number | null }>)
+  for (const pid of [...new Set(preRows.map((r) => r.pairingId).filter((id): id is number => id != null && id !== 0))]) {
+    const del = await request.post(`${ganttApiUrl}/api/roster/pairing/${pid}/crew/${CREW_ID}/delete`, { ...auth, data: { username: 'e2e-auto-assign' } })
+    expect(del.ok(), `reset: delete pairing ${pid} from ${CREW_ID}`).toBeTruthy()
+  }
+  for (const r of preRows.filter((r) => r.pairingId == null || r.pairingId === 0)) {
+    const del = await request.delete(`${ganttApiUrl}/api/roster/${r.id}`, auth)
+    expect(del.ok(), `reset: delete ground row ${r.id}`).toBeTruthy()
+  }
   const dashboard = new GanttDashboardPage(page)
   await dashboard.goto(150_000)
 
@@ -105,7 +123,10 @@ test('Auto-assign even distribution — J4002 (ADD/7M8) spreads flying hours acr
 
   const dialog = page.getByTestId('auto-assign-dialog')
   await expect(dialog).toBeVisible({ timeout: 10_000 })
-  // Auto-assign Duties: configure phase first (RP range + FLY/RES/DO limits) → Analyse fires the planner.
+  // Auto-assign Duties: configure phase first. This spec covers the legacy
+  // open-pairings shape, so keep only the FLY row with no limits, then Analyse.
+  for (const g of ['RES', 'DO']) await dialog.getByTestId(`auto-assign-remove-${g}`).click()
+  for (const k of ['periodMax', 'every7Min', 'every7Max']) await dialog.getByTestId(`auto-assign-FLY-${k}`).fill('')
   await dialog.getByTestId('auto-assign-analyse').click()
 
   const planRes = await planPromise

@@ -19,7 +19,7 @@ export interface AutoAssignDutyType {
   every7Max?: number | null
 }
 
-export type AutoAssignSkipReason = 'overlap' | 'no-slot' | 'rule' | 'period-max' | 'every7-max'
+export type AutoAssignSkipReason = 'overlap' | 'no-slot' | 'rule' | 'period-max' | 'every7-max' | 'reserve-day'
 
 /** A single step in the per-crew decision trace, surfaced in the dialog log. */
 export type AutoAssignStep =
@@ -85,6 +85,12 @@ export interface AutoAssignDutyOutcome {
   windows: AutoAssignWindowOutcome[]
 }
 
+export interface AutoAssignPlanWarning {
+  ruleCode: string
+  severity: number
+  message: string
+}
+
 export interface AutoAssignCrewPlan {
   crewId: string
   crewName: string
@@ -95,6 +101,8 @@ export interface AutoAssignCrewPlan {
   assignedGround: AutoAssignAssignedGround[]
   skipped: AutoAssignSkipped[]
   outcome: AutoAssignDutyOutcome[]
+  /** Soft violations kept on purpose (accepted by the dispatcher at Apply). */
+  warnings: AutoAssignPlanWarning[]
   summary: { assignedCount: number; skippedCount: number; blockMinutes: number }
 }
 

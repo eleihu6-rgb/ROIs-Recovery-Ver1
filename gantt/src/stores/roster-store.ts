@@ -210,6 +210,12 @@ export const checkLiveDraftLegality = async (
     /** Draft preview context; defaults to live. Scenario assign/remove/reassign pass 'scenario'. */
     contextType?: 'live' | 'scenario'
     scenarioId?: number
+    /**
+     * Skip the soft-violation confirm dialog and proceed (hard violations still
+     * block). Used by Auto-assign Duties replay: the plan's kept warnings were
+     * already shown and accepted in the review step.
+     */
+    autoAcceptSoft?: boolean
   },
 ): Promise<boolean> => {
   if (_skipPreCheck) return true
@@ -329,6 +335,7 @@ export const checkLiveDraftLegality = async (
 
     const ruleViolations = legalityPreviewApi.toRuleViolations(relevantNewViolations)
     const hasBlocking = ruleViolations.some((v) => !v.canOverride)
+    if (options?.autoAcceptSoft && !hasBlocking) return true
     const proceed = await useRuleCheckStore.getState().showConfirmDialog(ruleViolations, hasBlocking)
     return !hasBlocking && proceed
   } catch (err) {
@@ -372,7 +379,7 @@ interface RosterStore {
   setSort: (paneId: PaneId, field: string, direction: 'asc' | 'desc') => void
 
   addTask: (paneId: PaneId, task: CreateRosterInput) => Promise<RosterItem | null>
-  addGroundTask: (paneId: PaneId, data: CreateGroundTaskInput) => Promise<RosterItem[] | null>
+  addGroundTask: (paneId: PaneId, data: CreateGroundTaskInput, opts?: { autoAcceptSoft?: boolean }) => Promise<RosterItem[] | null>
   updateTask: (paneId: PaneId, id: number, data: UpdateRosterInput) => Promise<RosterItem | null>
   removeTask: (paneId: PaneId, id: number) => Promise<void>
   removeTasksByPairingAndCrew: (paneId: PaneId, pairingId: number, crewId: string) => Promise<void>
@@ -734,7 +741,7 @@ export const useRosterStore = create<RosterStore>((set, get) => ({
     return created
   },
 
-  addGroundTask: async (paneId, data) => {
+  addGroundTask: async (paneId, data, opts) => {
     const draft = useDraftStore.getState()
     let _tempId = -Date.now() // unique negative IDs for mock items
     const creditSource = data.creditMin ?? data.fixedCreditMin
@@ -798,7 +805,7 @@ export const useRosterStore = create<RosterStore>((set, get) => ({
         data.crewIds,
         items,
         simulated,
-        { relatedItems: mockItems },
+        { relatedItems: mockItems, autoAcceptSoft: opts?.autoAcceptSoft },
       )
       if (!allowed) return null
       // Acquire locks for all affected crew

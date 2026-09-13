@@ -7,6 +7,7 @@ import { airport } from '../../models/base/airport.js'
 import { assignment as assignmentModel, assignmentGroup as assignmentGroupModel } from '../../models/base/assignment.js'
 import { pairing } from '../../models/pairing/pairing.js'
 import { pairingSegment } from '../../models/pairing/pairing-segment.js'
+import { pairingComposition } from '../../models/pairing/pairing-composition.js'
 import { rule } from '../../models/rule/rule.js'
 import { notDeleted } from '../../utils/db.js'
 import { precheckAssignment } from '../assignment/precheck-service.js'
@@ -78,6 +79,12 @@ export interface DutyOutcome {
   windows: DutyWindowOutcome[]
 }
 
+export interface PlanWarning {
+  ruleCode: string
+  severity: number
+  message: string
+}
+
 export interface AssignedGround {
   group: string
   assignment: string
@@ -89,7 +96,7 @@ export interface AssignedGround {
 }
 
 export type StepKind = 'filter' | 'consider' | 'skip' | 'assign' | 'ground' | 'unmet'
-export type SkipReason = 'overlap' | 'no-slot' | 'rule' | 'period-max' | 'every7-max'
+export type SkipReason = 'overlap' | 'no-slot' | 'rule' | 'period-max' | 'every7-max' | 'reserve-day'
 
 export type Step =
   | { kind: 'filter'; group?: string; found: number; message: string }
@@ -141,6 +148,12 @@ export interface CrewPlan {
   skipped: Skipped[]
   /** Per duty-type accounting vs the configured limits (empty on the legacy path). */
   outcome: DutyOutcome[]
+  /**
+   * Soft legality violations left standing on purpose (e.g. 7505 min days off
+   * raised once DO rows exist): they name no planned duty, removing a day off
+   * cannot fix them, so the dispatcher accepts them at Apply.
+   */
+  warnings: PlanWarning[]
   summary: { assignedCount: number; skippedCount: number; blockMinutes: number }
 }
 
@@ -215,6 +228,8 @@ export interface AutoAssignDeps {
   ) => Promise<CandidatePairing[]>
   /** IANA zone of a base airport (airport.zone_id), for base-local day maths. */
   resolveBaseZone: (fastify: FastifyInstance, base: string) => Promise<string | null>
+  /** Open slots per pairing per acting rank (plan − fill), so one plan never hands one slot to two crew. */
+  fetchOpenSlots: (fastify: FastifyInstance, pairingIds: number[]) => Promise<Map<number, Map<string, number>>>
   precheck: typeof precheckAssignment
   fetchExistingRoster: (
     fastify: FastifyInstance,
@@ -271,6 +286,9 @@ const blockMinutesOf = (segs: SegmentRow[]): number => {
   }
   return Math.round(total)
 }
+
+/** Flight-duty assignment groups: both codes carry the name "Flight Duties" in F8 data. */
+const FLY_FAMILY = new Set(['FLY', 'FLT'])
 
 // ── Default (real) IO implementations ────────────────────────────────────────
 
@@ -352,7 +370,9 @@ const defaultDeps: AutoAssignDeps = {
           eq(pairing.base, base),
           matchFleet ? inArray(pairing.fleet, fleets) : undefined,
           !matchFleet && division ? eq(pairing.division, division) : undefined,
-          group ? eq(pairing.assignmentGroup, group) : undefined,
+          // FLY row = the flight-duty family (FLY + FLT are both "Flight Duties" in data),
+          // matching the legacy un-grouped pool; other groups match exactly.
+          group ? (group === 'FLY' ? inArray(pairing.assignmentGroup, [...FLY_FAMILY]) : eq(pairing.assignmentGroup, group)) : undefined,
           // Same window semantics as pairing-service.list / the pairing pane:
           // a pairing belongs to the window if it STARTS inside it.
           between(pairing.schStrDtUtc, new Date(`${startDate}T00:00:00Z`), new Date(`${endDate}T23:59:59Z`)),
@@ -380,6 +400,22 @@ const defaultDeps: AutoAssignDeps = {
       .where(eq(airport.airport, base))
       .limit(1)
     return row?.zoneId ?? null
+  },
+
+  async fetchOpenSlots(fastify, pairingIds) {
+    const map = new Map<number, Map<string, number>>()
+    if (pairingIds.length === 0) return map
+    const rows = await fastify.db
+      .select({ pairingId: pairingComposition.pairingId, rank: pairingComposition.actingRank, plan: pairingComposition.plan, fill: pairingComposition.fill })
+      .from(pairingComposition)
+      .where(and(inArray(pairingComposition.pairingId, pairingIds), notDeleted(pairingComposition.isDeleted)))
+    for (const r of rows) {
+      if (!r.rank) continue
+      const m = map.get(r.pairingId) ?? new Map<string, number>()
+      m.set(r.rank, (m.get(r.rank) ?? 0) + Math.max(0, (r.plan ?? 0) - (r.fill ?? 0)))
+      map.set(r.pairingId, m)
+    }
+    return map
   },
 
   precheck: precheckAssignment,
@@ -556,14 +592,16 @@ interface AcceptedEntry {
   items: PreviewRosterItem[]
   blockMinutes: number
   startMs: number
+  endMs: number
   /** Base-local day index inside the range (−1 when outside). */
   dayIdx: number
 }
 
 /** Legacy path marker: one un-grouped pairing pass, base+fleet, no limits. */
 const LEGACY_GROUP = '*'
-const FLY_FAMILY = new Set(['FLY', 'FLT'])
 const isFlyFamily = (g: string): boolean => g === LEGACY_GROUP || FLY_FAMILY.has(g)
+/** Pairing-backed duty groups; everything else is placed as a ground duty (DO, …). */
+const isPairingGroup = (g: string): boolean => isFlyFamily(g) || g === 'RES' || g === 'SBY'
 
 /** Rolling-window / period counters for one duty type. */
 class DutyCounter {
@@ -628,7 +666,15 @@ const planForCrew = async (
     dutyTypes: DutyTypeConfig[] | null
   },
   deps: AutoAssignDeps,
+  /** Slots consumed by earlier crew in the same plan: pairingId → rank → count. */
+  taken: Map<number, Map<string, number>> = new Map(),
 ): Promise<CrewPlan> => {
+  const takenCount = (pairingId: number, rank: string): number => taken.get(pairingId)?.get(rank) ?? 0
+  const takeSlot = (pairingId: number, rank: string, delta: number): void => {
+    const m = taken.get(pairingId) ?? new Map<string, number>()
+    m.set(rank, Math.max(0, (m.get(rank) ?? 0) + delta))
+    taken.set(pairingId, m)
+  }
   const steps: Step[] = []
   const skipped: Skipped[] = []
   const legacy = input.dutyTypes == null
@@ -649,6 +695,7 @@ const planForCrew = async (
       assignedGround: [],
       skipped,
       outcome: [],
+      warnings: [],
       summary: { assignedCount: 0, skippedCount: 0, blockMinutes: 0 },
     }
   }
@@ -662,6 +709,27 @@ const planForCrew = async (
   const dayIdxOf = (ms: number): number => dayIndex.get(localYmd(ms, zone)) ?? -1
 
   const occupied: Array<{ start: number; end: number }> = []
+  /** Base-local days touched by any occupied interval (for free-day reservation). */
+  const occupiedDays = new Map<string, number>()
+  const spanDays = (startMs: number, endMs: number): string[] => {
+    const out: string[] = []
+    const last = localYmd(Math.max(startMs, endMs - 1), zone)
+    for (let d = localYmd(startMs, zone); d <= last; d = addDays(d, 1)) out.push(d)
+    return out
+  }
+  const occupy = (startMs: number, endMs: number): void => {
+    occupied.push({ start: startMs, end: endMs })
+    for (const d of spanDays(startMs, endMs)) occupiedDays.set(d, (occupiedDays.get(d) ?? 0) + 1)
+  }
+  const release = (startMs: number, endMs: number): void => {
+    const i = occupied.findIndex((o) => o.start === startMs && o.end === endMs)
+    if (i >= 0) occupied.splice(i, 1)
+    for (const d of spanDays(startMs, endMs)) {
+      const n = (occupiedDays.get(d) ?? 1) - 1
+      if (n <= 0) occupiedDays.delete(d)
+      else occupiedDays.set(d, n)
+    }
+  }
   const counters = new Map<string, DutyCounter>()
   const existingCount = new Map<string, number>()
   for (const t of dutyTypes) {
@@ -681,7 +749,7 @@ const planForCrew = async (
     const s = toMs(it.schStrDtUtc)
     const e = toMs(it.schEndDtUtc)
     if (s == null || e == null) continue
-    occupied.push({ start: s, end: e })
+    occupy(s, e)
     if (legacy) continue
     // One occurrence per pairing (roster_flight is crew×segment), one per ground row.
     if (it.pairingId != null) {
@@ -698,7 +766,37 @@ const planForCrew = async (
     existingCount.set(t.group, (existingCount.get(t.group) ?? 0) + 1)
   }
 
+  /**
+   * Free-day reservation: a pairing may not consume days that a later ground
+   * type (DO, …) still needs to reach its every-7-days min in any window it
+   * touches. Keeps "FLY first, DO into leftovers" while guaranteeing leftovers.
+   */
+  const groundNeeds = legacy ? [] : dutyTypes.filter((t) => !isPairingGroup(t.group) && t.every7Min != null)
+  const reserveBlocker = (startMs: number, endMs: number): string | null => {
+    if (groundNeeds.length === 0) return null
+    const newDays = spanDays(startMs, endMs).filter((d) => !occupiedDays.has(d) && dayIndex.has(d))
+    if (newDays.length === 0) return null
+    const newIdx = new Set(newDays.map((d) => dayIndex.get(d)!))
+    for (const g of groundNeeds) {
+      const c = counters.get(g.group)!
+      for (const w of c.windows) {
+        let touches = false
+        for (const i of newIdx) if (i >= w[0] && i <= w[1]) { touches = true; break }
+        if (!touches) continue
+        const need = Math.max(0, g.every7Min! - c.windowCount(w))
+        if (need === 0) continue
+        let freeAfter = 0
+        for (let i = w[0]; i <= w[1]; i++) if (!occupiedDays.has(days[i]) && !newIdx.has(i)) freeAfter++
+        if (freeAfter < need) {
+          return `would leave no free day for ${g.group} (min ${g.every7Min}) in ${days[w[0]]}..${days[w[1]]}`
+        }
+      }
+    }
+    return null
+  }
+
   const fixed: AcceptedEntry[] = [] // survivors of earlier duty-type passes
+  const warnings: PlanWarning[] = []
   const ruleSkipSteps: Array<{ step: Extract<Step, { kind: 'skip' }>; ruleCode: string }> = []
 
   /** Validate existing + fixed + `live` with the real engine; trim `live` until clean. */
@@ -729,8 +827,20 @@ const planForCrew = async (
         target = cur.filter((a) => a.cand != null && named.includes(a.cand.id)).sort(byLatest)[0]
         cause = removable.find((v) => v.pairingId === target!.cand!.id) ?? removable[0]
       } else {
-        // No violation names one of our adds — drop the latest add to make progress.
-        target = [...cur].sort(byLatest)[0]
+        // No violation names one of our adds. For pairings, drop the latest add to
+        // make progress. For ground days (DO) an unnamed violation (e.g. 7505 min
+        // days off) is not caused by the day off and cannot be fixed by removing
+        // it — keep them and let the gantt show the warning.
+        const pairingsLive = cur.filter((a) => a.cand != null)
+        if (pairingsLive.length === 0) {
+          for (const v of removable) {
+            if (!warnings.some((w) => w.ruleCode === v.ruleCode && w.message === v.message)) {
+              warnings.push({ ruleCode: v.ruleCode, severity: v.severity, message: v.message })
+            }
+          }
+          break
+        }
+        target = [...pairingsLive].sort(byLatest)[0]
         cause = removable[0]
       }
       if (!target) break
@@ -751,6 +861,8 @@ const planForCrew = async (
       ruleSkipSteps.push({ step, ruleCode: cause.ruleCode })
       skipped.push({ pairingId, label, reason: 'rule', ruleCode: cause.ruleCode, message: cause.message })
       counters.get(target.group)?.remove(target.dayIdx)
+      release(target.startMs, target.endMs)
+      if (target.cand) takeSlot(target.cand.id, target.actingRank, -1)
       cur = cur.filter((a) => a.key !== target!.key)
       if (cur.length === 0) break
     }
@@ -806,9 +918,17 @@ const planForCrew = async (
       eligible.push({ cand, actingRank: pre.actingRank, startMs, endMs })
     }
 
+    const openSlots = await deps.fetchOpenSlots(fastify, eligible.map((e) => e.cand.id))
     const accepted: AcceptedEntry[] = []
     const evaluate = (e: (typeof eligible)[number]): boolean => {
       steps.push({ kind: 'consider', group: tag(group), pairingId: e.cand.id, label: e.cand.label, startDt: toIso(e.cand.schStr), endDt: toIso(e.cand.schEnd), rank: e.actingRank })
+      const open = openSlots.get(e.cand.id)?.get(e.actingRank)
+      if (open != null && takenCount(e.cand.id, e.actingRank) >= open) {
+        const msg = `Open ${e.actingRank} slot already taken by an earlier crew in this plan`
+        steps.push({ kind: 'skip', group: tag(group), pairingId: e.cand.id, label: e.cand.label, reason: 'no-slot', message: msg })
+        skipped.push({ pairingId: e.cand.id, label: e.cand.label, reason: 'no-slot', message: msg })
+        return false
+      }
       if (occupied.some((o) => timeRangesOverlap(e.startMs, e.endMs, o.start, o.end))) {
         const msg = 'Time-overlaps a duty already on the roster (existing or just-picked)'
         steps.push({ kind: 'skip', group: tag(group), pairingId: e.cand.id, label: e.cand.label, reason: 'overlap', message: msg })
@@ -822,9 +942,16 @@ const planForCrew = async (
         skipped.push({ pairingId: e.cand.id, label: e.cand.label, reason: blocked.reason, message: blocked.message })
         return false
       }
-      occupied.push({ start: e.startMs, end: e.endMs })
+      const reserve = reserveBlocker(e.startMs, e.endMs)
+      if (reserve) {
+        steps.push({ kind: 'skip', group: tag(group), pairingId: e.cand.id, label: e.cand.label, reason: 'reserve-day', message: reserve })
+        skipped.push({ pairingId: e.cand.id, label: e.cand.label, reason: 'reserve-day', message: reserve })
+        return false
+      }
+      occupy(e.startMs, e.endMs)
       counter.add(dayIdx)
-      accepted.push({ key: String(e.cand.id), group, cand: e.cand, actingRank: e.actingRank, items: [], blockMinutes: 0, startMs: e.startMs, dayIdx })
+      takeSlot(e.cand.id, e.actingRank, 1)
+      accepted.push({ key: String(e.cand.id), group, cand: e.cand, actingRank: e.actingRank, items: [], blockMinutes: 0, startMs: e.startMs, endMs: e.endMs, dayIdx })
       return true
     }
 
@@ -912,10 +1039,7 @@ const planForCrew = async (
       start: localMidnightUtcMs(days[idx], zone),
       end: localMidnightUtcMs(addDays(days[idx], 1), zone),
     })
-    const isFree = (idx: number): boolean => {
-      const b = dayBounds(idx)
-      return !occupied.some((o) => timeRangesOverlap(b.start, b.end, o.start, o.end))
-    }
+    const isFree = (idx: number): boolean => !occupiedDays.has(days[idx])
     const accepted: AcceptedEntry[] = []
     for (const w of counter.windows) {
       while (counter.windowCount(w) < min) {
@@ -936,7 +1060,7 @@ const planForCrew = async (
         const startDtUtc = new Date(b.start).toISOString()
         const endDtUtc = new Date(b.end - 1000).toISOString()
         const ground: AssignedGround = { group, assignment: group, day: days[pickIdx], base: ctx.base!, startDtUtc, endDtUtc }
-        occupied.push({ start: b.start, end: b.end })
+        occupy(b.start, b.end)
         counter.add(pickIdx)
         accepted.push({
           key: `ground:${group}:${days[pickIdx]}`,
@@ -945,6 +1069,7 @@ const planForCrew = async (
           actingRank: '',
           blockMinutes: 0,
           startMs: b.start,
+          endMs: b.end,
           dayIdx: pickIdx,
           items: [{
             id: -(pickIdx + 1),
@@ -968,7 +1093,7 @@ const planForCrew = async (
   // Order = table order (default FLY → RES → DO). Pairing-backed types are those
   // whose group appears on open pairings; DO (no pairings) is a ground type.
   for (const t of dutyTypes) {
-    if (t.group === LEGACY_GROUP || isFlyFamily(t.group) || t.group === 'RES' || t.group === 'SBY') {
+    if (t.group === LEGACY_GROUP || isPairingGroup(t.group)) {
       await runPairingPass(t)
     } else {
       await runGroundPass(t)
@@ -980,7 +1105,7 @@ const planForCrew = async (
     for (const t of dutyTypes) {
       if (t.every7Min == null || t.group === 'DO') continue
       const c = counters.get(t.group)!
-      if (!(isFlyFamily(t.group) || t.group === 'RES' || t.group === 'SBY')) continue
+      if (!isPairingGroup(t.group)) continue
       for (const w of c.windows) {
         const n = c.windowCount(w)
         if (n < t.every7Min) {
@@ -1054,6 +1179,7 @@ const planForCrew = async (
     assignedGround,
     skipped,
     outcome,
+    warnings,
     summary: { assignedCount: assigned.length + assignedGround.length, skippedCount: skipped.length, blockMinutes: blockTotal },
   }
 }
@@ -1082,14 +1208,17 @@ export async function planAutoAssign(
     : null
 
   const crews: CrewPlan[] = []
-  // Sequential (crew display order): each crew's plan is independent, but the
-  // trace must read top-to-bottom like a real dispatcher working the list.
+  // Sequential (crew display order): the trace reads top-to-bottom like a real
+  // dispatcher working the list, and open slots consumed by an earlier crew are
+  // not offered again to a later one (shared `taken` map).
+  const taken = new Map<number, Map<string, number>>()
   for (const crewId of input.crewIds) {
     const plan = await planForCrew(
       fastify,
       crewId,
       { startDate: input.startDate, endDate: input.endDate, rpFrom, rpTo, fleets: input.fleets ?? null, skipOnSoft, maxPerCrew, distribution, dutyTypes },
       deps,
+      taken,
     )
     crews.push(plan)
   }
@@ -1126,10 +1255,19 @@ export async function listDutyGroups(
   input: { crewIds: string[]; startDate: string; endDate: string },
   deps: AutoAssignDeps = defaultDeps,
 ): Promise<DutyGroupInfo[]> {
-  const groups = await fastify.db
+  const master = await fastify.db
     .select({ group: assignmentGroupModel.assignmentGroup, name: assignmentGroupModel.name })
     .from(assignmentGroupModel)
-    .orderBy(asc(assignmentGroupModel.assignmentGroup))
+  // Groups that only exist as values on pairings (e.g. RES from the RES Pairing
+  // Creator) have no master row; union them in so they are addable/poolable.
+  const onPairings = await fastify.db
+    .selectDistinct({ group: pairing.assignmentGroup })
+    .from(pairing)
+    .where(notDeleted(pairing.isDeleted))
+  const byCode = new Map<string, { group: string; name: string | null }>()
+  for (const m of master) byCode.set(m.group, { group: m.group, name: m.name ?? null })
+  for (const p of onPairings) if (p.group && !byCode.has(p.group)) byCode.set(p.group, { group: p.group, name: null })
+  const groups = [...byCode.values()].sort((a, b) => a.group.localeCompare(b.group))
   const codes = await fastify.db.select({ code: assignmentModel.assignment }).from(assignmentModel)
   const assignmentCodes = new Set(codes.map((c) => c.code))
 

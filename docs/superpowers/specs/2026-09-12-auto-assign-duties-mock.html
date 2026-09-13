@@ -1,0 +1,268 @@
+<title>Auto-assign Duties Mock</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#eef1f5;--panel:#ffffff;--panel-2:#f6f8fb;--border:#d5dbe4;--border-2:#e6eaf0;
+  --fg:#1c2430;--muted:#66717f;--primary:#1f5fbf;--primary-fg:#ffffff;--primary-soft:#e7effb;
+  --ok:#1f8a4c;--ok-soft:#e3f5ea;--warn:#b7791f;--warn-soft:#fbf1dc;--crit:#c0392b;--crit-soft:#fbe6e3;
+  --fly:#2f6fd6;--res:#8a5fc9;--do:#8c98a8;--shadow:0 12px 32px rgba(20,35,60,.18);
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;--mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141a22;--panel:#1c242e;--panel-2:#222c38;--border:#334050;--border-2:#2a3541;
+  --fg:#e6ebf2;--muted:#94a1b2;--primary:#3b7de0;--primary-fg:#ffffff;--primary-soft:#22334d;
+  --ok:#4cc27a;--ok-soft:#1c3529;--warn:#e0a63f;--warn-soft:#3b3016;--crit:#e2665a;--crit-soft:#3d2320;
+  --fly:#5b93ea;--res:#a98be0;--do:#7f8a99;--shadow:0 12px 32px rgba(0,0,0,.5);}}
+:root[data-theme="dark"]{
+  --bg:#141a22;--panel:#1c242e;--panel-2:#222c38;--border:#334050;--border-2:#2a3541;
+  --fg:#e6ebf2;--muted:#94a1b2;--primary:#3b7de0;--primary-fg:#ffffff;--primary-soft:#22334d;
+  --ok:#4cc27a;--ok-soft:#1c3529;--warn:#e0a63f;--warn-soft:#3b3016;--crit:#e2665a;--crit-soft:#3d2320;
+  --fly:#5b93ea;--res:#a98be0;--do:#7f8a99;--shadow:0 12px 32px rgba(0,0,0,.5);}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:12px/1.45 var(--sans);padding:24px 16px 48px;margin:0}
+.wrap{max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:18px;font-weight:600;margin:0;text-wrap:balance}
+.lede{color:var(--muted);max-width:70ch;margin:4px 0 0}
+.eyebrow{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.screens{display:grid;grid-template-columns:repeat(auto-fit,minmax(560px,1fr));gap:28px;align-items:start}
+@media (max-width:600px){.screens{grid-template-columns:1fr}}
+.step{display:flex;flex-direction:column;gap:10px}
+.step-h{display:flex;align-items:baseline;gap:10px}
+.step-h b{font-size:14px;font-weight:600}
+.step-h span{color:var(--muted)}
+/* AppDialog */
+.dlg{background:var(--panel);border:1px solid var(--border);border-radius:2px;box-shadow:var(--shadow);overflow:hidden;font-size:12px}
+.dlg-bar{background:var(--primary);color:var(--primary-fg);display:flex;align-items:center;gap:8px;height:34px;padding:0 10px}
+.dlg-bar .t{font-size:14px;font-weight:600;flex:1}
+.dlg-bar .x{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:2px;opacity:.85}
+.dlg-desc{padding:8px 14px 0;color:var(--muted)}
+.dlg-body{padding:10px 14px 14px;display:flex;flex-direction:column;gap:12px}
+.dlg-foot{border-top:1px solid var(--border-2);padding:10px 14px;display:flex;justify-content:flex-end;gap:8px;background:var(--panel-2)}
+.btn{font:500 12px var(--sans);padding:6px 12px;border-radius:2px;border:1px solid transparent;cursor:pointer;background:transparent;color:var(--fg)}
+.btn.ghost{color:var(--muted)}
+.btn.primary{background:var(--primary);color:var(--primary-fg)}
+.btn.outline{border-color:var(--border)}
+.btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* sections */
+.sec{display:flex;flex-direction:column;gap:6px}
+.sec-h{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--fg)}
+.sec-h svg{color:var(--muted)}
+.sec-h .hint{font-weight:400;color:var(--muted);margin-left:auto}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--muted)}
+.inp{font:12px var(--mono);font-variant-numeric:tabular-nums;border:1px solid var(--border);background:var(--panel);color:var(--fg);border-radius:2px;padding:4px 6px;height:26px}
+.inp.n{width:56px;text-align:center}
+.inp.d{width:118px}
+.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);border-radius:2px;padding:2px 6px;font-size:10px;color:var(--muted);background:var(--panel-2)}
+table{border-collapse:collapse;width:100%}
+th{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:4px 6px;border-bottom:1px solid var(--border)}
+td{padding:5px 6px;border-bottom:1px solid var(--border-2);vertical-align:middle}
+td.num,th.num{text-align:center}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tag{display:inline-flex;align-items:center;gap:5px;font-weight:600;font-family:var(--mono)}
+.tag i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.FLY i{background:var(--fly)}.RES i{background:var(--res)}.DO i{background:var(--do)}
+.pool{color:var(--muted)}
+.pool b{color:var(--fg);font-weight:500}
+.add{display:flex;align-items:center;gap:8px;padding-top:4px}
+.sel{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--border);border-radius:2px;padding:4px 8px;color:var(--muted);height:26px}
+.del{color:var(--muted);opacity:.7}
+.note{background:var(--panel-2);border-left:2px solid var(--primary);padding:6px 8px;color:var(--muted)}
+.note b{color:var(--fg);font-weight:500}
+/* analyse */
+.crew{display:flex;align-items:center;gap:8px}
+.crew .id{font-family:var(--mono);font-weight:500}
+.crew .meta{color:var(--muted)}
+.status{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:1px 6px;border-radius:2px;font-weight:500}
+.ok{background:var(--ok-soft);color:var(--ok)}.warn{background:var(--warn-soft);color:var(--warn)}.crit{background:var(--crit-soft);color:var(--crit)}
+.bar{display:flex;gap:2px;align-items:center;height:14px}
+.bar i{flex:1;height:10px;background:var(--border-2);border-radius:1px}
+.bar i.on{background:var(--primary)}
+.bar i.ex{background:var(--muted)}
+.bar i.w{background:var(--warn)}
+.winlist{display:flex;flex-wrap:wrap;gap:4px;padding:2px 6px 8px}
+.win{font-family:var(--mono);font-size:10px;border:1px solid var(--warn);color:var(--warn);background:var(--warn-soft);border-radius:2px;padding:1px 5px}
+.strip{display:grid;grid-template-columns:repeat(30,1fr);gap:1px;margin-top:2px}
+.strip s{text-decoration:none;height:18px;border-radius:1px;background:var(--border-2);position:relative;font-size:8px;line-height:18px;text-align:center;color:transparent}
+.strip s.fly{background:var(--fly);color:#fff}.strip s.res{background:var(--res);color:#fff}.strip s.do{background:var(--do);color:#fff}
+.strip s.ex{outline:1px solid var(--fg);outline-offset:-1px}
+.days{display:grid;grid-template-columns:repeat(30,1fr);gap:1px;font-family:var(--mono);font-size:8px;color:var(--muted);text-align:center}
+.legend{display:flex;gap:12px;color:var(--muted);font-size:10px;align-items:center;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend i{width:10px;height:10px;border-radius:1px;display:inline-block}
+.trace{border:1px solid var(--border-2);border-radius:2px;background:var(--panel-2);font-family:var(--mono);font-size:10px;padding:6px 8px;display:flex;flex-direction:column;gap:2px;max-height:150px;overflow:auto}
+.trace .k{display:inline-block;width:64px;color:var(--muted)}
+.trace .a{color:var(--ok)}.trace .s{color:var(--warn)}.trace .g{color:var(--muted)}
+.qa{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 24px}
+.qa h3{margin:0 0 4px;font-size:12px;font-weight:600}
+.qa p{margin:0;color:var(--muted)}
+.qa .q{font-family:var(--mono);color:var(--primary);font-weight:500}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Live gantt · roster context menu · pre-code mock</div>
+    <h1>Auto-assign Duties</h1>
+    <p class="lede">Two screens of one dialog. Left: what the dispatcher configures. Right: what the planner shows back before anything touches the gantt. Data is J4020 (ADD, 7M8) over the September 2026 roster period, with the real pool counts from the SIT database.</p>
+  </header>
+
+  <div class="screens">
+    <!-- SCREEN 1 -->
+    <section class="step">
+      <div class="step-h"><b>1 · Configure</b><span>opens from right-click → Auto-assign Duties</span></div>
+      <div class="dlg">
+        <div class="dlg-bar">
+          <svg viewBox="0 0 24 24"><path d="M15 4V2m0 20v-2m5-13 1.4-1.4M3.6 20.4 5 19M20 15h2M2 15h2m16.4 5.4L19 19M5 5 3.6 3.6M8 8l8 8"/></svg>
+          <span class="t">Auto-assign duties — 2026-09-01 → 2026-09-30</span>
+          <span class="x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+        </div>
+        <div class="dlg-desc">1 crew · J4020 Abebe Tesfaye · ADD · 7M8 · pilot</div>
+        <div class="dlg-body">
+          <div class="sec">
+            <div class="sec-h"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Date range <span class="hint">defaults to roster period RP 2026-09</span></div>
+            <div class="row">
+              <label class="f">From<input id="from" class="inp d" value="2026-09-01"></label>
+              <label class="f">To<input id="to" class="inp d" value="2026-09-30"></label>
+              <span class="chip">RP 2026-09 · 30 days · 24 rolling windows</span>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Duty types <span class="hint">blank = no limit · window = any 7 consecutive days</span></div>
+            <div style="overflow-x:auto">
+            <table>
+              <thead><tr>
+                <th>Duty</th><th class="num">Period Max</th><th class="num">Every 7 Days Min</th><th class="num">Every 7 Days Max</th><th>Pool in range</th><th></th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td><span class="tag FLY"><i></i>FLY</span></td>
+                  <td class="num"><input id="fly-pm" class="inp n" placeholder="—"></td>
+                  <td class="num"><input id="fly-min" class="inp n" value="1"></td>
+                  <td class="num"><input id="fly-max" class="inp n" value="4"></td>
+                  <td class="pool"><b class="mono">738</b> open · base ADD + fleet 7M8</td>
+                  <td class="del"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m-9 4v8m6-8v8M5 6l1 14h12l1-14"/></svg></td>
+                </tr>
+                <tr>
+                  <td><span class="tag RES"><i></i>RES</span></td>
+                  <td class="num"><input id="res-pm" class="inp n" value="2"></td>
+                  <td class="num"><input id="res-min" class="inp n" value="1"></td>
+                  <td class="num"><input id="res-max" class="inp n" placeholder="—"></td>
+                  <td class="pool"><b class="mono">42</b> open · base ADD + pilot · PRAM 21 / PRPM 21</td>
+                  <td class="del"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m-9 4v8m6-8v8M5 6l1 14h12l1-14"/></svg></td>
+                </tr>
+                <tr>
+                  <td><span class="tag DO"><i></i>DO</span></td>
+                  <td class="num"><input id="do-pm" class="inp n" value="8"></td>
+                  <td class="num"><input id="do-min" class="inp n" value="1"></td>
+                  <td class="num"><input id="do-max" class="inp n" value="2"></td>
+                  <td class="pool">— ground task · full day, ADD local 00:00–23:59</td>
+                  <td class="del"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m-9 4v8m6-8v8M5 6l1 14h12l1-14"/></svg></td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+            <div class="add">
+              <span class="sel"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add duty type <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span>
+              <span class="chip">GRD</span><span class="chip">LVE</span><span class="chip">TRN</span><span class="chip">SIM</span>
+            </div>
+          </div>
+
+          <div class="note"><b>Fill order:</b> FLY first, then RES, then DO into leftover free days. Existing roster duties in range count toward every limit. Every pick still passes the Rust legality engine.</div>
+        </div>
+        <div class="dlg-foot">
+          <button class="btn ghost">Cancel</button>
+          <button class="btn primary">Analyse</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 2 -->
+    <section class="step">
+      <div class="step-h"><b>2 · Analyse</b><span>review, then Apply replays on the gantt · Save persists</span></div>
+      <div class="dlg">
+        <div class="dlg-bar">
+          <svg viewBox="0 0 24 24"><path d="M15 4V2m0 20v-2m5-13 1.4-1.4M3.6 20.4 5 19M20 15h2M2 15h2m16.4 5.4L19 19M5 5 3.6 3.6M8 8l8 8"/></svg>
+          <span class="t">Auto-assign duties — 2026-09-01 → 2026-09-30</span>
+          <span class="x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+        </div>
+        <div class="dlg-desc">Plan ready · 1 crew · 14 to assign · 3 windows flagged · nothing written yet</div>
+        <div class="dlg-body">
+          <div class="sec">
+            <div class="crew"><span class="id">J4020</span><span>Abebe Tesfaye</span><span class="meta">ADD · 7M8 · CA</span><span class="status warn" style="margin-left:auto">2 warnings</span></div>
+            <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Duty</th><th class="num">Existing</th><th class="num">+ New</th><th class="num">Period</th><th style="min-width:150px">Rolling windows (24)</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><span class="tag FLY"><i></i>FLY</span></td>
+                  <td class="num mono">1</td><td class="num mono">+8</td><td class="num mono">9 / —</td>
+                  <td><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div></td>
+                  <td><span class="status ok">min 1 · max 4 met</span></td>
+                </tr>
+                <tr>
+                  <td><span class="tag RES"><i></i>RES</span></td>
+                  <td class="num mono">0</td><td class="num mono">+2</td><td class="num mono">2 / 2</td>
+                  <td><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="w"></i><i class="w"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div></td>
+                  <td><span class="status warn">period max reached · 2 windows miss min</span></td>
+                </tr>
+                <tr>
+                  <td><span class="tag DO"><i></i>DO</span></td>
+                  <td class="num mono">0</td><td class="num mono">+4</td><td class="num mono">4 / 8</td>
+                  <td><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="w"></i><i class="on"></i></div></td>
+                  <td><span class="status warn">1 window misses min</span></td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+            <div class="winlist">
+              <span class="win">RES · Sep 09–15: 0</span><span class="win">RES · Sep 10–16: 0</span><span class="win">DO · Sep 23–29: 0 (no free day)</span>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>September at a glance <span class="hint">outlined = already on roster</span></div>
+            <div class="days"><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b><b>10</b><b>11</b><b>12</b><b>13</b><b>14</b><b>15</b><b>16</b><b>17</b><b>18</b><b>19</b><b>20</b><b>21</b><b>22</b><b>23</b><b>24</b><b>25</b><b>26</b><b>27</b><b>28</b><b>29</b><b>30</b></div>
+            <div class="strip">
+              <s class="fly">F</s><s class="fly">F</s><s></s><s class="res">R</s><s class="fly">F</s><s class="fly">F</s><s class="do">D</s>
+              <s class="fly">F</s><s></s><s></s><s class="fly ex">F</s><s class="fly ex">F</s><s></s><s class="do">D</s>
+              <s class="fly">F</s><s class="fly">F</s><s></s><s class="res">R</s><s class="fly">F</s><s class="fly">F</s><s class="do">D</s>
+              <s class="fly">F</s><s class="fly">F</s><s></s><s class="fly">F</s><s class="fly">F</s><s></s><s class="fly">F</s><s class="fly">F</s><s class="do">D</s>
+            </div>
+            <div class="legend"><span><i style="background:var(--fly)"></i>FLY pairing</span><span><i style="background:var(--res)"></i>RES (PRAM/PRPM)</span><span><i style="background:var(--do)"></i>DO, ADD local full day</span><span><i style="background:var(--border-2)"></i>free</span></div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h6"/></svg>Decision trace <span class="hint">same trace as today, now tagged by duty</span></div>
+            <div class="trace">
+              <div><span class="k g">filter</span>FLY · 738 open, base ADD, fleet 7M8, 09-01..09-30</div>
+              <div><span class="k a">assign</span>FLY · #151702 ADD-JIB-ADD 09-01→09-02 · window load ok</div>
+              <div><span class="k s">skip</span>FLY · #151731 ADD-NBO-ADD 09-13 · every-7-max: 4 FLY in 09-08..09-14</div>
+              <div><span class="k s">skip</span>FLY · #151740 ADD-ASO-ADD 09-13 · rule 7305 Max consecutive duty days</div>
+              <div><span class="k g">filter</span>RES · 42 open, base ADD, division P (fleet ignored)</div>
+              <div><span class="k a">assign</span>RES · PRAM-1000-2200 09-04 · fills window 09-01..09-07</div>
+              <div><span class="k a">assign</span>RES · PRPM-2000-0559 09-18 · period max 2 reached</div>
+              <div><span class="k a">assign</span>DO · 09-07 ADD 00:00–23:59 · latest free day in 09-01..09-07</div>
+              <div><span class="k s">skip</span>DO · 09-23..09-29 · no free day left after FLY</div>
+            </div>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <button class="btn ghost">Back</button>
+          <button class="btn ghost">Cancel</button>
+          <button class="btn primary">Apply to gantt (14)</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="qa">
+    <div><h3>Idea exchange · what I want your eye on</h3><p>The mock encodes the interview decisions. The five points below are where a different call changes the build.</p></div>
+    <div><h3><span class="q">A</span> Rolling window bar</h3><p>24 cells, one per 7-day window. Warning cells are where min is missed. Is this readable enough, or would you rather see only the flagged windows as chips?</p></div>
+    <div><h3><span class="q">B</span> Month strip</h3><p>One cell per day, outlined cells are duties already on the roster. This is the fastest way to sanity-check "FLY first, then RES, then DO into leftovers".</p></div>
+    <div><h3><span class="q">C</span> DO with no free day</h3><p>Sep 23–29 shows the honest failure: FLY filled every day, so DO min is reported, not forced. Alternative is to reserve one day per window before FLY, which you declined.</p></div>
+    <div><h3><span class="q">D</span> Add duty type</h3><p>Dropdown at assignment_group level (GRD, LVE, TRN, SIM…). Ground-only groups get no pool and are placed like DO.</p></div>
+    <div><h3><span class="q">E</span> Multi-crew</h3><p>With several crew selected, screen 2 repeats the per-crew block top to bottom, same order as the roster pane. Pool in screen 1 shows the union.</p></div>
+  </section>
+</div>

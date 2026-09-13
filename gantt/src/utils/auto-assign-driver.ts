@@ -69,7 +69,8 @@ export const runAutoAssignReplay = async (
       // Animate: bring the target pairing to the top before assigning it.
       await bringPairingIdToTop(s.pairingId).catch(() => {})
       await sleep(stepDelay)
-      const res = await assignPairingDraft(s.pairingId, s.crewId)
+      // Soft warnings were already listed in the plan review and accepted at Apply; hard ones still block.
+      const res = await assignPairingDraft(s.pairingId, s.crewId, { autoAcceptSoft: true })
       ok = res.ok
       reason = res.reason
     } else {
@@ -80,7 +81,7 @@ export const runAutoAssignReplay = async (
         arvArp: s.base,
         startDtUtc: s.startDtUtc,
         endDtUtc: s.endDtUtc,
-      })
+      }, { autoAcceptSoft: true }) // kept soft warnings were reviewed + accepted at Apply
       ok = created != null && created.length > 0
       if (!ok) reason = 'Ground duty declined by legality check'
     }

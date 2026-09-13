@@ -101,6 +101,8 @@ const makeDeps = (over: Partial<AutoAssignDeps> = {}): AutoAssignDeps => {
     })),
     fetchCandidates: vi.fn(async () => [P1.cand, P2.cand]),
     resolveBaseZone: vi.fn(async () => 'Africa/Addis_Ababa'),
+    // One open CA slot per fixture pairing (plan 1 / fill 0), like the seeded ET877/ET876 trips.
+    fetchOpenSlots: vi.fn(async (_f, ids: number[]) => new Map(ids.map((id) => [id, new Map([['CA', 1]])]))),
     precheck: vi.fn(async () => ({ ok: true as const, actingRank: 'CA' })),
     fetchExistingRoster: vi.fn(async () => [] as PreviewRosterItem[]),
     fetchSegments: vi.fn(async (_f, ids: number[]) => {
@@ -432,5 +434,57 @@ describe('planAutoAssign', () => {
     expect(unmet?.group).toBe('DO')
     expect(unmet?.message).toContain('no free day')
     expect(crew.outcome[0].windows[0].minUnmet).toBe(true)
+  })
+
+  it('(n) FLY leaves the free day a later DO min needs (reserve-day skip), so DO min 1 holds', async () => {
+    // Four round trips would cover all seven days 09-10..09-16; with DO min 1 the
+    // packer must skip the one that would consume the last free day.
+    const R1 = roundTrip(7001, 'RT 09-10', '2026-09-10T06:00:00Z', '2026-09-10T10:00:00Z', '2026-09-11T06:00:00Z', '2026-09-11T10:00:00Z')
+    const R2 = roundTrip(7002, 'RT 09-12', '2026-09-12T06:00:00Z', '2026-09-12T10:00:00Z', '2026-09-13T06:00:00Z', '2026-09-13T10:00:00Z')
+    const R3 = roundTrip(7003, 'RT 09-14', '2026-09-14T06:00:00Z', '2026-09-14T10:00:00Z', '2026-09-15T06:00:00Z', '2026-09-15T10:00:00Z')
+    const R4 = roundTrip(7004, 'RT 09-16', '2026-09-16T06:00:00Z', '2026-09-16T10:00:00Z', '2026-09-16T12:00:00Z', '2026-09-16T16:00:00Z')
+    const all = [R1, R2, R3, R4]
+    const deps = makeDeps({
+      fetchCandidates: vi.fn(async (_f: unknown, args: { group?: string | null }) => (args.group === 'FLY' ? all.map((r) => r.cand) : [])) as unknown as AutoAssignDeps['fetchCandidates'],
+      fetchSegments: vi.fn(async (_f, ids: number[]) => new Map(ids.map((id) => [id, all.find((r) => r.cand.id === id)?.segs ?? []]))),
+      fetchCandidateBlockMinutes: vi.fn(async (_f, ids: number[]) => new Map(ids.map((id) => [id, 240]))),
+    })
+    const plan = await planAutoAssign(
+      fakeFastify,
+      { ...weekInput, distribution: 'earliest', dutyTypes: [{ group: 'FLY', every7Min: 1, every7Max: 4 }, { group: 'DO', every7Min: 1, every7Max: 2, periodMax: 8 }] },
+      deps,
+    )
+    const crew = plan.crews[0]
+    expect(crew.assigned.map((a) => a.pairingId)).toEqual([7001, 7002, 7003])
+    expect(crew.skipped.find((s) => s.pairingId === 7004)).toMatchObject({ reason: 'reserve-day' })
+    expect(crew.assignedGround.map((g) => g.day)).toEqual(['2026-09-16'])
+    expect(crew.outcome.find((o) => o.group === 'DO')?.windows[0]).toMatchObject({ count: 1, minUnmet: false })
+  })
+
+  it('(o) a soft violation naming no pairing does not trim DO days (7505 min days off is not fixed by removing a day off)', async () => {
+    const runLegality = vi.fn().mockResolvedValue({
+      allowed: false,
+      violations: [violation(null, '7505', 2, 'The number of days off(11) must be at least 12 in 1 RP')],
+    })
+    const deps = makeDeps({
+      fetchCandidates: groupedCandidates() as unknown as AutoAssignDeps['fetchCandidates'],
+      runLegality,
+    })
+    const plan = await planAutoAssign(fakeFastify, { ...weekInput, dutyTypes: [{ group: 'DO', every7Min: 1 }] }, deps)
+    const crew = plan.crews[0]
+    expect(crew.assignedGround.map((g) => g.day)).toEqual(['2026-09-16'])
+    expect(crew.skipped).toEqual([])
+    expect(crew.outcome[0].windows[0]).toMatchObject({ count: 1, minUnmet: false })
+    expect(crew.warnings).toEqual([{ ruleCode: '7505', severity: 2, message: 'The number of days off(11) must be at least 12 in 1 RP' }])
+  })
+
+  it('(p) two crew in one plan never share a single open slot: the second crew skips it (no-slot)', async () => {
+    const deps = makeDeps()
+    const plan = await planAutoAssign(fakeFastify, { ...baseInput, crewIds: ['J4001', 'J4002'] }, deps)
+    expect(plan.crews[0].assigned.map((a) => a.pairingId)).toEqual([151528, 151540])
+    expect(plan.crews[1].assigned).toEqual([])
+    const skips = plan.crews[1].skipped
+    expect(skips.map((s) => s.reason)).toEqual(['no-slot', 'no-slot'])
+    expect(skips[0].message).toContain('already taken by an earlier crew')
   })
 })

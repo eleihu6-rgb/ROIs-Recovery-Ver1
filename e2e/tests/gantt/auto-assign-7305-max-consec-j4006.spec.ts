@@ -135,7 +135,10 @@ test('Auto-assign + Rule 7305 — J4006 (ADD/7M8): max-consecutive-days is enfor
 
   const dialog = page.getByTestId('auto-assign-dialog')
   await expect(dialog).toBeVisible({ timeout: 10_000 })
-  // Auto-assign Duties: configure phase first (RP range + FLY/RES/DO limits) → Analyse fires the planner.
+  // Auto-assign Duties: configure phase first. This spec covers the legacy
+  // open-pairings shape, so keep only the FLY row with no limits, then Analyse.
+  for (const g of ['RES', 'DO']) await dialog.getByTestId(`auto-assign-remove-${g}`).click()
+  for (const k of ['periodMax', 'every7Min', 'every7Max']) await dialog.getByTestId(`auto-assign-FLY-${k}`).fill('')
   await dialog.getByTestId('auto-assign-analyse').click()
 
   const planRes = await planPromise

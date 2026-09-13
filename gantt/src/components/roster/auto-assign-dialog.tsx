@@ -416,6 +416,17 @@ export const AutoAssignDialog = () => {
           </div>
         )}
 
+        {replayLog.some((s) => !s.ok) && (
+          <div className="flex flex-col gap-0.5 rounded-md border border-amber-500/60 bg-amber-500/10 px-2 py-1 text-2xs" data-testid="auto-assign-replay-failed">
+            <span className="font-medium text-amber-700">Skipped on replay ({replayLog.filter((s) => !s.ok).length})</span>
+            {replayLog.filter((s) => !s.ok).map((s) => (
+              <span key={`${s.crewId}-${s.index}`} className="text-amber-700" data-testid="auto-assign-replay-failed-step">
+                <span className="font-mono tabular-nums">{s.crewId} · {s.label}</span> — {s.reason ?? 'declined'}
+              </span>
+            ))}
+          </div>
+        )}
+
         {plan && phase !== 'error' && phase !== 'configure' && (
           <div className="min-h-0 flex-1 space-y-2 overflow-auto" data-testid="auto-assign-trace">
             {plan.crews.map((crew) => {
@@ -493,6 +504,17 @@ export const AutoAssignDialog = () => {
                       {unmet.map((s, i) => s.kind === 'unmet' && (
                         <span key={`${s.group}-${s.start}-${i}`} className="rounded-sm border border-amber-500/60 bg-amber-500/10 px-1.5 py-px font-mono text-3xs tabular-nums text-amber-700" title={s.message}>
                           {s.group} · {s.start.slice(5)}–{s.end.slice(5)}: {s.count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {(crew.warnings?.length ?? 0) > 0 && (
+                    <div className="flex flex-col gap-0.5 px-2 pb-1.5 pt-1" data-testid={`auto-assign-warnings-${crew.crewId}`}>
+                      <span className="text-3xs font-medium uppercase tracking-wide text-amber-700">Legality warnings kept (accepted at Apply)</span>
+                      {crew.warnings.map((w, i) => (
+                        <span key={`${w.ruleCode}-${i}`} className="text-2xs text-amber-700">
+                          <span className="font-mono tabular-nums">{w.ruleCode}</span> · {w.message}
                         </span>
                       ))}
                     </div>

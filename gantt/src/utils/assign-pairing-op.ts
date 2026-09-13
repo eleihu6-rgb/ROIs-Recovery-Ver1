@@ -34,6 +34,7 @@ export interface AssignPairingResult {
 export const assignPairingDraft = async (
   pairingId: number,
   toCrewId: string,
+  opts?: { autoAcceptSoft?: boolean },
 ): Promise<AssignPairingResult> => {
   const pairingItem = usePairingStore.getState().items.find((i) => i.pairing.id === pairingId)
   if (!pairingItem) {
@@ -145,7 +146,7 @@ export const assignPairingDraft = async (
     [toCrewId],
     beforeItems,
     displayed,
-    { relatedItems: placeholders, relatedPairingIds: [pairing.id] },
+    { relatedItems: placeholders, relatedPairingIds: [pairing.id], autoAcceptSoft: opts?.autoAcceptSoft },
   )
   if (!allowed) {
     useDraftStore.getState().removeOp(opId)

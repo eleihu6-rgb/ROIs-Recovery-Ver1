@@ -134,3 +134,12 @@ cap in **Legality → Rule Sets** (`legality-param-table-editor.tsx` → `PATCH 
   does (state race), that one assign rolls back and the driver moves on.
 - UI is token-only (`Wand2`, `Check`, `SkipForward`, `Filter`, `text-2xs`, `font-mono tabular-nums`) →
   passes `npm run check:ui`. Dialog uses the mandatory `AppDialog`.
+
+## 2026-09-12 — renamed to "Auto-assign Duties" (duty types + limits)
+
+Design: `docs/superpowers/specs/2026-09-12-auto-assign-duties-design.md` (+ §9 implementation notes). Mock: `docs/superpowers/specs/2026-09-12-auto-assign-duties-mock.html`.
+
+- Menu label is now **Auto-assign Duties** (`Auto-assign Duties (N crew)` for a multi-row selection). Dialog opens on a **configure** step: date range (defaults to the `roster_period` covering the viewport month) + duty-type table (FLY / RES / DO rows; columns Period Max · Every 7 Days Min · Every 7 Days Max · Pool in range; "Add duty type" from `POST /api/roster/auto-assign/duty-groups`). **Analyse** fires the planner; the review shows a per-crew outcome table vs limits, unmet-window chips, kept legality warnings, then **Apply to gantt** replays pairings via `assignPairingDraft` and DO days via `addGroundTask(..., { autoAcceptSoft: true })`.
+- `POST /api/roster/auto-assign/plan` accepts `dutyTypes[]`; omitted ⇒ legacy single FLY pass with no limits (R'Bot `auto_assign_pairings` and the J400x specs use that shape, configured in the dialog by removing RES/DO rows and clearing the FLY limits).
+- Planner rules: rolling 7-day windows (max-gap min), existing roster counts, FLY first → RES (base + division, fleet ignored) → DO (latest free base-local day), free-day reservation for ground minima (`reserve-day` skip), cross-crew slot tracking (`no-slot … already taken by an earlier crew`), FLY row pool = FLY+FLT family.
+- Tests: `live-server/tests/unit/auto-assign-service.test.ts` cases (g)–(p); `e2e/tests/gantt/auto-assign-duties.spec.ts` (ADD J4020–J4022, DXB K1001–K1003; DXB RES seeded by `res-pairing-dxb-sep2026-seed.spec.ts`). Run e2e from `e2e/` with `--workers=1` against the tunnel; parallel workers starve the gantt ("panes never showed objects").
