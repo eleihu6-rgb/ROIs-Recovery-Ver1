@@ -5,42 +5,36 @@
 
 ## 基本信息
 
-- 时间：2026-09-13 11:22:05 PDT
+- 时间：2026-09-13 10:21:44 PDT
 - Wing：`gantt`
-- Topic：`case3-8004-help-article`
-- Title：case3-8004-help-article
+- Topic：`case3-8004-fleet-recovery-options`
+- Title：case3-8004-fleet-recovery-options
 - Git branch：`main`
 
 ## 本轮对话上下文
 
-Case 3 published to the in-app Online Help as "Case study 3 - 8004 crew-fleet mismatch at ADD (Partial)" alongside Case 1 and Case 2. No commit/push.
+Case 3 (8004 crew-fleet mismatch) — fleet-check scoping + option-level verification COMPLETE. Both requester items done. No commit/push.
 
-Deliverables (skill 003):
-- Topic body gantt/src/components/help/topics/recovery/recovery-case-003.tsx (10 HelpSteps).
-- Registry gantt/src/components/help/help-data.ts entry after recovery-case-002 (title/stepCount 10/overview with search keywords: 8004, crew fleet, 152227, ADD, soft constraint).
-- Lazy import in gantt/src/components/help/help-view.tsx (kept lazy; no eager topic imports).
-- 5 screenshots copied into gantt/public/help/screenshots/: s3-entry-alert-center, s3-entry-pairing-pane, s3-entry-roster-pane, s3-options-executable, s3-options-preview (-Ver1.png). Source = the real Playwright runs from the earlier turns (not the capture-help-screenshots.ts harness). Total added ~1.1 MB (comparable to Case 2's 4 images ~1.0 MB). OCR-inspected only - image viewing is unavailable in this session.
-- Content regression e2e/tests/gantt/help/help-recovery.spec.ts: imageCountFor('recovery-case-003')=5; topic added to the ordered topic list after case-002; text assertions incl. 'Case 3 - aircraft qualification (Rule 8004)', '152227', 'Crew fleet (788) is invalid for the pairing (7M8)', Alert Center / Pairing pane / Roster pane, the three methods, 'Unpriced', 'soft constraint', 'Preview is not Apply', 'the 8004 remains after Save'; search keywords ['8004','recovery-case-003'] and ['crew fleet','recovery-case-003'].
-- FRONTEND_VERSION 450 -> 451 (gantt/src/version.ts).
+(b) FLEET rule scope: first scoped Base=ADD, but that gave case-2 crew T2001 a collateral 8004 (T2001 is rostered on 738 pairing 150406 and is only B787-qualified). Tightened to row ["ADD","*","788","FLEET","Y","0","CD","FLY"] on rule id 22 (8004001, instance 8004/001, workset 103). After recheck the ONLY fleet-8004 rows in f8_sit_live are the 4 case-3 crew; case 1/2 carry none. Scripts .local/case3/scope-fleet-add.mjs, scope-fleet-add-788.mjs, verify-scope2.mjs.
 
-Verified: cd e2e && GANTT_BASE_URL=http://localhost:5567 GANTT_API_URL=http://localhost:3000 npx playwright test -c config/playwright.config.ts --project=gantt tests/gantt/help/ --reporter=list --no-deps -> 75 passed (1.1m), including help-recovery (new Case 3 assertions) and help-screenshots (no 404 across all topics, so the 5 new PNGs load). Same run captured docs/assets/screenshots/gantt/help-recovery-recovery-case-003-Ver1.png (rendered article confirmed by OCR).
+(a) Option-level verification: e2e/tests/gantt/recovery-case-003-options.spec.ts PASS (40.2s). Drove one roster-transfer option through the full chain: Executable/Filtered/Best-cost tabs; Executable candidate L3003 (CA, ADD, 788) with Unpriced cost; recovery-option-cost-dialog opens (Unpriced — no cost-library entry, honest not free); recovery-preview-* -> in-memory Preview mode ("Recovery Roster is simulated and not saved", "Transfer to L3003"); recovery-apply -> draft only ("applied to the unsaved Gantt draft", draftOps non-empty, source released / target holds pairing in draft); draft-save-btn -> "Changes saved successfully", draftOps 0. Screenshots docs/assets/screenshots/crew-recovery/case3-options-{executable,cost-breakdown,preview,applied-draft,saved}-Ver1.png (OCR-inspected).
 
-Content is published as Partial and says so in the title + leading HelpWarning: the 8004 trigger, three entry points and the roster-transfer option chain (Executable list, cost breakdown Unpriced, fleet mismatch warning, Preview, Apply to draft, Save) are verified; a 788-only replacement does NOT clear the 8004 (soft fleet) and Standby/Cross-base were not executed.
+Soft-fleet finding: after Save the roster is L3002/L3003 (CA) + L3006/L3007 (FO) and the 8004 REMAINS for L3003 (788 candidate cannot clear a 7M8 mismatch). Fleet is a SOFT constraint (product decision 2026-09-12) so the transfer commits anyway. A fully-clearing transfer needs a 7M8-qualified candidate; the ADD 7M8 pool J40xx is busy in 2026-09-17..21.
 
-Coverage checks: scripts/check-help-menu-coverage.mjs and scripts/check-legality-help-coverage.mjs each report ONE pre-existing gap unrelated to this change (System/Interface page -> system-interface; rule 7509 Avoid Co-pairing). Did not invent topics to silence them.
+Reset: .local/case3/reset-152227.cjs releases any crew that took pairing 152227 and re-assigns L3001/L3002/L3006/L3007 + recheck. Fixture was reset after the Save run; e2e/tests/gantt/recovery-case-003.spec.ts re-run afterwards -> PASS (58.8s). Current fixture state: roster L3001/L3002/L3006/L3007, 4 x 8004 fleet alerts on 152227, no collateral.
 
-Earlier code change still in worktree: gantt/src/components/roster/context-menu.tsx pairing-pane 8004 Recovery entry. Gantt tsc clean except pre-existing service-status-pill errors. Case-3 fixture unchanged and replayable (pairing 152227: L3001/L3002 CA, L3006/L3007 FO; 4 x 8004 fleet alerts; FLEET row scoped ADD + 788). Record: docs/test-cases/crew-recovery/2026-09-13-case-003-preparation-Ver1.md. No commits.
+Specs/config: e2e/config/case3.config.ts (testMatch recovery-case-003(?:-options)?.spec.ts), e2e/tests/gantt/recovery-case-003.spec.ts (entry points), recovery-case-003-options.spec.ts (options). Run: cd e2e && GANTT_BASE_URL=http://localhost:5567 GANTT_API_URL=http://localhost:3000 npx playwright test --config=config/case3.config.ts.
+
+Record updated: docs/test-cases/crew-recovery/2026-09-13-case-003-preparation-Ver1.md. Code change (earlier turn): gantt/src/components/roster/context-menu.tsx pairing-pane 8004 recovery entry. Gantt tsc clean except pre-existing service-status-pill errors.
+
+Still open: 8004 clearance by a qualified replacement; standby/cross-base option execution; crew-app notification; Help case article. No commits.
 
 ## 当前工作树快照
 
 ### git status --short
 
 ```text
- M .agents/skills/142-flight-schedule-seed-generator/SKILL.md
- M .agents/skills/142-flight-schedule-seed-generator/fixtures/add-b787-demo-sep2026.json
- M .agents/skills/142-flight-schedule-seed-generator/fixtures/ek-dxb-a380.json
- M .agents/skills/142-flight-schedule-seed-generator/fixtures/et-add-b787-737.json
- M .agents/skills/142-flight-schedule-seed-generator/scripts/load-ssim-flights.mjs
+ M .agents/skills/144-auto-assign-base-crew/SKILL.md
  M .agents/skills/145-crew-recovery-case-study/SKILL.md
  M .gitignore
  M AGENTS.md
@@ -61,8 +55,9 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
  M crew-app/src/version.ts
  M docs/dev-context/LATEST.md
  M docs/superpowers/specs/2026-09-11-crew-app-rbot-assistant-design.md
+ M docs/superpowers/specs/2026-09-12-auto-assign-duties-design.md
+ M e2e/tests/gantt/auto-assign-duties.spec.ts
  M e2e/tests/gantt/help/help-recovery.spec.ts
- M e2e/tests/gantt/pairing-build.spec.ts
  M gantt/src/components/dev/dev-skills-data.generated.ts
  M gantt/src/components/gantt/source/__tests__/live-violation-attribution.test.ts
  M gantt/src/components/gantt/source/live-gantt-source.ts
@@ -74,7 +69,9 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
  M gantt/src/components/panes/shared/roster-pane.tsx
  M gantt/src/components/panes/violation-list-dialog.tsx
  M gantt/src/components/recovery/recovery-violation-dialog.tsx
+ M gantt/src/components/roster/auto-assign-dialog.tsx
  M gantt/src/components/roster/context-menu.tsx
+ M gantt/src/services/auto-assign-api.ts
  M gantt/src/services/recovery-api.ts
  M gantt/src/services/recovery-candidates.ts
  M gantt/src/services/recovery-rules.ts
@@ -85,6 +82,8 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
  M live-server/src/routes/crew-notify/crew-notify.ts
  M live-server/src/routes/recovery/recovery-cost.ts
  M live-server/src/services/flight/flight-delay-propagation-service.ts
+ M live-server/src/services/roster/auto-assign-service.ts
+ M live-server/tests/unit/auto-assign-service.test.ts
  M package.json
 ?? .agents/skills/141-crew-seed-generator/fixtures/ethiopia-add-788.json
 ?? crew-app/__tests__/features/discretionScreen.test.tsx
@@ -224,20 +223,21 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
 ?? docs/assets/screenshots/crew-recovery/s2-recovery-skill-Ver1.png
 ?? docs/assets/screenshots/crew-recovery/s2-roster-right-click-recovery-entry-Ver1.png
 ?? docs/assets/screenshots/gantt/auto-assign-duties-3-crew-Ver1.png
+?? docs/assets/screenshots/gantt/auto-assign-duties-add-analyse-Ver2.png
+?? docs/assets/screenshots/gantt/auto-assign-duties-add-applied-Ver2.png
+?? docs/assets/screenshots/gantt/auto-assign-duties-add-configure-Ver2.png
+?? docs/assets/screenshots/gantt/auto-assign-duties-add-glance-Ver2.png
+?? docs/assets/screenshots/gantt/auto-assign-duties-dxb-analyse-Ver2.png
+?? docs/assets/screenshots/gantt/auto-assign-duties-dxb-applied-Ver2.png
+?? docs/assets/screenshots/gantt/auto-assign-duties-dxb-configure-Ver2.png
+?? docs/assets/screenshots/gantt/auto-assign-duties-dxb-glance-Ver2.png
 ?? docs/assets/screenshots/gantt/cr-public-login-20260912-Ver1.png
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-ek-Ver1.png
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-ek-Ver1.png.review.txt
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-ek-Ver1.png.vision.txt
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-et-Ver1.png
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-et-Ver1.png.review.txt
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-et-Ver1.png.vision.txt
 ?? docs/assets/screenshots/gantt/help-recovery-cases-Ver1.png
 ?? docs/assets/screenshots/gantt/help-recovery-recovery-102-Ver1.png
 ?? docs/assets/screenshots/gantt/help-recovery-recovery-103-Ver1.png
 ?? docs/assets/screenshots/gantt/help-recovery-recovery-104-Ver1.png
 ?? docs/assets/screenshots/gantt/help-recovery-recovery-case-001-Ver1.png
 ?? docs/assets/screenshots/gantt/help-recovery-recovery-case-002-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-case-003-Ver1.png
 ?? docs/assets/screenshots/gantt/help-recovery-recovery-cost-library-Ver1.png
 ?? docs/assets/screenshots/gantt/help-recovery-recovery-costs-Ver1.png
 ?? docs/assets/screenshots/gantt/help-recovery-recovery-overview-Ver1.png
@@ -246,11 +246,6 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
 ?? docs/assets/screenshots/gantt/rbot-auto-assign-sep-week2-Ver4.png
 ?? docs/assets/screenshots/gantt/rbot-auto-assign-sep-week3-Ver4.png
 ?? docs/assets/screenshots/gantt/rbot-auto-assign-sep-week4-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-catalogue-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-delay-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-guarantee-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-membership-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-standby-Ver4.png
 ?? docs/assets/screenshots/gantt/rule-3007-dxb-delay-alert-center-Ver1.png
 ?? docs/assets/screenshots/gantt/rule-3007-dxb-delay-alert-center-Ver1.png.review.txt
 ?? docs/assets/screenshots/gantt/rule-3007-dxb-delay-alert-center-Ver1.png.vision.txt
@@ -267,7 +262,6 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
 ?? docs/assets/screenshots/gantt/startup-login-20260912-Ver2.png
 ?? docs/assets/screenshots/gantt/startup-login-20260912-Ver3.png
 ?? docs/dev-context/2026-09-12-gantt-s2-preparation-crew-consent.md
-?? docs/dev-context/2026-09-13-gantt-case3-8004-fleet-recovery-options.md
 ?? docs/dev-context/2026-09-13-gantt-case3-8004-fleet-recovery.md
 ?? docs/dev-context/2026-09-13-live-server-rule-3007-fdp-delay.md
 ?? docs/handoff/agent-workflow/2026-09-13-deepseek-native-view-image.md
@@ -282,15 +276,8 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
 ?? e2e/docs/
 ?? e2e/scripts/recovery-s1-gh-readonly.cjs
 ?? e2e/scripts/recovery-s1-options-readonly.cjs
-?? e2e/tests/gantt/ek-et-flight-assignment-fly.spec.ts
 ?? e2e/tests/gantt/recovery-case-003-options.spec.ts
 ?? e2e/tests/gantt/recovery-case-003.spec.ts
-?? e2e/utils/pairing-build.ts
-?? gantt/public/help/screenshots/recovery-cost-catalogue-Ver4.png
-?? gantt/public/help/screenshots/recovery-cost-delay-Ver4.png
-?? gantt/public/help/screenshots/recovery-cost-guarantee-Ver4.png
-?? gantt/public/help/screenshots/recovery-cost-membership-Ver4.png
-?? gantt/public/help/screenshots/recovery-cost-standby-Ver4.png
 ?? gantt/public/help/screenshots/s1-absence-dates-Ver1.jpg
 ?? gantt/public/help/screenshots/s1-absence-record-Ver1.png
 ?? gantt/public/help/screenshots/s1-add-filter-Ver1.png
@@ -304,13 +291,7 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
 ?? gantt/public/help/screenshots/s2-consent-controller-unanimous-Ver1.png
 ?? gantt/public/help/screenshots/s2-consent-mobile-request-Ver1.png
 ?? gantt/public/help/screenshots/s2-isolated-crew-pool-Ver1.png
-?? gantt/public/help/screenshots/s3-entry-alert-center-Ver1.png
-?? gantt/public/help/screenshots/s3-entry-pairing-pane-Ver1.png
-?? gantt/public/help/screenshots/s3-entry-roster-pane-Ver1.png
-?? gantt/public/help/screenshots/s3-options-executable-Ver1.png
-?? gantt/public/help/screenshots/s3-options-preview-Ver1.png
 ?? gantt/src/components/help/topics/recovery/recovery-case-002.tsx
-?? gantt/src/components/help/topics/recovery/recovery-case-003.tsx
 ?? gantt/src/components/recovery/__tests__/discretion-consent-panel.test.tsx
 ?? gantt/src/components/recovery/discretion-consent-panel.tsx
 ?? gantt/src/services/__tests__/gantt-sync-manager-fallback.test.ts
@@ -320,17 +301,12 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
 ?? scripts/__tests__/screenshot-review.test.mjs
 ?? scripts/screenshot-review/
 ?? sim_01_login.png
-?? sql/migration/2026-09-13-ek-et-flight-assignment-to-fly.sql
 ```
 
 ### unstaged changed files
 
 ```text
-.agents/skills/142-flight-schedule-seed-generator/SKILL.md
-.agents/skills/142-flight-schedule-seed-generator/fixtures/add-b787-demo-sep2026.json
-.agents/skills/142-flight-schedule-seed-generator/fixtures/ek-dxb-a380.json
-.agents/skills/142-flight-schedule-seed-generator/fixtures/et-add-b787-737.json
-.agents/skills/142-flight-schedule-seed-generator/scripts/load-ssim-flights.mjs
+.agents/skills/144-auto-assign-base-crew/SKILL.md
 .agents/skills/145-crew-recovery-case-study/SKILL.md
 .gitignore
 AGENTS.md
@@ -351,8 +327,9 @@ crew-app/src/features/v2/schedView.ts
 crew-app/src/version.ts
 docs/dev-context/LATEST.md
 docs/superpowers/specs/2026-09-11-crew-app-rbot-assistant-design.md
+docs/superpowers/specs/2026-09-12-auto-assign-duties-design.md
+e2e/tests/gantt/auto-assign-duties.spec.ts
 e2e/tests/gantt/help/help-recovery.spec.ts
-e2e/tests/gantt/pairing-build.spec.ts
 gantt/src/components/dev/dev-skills-data.generated.ts
 gantt/src/components/gantt/source/__tests__/live-violation-attribution.test.ts
 gantt/src/components/gantt/source/live-gantt-source.ts
@@ -364,7 +341,9 @@ gantt/src/components/panes/shared/pairing-pane.tsx
 gantt/src/components/panes/shared/roster-pane.tsx
 gantt/src/components/panes/violation-list-dialog.tsx
 gantt/src/components/recovery/recovery-violation-dialog.tsx
+gantt/src/components/roster/auto-assign-dialog.tsx
 gantt/src/components/roster/context-menu.tsx
+gantt/src/services/auto-assign-api.ts
 gantt/src/services/recovery-api.ts
 gantt/src/services/recovery-candidates.ts
 gantt/src/services/recovery-rules.ts
@@ -375,6 +354,8 @@ live-server/src/plugins/auth.ts
 live-server/src/routes/crew-notify/crew-notify.ts
 live-server/src/routes/recovery/recovery-cost.ts
 live-server/src/services/flight/flight-delay-propagation-service.ts
+live-server/src/services/roster/auto-assign-service.ts
+live-server/tests/unit/auto-assign-service.test.ts
 package.json
 ```
 
@@ -389,7 +370,7 @@ package.json
 新窗口先阅读：
 
 1. `NEXT_CONTEXT.md`
-2. 本文件：`docs/dev-context/2026-09-13-gantt-case3-8004-help-article.md`
+2. 本文件：`docs/dev-context/2026-09-13-gantt-case3-8004-fleet-recovery-options.md`
 3. `docs/dev-context/LATEST.md`
 
 然后运行：

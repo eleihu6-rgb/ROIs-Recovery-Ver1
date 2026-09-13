@@ -1,0 +1,42 @@
+{
+  "groups": [
+    {
+      "label": "S2 isolated synthetic recovery crew / SIN / B787",
+      "idPrefix": "S2",
+      "idStart": 1001,
+      "count": 39,
+      "caCount": 13,
+      "nationality": "SG",
+      "filiale": "F8",
+      "emplBaseDate": "2020-01-01",
+      "base": {
+        "code": "SIN",
+        "name": "Singapore Changi Airport",
+        "icao": "WSSS",
+        "city": "SIN",
+        "dir": "I",
+        "zoneId": "Asia/Singapore",
+        "utcOffsetMin": 480,
+        "country": "SG"
+      },
+      "fleet": {
+        "code": "B787",
+        "description": "Boeing 787",
+        "fleetGrp": "B787",
+        "acType": "B787",
+        "marketAcType": "Boeing 787",
+        "restfacility": 1,
+        "body": "W"
+      },
+      "ranks": {
+        "CA": { "code": "CA", "division": "P", "description": "Captain", "position": "PIC" },
+        "FO": { "code": "FO", "division": "P", "description": "First Officer", "position": "SIC" }
+      },
+      "names": {
+        "maleFirst": ["Daniel", "Ethan", "Arjun", "Marcus", "Noah", "Oliver", "Ryan", "Adrian", "Leon", "Isaac", "Felix", "Aaron", "Lucas"],
+        "femaleFirst": ["Maya", "Chloe", "Anika", "Grace", "Sophie", "Amelia", "Priya", "Claire", "Emma", "Zoe", "Iris", "Nina", "Leah"],
+        "last": ["Tan", "Lim", "Wong", "Lee", "Ng", "Ong", "Goh", "Chen", "Koh", "Teo", "Yeo", "Chua", "Low"]
+      }
+    }
+  ]
+}

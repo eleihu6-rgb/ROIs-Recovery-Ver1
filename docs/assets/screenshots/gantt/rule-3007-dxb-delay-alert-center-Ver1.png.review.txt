@@ -1,0 +1,265 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/gantt/rule-3007-dxb-delay-alert-center-Ver1.png
+  size:   1920x1080
+  pixels: meanLuminance=193.5 uniqueColors=8854 inkRatio=0.75885 blank=false
+  ocr:    257 text blocks
+  asserted present: "Alert Center"
+
+--- OCR text (reading order, top to bottom) ---
+98 Dashboard
+• Live x
+A Scenario
+e Data
+sis Legality
+System
+Д Regression
+E PBS
+@ Dev
+© Help
+s Kelease
+• s degraded
+e.
+admin • F8_SIT_LIVE Ver:B231/F443/R40
+No data loaded — apply filters to pull data
+© P . PBS Solver Ruleset FD
+© DXB Asia/Dubal -
+• Roster
+• Pairing
+• Flight Reset
+Aug 2026
+Sep 2026
+[ Roster
+2S
+3 M
+4T
+5W
+7F
+8S
+9 S
+10 M
+11 T
+12 W
+13 T
+14 F
+15 S
+16 S 17 M 18 T 19 W 20 T
+21 F
+22 S 23 S
+24 M
+25 T
+26 W
+27 T
+28 F
+29 S
+30 s
+31 M
+2 W
+3Т
+4 F
+5S
+6 S
+Crewld
+Rank
+Base
+Sen
+RpCred RpDO
+DXB x
+K1001
+CA
+DXB
+00:00
+Fatima Al Zaabi
+K1002
+CA
+DXB
+OU.UU
+Mnhammad Al HammaM
+LAYOVER
+LAYOVER
+K1OOK
+DXB
+OOROO
+Khalid Al Nuaimi
+LAYUVEN
+K1004
+CA
+DXB
+00:00
+• LEGALITY Alert Center
+Noure Al Qubalsi
+K1005
+CA
+Jul 25, 2026
+Oct30,2026
+*= Recovery selected
+Last checked 9/13/2026, 9:43:00
+Q. Search crew ID, rank, or base
+* Mixed recovery
+Rashid Al Dhaheri
+selected
+K1006
+CA
+DXB
+00:00
+GROUP BY
+SEV
+CREW
+BASE
+RANK
+RULE ID
+MESSAG.
+(кага ка13
+Sultan Al Ketbi
+K1007
+CA
+DXB
+00:00
+Severity
+K1003
+DXB
+CA
+3007/001
+Row 1: Flight duty period (16:50) exceeds the limitation (16:00) on 2026-08-01.
+AINA AI RumAIThi
+Rule
+K1004
+DXB
+CA
+3007/001
+Row 1: Flight duty period (16:50) exceeds the limitation (16:00) on 2026-08-01.
+K1008
+CA
+00:00
+Omar Al Mansoori
+Base
+LATUVEH
+LATUWEN
+K1014
+DXB
+CA
+7505/001
+Row 1: The number of days off(11) must be at least 12 in 1 RP (2026-09-01, 2026-09-30).
+K1009
+CA
+DXB
+00:00
+Rank
+Faisal Al Ali
+LAYONER
+LAYOVER
+K1015
+DXB
+CA
+7505/001
+Row 1: The number of days off(11) must be at least 12 in 1 RP (2026-09-01, 2026-09-30).
+K1010
+CA
+00:00
+RULE (9)
+K1018
+DXB
+CA
+7508/001
+Row 1: Single day free from duty (1) must be at least 2 in 168 RH (2026-09-01 10:00 .. 2026-09-
+[ Pairing
+F 6443/6839
+2026RP07
+A492026
+• 3007/001
+0810:00).
+29 S
+30 S
+31 M
+2W
+4F
+5S
+6 S
+Pairina
+Base
+Fleet
+Cred
+• 7505/001
+Open, Partialx
+K1019
+DXB
+CA
+7508/001
+Row 1: Single day free from duty (1) must be at least 2 in 168 RH (2026-09-01 10:00 .. 2026-09-
+• *S REPLACE V 14 EE
+Comn
+V4151
+YVR FLY 737
+04:00
+• 7508/001
+0810:00).
+<< 2026-07-2
+CA(1:0)
+K1020
+DXB
+CA
+7508/001
+Row 1: Single day free from duty (1) must be at least 2 in 168 RH (2026-09-01 10:00 .. 2026-09-
+V4151A YVR FLY
+737
+04:00
+08 10:00).
+<2026-07-2
+FO(1:0)
+K1023
+DXB
+FO
+3007/001
+T4534
+08:05
+Row 1: Flight duty period (16:50) exceeds the limitation (16:00) on 2026-08-01.
+YYZ FLY 737
+<2026-07-2
+FA(3:0)IFD(1:0)
+K1024
+DXB
+FO
+3007/001
+Row 1: Flight duty period (16:50) exceeds the limitation (16:00) on 2026-08-01.
+T4535
+YYZ FLY
+737
+08:10
+<2026-07-2
+FA(3:0)IFD(1:0)
+Clnce
+T4178
+YYZ FLY 737
+08:10
+<< 2026-07-25
+CA(1:0)FO(1:0)
+T4532
+YYZ FLY
+737
+09:35
+<< 2026-07-25
+FA(3:0)IFD(1:0)
+YYZ
+FLY
+737
+09:35
+<< 2026-07-25
+CA(1:0)FO(1:0)
+CB9242 YYC
+FLY
+737
+04:00
+<< 2026-07-25
+FA(1:0)
+VB9086 YVR
+FLY
+737
+<< 2026-07-25
+FO(1:0)
+VAR1R
+YVR
+FLY
+737
+nolAn
+<< 2026-07-25
+CA1O01
+No celection

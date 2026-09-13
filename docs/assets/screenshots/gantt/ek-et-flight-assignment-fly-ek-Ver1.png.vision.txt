@@ -1,0 +1,17 @@
+1. Flight assignment/detail dialog for pairing “EK001/EK002 #152680,” showing the flight sequence and roster state. UTC view is selected; no crew is assigned.
+
+2. Visible badges/counts:
+   - `Local`, `Airport`, `UTC`, `By DEP`
+   - `Total Credit: 15:15`
+   - `Total BH: 15:15`
+   - `Total DP: —`
+   - `GT 1:15`, `BH 7:30`, `FT 7:30`
+   - `BH 7:45`, `FT 7:45`
+   - `MRT 18:30 | 18:30`
+   - `FDP 18:30 · Credit 15:15`
+   - `No crew rostered on this pairing.`
+
+3. Potential issues:
+   - Crew area is empty, with only the no-crew message.
+   - `MRT` values appear tightly joined/possibly overlapped: `18:30 | 18:30`.
+   - No obvious clipping or major misalignment otherwise.

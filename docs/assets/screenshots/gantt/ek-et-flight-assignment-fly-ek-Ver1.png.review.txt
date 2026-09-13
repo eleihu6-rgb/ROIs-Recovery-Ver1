@@ -1,0 +1,73 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-ek-Ver1.png
+  size:   1864x186
+  pixels: meanLuminance=195.3 uniqueColors=1171 inkRatio=0.39041 blank=false
+  ocr:    45 text blocks
+  asserted present: "FLY"
+  vision: PASS (model=gpt-5.6-luna, 8.0s)
+
+--- OCR text (reading order, top to bottom) ---
+6 EK001/EK002 #152680
+Start: Aug 10,2026
+Base: DXB
+Composition: CA (2) F0(2)
+Total Credit: 15:15
+Total BH: 15:15 Total DP:-
+Local
+Airport
+UTC
+By DEP
+DEP
+QUAL
+ALN
+Flight
+Fleet
+ACC
+Ref
+PCK
+RPT
+ATA
+DRP
+GT
+BH
+FT
+Duty
+=354
+FLY
+EK001
+A380
+DXB(+4:00)
+8/10 02:35
+8/10 12:05
+FDP 18:30 • Credit 15:15
+8/10 21:20
+FLY
+EK
+EK002
+A380
+LHR(+1:08)
+8/10 13:20
+8/10 13:20
+8/10 21:05
+8/10 21:05
+18:30|18:30
+No crew rostered on this pairing.
+
+--- model visual read (multimodal model, asked about this exact PNG) ---
+1. Flight assignment/detail dialog for pairing “EK001/EK002 #152680,” showing the flight sequence and roster state. UTC view is selected; no crew is assigned.
+
+2. Visible badges/counts:
+   - `Local`, `Airport`, `UTC`, `By DEP`
+   - `Total Credit: 15:15`
+   - `Total BH: 15:15`
+   - `Total DP: —`
+   - `GT 1:15`, `BH 7:30`, `FT 7:30`
+   - `BH 7:45`, `FT 7:45`
+   - `MRT 18:30 | 18:30`
+   - `FDP 18:30 · Credit 15:15`
+   - `No crew rostered on this pairing.`
+
+3. Potential issues:
+   - Crew area is empty, with only the no-crew message.
+   - `MRT` values appear tightly joined/possibly overlapped: `18:30 | 18:30`.
+   - No obvious clipping or major misalignment otherwise.

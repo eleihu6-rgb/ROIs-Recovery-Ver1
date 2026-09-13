@@ -273,13 +273,19 @@ help either.
   `RBotChatApiBaseURL` setting wins; otherwise development derives the host from
   the Metro bundle URL (fast on the simulator and on a LAN phone); otherwise —
   and as the fallback when that host cannot be reached — R'Bot calls
-  **`https://cr.rois.one/ai`**, the same origin the crew app already uses for its
-  crew API. Only a *network* failure falls through to the next origin; a real
-  answer (even a 5xx) does not, so a broken service is never masked.
+  **`https://cr.rois.one`** (same host the crew app already uses for its crew
+  API), and `rbotChatUrl` appends the full `/ai/crew/chat` path. Only a
+  *network* failure falls through to the next origin; a real answer (even a
+  5xx) does not, so a broken service is never masked.
 * **The route** lives on the existing `rois-one` Cloudflare tunnel: path rules
   `^/ai/crew/` and `^/ai/health$` → `localhost:3005`. Deliberately narrow —
   `/ai/regression/*` (which runs Playwright on the dev machine) and the Gantt's
   `/ai/chat` stay closed; both verified 404 from the internet.
+* **2026-09-12 fix:** `RBOT_PUBLIC_API_BASE` originally included the `/ai`
+  segment (`https://cr.rois.one/ai`), so the fallback request went to
+  `https://cr.rois.one/ai/ai/crew/chat` — a path the `^/ai/crew/` tunnel rule
+  does not match, so it 404'd (reported as "R'Bot is unavailable (404)" on a
+  physical iPhone). Fixed by dropping the `/ai` suffix from the constant.
 * **Security gap to close next:** the published crew-chat route is
   unauthenticated, so anyone who knows the URL can spend the model budget. A
   shared token header (app sends, server checks) is the next hardening step.

@@ -1,0 +1,13 @@
+1. Flight assignment detail screen for pairing ET514/ET515 #152681, showing an active/loaded assignment with no crew rostered.
+
+2. Visible text:
+   - Badges: “Local”, “Airport”, “UTC”, “By DEP”
+   - “Composition: CA(2) FO(2)”
+   - “Total Credit: 10:55”, “Total BH: 10:55”, “Total DP: –”
+   - “No crew rostered on this pairing.”
+   - “FDP 14:40 · Credit 10:55”
+
+3. Issues:
+   - “14:40|14:40” in the MRT column appears cramped/overlapped.
+   - DRP is blank for the first flight row.
+   - No other obvious clipping or major misalignment.
