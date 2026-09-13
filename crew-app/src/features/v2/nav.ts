@@ -34,6 +34,9 @@ export type V2StackParamList = {
   /** `absenceFrom` / `absenceTo` / `absenceNote` pre-fill the Absence form when
    *  R'Bot prepared a request from the conversation — the crew still submits. */
   Spec: { id: SpecPageId; absenceFrom?: string; absenceTo?: string; absenceNote?: string };
+  /** The crew's own submitted absence requests for the current calendar month
+   *  (Absence Request ▸ top-right history icon). */
+  AbsenceHistory: undefined;
 };
 
 export type V2Nav = NativeStackNavigationProp<V2StackParamList>;

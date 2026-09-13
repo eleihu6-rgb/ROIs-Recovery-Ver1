@@ -20,7 +20,7 @@ import { alarmOptions, computeEffectiveAlarms, type EffectiveAlarm } from '../se
 import { airportZone } from '../settings/airportZones';
 import type { DutyAlarmOverride } from '../alarms/alarmsSlice';
 import { checkInHhmm } from '../travel/tripDisplay';
-import { DEFAULT_MEETING_MINUTES, meetingJoinUrl, type Meeting } from '../meetings/meetingSetup';
+import { DEFAULT_MEETING_MINUTES, meetingJoinUrl, meetingWhere, type Meeting } from '../meetings/meetingSetup';
 import type { IconName } from '../../components/v2/icons';
 
 export const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -229,6 +229,8 @@ export interface DayMeeting {
 export interface MeetingPrefs {
   minutesBefore: number;
   mutedIds: readonly string[];
+  /** Override the phone timezone for tests; production reads the device zone. */
+  deviceTz?: string;
 }
 
 export interface DayModel {
@@ -250,22 +252,15 @@ function ymd(d: Date): number {
 }
 
 /**
- * The zone a meeting's clock is shown in, following the app's Time-Zone setting
- * so meetings read on the same clock as the duties around them. A meeting has no
- * airport, so 'airport' mode means the event's OWN zone (Outlook writes the
- * meeting's zone into EventKit) — the closest honest equivalent.
+ * The clock a synced iOS Calendar event is shown on. Meetings deliberately do
+ * NOT follow the duty Time-Zone setting: iOS Calendar itself always renders the
+ * event in the phone's current zone, and Outlook/Exchange events can carry a
+ * GMT/UTC event timezone that made a 19:00 Vancouver meeting read as 02:00.
+ * The crew should see the same clock in the app and in Calendar, so this is
+ * always the device zone.
  */
-function meetingZone(mode: TimeZoneMode, baseTz: string, eventTz: string | undefined): string {
-  if (mode === 'airport') {
-    return eventTz || deviceTimeZone();
-  }
-  if (mode === 'base') {
-    return baseTz;
-  }
-  if (mode === 'device') {
-    return deviceTimeZone();
-  }
-  return 'UTC';
+function meetingDisplayZone(deviceTz?: string): string {
+  return deviceTz || deviceTimeZone();
 }
 
 /**
@@ -398,13 +393,13 @@ export function buildMonth(
     if (Number.isNaN(startMs)) continue;
     const dm = byKey.get(ymd(new Date(startMs)));
     if (!dm) continue;
-    const zone = meetingZone(mode, baseTz, m.timeZone);
+    const zone = meetingDisplayZone(meetingPrefs.deviceTz);
     const endMs = Date.parse(m.endISO);
     const safeEndMs = Number.isNaN(endMs) ? startMs + DEFAULT_MEETING_MINUTES * 60_000 : endMs;
     dm.meetings.push({
       id: m.id,
       title: m.title,
-      where: m.calendarTitle,
+      where: meetingWhere(m),
       startMs,
       // A meeting with no parsable end still gets a block: the calendar's own
       // default length, so the timeline never draws a zero-height event.

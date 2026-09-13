@@ -19,16 +19,20 @@ import {
   dayTimeline,
   timelineBlockLabel,
   timelineHourLabel,
+  timelineLaneLayout,
   timelineOffset,
   WEEKDAY_INITIALS,
   type AgendaRow,
   type TimelineBlock,
+  type TimelineLane,
 } from './schedView';
 import type { MeetingActions } from './MeetingCard';
 
 /** Inner surface (icon disc, chips) — matches the duty cards' translucent inset. */
 const CARD_INSET = 'rgba(255,255,255,0.72)';
 const ROW_HOURS = 44;
+/** One hour of vertical space is the smallest readable meeting block. */
+const MEETING_MIN_MINUTES = 60;
 
 export interface CalendarViewProps {
   month: MonthModel;
@@ -235,6 +239,10 @@ function DayTimeline({
   // it gets a chip above the grid, and a day with nothing timed skips the grid.
   const allDayBlocks = timeline.blocks.filter(b => b.allDay);
   const timedBlocks = timeline.blocks.filter(b => !b.allDay);
+  // Overlapping meetings get a horizontal lane each. Only meetings are split so
+  // the duty's report→release block keeps the full width; two meetings at the
+  // same time are the case that used to hide one behind the other.
+  const meetingLanes = timelineLaneLayout(timedBlocks.filter(b => b.kind === 'meeting'), MEETING_MIN_MINUTES);
   // Sunday-first week around the selected day, clamped to the month.
   const dow = new Date(month.year, month.monthIdx, day.day).getDay();
   const weekStart = day.day - dow;
@@ -302,7 +310,7 @@ function DayTimeline({
           })}
           <View style={s.blockLayer} pointerEvents="box-none">
             {timedBlocks.map(b => (
-              <TimelineBlockView key={b.id} block={b} palette={p} startHour={timeline.startHour} endHour={timeline.endHour} actions={actions} meeting={b.kind === 'meeting' ? meetingById(month, b.id) : null} />
+              <TimelineBlockView key={b.id} block={b} palette={p} startHour={timeline.startHour} endHour={timeline.endHour} actions={actions} meeting={b.kind === 'meeting' ? meetingById(month, b.id) : null} lane={meetingLanes[b.id]} />
             ))}
           </View>
         </View>
@@ -318,6 +326,7 @@ function TimelineBlockView({
   endHour,
   actions,
   meeting,
+  lane,
 }: {
   block: TimelineBlock;
   palette: CarrierPalette;
@@ -325,25 +334,59 @@ function TimelineBlockView({
   endHour: number;
   actions: MeetingActions;
   meeting: DayModel['meetings'][number] | null;
+  lane?: TimelineLane;
 }): React.JSX.Element {
   const top = timelineOffset(block.startMin, startHour, endHour) * (endHour - startHour) * ROW_HOURS;
   const raw = timelineOffset(block.endMin, startHour, endHour) * (endHour - startHour) * ROW_HOURS;
-  const height = Math.max(24, raw - top);
+  // A 30-minute event is only 22 px tall on this axis, which clipped its title
+  // and location. iOS Calendar reserves a readable minimum, so a short meeting
+  // keeps the same "title + subtitle" shape as a longer one.
+  const minHeight = block.kind === 'meeting' ? ROW_HOURS : 24;
+  const height = Math.max(minHeight, raw - top);
   // Duty/ground blocks carry the crew's own colour, meetings stay light so the
   // two never read as the same kind of event (mock `.cdEvent.duty` / `.meet`).
   const filled = block.kind === 'duty' || block.kind === 'ground';
   const background = filled ? p.btn : block.kind === 'meeting' ? 'rgba(255,255,255,0.92)' : p.frost;
   const ink = filled ? '#fff' : p.cardInk;
   const label = timelineBlockLabel(block);
+  const laneCount = Math.max(1, lane?.lanes ?? 1);
+  const laneIndex = Math.min(laneCount - 1, Math.max(0, lane?.lane ?? 0));
+  const laneStyle = {
+    left: `${(laneIndex * 100) / laneCount}%` as const,
+    width: `${100 / laneCount}%` as const,
+  };
 
   const body = (
-    <>
-      <Text style={[s.blockTime, { color: ink }]}>{label}</Text>
-      <Text style={[s.blockTitle, { color: ink }]} numberOfLines={2}>
-        {block.title}
-        {block.sub ? ` · ${block.sub}` : ''}
-      </Text>
-    </>
+    block.kind === 'meeting' ? (
+      <>
+        <Text
+          style={[s.blockTitle, { color: ink }]}
+          numberOfLines={height >= 56 ? 2 : 1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
+          {block.title}
+        </Text>
+        {block.sub ? (
+          <Text
+            style={[s.blockSub, { color: ink }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+          >
+            {block.sub}
+          </Text>
+        ) : null}
+      </>
+    ) : (
+      <>
+        <Text style={[s.blockTime, { color: ink }]}>{label}</Text>
+        <Text style={[s.blockTitle, { color: ink }]} numberOfLines={2}>
+          {block.title}
+          {block.sub ? ` · ${block.sub}` : ''}
+        </Text>
+      </>
+    )
   );
 
   if (block.kind === 'meeting' && meeting) {
@@ -351,8 +394,12 @@ function TimelineBlockView({
       <Pressable
         testID={`cal-block-${block.id}`}
         onPress={() => (meeting.joinUrl ? actions.onJoin(meeting) : actions.onToggleAlarm(meeting))}
-        accessibilityLabel={meeting.joinUrl ? `Join ${meeting.title}` : `Alarm ${meeting.alarmHhmm}`}
-        style={[s.block, { top, height, backgroundColor: background, borderLeftColor: ink }]}
+        // The block's text is drawn inside a Pressable, so iOS does not expose
+        // it separately — the title must be in the label or a screen reader only
+        // hears "Alarm 18:52".
+        accessibilityLabel={`${meeting.title}, ${meeting.joinUrl ? 'join online' : meeting.muted ? 'alarm off' : `alarm ${meeting.alarmHhmm}`}`}
+        accessibilityHint={meeting.joinUrl ? 'Opens the meeting link' : 'Turns this meeting reminder on or off'}
+        style={[s.block, laneStyle, { top, height, backgroundColor: background, borderLeftColor: ink }]}
       >
         {body}
       </Pressable>
@@ -361,7 +408,7 @@ function TimelineBlockView({
   return (
     <View
       testID={`cal-block-${block.id}`}
-      style={[s.block, { top, height, backgroundColor: background, borderLeftColor: filled ? '#fff' : p.cardSoft }]}
+      style={[s.block, laneStyle, { top, height, backgroundColor: background, borderLeftColor: filled ? '#fff' : p.cardSoft }]}
     >
       {body}
     </View>
@@ -402,9 +449,10 @@ const s = StyleSheet.create({
   hourLbl: { position: 'absolute', left: -44, top: 2, width: 38, textAlign: 'right', fontSize: 10 },
   hourLine: { position: 'absolute', left: -6, right: 0, top: 0, borderTopWidth: 1, opacity: 0.5 },
   blockLayer: { position: 'absolute', left: 52, right: 8, top: 0, bottom: 0 },
-  block: { position: 'absolute', left: 0, right: 0, borderRadius: 10, borderLeftWidth: 3, paddingHorizontal: 8, paddingVertical: 4, overflow: 'hidden' },
+  block: { position: 'absolute', borderRadius: 10, borderLeftWidth: 3, paddingHorizontal: 8, paddingVertical: 4, overflow: 'hidden' },
   blockTime: { fontSize: 10, fontWeight: '700' },
   blockTitle: { fontSize: 12, fontWeight: '600' },
+  blockSub: { fontSize: 10, marginTop: 1 },
   allDayRow: { gap: 8 },
   allDayChip: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   allDayText: { fontSize: 13, fontWeight: '600', flex: 1 },

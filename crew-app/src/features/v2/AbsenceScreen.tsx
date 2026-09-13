@@ -10,8 +10,9 @@ import { useAppSelector } from '../../store';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { PageShell, Hero, ListCard, KvRow, PrimaryButton } from './PageShell';
 import { RadioRow, SectionLabel } from '../../components/v2/rows';
+import { Icon } from '../../components/v2/icons';
 import { legView, MON } from './model';
-import { submitAbsence } from '../absence/absenceApi';
+import { submitAbsence, toApiDate } from '../absence/absenceApi';
 import type { V2StackParamList } from './nav';
 
 type Props = NativeStackScreenProps<V2StackParamList, 'Spec'>;
@@ -31,13 +32,6 @@ function addDays(d: Date, n: number): Date {
 /** yyyymmdd int, same shape as LegView.dateKey, so ranges compare directly. */
 function ymd(d: Date): number {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-}
-
-function toApiDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 function fmtDisplay(d: Date): string {
@@ -177,7 +171,22 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
   }
 
   return (
-    <PageShell title="Absence Request" testID="page-absence">
+    <PageShell
+      title="Absence Request"
+      testID="page-absence"
+      // Submitted history (Ryan, 2026-09-13): the crew checks what they already
+      // filed for this month from here instead of leaving the form.
+      right={
+        <Pressable
+          onPress={() => navigation.navigate('AbsenceHistory')}
+          hitSlop={12}
+          accessibilityLabel="submitted requests"
+          testID="absence-history"
+        >
+          <Icon name="history" size={24} color={p.ink} strokeWidth={1.8} />
+        </Pressable>
+      }
+    >
       <Hero
         h1="Report an absence"
         h2="Sick leave is recorded. Original duties remain assigned until Crew Control completes recovery."

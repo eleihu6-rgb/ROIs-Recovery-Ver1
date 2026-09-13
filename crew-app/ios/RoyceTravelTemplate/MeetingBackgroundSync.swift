@@ -102,7 +102,10 @@ class MeetingBackgroundSync: NSObject {
         let fire = ev.startDate.addingTimeInterval(TimeInterval(-minutesBefore * 60))
         guard fire > Date().addingTimeInterval(60) else { continue }
         let id = deterministicUUID(from: ev.eventIdentifier ?? UUID().uuidString)
-        let hhmm = shortTime(ev.startDate, timeZone: ev.timeZone)
+        // The notification must read on the phone's clock, the same as iOS
+        // Calendar — EventKit can hand back a GMT/UTC event timezone for an
+        // Outlook invite, which made the alarm title disagree with the event.
+        let hhmm = shortTime(ev.startDate, timeZone: TimeZone.current)
         let title = "\((ev.title ?? "Meeting")) — meeting at \(hhmm)"
         try? AlarmManager.shared.cancel(id: id)
         do {

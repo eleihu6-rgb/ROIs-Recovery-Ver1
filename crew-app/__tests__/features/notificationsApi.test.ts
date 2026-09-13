@@ -192,3 +192,22 @@ describe('crew-notify API client — live-server envelope (F8/ET)', () => {
     await expect(fetchNotifications(API, f8)).rejects.toThrow('Invalid crew ID or password.');
   });
 });
+
+// Live agreement endpoints must unwrap the same envelope as the notification feed.
+describe('Live FDP agreement responses', () => {
+  const request = { discretionId: 's2', crewId: 'S21001', captainCrewId: '', pairingId: '42', dutyId: '1',
+    createdUtc: '2026-09-12T10:00:00Z', extensionRequestedMin: 60, state: 'pending',
+    estDep: '2026-09-12T08:00:00Z', estArv: '2026-09-12T19:00:00Z', proposal: { reason: 'Technical delay' } };
+  it('preserves before/after detail when reading an ET request', async () => {
+    global.fetch = jest.fn().mockResolvedValue(okJson({ code: 200, data: request })) as unknown as typeof fetch;
+    const result = await fetchDiscretion(API, { airline: 'ET', crewId: 'S21001', password: 'test' }, 's2');
+    expect(result.state).toBe('pending');
+    expect(result.estArv).toBe(request.estArv);
+    expect(result.proposal?.reason).toBe('Technical delay');
+  });
+  it.each(['accept', 'reject'] as const)('unwraps the %s decision response', async decision => {
+    const state = decision === 'accept' ? 'accepted' : 'rejected';
+    global.fetch = jest.fn().mockResolvedValue(okJson({ code: 200, data: { ...request, state } })) as unknown as typeof fetch;
+    expect((await submitDiscretionDecision(API, { airline: 'ET', crewId: 'S21001', password: 'test' }, 's2', decision, `s2:${decision}`)).state).toBe(state);
+  });
+});

@@ -4,6 +4,7 @@ import {
   classifyMeetings,
   nextImminentMeeting,
   meetingJoinUrl,
+  meetingWhere,
   meetingAlarmHhmm,
   DEFAULT_MEETING_MINUTES,
   DEFAULT_ISLAND_MINUTES,
@@ -248,6 +249,27 @@ describe('meetingJoinUrl (Teams / video join shortcut)', () => {
     const g = meetingToGroundDuty(mtg({ url: TEAMS }), DEVICE_TZ);
     expect(g.joinUrl).toBe(TEAMS);
     expect(meetingToGroundDuty(mtg(), DEVICE_TZ).joinUrl).toBeUndefined();
+  });
+});
+
+describe('meetingWhere (the second line, like iOS Calendar)', () => {
+  it('prefers the event location over the source calendar name', () => {
+    expect(meetingWhere(mtg({ location: 'Microsoft Teams Meeting', calendarTitle: 'Calendar' })))
+      .toBe('Microsoft Teams Meeting');
+    expect(meetingWhere(mtg({ location: 'Room 4B, Crew Office' })))
+      .toBe('Room 4B, Crew Office');
+  });
+
+  it('falls back to an online label or the calendar name', () => {
+    expect(meetingWhere(mtg({ location: '', url: 'https://teams.microsoft.com/l/meetup-join/abc' })))
+      .toBe('Online meeting');
+    expect(meetingWhere(mtg({ location: '', calendarTitle: 'Crew Control' })))
+      .toBe('Crew Control');
+  });
+
+  it('never echoes a raw join URL as the location line', () => {
+    expect(meetingWhere(mtg({ location: 'https://meet.google.com/abc-defg-hij' })))
+      .toBe('Online meeting');
   });
 });
 

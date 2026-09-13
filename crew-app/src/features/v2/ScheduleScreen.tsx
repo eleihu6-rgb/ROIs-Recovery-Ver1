@@ -18,7 +18,7 @@ import { IconButton } from './HomeScreen';
 import { MeetingCard, MeetingRow, type MeetingActions } from './MeetingCard';
 import { CalendarView } from './CalendarView';
 import { RouteMapView } from './RouteMapView';
-import { SCHED_VIEWS, viewPick, type SchedViewMode, type SchedViewOption } from './schedView';
+import { pickDayArt, SCHED_VIEWS, viewPick, type DayArtName, type SchedViewMode, type SchedViewOption } from './schedView';
 import { useBase } from './useV2';
 import { toggleMeetingMute } from '../meetings/meetingsSlice';
 import { codeAddsInfo, type GroundDuty } from '../roster/dutyDisplay';
@@ -336,12 +336,29 @@ function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions, cal
       </View>
     );
   }
+  // A blank roster day is not a day off. When the only thing on it is a synced
+  // iOS Calendar event (guest mode, or a crew whose airline published nothing),
+  // the meeting stands alone — no "Day Off" title and no house icon. Those
+  // belong only to an explicit days-off row pulled from the roster.
+  if (!day.ground && day.kind === 'off' && day.meetings.length > 0) {
+    return (
+      <View style={s.card}>
+        <MeetingCard
+          head={head}
+          meetings={day.meetings}
+          palette={p}
+          onJoin={actions.onJoin}
+          onToggleAlarm={actions.onToggleAlarm}
+        />
+      </View>
+    );
+  }
   const info = dayInfo(day, mode, baseTz);
   return (
     <View style={s.card}>
       <TicketCard palette={p} testID={`day-card-${day.day}`} style={{ padding: 0, overflow: 'hidden' }}>
         <Text style={[s.dayHead, { color: p.cardSoft, paddingHorizontal: 18, paddingTop: 14 }]}>{head}</Text>
-        <Art kind={day.kind} day={day.day} />
+        <Art kind={day.kind} seed={day.key} />
         <View style={{ padding: 18, paddingTop: 10 }}>
           <View style={s.dhead}>
             <View style={[s.logo, { backgroundColor: CARD_INSET }]}><Icon name={info.icon} size={24} color={p.btn} /></View>
@@ -490,12 +507,16 @@ function dutyWindow(g: GroundDuty, mode: TimeZoneMode, baseTz: string): string {
 }
 
 /** Flat two-tone illustration strip (mock art-beach / art-cafe / art-standby / art-training). */
-function Art({ kind, day }: { kind: DayKind; day: number }) {
-  const a = kind === 'standby' ? 'standby' : kind === 'training' ? 'training' : kind === 'layover' ? 'cafe' : day % 2 ? 'beach' : 'cafe';
+function Art({ kind, seed }: { kind: DayKind; seed: number }) {
+  const a: DayArtName = pickDayArt(kind, seed);
   return (
     <Svg width="100%" height={96} viewBox="0 0 340 96" preserveAspectRatio="xMidYMid slice">
       {a === 'beach' && <><Rect width="340" height="96" fill="#dbeefb" /><Circle cx="270" cy="30" r="18" fill="#ffd66b" /><Path d="M0 70 Q60 58 120 70 T240 70 T360 70 V96 H0z" fill="#8fc7ea" /><Path d="M0 82 Q80 74 160 82 T340 82 V96 H0z" fill="#5fa8d8" /><Path d="M60 92 V44" stroke="#8a5a3a" strokeWidth={4} strokeLinecap="round" /><Path d="M60 44 q-26-18-44-4 q22-4 44 4z M60 44 q-4-30 22-36 q-12 14-22 36z M60 44 q28-14 46 6 q-24-8-46-6z" fill="#3fa66d" /></>}
       {a === 'cafe' && <><Rect width="340" height="96" fill="#f6e7d6" /><Rect x="0" y="66" width="340" height="30" fill="#e2c9ad" /><Rect x="150" y="34" width="46" height="34" rx="6" fill="#fff" /><Path d="M196 42 h8 a8 8 0 0 1 0 16 h-8" fill="none" stroke="#fff" strokeWidth={5} /><Path d="M160 26 q4-6 0-12 M172 26 q4-6 0-12 M184 26 q4-6 0-12" fill="none" stroke="#c9a27e" strokeWidth={2.5} strokeLinecap="round" /><Rect x="140" y="68" width="66" height="5" rx="2.5" fill="#c9a27e" /></>}
+      {a === 'hills' && <><Rect width="340" height="96" fill="#e6ecf3" /><Circle cx="282" cy="26" r="16" fill="#ffd66b" /><Path d="M0 72 Q50 40 100 70 Q140 48 190 72 Q240 46 290 72 Q320 58 340 70 V96 H0z" fill="#c9d5e1" /><Path d="M0 82 Q70 62 140 82 T280 82 Q310 74 340 82 V96 H0z" fill="#b8b0d8" /><Path d="M94 96 V70" stroke="#7a3aa0" strokeWidth={4} strokeLinecap="round" /><Circle cx="94" cy="62" r="12" fill="#7a3aa0" /><Circle cx="83" cy="69" r="10" fill="#b8b0d8" /><Circle cx="105" cy="69" r="10" fill="#b8b0d8" /></>}
+      {a === 'mountain' && <><Rect width="340" height="96" fill="#e9e6f5" /><Circle cx="272" cy="28" r="16" fill="#ffd66b" /><Path d="M0 96 L70 36 L120 78 L170 26 L240 96z" fill="#c9d5e1" /><Path d="M0 96 L50 62 L100 96z" fill="#b8b0d8" /><Path d="M240 96 L290 54 L340 96z" fill="#b8b0d8" /><Path d="M70 36 l14 15 -16 3z M170 26 l13 14 -15 3z" fill="#fff" /><Path d="M286 20 q10 0 14 8 q-8-4-16-1z" fill="#fff" /></>}
+      {a === 'city' && <><Rect width="340" height="96" fill="#dbeefb" /><Circle cx="54" cy="26" r="14" fill="#ffd66b" /><Rect x="60" y="42" width="38" height="54" fill="#b8b0d8" /><Rect x="106" y="28" width="46" height="68" fill="#c9d5e1" /><Rect x="160" y="50" width="34" height="46" fill="#b8b0d8" /><Rect x="202" y="20" width="52" height="76" fill="#c9d5e1" /><Rect x="262" y="46" width="38" height="50" fill="#b8b0d8" /><Rect x="118" y="40" width="8" height="8" fill="#fff" /><Rect x="132" y="40" width="8" height="8" fill="#fff" /><Rect x="118" y="56" width="8" height="8" fill="#fff" /><Rect x="132" y="56" width="8" height="8" fill="#fff" /><Rect x="214" y="32" width="8" height="8" fill="#fff" /><Rect x="228" y="32" width="8" height="8" fill="#fff" /><Rect x="214" y="48" width="8" height="8" fill="#fff" /><Rect x="228" y="48" width="8" height="8" fill="#fff" /><Rect x="72" y="54" width="7" height="7" fill="#fff" /><Rect x="72" y="68" width="7" height="7" fill="#fff" /></>}
+      {a === 'garden' && <><Rect width="340" height="96" fill="#e9e6f5" /><Circle cx="62" cy="28" r="16" fill="#ffd66b" /><Path d="M0 78 Q60 70 120 78 T240 78 T360 78 V96 H0z" fill="#b8b0d8" /><Path d="M44 76 V58 M60 76 V58 M76 76 V58 M92 76 V58" stroke="#c9a27e" strokeWidth={3} strokeLinecap="round" /><Path d="M38 62 H98" stroke="#c9a27e" strokeWidth={3} strokeLinecap="round" /><Path d="M132 78 V58 M158 78 V54 M184 78 V60" stroke="#3fa66d" strokeWidth={3} strokeLinecap="round" /><Circle cx="132" cy="54" r="6" fill="#7a3aa0" /><Circle cx="158" cy="50" r="6" fill="#7a3aa0" /><Circle cx="184" cy="56" r="6" fill="#7a3aa0" /><Path d="M250 78 Q266 56 282 78 M292 78 Q306 60 320 78" fill="none" stroke="#3fa66d" strokeWidth={4} strokeLinecap="round" /></>}
       {a === 'standby' && <><Rect width="340" height="96" fill="#e6ecf3" /><Rect x="120" y="22" width="100" height="58" rx="8" fill="#fff" /><Rect x="132" y="34" width="76" height="8" rx="4" fill="#c9d5e1" /><Rect x="132" y="48" width="50" height="8" rx="4" fill="#c9d5e1" /><Circle cx="196" cy="64" r="8" fill="#3fa66d" /><Path d="M192 64l3 3 5-6" stroke="#fff" strokeWidth={2} fill="none" strokeLinecap="round" /></>}
       {a === 'training' && <><Rect width="340" height="96" fill="#e9e6f5" /><Rect x="110" y="24" width="120" height="50" rx="6" fill="#fff" /><Path d="M170 74 v10 M150 84 h40" stroke="#b8b0d8" strokeWidth={4} strokeLinecap="round" /><Path d="M125 60 l18-14 14 8 18-20 16 12" fill="none" stroke="#7a3aa0" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" /></>}
     </Svg>

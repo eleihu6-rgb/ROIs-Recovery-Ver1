@@ -67,6 +67,22 @@ export function meetingJoinUrl(m: Meeting): string | null {
   return null;
 }
 
+/**
+ * The subtitle iOS Calendar shows under a meeting title. EventKit's `location`
+ * is the room / "Microsoft Teams Meeting" line the crew sees in Calendar;
+ * only fall back to the source calendar's name when there is no location.
+ */
+export function meetingWhere(m: Meeting): string {
+  const location = (m.location ?? '').trim();
+  if (location && !JOIN_URL_RE.test(location)) {
+    return location;
+  }
+  if (meetingJoinUrl(m)) {
+    return 'Online meeting';
+  }
+  return m.calendarTitle;
+}
+
 /** Default reminder lead time — 8 minutes before the meeting (user-configurable). */
 export const DEFAULT_MEETING_MINUTES = 8;
 

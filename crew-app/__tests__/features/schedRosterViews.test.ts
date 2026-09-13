@@ -15,14 +15,17 @@ import {
   mercatorY,
   monthRoutes,
   monthStats,
+  pickDayArt,
   positionOf,
   routeViewBox,
   timelineBlockLabel,
   timelineHourLabel,
+  timelineLaneLayout,
   timelineOffset,
   toggleCalendarSelection,
   viewPick,
 } from '../../src/features/v2/schedView';
+import type { TimelineBlock } from '../../src/features/v2/schedView';
 import { buildMonth } from '../../src/features/v2/model';
 import type { Trip } from '../../src/features/travel/tripCsv';
 import type { PortalDuty } from '../../src/features/travel/portalCapture';
@@ -120,7 +123,7 @@ const meetings: Meeting[] = [
 function month() {
   return buildMonth(
     2026, 8, [lhrTrip, sinTrip, earlyTrip], duties, meetings,
-    MODE, BASE_TZ, {}, NOW, { minutesBefore: 8, mutedIds: [] },
+    MODE, BASE_TZ, {}, NOW, { minutesBefore: 8, mutedIds: [], deviceTz: BASE_TZ },
   );
 }
 
@@ -369,5 +372,65 @@ describe('roster-view picker', () => {
     expect(viewPick('calendar-compact')).toBe('calendar');
     expect(viewPick('calendar-detail')).toBe('calendar');
     expect(viewPick('route')).toBe('route');
+  });
+});
+
+describe('day-card illustrations', () => {
+  it('keeps the meaning-carrying scenes for standby and training', () => {
+    expect(pickDayArt('standby', 20260912)).toBe('standby');
+    expect(pickDayArt('training', 20260912)).toBe('training');
+    expect(pickDayArt('layover', 20260912)).toBe('cafe');
+  });
+
+  it('rotates free days through the wider scene pool, stably per day', () => {
+    const pool = new Set(Array.from({ length: 120 }, (_, i) => pickDayArt('off', 20260901 + i)));
+    // The old parity rule only ever produced beach/cafe; the wider pool must
+    // actually reach the new scenes.
+    expect(pool.size).toBeGreaterThanOrEqual(5);
+    expect(pool.has('hills') || pool.has('mountain') || pool.has('city') || pool.has('garden')).toBe(true);
+    // Same card, same art — a re-render or a scroll must not reshuffle it.
+    expect(pickDayArt('off', 20260913)).toBe(pickDayArt('off', 20260913));
+  });
+});
+
+describe('calendar · overlapping events', () => {
+  const block = (id: string, startMin: number, endMin: number): TimelineBlock => ({
+    id,
+    kind: 'meeting',
+    title: id,
+    sub: '',
+    startMin,
+    endMin,
+    allDay: false,
+  });
+
+  it('gives two events at the same time a lane each so neither is hidden', () => {
+    const layout = timelineLaneLayout([
+      block('firefly', 15 * 60, 16 * 60),
+      block('sia-cps', 15 * 60, 16 * 60),
+    ]);
+
+    expect(layout.firefly).toEqual({ lane: 0, lanes: 2 });
+    expect(layout['sia-cps']).toEqual({ lane: 1, lanes: 2 });
+  });
+
+  it('keeps a non-overlapping event full width', () => {
+    const layout = timelineLaneLayout([
+      block('overlap-a', 15 * 60, 16 * 60),
+      block('overlap-b', 15 * 60, 16 * 60),
+      block('later', 17 * 60, 18 * 60),
+    ]);
+
+    expect(layout.later).toEqual({ lane: 0, lanes: 1 });
+  });
+
+  it('reserves a readable hour for short back-to-back events', () => {
+    const layout = timelineLaneLayout([
+      block('short-a', 8 * 60, 8 * 60 + 30),
+      block('short-b', 8 * 60 + 30, 9 * 60),
+    ], 60);
+
+    expect(layout['short-a']).toEqual({ lane: 0, lanes: 2 });
+    expect(layout['short-b']).toEqual({ lane: 1, lanes: 2 });
   });
 });

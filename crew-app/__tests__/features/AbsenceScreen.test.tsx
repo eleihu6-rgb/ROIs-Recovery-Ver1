@@ -17,6 +17,8 @@ import type { AppDispatch } from '../../src/store';
 import type { SubmitAbsenceResult } from '../../src/features/absence/absenceApi';
 
 jest.mock('../../src/features/absence/absenceApi', () => ({
+  // Keep the real date helper: the screen formats the submit range with it.
+  ...jest.requireActual('../../src/features/absence/absenceApi'),
   submitAbsence: jest.fn(),
 }));
 import { submitAbsence } from '../../src/features/absence/absenceApi';
@@ -87,7 +89,7 @@ async function makeStore(trips: Trip[] = []) {
   return store;
 }
 
-const navigation = { goBack: jest.fn() } as unknown as Parameters<typeof AbsenceScreen>[0]['navigation'];
+const navigation = { goBack: jest.fn(), navigate: jest.fn() } as unknown as Parameters<typeof AbsenceScreen>[0]['navigation'];
 const route = { key: 'spec-absence', name: 'Spec', params: { id: 'absence' } } as unknown as Parameters<typeof AbsenceScreen>[0]['route'];
 
 function renderScreen(store: ReturnType<typeof configureStore>) {
@@ -181,6 +183,15 @@ describe('AbsenceScreen', () => {
 
     expect(Alert.alert).toHaveBeenCalledWith('Request submitted', 'Sick leave added. Original duties remain assigned pending Crew Control recovery.');
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the submitted-request history from the header icon', async () => {
+    const store = await makeStore([]);
+    const tree = renderScreen(store);
+
+    fireEvent.press(tree.getByTestId('absence-history'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('AbsenceHistory');
   });
 
   it('shows the server error message and stays on the screen when submission fails', async () => {

@@ -34,7 +34,7 @@ const ALLOWED_HEX: Record<string, { reason: string; values: string[] }> = {
     values: ['#e0b24c'],
   },
   'src/features/v2/ScheduleScreen.tsx': {
-    reason: 'day-scene illustrations (beach / café / standby / training cards)',
+    reason: 'day-scene illustrations (beach / café / hills / mountain / city / garden / standby / training cards)',
     values: [
       '#3fa66d',
       '#5fa8d8',

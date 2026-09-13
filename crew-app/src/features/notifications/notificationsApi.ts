@@ -90,6 +90,10 @@ const discretionSchema = z
     decidedBy: z.string().nullable().optional(),
     decisionReason: z.string().nullable().optional(),
     supersededBy: z.string().nullable().optional(),
+    estDep: z.string().nullable().optional(),
+    estArv: z.string().nullable().optional(),
+    requester: z.string().optional(),
+    proposal: z.object({reason: z.string()}).passthrough().optional(),
     schDep: z.string().nullable().optional(),
     actDep: z.string().nullable().optional(),
     schArv: z.string().nullable().optional(),
@@ -209,7 +213,7 @@ export async function fetchDiscretion(
     normalizeCredentials(credentials),
     signal,
   );
-  const result = discretionSchema.safeParse(raw);
+  const result = discretionSchema.safeParse(unwrapLiveServerEnvelope(raw, normalizeCredentials(credentials).airline));
   if (!result.success) {
     throw new Error('Invalid discretion response');
   }
@@ -236,7 +240,7 @@ export async function submitDiscretionDecision(
     body,
     signal,
   );
-  const result = discretionSchema.safeParse(raw);
+  const result = discretionSchema.safeParse(unwrapLiveServerEnvelope(raw, normalizeCredentials(credentials).airline));
   if (!result.success) {
     throw new Error('Invalid discretion response');
   }

@@ -7,7 +7,7 @@
 // so the crew compares the duty they lost with the duty they gained instead of
 // reading a sentence. The restructuring is presentation-only: the feed, the read
 // marking and the FDP decision flow are the same as before.
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -182,29 +182,31 @@ export function NotificationsScreen(): React.JSX.Element {
   const {notifications, openDiscretions, status, error, decidingId} = useAppSelector(
     s => s.notifications,
   );
+  const auth = useAppSelector(s => s.auth);
+  const credentials = useMemo(() => ({ airline: auth.airline, crewId: auth.crewId ?? '', password: auth.password ?? '' }), [auth.airline, auth.crewId, auth.password]);
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
-    await loadNotifications(dispatch);
+    await loadNotifications(dispatch, {credentials});
     setRefreshing(false);
-  }, [dispatch]);
+  }, [dispatch, credentials]);
 
   useFocusEffect(
     useCallback(() => {
-      loadNotifications(dispatch);
-    }, [dispatch]),
+      loadNotifications(dispatch, {credentials});
+    }, [dispatch, credentials]),
   );
 
   const onDecide = useCallback(
     (d: DiscretionRequest, decision: 'accept' | 'reject') => {
-      const verb = decision === 'accept' ? 'Accept' : 'Reject';
+      const verb = decision === 'accept' ? 'Yes' : 'No';
       Alert.alert(
         `${verb} FDP discretion?`,
         decision === 'accept'
-          ? `Approve a ${d.extensionRequestedMin}-min extension for duty ${d.dutyId}.`
+          ? `Agree to the proposed ${d.extensionRequestedMin}-min extension for duty ${d.dutyId}. Regulatory approval is separate.`
           : `Decline the extension for duty ${d.dutyId}.`,
         [
           {text: 'Cancel', style: 'cancel'},
@@ -212,7 +214,7 @@ export function NotificationsScreen(): React.JSX.Element {
             text: verb,
             style: decision === 'reject' ? 'destructive' : 'default',
             onPress: () => {
-              decideDiscretion(dispatch, {discretionId: d.discretionId, decision})
+              decideDiscretion(dispatch, {discretionId: d.discretionId, decision, credentials})
                 .then(res => Alert.alert('Decision sent', `FDP discretion ${res.state}.`))
                 .catch(e =>
                   Alert.alert(
@@ -225,7 +227,7 @@ export function NotificationsScreen(): React.JSX.Element {
         ],
       );
     },
-    [dispatch],
+    [dispatch, credentials],
   );
 
   const unread = notifications.filter(n => n.status !== 'read').length;
@@ -309,20 +311,22 @@ export function NotificationsScreen(): React.JSX.Element {
                   </View>
 
                   <Text style={[styles.cardBody, {color: p.cardSoft}]}>
-                    Flight delayed {delayMinutes(d) ?? '—'} min · {fdpDeltaText(d)}
+                    {d.proposal ? 'Report → release · ' : `Flight delayed ${delayMinutes(d) ?? '—'} min · `}{fdpDeltaText(d)}
                   </Text>
 
+                  {d.proposal?.reason && <Text style={[styles.cardBody, {color: p.cardSoft}]}>{d.proposal.reason}</Text>}
+                  <Text style={[styles.cardBody, {color: p.cardSoft}]}>Agreement does not override regulatory limits.</Text>
                   <View style={[styles.grid, {borderColor: p.cardLine}]}>
                     <View style={styles.gridCol}>
-                      <Text style={[styles.gridHead, {color: p.cardSoft}]}>Scheduled</Text>
+                      <Text style={[styles.gridHead, {color: p.cardSoft}]}>Before · UTC</Text>
                       <Text style={[styles.gridVal, {color: p.cardInk}]}>
                         {fmtUtc(d.schDep)} → {fmtUtc(d.schArv)}
                       </Text>
                     </View>
                     <View style={styles.gridCol}>
-                      <Text style={[styles.gridHead, {color: p.cardSoft}]}>Actual</Text>
+                      <Text style={[styles.gridHead, {color: p.cardSoft}]}>{d.estDep ? 'Proposed · UTC' : 'Actual · UTC'}</Text>
                       <Text style={[styles.gridVal, {color: p.cardInk}]}>
-                        {fmtUtc(d.actDep)} → {fmtUtc(d.actArv)}
+                        {fmtUtc(d.estDep ?? d.actDep)} → {fmtUtc(d.estArv ?? d.actArv)}
                       </Text>
                     </View>
                   </View>
@@ -342,11 +346,10 @@ export function NotificationsScreen(): React.JSX.Element {
                     </View>
                   </View>
                   <Text style={[styles.limitLine, {color: p.cardSoft}]}>
-                    Plan limit {fmtMin(d.limitMin)} · exceed by{' '}
-                    {Math.max((d.actualFdpMin ?? 0) - (d.limitMin ?? 0), 0)}m
+                    {d.limitMin == null ? 'Regulatory assessment pending' : `Plan limit ${fmtMin(d.limitMin)} · exceed by ${Math.max((d.actualFdpMin ?? 0) - d.limitMin, 0)}m`}
                   </Text>
                   <Text style={[styles.choiceLine, {color: p.cardInk}]}>
-                    Accept or reject {d.extensionRequestedMin} min FDP discretion.
+                    Do you agree to {d.extensionRequestedMin} min FDP extension?
                   </Text>
 
                   {deciding ? (
@@ -357,13 +360,13 @@ export function NotificationsScreen(): React.JSX.Element {
                         style={[styles.btn, styles.btnGhost, {borderColor: p.cardLine}]}
                         testID="btn-reject"
                         onPress={() => onDecide(d, 'reject')}>
-                        <Text style={[styles.btnGhostText, {color: p.cardInk}]}>Reject</Text>
+                        <Text style={[styles.btnGhostText, {color: p.cardInk}]}>No</Text>
                       </Pressable>
                       <Pressable
                         style={[styles.btn, {backgroundColor: p.btn}]}
                         testID="btn-accept"
                         onPress={() => onDecide(d, 'accept')}>
-                        <Text style={styles.btnText}>Accept +{d.extensionRequestedMin}m</Text>
+                        <Text style={styles.btnText}>Yes · +{d.extensionRequestedMin}m</Text>
                       </Pressable>
                     </View>
                   )}
@@ -400,7 +403,7 @@ export function NotificationsScreen(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityLabel={[n.title, spoken].filter(Boolean).join('. ')}
               onPress={() =>
-                !read && markNotificationReadThunk(dispatch, {notifId: n.notifId})
+                !read && markNotificationReadThunk(dispatch, {notifId: n.notifId, credentials})
               }>
               <View style={styles.rowBetween}>
                 <View style={styles.cardHeadLeft}>

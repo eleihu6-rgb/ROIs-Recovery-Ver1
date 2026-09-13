@@ -39,6 +39,45 @@ export function viewPick(mode: SchedViewMode): SchedViewOption['picks'] {
   return 'timeline';
 }
 
+// ─── Day-card illustrations ──────────────────────────────────────────────────
+/** Flat two-tone scenes drawn at the top of a non-flight Schedule card. */
+export type DayArtName =
+  | 'beach'
+  | 'cafe'
+  | 'hills'
+  | 'mountain'
+  | 'city'
+  | 'garden'
+  | 'standby'
+  | 'training';
+
+/** The free-day pool. Cafe and the beach/sun-and-tree scene were the sign-off
+ *  mock's two examples; the rest keep the same flat, hand-cut composition. */
+const FREE_DAY_ART: readonly DayArtName[] = ['beach', 'cafe', 'hills', 'mountain', 'city', 'garden'];
+
+/**
+ * Pick a card illustration. Standby and training keep the scene that carries
+ * their meaning, layovers keep the cafe; free days (day off / leave) rotate
+ * through the wider pool.
+ *
+ * The pick is a stable hash of the calendar day, not Math.random: the card must
+ * not reshuffle its artwork when FlatList re-renders or the crew scrolls past.
+ */
+export function pickDayArt(kind: DayKind, seed: number): DayArtName {
+  if (kind === 'standby') return 'standby';
+  if (kind === 'training') return 'training';
+  if (kind === 'layover') return 'cafe';
+  return FREE_DAY_ART[artHash(seed) % FREE_DAY_ART.length];
+}
+
+function artHash(seed: number): number {
+  let x = Math.imul(seed | 0, 0x9e3779b1);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x85ebca6b);
+  x ^= x >>> 13;
+  return x >>> 0;
+}
+
 // ─── Geography ───────────────────────────────────────────────────────────────
 /** Web-Mercator grid the generated world outline (`worldLand.ts`) is drawn in. */
 export const MERCATOR_GRID = 1000;
@@ -597,6 +636,70 @@ export function dayTimeline(day: DayModel): DayTimeline {
     endHour = Math.max(endHour, Math.min(MAX_TIMELINE_HOUR, Math.ceil(b.endMin / 60)));
   }
   return { startHour, endHour, blocks };
+}
+
+export interface TimelineLane {
+  /** 0-based horizontal lane inside the block's overlap cluster. */
+  lane: number;
+  /** How many lanes the cluster needs; 1 means full width. */
+  lanes: number;
+}
+
+/**
+ * Horizontal lanes for timed blocks that overlap on the hour axis. Two calendar
+ * events at the same time used to be drawn at exactly the same coordinates, so
+ * the later one hid the earlier one; assigning one lane per overlapping event
+ * makes both visible.
+ *
+ * Non-overlapping blocks each get lane 0 / 1 lane (full width). Blocks are
+ * grouped into connected overlap clusters so a busy hour splits only itself,
+ * not the whole day.
+ */
+export function timelineLaneLayout(
+  blocks: readonly TimelineBlock[],
+  minMinutes = 0,
+): Record<string, TimelineLane> {
+  const sorted = blocks
+    .map((block, index) => ({ block, index }))
+    .sort((a, b) =>
+      a.block.startMin - b.block.startMin
+      || a.block.endMin - b.block.endMin
+      || a.index - b.index,
+    );
+  const out: Record<string, TimelineLane> = {};
+  let laneEnds: number[] = [];
+  let cluster: Array<{ id: string; lane: number }> = [];
+  let clusterEnd = -Infinity;
+
+  const closeCluster = () => {
+    const lanes = laneEnds.length;
+    for (const item of cluster) {
+      out[item.id] = { lane: item.lane, lanes };
+    }
+    laneEnds = [];
+    cluster = [];
+    clusterEnd = -Infinity;
+  };
+
+  for (const { block } of sorted) {
+    const blockEnd = Math.max(block.endMin, block.startMin + minMinutes);
+    if (cluster.length > 0 && block.startMin >= clusterEnd) {
+      closeCluster();
+    }
+    let lane = laneEnds.findIndex(end => end <= block.startMin);
+    if (lane < 0) {
+      lane = laneEnds.length;
+      laneEnds.push(blockEnd);
+    } else {
+      laneEnds[lane] = blockEnd;
+    }
+    cluster.push({ id: block.id, lane });
+    clusterEnd = Math.max(clusterEnd, blockEnd);
+  }
+  if (cluster.length > 0) {
+    closeCluster();
+  }
+  return out;
 }
 
 /** "07:15" / "07:15 UTC" → "07:15" (the axis is one clock; the suffix is noise here). */

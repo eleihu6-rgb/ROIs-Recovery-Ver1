@@ -1,16 +1,22 @@
-// Crew-app absence (sick leave) submission client.
+// Crew-app absence (sick leave) submission + history client.
 //
 // Mirrors the shape of ../notifications/notificationsApi.ts (plain global
 // `fetch`, credentials in the POST body, live-server envelope unwrap, light
-// zod parse) for the one new endpoint added by Crew Recovery Story 101.
+// zod parse) for the endpoints added by Crew Recovery Story 101 and its
+// history follow-up.
 //
 // Backend contract (live-server, ROIS live-server airlines only —
 // src/routes/crew-notify/crew-notify.ts):
 //   POST /crew-app/v1/absence { airline, crewId, password, type, fromDate, toDate, note? }
 //   -> { code, data: { absenceId, assignment, fromDate, toDate, removedPairingIds,
 //        retainedPairingIds, groundDays, notificationId }, message }
+//   POST /crew-app/v1/absences { airline, crewId, password, fromDate, toDate }
+//   -> { code, data: { absences: [{ id, absenceType, assignment, fromDate,
+//        toDate, status, note, createdAt }] }, message }
+//      The window is the caller's; the server scopes the rows to the verified
+//      crew id and returns requests overlapping it, cancelled ones included.
 //
-// The route validates the body with zod BEFORE auth: a malformed body (e.g. bad
+// The routes validate the body with zod BEFORE auth: a malformed body (e.g. bad
 // date format) comes back as HTTP 200 with envelope `code: 400` and the zod
 // error text in `message`; a service-level rejection (unsupported type, range
 // too long, credential failure, overlapping absence) comes back as a real HTTP
@@ -36,6 +42,16 @@ export interface SubmitAbsenceParams {
   note?: string;
 }
 
+export interface ListAbsencesParams {
+  airline: string;
+  crewId: string;
+  password: string;
+  /** Crew-base local date, 'YYYY-MM-DD'. */
+  fromDate: string;
+  /** Crew-base local date, 'YYYY-MM-DD', inclusive. */
+  toDate: string;
+}
+
 const absenceResultSchema = z
   .object({
     absenceId: z.number(),
@@ -51,6 +67,24 @@ const absenceResultSchema = z
 
 export type SubmitAbsenceResult = z.infer<typeof absenceResultSchema>;
 
+const absenceRecordSchema = z
+  .object({
+    id: z.number(),
+    absenceType: z.string(),
+    assignment: z.string(),
+    fromDate: z.string(),
+    toDate: z.string(),
+    status: z.string(),
+    note: z.string(),
+    createdAt: z.string(),
+  })
+  .passthrough();
+
+/** One submitted absence row as the crew sees it. */
+export type AbsenceRecord = z.infer<typeof absenceRecordSchema>;
+
+const absenceListSchema = z.object({absences: z.array(absenceRecordSchema)}).passthrough();
+
 // live-server (F8/ET) wraps every response in `{ code, data, message }`, same
 // as notificationsApi — see unwrapLiveServerEnvelope there.
 const envelopeSchema = z
@@ -62,7 +96,7 @@ function envelopeMessage(payload: unknown): string | undefined {
   return parsed.success ? parsed.data.message : undefined;
 }
 
-function fallbackForStatus(status: number): string {
+function submitFallbackForStatus(status: number): string {
   if (status === 400) return 'Invalid absence request.';
   if (status === 401) return 'Invalid crew credentials';
   if (status === 403) return 'Not authorised for this request';
@@ -70,36 +104,67 @@ function fallbackForStatus(status: number): string {
   return 'Unable to submit the absence request.';
 }
 
-function normalizeCredentials(p: SubmitAbsenceParams) {
-  return {
-    airline: (p.airline || '').trim().toUpperCase(),
-    crewId: p.crewId.trim().toUpperCase(),
-    password: p.password,
-    type: p.type,
-    fromDate: p.fromDate,
-    toDate: p.toDate,
-    ...(p.note?.trim() ? {note: p.note.trim()} : {}),
-  };
+function historyFallbackForStatus(status: number): string {
+  if (status === 400) return 'Invalid absence request.';
+  if (status === 401) return 'Invalid crew credentials';
+  if (status === 403) return 'Not authorised for this request';
+  return 'Unable to load your submitted requests.';
 }
 
-export async function submitAbsence(
-  params: SubmitAbsenceParams,
-  signal?: AbortSignal,
-): Promise<SubmitAbsenceResult> {
-  const normalized = normalizeCredentials(params);
-  if (!usesLiveServerEnvelope(normalized.airline)) {
-    throw new Error(`${airlineByCode(normalized.airline).name} crew app does not support absence requests yet`);
-  }
-  const apiBaseUrl = airlineByCode(normalized.airline).apiBaseUrl;
-  if (!apiBaseUrl) {
-    throw new Error(`${airlineByCode(normalized.airline).name} crew API is not configured`);
-  }
+/** Crew-base local calendar date, the 'YYYY-MM-DD' the absence contract uses. */
+export function toApiDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
-  const url = `${apiBaseUrl.replace(/\/$/, '')}/crew-app/v1/absence`;
+/**
+ * Inclusive first → last day of the calendar month containing `now`, in the
+ * device's local calendar — the scope of the Absence history screen.
+ */
+export function currentMonthRange(now: Date = new Date()): {fromDate: string; toDate: string} {
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  // Day 0 of the next month is the last day of this one (handles leap years).
+  return {fromDate: toApiDate(new Date(year, month, 1)), toDate: toApiDate(new Date(year, month + 1, 0))};
+}
+
+/** Base URL of the crew-app contract, or a thrown reason why this airline has none. */
+function crewAppUrl(airline: string): string {
+  if (!usesLiveServerEnvelope(airline)) {
+    throw new Error(`${airlineByCode(airline).name} crew app does not support absence requests yet`);
+  }
+  const apiBaseUrl = airlineByCode(airline).apiBaseUrl;
+  if (!apiBaseUrl) {
+    throw new Error(`${airlineByCode(airline).name} crew API is not configured`);
+  }
+  return `${apiBaseUrl.replace(/\/$/, '')}/crew-app/v1`;
+}
+
+/**
+ * POSTs one crew-app absence request (submit + history share the same
+ * credential-in-body call and envelope unwrap) and returns the unwrapped
+ * `data`. Errors are normalized per the file header.
+ */
+async function postAbsence(
+  credentials: {airline: string; crewId: string; password: string},
+  path: string,
+  body: Record<string, unknown>,
+  fallbackForStatus: (status: number) => string,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const airline = (credentials.airline || '').trim().toUpperCase();
+  const url = `${crewAppUrl(airline)}${path}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(normalized),
+    body: JSON.stringify({
+      airline,
+      crewId: credentials.crewId.trim().toUpperCase(),
+      password: credentials.password,
+      ...body,
+    }),
     signal,
   });
 
@@ -122,9 +187,53 @@ export async function submitAbsence(
     throw new Error(parsedEnvelope.data.message ?? fallbackForStatus(parsedEnvelope.data.code));
   }
 
-  const result = absenceResultSchema.safeParse(parsedEnvelope.data.data);
+  return parsedEnvelope.data.data;
+}
+
+export async function submitAbsence(
+  params: SubmitAbsenceParams,
+  signal?: AbortSignal,
+): Promise<SubmitAbsenceResult> {
+  const data = await postAbsence(
+    params,
+    '/absence',
+    {
+      type: params.type,
+      fromDate: params.fromDate,
+      toDate: params.toDate,
+      ...(params.note?.trim() ? {note: params.note.trim()} : {}),
+    },
+    submitFallbackForStatus,
+    signal,
+  );
+
+  const result = absenceResultSchema.safeParse(data);
   if (!result.success) {
     throw new Error('Invalid absence response');
   }
   return result.data;
+}
+
+/**
+ * The crew's own submitted absences overlapping the window, newest first.
+ * `fromDate`/`toDate` are the scope the caller passes — the history screen
+ * passes `currentMonthRange()`.
+ */
+export async function listAbsences(
+  params: ListAbsencesParams,
+  signal?: AbortSignal,
+): Promise<AbsenceRecord[]> {
+  const data = await postAbsence(
+    params,
+    '/absences',
+    {fromDate: params.fromDate, toDate: params.toDate},
+    historyFallbackForStatus,
+    signal,
+  );
+
+  const result = absenceListSchema.safeParse(data);
+  if (!result.success) {
+    throw new Error('Invalid absence response');
+  }
+  return result.data.absences;
 }
