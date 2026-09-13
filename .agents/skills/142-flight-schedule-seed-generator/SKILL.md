@@ -43,6 +43,24 @@ Each fixture route generates two rows per date (outbound + inbound leg). Idempot
 script checks `flight_key` (`{flt_num}-{date}-{dep_arp}`) first and skips rows that already
 exist, safe to re-run.
 
+### `flight_assignment` must be `'FLY'` (not `flt_type`)
+
+Every fixture sets `"flightAssignment": "FLY"` and `load-ssim-flights.mjs` writes `'FLY'`
+unconditionally. These are two different columns and only one of them means what it looks like:
+
+- `flt_type` = **service type** — `'PAX'` (passenger) / `'FRT'` (freighter). Always `'PAX'`
+  for these pax schedules; that is correct and unrelated to crew duties.
+- `flight_assignment` = **crew duty assignment** — `'FLY'` operating, `'PAX'` Positioning
+  (group `DHD`), `'DH'`/`'DHD'` Deadhead (see `sql/seed/03-assignment.sql`).
+
+It must be `'FLY'`. Anything else makes a normal operating leg look like a repositioning leg:
+`pairing-build-service.ts` copies the value into `pairing_segment.seg_assignment` (`?? 'FLY'`)
+when pairings are built from flights, and `live-legality.mjs` exposes it as the segment
+`Attributes` value. F8's real flight connector (`flight-inbound-worker.ts`) writes `'FLY'` for
+the same reason. The 2026-08-27 EK seed shipped `'PAX'` and the 2026-08-28 SSIM load wrote
+`NULL`; both were corrected on the DB by
+`sql/migration/2026-09-13-ek-et-flight-assignment-to-fly.sql` — don't reintroduce them.
+
 ## DST-aware local-to-UTC conversion (important — read before editing `localToUtc`)
 
 Airline schedules are published in **airport local time**; `flight.sch_dep_dt_utc` /

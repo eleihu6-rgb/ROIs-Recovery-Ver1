@@ -2,7 +2,7 @@
   "airline": "EK",
   "fleet": "A380",
   "base": "DXB",
-  "flightAssignment": "PAX",
+  "flightAssignment": "FLY",
   "dateRange": { "start": "2026-08-01", "end": "2026-09-30" },
   "routes": [
     { "otherAirport": "LHR", "out": { "fltNum": "EK001", "depLocal": "08:35", "blockMin": 450 }, "in": { "fltNum": "EK002", "depLocal": "14:20", "blockMin": 465 } },

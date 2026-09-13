@@ -156,7 +156,7 @@ const KNOWN_FLEETS = {
 const COLUMNS = [
   'airline', 'flt_dt', 'flt_dt_utc', 'flt_num', 'dep_arp', 'arv_arp',
   'sch_dep_dt_utc', 'sch_arv_dt_utc', 'act_dep_dt_utc', 'act_arv_dt_utc',
-  'act_dep_arp', 'act_arv_arp', 'flight_flag', 'blk_min',
+  'act_dep_arp', 'act_arv_arp', 'flight_flag', 'flight_assignment', 'blk_min',
   'fleet', 'register', 'seg_type', 'flt_type', 'voyage_status', 'is_locked',
   'sch_id', 'vr_add', 'scenario_id', 'is_deleted', 'manual_comp_flag', 'flight_key',
 ];
@@ -225,6 +225,11 @@ async function main() {
         act_dep_arp: leg.depStation,
         act_arv_arp: leg.arvStation,
         flight_flag: fltDt <= asOf ? 'A' : 'S',
+        // ALWAYS 'FLY': this column is the crew duty assignment (operating vs positioning),
+        // NOT the service type — `flt_type` below carries PAX/FRT. Leaving it NULL/unset made
+        // every ET leg look like a positioning (PAX/DHD) leg to pairing build + legality.
+        // F8's flight connector writes 'FLY' for the same reason.
+        flight_assignment: 'FLY',
         blk_min: e.blkMin,
         fleet: leg.aircraftType,
         register: null, // schedule-only: no tail assigned; Gantt bin-packs by fleet

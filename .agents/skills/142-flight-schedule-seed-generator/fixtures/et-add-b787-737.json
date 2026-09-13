@@ -1,7 +1,7 @@
 {
   "airline": "ET",
   "base": "ADD",
-  "flightAssignment": "PAX",
+  "flightAssignment": "FLY",
   "dateRange": { "start": "2026-08-01", "end": "2026-09-30" },
   "fleets": [
     {
