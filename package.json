@@ -10,6 +10,8 @@
     "check:services": "node scripts/check-services.mjs",
     "check:legality-messages": "node scripts/check-legality-message-coverage.mjs",
     "check:ui:e2e": "cd e2e && npx playwright test --config=config/perf.config.ts -g 'UI Standard' --reporter=list",
+    "review:screenshot": "node scripts/screenshot-review/review.mjs",
+    "test:screenshot-review": "node --test scripts/__tests__/screenshot-review.test.mjs",
     "audit:prod": "for d in live-server pbs-server connector-server gantt pbs-portal; do echo \"== npm audit --omit=dev: $d ==\"; (cd \"$d\" && npm audit --omit=dev) || true; done",
     "audit:all": "for d in live-server pbs-server connector-server gantt pbs-portal; do echo \"== npm audit: $d ==\"; (cd \"$d\" && npm audit) || true; done",
     "prepare": "git config core.hooksPath .githooks || true"

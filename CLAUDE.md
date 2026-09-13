@@ -413,7 +413,14 @@ Required after behavior changes: write/update the relevant test, run it with the
 - Save under `docs/assets/screenshots/<module>/<feature-name>.png` (module = `gantt`/`pbs-portal`/`pbs-app`/etc., feature-name matches the changed component or spec).
 - **If the same feature/fix gets re-validated across multiple rounds** (a design tweak, a bug re-fix, feedback-driven iteration), do **not** overwrite the previous screenshot — suffix the filename with `-Ver<N>` (`Ver1`, `Ver2`, `Ver3`, ...), incrementing per round, so the sequence of screenshots documents visible progress across iterations. First capture of a feature may omit the suffix or start at `Ver1`; be consistent within one feature's history.
 - Capture via a Playwright script/test (`page.screenshot()` / `locator.screenshot()`), not a manual/out-of-band screenshot — it must come from the same automated run that proves the behavior, per §No-Illusion.
-- After capturing, inspect the PNG with the current agent's image-viewing tool before reporting done; confirm the intended element and state are visible.
+- After capturing, inspect the PNG before reporting done; confirm the intended element and state are visible.
+  - **If the session's model accepts image input**, use the agent's image-viewing tool.
+  - **If it does not** (`view_image` returns *"not allowed because you do not support image inputs"* — a **model capability** gate driven by the active model catalog, not a file or permission problem), you are still expected to inspect the capture. Use `node scripts/screenshot-review/review.mjs <png> --expect "<text you must see on screen>" --vision`:
+    - `--vision` delegates a genuine visual read to a multimodal model on the same local gateway (`scripts/screenshot-review/vision.mjs`), covering colour/layout/rendering defects.
+    - The same run OCRs the capture via native macOS Vision (no installs), measures it, and exits non-zero when the expected content is missing or the image is blank.
+    - Use `--diff <previous-Ver.png>` to prove an iteration actually changed pixels, and where.
+    - Report the sidecar paths (`<png>.review.txt`, `<png>.vision.txt`) and PASS/FAIL in the delivery report.
+  - **Never claim a visual inspection you could not perform.** If neither path is available, say so explicitly and record the inspection as an unrun required check with the residual risk.
 - Include the screenshot path alongside the exact Playwright command and PASS/FAIL result in the delivery report. This applies to every user-related validation, including backend/data changes verified through the UI, not only visual styling changes.
 
 ### §Stale-Test — update it, never just report it

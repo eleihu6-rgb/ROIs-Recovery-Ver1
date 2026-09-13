@@ -33,7 +33,7 @@ All detailed checks live in `CLAUDE.md`. Before claiming completion:
 
 - Identify affected modules and run the smallest relevant verification, broadening for shared contracts or data writes.
 - Every change affecting what a user does or sees requires real-UI Playwright validation, including backend, permissions, scripts, and SQL/data changes. Assert the user-visible outcome; API/DB checks alone do not replace this gate.
-- Capture and visually inspect a screenshot from that same Playwright run under `docs/assets/screenshots/<module>/`. Preserve earlier captures with `-Ver<N>` filenames on repeat validation. Report the test command, PASS/FAIL, and screenshot path; update legitimate stale tests.
+- Capture and inspect a screenshot from that same Playwright run under `docs/assets/screenshots/<module>/`. Preserve earlier captures with `-Ver<N>` filenames on repeat validation. If this session's model cannot accept image input (`view_image` blocked), inspect it with `node scripts/screenshot-review/review.mjs <png> --expect "<text>" --vision` instead — `--vision` delegates a real visual read to a multimodal model on the same gateway (see `CLAUDE.md` §PW-Snapshot). Report the test command, PASS/FAIL, and screenshot path; update legitimate stale tests.
 - Backend behavior needs focused tests using the module's framework. Bug fixes need regression coverage, or an explicit explanation of why it was infeasible.
 - PBS business changes also require considering manual QA cases under `docs/test-cases/pbs/`.
 - Frontend style changes require `npm run check:ui`; documentation-only changes require diff, path, and consistency checks, not runtime builds.

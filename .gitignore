@@ -285,3 +285,9 @@ dump.rdb
 .dev-logs/
 .local/
 
+# screenshot-review: compiled native OCR helper (rebuilt on demand)
+scripts/screenshot-review/.bin/
+
+# screenshot-review: bulky regenerable machine sidecars (keep the small .txt proof)
+docs/assets/screenshots/**/*.review.json
+docs/assets/screenshots/**/*.vision.json
