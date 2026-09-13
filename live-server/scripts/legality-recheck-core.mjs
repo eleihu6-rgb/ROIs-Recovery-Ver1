@@ -781,6 +781,41 @@ export async function rule8002(source, ctx) {
 // (e.g. assignment FLY → assignment VAC, independent of the broad GRD bucket).
 const filterValues = (v) => String(v ?? '').split('|').map((s) => s.trim()).filter((s) => s && s !== '*')
 const isSet = (v) => { const t = String(v ?? '').trim(); return t !== '' && t !== '*' }
+
+// ── Assignment Group Map (Data > Assignment > Assignment Group Map) ─────────
+// Many-to-many: one `assignment` code can belong to several `assignment_group`s (e.g.
+// RES's primary group is GRD, but it also belongs to group RES). Every rule whose params
+// carry an "Assignment Group(s)" filter must accept a duty two ways: its literal
+// assignment_group column, OR (via this map) any group its specific assignment code
+// belongs to — mirrors `rois_rule_engine::group_or_mapped_matches` on the Rust side.
+// `source.assignmentGroups()` returns the whole map; callers fetch it once per rule run.
+async function loadAssignmentGroupMap(source) {
+  return source.assignmentGroups ? await source.assignmentGroups() : []
+}
+
+/** 'G' lines feeding a check-* binary's structured input so it can resolve group filters
+ *  through the map (same tag/shape rule7305 already emits). */
+function assignmentGroupMapLines(groupMapRows) {
+  return (groupMapRows ?? []).map((row) =>
+    ['G', row.assignment ?? row.code ?? '', row.assignment_group ?? row.group ?? ''].map(cleanTsv).join('\t'),
+  )
+}
+
+/** Expand a set of assignment-GROUP names into the assignment CODES mapped to them, so a
+ *  DB-level "assignment_group/assignment" OR prefilter (e.g. flyByPairing) does not exclude
+ *  a duty whose group membership only exists via the map (RES's secondary group RES, not its
+ *  primary column value GRD). Only meaningful where the SQL prefilter already ORs codes and
+ *  groups together — an AND-shaped prefilter needs the group dimension disabled instead. */
+function expandGroupsToCodes(groupNames, groupMapRows) {
+  const wanted = new Set([...groupNames].map((g) => String(g).toUpperCase()))
+  const codes = new Set()
+  for (const row of groupMapRows ?? []) {
+    const group = String(row.assignment_group ?? row.group ?? '').toUpperCase()
+    const code = row.assignment ?? row.code ?? ''
+    if (code && wanted.has(group)) codes.add(code)
+  }
+  return codes
+}
 const parseCountryFilter = (raw) => {
   const text = String(raw ?? '').trim()
   if (!text || text === '*') return { kind: 'disabled', values: [] }
@@ -1015,6 +1050,12 @@ export async function rule8056(source, ctx) {
     })
   }
   if (!validRows.length) return []
+  const groupMapRows = await loadAssignmentGroupMap(source)
+  // Widen the code prefilter with every assignment code mapped (via the Assignment Group
+  // Map) into a requested group, so flyByPairing's `assignment_group = any(groups) OR
+  // assignment = any(codes)` SQL clause still fetches a duty whose group membership only
+  // exists through the map (e.g. RES's secondary group RES, not its primary column GRD).
+  for (const code of expandGroupsToCodes(groupSet, groupMapRows)) codeSet.add(code)
   const dutySqlPrefilter = !(hasFullyWildcardDutyRow && dutyFilterNarrowed)
   const rows = await source.flyByPairing(
     dutySqlPrefilter && groupSet.size ? [...groupSet] : undefined,
@@ -1077,6 +1118,7 @@ export async function rule8056(source, ctx) {
     ...validRows.map((row) => row.line),
     ...qualLines,
     ...teamLines,
+    ...assignmentGroupMapLines(groupMapRows),
     ...dutyLines,
   ].join('\n')
   const fmt = (min) => { const n = min < 0, m = Math.abs(min); const b = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; return n ? `-${b}` : b }
@@ -1107,7 +1149,6 @@ export async function rule8056(source, ctx) {
 export async function rule8071(source, ctx) {
   const instances = ctx.instancesOf(8071)
   if (!instances.length) { ctx.log('8071: no instances in rule set — skipped'); return [] }
-  const groupSet = new Set()
   const assignmentSet = new Set()
   const flightSet = new Set()
   const destinationSet = new Set()
@@ -1120,11 +1161,11 @@ export async function rule8071(source, ctx) {
   // + INB * must not drop CA destinations before the INB row runs).
   let hasWildcardCountryRow = false
   let countryPrefilterNarrowed = false
-  // SQL group/assignment prefilters are ANDed in rosterProperties. When one 8071 row
-  // narrows Assignment Groups (e.g. FLY) and another uses wildcard groups but narrows
-  // Assignments (e.g. PRAM/RES), the intersection drops RES rows before Rust runs.
-  let hasWildcardGroupRow = false
-  let groupPrefilterNarrowed = false
+  // Assignment Groups is NEVER SQL-prefiltered (unlike Assignments/Flights/etc below):
+  // a duty can satisfy a group through the Assignment Group Map (its assignment code
+  // mapped to a secondary group), which the plain `assignment_group = any(...)` SQL
+  // clause cannot express — narrowing via SQL would silently drop those duties before
+  // Rust's map-aware activity_matches ever sees them. Group filtering is Rust-only.
   let hasWildcardAssignmentRow = false
   let assignmentPrefilterNarrowed = false
   // Same class of bug as the group/assignment/country prefilters above: when one
@@ -1153,13 +1194,6 @@ export async function rule8071(source, ctx) {
       if (!period || !unit || Number.isNaN(maxTimes) || Number.isNaN(minTimes)) {
         ctx.log(`skip 8071/${inst.instance}: missing Period/Unit/Max Times/Min Times`)
         continue
-      }
-      const groupsRaw = String(row[H('Assignment Groups')] ?? '').trim()
-      if (!groupsRaw || groupsRaw === '*') {
-        hasWildcardGroupRow = true
-      } else {
-        groupPrefilterNarrowed = true
-        for (const value of filterValues(groupsRaw)) groupSet.add(value)
       }
       const assignmentsRaw = String(row[H('Assignments')] ?? '').trim()
       if (!assignmentsRaw || assignmentsRaw === '*') {
@@ -1234,8 +1268,8 @@ export async function rule8071(source, ctx) {
     }
   }
   if (!ruleLines.length) return []
+  const groupMapRows = await loadAssignmentGroupMap(source)
   const countrySqlPrefilter = !(hasWildcardCountryRow && countryPrefilterNarrowed)
-  const groupSqlPrefilter = !(hasWildcardGroupRow && groupPrefilterNarrowed)
   const assignmentSqlPrefilter = !(hasWildcardAssignmentRow && assignmentPrefilterNarrowed)
   const flightSqlPrefilter = !(hasWildcardFlightRow && flightPrefilterNarrowed)
   const destinationSqlPrefilter = !(hasWildcardDestinationRow && destinationPrefilterNarrowed)
@@ -1246,7 +1280,7 @@ export async function rule8071(source, ctx) {
   // property filters; otherwise source prefiltering turns "0 matching" into
   // "crew absent" before the Rust checker can count it.
   const rows = await source.rosterProperties({
-    groups: requiresFullRosterPopulation || !groupSqlPrefilter ? [] : [...groupSet],
+    groups: [],
     assignments: requiresFullRosterPopulation || !assignmentSqlPrefilter ? [] : [...assignmentSet],
     flights: requiresFullRosterPopulation || !flightSqlPrefilter ? [] : [...flightSet],
     destinations: requiresFullRosterPopulation || !destinationSqlPrefilter ? [] : [...destinationSet],
@@ -1272,7 +1306,7 @@ export async function rule8071(source, ctx) {
   const pLines = rpRows.map((rp) => ['P', epochSec(rp.start + 'T00:00:00Z'), epochSec(rp.end + 'T23:59:59Z')].join('\t'))
   const out = []
   const binRunner = ctx.runBin ?? runBin
-  for (const cols of await binRunner('check-8071', ['--emit-tsv'], [cLine, ...ruleLines, ...activityLines, ...pLines].join('\n'))) {
+  for (const cols of await binRunner('check-8071', ['--emit-tsv'], [cLine, ...ruleLines, ...assignmentGroupMapLines(groupMapRows), ...activityLines, ...pLines].join('\n'))) {
     if (cols[0] !== 'V' || cols.length < 11) continue
     const [, crewId, idxRaw, pairingId, ws, we, actual, maxTimes, minTimes, mode, overRaw] = cols
     const m = meta[Number(idxRaw)]
@@ -1306,16 +1340,15 @@ export async function rule8071(source, ctx) {
 export async function rule8072(source, ctx) {
   const instances = ctx.instancesOf(8072)
   if (!instances.length) { ctx.log('8072: no instances in rule set — skipped'); return [] }
-  const groupSet = new Set()
   const fleetSet = new Set()
   const depSet = new Set()
   const arrSet = new Set()
-  // Same wildcard-row leak as 8071's SQL prefilter: these four dimensions are
-  // ANDed independently in qualificationFlightSegments(), so a row that narrows
-  // e.g. Dep must not have its narrow set applied to another row that leaves
-  // Dep wildcard.
-  let hasWildcardGroupRow = false
-  let groupPrefilterNarrowed = false
+  // Same wildcard-row leak as 8071's SQL prefilter: these dimensions are ANDed
+  // independently in qualificationFlightSegments(), so a row that narrows e.g. Dep must
+  // not have its narrow set applied to another row that leaves Dep wildcard. Flight
+  // Assignment Groups is never SQL-prefiltered at all (see rule8071's comment) — a
+  // segment/crew can satisfy a group through the Assignment Group Map, which the plain
+  // `assignment_group = any(...)` SQL clause cannot express; group filtering is Rust-only.
   let hasWildcardFleetRow = false
   let fleetPrefilterNarrowed = false
   let hasWildcardDepRow = false
@@ -1336,13 +1369,6 @@ export async function rule8072(source, ctx) {
       if (Number.isNaN(minLimits) || Number.isNaN(maxLimits) || !quals) {
         ctx.log(`skip 8072/${inst.instance}: missing Required Qualifications/Min Limits/Max Limits`)
         continue
-      }
-      const groupsRaw = String(row[H('Flight Assignment Groups')] ?? '').trim()
-      if (!groupsRaw || groupsRaw === '*') {
-        hasWildcardGroupRow = true
-      } else {
-        groupPrefilterNarrowed = true
-        for (const value of filterValues(groupsRaw)) groupSet.add(value)
       }
       const fleetsRaw = String(row[H('Flight Fleets')] ?? '').trim()
       if (!fleetsRaw || fleetsRaw === '*') {
@@ -1372,18 +1398,18 @@ export async function rule8072(source, ctx) {
     }
   }
   if (!ruleLines.length) return []
-  const groupSqlPrefilter = !(hasWildcardGroupRow && groupPrefilterNarrowed)
+  const groupMapRows = await loadAssignmentGroupMap(source)
   const fleetSqlPrefilter = !(hasWildcardFleetRow && fleetPrefilterNarrowed)
   const depSqlPrefilter = !(hasWildcardDepRow && depPrefilterNarrowed)
   const arrSqlPrefilter = !(hasWildcardArrRow && arrPrefilterNarrowed)
   const rows = await source.qualificationFlightSegments({
-    groups: groupSqlPrefilter ? [...groupSet] : [],
+    groups: [],
     fleets: fleetSqlPrefilter ? [...fleetSet] : [],
     deps: depSqlPrefilter ? [...depSet] : [],
     arrs: arrSqlPrefilter ? [...arrSet] : [],
     focusPairingIds: Array.isArray(ctx.focusPairingIds) ? ctx.focusPairingIds : [],
   })
-  const inputLines = [...ruleLines]
+  const inputLines = [...ruleLines, ...assignmentGroupMapLines(groupMapRows)]
   for (const r of rows) {
     const matchingRules = meta.map((_, idx) => String(idx)).join('|')
     inputLines.push(['S',
@@ -1958,6 +1984,7 @@ export async function rule1001(source, ctx) {
   if (assignments.length) binArgs.push('--do-start-assignments', assignments.join('|'))
   if (groups.length) binArgs.push('--do-start-groups', groups.join('|'))
   const rosterById = new Map(rosters.map((r) => [`${r.crew_id}:${r.id}`, r]))
+  const groupLines = assignmentGroupMapLines(await loadAssignmentGroupMap(source))
   const lines = []
   const out = []
   for (const r of rosters) {
@@ -1981,7 +2008,7 @@ export async function rule1001(source, ctx) {
         row[H('Assignment Type After')] ?? '*',
       ].join('\t'))
     }
-    const tsv = [...ruleLines, ...lines].join('\n')
+    const tsv = [...ruleLines, ...groupLines, ...lines].join('\n')
     for (const [crewId, pairingId, beforeId, afterId, start, end, beforeAssignment, afterAssignment] of
       await runBin('check-1001', binArgs, tsv)) {
       const before = rosterById.get(`${crewId}:${beforeId}`)
@@ -2225,11 +2252,7 @@ export async function rule7305(source, ctx) {
   for (const [crew, teams] of teamMap ?? new Map()) {
     for (const team of teams ?? []) teamLines.push(['T', crew, team].map(cleanTsv).join('\t'))
   }
-  const groupLines = []
-  const groupRows = source.assignmentGroups ? await source.assignmentGroups() : []
-  for (const row of groupRows ?? []) {
-    groupLines.push(['G', row.assignment ?? row.code ?? '', row.assignment_group ?? row.group ?? ''].map(cleanTsv).join('\t'))
-  }
+  const groupLines = assignmentGroupMapLines(await loadAssignmentGroupMap(source))
 
   // C++ 7305 evaluates the complete crew roster list. `flyDuties()` is intentionally
   // narrower because the other rules only need FLY rows, so prefer the dedicated

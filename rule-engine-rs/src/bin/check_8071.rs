@@ -9,6 +9,9 @@
 //!     <TAB> destination <TAB> position (legacy)
 //!     or <TAB> destination <TAB> destination_country <TAB> position
 //!   P <TAB> rp_start_utc <TAB> rp_end_utc
+//!   G <TAB> assignment <TAB> assignment_group (Assignment Group Map row; an "Assignment
+//!     Groups" filter also matches an activity whose `assignment` code is mapped to that
+//!     group, not just via its literal assignment_group column)
 //!
 //! --emit-tsv prints:
 //!   V <TAB> crew <TAB> rule_idx <TAB> anchor_pairing_id <TAB> window_start
@@ -18,7 +21,10 @@ use std::collections::BTreeMap;
 use std::io::{self, Read};
 
 use rois_rule_engine::{
-    rules::rule8071::{check_roster_properties_row, RosterPropertyActivity, Rule8071},
+    rules::rule8071::{
+        check_roster_properties_row_with_group_map, derive_pairing_countries,
+        RosterPropertyActivity, Rule8071,
+    },
     Application,
 };
 
@@ -65,6 +71,7 @@ fn main() {
     let mut activities_by_crew: BTreeMap<String, Vec<RosterPropertyActivity>> = BTreeMap::new();
     let mut activity_count = 0usize;
     let mut roster_periods: Vec<(i64, i64)> = Vec::new();
+    let mut group_map: Vec<(String, String)> = Vec::new();
     let mut skipped = 0usize;
 
     for line in input.lines() {
@@ -161,6 +168,9 @@ fn main() {
                 };
                 roster_periods.push((start, end));
             }
+            Some("G") if cols.len() >= 3 => {
+                group_map.push((cols[1].trim().to_string(), cols[2].trim().to_string()));
+            }
             _ => skipped += 1,
         }
     }
@@ -173,8 +183,9 @@ fn main() {
     let t0 = std::time::Instant::now();
     let mut violations = Vec::new();
     for (crew, crew_activities) in &activities_by_crew {
+        let pairing_countries = derive_pairing_countries(crew_activities);
         for (idx, rule) in &rules {
-            for violation in check_roster_properties_row(
+            for violation in check_roster_properties_row_with_group_map(
                 crew,
                 rule,
                 crew_activities,
@@ -182,6 +193,8 @@ fn main() {
                 checked_end,
                 &roster_periods,
                 app,
+                Some(&pairing_countries),
+                &group_map,
             ) {
                 violations.push((crew.clone(), *idx, violation));
             }

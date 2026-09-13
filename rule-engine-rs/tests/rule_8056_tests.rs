@@ -295,9 +295,15 @@ fn full_rule_supports_calendar_days_and_local_nights() {
         end_min: 6 * 60,
         min_rest_secs: 8 * 3600,
     };
-    let violations =
-        check_roster_spacing_full_with_context("crew-1", &ln_duties, &ln, 0, Some(local_night))
-            .unwrap();
+    let violations = check_roster_spacing_full_with_context(
+        "crew-1",
+        &ln_duties,
+        &ln,
+        0,
+        Some(local_night),
+        &[],
+    )
+    .unwrap();
     assert_eq!(violations.len(), 1);
 }
 
@@ -428,4 +434,76 @@ fn full_rule_ignores_fixed_pairing_only_conflicts() {
     second.pre_assigned = true;
     let rule = wildcard_full_rule("RH", 2.0, true);
     assert!(check_roster_spacing_full("crew-1", &[first, second], &rule, 0).is_empty());
+}
+
+/// Reproduces the F8 8056/001 Row 2 bug: crew 12928's two 2026-09-08/09 RES duties
+/// carry `assignment_group="GRD"` (RES's *primary* group) / `assignment="RES"`, while
+/// Row 2 filters Group A/B = "RES" (RES's *secondary* group, per the Assignment Group
+/// Map). Without consulting `group_map`, neither duty's literal assignment_group ever
+/// equals "RES", so the 12h gap (< the 13h limit) went unflagged. With the map wired
+/// through, "RES" assignment resolves to group "RES" too and the violation fires.
+fn res_ground_duty(id: i64, start: &str, end: &str) -> Rule8056Duty {
+    Rule8056Duty {
+        pairing_id: id,
+        start_utc: parse_utc_seconds(start).unwrap(),
+        end_utc: parse_utc_seconds(end).unwrap(),
+        post_rest_end_utc: parse_utc_seconds(end).unwrap(),
+        label: "PRAM".into(),
+        assignment_group: "GRD".into(),
+        assignment: "RES".into(),
+        attribute: "*".into(),
+        qualifier: "RES".into(),
+        airport: "YYZ".into(),
+        role: "".into(),
+        is_requested: false,
+        location: "YYZ".into(),
+        crew_base: "YYZ".into(),
+        pre_assigned: false,
+    }
+}
+
+fn res_res_row_rule() -> Rule8056Rule {
+    let mut rule = wildcard_full_rule("RH", 13.0, true);
+    rule.attribute_a = vec!["*".into()];
+    rule.attribute_b = vec!["*".into()];
+    rule.assignment_group_a = vec!["RES".into()];
+    rule.assignment_group_b = vec!["RES".into()];
+    rule.utilize_post_duty_rest = true;
+    rule
+}
+
+#[test]
+fn group_a_b_filter_ignores_secondary_group_without_map() {
+    let duties = [
+        res_ground_duty(1, "2026-09-08T08:00", "2026-09-08T20:00"),
+        res_ground_duty(2, "2026-09-09T08:00", "2026-09-09T20:00"),
+    ];
+    let rule = res_res_row_rule();
+    // No group_map supplied: assignment_group is literally "GRD", never "RES", so the
+    // Group A/B = RES row cannot match either side and the 12h gap is silently missed.
+    assert!(check_roster_spacing_full("crew-12928", &duties, &rule, 0).is_empty());
+}
+
+#[test]
+fn group_a_b_filter_matches_via_assignment_group_map() {
+    let duties = [
+        res_ground_duty(1, "2026-09-08T08:00", "2026-09-08T20:00"),
+        res_ground_duty(2, "2026-09-09T08:00", "2026-09-09T20:00"),
+    ];
+    let rule = res_res_row_rule();
+    let group_map = vec![
+        ("RES".to_string(), "GRD".to_string()),
+        ("RES".to_string(), "RES".to_string()),
+    ];
+    let violations = check_roster_spacing_full_with_context(
+        "crew-12928",
+        &duties,
+        &rule,
+        0,
+        None,
+        &group_map,
+    )
+    .unwrap();
+    assert_eq!(violations.len(), 1, "12h gap must violate the 13h RES→RES spacing once assignment=RES resolves to group=RES via the map");
+    assert_eq!(violations[0].actual_minutes, 12 * 60);
 }

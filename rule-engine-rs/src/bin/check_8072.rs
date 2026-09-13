@@ -4,12 +4,17 @@
 //! R <idx> <13 param cells>
 //! S <segment fields>
 //! C <segment_id> <crew fields>
+//! G <assignment> <assignment_group> (Assignment Group Map row; a "Flight Assignment
+//!   Groups" filter also matches a segment/crew whose `assignment` code is mapped to that
+//!   group, not just via its literal assignment_group column or a literal code in the list)
 //! Output:
 //! V <idx> <crew_id> <pairing_id> <segment_id> <duty_seq> <start_utc> <end_utc>
 //!   <flight_number> <fleet> <acting_rank> <qualified> <planned> <filled> <min> <max> <over>
 
 use rois_rule_engine::{
-    rules::rule8072::{check_min_qual_by_fleet_rank, Rule8072, Rule8072Crew, Rule8072Segment},
+    rules::rule8072::{
+        check_min_qual_by_fleet_rank_with_group_map, Rule8072, Rule8072Crew, Rule8072Segment,
+    },
     Application,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -35,6 +40,7 @@ fn main() {
     let mut rules: BTreeMap<usize, Rule8072> = BTreeMap::new();
     let mut segments: BTreeMap<i64, Rule8072Segment> = BTreeMap::new();
     let mut segment_rule_idx: BTreeMap<i64, BTreeSet<usize>> = BTreeMap::new();
+    let mut group_map: Vec<(String, String)> = Vec::new();
 
     for raw in input.lines() {
         let line = raw.strip_suffix('\r').unwrap_or(raw);
@@ -112,6 +118,9 @@ fn main() {
                     });
                 }
             }
+            Some("G") if cols.len() >= 3 => {
+                group_map.push((cols[1].trim().to_string(), cols[2].trim().to_string()));
+            }
             _ => {}
         }
     }
@@ -127,7 +136,12 @@ fn main() {
             })
             .cloned()
             .collect();
-        for v in check_min_qual_by_fleet_rank(&rule, &filtered, Application::Editor) {
+        for v in check_min_qual_by_fleet_rank_with_group_map(
+            &rule,
+            &filtered,
+            Application::Editor,
+            &group_map,
+        ) {
             println!(
                 "V\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
                 idx,

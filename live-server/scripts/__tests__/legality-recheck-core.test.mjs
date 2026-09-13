@@ -1015,6 +1015,45 @@ test('rule8056 matches by assignment code (FLY→VAC), distinct from a group row
   assert.equal(out.length, 3)
 })
 
+// rule8056: reproduces the live F8 8056/001 Row 2 bug (crew 12928, 2026-09-08/09). The row
+// filters Group A/B = RES, but RES duties store assignment_group='GRD' (RES's *primary*
+// group) — RES only reaches group RES via the Assignment Group Map (assignment=RES also
+// belongs to group RES). Without the map wired through, the 12h gap between two RES ground
+// duties never matches; with source.assignmentGroups() supplying the map, it fires.
+test('rule8056 Group A/B=RES matches a RES duty (assignment_group=GRD) via the Assignment Group Map', async () => {
+  const day1 = Math.floor(Date.UTC(2026, 8, 8, 8, 0, 0) / 1000) // 2026-09-08T08:00Z
+  const day2 = Math.floor(Date.UTC(2026, 8, 9, 8, 0, 0) / 1000) // 2026-09-09T08:00Z, 12h after day1 ends
+  let receivedGroups = null, receivedCodes = null
+  const source = {
+    async flyByPairing(groups, codes) {
+      receivedGroups = groups; receivedCodes = codes
+      return [
+        { crew_id: '12928', pairing_id: 0, start_secs: day1, end_secs: day1 + 12 * 3600, label: 'PRAM', assignment_group: 'GRD', assignment: 'RES' },
+        { crew_id: '12928', pairing_id: 0, start_secs: day2, end_secs: day2 + 12 * 3600, label: 'PRAM', assignment_group: 'GRD', assignment: 'RES' },
+      ]
+    },
+    async assignmentGroups() {
+      return [
+        { assignment: 'RES', assignment_group: 'GRD' },
+        { assignment: 'RES', assignment_group: 'RES' },
+      ]
+    },
+  }
+  const HDR = ['Assignment Group A', 'Assignment Group B', 'Space', 'Unit', 'Utilize Post Duty Rest']
+  const ctx = {
+    log: () => {},
+    instancesOf: (fn) => fn === 8056 ? [{ instance: '001', header: HDR, rows: [
+      ['RES', 'RES', '13', 'RH', 'Y'],
+    ] }] : [],
+  }
+  const out = await rule8056(source, ctx)
+  assert.ok(receivedGroups?.includes('RES'), 'flyByPairing must still receive the RES group')
+  assert.ok(receivedCodes?.includes('RES'), 'the group RES must be expanded to its mapped code RES for the SQL prefilter')
+  assert.equal(out.length, 1, '12h gap between two RES duties must violate the 13h RES→RES spacing')
+  assert.equal(out[0].crew_id, '12928')
+  assert.equal(out[0].limit_value, 13)
+})
+
 test('rule8056 emits nothing + logs when the function has no instances (no silent fallback)', async () => {
   const logs = []
   let called = false
@@ -1063,7 +1102,11 @@ test('rule8071 maps F8 default row into persisted 8071 violations', async () => 
       : [],
   }
   const out = await rule8071(source, ctx)
-  assert.equal(receivedFilters.groups[0], 'FLY')
+  // Assignment Groups is never SQL-prefiltered: a duty can satisfy a group only through
+  // the Assignment Group Map (its assignment code, not its assignment_group column), which
+  // rosterProperties()'s plain `assignment_group = any(...)` clause cannot express — see
+  // 'rule8071 never restricts rosterProperties by Assignment Groups (map-only matching)'.
+  assert.deepEqual(receivedFilters.groups, [])
   assert.deepEqual(receivedFilters.flights, [], 'Flights=* must not restrict source rows')
   assert.deepEqual(receivedFilters.countries, [], 'Countries=* must not restrict source rows')
   assert.deepEqual(receivedFilters.countryNot, [], 'Countries=* must not exclude source rows')
@@ -1078,6 +1121,70 @@ test('rule8071 maps F8 default row into persisted 8071 violations', async () => 
     out[0].message,
     /^Row 1: The number of matching rosters \(12\) is outside the allowed range of \[0, 11\] in the Roster Period \[2026-06-01, 2026-06-30\]\.$/,
   )
+})
+
+// rosterProperties() ANDs its group/assignment SQL prefilters independently, so a
+// group->code equivalence that only exists via the Assignment Group Map (RES's
+// secondary group RES, not its primary assignment_group column GRD) can never be
+// expressed as a `assignment_group = any(groups)` clause — narrowing by group would
+// silently drop RES rows before Rust's map-aware matcher ever sees them. Assignment
+// Groups must therefore never be SQL-prefiltered; the map fixes correctness in Rust,
+// fed to check-8071 via 'G' lines from source.assignmentGroups().
+test('rule8071 never restricts rosterProperties by Assignment Groups (map-only matching)', async () => {
+  const S = Math.floor(Date.UTC(2026, 8, 8, 0, 0, 0) / 1000)
+  let receivedFilters = null
+  const source = {
+    async rosterProperties(filters) {
+      receivedFilters = filters
+      return [
+        {
+          crew_id: '12928', pairing_id: -1, duty_seq: 1, segment_id: 1,
+          start_utc: S, end_utc: S + 12 * 3600,
+          bases: '*', ranks: '*', fleets: '*', teams: '*', label: 'PRAM',
+          attributes: '*', override_duty_attributes: '*',
+          assignment_group: 'GRD', assignment: 'RES', qualifier: '*',
+          flight_number: '', destination: '', position: '',
+        },
+        {
+          crew_id: '12928', pairing_id: -2, duty_seq: 1, segment_id: 2,
+          start_utc: S + 24 * 3600, end_utc: S + 36 * 3600,
+          bases: '*', ranks: '*', fleets: '*', teams: '*', label: 'PRAM',
+          attributes: '*', override_duty_attributes: '*',
+          assignment_group: 'GRD', assignment: 'RES', qualifier: '*',
+          flight_number: '', destination: '', position: '',
+        },
+        // An unrelated FLY pairing elsewhere in the same crew's roster — real rosters
+        // always have one; it does not match the RES filter itself but supplies the
+        // anchor_pairing_id fallback the ground-only RES matches have no pairing to give.
+        {
+          crew_id: '12928', pairing_id: 555, duty_seq: 1, segment_id: 3,
+          start_utc: S + 48 * 3600, end_utc: S + 50 * 3600,
+          bases: '*', ranks: '*', fleets: '*', teams: '*', label: 'FLY',
+          attributes: '*', override_duty_attributes: '*',
+          assignment_group: 'FLY', assignment: 'FLY', qualifier: '*',
+          flight_number: '0031', destination: 'YVR', position: 'CA',
+        },
+      ]
+    },
+    async assignmentGroups() {
+      return [
+        { assignment: 'RES', assignment_group: 'GRD' },
+        { assignment: 'RES', assignment_group: 'RES' },
+      ]
+    },
+  }
+  const ctx = {
+    dateFrom: '2026-09-01',
+    dateTo: '2026-09-30',
+    log: () => {},
+    instancesOf: (fn) => fn === 8071
+      ? [{ instance: '001', header: HDR8071, rows: [['*', '*', '*', '*', '*', '*', '*', 'RES', '*', '*', '*', '*', '*', '1', 'CM', '1', '0', '*']] }]
+      : [],
+  }
+  const out = await rule8071(source, ctx)
+  assert.deepEqual(receivedFilters.groups, [], 'Assignment Groups must never narrow the SQL prefilter')
+  assert.equal(out.length, 1, 'both GRD/RES activities count toward Assignment Groups=RES via the map, exceeding Max Times=1')
+  assert.equal(out[0].actual_value, 2)
 })
 
 test('rule8071 forwards all rule fields, crew teams, and RP periods', async () => {
@@ -1593,6 +1700,49 @@ test('rule8072 maps F8 default row into persisted 8072 violations', async () => 
   )
 })
 
+// "Flight Assignment Groups=RES" cannot recognize a segment/crew whose assignment_group
+// column is "GRD" and whose specific code (PRAM) differs from the group name — it only
+// reaches group RES via the Assignment Group Map. Proves the map is forwarded as 'G' lines
+// and the group SQL prefilter stays disabled (Rust-only group matching, see rule8071).
+test('rule8072 matches Flight Assignment Groups=RES via the Assignment Group Map', async () => {
+  let receivedFilters = null
+  const source = {
+    async qualificationFlightSegments(filters) {
+      receivedFilters = filters
+      return [{
+        segment_id: 9001, pairing_id: 7001, duty_seq: 1, seg_seq: 1, flight_id: 3001,
+        flight_number: 'F8001', flight_date: '2026-06-01',
+        start_utc: 1780000000, end_utc: 1780007200,
+        fleet: '737', dep: 'YYZ', arr: 'YVR',
+        assignment: 'PRAM', assignment_group: 'GRD',
+        composition: 'STD', attributes: 'LONG', destination_country: 'CA',
+        planned_by_rank: 'CA:1', filled_by_rank: 'CA:1',
+        crews: [
+          { crew_id: 'C1', division: 'P', acting_rank: 'CA', assignment: 'PRAM', assignment_group: 'GRD', nationality: 'CA', teams: 'A', source: 'CR', qualifications: '*' },
+        ],
+      }]
+    },
+    async assignmentGroups() {
+      return [
+        { assignment: 'PRAM', assignment_group: 'GRD' },
+        { assignment: 'PRAM', assignment_group: 'RES' },
+      ]
+    },
+  }
+  const ctx = {
+    dateFrom: '2026-09-01',
+    dateTo: '2026-09-30',
+    log: () => {},
+    instancesOf: (fn) => fn === 8072
+      ? [{ instance: '001', header: HDR8072, rows: [['*', 'RES', '*', '*', '*', '*', '*', '*', '*', '*', '*', '0', '0']] }]
+      : [],
+  }
+  const out = await rule8072(source, ctx)
+  assert.deepEqual(receivedFilters.groups, [], 'Flight Assignment Groups must never narrow the SQL prefilter')
+  assert.equal(out.length, 1, 'assignment=PRAM resolves to group RES via the map, so the segment is evaluated and 1 qualified crew exceeds Max Limits=0')
+  assert.equal(out[0].actual_value, 1)
+})
+
 test('rule8072 scope key distinguishes same-duty segment violations for upsert', async () => {
   const segment = (segmentId, flightNumber) => ({
     segment_id: segmentId,
@@ -1678,7 +1828,11 @@ test('rule8072 accepts normalized source rows with multiple crew records', async
       : [],
   }
   const out = await rule8072(source, ctx)
-  assert.equal(filtersSeen.groups[0], 'FLY')
+  // Flight Assignment Groups is never SQL-prefiltered (see rule8071's identical rule):
+  // a segment/crew can satisfy a group only through the Assignment Group Map, which
+  // qualificationFlightSegments()'s plain `assignment_group = any(...)` clause cannot
+  // express — group filtering happens in Rust via the 'G' lines instead.
+  assert.deepEqual(filtersSeen.groups, [])
   assert.equal(out.length, 1)
 })
 

@@ -237,15 +237,13 @@ pub struct Rule8071Violation {
     pub over: bool,
 }
 
-pub fn check_roster_properties_row(
-    crew_id: &str,
-    rule: &Rule8071,
+/// Group each activity's destination_country by pairing_id (uppercased, de-duplicated) — the
+/// `pairing_countries` shape `check_roster_properties_row_with_country_sets`'s Countries filter
+/// needs. Exposed so callers that must reach the group-map-aware variant directly (it has no
+/// convenience wrapper that derives this automatically) don't have to duplicate the grouping.
+pub fn derive_pairing_countries(
     activities: &[RosterPropertyActivity],
-    checked_start_utc: i64,
-    checked_end_utc: i64,
-    roster_periods: &[(i64, i64)],
-    app: Application,
-) -> Vec<Rule8071Violation> {
+) -> BTreeMap<i64, BTreeSet<String>> {
     let mut pairing_countries: BTreeMap<i64, BTreeSet<String>> = BTreeMap::new();
     for activity in activities {
         if !activity.destination_country.trim().is_empty() {
@@ -255,6 +253,19 @@ pub fn check_roster_properties_row(
                 .insert(activity.destination_country.trim().to_ascii_uppercase());
         }
     }
+    pairing_countries
+}
+
+pub fn check_roster_properties_row(
+    crew_id: &str,
+    rule: &Rule8071,
+    activities: &[RosterPropertyActivity],
+    checked_start_utc: i64,
+    checked_end_utc: i64,
+    roster_periods: &[(i64, i64)],
+    app: Application,
+) -> Vec<Rule8071Violation> {
+    let pairing_countries = derive_pairing_countries(activities);
     check_roster_properties_row_with_country_sets(
         crew_id,
         rule,
@@ -276,6 +287,34 @@ pub fn check_roster_properties_row_with_country_sets(
     roster_periods: &[(i64, i64)],
     app: Application,
     pairing_countries: Option<&BTreeMap<i64, BTreeSet<String>>>,
+) -> Vec<Rule8071Violation> {
+    check_roster_properties_row_with_group_map(
+        crew_id,
+        rule,
+        activities,
+        checked_start_utc,
+        checked_end_utc,
+        roster_periods,
+        app,
+        pairing_countries,
+        &[],
+    )
+}
+
+/// Same as [`check_roster_properties_row_with_country_sets`], plus the (assignment,
+/// assignment_group) many-to-many map so "Assignment Groups" also matches an activity whose
+/// specific assignment code is mapped into the filtered group (see [`group_or_mapped_matches`]).
+#[allow(clippy::too_many_arguments)]
+pub fn check_roster_properties_row_with_group_map(
+    crew_id: &str,
+    rule: &Rule8071,
+    activities: &[RosterPropertyActivity],
+    checked_start_utc: i64,
+    checked_end_utc: i64,
+    roster_periods: &[(i64, i64)],
+    app: Application,
+    pairing_countries: Option<&BTreeMap<i64, BTreeSet<String>>>,
+    group_map: &[(String, String)],
 ) -> Vec<Rule8071Violation> {
     let (matching_start_utc, matching_end_utc) = match rule.unit {
         Rule8071Unit::Cm => {
@@ -307,7 +346,7 @@ pub fn check_roster_properties_row_with_country_sets(
                 .map(|countries| rule.countries.matches_set(countries))
                 .unwrap_or(false)
         })
-        .filter(|activity| activity_matches(rule, activity))
+        .filter(|activity| activity_matches(rule, activity, group_map))
         .collect();
 
     let windows = enumerate_8071_windows(
@@ -501,7 +540,11 @@ fn is_wildcard(list: &[String]) -> bool {
     list.is_empty() || list.iter().any(|value| value == "*")
 }
 
-fn activity_matches(rule: &Rule8071, activity: &RosterPropertyActivity) -> bool {
+fn activity_matches(
+    rule: &Rule8071,
+    activity: &RosterPropertyActivity,
+    group_map: &[(String, String)],
+) -> bool {
     vector_matches(&rule.bases, &activity.bases)
         && vector_matches(&rule.ranks, &activity.ranks)
         && vector_matches(&rule.fleets, &activity.fleets)
@@ -512,7 +555,12 @@ fn activity_matches(rule: &Rule8071, activity: &RosterPropertyActivity) -> bool 
             &rule.override_duty_attributes,
             &activity.override_duty_attributes,
         )
-        && list_matches(&rule.assignment_groups, &activity.assignment_group)
+        && crate::group_or_mapped_matches(
+            &rule.assignment_groups,
+            &activity.assignment_group,
+            &activity.assignment,
+            group_map,
+        )
         && list_matches(&rule.assignments, &activity.assignment)
         && list_matches(&rule.qualifiers, &activity.qualifier)
         && list_matches(&rule.flights, &activity.flight_number)

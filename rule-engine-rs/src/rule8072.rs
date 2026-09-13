@@ -113,8 +113,12 @@ impl Rule8072 {
         })
     }
 
-    pub fn count_qualified(&self, segment: &Rule8072Segment) -> Rule8072Evaluation {
-        if !self.segment_matches(segment) {
+    pub fn count_qualified(
+        &self,
+        segment: &Rule8072Segment,
+        group_map: &[(String, String)],
+    ) -> Rule8072Evaluation {
+        if !self.segment_matches(segment, group_map) {
             return Rule8072Evaluation {
                 qualified_count: 0,
                 planned_count: 0,
@@ -127,7 +131,7 @@ impl Rule8072 {
         let qualified: Vec<&Rule8072Crew> = segment
             .crews
             .iter()
-            .filter(|crew| self.crew_matches(crew))
+            .filter(|crew| self.crew_matches(crew, group_map))
             .collect();
         let owner_crew_id = qualified
             .first()
@@ -138,16 +142,20 @@ impl Rule8072 {
         Rule8072Evaluation {
             qualified_count: qualified.len() as i32,
             planned_count: count_rank_pairs(&segment.planned_by_rank, &self.acting_ranks),
-            filled_count: self.count_filled(segment),
+            filled_count: self.count_filled(segment, group_map),
             owner_crew_id,
             acting_rank_label: acting_rank_label(&self.acting_ranks),
         }
     }
 
-    fn segment_matches(&self, segment: &Rule8072Segment) -> bool {
+    fn segment_matches(&self, segment: &Rule8072Segment, group_map: &[(String, String)]) -> bool {
         matches_list(&self.flight_fleets, &segment.fleet)
-            && (matches_list(&self.flight_assignment_groups, &segment.assignment_group)
-                || matches_list(&self.flight_assignment_groups, &segment.assignment))
+            && group_or_code_matches(
+                &self.flight_assignment_groups,
+                &segment.assignment_group,
+                &segment.assignment,
+                group_map,
+            )
             && matches_expr(
                 &self.destination_countries,
                 &[segment.destination_country.clone()],
@@ -158,26 +166,49 @@ impl Rule8072 {
             && matches_list(&self.arr, &segment.arr)
     }
 
-    fn crew_matches(&self, crew: &Rule8072Crew) -> bool {
-        self.crew_matches_rank_group(crew)
+    fn crew_matches(&self, crew: &Rule8072Crew, group_map: &[(String, String)]) -> bool {
+        self.crew_matches_rank_group(crew, group_map)
             && matches_expr(&self.crew_nationality, &[crew.nationality.clone()])
             && matches_expr(&self.crew_teams, &crew.teams)
             && crew_has_required_qualifications(&self.required_qualifications, &crew.qualifications)
     }
 
-    fn crew_matches_rank_group(&self, crew: &Rule8072Crew) -> bool {
+    fn crew_matches_rank_group(&self, crew: &Rule8072Crew, group_map: &[(String, String)]) -> bool {
         matches_list(&self.acting_ranks, &crew.acting_rank)
-            && (matches_list(&self.flight_assignment_groups, &crew.assignment_group)
-                || matches_list(&self.flight_assignment_groups, &crew.assignment))
+            && group_or_code_matches(
+                &self.flight_assignment_groups,
+                &crew.assignment_group,
+                &crew.assignment,
+                group_map,
+            )
     }
 
-    fn count_filled(&self, segment: &Rule8072Segment) -> i32 {
+    fn count_filled(&self, segment: &Rule8072Segment, group_map: &[(String, String)]) -> i32 {
         segment
             .crews
             .iter()
-            .filter(|crew| self.crew_matches_rank_group(crew))
+            .filter(|crew| self.crew_matches_rank_group(crew, group_map))
             .count() as i32
     }
+}
+
+/// "Flight Assignment Groups" match: the filter list already doubles as an OR of a group
+/// name AND a literal assignment code (existing F8 configs list codes directly, e.g. a row
+/// scoped to "RES" expecting a literal `assignment == "RES"` hit). This adds a third path —
+/// the Assignment Group Map — so a code whose *primary* assignment_group column differs from
+/// the filtered group (RES's primary group is GRD; it only reaches group RES via the map)
+/// still matches, without disturbing either existing path.
+fn group_or_code_matches(
+    groups: &[String],
+    assignment_group: &str,
+    assignment: &str,
+    group_map: &[(String, String)],
+) -> bool {
+    matches_list(groups, assignment_group)
+        || matches_list(groups, assignment)
+        || group_map
+            .iter()
+            .any(|(a, g)| a.eq_ignore_ascii_case(assignment) && matches_list(groups, g))
 }
 
 pub fn check_min_qual_by_fleet_rank(
@@ -185,18 +216,30 @@ pub fn check_min_qual_by_fleet_rank(
     segments: &[Rule8072Segment],
     app: Application,
 ) -> Vec<Rule8072Violation> {
+    check_min_qual_by_fleet_rank_with_group_map(rule, segments, app, &[])
+}
+
+/// Same as [`check_min_qual_by_fleet_rank`], plus the (assignment, assignment_group)
+/// many-to-many map so "Flight Assignment Groups" also matches a segment/crew whose specific
+/// assignment code is mapped into the filtered group (see [`group_or_code_matches`]).
+pub fn check_min_qual_by_fleet_rank_with_group_map(
+    rule: &Rule8072,
+    segments: &[Rule8072Segment],
+    app: Application,
+    group_map: &[(String, String)],
+) -> Vec<Rule8072Violation> {
     let mut out = Vec::new();
     for segment in segments {
-        if !rule.segment_matches(segment) {
+        if !rule.segment_matches(segment, group_map) {
             continue;
         }
 
-        let eval = rule.count_qualified(segment);
+        let eval = rule.count_qualified(segment, group_map);
         let over_max = eval.qualified_count > rule.max_limits;
         let under_min = rule.min_limits > 0 && eval.qualified_count < rule.min_limits;
         if over_max
             && app.is_optimizer()
-            && qualified_sources(rule, segment)
+            && qualified_sources(rule, segment, group_map)
                 .iter()
                 .all(|source| source.as_str() == "PA")
         {
@@ -337,11 +380,15 @@ fn acting_rank_label(acting_ranks: &[String]) -> String {
     }
 }
 
-fn qualified_sources(rule: &Rule8072, segment: &Rule8072Segment) -> Vec<String> {
+fn qualified_sources(
+    rule: &Rule8072,
+    segment: &Rule8072Segment,
+    group_map: &[(String, String)],
+) -> Vec<String> {
     segment
         .crews
         .iter()
-        .filter(|crew| rule.crew_matches(crew))
+        .filter(|crew| rule.crew_matches(crew, group_map))
         .map(|crew| crew.source.clone())
         .collect()
 }

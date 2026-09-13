@@ -52,14 +52,19 @@ impl Rule7510Param {
         self
     }
 
-    fn matches(&self, row: &Rule7510CrewFlight) -> bool {
+    fn matches(&self, row: &Rule7510CrewFlight, group_map: &[(String, String)]) -> bool {
         matches_any(&self.bases, &row.bases)
             && matches_any(&self.ranks, &row.ranks)
             && matches_any(&self.fleets, &row.fleets)
             && matches_any(&self.crew_teams, &row.teams)
             && matches_any(&self.attributes, &row.attributes)
             && matches_one(&self.assignments, &row.assignment)
-            && matches_one(&self.assignment_groups, &row.assignment_group)
+            && crate::group_or_mapped_matches(
+                &self.assignment_groups,
+                &row.assignment_group,
+                &row.assignment,
+                group_map,
+            )
     }
 }
 
@@ -106,6 +111,17 @@ pub fn mark_green_on_green(
     params: &[Rule7510Param],
     flights: &[Rule7510CrewFlight],
 ) -> Vec<Rule7510Mark> {
+    mark_green_on_green_with_group_map(params, flights, &[])
+}
+
+/// Same as [`mark_green_on_green`], plus the (assignment, assignment_group) many-to-many map
+/// so Assignment Groups also matches a flight row whose specific assignment code is mapped
+/// into the filtered group (see [`crate::group_or_mapped_matches`]).
+pub fn mark_green_on_green_with_group_map(
+    params: &[Rule7510Param],
+    flights: &[Rule7510CrewFlight],
+    group_map: &[(String, String)],
+) -> Vec<Rule7510Mark> {
     let mut out = Vec::new();
 
     for param in params {
@@ -114,10 +130,9 @@ pub fn mark_green_on_green(
         }
 
         let mut by_crew: BTreeMap<String, BTreeMap<i64, Rule7510CrewFlight>> = BTreeMap::new();
-        for row in flights
-            .iter()
-            .filter(|row| row.assignment_group.eq_ignore_ascii_case("FLY") && param.matches(row))
-        {
+        for row in flights.iter().filter(|row| {
+            row.assignment_group.eq_ignore_ascii_case("FLY") && param.matches(row, group_map)
+        }) {
             let crew_id = row.crew_id.trim();
             if crew_id.is_empty() || row.flight_id <= 0 {
                 continue;
@@ -148,7 +163,7 @@ pub fn mark_green_on_green(
             .collect();
 
         let mut counted: BTreeMap<(String, i64), Rule7510CrewFlight> = BTreeMap::new();
-        for row in flights.iter().filter(|row| param.matches(row)) {
+        for row in flights.iter().filter(|row| param.matches(row, group_map)) {
             let crew_id = row.crew_id.trim();
             if crew_id.is_empty() || row.flight_id <= 0 {
                 continue;
@@ -204,10 +219,26 @@ pub fn check_green_on_green(
     checked_start_utc: i64,
     checked_end_utc: i64,
 ) -> Vec<Rule7510Violation> {
+    check_green_on_green_with_group_map(params, flights, checked_start_utc, checked_end_utc, &[])
+}
+
+/// Same as [`check_green_on_green`], plus the (assignment, assignment_group) many-to-many
+/// map — see [`mark_green_on_green_with_group_map`].
+pub fn check_green_on_green_with_group_map(
+    params: &[Rule7510Param],
+    flights: &[Rule7510CrewFlight],
+    checked_start_utc: i64,
+    checked_end_utc: i64,
+    group_map: &[(String, String)],
+) -> Vec<Rule7510Violation> {
     let mut out = Vec::new();
 
     for param in params {
-        let marks = mark_green_on_green(std::slice::from_ref(param), flights);
+        let marks = mark_green_on_green_with_group_map(
+            std::slice::from_ref(param),
+            flights,
+            group_map,
+        );
         let mut marked_by_flight: BTreeMap<i64, Vec<Rule7510CrewFlight>> = BTreeMap::new();
         for mark in marks {
             marked_by_flight

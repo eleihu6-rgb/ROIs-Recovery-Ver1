@@ -17,7 +17,8 @@ pub mod rule8072;
 pub mod rules;
 pub use engine::{Engine, EngineParams};
 pub use rule7510::{
-    check_green_on_green, mark_green_on_green, split_7510_list, Rule7510CrewFlight, Rule7510Mark,
+    check_green_on_green, check_green_on_green_with_group_map, mark_green_on_green,
+    mark_green_on_green_with_group_map, split_7510_list, Rule7510CrewFlight, Rule7510Mark,
     Rule7510Param, Rule7510Violation,
 };
 pub use rule8002::{
@@ -26,12 +27,13 @@ pub use rule8002::{
     CumViolation, DayMetrics, QualEntry, MANDAY_METRICS,
 };
 pub use rule8071::{
-    check_roster_properties_row, RosterPropertyActivity, Rule8071, Rule8071Mode, Rule8071Unit,
+    check_roster_properties_row, check_roster_properties_row_with_group_map,
+    derive_pairing_countries, RosterPropertyActivity, Rule8071, Rule8071Mode, Rule8071Unit,
     Rule8071Violation,
 };
 pub use rule8072::{
-    check_min_qual_by_fleet_rank, Rule8072, Rule8072Crew, Rule8072Evaluation, Rule8072Segment,
-    Rule8072Violation,
+    check_min_qual_by_fleet_rank, check_min_qual_by_fleet_rank_with_group_map, Rule8072,
+    Rule8072Crew, Rule8072Evaluation, Rule8072Segment, Rule8072Violation,
 };
 pub use rules::rule7509::{
     check_avoid_co_pairing, Rule7509Member, Rule7509Param, Rule7509Violation,
@@ -244,6 +246,34 @@ pub fn accumulate_daily<I: IntoIterator<Item = (i64, f64)>>(rows: I) -> BTreeMap
     daily
 }
 
+/// True when an "Assignment Group(s)" param filter accepts a duty, where a duty can satisfy
+/// a group two ways: (1) its stored `assignment_group` column directly matches a filter value,
+/// or (2) `group_map` (Data > Assignment > Assignment Group Map, many-to-many) maps the duty's
+/// specific `assignment` code to a group that matches a filter value. The `assignment_group`
+/// column only records an assignment's *primary* group (e.g. RES's primary group is GRD), so a
+/// param row scoped to a secondary group (e.g. Group=RES) must still match via the map — this
+/// mirrors `rule7305::assignment_group_matches`, generalized for reuse by every other rule whose
+/// params carry an Assignment Group filter (8056, 8071, 8072, 7510, 1001).
+pub fn group_or_mapped_matches(
+    filters: &[String],
+    assignment_group: &str,
+    assignment: &str,
+    group_map: &[(String, String)],
+) -> bool {
+    if filters.is_empty() || filters.iter().any(|f| f.trim() == "*") {
+        return true;
+    }
+    if filters
+        .iter()
+        .any(|f| f.eq_ignore_ascii_case(assignment_group))
+    {
+        return true;
+    }
+    group_map.iter().any(|(a, g)| {
+        a.eq_ignore_ascii_case(assignment) && filters.iter().any(|f| f.eq_ignore_ascii_case(g))
+    })
+}
+
 // ===========================================================================
 // Rule 8056 — ROSTER SPACING (second rule ported from C++)
 //
@@ -363,6 +393,7 @@ fn rule8056_location_matches(expected: Option<bool>, duty: &Rule8056Duty) -> boo
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn rule8056_matches_side(
     duty: &Rule8056Duty,
     attributes: &[String],
@@ -374,10 +405,11 @@ fn rule8056_matches_side(
     roles: &[String],
     requested: Option<bool>,
     location_equal_base: Option<bool>,
+    group_map: &[(String, String)],
 ) -> bool {
     rule8056_filter_matches(attributes, &duty.attribute)
         && rule8056_filter_matches(labels, &duty.label)
-        && rule8056_filter_matches(groups, &duty.assignment_group)
+        && group_or_mapped_matches(groups, &duty.assignment_group, &duty.assignment, group_map)
         && rule8056_filter_matches(assignments, &duty.assignment)
         && rule8056_filter_matches(qualifiers, &duty.qualifier)
         && rule8056_filter_matches(airports, &duty.airport)
@@ -397,17 +429,22 @@ pub fn check_roster_spacing_full(
     rule: &Rule8056Rule,
     crew_offset_min: i64,
 ) -> Vec<SpacingViolation> {
-    check_roster_spacing_full_with_context(crew_id, duties, rule, crew_offset_min, None)
+    check_roster_spacing_full_with_context(crew_id, duties, rule, crew_offset_min, None, &[])
         .unwrap_or_default()
 }
 
 /// Full 8056 spacing check with the local-night definition required by `Unit=LN`.
+///
+/// `group_map` is the (assignment, assignment_group) many-to-many map (Data > Assignment >
+/// Assignment Group Map) — pass `&[]` when the caller has no such data (Group A/B filters then
+/// only match a duty's literal `assignment_group` column, same as before this was added).
 pub fn check_roster_spacing_full_with_context(
     crew_id: &str,
     duties: &[Rule8056Duty],
     rule: &Rule8056Rule,
     crew_offset_min: i64,
     local_night: Option<LocalNightDef>,
+    group_map: &[(String, String)],
 ) -> Result<Vec<SpacingViolation>, String> {
     let mut sorted: Vec<&Rule8056Duty> = duties.iter().collect();
     sorted.sort_by_key(|duty| (duty.start_utc, duty.end_utc));
@@ -425,6 +462,7 @@ pub fn check_roster_spacing_full_with_context(
             &rule.roles_a,
             rule.is_requested_a,
             rule.location_equal_base_a,
+            group_map,
         );
         for next in sorted.iter().skip(ai + 1) {
             // C++ naming is counterintuitive: when "Utilize Post Duty Rest"
@@ -486,6 +524,7 @@ pub fn check_roster_spacing_full_with_context(
                 &rule.roles_b,
                 rule.is_requested_b,
                 rule.location_equal_base_b,
+                group_map,
             );
             let forward = current_matches_a && next_matches_b;
             let reverse = !rule.directional
@@ -500,6 +539,7 @@ pub fn check_roster_spacing_full_with_context(
                     &rule.roles_b,
                     rule.is_requested_b,
                     rule.location_equal_base_b,
+                    group_map,
                 )
                 && rule8056_matches_side(
                     next,
@@ -512,6 +552,7 @@ pub fn check_roster_spacing_full_with_context(
                     &rule.roles_a,
                     rule.is_requested_a,
                     rule.location_equal_base_a,
+                    group_map,
                 );
             if !forward && !reverse {
                 continue;
@@ -3916,11 +3957,21 @@ fn rule_filters_match(
     before: &AssignmentOverlapRoster,
     after: &AssignmentOverlapRoster,
     rule: &AssignmentOverlapRule,
+    group_map: &[(String, String)],
 ) -> bool {
-    assignment_filter_matches(&rule.group_before, &before.assignment_group)
-        && assignment_filter_matches(&rule.assignment_before, &before.assignment)
+    group_or_mapped_matches(
+        &rule.group_before,
+        &before.assignment_group,
+        &before.assignment,
+        group_map,
+    ) && assignment_filter_matches(&rule.assignment_before, &before.assignment)
         && assignment_filter_matches(&rule.type_before, &before.assignment_type)
-        && assignment_filter_matches(&rule.group_after, &after.assignment_group)
+        && group_or_mapped_matches(
+            &rule.group_after,
+            &after.assignment_group,
+            &after.assignment,
+            group_map,
+        )
         && assignment_filter_matches(&rule.assignment_after, &after.assignment)
         && assignment_filter_matches(&rule.type_after, &after.assignment_type)
 }
@@ -3931,8 +3982,9 @@ fn rule_window_intersects_after_duty(
     before: &AssignmentOverlapRoster,
     after: &AssignmentOverlapRoster,
     rule: &AssignmentOverlapRule,
+    group_map: &[(String, String)],
 ) -> Option<(i64, i64)> {
-    if !rule_filters_match(before, after, rule) {
+    if !rule_filters_match(before, after, rule, group_map) {
         return None;
     }
     let before_end = if rule.rest_before {
@@ -4001,6 +4053,20 @@ pub fn check_assignment_overlap(
     rules: &[AssignmentOverlapRule],
     do_start_grace: DoStartGrace1001,
 ) -> Vec<AssignmentOverlapViolation> {
+    check_assignment_overlap_with_group_map(crew_id, rosters, rules, do_start_grace, &[])
+}
+
+/// Same as [`check_assignment_overlap`], plus the (assignment, assignment_group) many-to-many
+/// map so Before/After Group filters also match a roster whose specific assignment code is
+/// mapped into the filtered group (its `assignment_group` column only records the *primary*
+/// group — see [`group_or_mapped_matches`]). Pass `&[]` when the caller has no map data.
+pub fn check_assignment_overlap_with_group_map(
+    crew_id: &str,
+    rosters: &[AssignmentOverlapRoster],
+    rules: &[AssignmentOverlapRule],
+    do_start_grace: DoStartGrace1001,
+    group_map: &[(String, String)],
+) -> Vec<AssignmentOverlapViolation> {
     let mut sorted: Vec<&AssignmentOverlapRoster> = rosters.iter().collect();
     sorted.sort_by_key(|r| (r.start_utc, r.end_duty_utc, r.id));
 
@@ -4031,11 +4097,11 @@ pub fn check_assignment_overlap(
             } else {
                 let matching: Vec<&AssignmentOverlapRule> = rules
                     .iter()
-                    .filter(|rule| rule_filters_match(before, after, rule))
+                    .filter(|rule| rule_filters_match(before, after, rule, group_map))
                     .collect();
                 matching.is_empty()
                     || matching.iter().any(|rule| {
-                        rule_window_intersects_after_duty(before, after, rule).is_some()
+                        rule_window_intersects_after_duty(before, after, rule, group_map).is_some()
                     })
             };
             if prohibited {

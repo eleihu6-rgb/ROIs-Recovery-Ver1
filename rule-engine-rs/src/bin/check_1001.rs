@@ -1,11 +1,14 @@
 //! Live check for rule 1001 (ASSIGNMENT OVERLAP).
 //!
-//! Reads two row types on stdin:
+//! Reads three row types on stdin:
 //!   R <TAB> group_before <TAB> assignment_before <TAB> rest_before <TAB> type_before
 //!     <TAB> group_after <TAB> assignment_after <TAB> type_after
 //!   A <TAB> crew_id <TAB> id <TAB> pairing_id <TAB> start_secs <TAB> end_duty_secs
 //!     <TAB> end_including_rest_secs <TAB> assignment_group <TAB> assignment <TAB> assignment_type
 //!     [<TAB> offset_min]
+//!   G <TAB> assignment <TAB> assignment_group (Assignment Group Map row; a Before/After
+//!     Group filter also matches a roster whose `assignment` code is mapped to that group,
+//!     not just via its literal assignment_group column)
 //!
 //! Each R row is a prohibition (Before/After filters + Rest Before).
 //! Rest Before=Y → Before end = duty_end; N → rest_end.
@@ -24,7 +27,8 @@ use std::collections::BTreeMap;
 use std::io::{self, Read};
 
 use rois_rule_engine::rules::rule1001::{
-    check_assignment_overlap, AssignmentOverlapRoster, AssignmentOverlapRule, DoStartGrace1001,
+    check_assignment_overlap_with_group_map, AssignmentOverlapRoster, AssignmentOverlapRule,
+    DoStartGrace1001,
 };
 
 fn split_filter(raw: &str) -> Vec<String> {
@@ -79,6 +83,7 @@ fn main() {
     let mut rules: Vec<AssignmentOverlapRule> = Vec::new();
     let mut by_crew: BTreeMap<String, Vec<AssignmentOverlapRoster>> = BTreeMap::new();
     let mut pairing_by_roster: BTreeMap<(String, i64), i64> = BTreeMap::new();
+    let mut group_map: Vec<(String, String)> = Vec::new();
     let mut skipped = 0usize;
     let mut roster_rows = 0usize;
 
@@ -133,6 +138,9 @@ fn main() {
                     });
                 roster_rows += 1;
             }
+            Some("G") if cols.len() >= 3 => {
+                group_map.push((cols[1].trim().to_string(), cols[2].trim().to_string()));
+            }
             _ => skipped += 1,
         }
     }
@@ -140,7 +148,13 @@ fn main() {
     let t0 = std::time::Instant::now();
     let mut violations = Vec::new();
     for (crew, rosters) in &by_crew {
-        for v in check_assignment_overlap(crew, rosters, &rules, do_start_grace.clone()) {
+        for v in check_assignment_overlap_with_group_map(
+            crew,
+            rosters,
+            &rules,
+            do_start_grace.clone(),
+            &group_map,
+        ) {
             let before_pairing = pairing_by_roster
                 .get(&(crew.clone(), v.before_id))
                 .copied()

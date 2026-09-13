@@ -19,14 +19,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use rois_rule_engine::rule8071::check_roster_properties_row_with_country_sets;
+use rois_rule_engine::rule8071::check_roster_properties_row_with_group_map;
 use rois_rule_engine::{
     acc_duty_refs, check_min_space_wocl_app, check_roster_spacing_app,
     check_roster_spacing_full_with_context, check_roster_spacing_grouped_app, format_hhmm,
     rp_ordinal_bounds_to_local_utc,
     rules::{
         rule1001::{
-            check_assignment_overlap, AssignmentOverlapRoster, AssignmentOverlapRule,
+            check_assignment_overlap_with_group_map, AssignmentOverlapRoster, AssignmentOverlapRule,
             DoStartGrace1001,
         },
         rule7305::{check_rule7305_row, Rule7305, Rule7305CrewContext, Rule7305Duty},
@@ -43,7 +43,10 @@ use rois_rule_engine::{
         rule7506::{check_single_daily_checkin, CheckinRoster},
         rule7508::{check_rule7508_structured, Rule7508CrewContext, Rule7508Row, WorkPeriod7508},
         rule7509::{check_avoid_co_pairing, Rule7509Member, Rule7509Param},
-        rule7510::{check_green_on_green, Rule7510CrewFlight, Rule7510Param, Rule7510Violation},
+        rule7510::{
+            check_green_on_green_with_group_map, Rule7510CrewFlight, Rule7510Param,
+            Rule7510Violation,
+        },
         rule8002::{
             check_max_cum_block_app, check_max_cumulative_row, crew_qualifies_8002,
             merge_daily_with_candidate, qual_entry_from_ord, team_qual_entry, CumRule8002, CumType,
@@ -52,7 +55,7 @@ use rois_rule_engine::{
         rule8004::{check_base_competency_app, BaseActivity, BaseQual, BaseRoster},
         rule8030::{check_pilot_age_app, AgeFlight, FlightCrew},
         rule8071::{RosterPropertyActivity, Rule8071},
-        rule8072::{check_min_qual_by_fleet_rank, Rule8072, Rule8072Crew, Rule8072Segment},
+        rule8072::{check_min_qual_by_fleet_rank_with_group_map, Rule8072, Rule8072Crew, Rule8072Segment},
     },
     sdfd_rest_acc_offsets, AccDuty, AccDutyRef, Application, RosterDuty, Rule8056Duty,
     Rule8056Rule, WoclSpacingDuty,
@@ -1330,7 +1333,7 @@ impl Engine {
             return;
         };
         for rule in &self.roster_property_rules {
-            for violation in check_roster_properties_row_with_country_sets(
+            for violation in check_roster_properties_row_with_group_map(
                 crew_id,
                 rule,
                 &activities,
@@ -1339,6 +1342,7 @@ impl Engine {
                 &self.roster_periods,
                 self.application,
                 Some(&self.pairing_country_sets),
+                &self.rule7305_assignment_groups,
             ) {
                 out.push(format!(
                     "8071|period={}|unit={}|actual={}|max={}|min={}|mode={}|over={}",
@@ -1523,7 +1527,12 @@ impl Engine {
     fn format_8072_violations(&self, segments: &[Rule8072Segment]) -> Vec<String> {
         let mut out = Vec::new();
         for rule in &self.min_qual_rules {
-            for violation in check_min_qual_by_fleet_rank(rule, segments, self.application) {
+            for violation in check_min_qual_by_fleet_rank_with_group_map(
+                rule,
+                segments,
+                self.application,
+                &self.rule7305_assignment_groups,
+            ) {
                 out.push(format!(
                     "8072|segment={}|qualified={}|planned={}|filled={}|min={}|max={}|over={}",
                     violation.segment_id,
@@ -1719,7 +1728,13 @@ impl Engine {
                 });
             }
         }
-        for v in check_assignment_overlap(crew_id, &rosters, &rules, self.do_start_grace.clone()) {
+        for v in check_assignment_overlap_with_group_map(
+            crew_id,
+            &rosters,
+            &rules,
+            self.do_start_grace.clone(),
+            &self.rule7305_assignment_groups,
+        ) {
             if self.application.is_optimizer() {
                 let candidate_involved = candidate
                     .iter()
@@ -2340,6 +2355,7 @@ impl Engine {
                     rule,
                     self.crew_offset(crew_idx),
                     self.local_night,
+                    &self.rule7305_assignment_groups,
                 )
                 .map_err(PyValueError::new_err)?;
                 for violation in violations {
@@ -5633,11 +5649,12 @@ impl Engine {
             .or(self.checked_window)
             .unwrap_or((0, 0));
         let candidate_crew_id = self.crew_id_7510(crew_idx);
-        let violations = check_green_on_green(
+        let violations = check_green_on_green_with_group_map(
             &self.rule7510_params,
             &self.rows_7510_for_pairing_state(&pairing_state),
             checked_window.0,
             checked_window.1,
+            &self.rule7305_assignment_groups,
         );
 
         Ok(violations
@@ -5741,11 +5758,12 @@ impl Engine {
             .scenario_window
             .or(self.checked_window)
             .unwrap_or((0, 0));
-        let violations = check_green_on_green(
+        let violations = check_green_on_green_with_group_map(
             &self.rule7510_params,
             &self.rows_7510_for_lines(&normalized),
             checked_window.0,
             checked_window.1,
+            &self.rule7305_assignment_groups,
         );
         Ok(violations
             .iter()

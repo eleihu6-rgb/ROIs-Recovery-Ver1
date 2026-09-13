@@ -8,6 +8,9 @@
 //!   F <tab> crew_id <tab> flight_id <tab> pairing_id <tab> duty_seq <tab> seg_seq
 //!     <tab> start_utc <tab> end_utc <tab> bases <tab> ranks <tab> fleets
 //!     <tab> teams <tab> attributes <tab> assignment <tab> assignment_group
+//!   G <tab> assignment <tab> assignment_group (Assignment Group Map row; an "Assignment
+//!     Groups" filter also matches a flight row whose `assignment` code is mapped to that
+//!     group, not just via its literal assignment_group column)
 //!
 //! Output with `--emit-tsv`:
 //!   V <tab> row_index <tab> crew_id <tab> pairing_id <tab> duty_seq <tab>
@@ -15,7 +18,9 @@
 
 use std::io::{self, Read};
 
-use rois_rule_engine::{check_green_on_green, split_7510_list, Rule7510CrewFlight, Rule7510Param};
+use rois_rule_engine::{
+    check_green_on_green_with_group_map, split_7510_list, Rule7510CrewFlight, Rule7510Param,
+};
 
 fn usage() -> ! {
     eprintln!("usage: check-7510 --emit-tsv");
@@ -47,6 +52,7 @@ fn main() {
     let mut checked_end_utc = 0i64;
     let mut params = Vec::new();
     let mut flights = Vec::new();
+    let mut group_map: Vec<(String, String)> = Vec::new();
 
     for (line_offset, raw_line) in input.lines().enumerate() {
         let line_no = line_offset + 1;
@@ -115,14 +121,23 @@ fn main() {
                     assignment_group: cols[14].trim().to_string(),
                 });
             }
-            Some("C") | Some("R") | Some("F") => {
+            Some("G") if cols.len() >= 3 => {
+                group_map.push((cols[1].trim().to_string(), cols[2].trim().to_string()));
+            }
+            Some("C") | Some("R") | Some("F") | Some("G") => {
                 eprintln!("check-7510: line {line_no}: malformed row; skipped")
             }
             _ => eprintln!("check-7510: line {line_no}: unknown row type; skipped"),
         }
     }
 
-    for violation in check_green_on_green(&params, &flights, checked_start_utc, checked_end_utc) {
+    for violation in check_green_on_green_with_group_map(
+        &params,
+        &flights,
+        checked_start_utc,
+        checked_end_utc,
+        &group_map,
+    ) {
         println!(
             "V\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
             violation.row_index,

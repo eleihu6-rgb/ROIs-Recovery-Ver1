@@ -1,6 +1,6 @@
 use rois_rule_engine::{
-    check_assignment_overlap, parse_utc_seconds, AssignmentOverlapRoster, AssignmentOverlapRule,
-    DoStartGrace1001,
+    check_assignment_overlap, check_assignment_overlap_with_group_map, parse_utc_seconds,
+    AssignmentOverlapRoster, AssignmentOverlapRule, DoStartGrace1001,
 };
 
 const YEG: i64 = -360;
@@ -445,5 +445,36 @@ fn dhd_do_2015_grace_0100_still_overlap() {
         check_assignment_overlap("C1", &rosters, &rules, do_grace(60)).len(),
         1,
         "01:00 local release at DO Start still overlaps DO for DHD"
+    );
+}
+
+// A "Group Before=RES" exemption rule cannot recognize a RES roster whose
+// assignment_group column is "GRD" (RES's primary group; RES only reaches group RES
+// via the Assignment Group Map) — so without the map the pair falls through to the
+// fail-closed default and gets wrongly flagged, even though the rule's own Rest-Before
+// window would have exempted it. With the map wired through, the rule matches, its
+// window does not reach the After duty, and the overlap is correctly allowed.
+#[test]
+fn group_before_res_exemption_needs_assignment_group_map_to_match_grd_res_roster() {
+    let rosters = [
+        roster(1, 0, 10, 5, "GRD", "RES", "O"),
+        roster(2, 8, 20, 20, "FLY", "FLT", "W"),
+    ];
+    // rest_before=false → Before end = end_including_rest_utc (5), which does not reach
+    // After's start (8): this rule, once it matches, exempts the overlap.
+    let rules = [rule(&["RES"], &["*"], false, &["*"], &["*"], &["*"], &["*"])];
+
+    assert_eq!(
+        check_assignment_overlap("C1", &rosters, &rules, no_grace()).len(),
+        1,
+        "without the map, GRD/RES never matches Group Before=RES, so fail-closed fires"
+    );
+
+    let group_map = [("RES".to_string(), "GRD".to_string()), ("RES".to_string(), "RES".to_string())];
+    assert!(
+        check_assignment_overlap_with_group_map("C1", &rosters, &rules, no_grace(), &group_map)
+            .is_empty(),
+        "with the map, assignment=RES resolves to group RES too, the rule matches, and its \
+         Rest-Before window (ending before After starts) exempts the overlap"
     );
 }

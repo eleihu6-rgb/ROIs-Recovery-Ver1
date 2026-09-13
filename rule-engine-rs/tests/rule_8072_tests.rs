@@ -103,11 +103,14 @@ fn required_qualification_supports_or_and_plus_expressions() {
     ]);
     let out = check_min_qual_by_fleet_rank(&rule, &[seg], Application::Editor);
     assert!(out.is_empty(), "two qualified crew is within max 9");
-    let eval = rule.count_qualified(&segment(vec![
-        crew("C1", "CA", &["A", "B"], "CR"),
-        crew("C2", "FO", &["C"], "CR"),
-        crew("C3", "FO", &["A"], "CR"),
-    ]));
+    let eval = rule.count_qualified(
+        &segment(vec![
+            crew("C1", "CA", &["A", "B"], "CR"),
+            crew("C2", "FO", &["C"], "CR"),
+            crew("C3", "FO", &["A"], "CR"),
+        ]),
+        &[],
+    );
     assert_eq!(eval.qualified_count, 2);
 }
 
@@ -219,4 +222,44 @@ fn check_8072_cli_accepts_core_segment_tsv_shape() {
         ),
         "stdout={stdout:?}"
     );
+}
+
+// "Flight Assignment Groups=RES" already matches a literal code "RES" via the pre-existing
+// group-or-code heuristic (`matches_list(groups, assignment)`), but NOT an assignment whose
+// code differs from the group name and only reaches it via the Assignment Group Map (e.g.
+// PRAM's group is RES, not GRD, its primary assignment_group column value). This proves the
+// map closes that gap without disturbing the existing literal-code path.
+#[test]
+fn flight_assignment_groups_res_needs_map_for_pram_code_distinct_from_group_name() {
+    use rois_rule_engine::check_min_qual_by_fleet_rank_with_group_map;
+
+    let rule = Rule8072::from_cells(&[
+        "*", "RES", "*", "*", "*", "*", "*", "*", "*", "*", "*", "0", "0",
+    ])
+    .expect("valid 8072 row");
+    let mut seg = segment(vec![crew("C1", "CA", &[], "CR")]);
+    seg.assignment_group = "GRD".to_string();
+    seg.assignment = "PRAM".to_string();
+    seg.crews[0].assignment_group = "GRD".to_string();
+    seg.crews[0].assignment = "PRAM".to_string();
+
+    let without_map =
+        check_min_qual_by_fleet_rank_with_group_map(&rule, &[seg.clone()], Application::Editor, &[]);
+    assert!(
+        without_map.is_empty(),
+        "without the map, GRD/PRAM never matches Flight Assignment Groups=RES, so the segment is skipped entirely"
+    );
+
+    let group_map = vec![("PRAM".to_string(), "GRD".to_string()), ("PRAM".to_string(), "RES".to_string())];
+    let with_map = check_min_qual_by_fleet_rank_with_group_map(
+        &rule,
+        &[seg],
+        Application::Editor,
+        &group_map,
+    );
+    assert_eq!(
+        with_map.len(), 1,
+        "with the map, assignment=PRAM resolves to group RES too, so the segment is evaluated and 1 qualified crew exceeds Max Limits=0"
+    );
+    assert_eq!(with_map[0].qualified_count, 1);
 }

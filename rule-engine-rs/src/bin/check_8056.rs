@@ -5,6 +5,9 @@
 //!     D <TAB> one duty with full matching context
 //!     Q <TAB> one crew B/R/F effective-dated qualification row
 //!     T <TAB> one crew team row
+//!     G <TAB> assignment <TAB> assignment_group (Assignment Group Map row; a duty's
+//!             Assignment Group A/B match also succeeds when its `assignment` code is
+//!             mapped to the filtered group here, not just via its literal assignment_group)
 //!
 //! Usage:
 //!     check-8056 [--top 15] [--emit-tsv]
@@ -124,12 +127,14 @@ type ParsedInput = (
     BTreeMap<String, Vec<ParsedDuty>>,
     BTreeMap<String, CrewContext>,
     usize,
+    Vec<(String, String)>,
 );
 
 fn parse_structured(input: &str) -> Result<ParsedInput, String> {
     let mut rules = Vec::new();
     let mut duties: BTreeMap<String, Vec<ParsedDuty>> = BTreeMap::new();
     let mut contexts: BTreeMap<String, CrewContext> = BTreeMap::new();
+    let mut group_map: Vec<(String, String)> = Vec::new();
     let mut skipped = 0usize;
 
     for raw in input.lines() {
@@ -236,7 +241,10 @@ fn parse_structured(input: &str) -> Result<ParsedInput, String> {
                 .or_default()
                 .teams
                 .push(cols[2].to_string()),
-            Some("R" | "D" | "Q" | "T") => skipped += 1,
+            Some("G") if cols.len() >= 3 => {
+                group_map.push((cols[1].trim().to_string(), cols[2].trim().to_string()));
+            }
+            Some("R" | "D" | "Q" | "T" | "G") => skipped += 1,
             _ => {
                 return Err(
                     "check-8056 now requires structured R/D/Q/T input; legacy TSV is unsupported"
@@ -246,7 +254,7 @@ fn parse_structured(input: &str) -> Result<ParsedInput, String> {
         }
     }
 
-    Ok((rules, duties, contexts, skipped))
+    Ok((rules, duties, contexts, skipped, group_map))
 }
 
 fn main() {
@@ -258,7 +266,7 @@ fn main() {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input).expect("read stdin");
 
-    let (rules, by_crew, contexts, skipped) = match parse_structured(&input) {
+    let (rules, by_crew, contexts, skipped, group_map) = match parse_structured(&input) {
         Ok(parsed) => parsed,
         Err(message) => {
             eprintln!("{message}");
@@ -288,6 +296,7 @@ fn main() {
                 rule,
                 offset_min,
                 None,
+                &group_map,
             ) {
                 Ok(rows) => violations.extend(rows.into_iter().map(|violation| TaggedViolation {
                     rule_index,

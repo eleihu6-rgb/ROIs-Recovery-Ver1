@@ -663,3 +663,65 @@ fn wildcard_rule_keeps_single_finding_anchored_to_max_pairing_id() {
     assert_eq!(out[0].anchor_pairing_id, 136_829);
     assert_eq!(out[0].actual_count, 2.0);
 }
+
+// "Assignment Groups=RES" cannot recognize an activity whose assignment_group column is
+// "GRD" (RES's primary group; RES only reaches group RES via the Assignment Group Map,
+// same as 8056/1001). Without the map, a Max Times=0 row against two RES ground duties
+// counts 0 and never fires; with the map wired through, it counts both and fires.
+#[test]
+fn assignment_groups_res_needs_assignment_group_map_to_match_grd_res_activity() {
+    use rois_rule_engine::{check_roster_properties_row_with_group_map, derive_pairing_countries};
+
+    let mut rule = Rule8071::from_cells(&[
+        "*", "*", "*", "*", "*", "*", "*", "RES", "*", "*", "*", "*", "1", "CM", "0", "0", "*",
+    ])
+    .expect("valid 8071 row");
+    rule.assignments = vec!["*".to_string()];
+
+    let res_activity = |pairing_id: i64, start_utc: i64| RosterPropertyActivity {
+        crew_id: "12928".to_string(),
+        pairing_id,
+        duty_seq: 1,
+        segment_id: 1,
+        start_utc,
+        end_utc: start_utc + 3600,
+        bases: vec!["*".to_string()],
+        ranks: vec!["*".to_string()],
+        fleets: vec!["*".to_string()],
+        teams: vec!["*".to_string()],
+        labels: vec!["*".to_string()],
+        attributes: vec!["*".to_string()],
+        override_duty_attributes: vec!["*".to_string()],
+        assignment_group: "GRD".to_string(),
+        assignment: "RES".to_string(),
+        qualifier: "*".to_string(),
+        flight_number: "".to_string(),
+        destination: "".to_string(),
+        position: "".to_string(),
+        destination_country: String::new(),
+    };
+    let rows = vec![res_activity(0, 1_780_560_000), res_activity(0, 1_780_600_000)];
+    let pairing_countries = derive_pairing_countries(&rows);
+
+    let without_map = check_roster_properties_row_with_group_map(
+        "12928", &rule, &rows, 1_779_811_200, 1_782_403_199, &[], Application::Editor,
+        Some(&pairing_countries), &[],
+    );
+    assert!(
+        without_map.is_empty(),
+        "without the map, GRD/RES never matches Assignment Groups=RES, so nothing is counted"
+    );
+
+    let group_map = vec![
+        ("RES".to_string(), "GRD".to_string()),
+        ("RES".to_string(), "RES".to_string()),
+    ];
+    let with_map = check_roster_properties_row_with_group_map(
+        "12928", &rule, &rows, 1_779_811_200, 1_782_403_199, &[], Application::Editor,
+        Some(&pairing_countries), &group_map,
+    );
+    assert_eq!(
+        with_map.len(), 1,
+        "with the map, assignment=RES resolves to group RES too, so both RES duties count and Max Times=0 fires"
+    );
+}

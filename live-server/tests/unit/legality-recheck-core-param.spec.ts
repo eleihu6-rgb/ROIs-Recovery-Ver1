@@ -750,6 +750,51 @@ describe('param_json header case-insensitive lookup', () => {
       )
       expect(lastBinInput()).toContain('R\tFLY\t*\tY')
     })
+
+    // Group Before/After filters must also match a roster whose assignment is only mapped
+    // into that group via the Assignment Group Map (e.g. RES's secondary group RES, not
+    // its primary assignment_group column value GRD) — same map check-1001's Rust matcher
+    // now applies. This proves the TS pipeline actually forwards that map as 'G' lines.
+    it('forwards source.assignmentGroups() as G lines for check-1001', async () => {
+      fakeBin('')
+      const source = {
+        assignmentOverlapRosters: vi.fn().mockResolvedValue([
+          {
+            crew_id: 'crew1', id: 1, pairing_id: 0,
+            start_secs: 900_000, end_duty_secs: 1_000_000, end_rest_secs: 1_001_800,
+            assignment_group: 'GRD', assignment: 'RES', assignment_type: 'O',
+          },
+          {
+            crew_id: 'crew1', id: 2, pairing_id: 9002,
+            start_secs: 1_000_500, end_duty_secs: 1_010_000, end_rest_secs: 1_010_000,
+            assignment_group: 'FLY', assignment: 'FLY', assignment_type: 'W',
+          },
+        ]),
+        assignmentGroups: vi.fn().mockResolvedValue([
+          { assignment: 'RES', assignment_group: 'GRD' },
+          { assignment: 'RES', assignment_group: 'RES' },
+        ]),
+      }
+      const ctx = {
+        log: vi.fn(),
+        instancesOf: (fn: number) =>
+          fn === 1001
+            ? [
+                {
+                  instance: '001',
+                  header: [
+                    'Assignment Group Before', 'Assignment Before', 'Assignment Rest Before',
+                    'Assignment Type Before', 'Assignment Group After', 'Assignment After', 'Assignment Type After',
+                  ],
+                  rows: [['RES', '*', 'N', '*', '*', '*', '*']],
+                },
+              ]
+            : [],
+      }
+      await rule1001(source as never, ctx as never)
+      expect(source.assignmentGroups).toHaveBeenCalled()
+      expect(lastBinInput()).toContain('G\tRES\tRES')
+    })
   })
 
   describe('rule8002', () => {

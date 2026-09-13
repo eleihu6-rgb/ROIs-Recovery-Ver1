@@ -1,5 +1,6 @@
 use rois_rule_engine::{
-    check_green_on_green, mark_green_on_green, Rule7510CrewFlight, Rule7510Param,
+    check_green_on_green, check_green_on_green_with_group_map, mark_green_on_green,
+    Rule7510CrewFlight, Rule7510Param,
 };
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -214,4 +215,41 @@ fn check_7510_cli_emits_one_violation_per_marked_crew() {
     let stdout = String::from_utf8(output.stdout).expect("utf8 stdout");
     assert!(stdout.contains("V\t0\tC1\t1001\t1\t101\t1780000000\t1780003600\t2\t1\t1"));
     assert!(stdout.contains("V\t0\tC2\t2001\t1\t101\t1780000000\t1780003600\t2\t1\t1"));
+}
+
+// "Assignment Groups=FLY2" cannot recognize a row whose specific assignment code (FLYX)
+// differs from its literal assignment_group column (FLY, which also satisfies the
+// hardcoded "must be group FLY" pre-filter in mark_green_on_green) — it only reaches
+// group FLY2 via the Assignment Group Map. Without the map, the row is excluded by the
+// param filter; with it, the row counts.
+#[test]
+fn assignment_groups_filter_matches_via_assignment_group_map() {
+    let mut rule = param(1, 0, 1);
+    rule.assignment_groups = vec!["FLY2".to_string()];
+    let mut flights = vec![
+        flight("C1", 101, 1_780_000_000, "TEAM1"),
+        flight("C2", 101, 1_780_000_000, "TEAM1"),
+    ];
+    for f in &mut flights {
+        f.assignment = "FLYX".to_string();
+    }
+
+    assert!(
+        check_green_on_green(&[rule.clone()], &flights, 1_780_000_000, 1_780_086_400).is_empty(),
+        "without the map, assignment_group=FLY/assignment=FLYX never matches Assignment Groups=FLY2"
+    );
+
+    let group_map = vec![("FLYX".to_string(), "FLY2".to_string())];
+    let violations = check_green_on_green_with_group_map(
+        &[rule],
+        &flights,
+        1_780_000_000,
+        1_780_086_400,
+        &group_map,
+    );
+    assert_eq!(
+        violations.len(), 2,
+        "with the map, assignment=FLYX resolves to group FLY2 too, so both crew on flight 101 count and Max Limits=1 fires for each"
+    );
+    assert!(violations.iter().all(|v| v.flight_id == 101 && v.actual_count == 2));
 }
