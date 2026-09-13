@@ -1,0 +1,62 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+# Absence Request ▸ history icon, EMPTY month (ET J4007).
+#
+# J4007 logs in and files nothing, so the history page must say the month is
+# empty rather than showing an error (the empty-vs-failure distinction the UI
+# gate requires). Only J4002 holds `crew_absence` rows on SIT, so this crew is
+# the honest empty fixture.
+#
+# Run: cd crew-app && maestro test .maestro/et_j4007_absence_history_empty.yaml
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- assertVisible:
+    id: "crew-id"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "J4007"
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: "login-btn"
+    direction: DOWN
+- tapOn:
+    id: "login-btn"
+# The simulator keychain cannot persist an ET session; dismiss the soft notice.
+- tapOn:
+    text: "OK"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- swipe:
+    start: 50%, 84%
+    end: 50%, 30%
+    duration: 400
+- tapOn:
+    id: "qa-absence"
+- assertVisible:
+    id: "page-absence"
+- tapOn:
+    id: "absence-history"
+- assertVisible:
+    id: "page-absence-history"
+# Empty, not failed: the scope line reports zero and the card explains why.
+- assertVisible: "SEP 2026 · 0 REQUESTS"
+- assertVisible: "No requests submitted in Sep 2026."
+- assertNotVisible:
+    id: "absence-history-error"
+- assertNotVisible:
+    id: "absence-history-retry"
+- takeScreenshot: absence-history-Ver1-02-empty
