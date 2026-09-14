@@ -56,3 +56,8 @@ it('Bug 1 — the card title is scoped to THIS duty (ET2681/ET2682), not the who
   // And the proposed FDP renders as 15h30 on screen.
   expect(screen.getByTestId('disc-fdp-proposed')).toHaveTextContent('15h30');
 });
+
+it('keeps flight numbers on one line on narrow cards', () => {
+  const screen = render(<DiscretionCard request={CASE2} palette={PALETTES.emerald} showActions={false} />);
+  expect(screen.getByText('ET2681')).toMatchObject({props: {numberOfLines: 1}});
+});

@@ -74,7 +74,12 @@ function LegRow({leg, palette: p}: {leg: Leg; palette: CarrierPalette}): React.J
   const delayed = leg.delayMin > 0;
   return (
     <View style={s.legRow} testID={`disc-leg-${leg.fltNum}`}>
-      <Text style={[s.legFlt, {color: p.cardInk}]}>{leg.fltNum}</Text>
+      <Text
+        style={[s.legFlt, {color: p.cardInk}]}
+        numberOfLines={1}
+        ellipsizeMode="clip">
+        {leg.fltNum}
+      </Text>
       <Text style={[s.legRoute, {color: p.cardSoft}]}>{leg.depArp} → {leg.arvArp}</Text>
       <View style={s.legTimes}>
         <Text style={[s.legTime, {color: p.cardSoft}]} testID={`disc-leg-sch-${leg.fltNum}`}>
@@ -221,11 +226,11 @@ export function DiscretionCard({
 
 const s = StyleSheet.create({
   card: {borderRadius: 18, padding: 16, marginBottom: 12, gap: 10},
-  rowBetween: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  rowBetween: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between'},
   headLeft: {flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1},
   chip: {width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center'},
-  title: {fontSize: 15, fontWeight: '600', flexShrink: 1},
-  extBadge: {color: '#fff', fontSize: 12, fontWeight: '700', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, overflow: 'hidden'},
+  title: {fontSize: 15, lineHeight: 20, fontWeight: '600', flexShrink: 1},
+  extBadge: {color: '#fff', fontSize: 12, fontWeight: '700', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8, overflow: 'hidden'},
   grid: {flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12, gap: 12},
   gridCol: {flex: 1, gap: 2},
   gridHead: {fontSize: 11, letterSpacing: 0.3, textTransform: 'uppercase'},
@@ -233,7 +238,7 @@ const s = StyleSheet.create({
   legs: {borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12, gap: 8},
   legsHead: {fontSize: 11, letterSpacing: 0.5},
   legRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
-  legFlt: {fontSize: 13, fontWeight: '700', width: 54},
+  legFlt: {fontSize: 13, fontWeight: '700', width: 62, flexShrink: 0},
   legRoute: {fontSize: 12, width: 78},
   legTimes: {flex: 1, alignItems: 'flex-end', gap: 2},
   legTime: {fontSize: 12},
