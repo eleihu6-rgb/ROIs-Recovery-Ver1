@@ -7,7 +7,7 @@ import {
 import { ScenarioNavDropdown } from '@/components/shell/scenario-nav-dropdown'
 import { ServiceStatusPill } from '@/components/shell/service-status-pill'
 import { ThemeSwitcher } from '@/components/common/theme-switcher'
-import { AirlineLogo } from '@/components/common/airline-logo'
+import crewAppIcon from '@/assets/images/logo/altair-crew-app-icon.svg'
 import { useAppVersionStore } from '@/services/app-version-service'
 import { useShellStore } from '@/stores/shell-store'
 import { useAuthStore } from '@/stores/auth-store'
@@ -73,10 +73,11 @@ export const ShellTopNav = () => {
 
         {/* Brand logo */}
         <div className="flex items-center select-none cursor-default border-r border-border pr-3 mr-2 shrink-0">
-          <AirlineLogo
-            schema={user?.schema}
+          <img
+            src={crewAppIcon}
+            alt="ROIs Altair crew app icon"
             height={28}
-            fallback="none"
+            width={28}
             className="shrink-0"
           />
         </div>

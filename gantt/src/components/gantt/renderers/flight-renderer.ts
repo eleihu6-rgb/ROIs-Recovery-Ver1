@@ -131,7 +131,7 @@ const drawFlightBlock = (
   if (Math.min(x, schX) > canvasWidth || Math.max(endX, schEndX) < 0) return
 
   // Delay ghost bar — hatched (diagonal-stripe) outline at the ORIGINAL SCHEDULED
-  // position, drawn behind the solid actual-time puck, labeled "{depTime} sched".
+  // position, drawn behind the solid actual-time puck, labeled "STD {schedTime}".
   if (hasDelayGhost) {
     // Ghost width = delay duration (schX -> actual x), not scheduled flight duration — so
     // the ghost's right edge always touches the solid puck's left edge, even when the delay
@@ -255,7 +255,7 @@ const drawCancelledStripes = (
 
 /**
  * Draw the delay ghost bar at a flight's original scheduled (STD/STA) position — a
- * hatched (diagonal-stripe) gray box with a "{depTime} sched" label, drawn behind the
+ * hatched (diagonal-stripe) gray box with a "STD {schedTime}" label, drawn behind the
  * solid puck once that puck has moved to its actual (ATD/ATA) position. Same styling is
  * reused for the flight's occurrences in the Pairing and Roster panes (Ryan's reference
  * screenshot, 2026-08-28: "same style" across Flight/Pairing/Roster).
@@ -288,7 +288,7 @@ export const drawDelayGhost = (
   ctx.restore()
 
   if (w >= 40) {
-    const label = `${formatTime(schDtUtc, timezone)} sched`
+    const label = `STD ${formatTime(schDtUtc, timezone)}`
     ctx.save()
     ctx.beginPath()
     ctx.rect(x, y, w, h)
@@ -305,11 +305,20 @@ export const drawDelayGhost = (
 const PUCK_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 const PUCK_FONT_MONO = '"JetBrains Mono", "Fira Code", monospace'
 
+/** Minimum horizontal gap (px) kept between adjacent puck columns so text never touches. */
+const PUCK_COL_GAP = 5
+
 /**
- * Draw full three-column puck layout (≥80px).
- * Left: dep_arp (bold) + dep_time
- * Center: flt_num (bold)
- * Right: arv_arp (bold) + arv_time (+1 indicator if cross-day)
+ * Draw full three-column puck layout (≥80px), width-responsive so text never overlaps.
+ *
+ * The center flt_num is the primary identity and is always drawn. The dep/arv columns are
+ * measured against the centered flt_num and degrade gracefully as the puck narrows:
+ *   1. airport (top) + time (bottom) on each side — when both columns clear the flt_num
+ *   2. airports only (single row)                 — when the times would collide
+ *   3. flt_num only                               — when even the airports would collide
+ * Without this measure-first step the three columns were drawn at fixed offsets and piled
+ * on top of each other near the 80px floor (worse with the delay "→" / cross-day "⁺¹"
+ * suffixes) — Ryan: puck info must stay readable and simplify as the puck gets narrow.
  */
 const drawFullPuck = (
   ctx: CanvasRenderingContext2D,
@@ -323,65 +332,97 @@ const drawFullPuck = (
   showActualTimes: boolean,
 ): void => {
   const textColor = isDeadhead ? '#d8b4fe' : '#ffffff'
+  const airportColor = isDeadhead ? '#d8b4fe' : FLIGHT_PUCK_AIRPORT_COLOR
+  const arvTimeColor = isDeadhead ? '#c4b5fd' : FLIGHT_PUCK_TIME_COLOR
+  // Departure time is flagged amber with a "→" suffix once it reflects the ACTUAL (shifted)
+  // time rather than schedule, so it visually pairs with the sched ghost.
+  const depTimeColor = showActualTimes ? DELAY_GHOST_ACTUAL_TIME_COLOR : arvTimeColor
+
   // Puck's own x/width already track actual time when showActualTimes — label with the same
   // pair of timestamps so the printed time matches the position it's drawn at.
   const depDtUtc = showActualTimes ? flight.actDepDtUtc : flight.schDepDtUtc
   const arvDtUtc = showActualTimes ? flight.actArvDtUtc : flight.schArvDtUtc
+
+  const depArp = flight.depArp || ''
+  const arvArp = flight.arvArp || ''
+  const fltNum = flight.fltNum || ''
+  // V4-P04: cached cross-day check (was: new Intl.DateTimeFormat per flight per frame)
+  const isCrossDay = isCrossDayLocal(depDtUtc, arvDtUtc, timezone)
+  const depTime = formatTime(depDtUtc, timezone) + (showActualTimes ? ' →' : '')
+  const arvTime = formatTime(arvDtUtc, timezone) + (isCrossDay ? '⁺¹' : '')
+
+  const AIRPORT_FONT = `bold 9px ${PUCK_FONT_FAMILY}`
+  const TIME_FONT = `9px ${PUCK_FONT_MONO}`
+  const FLT_FONT = `bold 10px ${PUCK_FONT_FAMILY}`
 
   ctx.save()
   ctx.beginPath()
   ctx.rect(x + 2, y + 1, width - 4, height - 2)
   ctx.clip()
 
-  // Column widths
-  const colWidth = Math.max(32, Math.min(48, width * 0.25))
+  // Measure once, then decide the richest layout that fits without collision.
+  ctx.font = AIRPORT_FONT
+  const depArpW = ctx.measureText(depArp).width
+  const arvArpW = ctx.measureText(arvArp).width
+  ctx.font = TIME_FONT
+  const depTimeW = ctx.measureText(depTime).width
+  const arvTimeW = ctx.measureText(arvTime).width
+  ctx.font = FLT_FONT
+  const fltW = ctx.measureText(fltNum).width
+
+  const innerLeft = x + 4
+  const innerRight = x + width - 4
   const centerX = x + width / 2
+  const fltLeftEdge = centerX - fltW / 2
+  const fltRightEdge = centerX + fltW / 2
 
-  // --- Left column: dep_arp + dep_time ---
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'top'
+  // Widest element in each side column (airport vs. time) drives the collision test.
+  const leftColW = Math.max(depArpW, depTimeW)
+  const rightColW = Math.max(arvArpW, arvTimeW)
+  const fitsWithTimes =
+    innerLeft + leftColW + PUCK_COL_GAP <= fltLeftEdge &&
+    fltRightEdge + PUCK_COL_GAP <= innerRight - rightColW
+  const fitsAirportsOnly =
+    innerLeft + depArpW + PUCK_COL_GAP <= fltLeftEdge &&
+    fltRightEdge + PUCK_COL_GAP <= innerRight - arvArpW
 
-  // Airport code (bold, top)
-  ctx.font = `bold 9px ${PUCK_FONT_FAMILY}`
-  ctx.fillStyle = isDeadhead ? '#d8b4fe' : FLIGHT_PUCK_AIRPORT_COLOR
-  ctx.fillText(flight.depArp || '', x + 4, y + 4)
-
-  // Departure time (mono, bottom) — flagged amber with a "→" suffix once it reflects the
-  // ACTUAL (shifted) time rather than schedule, so it visually pairs with the sched ghost.
-  ctx.font = `9px ${PUCK_FONT_MONO}`
-  ctx.fillStyle = showActualTimes ? DELAY_GHOST_ACTUAL_TIME_COLOR : isDeadhead ? '#c4b5fd' : FLIGHT_PUCK_TIME_COLOR
-  const depTime = formatTime(depDtUtc, timezone) + (showActualTimes ? ' →' : '')
-  ctx.fillText(depTime, x + 4, y + 15)
-
-  // --- Center column: flt_num ---
+  // --- Center column: flt_num (always drawn) ---
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = `bold 10px ${PUCK_FONT_FAMILY}`
+  ctx.font = FLT_FONT
   ctx.fillStyle = textColor
-  ctx.fillText(flight.fltNum || '', centerX, y + height / 2)
+  ctx.fillText(fltNum, centerX, y + height / 2)
 
-  // --- Right column: arv_arp + arv_time ---
-  ctx.textAlign = 'right'
-  ctx.textBaseline = 'top'
+  if (fitsWithTimes) {
+    // Two-row three-column: airport (top) + time (bottom) on each side.
+    ctx.textBaseline = 'top'
 
-  // V4-P04: cached cross-day check (was: new Intl.DateTimeFormat per flight per frame)
-  const isCrossDay = isCrossDayLocal(depDtUtc, arvDtUtc, timezone)
+    ctx.textAlign = 'left'
+    ctx.font = AIRPORT_FONT
+    ctx.fillStyle = airportColor
+    ctx.fillText(depArp, innerLeft, y + 4)
+    ctx.font = TIME_FONT
+    ctx.fillStyle = depTimeColor
+    ctx.fillText(depTime, innerLeft, y + 15)
 
-  // Airport code (bold, top)
-  ctx.font = `bold 9px ${PUCK_FONT_FAMILY}`
-  ctx.fillStyle = isDeadhead ? '#d8b4fe' : FLIGHT_PUCK_AIRPORT_COLOR
-  const arvText = flight.arvArp || ''
-  ctx.fillText(arvText, x + width - 4, y + 4)
-
-  // Arrival time (mono, bottom) with +1 indicator if cross-day
-  ctx.font = `9px ${PUCK_FONT_MONO}`
-  ctx.fillStyle = isDeadhead ? '#c4b5fd' : FLIGHT_PUCK_TIME_COLOR
-  const arvTime = formatTime(arvDtUtc, timezone)
-  if (isCrossDay) {
-    ctx.fillText(arvTime + '⁺¹', x + width - 4, y + 15)
-  } else {
-    ctx.fillText(arvTime, x + width - 4, y + 15)
+    ctx.textAlign = 'right'
+    ctx.font = AIRPORT_FONT
+    ctx.fillStyle = airportColor
+    ctx.fillText(arvArp, innerRight, y + 4)
+    ctx.font = TIME_FONT
+    ctx.fillStyle = arvTimeColor
+    ctx.fillText(arvTime, innerRight, y + 15)
+  } else if (fitsAirportsOnly) {
+    // Times dropped — single row: dep_arp | flt_num | arv_arp.
+    ctx.textBaseline = 'middle'
+    ctx.font = AIRPORT_FONT
+    ctx.fillStyle = airportColor
+    ctx.textAlign = 'left'
+    ctx.fillText(depArp, innerLeft, y + height / 2)
+    ctx.textAlign = 'right'
+    ctx.fillText(arvArp, innerRight, y + height / 2)
   }
+  // else: flt_num only — nothing else fits beside it without overlapping.
 
   ctx.restore()
 }
@@ -407,18 +448,27 @@ const drawPartialPuck = (
   ctx.rect(x + 2, y + 1, width - 4, height - 2)
   ctx.clip()
 
-  // Left: dep_arp
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'middle'
-  ctx.font = `bold 9px ${PUCK_FONT_FAMILY}`
-  ctx.fillStyle = isDeadhead ? '#d8b4fe' : FLIGHT_PUCK_AIRPORT_COLOR
-  ctx.fillText(flight.depArp || '', x + 4, y + height / 2)
+  const depArp = flight.depArp || ''
+  const fltNum = flight.fltNum || ''
+  const centerX = x + width / 2
 
-  // Center: flt_num (smaller font)
+  // Center: flt_num (smaller font) — always drawn; it is the primary identity here.
   ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
   ctx.font = `bold 8px ${PUCK_FONT_FAMILY}`
   ctx.fillStyle = textColor
-  ctx.fillText(flight.fltNum || '', x + width / 2, y + height / 2)
+  ctx.fillText(fltNum, centerX, y + height / 2)
+  const fltLeftEdge = centerX - ctx.measureText(fltNum).width / 2
+
+  // Left: dep_arp — only when it clears the centered flt_num, else it would overlap as the
+  // puck narrows toward the 30px floor (drop it and keep flt_num readable).
+  ctx.font = `bold 9px ${PUCK_FONT_FAMILY}`
+  const depArpW = ctx.measureText(depArp).width
+  if (x + 4 + depArpW + PUCK_COL_GAP <= fltLeftEdge) {
+    ctx.textAlign = 'left'
+    ctx.fillStyle = isDeadhead ? '#d8b4fe' : FLIGHT_PUCK_AIRPORT_COLOR
+    ctx.fillText(depArp, x + 4, y + height / 2)
+  }
 
   ctx.restore()
 }

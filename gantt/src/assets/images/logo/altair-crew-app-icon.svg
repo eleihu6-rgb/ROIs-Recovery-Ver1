@@ -1,0 +1,14 @@
+<!-- ROIs Altair crew-app icon (Ver11) — Altair sage tile + white paper plane + golden guiding star.
+     The plane is white/monochrome on purpose: the bare mark drops onto any airline/theme ground.
+     Plane geometry is the same faceted dart as gantt/public/favicon.svg. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="ROIs Altair crew app icon">
+  <rect width="32" height="32" rx="7.4" fill="#1e443d"/>
+  <path d="M0 7.4A7.4 7.4 0 0 1 7.4 0h17.2A7.4 7.4 0 0 1 32 7.4v6.2C24 12 10 15 0 22Z" fill="#2c5a52" opacity=".55"/>
+  <rect x=".4" y=".4" width="31.2" height="31.2" rx="7" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width=".8"/>
+  <g transform="translate(0.9 10.5) scale(0.86)">
+    <path fill="#fff" d="M22 2 2.5 9.8l9 2.9z"/>
+    <path fill="#fff" fill-opacity=".84" d="M22 2 11.5 12.7l3.2 8.8z"/>
+    <path fill="#fff" fill-opacity=".66" d="M11.5 12.7v5.6l2.4-3z"/>
+  </g>
+  <path transform="translate(24.4 7) scale(1.05)" d="M0 -6 L1.6 -1.6 L6 0 L1.6 1.6 L0 6 L-1.6 1.6 L-6 0 L-1.6 -1.6Z" fill="#e0b24c"/>
+</svg>
