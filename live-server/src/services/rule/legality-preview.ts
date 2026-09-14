@@ -263,7 +263,7 @@ export function normalizePreviewViolations(
         const n = Number(r.flight_id)
         return Number.isFinite(n) ? n : null
       })(),
-      dimension: (() => {
+      dimension: ((): 'BASE' | 'RANK' | 'FLEET' | null => {
         const operationResult = r.operation_result
         if (!operationResult || typeof operationResult !== 'object') return null
         const strType = String((operationResult as Record<string, unknown>).strType ?? '').trim().toUpperCase()
