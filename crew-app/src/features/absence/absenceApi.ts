@@ -5,8 +5,10 @@
 // zod parse) for the endpoints added by Crew Recovery Story 101 and its
 // history follow-up.
 //
-// Backend contract (live-server, ROIS live-server airlines only —
-// src/routes/crew-notify/crew-notify.ts):
+// Backend contract (live-server — src/routes/crew-notify/crew-notify.ts).
+// Served for every airline whose mobile roster live-server answers
+// (F8 / ET / EK; `usesLiveServerAbsence`): Emirates keeps its notifications on
+// the EVACC gateway, but the crew-recovery absence record is ROIS's.
 //   POST /crew-app/v1/absence { airline, crewId, password, type, fromDate, toDate, note? }
 //   -> { code, data: { absenceId, assignment, fromDate, toDate, removedPairingIds,
 //        retainedPairingIds, groundDays, notificationId }, message }
@@ -26,7 +28,7 @@
 // back to a generic per-status message only when the body can't be read.
 import {z} from 'zod';
 import {airlineByCode} from '../auth/airlines';
-import {usesLiveServerEnvelope} from '../travel/ekRosterApi';
+import {usesLiveServerAbsence} from '../travel/ekRosterApi';
 
 export type AbsenceType = 'sick';
 
@@ -130,12 +132,16 @@ export function currentMonthRange(now: Date = new Date()): {fromDate: string; to
   return {fromDate: toApiDate(new Date(year, month, 1)), toDate: toApiDate(new Date(year, month + 1, 0))};
 }
 
-/** Base URL of the crew-app contract, or a thrown reason why this airline has none. */
+/** Base URL of the crew-app contract, or a thrown reason why this airline has none.
+ *  Absence follows the ROSTER service, not `apiBaseUrl`: Emirates keeps
+ *  notifications/FDP on the EVACC gateway while its roster — and therefore its
+ *  absence record — is ROIS live-server (see Airline.rosterApiBaseUrl). */
 function crewAppUrl(airline: string): string {
-  if (!usesLiveServerEnvelope(airline)) {
+  if (!usesLiveServerAbsence(airline)) {
     throw new Error(`${airlineByCode(airline).name} crew app does not support absence requests yet`);
   }
-  const apiBaseUrl = airlineByCode(airline).apiBaseUrl;
+  const config = airlineByCode(airline);
+  const apiBaseUrl = config.rosterApiBaseUrl ?? config.apiBaseUrl;
   if (!apiBaseUrl) {
     throw new Error(`${airlineByCode(airline).name} crew API is not configured`);
   }

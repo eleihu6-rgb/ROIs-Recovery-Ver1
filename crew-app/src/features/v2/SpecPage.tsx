@@ -4,8 +4,9 @@
 // per-feature later without changing the layout.
 import React, { useState } from 'react';
 import { DashedLine } from '../../components/v2/TicketCard';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { AppDialog } from '../../components/v2/AppDialog';
 import { useAppSelector } from '../../store';
 import { selectCrewCarrier, selectIsGuest } from '../auth/authSlice';
 import { sessionDisplayName } from '../auth/identity';
@@ -83,6 +84,14 @@ export function SpecPage(props: Props) {
   // Spec copy addresses the crew's own carrier (roster-resolved), so an EK crew
   // never reads "Ethiopian Airlines" in a settings sentence.
   const airline = useAppSelector(selectCrewCarrier) ?? '';
+  // The mock CTA's single-line toast, as a product pop-up (pop-up standard).
+  // The crew stays on the page until they acknowledge it, then we go back.
+  const [dialog, setDialog] = useState<{ title: string; thenGoBack?: boolean } | null>(null);
+  function closeDialog() {
+    const leave = dialog?.thenGoBack ?? false;
+    setDialog(null);
+    if (leave) navigation.goBack();
+  }
   const spec = specFor(route.params.id, {
     crewId: crewId || identityName,
     airlineName: guest ? 'No airline' : airlineByCode(airline).name,
@@ -99,7 +108,17 @@ export function SpecPage(props: Props) {
           </ListCard>
         </View>
       ))}
-      {spec.cta && <PrimaryButton label={spec.cta.label} palette={p} testID="spec-cta" onPress={() => { navigation.goBack(); Alert.alert(spec.cta!.toast); }} />}
+      {spec.cta && <PrimaryButton label={spec.cta.label} palette={p} testID="spec-cta" onPress={() => setDialog({ title: spec.cta!.toast, thenGoBack: true })} />}
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={closeDialog}
+        onConfirm={closeDialog}
+        tone="neutral"
+        title={dialog?.title ?? ''}
+        confirmLabel="Got it"
+        testID="spec-dialog"
+      />
     </PageShell>
   );
 }

@@ -1,0 +1,129 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+# Pop-up standard (2026-09-13) — the crew-app status card on a real device.
+#
+# Phase A: a DXB crew (K1015, no absences) files sick leave -> SUCCESS card.
+# Phase B: the same crew submits the same day again -> the server's overlap rule
+#          rejects it -> FAILURE card carrying the real server message.
+#
+# Evidence: the two takeScreenshot captures, inspected visually. This flow does
+# NOT assert on the pop-up's own nodes: Maestro/XCUITest cannot traverse an RN
+# <Modal> window in this setup (the same reason it cannot see the dev LogBox's
+# own Dismiss button), so the pop-up's content is asserted by Jest
+# (__tests__/features/AbsenceScreen.test.tsx) and confirmed here by the capture.
+#
+# Run: cd crew-app && maestro test .maestro/ek_k1015_popup_standard.yaml
+# K1015 must start with no active absence for today (the first submit must land);
+# the run leaves one active absence for today as the demo record.
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-EK"
+    timeout: 15000
+- tapOn:
+    id: "airline-EK"
+- assertVisible:
+    id: "crew-id"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "K1015"
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "OK"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 240000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- swipe:
+    start: 50%, 84%
+    end: 50%, 30%
+    duration: 400
+- tapOn:
+    id: "qa-absence"
+- assertVisible:
+    id: "page-absence"
+- scrollUntilVisible:
+    element:
+      id: "absence-submit"
+    direction: DOWN
+# The dev LogBox can appear late, cover the form and swallow the tap below. Its
+# Dismiss button is not in the accessibility tree, so clear it by position; when
+# no LogBox is up this point simply lands on the Submit button.
+- tapOn:
+    point: "30%,95%"
+- extendedWaitUntil:
+    visible:
+      text: "Submit request"
+    timeout: 15000
+- tapOn:
+    id: "absence-submit"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: popup-standard-Ver1-01-success
+# --- Phase B: the same day again -> overlap rejection --------------------
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-EK"
+    timeout: 15000
+- tapOn:
+    id: "airline-EK"
+- assertVisible:
+    id: "crew-id"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "K1015"
+- pressKey: Enter
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "OK"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 240000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- swipe:
+    start: 50%, 84%
+    end: 50%, 30%
+    duration: 400
+- tapOn:
+    id: "qa-absence"
+- assertVisible:
+    id: "page-absence"
+- scrollUntilVisible:
+    element:
+      id: "absence-submit"
+    direction: DOWN
+- tapOn:
+    point: "30%,95%"
+- extendedWaitUntil:
+    visible:
+      text: "Submit request"
+    timeout: 15000
+- tapOn:
+    id: "absence-submit"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: popup-standard-Ver1-02-error

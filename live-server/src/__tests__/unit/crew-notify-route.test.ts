@@ -136,6 +136,23 @@ describe('POST /api/crew-app/v1/notifications', () => {
 describe('POST /api/crew-app/v1/notifications/:notifId/read', () => {
   afterEach(() => vi.resetAllMocks())
 
+  it('exposes the crew-owned FDP-discretion history path without a JWT', async () => {
+    mobileRosterService.verifyMobileCrewCredentials.mockResolvedValue({ crewId: '113' })
+    const app = await buildApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/crew-app/v1/discretions',
+      payload: credentials,
+    })
+
+    expect(response.statusCode).toBe(200)
+    // The route is recipient-scoped; the service mock returns no rows, so the
+    // history envelope is an empty list rather than an auth failure.
+    expect(response.json()).toEqual({ code: 200, data: { requests: [] }, message: 'ok' })
+    expect(mobileRosterService.verifyMobileCrewCredentials).toHaveBeenCalled()
+  })
+
   it('marks a notification read and is exempt from the JWT hook', async () => {
     mobileRosterService.verifyMobileCrewCredentials.mockResolvedValue({ crewId: '113' })
     crewNotifyService.markRead.mockResolvedValue(true)

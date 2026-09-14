@@ -37,6 +37,9 @@ export type V2StackParamList = {
   /** The crew's own submitted absence requests for the current calendar month
    *  (Absence Request ▸ top-right history icon). */
   AbsenceHistory: undefined;
+  /** The crew's own FDP-discretion requests (pending + history),
+   *  from Home ▸ Quick actions ▸ Discretion. */
+  Discretion: undefined;
 };
 
 export type V2Nav = NativeStackNavigationProp<V2StackParamList>;

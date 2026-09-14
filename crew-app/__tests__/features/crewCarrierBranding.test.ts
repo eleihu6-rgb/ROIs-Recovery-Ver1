@@ -93,6 +93,8 @@ describe('no crew-facing screen brands from the sign-in airline', () => {
       'base airport comes from the signed-in carrier\'s portalConfig',
     'src/features/v2/AbsenceScreen.tsx':
       'absence submit posts the signed-in airline to the roster service',
+    'src/features/v2/AbsenceHistoryScreen.tsx':
+      'absence history posts the signed-in airline to the roster service',
   };
 
   const filesUnder = (dir: string): string[] => fs.readdirSync(path.join(REPO, dir))

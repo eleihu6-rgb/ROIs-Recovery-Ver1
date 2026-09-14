@@ -4,13 +4,14 @@
 // (PageShell/Hero/ListCard/KvRow/PrimaryButton, SectionLabel + RadioRow from
 // components/v2/rows) so the screen still looks like the rest of the app.
 import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../store';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { PageShell, Hero, ListCard, KvRow, PrimaryButton } from './PageShell';
 import { RadioRow, SectionLabel } from '../../components/v2/rows';
 import { Icon } from '../../components/v2/icons';
+import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import { legView, MON } from './model';
 import { submitAbsence, toApiDate } from '../absence/absenceApi';
 import type { V2StackParamList } from './nav';
@@ -95,6 +96,20 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
   const [toDate, setToDate] = useState<Date>(() => prefillTo ?? startOfToday());
   const [note, setNote] = useState(route.params.absenceNote ?? '');
   const [busy, setBusy] = useState(false);
+  /**
+   * Outcome pop-up (pop-up standard: status card, not a native alert). The
+   * success card is dismissed before leaving the form, so the crew's confirmation
+   * is not swallowed by the navigation (`thenGoBack`).
+   */
+  const [dialog, setDialog] = useState<{
+    tone: AppDialogTone; title: string; message: string; confirmLabel: string; thenGoBack?: boolean;
+  } | null>(null);
+
+  function closeDialog() {
+    const leave = dialog?.thenGoBack ?? false;
+    setDialog(null);
+    if (leave) navigation.goBack();
+  }
 
   const affected = useMemo(() => {
     const fromKey = ymd(fromDate);
@@ -141,10 +156,12 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
     // A guest has no crew record to report the absence against — sending one
     // would fail server-side, so say so instead of raising a request error.
     if (!crewId) {
-      Alert.alert(
-        'Airline sign-in needed',
-        'Reporting an absence needs your crew ID. Sign in with your airline on Profile first.',
-      );
+      setDialog({
+        tone: 'warning',
+        title: 'Airline sign-in needed',
+        message: 'Reporting an absence needs your crew ID. Sign in with your airline on Profile first.',
+        confirmLabel: 'Got it',
+      });
       return;
     }
     setBusy(true);
@@ -158,13 +175,20 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
         toDate: toApiDate(toDate),
         note: note.trim() ? note.trim() : undefined,
       });
-      Alert.alert(
-        'Request submitted',
-        'Sick leave added. Original duties remain assigned pending Crew Control recovery.',
-      );
-      navigation.goBack();
+      setDialog({
+        tone: 'success',
+        title: 'Request submitted',
+        message: 'Sick leave added. Original duties remain assigned pending Crew Control recovery.',
+        confirmLabel: 'Got it',
+        thenGoBack: true,
+      });
     } catch (e) {
-      Alert.alert('Unable to submit', e instanceof Error ? e.message : 'Please try again.');
+      setDialog({
+        tone: 'destructive',
+        title: 'Unable to submit',
+        message: e instanceof Error ? e.message : 'Please try again.',
+        confirmLabel: 'Try again',
+      });
     } finally {
       setBusy(false);
     }
@@ -263,6 +287,17 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
         palette={p}
         testID="absence-submit"
         onPress={busy ? undefined : handleSubmit}
+      />
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={closeDialog}
+        onConfirm={closeDialog}
+        tone={dialog?.tone ?? 'neutral'}
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        confirmLabel={dialog?.confirmLabel}
+        testID="absence-dialog"
       />
     </PageShell>
   );

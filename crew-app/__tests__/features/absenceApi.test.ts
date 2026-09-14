@@ -84,6 +84,23 @@ describe('absence API client', () => {
     expect(body.airline).toBe('ET');
   });
 
+  // Ryan, 2026-09-13: a DXB (Emirates) crew files absences too. Emirates keeps
+  // notifications/FDP on the EVACC gateway (`apiBaseUrl`, 127.0.0.1:8000 in dev)
+  // while its roster — and therefore the absence record — is ROIS live-server, so
+  // the call must go to `rosterApiBaseUrl`.
+  it('posts an Emirates absence to the ROIS roster base, not the EVACC gateway', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(
+      okJson({ code: 200, data: successResult, message: 'ok' }),
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await submitAbsence({ ...params, airline: 'EK', crewId: 'K1014' });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://127.0.0.1:3000/api/crew-app/v1/absence');
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toMatchObject({ airline: 'EK', crewId: 'K1014' });
+  });
+
   it('rejects an airline the crew app does not support yet (no fetch made)', async () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;

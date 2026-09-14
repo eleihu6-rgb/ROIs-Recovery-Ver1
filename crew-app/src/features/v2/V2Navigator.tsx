@@ -15,6 +15,7 @@ import { GlobalScreen } from './GlobalScreen';
 import { ProfileScreen } from './ProfileScreen';
 import { SpecPage } from './SpecPage';
 import { AbsenceHistoryScreen } from './AbsenceHistoryScreen';
+import { DiscretionScreen } from './DiscretionScreen';
 import { TripDetailsScreen } from './TripDetailsScreen';
 import { DestinationScreen } from './DestinationScreen';
 import { UpcomingAlarmsScreen } from './UpcomingAlarmsScreen';
@@ -77,6 +78,7 @@ export function V2Navigator() {
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
         <Stack.Screen name="Spec" component={SpecPage} />
         <Stack.Screen name="AbsenceHistory" component={AbsenceHistoryScreen} />
+        <Stack.Screen name="Discretion" component={DiscretionScreen} />
       </Stack.Navigator>
     </CarrierContext.Provider>
   );

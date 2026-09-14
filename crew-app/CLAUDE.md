@@ -51,6 +51,22 @@
   other, and must minimise overlap with the **dynamic island** (top-centre). When
   a header fills behind the island, keep its text + motifs to the sides/bottom so
   the island stays clear; pad content by the safe-area top inset.
+- **Pop-ups: one component, theme-aligned header.** Every product pop-up
+  (confirm / result / message) uses the Status-Card `AppDialog`
+  (`crew-app/src/components/v2/AppDialog.tsx`). `Alert.alert` stays only for
+  OS-level prompts (keychain / permission sheets), with the reason stated.
+  - **Header band = the crew's carrier theme colour (`p.btn`), for every tone** —
+    never flood the band with the semantic tone colour. The band must sit inside
+    the app theme, not fight it. (Crew-app deviates here from the web `@rois/ui`
+    Status-Card spec, which floods the band; do not "fix" it back.)
+  - **The semantic tone rides the glyph badge + the primary pill**, not the band:
+    the round badge fills with `tone` (`crit` / `warn` / `good`) and the confirm
+    pill uses it, so a destructive action still reads red without a red header.
+  - **Match the glyph to the action** via the `icon` prop (an `IconName` from
+    `components/v2/icons.tsx`) — e.g. a log-out confirm passes `icon="logout"`
+    (door-arrow), never a bare X. Tone defaults are `info` / `check` / `warning`;
+    a destructive confirm with no explicit `icon` falls back to `warning`
+    (caution triangle), **never** `close`.
 
 ## App
 - The active app is the React Native app in `rn-app/` (`royce-travel-rn`).

@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   Modal,
   FlatList,
 } from 'react-native';
@@ -28,6 +27,7 @@ import {
   signInWith,
 } from './socialAuth';
 import { ProviderGlyph } from './ProviderGlyph';
+import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import {
   AIRLINES,
   DEFAULT_AIRLINE,
@@ -63,6 +63,13 @@ export function LoginScreen({ navigation }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   // Which provider is mid-flow, so a second tap cannot start it twice.
   const [socialBusy, setSocialBusy] = useState<SocialProvider | null>(null);
+  // One product pop-up (pop-up standard: status card, not a native alert).
+  const [dialog, setDialog] = useState<{
+    tone: AppDialogTone; title: string; message: string; confirmLabel: string;
+  } | null>(null);
+  function closeDialog() {
+    setDialog(null);
+  }
 
   // "Login as Guest": skip the airline portal entirely. The session is still a
   // real, persisted login, so everything that does not need a roster (alarms,
@@ -85,12 +92,14 @@ export function LoginScreen({ navigation }: Props) {
       if (isSocialAuthCancel(error)) {
         return;
       }
-      Alert.alert(
-        error instanceof SocialAuthUnavailableError
+      setDialog({
+        tone: 'destructive',
+        title: error instanceof SocialAuthUnavailableError
           ? 'Not available yet'
           : `${PROVIDER_LABELS[provider]} sign-in failed`,
-        error instanceof Error ? error.message : 'Try again.',
-      );
+        message: error instanceof Error ? error.message : 'Try again.',
+        confirmLabel: 'Got it',
+      });
     } finally {
       setSocialBusy(null);
     }
@@ -100,11 +109,16 @@ export function LoginScreen({ navigation }: Props) {
     const selected = airlineByCode(airline);
     const destination = loginRouteForAirline(airline);
     if (!destination) {
-      Alert.alert(`${selected.name} not available yet`, 'This airline is not connected yet.');
+      setDialog({
+        tone: 'warning',
+        title: `${selected.name} not available yet`,
+        message: 'This airline is not connected yet.',
+        confirmLabel: 'Got it',
+      });
       return;
     }
     if (!crewId.trim() || !password) {
-      Alert.alert('Missing details', 'Enter your Crew ID and password.');
+      setDialog({ tone: 'warning', title: 'Missing details', message: 'Enter your Crew ID and password.', confirmLabel: 'Got it' });
       return;
     }
     const params = {
@@ -277,6 +291,17 @@ export function LoginScreen({ navigation }: Props) {
         onClose={() => setPickerOpen(false)}
       />
     </SafeAreaView>
+
+    <AppDialog
+      visible={dialog !== null}
+      onClose={closeDialog}
+      onConfirm={closeDialog}
+      tone={dialog?.tone ?? 'neutral'}
+      title={dialog?.title ?? ''}
+      message={dialog?.message}
+      confirmLabel={dialog?.confirmLabel}
+      testID="login-dialog"
+    />
     </GradientScreen>
   );
 }

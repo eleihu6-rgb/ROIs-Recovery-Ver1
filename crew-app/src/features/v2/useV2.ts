@@ -1,7 +1,7 @@
 // Hooks that bind the v2 view model to the store.
-import { useCallback, useMemo } from 'react';
-import { Alert } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
+import type { AppDialogTone } from '../../components/v2/AppDialog';
 import { airlineByCode } from '../auth/airlines';
 import { tripDestination, type CityCard } from '../home/cities';
 import { classifyTrips } from '../travel/tripCsv';
@@ -109,6 +109,21 @@ export interface DutyCalendar {
   isBusy: (tripId: string) => boolean;
   /** Write the WHOLE duty to the iOS calendar, or delete what we wrote. */
   toggle: (trip: Trip) => Promise<void>;
+  /**
+   * Latest calendar-toggle outcome, as a pop-up (pop-up standard: product
+   * status cards are AppDialogs, never a native alert). The consuming screen
+   * renders one `<AppDialog>` from this; `null` while there is nothing to say.
+   */
+  dialog: DutyCalendarDialog | null;
+  /** Acknowledge/close the outcome pop-up. */
+  closeDialog: () => void;
+}
+
+/** A calendar-toggle outcome ready to hand straight to `<AppDialog>`. */
+export interface DutyCalendarDialog {
+  tone: AppDialogTone;
+  title: string;
+  message: string;
 }
 
 /**
@@ -125,12 +140,15 @@ export function useDutyCalendar(): DutyCalendar {
   const dispatch = useAppDispatch();
   const eventIds = useAppSelector(s => s.flightCalendar.eventIds);
   const busyDutyId = useAppSelector(s => s.flightCalendar.busyDutyId);
+  const [dialog, setDialog] = useState<DutyCalendarDialog | null>(null);
+
+  const closeDialog = useCallback(() => setDialog(null), []);
 
   const toggle = useCallback(async (trip: Trip) => {
     const result = await dispatch(toggleDutyCalendar(trip));
     const message = describeCalendarToggle(result, trip);
     if (message) {
-      Alert.alert(message.title, message.body);
+      setDialog({ tone: message.tone, title: message.title, message: message.body });
     }
   }, [dispatch]);
 
@@ -138,5 +156,7 @@ export function useDutyCalendar(): DutyCalendar {
     isAdded: (tripId: string) => (eventIds[tripId]?.length ?? 0) > 0,
     isBusy: (tripId: string) => busyDutyId === tripId,
     toggle,
-  }), [eventIds, busyDutyId, toggle]);
+    dialog,
+    closeDialog,
+  }), [eventIds, busyDutyId, toggle, dialog, closeDialog]);
 }

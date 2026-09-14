@@ -8,11 +8,11 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  Alert,
   Modal,
   ScrollView,
 } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { AppDialog } from '../../components/v2/AppDialog';
 import { debugSetJson } from './portalDebug';
 import type { Trip } from './tripCsv';
 import { parsePortalCaptures, type PortalCapture, type PortalDuty } from './portalCapture';
@@ -51,6 +51,8 @@ export function PortalCaptureScreen({
   const [loading, setLoading] = useState(true);
   const [pageInfo, setPageInfo] = useState('');
   const [showData, setShowData] = useState(false);
+  // Product pop-up (pop-up standard: status card, not a native alert).
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
   const captures = useRef<PortalCapture[]>([]);
   const reqLog = useRef<string[]>([]);
   const buildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -188,10 +190,10 @@ export function PortalCaptureScreen({
   const handleUse = () => {
     const { trips, duties } = reparse();
     if (trips.length === 0) {
-      Alert.alert(
-        'No roster captured yet',
-        'Wait for the roster to load, or tap “View captured data” to inspect what came back.',
-      );
+      setDialog({
+        title: 'No roster captured yet',
+        message: 'Wait for the roster to load, or tap “View captured data” to inspect what came back.',
+      });
       return;
     }
     onCaptured(trips, duties);
@@ -307,6 +309,17 @@ export function PortalCaptureScreen({
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={() => setDialog(null)}
+        onConfirm={() => setDialog(null)}
+        tone="warning"
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        confirmLabel="Got it"
+        testID="portal-capture-dialog"
+      />
     </SafeAreaView>
   );
 }

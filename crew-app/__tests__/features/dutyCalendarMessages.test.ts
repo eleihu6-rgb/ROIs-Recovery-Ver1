@@ -48,6 +48,13 @@ describe('describeCalendarToggle', () => {
   it('stays quiet on a second tap while a write is already in flight', () => {
     expect(describeCalendarToggle(result({ status: 'busy' }), oneLeg)).toBeNull();
   });
+
+  it('carries the outcome tone the pop-up standard uses for the band', () => {
+    expect(describeCalendarToggle(result({ status: 'added', count: 1 }), oneLeg)!.tone).toBe('success');
+    expect(describeCalendarToggle(result({ status: 'empty' }), oneLeg)!.tone).toBe('neutral');
+    expect(describeCalendarToggle(result({ status: 'denied' }), oneLeg)!.tone).toBe('warning');
+    expect(describeCalendarToggle(result({ status: 'error' }), oneLeg)!.tone).toBe('destructive');
+  });
 });
 
 // ─── Option B: the Profile ▸ Preferences "iOS Calendar sync" master switch ───
@@ -90,5 +97,11 @@ describe('describeCalendarSync', () => {
     expect(describeCalendarSync(sync({ status: 'denied' }))!.title).toBe('Calendar access needed');
     expect(describeCalendarSync(sync({ status: 'unavailable' }))!.body).toContain('needs iOS');
     expect(describeCalendarSync(sync({ status: 'error', message: 'boom' }))!.body).toBe('boom');
+  });
+
+  it('tones the sync outcome for the status card', () => {
+    expect(describeCalendarSync(sync({ status: 'enabled' }))!.tone).toBe('success');
+    expect(describeCalendarSync(sync({ status: 'denied' }))!.tone).toBe('warning');
+    expect(describeCalendarSync(sync({ status: 'error' }))!.tone).toBe('destructive');
   });
 });

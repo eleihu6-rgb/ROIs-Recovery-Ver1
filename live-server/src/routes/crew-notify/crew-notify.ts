@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { verifyMobileCrewCredentials } from '../../services/mobile-roster/mobile-roster-service.js'
 import { listForCrew, markRead } from '../../services/crew-notify/crew-notify-service.js'
 import { listCrewAbsences, submitCrewAbsence, type CrewAbsenceDto } from '../../services/absence/crew-absence-service.js'
-import { createConsent, decideConsent, discretionProposalSchema, getControllerConsent, getCrewConsent, listOpenConsents, prepareConsent } from '../../services/crew-notify/discretion-consent-service.js'
+import { createConsent, decideConsent, discretionProposalSchema, getControllerConsent, getCrewConsent, listConsents, listOpenConsents, prepareConsent } from '../../services/crew-notify/discretion-consent-service.js'
 import { liveSchemaName } from '../../utils/db-schema.js'
 import { error, fail, success } from '../../utils/response.js'
 
@@ -22,6 +22,21 @@ const credentialsSchema = z.object({
   password: z.string().min(1),
 }).strict()
 
+/**
+ * Absence credentials are wider than the notification ones: absence is a ROIS
+ * live-server feature (crew recovery story 101), so it is available for every
+ * airline whose mobile roster this service answers — Emirates included (Ryan,
+ * 2026-09-13: a DXB crew must file and read back a request). EK's notifications
+ * and FDP discretion remain on the EVACC gateway, which is why
+ * `credentialsSchema` above stays F8/ET.
+ */
+const ABSENCE_AIRLINES = ['F8', 'ET', 'EK'] as const
+const absenceCredentialsSchema = z.object({
+  airline: z.enum(ABSENCE_AIRLINES),
+  crewId: z.string().trim().min(1),
+  password: z.string().min(1),
+}).strict()
+
 const listSchema = z.object({
   airline: z.enum(['F8', 'ET']),
   crewId: z.string().trim().min(1),
@@ -29,14 +44,14 @@ const listSchema = z.object({
   since: z.number().int().min(0).optional(),
 }).strict()
 
-const absenceSchema = credentialsSchema.extend({
+const absenceSchema = absenceCredentialsSchema.extend({
   type: z.enum(['sick', 'emergency', 'personal']),
   fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   note: z.string().trim().max(500).optional(),
 }).strict()
 
-const absenceHistorySchema = credentialsSchema.extend({
+const absenceHistorySchema = absenceCredentialsSchema.extend({
   fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 }).strict()
@@ -100,6 +115,24 @@ export default async function crewNotifyRoutes(fastify: FastifyInstance) {
       return success(reply, { ...feed, openDiscretions: await listOpenConsents({ pgPool: fastify.pgPool }, parsed.data.airline, crewId) })
     } catch (err) {
       return replyWithError(fastify, reply, err, 'Unable to load crew notifications.')
+    }
+  })
+
+  // Crew-owned FDP-discretion history (pending + terminal), used by the
+  // crew-app Home "Discretion" page. Same durable records as the Alerts feed,
+  // read-only, recipient-scoped.
+  fastify.post('/discretions', async (request, reply) => {
+    const parsed = z.object({
+      airline: z.enum(['F8', 'ET']), crewId: z.string().trim().min(1), password: z.string().min(1),
+      limit: z.number().int().min(1).max(100).optional(),
+    }).strict().safeParse(request.body)
+    if (!parsed.success) return fail(reply, 400, parsed.error.message)
+    try {
+      const { crewId } = await verifyMobileCrewCredentials({ pgPool: fastify.pgPool }, parsed.data)
+      const requests = await listConsents({ pgPool: fastify.pgPool }, parsed.data.airline, crewId, parsed.data.limit)
+      return success(reply, { requests })
+    } catch (err) {
+      return replyWithError(fastify, reply, err, 'Unable to load FDP discretion history.')
     }
   })
 

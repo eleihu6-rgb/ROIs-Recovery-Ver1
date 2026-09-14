@@ -8,6 +8,7 @@ import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert,
 } from 'react-native';
+import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { selectCrewCarrier } from '../auth/authSlice';
@@ -43,7 +44,23 @@ export function MyDutyScreen() {
   const masterOn = allPublished(duties);
   const monthTitle = monthHeading(duties);
 
+  // One product pop-up (pop-up standard: status card, not a native alert).
+  // Alert.prompt below stays native — it is a text-entry sheet, not a status card.
+  const [dialog, setDialog] = React.useState<{
+    tone: AppDialogTone; title: string; message?: string;
+    cancelLabel?: string; confirmLabel: string; onConfirm?: () => void;
+  } | null>(null);
+  function closeDialog() {
+    setDialog(null);
+  }
+  function confirmDialog() {
+    const handler = dialog?.onConfirm;
+    setDialog(null);
+    handler?.();
+  }
+
   const onAddGenericWant = () => {
+    // Stays native Alert.prompt: an OS text-entry sheet, not a status card.
     Alert.prompt?.(
       'Add a preference',
       'What are you looking for? (e.g. FRA layover, any Japan trip)',
@@ -58,13 +75,18 @@ export function MyDutyScreen() {
   };
 
   const onRemoveGenericWant = (want: Trade) => {
-    Alert.alert('Remove preference', `Remove “${want.title}”?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => dispatch(removeGenericWant(want.id)) },
-    ]);
+    setDialog({
+      tone: 'destructive',
+      title: 'Remove preference',
+      message: `Remove “${want.title}”?`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Remove',
+      onConfirm: () => dispatch(removeGenericWant(want.id)),
+    });
   };
 
   const onAddDutyTrade = (duty: TradeDuty) => {
+    // Stays native Alert.prompt: an OS text-entry sheet, not a status card.
     Alert.prompt?.(
       `What do you want for ${duty.dayNum} ${duty.monthLabel}?`,
       'Describe the duty you want in return (e.g. check-in after 13:00, ≥24h layover).',
@@ -80,10 +102,14 @@ export function MyDutyScreen() {
   };
 
   const onEditDutyTrade = (duty: TradeDuty) => {
-    Alert.alert('Trade', duty.trade?.title ?? '', [
-      { text: 'Close', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => dispatch(clearDutyTrade(duty.id)) },
-    ]);
+    setDialog({
+      tone: 'destructive',
+      title: 'Trade',
+      message: duty.trade?.title ?? '',
+      cancelLabel: 'Close',
+      confirmLabel: 'Remove',
+      onConfirm: () => dispatch(clearDutyTrade(duty.id)),
+    });
   };
 
   const tradeNoById = new Map<string, number>();
@@ -122,7 +148,7 @@ export function MyDutyScreen() {
         {/* Generic wants */}
         <SectionLabel icon={<ArrowUpIcon color={colors.muted} size={13} />} text="I'm looking for · any date" />
         {genericWants.map(w => (
-          <TouchableOpacity key={w.id} activeOpacity={0.8} onLongPress={() => onRemoveGenericWant(w)} style={styles.genWant}>
+          <TouchableOpacity key={w.id} testID={`want-${w.id}`} activeOpacity={0.8} onLongPress={() => onRemoveGenericWant(w)} style={styles.genWant}>
             <WantIcon icon={w.icon} color={colors.accent} size={16} />
             <Text style={styles.genWantText} numberOfLines={1}>{w.title}</Text>
             <KindBadge kind="generic" />
@@ -162,6 +188,19 @@ export function MyDutyScreen() {
           ))
         )}
       </ScrollView>
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={closeDialog}
+        onConfirm={confirmDialog}
+        tone={dialog?.tone ?? 'neutral'}
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        cancelLabel={dialog?.cancelLabel}
+        confirmLabel={dialog?.confirmLabel}
+        onCancel={closeDialog}
+        testID="myduty-dialog"
+      />
     </View>
   );
 }

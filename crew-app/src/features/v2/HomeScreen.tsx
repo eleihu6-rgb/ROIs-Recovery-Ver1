@@ -128,6 +128,7 @@ export function HomeScreen() {
           <View style={s.qaGrid}>
             <QA icon="checkin" label="Check-In" onPress={() => nav.navigate('Spec', { id: 'checkin' })} palette={p} />
             <QA icon="calcheck" label="Absence" onPress={() => nav.navigate('Spec', { id: 'absence' })} palette={p} />
+            <QA icon="shield" label="Discretion" onPress={() => nav.navigate('Discretion')} palette={p} />
             <QA icon="swap" label="Duty Swap" onPress={() => nav.navigate('Spec', { id: 'swap' })} palette={p} />
             <QA icon="more" label="More" onPress={() => nav.navigate('Spec', { id: 'more' })} palette={p} />
           </View>
@@ -210,5 +211,7 @@ const s = StyleSheet.create({
   qaTitle: { fontSize: 17, fontWeight: '500', marginBottom: 12 },
   qaGrid: { flexDirection: 'row', gap: 8 },
   qaItem: { flex: 1, alignItems: 'center', gap: 10 },
-  qaLabel: { fontSize: 12, fontWeight: '500', textAlign: 'center' },
+  // Five quick actions now share the row (Discretion joined Check-In / Absence /
+  // Duty Swap / More), so the label tightens to keep "Discretion" on two lines.
+  qaLabel: { fontSize: 11, fontWeight: '500', textAlign: 'center' },
 });

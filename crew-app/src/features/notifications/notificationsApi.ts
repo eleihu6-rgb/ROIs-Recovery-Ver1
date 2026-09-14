@@ -72,6 +72,37 @@ const auditSchema = z
   })
   .passthrough();
 
+// One flown leg inside the requested duty — the crew sees the schedule next to
+// the published revised time so a delay is a number, not prose.
+const discretionLegSchema = z
+  .object({
+    fltNum: z.string().default(''),
+    depArp: z.string().default(''),
+    arvArp: z.string().default(''),
+    schDepUtc: z.string().nullable().optional(),
+    schArvUtc: z.string().nullable().optional(),
+    revisedDepUtc: z.string().nullable().optional(),
+    revisedArvUtc: z.string().nullable().optional(),
+    delayMin: z.number().default(0),
+    operated: z.boolean().optional().default(false),
+  })
+  .passthrough();
+
+// Duty-level detail (FDP is a duty property): check-in/release + every leg + the
+// FDP the crew is being asked to extend.
+const discretionDutySchema = z
+  .object({
+    pairingId: z.string(),
+    pairingLabel: z.string().nullable().optional(),
+    dutySeq: z.string(),
+    reportUtc: z.string().nullable().optional(),
+    releaseUtc: z.string().nullable().optional(),
+    fdpBeforeMin: z.number().nullable().optional(),
+    fdpAfterMin: z.number().nullable().optional(),
+    legs: z.array(discretionLegSchema).default([]),
+  })
+  .passthrough();
+
 const discretionSchema = z
   .object({
     discretionId: z.string(),
@@ -99,6 +130,10 @@ const discretionSchema = z
     schArv: z.string().nullable().optional(),
     actArv: z.string().nullable().optional(),
     audit: z.array(auditSchema).optional().default([]),
+    /** Duty-level detail (check-in, legs with delayed times, FDP before/after).
+     *  Absent on requests written before this field existed — the card falls
+     *  back to the flat schDep/estDep snapshot in that case. */
+    duty: discretionDutySchema.optional(),
   })
   .passthrough();
 
@@ -218,6 +253,31 @@ export async function fetchDiscretion(
     throw new Error('Invalid discretion response');
   }
   return result.data;
+}
+
+const discretionHistorySchema = z
+  .object({ requests: z.array(discretionSchema).default([]) })
+  .passthrough();
+
+/** All FDP-discretion requests this crew has received, newest first — the
+ *  pending ones plus the terminal history the Home "Discretion" page shows. */
+export async function fetchDiscretionHistory(
+  apiBaseUrl: string,
+  credentials: CrewNotifyCredentials,
+  signal?: AbortSignal,
+): Promise<DiscretionRequest[]> {
+  const raw = await postJson(
+    `${base(apiBaseUrl)}/crew-app/v1/discretions`,
+    normalizeCredentials(credentials),
+    signal,
+  );
+  const result = discretionHistorySchema.safeParse(
+    unwrapLiveServerEnvelope(raw, normalizeCredentials(credentials).airline),
+  );
+  if (!result.success) {
+    throw new Error('Invalid discretion history response');
+  }
+  return result.data.requests;
 }
 
 export async function submitDiscretionDecision(

@@ -2,12 +2,13 @@
 // block-hours status card, settings rows, Log Out.
 import React, { useState } from 'react';
 import { DashedLine } from '../../components/v2/TicketCard';
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { useCarrier } from '../../theme/carrier';
 import { GradientScreen } from '../../components/v2/GradientScreen';
-import { Icon } from '../../components/v2/icons';
+import { Icon, type IconName } from '../../components/v2/icons';
 import { NavRow } from '../../components/v2/rows';
 import { CrewAvatar, AVATAR_COUNT, avatarForCrew } from '../settings/avatars';
 import { airlineByCode } from '../auth/airlines';
@@ -49,19 +50,42 @@ export function ProfileScreen() {
   const [now] = useState(() => new Date());
   const month = useMonth(now.getFullYear(), now.getMonth(), now);
   const hours = Math.round(month.blockMinutes / 60);
+  // One product pop-up (pop-up standard: status card, not a native alert).
+  const [dialog, setDialog] = useState<{
+    tone: AppDialogTone; icon?: IconName; title: string; message?: string;
+    cancelLabel?: string; confirmLabel: string; onConfirm?: () => void;
+  } | null>(null);
+  function closeDialog() {
+    setDialog(null);
+  }
+  function confirmDialog() {
+    const handler = dialog?.onConfirm;
+    setDialog(null);
+    handler?.();
+  }
   const divider = {};
 
-  const onLogout = () => Alert.alert('Log out', 'Log out and return to the login screen?', [
-    { text: 'Cancel', style: 'cancel' }, { text: 'Log out', style: 'destructive', onPress: () => dispatch(logout()) },
-  ]);
+  const onLogout = () => setDialog({
+    tone: 'destructive',
+    icon: 'logout',
+    title: 'Log out',
+    message: 'Log out and return to the login screen?',
+    cancelLabel: 'Cancel',
+    confirmLabel: 'Log out',
+    onConfirm: () => dispatch(logout()),
+  });
 
   // The way back for a guest: sign out of the roster-less session and land on the
   // airline login. Nothing else changes — the guest keeps their settings.
-  const onAddAirline = () => Alert.alert(
-    'Sign in with your airline',
-    'You will return to the login screen to sign in with your crew ID and pull your roster.',
-    [{ text: 'Cancel', style: 'cancel' }, { text: 'Continue', onPress: () => dispatch(logout()) }],
-  );
+  const onAddAirline = () => setDialog({
+    tone: 'warning',
+    icon: 'globe',
+    title: 'Sign in with your airline',
+    message: 'You will return to the login screen to sign in with your crew ID and pull your roster.',
+    cancelLabel: 'Cancel',
+    confirmLabel: 'Continue',
+    onConfirm: () => dispatch(logout()),
+  });
 
   // Name on top, then the roster facts (id · base · nationality). The crew id stays
   // visible — it was just never the right thing to lead with.
@@ -155,6 +179,20 @@ export function ProfileScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={closeDialog}
+        onConfirm={confirmDialog}
+        tone={dialog?.tone ?? 'neutral'}
+        icon={dialog?.icon}
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        cancelLabel={dialog?.cancelLabel}
+        confirmLabel={dialog?.confirmLabel}
+        onCancel={closeDialog}
+        testID="profile-dialog"
+      />
     </GradientScreen>
   );
 }

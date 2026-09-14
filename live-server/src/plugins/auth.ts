@@ -45,6 +45,9 @@ const PUBLIC_EXACT_ROUTES = [
   { method: 'POST', path: '/api/crew-app/v1/absences' },
   { method: 'POST', path: '/api/crew-app/v1/discretion/:discretionId' },
   { method: 'POST', path: '/api/crew-app/v1/discretion/:discretionId/decision' },
+  // The crew's own FDP-discretion history (pending + terminal), same
+  // body-credential pattern as the absence history above.
+  { method: 'POST', path: '/api/crew-app/v1/discretions' },
 ]
 
 /**

@@ -16,6 +16,7 @@ import {
   CrewNotifyCredentials,
   DecisionChoice,
   DiscretionRequest,
+  fetchDiscretionHistory,
   fetchNotifications,
   markNotificationRead,
   submitDiscretionDecision,
@@ -24,6 +25,10 @@ import {
 export interface NotificationsState {
   notifications: CrewNotification[];
   openDiscretions: DiscretionRequest[];
+  /** Every FDP-discretion request this crew has received (pending + terminal),
+   *  for the Home "Discretion" page. Separate from the Alerts feed so opening
+   *  Alerts stays cheap. */
+  discretionHistory: DiscretionRequest[];
   cursor: number;
   status: 'idle' | 'loading' | 'ready' | 'error';
   error: string | null;
@@ -34,6 +39,7 @@ export interface NotificationsState {
 const initialState: NotificationsState = {
   notifications: [],
   openDiscretions: [],
+  discretionHistory: [],
   cursor: 0,
   status: 'idle',
   error: null,
@@ -84,6 +90,9 @@ const slice = createSlice({
         n.status = 'read';
       }
     },
+    setDiscretionHistory(state, action: PayloadAction<DiscretionRequest[]>) {
+      state.discretionHistory = action.payload;
+    },
     clearNotifications() {
       return initialState;
     },
@@ -97,6 +106,7 @@ export const {
   setDeciding,
   applyDecision,
   markRead,
+  setDiscretionHistory,
   clearNotifications,
 } = slice.actions;
 
@@ -204,4 +214,17 @@ export async function markNotificationReadThunk(
   } catch {
     // Best-effort — a failed read-receipt must not disrupt the feed.
   }
+}
+
+/** Load the crew's full FDP-discretion history for the Home "Discretion" page.
+ *  Independent of the Alerts feed's loading state so the two screens do not
+ *  fight over one spinner. */
+export async function loadDiscretionHistory(
+  dispatch: AppDispatch,
+  options: {credentials?: CrewNotifyCredentials; signal?: AbortSignal} = {},
+): Promise<DiscretionRequest[]> {
+  const {apiBaseUrl, credentials} = await resolveCredentials(options.credentials);
+  const requests = await fetchDiscretionHistory(apiBaseUrl, credentials, options.signal);
+  dispatch(setDiscretionHistory(requests));
+  return requests;
 }

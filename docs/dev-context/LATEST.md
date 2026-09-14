@@ -5,91 +5,177 @@
 
 ## 基本信息
 
-- 时间：2026-09-13 11:22:05 PDT
+- 时间：2026-09-13 15:57:03 PDT
 - Wing：`gantt`
-- Topic：`case3-8004-help-article`
-- Title：case3-8004-help-article
+- Topic：`case3-8004-transfer-cost-pricing`
+- Title：case3-8004-transfer-cost-pricing
 - Git branch：`main`
 
 ## 本轮对话上下文
 
-Case 3 published to the in-app Online Help as "Case study 3 - 8004 crew-fleet mismatch at ADD (Partial)" alongside Case 1 and Case 2. No commit/push.
+Case 3 (Rule 8004 crew-fleet mismatch, pairing 152227 / source L3001) — the roster-transfer
+recovery options were all "Unpriced"; they are now library-priced. Resumed after the previous
+run was killed mid-verification.
 
-Deliverables (skill 003):
-- Topic body gantt/src/components/help/topics/recovery/recovery-case-003.tsx (10 HelpSteps).
-- Registry gantt/src/components/help/help-data.ts entry after recovery-case-002 (title/stepCount 10/overview with search keywords: 8004, crew fleet, 152227, ADD, soft constraint).
-- Lazy import in gantt/src/components/help/help-view.tsx (kept lazy; no eager topic imports).
-- 5 screenshots copied into gantt/public/help/screenshots/: s3-entry-alert-center, s3-entry-pairing-pane, s3-entry-roster-pane, s3-options-executable, s3-options-preview (-Ver1.png). Source = the real Playwright runs from the earlier turns (not the capture-help-screenshots.ts harness). Total added ~1.1 MB (comparable to Case 2's 4 images ~1.0 MB). OCR-inspected only - image viewing is unavailable in this session.
-- Content regression e2e/tests/gantt/help/help-recovery.spec.ts: imageCountFor('recovery-case-003')=5; topic added to the ordered topic list after case-002; text assertions incl. 'Case 3 - aircraft qualification (Rule 8004)', '152227', 'Crew fleet (788) is invalid for the pairing (7M8)', Alert Center / Pairing pane / Roster pane, the three methods, 'Unpriced', 'soft constraint', 'Preview is not Apply', 'the 8004 remains after Save'; search keywords ['8004','recovery-case-003'] and ['crew fleet','recovery-case-003'].
-- FRONTEND_VERSION 450 -> 451 (gantt/src/version.ts).
+WHAT CHANGED
+- live-server/src/services/recovery/transfer-gh-cost.ts (new): GH-only transfer estimate —
+  receiving crew's incremental guaranteed-hours pay + source released-duty saving, priced through
+  the Cost Library guarantee calculator via swapPolicySql. Throws (route → "Calculation
+  unavailable: ...") for cross-base/cross-role/multi-rank/non-pilot, target already on the pairing,
+  non-ADD-based target, or a pairing spanning months. A crew with no saved credit rows is priced
+  from a documented 0h baseline.
+- live-server/src/routes/recovery/recovery-cost.ts: transferContext added to costInputSchema;
+  priceComponents() extracted; new transfer branch = configured roster-change components +
+  transfer GH rows (currency must match). Unit test transfer-gh-cost.test.ts.
+- gantt/src/services/recovery-candidates.ts: optionToLibraryCostInput emits transferContext for
+  mode 'transfer'. gantt/src/services/recovery-api.ts: chunkRecoveryCostInputs — live-server caps
+  calculate-cost/batch at 128 inputs, and a bigger Live option list 400'd, marking EVERY candidate
+  Unpriced. That cap was a second root cause; do not revert the chunking.
+- e2e/config/case3.config.ts testMatch extended with -costs.
+- Cost library components: 1009 Roster transfer base (150) + 1015 Roster change penalty (260) =
+  US$410.00 under-GH; 1016 follow-on (1800) when follow-ons exist.
 
-Verified: cd e2e && GANTT_BASE_URL=http://localhost:5567 GANTT_API_URL=http://localhost:3000 npx playwright test -c config/playwright.config.ts --project=gantt tests/gantt/help/ --reporter=list --no-deps -> 75 passed (1.1m), including help-recovery (new Case 3 assertions) and help-screenshots (no 404 across all topics, so the 5 new PNGs load). Same run captured docs/assets/screenshots/gantt/help-recovery-recovery-case-003-Ver1.png (rendered article confirmed by OCR).
+VERIFIED (all PASS)
+- live-server vitest transfer-gh-cost + swap-gh-cost = 33 passed. gantt vitest
+  recovery-swap-gh = 4 passed (transfer-context mapping).
+- Real UI read-only: e2e/tests/gantt/recovery-case-003-costs.spec.ts → 1 passed (45.5s),
+  run via `cd e2e && GANTT_BASE_URL=http://localhost:5567 GANTT_API_URL=http://localhost:3000
+  npx playwright test --config=config/case3.config.ts tests/gantt/recovery-case-003-costs.spec.ts`.
+  Observed 35 transfer quotes, 25 under-GH at US$410.00, 10 over-GH (430/450/540/800/810/880/
+  1235/1415/1460/1547.50). Breakdown dialog: 4 priced rules, PRICED TOTAL US$410.00. Over-GH
+  example J4002 = base 410 + 20 incremental GH pay = 430. draftOps === 0 (read-only honoured).
+  Non-ADD-based candidates correctly report "requires the receiving crew to be based at the
+  pairing base". Screenshots (visually inspected): docs/assets/screenshots/crew-recovery/
+  case3-options-executable-Ver2.png, case3-options-cost-breakdown-Ver2.png,
+  case3-options-cost-breakdown-over-gh-Ver2.png.
+- Help suite: `cd e2e && GANTT_BASE_URL=http://localhost:5567 GANTT_API_URL=http://localhost:3000
+  npx playwright test -c config/playwright.config.ts --project=gantt tests/gantt/help/ --reporter=list --no-deps`
+  → 75 passed (1.0m), including the no-404 sweep over every topic and the new 6-image count.
+- gantt tsc: only the pre-existing service-status-pill errors (livePort / checkedAt), nothing new.
 
-Content is published as Partial and says so in the title + leading HelpWarning: the 8004 trigger, three entry points and the roster-transfer option chain (Executable list, cost breakdown Unpriced, fleet mismatch warning, Preview, Apply to draft, Save) are verified; a 788-only replacement does NOT clear the 8004 (soft fleet) and Standby/Cross-base were not executed.
+STALE HELP CORRECTED
+recovery-case-003.tsx said "Cost is Unpriced because no cost-library entry exists for an ADD
+transfer" — false now. Step 6 explains the priced composition (roster-change components + each
+crew's incremental GH pay, US$410.00, US$430.00 over-GH) and keeps Unpriced as the state for
+contexts with no tariff (the exchange candidates in this fixture are still Unpriced). Topic now
+has 6 screenshots: added s3-options-executable-Ver2.png and s3-options-cost-breakdown-Ver1.png
+(under gantt/public/help/screenshots/). help-recovery.spec.ts image count 5 → 6 and text
+assertions now include 'US$410.00' and 'incremental guaranteed-hours pay'. FRONTEND_VERSION
+451 → 452. stepCount stays 10 (no renumbering).
 
-Coverage checks: scripts/check-help-menu-coverage.mjs and scripts/check-legality-help-coverage.mjs each report ONE pre-existing gap unrelated to this change (System/Interface page -> system-interface; rule 7509 Avoid Co-pairing). Did not invent topics to silence them.
+DATA SIDE-EFFECT (SIT, shared schema)
+.local/case3/recompute-pool.ts recomputed crew_manday_fd_daily September-2026 credit for the
+L3/T2/J4 candidate pool so receiving crews have a saved baseline. Scratch probes live in
+.local/case3/ (gitignored). Case-3 fixture unchanged: pairing 152227 rostered
+L3001/L3002/L3006/L3007, 4 x 8004 fleet alerts; the read-only run created no draft ops.
 
-Earlier code change still in worktree: gantt/src/components/roster/context-menu.tsx pairing-pane 8004 Recovery entry. Gantt tsc clean except pre-existing service-status-pill errors. Case-3 fixture unchanged and replayable (pairing 152227: L3001/L3002 CA, L3006/L3007 FO; 4 x 8004 fleet alerts; FLEET row scoped ADD + 788). Record: docs/test-cases/crew-recovery/2026-09-13-case-003-preparation-Ver1.md. No commits.
+Record: docs/test-cases/crew-recovery/2026-09-13-case-003-preparation-Ver1.md §8.
+STILL OPEN: a fully clearing (7M8-qualified) replacement is not demonstrated; Standby / Cross-base
+options not executed; nothing committed or pushed.
 
 ## 当前工作树快照
 
 ### git status --short
 
 ```text
- M .agents/skills/142-flight-schedule-seed-generator/SKILL.md
- M .agents/skills/142-flight-schedule-seed-generator/fixtures/add-b787-demo-sep2026.json
- M .agents/skills/142-flight-schedule-seed-generator/fixtures/ek-dxb-a380.json
- M .agents/skills/142-flight-schedule-seed-generator/fixtures/et-add-b787-737.json
- M .agents/skills/142-flight-schedule-seed-generator/scripts/load-ssim-flights.mjs
- M .agents/skills/145-crew-recovery-case-study/SKILL.md
- M .gitignore
- M AGENTS.md
  M CLAUDE.md
- M crew-app/__tests__/features/meetingSetup.test.ts
+ M crew-app/__tests__/features/AbsenceScreen.test.tsx
+ M crew-app/__tests__/features/NotificationsScreen.test.tsx
+ M crew-app/__tests__/features/absenceApi.test.ts
+ M crew-app/__tests__/features/crewCarrierBranding.test.ts
+ M crew-app/__tests__/features/discretionScreen.test.tsx
+ M crew-app/__tests__/features/dutyCalendarMessages.test.ts
+ M crew-app/__tests__/features/guestLogin.test.tsx
+ M crew-app/__tests__/features/loginScreen.test.tsx
  M crew-app/__tests__/features/notificationsApi.test.ts
- M crew-app/__tests__/features/schedRosterViews.test.ts
- M crew-app/__tests__/features/scheduleMeetings.test.tsx
- M crew-app/__tests__/themeCoverage.test.ts
- M crew-app/ios/RoyceTravelTemplate/MeetingBackgroundSync.swift
- M crew-app/src/features/meetings/meetingSetup.ts
+ M crew-app/__tests__/features/preferencesCalendarSync.test.tsx
+ M crew-app/__tests__/features/scheduleFlightCalendar.test.tsx
+ M crew-app/__tests__/features/tripDetailsCalendar.test.tsx
+ M crew-app/__tests__/features/upcomingAlarms.test.tsx
+ M crew-app/src/components/v2/icons.tsx
+ M crew-app/src/features/absence/absenceApi.ts
+ M crew-app/src/features/auth/EkRosterLoginScreen.tsx
+ M crew-app/src/features/auth/LoginScreen.tsx
+ M crew-app/src/features/calendar/dutyCalendarMessages.ts
  M crew-app/src/features/notifications/NotificationsScreen.tsx
  M crew-app/src/features/notifications/notificationsApi.ts
- M crew-app/src/features/v2/CalendarView.tsx
+ M crew-app/src/features/notifications/notificationsSlice.ts
+ M crew-app/src/features/settings/ProfileScreen.tsx
+ M crew-app/src/features/travel/MyTripsScreen.tsx
+ M crew-app/src/features/travel/PortalCaptureScreen.tsx
+ M crew-app/src/features/travel/ekRosterApi.ts
+ M crew-app/src/features/tripTrade/MyDutyScreen.tsx
+ M crew-app/src/features/v2/AbsenceScreen.tsx
+ M crew-app/src/features/v2/AlarmsSettingsScreen.tsx
+ M crew-app/src/features/v2/HomeScreen.tsx
+ M crew-app/src/features/v2/PreferencesScreen.tsx
+ M crew-app/src/features/v2/ProfileScreen.tsx
  M crew-app/src/features/v2/ScheduleScreen.tsx
- M crew-app/src/features/v2/model.ts
- M crew-app/src/features/v2/schedView.ts
+ M crew-app/src/features/v2/SpecPage.tsx
+ M crew-app/src/features/v2/TripDetailsScreen.tsx
+ M crew-app/src/features/v2/UpcomingAlarmsScreen.tsx
+ M crew-app/src/features/v2/V2Navigator.tsx
+ M crew-app/src/features/v2/nav.ts
+ M crew-app/src/features/v2/useV2.ts
  M crew-app/src/version.ts
+ M docs/assets/screenshots/gantt/help-recovery-cases-Ver1.png
+ M docs/assets/screenshots/gantt/help-recovery-recovery-case-003-Ver1.png
  M docs/dev-context/LATEST.md
- M docs/superpowers/specs/2026-09-11-crew-app-rbot-assistant-design.md
+ M docs/superpowers/specs/2026-09-12-S2-discretion-consent-design.md
+ M docs/test-cases/crew-recovery/2026-09-13-case-003-preparation-Ver1.md
+ M e2e/config/case3.config.ts
  M e2e/tests/gantt/help/help-recovery.spec.ts
- M e2e/tests/gantt/pairing-build.spec.ts
- M gantt/src/components/dev/dev-skills-data.generated.ts
- M gantt/src/components/gantt/source/__tests__/live-violation-attribution.test.ts
- M gantt/src/components/gantt/source/live-gantt-source.ts
- M gantt/src/components/help/help-data.ts
- M gantt/src/components/help/help-view.tsx
- M gantt/src/components/pairing/duty-node-dialog.tsx
- M gantt/src/components/panes/pairing-pane.tsx
- M gantt/src/components/panes/shared/pairing-pane.tsx
- M gantt/src/components/panes/shared/roster-pane.tsx
- M gantt/src/components/panes/violation-list-dialog.tsx
- M gantt/src/components/recovery/recovery-violation-dialog.tsx
- M gantt/src/components/roster/context-menu.tsx
+ M gantt/src/components/gantt/renderers/flight-renderer.ts
+ M gantt/src/components/gantt/renderers/roster-renderer.ts
+ M gantt/src/components/help/topics/recovery/recovery-case-003.tsx
+ M gantt/src/components/scenario-gantt/cross-rank-confirm-dialog.tsx
+ M gantt/src/components/shell/shell-top-nav.tsx
+ M gantt/src/services/__tests__/recovery-swap-gh.test.ts
  M gantt/src/services/recovery-api.ts
  M gantt/src/services/recovery-candidates.ts
- M gantt/src/services/recovery-rules.ts
- M gantt/src/services/recovery-trigger.ts
  M gantt/src/version.ts
+ M live-server/src/__tests__/unit/crew-absence-history-route.test.ts
  M live-server/src/__tests__/unit/crew-notify-route.test.ts
  M live-server/src/plugins/auth.ts
  M live-server/src/routes/crew-notify/crew-notify.ts
  M live-server/src/routes/recovery/recovery-cost.ts
- M live-server/src/services/flight/flight-delay-propagation-service.ts
- M package.json
-?? .agents/skills/141-crew-seed-generator/fixtures/ethiopia-add-788.json
-?? crew-app/__tests__/features/discretionScreen.test.tsx
+ M live-server/src/services/crew-notify/__tests__/discretion-consent-service.test.ts
+ M live-server/src/services/crew-notify/discretion-consent-service.ts
+ M packages/ui/src/composites/app-dialog.tsx
+ M packages/ui/src/styles/globals.css
+ M pbs-portal/src/app/layout/dashboard-top-nav.tsx
+ M pbs-portal/src/app/layout/shared-bidding-workbench-layout.test.tsx
+ M pbs-portal/src/features/bid/components/bid-review-panel.tsx
+ M pbs-portal/src/features/dashboard/components/pairing-calendar-bid-detail-dialog.test.tsx
+ M pbs-portal/src/features/dashboard/components/pairing-calendar-bid-detail-dialog.tsx
+ M pbs-portal/src/features/days-off/components/prefer-off-calendar-picker.tsx
+ M pbs-portal/src/features/pairing/components/airport-preference-editor.tsx
+ M pbs-portal/src/features/pairing/components/pairing-bid-airport-select.tsx
+ M pbs-portal/src/features/pairing/components/pairing-bid-tag-list-control.tsx
+ M pbs-portal/src/features/pairing/components/pairing-preference-filter-dialog.tsx
+ M pbs-portal/src/features/pairing/components/pairing-property-config-dialog.tsx
+ M pbs-portal/src/features/pairing/pages/pairing-page.test.tsx
+ M pbs-portal/src/features/pairing/pages/search-pairings-page.test.tsx
+ M pbs-portal/src/features/standing-bid/pages/standing-bid-page.test.tsx
+ M pbs-portal/src/features/tier/components/tier-detail-dialog.tsx
+ M pbs-portal/src/shared/components/ui/pbs-dialog-frame.test.tsx
+ M pbs-portal/src/shared/components/ui/pbs-dialog-frame.tsx
+ M pbs-portal/src/shared/components/ui/portal-date-picker.tsx
+ M scripts/check-ui-standard.mjs
+?? crew-app/.maestro/ek_k1014_absence_history.yaml
+?? crew-app/.maestro/ek_k1015_popup_standard.yaml
+?? crew-app/__tests__/features/HomeDiscretionQuickAction.test.tsx
+?? crew-app/__tests__/features/myDutyScreen.test.tsx
+?? crew-app/__tests__/features/myTripsMenus.test.tsx
 ?? crew-app/absence-02-from-plus-one.png
 ?? crew-app/absence-03-range-two-days.png
+?? crew-app/absence-history-Ver1-00-icon.png
+?? crew-app/absence-history-Ver1-01-list.png
+?? crew-app/absence-history-Ver1-02-empty.png
+?? crew-app/ek-absence-Ver1-00-login.png
+?? crew-app/ek-absence-Ver1-01-form.png
+?? crew-app/ek-absence-Ver1-02-submitted.png
+?? crew-app/ek-absence-Ver1-03-history.png
 ?? crew-app/ek_login_00_default.png
 ?? crew-app/ek_login_01_home.png
 ?? crew-app/ek_login_02_schedule.png
@@ -113,6 +199,8 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
 ?? crew-app/k1003_06_route_map.png
 ?? crew-app/k1003_07_profile.png
 ?? crew-app/maestro_et_home.png
+?? crew-app/popup-standard-Ver1-01-success.png
+?? crew-app/popup-standard-Ver1-02-error.png
 ?? crew-app/prsched_00_calendar.png
 ?? crew-app/prsched_01_route_map.png
 ?? crew-app/prsched_02_back_to_timeline.png
@@ -141,6 +229,9 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
 ?? crew-app/sim_04_sched_day09.png
 ?? crew-app/sim_05_sched_fwd1.png
 ?? crew-app/sim_06_sched_fwd3.png
+?? crew-app/src/components/v2/AppDialog.tsx
+?? crew-app/src/features/notifications/DiscretionCard.tsx
+?? crew-app/src/features/v2/DiscretionScreen.tsx
 ?? crew-app/tgdest_00_home.png
 ?? crew-app/tgdest_01_home_destination_strip.png
 ?? crew-app/tgdest_02_city.png
@@ -148,234 +239,147 @@ Earlier code change still in worktree: gantt/src/components/roster/context-menu.
 ?? crew-app/tgdest_04_back_to_first.png
 ?? crew-app/tgdest_05_hotel_transfer.png
 ?? crew-app/tgdest_06_trip_details.png
-?? docs/ai/2026-09-12-0606-iphone-crew-app-login-build-provenance-audit-Ver1.md
-?? docs/ai/2026-09-12-0608-project-startup-validation-Ver1.md
-?? docs/assets/screenshots/crew-app/iphone-air-login-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-no-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-no-confirm-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-no-confirm-Ver2.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-request-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-unanimous-S21001-request-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-unanimous-S21001-yes-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-unanimous-S21014-request-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-unanimous-S21014-yes-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-unanimous-S21015-request-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-unanimous-S21015-yes-Ver1.png
-?? docs/assets/screenshots/crew-app/s2-consent-mobile-yes-Ver1.png
-?? docs/assets/screenshots/crew-app/v2-day-off-art-Ver1-01_cafe.png
-?? docs/assets/screenshots/crew-app/v2-day-off-art-Ver1-02_mountain.png
-?? docs/assets/screenshots/crew-app/v2-guest-meeting-only-Ver1-01_no-day-off.png
-?? docs/assets/screenshots/crew-app/v2-meeting-overlap-Ver1-01_two-events-1900.png
-?? docs/assets/screenshots/crew-app/v2-meeting-short-event-Ver1-01_full-title-location.png
-?? docs/assets/screenshots/crew-recovery/case3-entry1-alert-center-Ver1.png
-?? docs/assets/screenshots/crew-recovery/case3-entry2-pairing-pane-Ver1.png
-?? docs/assets/screenshots/crew-recovery/case3-entry3-roster-pane-Ver1.png
-?? docs/assets/screenshots/crew-recovery/case3-options-applied-draft-Ver1.png
-?? docs/assets/screenshots/crew-recovery/case3-options-cost-breakdown-Ver1.png
-?? docs/assets/screenshots/crew-recovery/case3-options-executable-Ver1.png
-?? docs/assets/screenshots/crew-recovery/case3-options-preview-Ver1.png
-?? docs/assets/screenshots/crew-recovery/case3-options-saved-Ver1.png
-?? docs/assets/screenshots/crew-recovery/case3-roster-4-pilots-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-add-basic-delay-ghost-panes-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-add-basic-delay-ghost-panes-Ver2.png
-?? docs/assets/screenshots/crew-recovery/s2-add-basic-delay-ghost-panes-Ver3.png
-?? docs/assets/screenshots/crew-recovery/s2-add-basic-delay-ghost-panes-Ver4.png
-?? docs/assets/screenshots/crew-recovery/s2-add-basic-delay-ghost-panes-Ver5.png
-?? docs/assets/screenshots/crew-recovery/s2-add-debug-after-filter.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-context-menu-debug-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-context-menu-debug-Ver2.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-context-menu-debug-Ver3.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver10.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver11.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver12.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver13.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver14.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver15.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver2.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver3.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver4.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver5.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver6.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver7.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver8.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-Ver9.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-standby-costs-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-add-pairing-right-click-recovery-standby-costs-click2-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry1-roster-right-click-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry1-roster-right-click-Ver2.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry1-roster-right-click-Ver3.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry1-roster-right-click-Ver4.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry1-roster-right-click-Ver5.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry2-pairing-right-click-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry2-pairing-right-click-Ver2.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry2-pairing-right-click-Ver3.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry2-pairing-right-click-Ver4.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry2-pairing-right-click-Ver5.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry3-alert-center-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry3-alert-center-Ver2.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry3-alert-center-Ver3.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry3-alert-center-Ver4.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry3-alert-center-Ver5.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry3-alert-center-recovery-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-fdp-entry3-alert-center-recovery-Ver2.png
-?? docs/assets/screenshots/crew-recovery/s2-isolated-crew-pool-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-isolated-crew-pool-Ver2.png
-?? docs/assets/screenshots/crew-recovery/s2-recovery-skill-Ver1.png
-?? docs/assets/screenshots/crew-recovery/s2-roster-right-click-recovery-entry-Ver1.png
-?? docs/assets/screenshots/gantt/auto-assign-duties-3-crew-Ver1.png
-?? docs/assets/screenshots/gantt/cr-public-login-20260912-Ver1.png
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-ek-Ver1.png
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-ek-Ver1.png.review.txt
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-ek-Ver1.png.vision.txt
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-et-Ver1.png
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-et-Ver1.png.review.txt
-?? docs/assets/screenshots/gantt/ek-et-flight-assignment-fly-et-Ver1.png.vision.txt
-?? docs/assets/screenshots/gantt/help-recovery-cases-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-102-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-103-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-104-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-case-001-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-case-002-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-case-003-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-cost-library-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-costs-Ver1.png
-?? docs/assets/screenshots/gantt/help-recovery-recovery-overview-Ver1.png
-?? docs/assets/screenshots/gantt/rbot-auto-assign-applied-Ver5.png
-?? docs/assets/screenshots/gantt/rbot-auto-assign-sep-week1-Ver4.png
-?? docs/assets/screenshots/gantt/rbot-auto-assign-sep-week2-Ver4.png
-?? docs/assets/screenshots/gantt/rbot-auto-assign-sep-week3-Ver4.png
-?? docs/assets/screenshots/gantt/rbot-auto-assign-sep-week4-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-catalogue-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-delay-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-guarantee-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-membership-Ver4.png
-?? docs/assets/screenshots/gantt/recovery-cost-standby-Ver4.png
-?? docs/assets/screenshots/gantt/rule-3007-dxb-delay-alert-center-Ver1.png
-?? docs/assets/screenshots/gantt/rule-3007-dxb-delay-alert-center-Ver1.png.review.txt
-?? docs/assets/screenshots/gantt/rule-3007-dxb-delay-alert-center-Ver1.png.vision.txt
-?? docs/assets/screenshots/gantt/rule-3007-dxb-single-leg-delay-Ver1.png
-?? docs/assets/screenshots/gantt/s2-consent-controller-compose-Ver1.png
-?? docs/assets/screenshots/gantt/s2-consent-controller-feedback-Ver1.png
-?? docs/assets/screenshots/gantt/s2-consent-controller-initial-Ver1.png
-?? docs/assets/screenshots/gantt/s2-consent-controller-returned-Ver1.png
-?? docs/assets/screenshots/gantt/s2-consent-controller-sent-Ver1.png
-?? docs/assets/screenshots/gantt/s2-consent-controller-unanimous-Ver1.png
-?? docs/assets/screenshots/gantt/startup-gantt-20260912-Ver2.png
-?? docs/assets/screenshots/gantt/startup-gantt-20260912-Ver3.png
-?? docs/assets/screenshots/gantt/startup-login-20260912-Ver1.png
-?? docs/assets/screenshots/gantt/startup-login-20260912-Ver2.png
-?? docs/assets/screenshots/gantt/startup-login-20260912-Ver3.png
-?? docs/dev-context/2026-09-12-gantt-s2-preparation-crew-consent.md
-?? docs/dev-context/2026-09-13-gantt-case3-8004-fleet-recovery-options.md
-?? docs/dev-context/2026-09-13-gantt-case3-8004-fleet-recovery.md
-?? docs/dev-context/2026-09-13-live-server-rule-3007-fdp-delay.md
-?? docs/handoff/agent-workflow/2026-09-13-deepseek-native-view-image.md
-?? docs/handoff/crew-app/2026-09-12-crew-app-social-login-provisioning-handoff.md
-?? docs/superpowers/specs/2026-09-12-1744-S2-flight-delay-preparation-Ver1.md
-?? docs/superpowers/specs/2026-09-12-S2-discretion-consent-design.md
-?? docs/test-cases/crew-recovery/2026-09-12-1817-S2-prepared-fixtures-Ver1.md
-?? docs/test-cases/crew-recovery/2026-09-12-S2-discretion-consent-evidence-Ver1.md
-?? docs/test-cases/crew-recovery/2026-09-13-case-003-preparation-Ver1.md
-?? docs/test-cases/crew-recovery/fixtures/
-?? e2e/config/case3.config.ts
-?? e2e/docs/
-?? e2e/scripts/recovery-s1-gh-readonly.cjs
-?? e2e/scripts/recovery-s1-options-readonly.cjs
-?? e2e/tests/gantt/ek-et-flight-assignment-fly.spec.ts
-?? e2e/tests/gantt/recovery-case-003-options.spec.ts
-?? e2e/tests/gantt/recovery-case-003.spec.ts
-?? e2e/utils/pairing-build.ts
-?? gantt/public/help/screenshots/recovery-cost-catalogue-Ver4.png
-?? gantt/public/help/screenshots/recovery-cost-delay-Ver4.png
-?? gantt/public/help/screenshots/recovery-cost-guarantee-Ver4.png
-?? gantt/public/help/screenshots/recovery-cost-membership-Ver4.png
-?? gantt/public/help/screenshots/recovery-cost-standby-Ver4.png
-?? gantt/public/help/screenshots/s1-absence-dates-Ver1.jpg
-?? gantt/public/help/screenshots/s1-absence-record-Ver1.png
-?? gantt/public/help/screenshots/s1-add-filter-Ver1.png
-?? gantt/public/help/screenshots/s1-crew-alerts-Ver1.jpg
-?? gantt/public/help/screenshots/s1-mobile-error-Ver1.jpg
-?? gantt/public/help/screenshots/s1-option1-Ver1.png
-?? gantt/public/help/screenshots/s1-option2-Ver1.png
-?? gantt/public/help/screenshots/s1-option3-Ver1.png
-?? gantt/public/help/screenshots/s1-stand-down-Ver1.png
-?? gantt/public/help/screenshots/s2-consent-controller-feedback-Ver1.png
-?? gantt/public/help/screenshots/s2-consent-controller-unanimous-Ver1.png
-?? gantt/public/help/screenshots/s2-consent-mobile-request-Ver1.png
-?? gantt/public/help/screenshots/s2-isolated-crew-pool-Ver1.png
-?? gantt/public/help/screenshots/s3-entry-alert-center-Ver1.png
-?? gantt/public/help/screenshots/s3-entry-pairing-pane-Ver1.png
-?? gantt/public/help/screenshots/s3-entry-roster-pane-Ver1.png
-?? gantt/public/help/screenshots/s3-options-executable-Ver1.png
-?? gantt/public/help/screenshots/s3-options-preview-Ver1.png
-?? gantt/src/components/help/topics/recovery/recovery-case-002.tsx
-?? gantt/src/components/help/topics/recovery/recovery-case-003.tsx
-?? gantt/src/components/recovery/__tests__/discretion-consent-panel.test.tsx
-?? gantt/src/components/recovery/discretion-consent-panel.tsx
-?? gantt/src/services/__tests__/gantt-sync-manager-fallback.test.ts
-?? live-server/src/services/crew-notify/__tests__/discretion-consent-service.test.ts
-?? live-server/src/services/crew-notify/discretion-consent-service.ts
-?? packages/legality-messages/pnpm-lock.yaml
-?? scripts/__tests__/screenshot-review.test.mjs
-?? scripts/screenshot-review/
+?? docs/assets/screenshots/crew-app/absence-history-Ver1-00-icon.png
+?? docs/assets/screenshots/crew-app/absence-history-Ver1-01-list.png
+?? docs/assets/screenshots/crew-app/absence-history-Ver1-02-empty.png
+?? docs/assets/screenshots/crew-app/ek-absence-Ver1-00-login.png
+?? docs/assets/screenshots/crew-app/ek-absence-Ver1-01-form.png
+?? docs/assets/screenshots/crew-app/ek-absence-Ver1-02-submitted.png
+?? docs/assets/screenshots/crew-app/ek-absence-Ver1-03-history.png
+?? docs/assets/screenshots/crew-app/popup-standard-Ver1-01-success.png
+?? docs/assets/screenshots/crew-app/s2-msg-alerts-details-Ver2.png
+?? docs/assets/screenshots/crew-app/s2-msg-alerts-details-Ver2.png.review.txt
+?? docs/assets/screenshots/crew-app/s2-msg-alerts-details-Ver2.png.vision.txt
+?? docs/assets/screenshots/crew-app/s2-msg-decision-sent-Ver2.png
+?? docs/assets/screenshots/crew-app/s2-msg-decision-sent-Ver2.png.review.txt
+?? docs/assets/screenshots/crew-app/s2-msg-decision-sent-Ver2.png.vision.txt
+?? docs/assets/screenshots/crew-app/s2-msg-discretion-details-Ver2.png
+?? docs/assets/screenshots/crew-app/s2-msg-discretion-history-Ver2.png
+?? docs/assets/screenshots/crew-app/s2-msg-home-quick-action-Ver2.png
+?? docs/assets/screenshots/crew-app/s2-msg-home-quick-action-Ver2.png.review.txt
+?? docs/assets/screenshots/crew-app/s2-msg-home-quick-action-Ver2.png.vision.txt
+?? docs/assets/screenshots/crew-recovery/case3-options-cost-breakdown-Ver2.png
+?? docs/assets/screenshots/crew-recovery/case3-options-cost-breakdown-over-gh-Ver2.png
+?? docs/assets/screenshots/crew-recovery/case3-options-executable-Ver2.png
+?? docs/assets/screenshots/gantt/app-dialog-standard-Ver1.png
+?? docs/assets/screenshots/gantt/recovery-cost-catalogue-Ver5.png
+?? docs/assets/screenshots/gantt/recovery-cost-delay-Ver5.png
+?? docs/assets/screenshots/gantt/recovery-cost-guarantee-Ver5.png
+?? docs/assets/screenshots/gantt/recovery-cost-membership-Ver5.png
+?? docs/assets/screenshots/gantt/recovery-cost-standby-Ver5.png
+?? docs/assets/screenshots/gantt/roster-ghost-std-label-Ver1.png
+?? docs/assets/screenshots/gantt/roster-puck-width-responsive-Ver1-z18-minimal.png
+?? docs/assets/screenshots/gantt/roster-puck-width-responsive-Ver1-z40-airports.png
+?? docs/assets/screenshots/gantt/roster-puck-width-responsive-Ver1-z90-full.png
+?? docs/assets/screenshots/gantt/top-nav-brand-icon-Ver1.png
+?? docs/dev-context/2026-09-13-live-server-s2-discretion-message-details.md
+?? docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md
+?? docs/test-cases/crew-recovery/2026-09-13-S2-discretion-message-details-evidence-Ver1.md
+?? e2e/tests/gantt/app-dialog-standard.spec.ts
+?? e2e/tests/gantt/recovery-case-003-costs.spec.ts
+?? e2e/tests/gantt/roster-puck-width-responsive.spec.ts
+?? e2e/tests/gantt/top-nav-brand-icon.spec.ts
+?? gantt/public/help/screenshots/recovery-cost-catalogue-Ver5.png
+?? gantt/public/help/screenshots/recovery-cost-delay-Ver5.png
+?? gantt/public/help/screenshots/recovery-cost-guarantee-Ver5.png
+?? gantt/public/help/screenshots/recovery-cost-membership-Ver5.png
+?? gantt/public/help/screenshots/recovery-cost-standby-Ver5.png
+?? gantt/public/help/screenshots/s3-options-cost-breakdown-Ver1.png
+?? gantt/public/help/screenshots/s3-options-executable-Ver2.png
+?? gantt/src/assets/images/logo/altair-crew-app-icon.svg
+?? gantt/src/services/__tests__/recovery-cost-batch.test.ts
+?? live-server/src/services/recovery/transfer-gh-cost.test.ts
+?? live-server/src/services/recovery/transfer-gh-cost.ts
 ?? sim_01_login.png
-?? sql/migration/2026-09-13-ek-et-flight-assignment-to-fly.sql
 ```
 
 ### unstaged changed files
 
 ```text
-.agents/skills/142-flight-schedule-seed-generator/SKILL.md
-.agents/skills/142-flight-schedule-seed-generator/fixtures/add-b787-demo-sep2026.json
-.agents/skills/142-flight-schedule-seed-generator/fixtures/ek-dxb-a380.json
-.agents/skills/142-flight-schedule-seed-generator/fixtures/et-add-b787-737.json
-.agents/skills/142-flight-schedule-seed-generator/scripts/load-ssim-flights.mjs
-.agents/skills/145-crew-recovery-case-study/SKILL.md
-.gitignore
-AGENTS.md
 CLAUDE.md
-crew-app/__tests__/features/meetingSetup.test.ts
+crew-app/__tests__/features/AbsenceScreen.test.tsx
+crew-app/__tests__/features/NotificationsScreen.test.tsx
+crew-app/__tests__/features/absenceApi.test.ts
+crew-app/__tests__/features/crewCarrierBranding.test.ts
+crew-app/__tests__/features/discretionScreen.test.tsx
+crew-app/__tests__/features/dutyCalendarMessages.test.ts
+crew-app/__tests__/features/guestLogin.test.tsx
+crew-app/__tests__/features/loginScreen.test.tsx
 crew-app/__tests__/features/notificationsApi.test.ts
-crew-app/__tests__/features/schedRosterViews.test.ts
-crew-app/__tests__/features/scheduleMeetings.test.tsx
-crew-app/__tests__/themeCoverage.test.ts
-crew-app/ios/RoyceTravelTemplate/MeetingBackgroundSync.swift
-crew-app/src/features/meetings/meetingSetup.ts
+crew-app/__tests__/features/preferencesCalendarSync.test.tsx
+crew-app/__tests__/features/scheduleFlightCalendar.test.tsx
+crew-app/__tests__/features/tripDetailsCalendar.test.tsx
+crew-app/__tests__/features/upcomingAlarms.test.tsx
+crew-app/src/components/v2/icons.tsx
+crew-app/src/features/absence/absenceApi.ts
+crew-app/src/features/auth/EkRosterLoginScreen.tsx
+crew-app/src/features/auth/LoginScreen.tsx
+crew-app/src/features/calendar/dutyCalendarMessages.ts
 crew-app/src/features/notifications/NotificationsScreen.tsx
 crew-app/src/features/notifications/notificationsApi.ts
-crew-app/src/features/v2/CalendarView.tsx
+crew-app/src/features/notifications/notificationsSlice.ts
+crew-app/src/features/settings/ProfileScreen.tsx
+crew-app/src/features/travel/MyTripsScreen.tsx
+crew-app/src/features/travel/PortalCaptureScreen.tsx
+crew-app/src/features/travel/ekRosterApi.ts
+crew-app/src/features/tripTrade/MyDutyScreen.tsx
+crew-app/src/features/v2/AbsenceScreen.tsx
+crew-app/src/features/v2/AlarmsSettingsScreen.tsx
+crew-app/src/features/v2/HomeScreen.tsx
+crew-app/src/features/v2/PreferencesScreen.tsx
+crew-app/src/features/v2/ProfileScreen.tsx
 crew-app/src/features/v2/ScheduleScreen.tsx
-crew-app/src/features/v2/model.ts
-crew-app/src/features/v2/schedView.ts
+crew-app/src/features/v2/SpecPage.tsx
+crew-app/src/features/v2/TripDetailsScreen.tsx
+crew-app/src/features/v2/UpcomingAlarmsScreen.tsx
+crew-app/src/features/v2/V2Navigator.tsx
+crew-app/src/features/v2/nav.ts
+crew-app/src/features/v2/useV2.ts
 crew-app/src/version.ts
+docs/assets/screenshots/gantt/help-recovery-cases-Ver1.png
+docs/assets/screenshots/gantt/help-recovery-recovery-case-003-Ver1.png
 docs/dev-context/LATEST.md
-docs/superpowers/specs/2026-09-11-crew-app-rbot-assistant-design.md
+docs/superpowers/specs/2026-09-12-S2-discretion-consent-design.md
+docs/test-cases/crew-recovery/2026-09-13-case-003-preparation-Ver1.md
+e2e/config/case3.config.ts
 e2e/tests/gantt/help/help-recovery.spec.ts
-e2e/tests/gantt/pairing-build.spec.ts
-gantt/src/components/dev/dev-skills-data.generated.ts
-gantt/src/components/gantt/source/__tests__/live-violation-attribution.test.ts
-gantt/src/components/gantt/source/live-gantt-source.ts
-gantt/src/components/help/help-data.ts
-gantt/src/components/help/help-view.tsx
-gantt/src/components/pairing/duty-node-dialog.tsx
-gantt/src/components/panes/pairing-pane.tsx
-gantt/src/components/panes/shared/pairing-pane.tsx
-gantt/src/components/panes/shared/roster-pane.tsx
-gantt/src/components/panes/violation-list-dialog.tsx
-gantt/src/components/recovery/recovery-violation-dialog.tsx
-gantt/src/components/roster/context-menu.tsx
+gantt/src/components/gantt/renderers/flight-renderer.ts
+gantt/src/components/gantt/renderers/roster-renderer.ts
+gantt/src/components/help/topics/recovery/recovery-case-003.tsx
+gantt/src/components/scenario-gantt/cross-rank-confirm-dialog.tsx
+gantt/src/components/shell/shell-top-nav.tsx
+gantt/src/services/__tests__/recovery-swap-gh.test.ts
 gantt/src/services/recovery-api.ts
 gantt/src/services/recovery-candidates.ts
-gantt/src/services/recovery-rules.ts
-gantt/src/services/recovery-trigger.ts
 gantt/src/version.ts
+live-server/src/__tests__/unit/crew-absence-history-route.test.ts
 live-server/src/__tests__/unit/crew-notify-route.test.ts
 live-server/src/plugins/auth.ts
 live-server/src/routes/crew-notify/crew-notify.ts
 live-server/src/routes/recovery/recovery-cost.ts
-live-server/src/services/flight/flight-delay-propagation-service.ts
-package.json
+live-server/src/services/crew-notify/__tests__/discretion-consent-service.test.ts
+live-server/src/services/crew-notify/discretion-consent-service.ts
+packages/ui/src/composites/app-dialog.tsx
+packages/ui/src/styles/globals.css
+pbs-portal/src/app/layout/dashboard-top-nav.tsx
+pbs-portal/src/app/layout/shared-bidding-workbench-layout.test.tsx
+pbs-portal/src/features/bid/components/bid-review-panel.tsx
+pbs-portal/src/features/dashboard/components/pairing-calendar-bid-detail-dialog.test.tsx
+pbs-portal/src/features/dashboard/components/pairing-calendar-bid-detail-dialog.tsx
+pbs-portal/src/features/days-off/components/prefer-off-calendar-picker.tsx
+pbs-portal/src/features/pairing/components/airport-preference-editor.tsx
+pbs-portal/src/features/pairing/components/pairing-bid-airport-select.tsx
+pbs-portal/src/features/pairing/components/pairing-bid-tag-list-control.tsx
+pbs-portal/src/features/pairing/components/pairing-preference-filter-dialog.tsx
+pbs-portal/src/features/pairing/components/pairing-property-config-dialog.tsx
+pbs-portal/src/features/pairing/pages/pairing-page.test.tsx
+pbs-portal/src/features/pairing/pages/search-pairings-page.test.tsx
+pbs-portal/src/features/standing-bid/pages/standing-bid-page.test.tsx
+pbs-portal/src/features/tier/components/tier-detail-dialog.tsx
+pbs-portal/src/shared/components/ui/pbs-dialog-frame.test.tsx
+pbs-portal/src/shared/components/ui/pbs-dialog-frame.tsx
+pbs-portal/src/shared/components/ui/portal-date-picker.tsx
+scripts/check-ui-standard.mjs
 ```
 
 ### staged files
@@ -389,7 +393,7 @@ package.json
 新窗口先阅读：
 
 1. `NEXT_CONTEXT.md`
-2. 本文件：`docs/dev-context/2026-09-13-gantt-case3-8004-help-article.md`
+2. 本文件：`docs/dev-context/2026-09-13-gantt-case3-8004-transfer-cost-pricing.md`
 3. `docs/dev-context/LATEST.md`
 
 然后运行：

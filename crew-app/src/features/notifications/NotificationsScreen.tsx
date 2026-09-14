@@ -10,7 +10,6 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -25,9 +24,11 @@ import {useAppDispatch, useAppSelector} from '../../store';
 import {useCarrier, type CarrierPalette} from '../../theme/carrier';
 import {GradientScreen} from '../../components/v2/GradientScreen';
 import {Icon, type IconName} from '../../components/v2/icons';
+import {AppDialog, type AppDialogTone} from '../../components/v2/AppDialog';
 import {SectionLabel} from '../../components/v2/rows';
 import type {DiscretionRequest} from './notificationsApi';
 import {decideDiscretion, loadNotifications, markNotificationReadThunk} from './notificationsSlice';
+import {DiscretionCard} from './DiscretionCard';
 import {
   describeRosterChange,
   formatAfterDuty,
@@ -46,30 +47,6 @@ function fmtUtc(value?: string | null): string {
   if (!m) return value;
   const [, , month, day, hour, minute] = m;
   return `${day} ${MONTHS[Number(month) - 1]} ${hour}${minute}z`;
-}
-
-function fmtMin(v?: number | null): string {
-  if (v == null) return '—';
-  const h = Math.floor(v / 60);
-  const mm = v % 60;
-  return `${h}h${String(mm).padStart(2, '0')} (${v}m)`;
-}
-
-function parseUtcMinute(value?: string | null): number | null {
-  if (!value) return null;
-  const ms = Date.parse(value.endsWith('Z') ? value : `${value}Z`);
-  return Number.isFinite(ms) ? Math.round(ms / 60000) : null;
-}
-
-function delayMinutes(d: DiscretionRequest): number | null {
-  const sch = parseUtcMinute(d.schDep);
-  const act = parseUtcMinute(d.actDep);
-  if (sch == null || act == null) return null;
-  return Math.max(act - sch, 0);
-}
-
-function fdpDeltaText(d: DiscretionRequest): string {
-  return `FDP ${fmtMin(d.plannedFdpMin)} → ${fmtMin(d.actualFdpMin)}`;
 }
 
 /** Line glyph per alert type — the same vocabulary the rest of the v2 surface uses. */
@@ -187,6 +164,19 @@ export function NotificationsScreen(): React.JSX.Element {
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const [refreshing, setRefreshing] = useState(false);
+  // One product pop-up (pop-up standard: status card, not a native alert).
+  const [dialog, setDialog] = useState<{
+    tone: AppDialogTone; title: string; message: string;
+    cancelLabel?: string; confirmLabel: string; onConfirm?: () => void;
+  } | null>(null);
+  function closeDialog() {
+    setDialog(null);
+  }
+  function confirmDialog() {
+    const handler = dialog?.onConfirm;
+    setDialog(null);
+    handler?.();
+  }
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -203,29 +193,27 @@ export function NotificationsScreen(): React.JSX.Element {
   const onDecide = useCallback(
     (d: DiscretionRequest, decision: 'accept' | 'reject') => {
       const verb = decision === 'accept' ? 'Yes' : 'No';
-      Alert.alert(
-        `${verb} FDP discretion?`,
-        decision === 'accept'
+      setDialog({
+        tone: decision === 'reject' ? 'destructive' : 'neutral',
+        title: `${verb} FDP discretion?`,
+        message: decision === 'accept'
           ? `Agree to the proposed ${d.extensionRequestedMin}-min extension for duty ${d.dutyId}. Regulatory approval is separate.`
           : `Decline the extension for duty ${d.dutyId}.`,
-        [
-          {text: 'Cancel', style: 'cancel'},
-          {
-            text: verb,
-            style: decision === 'reject' ? 'destructive' : 'default',
-            onPress: () => {
-              decideDiscretion(dispatch, {discretionId: d.discretionId, decision, credentials})
-                .then(res => Alert.alert('Decision sent', `FDP discretion ${res.state}.`))
-                .catch(e =>
-                  Alert.alert(
-                    'Unable to send decision',
-                    e instanceof Error ? e.message : 'Try again.',
-                  ),
-                );
-            },
-          },
-        ],
-      );
+        cancelLabel: 'Cancel',
+        confirmLabel: verb,
+        onConfirm: () => {
+          decideDiscretion(dispatch, {discretionId: d.discretionId, decision, credentials})
+            .then(res => setDialog({tone: 'success', title: 'Decision sent', message: `FDP discretion ${res.state}.`, confirmLabel: 'Got it'}))
+            .catch(e =>
+              setDialog({
+                tone: 'destructive',
+                title: 'Unable to send decision',
+                message: e instanceof Error ? e.message : 'Try again.',
+                confirmLabel: 'Got it',
+              }),
+            );
+        },
+      });
     },
     [dispatch, credentials],
   );
@@ -289,90 +277,15 @@ export function NotificationsScreen(): React.JSX.Element {
         {openDiscretions.length > 0 && (
           <>
             <SectionLabel palette={p}>ACTION REQUIRED</SectionLabel>
-            {openDiscretions.map(d => {
-              const deciding = decidingId === d.discretionId;
-              return (
-                <View
-                  key={d.discretionId}
-                  style={[styles.card, {backgroundColor: p.cardSolid}]}
-                  testID="discretion-card">
-                  <View style={styles.rowBetween}>
-                    <View style={styles.cardHeadLeft}>
-                      <View style={[styles.chip, {backgroundColor: p.frost}]}>
-                        <Icon name="shield" size={16} color={p.cardInk} strokeWidth={1.7} />
-                      </View>
-                      <Text style={[styles.cardTitle, {color: p.cardInk}]}>
-                        FDP discretion · {d.dutyId}
-                      </Text>
-                    </View>
-                    <Text style={[styles.extBadge, {backgroundColor: p.btn}]}>
-                      +{d.extensionRequestedMin}m
-                    </Text>
-                  </View>
-
-                  <Text style={[styles.cardBody, {color: p.cardSoft}]}>
-                    {d.proposal ? 'Report → release · ' : `Flight delayed ${delayMinutes(d) ?? '—'} min · `}{fdpDeltaText(d)}
-                  </Text>
-
-                  {d.proposal?.reason && <Text style={[styles.cardBody, {color: p.cardSoft}]}>{d.proposal.reason}</Text>}
-                  <Text style={[styles.cardBody, {color: p.cardSoft}]}>Agreement does not override regulatory limits.</Text>
-                  <View style={[styles.grid, {borderColor: p.cardLine}]}>
-                    <View style={styles.gridCol}>
-                      <Text style={[styles.gridHead, {color: p.cardSoft}]}>Before · UTC</Text>
-                      <Text style={[styles.gridVal, {color: p.cardInk}]}>
-                        {fmtUtc(d.schDep)} → {fmtUtc(d.schArv)}
-                      </Text>
-                    </View>
-                    <View style={styles.gridCol}>
-                      <Text style={[styles.gridHead, {color: p.cardSoft}]}>{d.estDep ? 'Proposed · UTC' : 'Actual · UTC'}</Text>
-                      <Text style={[styles.gridVal, {color: p.cardInk}]}>
-                        {fmtUtc(d.estDep ?? d.actDep)} → {fmtUtc(d.estArv ?? d.actArv)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.gridPlain}>
-                    <View style={styles.gridCol}>
-                      <Text style={[styles.gridHead, {color: p.cardSoft}]}>Original FDP</Text>
-                      <Text style={[styles.gridVal, {color: p.cardInk}]}>{fmtMin(d.plannedFdpMin)}</Text>
-                    </View>
-                    <View style={styles.gridCol}>
-                      <Text style={[styles.gridHead, {color: p.cardSoft}]}>Latest FDP</Text>
-                      <Text
-                        style={[styles.gridVal, {color: p.cardInk}]}
-                        testID="disc-latest-fdp">
-                        {fmtMin(d.actualFdpMin)}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.limitLine, {color: p.cardSoft}]}>
-                    {d.limitMin == null ? 'Regulatory assessment pending' : `Plan limit ${fmtMin(d.limitMin)} · exceed by ${Math.max((d.actualFdpMin ?? 0) - d.limitMin, 0)}m`}
-                  </Text>
-                  <Text style={[styles.choiceLine, {color: p.cardInk}]}>
-                    Do you agree to {d.extensionRequestedMin} min FDP extension?
-                  </Text>
-
-                  {deciding ? (
-                    <ActivityIndicator color={p.btn} style={styles.spinner} />
-                  ) : (
-                    <View style={styles.actions}>
-                      <Pressable
-                        style={[styles.btn, styles.btnGhost, {borderColor: p.cardLine}]}
-                        testID="btn-reject"
-                        onPress={() => onDecide(d, 'reject')}>
-                        <Text style={[styles.btnGhostText, {color: p.cardInk}]}>No</Text>
-                      </Pressable>
-                      <Pressable
-                        style={[styles.btn, {backgroundColor: p.btn}]}
-                        testID="btn-accept"
-                        onPress={() => onDecide(d, 'accept')}>
-                        <Text style={styles.btnText}>Yes · +{d.extensionRequestedMin}m</Text>
-                      </Pressable>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
+            {openDiscretions.map(d => (
+              <DiscretionCard
+                key={d.discretionId}
+                request={d}
+                palette={p}
+                deciding={decidingId === d.discretionId}
+                onDecide={onDecide}
+              />
+            ))}
           </>
         )}
 
@@ -432,6 +345,19 @@ export function NotificationsScreen(): React.JSX.Element {
           );
         })}
       </ScrollView>
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={closeDialog}
+        onConfirm={confirmDialog}
+        tone={dialog?.tone ?? 'neutral'}
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        cancelLabel={dialog?.cancelLabel}
+        confirmLabel={dialog?.confirmLabel}
+        onCancel={closeDialog}
+        testID="notifications-dialog"
+      />
     </GradientScreen>
   );
 }

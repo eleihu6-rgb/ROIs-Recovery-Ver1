@@ -15,12 +15,33 @@ export const discretionProposalSchema = z.object({
 }).strict()
 export type DiscretionProposal = z.infer<typeof discretionProposalSchema>
 export type ConsentState = 'pending' | 'accepted' | 'rejected' | 'expired' | 'superseded'
+/** One physical flight inside the duty the crew is being asked about. `revised*`
+ *  carries the published estimate (or the recorded actual once operated) so the
+ *  crew reads the delayed time next to the schedule, not prose. */
+export interface ConsentDutyLeg {
+  fltNum: string; depArp: string; arvArp: string
+  schDepUtc: string | null; schArvUtc: string | null
+  revisedDepUtc: string | null; revisedArvUtc: string | null
+  delayMin: number
+  /** True once the leg has a recorded actual departure that differs from schedule. */
+  operated: boolean
+}
+/** Duty-level detail (FDP is a duty property, not a flight property): check-in /
+ *  release, every flown leg with its schedule and revised time, and the FDP the
+ *  crew is extending. An immutable snapshot carried with each consent request. */
+export interface ConsentDutyDetail {
+  pairingId: string; pairingLabel: string | null; dutySeq: string
+  reportUtc: string; releaseUtc: string
+  fdpBeforeMin: number; fdpAfterMin: number
+  legs: ConsentDutyLeg[]
+}
 export interface ConsentRequest {
   discretionId: string; proposalId: string; crewId: string; captainCrewId: string; pairingId: string; dutyId: string;
   createdUtc: string; expiresUtc: string; plannedFdpMin: number; actualFdpMin: number;
   extensionRequestedMin: number; state: ConsentState; requester: string; sourceHash: string;
   proposal: DiscretionProposal; decidedUtc?: string; decidedBy?: string; decisionReason?: string; idempotencyKey?: string; supersededBy?: string;
   schDep: string; schArv: string; estDep: string; estArv: string;
+  duty?: ConsentDutyDetail;
 }
 const schemaOf = (o: CrewNotifyServiceOptions) => quoteIdentifier(o.liveSchema ?? env.LIVE_SCHEMA)
 const nowOf = (o: CrewNotifyServiceOptions) => o.now ?? new Date()
@@ -56,7 +77,43 @@ export async function consentSource(o: CrewNotifyServiceOptions, pairingId: numb
   if (!source?.segments.length || !source.crews.length || !source.pairing) {
     throw new CrewNotifyServiceError(409, 'The duty has no current assigned crew.')
   }
-  return { sourceHash: hash(source), crewIds: source.crews, segments: source.segments, flights: source.flights, airlines: source.airlines as string[] }
+  const pairingLabel = (source.pairing as { pairing_label?: string | null } | null)?.pairing_label ?? null
+  return { sourceHash: hash(source), crewIds: source.crews, segments: source.segments, flights: source.flights, airlines: source.airlines as string[], pairingLabel }
+}
+
+/** Build the crew-facing duty detail from the authoritative segments + flights. */
+export function buildDutyDetail(
+  source: { segments: Array<Record<string, unknown>>; flights: Array<Record<string, unknown>>; pairingLabel: string | null },
+  before: { reportUtc: string; releaseUtc: string; fdpMin: number },
+  after: { reportUtc: string; releaseUtc: string; fdpMin: number },
+  pairingId: number, dutySeq: number,
+): ConsentDutyDetail {
+  const flightsById = new Map(source.flights.map(f => [String(f.id), f]))
+  const optionalIso = (value: unknown) => (value == null ? null : utcIso(value))
+  const legs = [...source.segments]
+    .sort((a, b) => Number(a.seg_seq) - Number(b.seg_seq))
+    .map(segment => {
+      const flight = flightsById.get(String(segment.flt_id)) ?? {}
+      const schDepUtc = optionalIso(flight.sch_dep_dt_utc)
+      const schArvUtc = optionalIso(flight.sch_arv_dt_utc)
+      const revisedDepUtc = optionalIso(flight.est_dep_dt_utc) ?? optionalIso(flight.act_dep_dt_utc)
+      const revisedArvUtc = optionalIso(flight.est_arv_dt_utc) ?? optionalIso(flight.act_arv_dt_utc)
+      const delayMin = schDepUtc && revisedDepUtc
+        ? Math.max(Math.round((Date.parse(revisedDepUtc) - Date.parse(schDepUtc)) / 60000), 0) : 0
+      const actDepUtc = optionalIso(flight.act_dep_dt_utc)
+      return {
+        fltNum: String(segment.flt_num ?? flight.flt_num ?? ''),
+        depArp: String(segment.dep_arp ?? flight.dep_arp ?? ''),
+        arvArp: String(segment.arv_arp ?? flight.arv_arp ?? ''),
+        schDepUtc, schArvUtc, revisedDepUtc, revisedArvUtc, delayMin,
+        operated: actDepUtc != null && schDepUtc != null && actDepUtc !== schDepUtc,
+      }
+    })
+  return {
+    pairingId: String(pairingId), pairingLabel: source.pairingLabel, dutySeq: String(dutySeq),
+    reportUtc: before.reportUtc, releaseUtc: before.releaseUtc,
+    fdpBeforeMin: before.fdpMin, fdpAfterMin: after.fdpMin, legs,
+  }
 }
 
 export async function prepareConsent(o: CrewNotifyServiceOptions, pairingId: number, dutySeq: number, requester?: string) {
@@ -89,7 +146,10 @@ export async function prepareConsent(o: CrewNotifyServiceOptions, pairingId: num
     }
   }
   if (source.airlines?.length !== 1 || !['F8', 'ET'].includes(source.airlines[0])) throw new CrewNotifyServiceError(409, 'Assigned crews must share a supported crew-app airline.')
-  return { airline: source.airlines[0] as 'F8' | 'ET', before: window('sch'), after: window('act'), crewIds: source.crewIds, sourceHash: source.sourceHash, previous, previousProposal }
+  const before = window('sch')
+  const after = window('act')
+  const duty = buildDutyDetail(source, before, after, pairingId, dutySeq)
+  return { airline: source.airlines[0] as 'F8' | 'ET', before, after, duty, pairingLabel: source.pairingLabel, crewIds: source.crewIds, sourceHash: source.sourceHash, previous, previousProposal }
 }
 
 export async function createConsent(o: CrewNotifyServiceOptions, proposal: DiscretionProposal, requester: string) {
@@ -110,6 +170,7 @@ export async function createConsent(o: CrewNotifyServiceOptions, proposal: Discr
     extensionRequestedMin: proposal.extensionRequestedMin, state: 'pending', requester, sourceHash: source.sourceHash, proposal,
     schDep: proposal.before.reportUtc, schArv: proposal.before.releaseUtc,
     estDep: proposal.after.reportUtc, estArv: proposal.after.releaseUtc,
+    duty: canonical.duty,
   }))
   // One statement makes the complete recipient group atomic.
   await o.pgPool.query(`with inserted as (insert into ${schemaOf(o)}.crew_notification
@@ -152,6 +213,16 @@ export async function listOpenConsents(o: CrewNotifyServiceOptions, airline: str
     order by seq desc`, [airline, crewId, nowOf(o).toISOString()])
   const requests = await Promise.all(result.rows.map(row => currentState(o, row.payload)))
   return requests.filter(r => r.state === 'pending')
+}
+
+/** Every FDP-discretion request this crew has received, newest first — the
+ *  pending ones plus the terminal history (accepted / rejected / expired /
+ *  superseded) that the crew-app Home "Discretion" page lists. */
+export async function listConsents(o: CrewNotifyServiceOptions, airline: string, crewId: string, limit = 30) {
+  const result = await o.pgPool.query<{ payload: ConsentRequest }>(`select payload from ${schemaOf(o)}.crew_notification
+    where airline = $1 and crew_id = $2 and notif_type = 'fdp_discretion'
+    order by seq desc limit $3`, [airline, crewId, Math.min(Math.max(limit, 1), 100)])
+  return Promise.all(result.rows.map(row => currentState(o, row.payload)))
 }
 
 export async function getControllerConsent(o: CrewNotifyServiceOptions, proposalId: string, requester: string) {

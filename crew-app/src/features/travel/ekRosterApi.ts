@@ -157,6 +157,14 @@ const LIVE_SERVER_ENVELOPE_AIRLINES = new Set(['F8', 'ET']);
 export function usesLiveServerEnvelope(airline: unknown): boolean {
   return typeof airline === 'string' && LIVE_SERVER_ENVELOPE_AIRLINES.has(airline);
 }
+/** Absence requests (crew recovery story 101) are a ROIS live-server feature, so
+ *  they are available exactly where the mobile roster is — the EK restriction
+ *  above is about the EVACC *notification* envelope, not about who owns the
+ *  absence record. Ryan, 2026-09-13: a DXB (Emirates) crew must be able to file
+ *  and read back a request like any other crew. */
+export function usesLiveServerAbsence(airline: unknown): boolean {
+  return isMobileRosterAirline(airline);
+}
 function isSupportedRosterAirline(airline: unknown): boolean {
   return typeof airline === 'string' && SUPPORTED_ROSTER_AIRLINES.has(airline);
 }

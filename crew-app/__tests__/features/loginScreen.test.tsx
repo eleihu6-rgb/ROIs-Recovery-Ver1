@@ -100,4 +100,17 @@ describe('LoginScreen', () => {
     fireEvent.changeText(getByTestId('crew-id'), 'J4002');
     expect(getByTestId('crew-id').props.value).toBe('J4002');
   });
+
+  // Pop-up standard: a missing-field notice is an AppDialog warning card, not a
+  // native alert, and it keeps the crew on the form.
+  it('asks for the crew ID and password in a warning pop-up, not a native alert', () => {
+    const { getByTestId, queryByTestId } = renderLogin();
+    fireEvent.press(getByTestId('login-btn'));
+
+    expect(getByTestId('login-dialog-title').props.children).toBe('Missing details');
+    expect(getByTestId('login-dialog-message').props.children).toBe('Enter your Crew ID and password.');
+    // Acknowledging closes the pop-up and keeps the crew on the form.
+    fireEvent.press(getByTestId('login-dialog-confirm'));
+    expect(queryByTestId('login-dialog-title')).toBeNull();
+  });
 });

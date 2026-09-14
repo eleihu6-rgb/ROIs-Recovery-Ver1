@@ -3,10 +3,15 @@
 // My Trips screen, so the same tap always tells the crew the same thing.
 import type { Trip } from '../travel/tripCsv';
 import type { CalendarSyncResult, CalendarToggleResult } from './flightCalendarSlice';
+// The pop-up standard's semantic tone (AppDialog). Type-only, so this pure
+// copy module stays free of any React Native rendering import.
+import type { AppDialogTone } from '../../components/v2/AppDialog';
 
 export interface CalendarToggleMessage {
   title: string;
   body: string;
+  /** Outcome tone for the status-card pop-up (pop-up standard). */
+  tone: AppDialogTone;
 }
 
 /**
@@ -20,6 +25,7 @@ export function describeCalendarToggle(
   switch (result.status) {
     case 'added':
       return {
+        tone: 'success',
         title: 'Added to Calendar',
         body:
           `${result.count} entries added to your iPhone calendar — wake-up, leave home, ` +
@@ -28,20 +34,23 @@ export function describeCalendarToggle(
       };
     case 'removed':
       return {
+        tone: 'success',
         title: 'Removed from Calendar',
         body: 'This duty is no longer in your iPhone calendar.',
       };
     case 'denied':
       return {
+        tone: 'warning',
         title: 'Calendar access needed',
         body: 'Allow calendar access in iOS Settings → Privacy → Calendars to add your flights.',
       };
     case 'unavailable':
-      return { title: 'Not available', body: 'Adding flights to the calendar needs iOS.' };
+      return { tone: 'warning', title: 'Not available', body: 'Adding flights to the calendar needs iOS.' };
     case 'empty':
-      return { title: 'Nothing to add', body: 'This duty has no usable departure time.' };
+      return { tone: 'neutral', title: 'Nothing to add', body: 'This duty has no usable departure time.' };
     case 'error':
       return {
+        tone: 'destructive',
         title: 'Could not update Calendar',
         body: result.message ?? 'Please try again.',
       };
@@ -68,6 +77,7 @@ export function describeCalendarSync(
   switch (result.status) {
     case 'enabled':
       return {
+        tone: 'success',
         title: 'Calendar sync on',
         body:
           `${result.added} entries added to your iPhone Calendar across ${duties(result.duties)}. ` +
@@ -75,6 +85,7 @@ export function describeCalendarSync(
       };
     case 'in-sync':
       return {
+        tone: 'success',
         title: 'Already in sync',
         body:
           'Every upcoming duty is already in your iPhone Calendar. New ones will be added as your roster updates.' +
@@ -82,21 +93,25 @@ export function describeCalendarSync(
       };
     case 'disabled':
       return {
+        tone: 'success',
         title: 'Calendar sync off',
         body: `${result.removed} entries removed from your iPhone Calendar.`,
       };
     case 'denied':
       return {
+        tone: 'warning',
         title: 'Calendar access needed',
         body: 'Allow calendar access in iOS Settings → Privacy → Calendars to sync your schedule.',
       };
     case 'unavailable':
       return {
+        tone: 'warning',
         title: 'Not available',
         body: 'Keeping your schedule in the calendar needs iOS.',
       };
     case 'error':
       return {
+        tone: 'destructive',
         title: 'Could not sync Calendar',
         body: result.message ?? 'Please try again.',
       };

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('../../../config/index.js', () => ({ env: { LIVE_SCHEMA: 'f8_sit_live' } }))
-import { createConsent, decideConsent, discretionProposalSchema, getControllerConsent, getCrewConsent, type ConsentRequest } from '../discretion-consent-service.js'
+import { createConsent, decideConsent, discretionProposalSchema, getControllerConsent, getCrewConsent, listConsents, prepareConsent, type ConsentRequest } from '../discretion-consent-service.js'
 import type { CrewNotifyServiceOptions } from '../crew-notify-service.js'
 const now = new Date('2026-09-12T10:00:00Z')
 const proposal = discretionProposalSchema.parse({
@@ -27,7 +27,9 @@ function pool() {
     }
     const found = sql.includes("payload->>'proposalId'")
       ? rows.filter(r => r.proposalId === values[0] && r.requester === values[1])
-      : rows.filter(r => r.proposal.airline === values[0] && r.crewId === values[1] && r.discretionId === values[2])
+      : sql.includes('order by seq desc limit')
+        ? rows.filter(r => r.proposal.airline === values[0] && r.crewId === values[1])
+        : rows.filter(r => r.proposal.airline === values[0] && r.crewId === values[1] && r.discretionId === values[2])
     return { rows: found.map(payload => ({ payload })) }
   })
   return { rows, state, query, options: { pgPool: { query }, now } as unknown as CrewNotifyServiceOptions }
@@ -78,5 +80,21 @@ describe('FDP consent communication', () => {
     expect((await getCrewConsent(p.options, input)).state).toBe('superseded')
     await expect(decideConsent(p.options, { ...input, decision: 'accept', idempotencyKey: 'yes' })).rejects.toMatchObject({ statusCode: 409 })
     expect((await getCrewConsent({ ...p.options, now: new Date('2026-09-12T12:00:00Z') }, input)).state).toBe('expired')
+  })
+  it('carries duty-level detail (check-in, legs, FDP before/after) so the crew sees the whole duty', async () => {
+    const p = pool()
+    const prepared = await prepareConsent(p.options, 987654, 1, 'controller')
+    expect(prepared.duty).toMatchObject({ dutySeq: '1', fdpBeforeMin: 570, fdpAfterMin: 630 })
+    expect(prepared.duty.legs.map(l => [l.depArp, l.arvArp])).toEqual([['ADD', 'ASO'], ['ASO', 'ADD']])
+    const created = await createConsent(p.options, proposal, 'controller')
+    // The immutable snapshot is stored with every recipient, not just the controller reply.
+    expect(created.requests[0].duty).toEqual(prepared.duty)
+  })
+  it('lists the crew FDP-discretion history including terminal states', async () => {
+    const p = pool(); const created = await createConsent(p.options, proposal, 'controller')
+    await decideConsent(p.options, { airline: 'ET', crewId: 'S2CA', discretionId: created.requests[0].discretionId, decision: 'accept', idempotencyKey: 'y' })
+    const all = await listConsents(p.options, 'ET', 'S2CA')
+    expect(all.map(r => r.crewId)).toEqual(['S2CA'])
+    expect(all[0].state).toBe('accepted')
   })
 })

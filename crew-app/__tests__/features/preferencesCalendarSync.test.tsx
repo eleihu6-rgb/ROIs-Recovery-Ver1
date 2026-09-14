@@ -1,7 +1,6 @@
 // Profile ▸ Preferences ▸ Sync ▸ "iOS Calendar sync" — the master switch the
 // approved v2 mock always had but the shipped screen was missing.
 import React from 'react';
-import { Alert } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -35,8 +34,6 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
   useFocusEffect: jest.fn(),
 }));
-
-const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 const upcoming: Trip = {
   id: 'soon-1',
@@ -72,7 +69,6 @@ function renderPrefs() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  alertSpy.mockClear();
 });
 
 describe('Preferences ▸ iOS Calendar sync', () => {
@@ -91,7 +87,9 @@ describe('Preferences ▸ iOS Calendar sync', () => {
 
     expect(mockSaveEvents).toHaveBeenCalledTimes(1);
     expect(store.getState().flightCalendar.syncAll).toBe(true);
-    expect(alertSpy).toHaveBeenCalledWith('Calendar sync on', expect.stringContaining('4 entries'));
+    // Pop-up standard: the outcome is an AppDialog status card, not an alert.
+    expect(tree.getByTestId('preferences-dialog-title').props.children).toBe('Calendar sync on');
+    expect(tree.getByText(/4 entries/)).toBeTruthy();
   });
 
   it('turning it off removes exactly what it wrote', async () => {
@@ -106,6 +104,7 @@ describe('Preferences ▸ iOS Calendar sync', () => {
 
     expect(mockRemoveEvents).toHaveBeenCalledWith(['ev-0', 'ev-1', 'ev-2', 'ev-3']);
     expect(store.getState().flightCalendar.eventIds).toEqual({});
-    expect(alertSpy).toHaveBeenCalledWith('Calendar sync off', expect.stringContaining('4 entries'));
+    expect(tree.getByTestId('preferences-dialog-title').props.children).toBe('Calendar sync off');
+    expect(tree.getByText(/4 entries removed/)).toBeTruthy();
   });
 });

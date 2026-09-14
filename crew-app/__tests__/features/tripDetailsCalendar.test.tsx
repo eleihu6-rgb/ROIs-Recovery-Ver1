@@ -2,7 +2,6 @@
 // restored airline-schedule → iOS Calendar feature (the Schedule flight card
 // carries the icon; the duty page carries the labelled action).
 import React from 'react';
-import { Alert } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -36,8 +35,6 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
   useFocusEffect: jest.fn(),
 }));
-
-const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 const trip: Trip = {
   id: 'pair-lhr',
@@ -76,7 +73,6 @@ function renderTrip() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  alertSpy.mockClear();
 });
 
 describe('Trip Details ▸ iPhone Calendar', () => {
@@ -90,7 +86,9 @@ describe('Trip Details ▸ iPhone Calendar', () => {
     });
 
     expect(mockSaveEvents).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith('Added to Calendar', expect.stringContaining('4 entries'));
+    // Pop-up standard: the outcome is an AppDialog status card, not an alert.
+    expect(tree.getByTestId('duty-calendar-dialog-title').props.children).toBe('Added to Calendar');
+    expect(tree.getByText(/4 entries/)).toBeTruthy();
     expect(tree.getByText('In your iPhone Calendar')).toBeTruthy();
   });
 

@@ -2,7 +2,8 @@
 // plus Explore destination preferences (settings.explorePrefs), re-homed.
 import React, { useState } from 'react';
 import { DashedLine } from '../../components/v2/TicketCard';
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import { isCalendarWriteAvailable, requestCalendarAccess, saveCalendarEvents } from '../meetings/calendarModule';
 import { setCalendarSyncAll } from '../calendar/flightCalendarSlice';
 import { describeCalendarSync } from '../calendar/dutyCalendarMessages';
@@ -35,11 +36,29 @@ export function PreferencesScreen() {
   const divider = {};
   const toggle = (id: string) => dispatch(setExplorePrefs(prefs.includes(id) ? prefs.filter(x => x !== id) : [...prefs, id]));
 
+  // One product pop-up (pop-up standard: status card, not a native alert).
+  const [dialog, setDialog] = useState<{
+    tone: AppDialogTone;
+    title: string;
+    message?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm?: () => void;
+  } | null>(null);
+  function closeDialog() {
+    setDialog(null);
+  }
+  function confirmDialog() {
+    const handler = dialog?.onConfirm;
+    setDialog(null);
+    handler?.();
+  }
+
   const toggleCalendarSync = async (next: boolean) => {
     const result = await dispatch(setCalendarSyncAll(next));
     const message = describeCalendarSync(result);
     if (message) {
-      Alert.alert(message.title, message.body);
+      setDialog({ tone: message.tone, title: message.title, message: message.body, confirmLabel: 'Got it' });
     }
   };
 
@@ -49,9 +68,9 @@ export function PreferencesScreen() {
   // Two of them carry a real Teams join link so the Schedule tab's "Join" button
   // and the per-meeting reminder can be exercised on device too.
   const addDemoMeetings = async () => {
-    if (!isCalendarWriteAvailable()) { Alert.alert('Calendar unavailable', 'This build has no EventKit module.'); return; }
+    if (!isCalendarWriteAvailable()) { setDialog({ tone: 'warning', title: 'Calendar unavailable', message: 'This build has no EventKit module.', confirmLabel: 'Got it' }); return; }
     const access = await requestCalendarAccess();
-    if (access !== 'authorized') { Alert.alert('Permission needed', 'Allow calendar access to add demo meetings.'); return; }
+    if (access !== 'authorized') { setDialog({ tone: 'warning', title: 'Permission needed', message: 'Allow calendar access to add demo meetings.', confirmLabel: 'Got it' }); return; }
     const tz = deviceTimeZone();
     const at = (minsFromNow: number, days = 0, h?: number, m = 0) => {
       const d = new Date(Date.now() + minsFromNow * 60000 + days * 86400000);
@@ -68,7 +87,7 @@ export function PreferencesScreen() {
     ]);
     await dispatch(setMeetingsEnabled(true));
     await dispatch(syncMeetings());
-    Alert.alert('Demo meetings added', `${ids.length} events written to the iOS Calendar. Meeting alarms are on.`);
+    setDialog({ tone: 'success', title: 'Demo meetings added', message: `${ids.length} events written to the iOS Calendar. Meeting alarms are on.`, confirmLabel: 'Got it' });
   };
 
   return (
@@ -117,6 +136,19 @@ export function PreferencesScreen() {
         <KvRow label="Connected accounts" value="None" palette={p} last={!__DEV__} />
         {__DEV__ && <NavRow icon="cal" label="Add demo meetings (dev)" value="4 events" palette={p} onPress={addDemoMeetings} testID="dev-demo-meetings" />}
       </ListCard>
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={closeDialog}
+        onConfirm={confirmDialog}
+        tone={dialog?.tone ?? 'neutral'}
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        confirmLabel={dialog?.confirmLabel}
+        cancelLabel={dialog?.cancelLabel}
+        onCancel={closeDialog}
+        testID="preferences-dialog"
+      />
     </PageShell>
   );
 }

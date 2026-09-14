@@ -3,7 +3,8 @@
 // same actions, same presets; only the presentation changed.
 import React, { useCallback, useMemo, useState } from 'react';
 import { DashedLine } from '../../components/v2/TicketCard';
-import { View, Text, Alert, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { useCarrier } from '../../theme/carrier';
 import { ChipRow, SectionLabel, ToggleRow } from '../../components/v2/rows';
@@ -14,9 +15,6 @@ import { PRESET_HOURS } from '../settings/alarmSetup';
 import { MEETING_MINUTES_PRESETS, ISLAND_MINUTES_PRESETS } from '../meetings/meetingSetup';
 import { setIslandCountdown, setIslandLeadMinutes, setMeetingMinutes, setMeetingsEnabled } from '../meetings/meetingsSlice';
 import { isAlarmModuleAvailable, requestAlarmAuthorization, scheduleTestAlarm } from '../settings/alarmModule';
-
-export const alertAlarmsUnavailable = () =>
-  Alert.alert('Alarms unavailable', 'iOS clock alarms need a device build with AlarmKit; they are not available in this build.');
 import { useAlarms } from './useV2';
 
 const fmtHours = (h: number) => `${h}h`;
@@ -36,33 +34,49 @@ export function AlarmsSettingsScreen() {
   const [now] = useState(() => new Date());
   const { all: effective } = useAlarms(now);
   const [busy, setBusy] = useState(false);
+  // One product pop-up (pop-up standard: status card, not a native alert).
+  const [dialog, setDialog] = useState<{
+    tone: AppDialogTone; title: string; message: string; confirmLabel: string;
+  } | null>(null);
+  function closeDialog() {
+    setDialog(null);
+  }
+  /** AlarmKit is a device-only module — say so with a warning card. */
+  function showAlarmsUnavailable() {
+    setDialog({
+      tone: 'warning',
+      title: 'Alarms unavailable',
+      message: 'iOS clock alarms need a device build with AlarmKit; they are not available in this build.',
+      confirmLabel: 'Got it',
+    });
+  }
   const divider = {};
 
   const onToggleAlarms = useCallback(async (value: boolean) => {
-    if (value && !isAlarmModuleAvailable()) { alertAlarmsUnavailable(); return; }
+    if (value && !isAlarmModuleAvailable()) { showAlarmsUnavailable(); return; }
     setBusy(true);
     try {
       const res = await dispatch(setEnabled(value));
       if (value && res.available && res.scheduled === 0 && effective.length > 0) {
-        Alert.alert('Permission needed', 'Allow alarm access in iOS Settings to set your flight alarms.');
+        setDialog({ tone: 'warning', title: 'Permission needed', message: 'Allow alarm access in iOS Settings to set your flight alarms.', confirmLabel: 'Got it' });
       }
     } finally { setBusy(false); }
   }, [dispatch, effective.length]);
 
   const onToggleMeetings = useCallback(async (value: boolean) => {
-    if (value && !isAlarmModuleAvailable()) { alertAlarmsUnavailable(); return; }
+    if (value && !isAlarmModuleAvailable()) { showAlarmsUnavailable(); return; }
     setBusy(true);
     try { await dispatch(setMeetingsEnabled(value)); } finally { setBusy(false); }
   }, [dispatch]);
 
   const onTestAlarm = useCallback(async () => {
-    if (!isAlarmModuleAvailable()) { alertAlarmsUnavailable(); return; }
+    if (!isAlarmModuleAvailable()) { showAlarmsUnavailable(); return; }
     try {
       const auth = await requestAlarmAuthorization();
-      if (auth !== 'authorized') { Alert.alert('Permission needed', 'Allow alarm access to set a test alarm.'); return; }
+      if (auth !== 'authorized') { setDialog({ tone: 'warning', title: 'Permission needed', message: 'Allow alarm access to set a test alarm.', confirmLabel: 'Got it' }); return; }
       await scheduleTestAlarm(60);
-      Alert.alert('Test alarm set', 'Rings in 1 minute.');
-    } catch (err) { Alert.alert('Could not set test alarm', (err as Error).message); }
+      setDialog({ tone: 'success', title: 'Test alarm set', message: 'Rings in 1 minute.', confirmLabel: 'Got it' });
+    } catch (err) { setDialog({ tone: 'destructive', title: 'Could not set test alarm', message: (err as Error).message, confirmLabel: 'Got it' }); }
   }, []);
 
   return (
@@ -91,6 +105,17 @@ export function AlarmsSettingsScreen() {
         <View style={[divider, s.chipWrap]}><ChipRow label="Countdown" icon="clock" rightLabel={`${fmtMinutes(islandLeadMinutes)} before`} options={ISLAND_MINUTES_PRESETS} value={islandLeadMinutes} formatOption={fmtMinutes} palette={p} onSelect={m => dispatch(setIslandLeadMinutes(m))} /><DashedLine color={p.cardLine} /></View>
         <Text style={[s.schedS, { color: p.cardSoft, paddingVertical: 14 }]}>{meetingCount > 0 ? `Reading ${meetingCount} upcoming meeting${meetingCount === 1 ? '' : 's'} from your calendar — each rings ${fmtMinutes(meetingMinutes)} before it starts.` : 'No upcoming meetings found on your calendar yet. New invites are picked up on next launch.'}</Text>
       </ListCard>
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={closeDialog}
+        onConfirm={closeDialog}
+        tone={dialog?.tone ?? 'neutral'}
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        confirmLabel={dialog?.confirmLabel}
+        testID="alarms-dialog"
+      />
     </PageShell>
   );
 }

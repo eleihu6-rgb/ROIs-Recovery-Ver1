@@ -2,7 +2,6 @@
 // calendar icon the v1 flight card carried, writing the WHOLE duty (wake-up /
 // leave home / check-in + one block per leg) and toggling it back off.
 import React from 'react';
-import { Alert } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -40,8 +39,6 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
   useFocusEffect: jest.fn(),
 }));
-
-const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 /** BKK → LHR on 19 Sep with the return on the 21st: one duty, two legs, two days. */
 const lhrTrip: Trip = {
@@ -103,7 +100,6 @@ const renderSchedule = () =>
 
 beforeEach(() => {
   jest.clearAllMocks();
-  alertSpy.mockClear();
 });
 
 describe('Schedule ▸ flight card → iOS Calendar', () => {
@@ -140,7 +136,9 @@ describe('Schedule ▸ flight card → iOS Calendar', () => {
       'TG920 · BKK → LHR',
       'TG911 · LHR → BKK',
     ]);
-    expect(alertSpy).toHaveBeenCalledWith('Added to Calendar', expect.stringContaining('5 entries'));
+    // Pop-up standard: the outcome is an AppDialog status card, not an alert.
+    expect(tree.getByTestId('duty-calendar-dialog-title').props.children).toBe('Added to Calendar');
+    expect(tree.getByText(/5 entries/)).toBeTruthy();
   });
 
   it('toggles the same tap back off, deleting exactly what it wrote', async () => {
@@ -151,6 +149,7 @@ describe('Schedule ▸ flight card → iOS Calendar', () => {
     await act(async () => { fireEvent.press(icon()); });
 
     expect(mockRemoveEvents).toHaveBeenCalledWith(['ev-1', 'ev-2', 'ev-3', 'ev-4', 'ev-5']);
-    expect(alertSpy).toHaveBeenCalledWith('Removed from Calendar', expect.any(String));
+    expect(tree.getByTestId('duty-calendar-dialog-title').props.children).toBe('Removed from Calendar');
+    expect(tree.getByText('This duty is no longer in your iPhone calendar.')).toBeTruthy();
   });
 });

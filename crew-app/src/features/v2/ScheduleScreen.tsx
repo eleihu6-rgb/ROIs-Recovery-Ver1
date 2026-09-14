@@ -11,6 +11,7 @@ import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon } from '../../components/v2/icons';
 import { TicketCard, DashedLine } from '../../components/v2/TicketCard';
+import { AppDialog } from '../../components/v2/AppDialog';
 import { useDutyCalendar, useMonth, type DutyCalendar } from './useV2';
 import { hasDutyCard, MON, resolveCardIndex, type DayMeeting, type DayModel, type DayKind, type LegView } from './model';
 import { useV2Nav } from './nav';
@@ -247,6 +248,18 @@ export function ScheduleScreen({ route }: Props = {}) {
         />
       ) : null}
       {view === 'route' ? <RouteMapView month={month} base={base} palette={p} /> : null}
+
+      {/* Airline schedule → iOS Calendar outcome (pop-up standard). */}
+      <AppDialog
+        visible={calendar.dialog !== null}
+        onClose={calendar.closeDialog}
+        onConfirm={calendar.closeDialog}
+        tone={calendar.dialog?.tone ?? 'neutral'}
+        title={calendar.dialog?.title ?? ''}
+        message={calendar.dialog?.message}
+        confirmLabel="Got it"
+        testID="duty-calendar-dialog"
+      />
     </GradientScreen>
   );
 }

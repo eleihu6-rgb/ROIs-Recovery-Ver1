@@ -1,5 +1,6 @@
 import {
   fetchDiscretion,
+  fetchDiscretionHistory,
   fetchNotifications,
   markNotificationRead,
   submitDiscretionDecision,
@@ -209,5 +210,21 @@ describe('Live FDP agreement responses', () => {
     const state = decision === 'accept' ? 'accepted' : 'rejected';
     global.fetch = jest.fn().mockResolvedValue(okJson({ code: 200, data: { ...request, state } })) as unknown as typeof fetch;
     expect((await submitDiscretionDecision(API, { airline: 'ET', crewId: 'S21001', password: 'test' }, 's2', decision, `s2:${decision}`)).state).toBe(state);
+  });
+  it('POSTs the discretion history path and parses duty-level detail', async () => {
+    const withDuty = {
+      ...request, state: 'accepted',
+      duty: {
+        pairingId: '152548', pairingLabel: 'PI201/PI202', dutySeq: '1',
+        reportUtc: '2026-09-28T04:00:00Z', releaseUtc: '2026-09-28T17:15:00Z', fdpBeforeMin: 660, fdpAfterMin: 780,
+        legs: [{fltNum: 'PI202', depArp: 'HKG', arvArp: 'SIN', schDepUtc: '2026-09-28T11:00:00Z', schArvUtc: '2026-09-28T15:00:00Z', revisedDepUtc: '2026-09-28T13:00:00Z', revisedArvUtc: '2026-09-28T17:00:00Z', delayMin: 120, operated: false}],
+      },
+    };
+    const fetchMock = jest.fn().mockResolvedValue(okJson({ code: 200, data: { requests: [withDuty] } }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const requests = await fetchDiscretionHistory(API, { airline: 'ET', crewId: 'S21001', password: 'test' });
+    expect(fetchMock.mock.calls[0][0]).toBe('http://127.0.0.1:8000/api/crew-app/v1/discretions');
+    expect(requests[0].duty?.legs[0].delayMin).toBe(120);
+    expect(requests[0].duty?.fdpAfterMin).toBe(780);
   });
 });

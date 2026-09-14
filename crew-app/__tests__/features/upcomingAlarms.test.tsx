@@ -2,7 +2,7 @@
 // Ryan: "alarms would be grouped by flight, no need to repeat flight info
 // multiple times."
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 
@@ -120,5 +120,32 @@ describe('UpcomingAlarmsScreen', () => {
     expect(tree.getByTestId('alarm-group-TG662')).toBeTruthy();
     expect(tree.getByText('BKK → PVG')).toBeTruthy();
     expect(tree.getByText('Leave Home')).toBeTruthy();
+  });
+
+  // Pop-up standard: a missing AlarmKit module is a warning AppDialog, not a
+  // native alert.
+  it('explains a missing AlarmKit module with a warning pop-up', () => {
+    const store = configureStore({
+      reducer: {
+        auth: authReducer,
+        settings: settingsReducer,
+        trips: tripsReducer,
+        alarms: alarmsReducer,
+        duties: dutiesReducer,
+        meetings: meetingsReducer,
+      },
+      middleware: getDefaultMiddleware => getDefaultMiddleware({ serializableCheck: false }),
+    });
+    const tree = render(
+      <Provider store={store}>
+        <UpcomingAlarmsScreen />
+      </Provider>,
+    );
+
+    // No native AlarmKit module under Jest, so turning it on must explain why.
+    fireEvent(tree.getByTestId('upalarms-master'), 'valueChange', true);
+
+    expect(tree.getByTestId('upalarms-dialog-title').props.children).toBe('Alarms unavailable');
+    expect(tree.getByText(/AlarmKit/)).toBeTruthy();
   });
 });

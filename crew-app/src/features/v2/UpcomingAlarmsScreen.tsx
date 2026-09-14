@@ -13,11 +13,11 @@ import { Icon, type IconName } from '../../components/v2/icons';
 import { DashedLine } from '../../components/v2/TicketCard';
 import { NavRow, SectionLabel, ToggleRow } from '../../components/v2/rows';
 import { PageShell, ListCard } from './PageShell';
+import { AppDialog } from '../../components/v2/AppDialog';
 import { setEnabled } from '../alarms/alarmsSlice';
 import { isAlarmModuleAvailable } from '../settings/alarmModule';
 import type { EffectiveAlarm } from '../settings/alarmSetup';
 import { useAlarms } from './useV2';
-import { alertAlarmsUnavailable } from './AlarmsSettingsScreen';
 import { useV2Nav } from './nav';
 
 interface AlarmRow {
@@ -93,6 +93,8 @@ export function UpcomingAlarmsScreen() {
   const meetingsEnabled = useAppSelector(s => s.meetings.enabled);
   const minutesBefore = useAppSelector(s => s.meetings.minutesBefore);
   const [now] = useState(() => new Date());
+  // Alarms unavailable pop-up (pop-up standard: status card, not a native alert).
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
   const { all } = useAlarms(now);
   const groups = useMemo(() => groupAlarmsByFlight(all), [all]);
   const dim = enabled ? 1 : 0.35;
@@ -103,7 +105,7 @@ export function UpcomingAlarmsScreen() {
     <PageShell title="Upcoming Alarms" testID="page-upcoming-alarms">
       <ListCard palette={p}>
         <ToggleRow label="iOS clock alarms" sub="Get Ready and Leave Home before each flight duty · meeting reminders from your calendar." value={enabled} palette={p} testID="upalarms-master"
-          onValueChange={v => { if (v && !isAlarmModuleAvailable()) { alertAlarmsUnavailable(); return; } dispatch(setEnabled(v)); }} />
+          onValueChange={v => { if (v && !isAlarmModuleAvailable()) { setDialog({ title: 'Alarms unavailable', message: 'iOS clock alarms need a device build with AlarmKit; they are not available in this build.' }); return; } dispatch(setEnabled(v)); }} />
       </ListCard>
       <SectionLabel palette={p}>
         {enabled ? `${groups.length} flight${groups.length === 1 ? '' : 's'} · ${alarmCount} alarms` : 'Flights · local airport time'}
@@ -138,6 +140,17 @@ export function UpcomingAlarmsScreen() {
       <ListCard palette={p} style={{ marginTop: 14 }}>
         <NavRow icon="sliders" label="Alarm settings" value={`Dep − ${wake}h · Dep − ${leave}h`} palette={p} onPress={() => nav.navigate('AlarmsSettings')} testID="upalarms-settings" />
       </ListCard>
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={() => setDialog(null)}
+        onConfirm={() => setDialog(null)}
+        tone="warning"
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        confirmLabel="Got it"
+        testID="upalarms-dialog"
+      />
     </PageShell>
   );
 }

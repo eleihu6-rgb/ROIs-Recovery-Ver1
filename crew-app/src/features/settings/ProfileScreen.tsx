@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../store';
@@ -42,6 +41,7 @@ import { colors, font, space, radius } from '../../theme';
 import { TestAlarmButton } from './components/TestAlarmButton';
 import { WakeIcon, LeaveIcon } from '../travel/components/TripIcons';
 import { CrewAvatar, avatarForCrew } from './avatars';
+import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 
 // ─── Profile / Settings ───────────────────────────────────────────────────────
 // Includes the Clock Setup (Clock Setup Ver1): enable iOS alarms and schedule
@@ -56,14 +56,6 @@ function HeartIcon() {
         fill={colors.onPrimary}
       />
     </Svg>
-  );
-}
-
-// Shown wherever alarm setup is attempted without AlarmKit (needs iOS 26+ device).
-function alertAlarmsUnavailable() {
-  Alert.alert(
-    'Not available',
-    'Setting clock alarms requires iOS 26 or later on a physical device.',
   );
 }
 
@@ -226,16 +218,41 @@ export function ProfileScreen() {
   const islandLeadMinutes = useAppSelector(s => s.meetings.islandLeadMinutes);
   const timeZoneMode = useAppSelector(s => s.settings.timeZoneMode);
 
+  // One product pop-up (pop-up standard: status card, not a native alert).
+  const [dialog, setDialog] = useState<{
+    tone: AppDialogTone; title: string; message?: string;
+    cancelLabel?: string; confirmLabel: string; onConfirm?: () => void;
+  } | null>(null);
+  function closeDialog() {
+    setDialog(null);
+  }
+  function confirmDialog() {
+    const handler = dialog?.onConfirm;
+    setDialog(null);
+    handler?.();
+  }
+  /** AlarmKit is a device-only module (iOS 26+) — say so with a warning card. */
+  function showAlarmsUnavailable() {
+    setDialog({
+      tone: 'warning',
+      title: 'Not available',
+      message: 'Setting clock alarms requires iOS 26 or later on a physical device.',
+      confirmLabel: 'Got it',
+    });
+  }
+
   const onSelectTimeZone = (mode: TimeZoneMode) => {
     dispatch(setTimeZoneMode(mode));
   };
 
-  const onLogout = () => {
-    Alert.alert('Log out', 'Log out and return to the login screen?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive', onPress: () => dispatch(logout()) },
-    ]);
-  };
+  const onLogout = () => setDialog({
+    tone: 'destructive',
+    title: 'Log out',
+    message: 'Log out and return to the login screen?',
+    cancelLabel: 'Cancel',
+    confirmLabel: 'Log out',
+    onConfirm: () => dispatch(logout()),
+  });
 
   const [busy, setBusy] = useState(false);
   const [nativeCount, setNativeCount] = useState<number | null>(null);
@@ -277,20 +294,20 @@ export function ProfileScreen() {
   // isolated TestAlarmButton can run its own 1s countdown (enhance-Ver1 #5).
   const handleTestAlarm = useCallback(async (): Promise<number | null> => {
     if (!isAlarmModuleAvailable()) {
-      alertAlarmsUnavailable();
+      showAlarmsUnavailable();
       return null;
     }
     try {
       const auth = await requestAlarmAuthorization();
       if (auth !== 'authorized') {
-        Alert.alert('Permission needed', 'Allow alarm access to set a test alarm.');
+        setDialog({ tone: 'warning', title: 'Permission needed', message: 'Allow alarm access to set a test alarm.', confirmLabel: 'Got it' });
         return null;
       }
       const { fireAt } = await scheduleTestAlarm(10);
       await refreshNativeCount();
       return fireAt;
     } catch (err) {
-      Alert.alert('Could not set test alarm', (err as Error).message);
+      setDialog({ tone: 'destructive', title: 'Could not set test alarm', message: (err as Error).message, confirmLabel: 'Got it' });
       return null;
     }
   }, [refreshNativeCount]);
@@ -300,7 +317,7 @@ export function ProfileScreen() {
   const onToggleAlarms = useCallback(
     async (value: boolean) => {
       if (value && !isAlarmModuleAvailable()) {
-        alertAlarmsUnavailable();
+        showAlarmsUnavailable();
         return;
       }
       setBusy(true);
@@ -308,10 +325,7 @@ export function ProfileScreen() {
         const res = await dispatch(setEnabled(value));
         await refreshNativeCount();
         if (value && res.available && res.scheduled === 0 && effective.length > 0) {
-          Alert.alert(
-            'Permission needed',
-            'Allow alarm access in iOS Settings to set your flight alarms.',
-          );
+          setDialog({ tone: 'warning', title: 'Permission needed', message: 'Allow alarm access in iOS Settings to set your flight alarms.', confirmLabel: 'Got it' });
         }
       } finally {
         setBusy(false);
@@ -325,7 +339,7 @@ export function ProfileScreen() {
   const onToggleMeetings = useCallback(
     async (value: boolean) => {
       if (value && !isAlarmModuleAvailable()) {
-        alertAlarmsUnavailable();
+        showAlarmsUnavailable();
         return;
       }
       setBusy(true);
@@ -624,6 +638,19 @@ export function ProfileScreen() {
           <Text style={styles.signOutText}>Log out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <AppDialog
+        visible={dialog !== null}
+        onClose={closeDialog}
+        onConfirm={confirmDialog}
+        tone={dialog?.tone ?? 'neutral'}
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        cancelLabel={dialog?.cancelLabel}
+        confirmLabel={dialog?.confirmLabel}
+        onCancel={closeDialog}
+        testID="profile-dialog"
+      />
     </View>
   );
 }

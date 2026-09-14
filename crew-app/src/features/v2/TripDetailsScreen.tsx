@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../store';
 import { useCarrier } from '../../theme/carrier';
 import { NavRow, SectionLabel } from '../../components/v2/rows';
+import { AppDialog } from '../../components/v2/AppDialog';
 import { PageShell, Hero, ListCard, KvRow } from './PageShell';
 import { legView, MON } from './model';
 import { useBase, useDutyAlarms, useDutyCalendar } from './useV2';
@@ -130,6 +131,18 @@ export function TripDetailsScreen({ route }: Props) {
           </ListCard>
         </View>
       ) : null}
+
+      {/* Airline schedule → iOS Calendar outcome (pop-up standard). */}
+      <AppDialog
+        visible={calendar.dialog !== null}
+        onClose={calendar.closeDialog}
+        onConfirm={calendar.closeDialog}
+        tone={calendar.dialog?.tone ?? 'neutral'}
+        title={calendar.dialog?.title ?? ''}
+        message={calendar.dialog?.message}
+        confirmLabel="Got it"
+        testID="duty-calendar-dialog"
+      />
     </PageShell>
   );
 }

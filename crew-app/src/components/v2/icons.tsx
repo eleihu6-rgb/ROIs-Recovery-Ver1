@@ -48,7 +48,11 @@ export type IconName =
   | 'list'
   | 'send'
   | 'zoomIn'
-  | 'zoomOut';
+  | 'zoomOut'
+  // Pop-up standard glyphs (docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md)
+  | 'close'
+  | 'info'
+  | 'warning';
 
 export interface IconProps {
   name: IconName;
@@ -379,6 +383,26 @@ export function Icon({ name, size = 24, color = '#fff', strokeWidth }: IconProps
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round">
           <Circle cx={11} cy={11} r={6.5} />
           <Path d="M8.5 11h5M16 16l4 4" />
+        </Svg>
+      );
+    // Pop-up standard glyphs — outline marks that sit inside the dialog's circle.
+    case 'close':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 2.2} strokeLinecap="round">
+          <Path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+        </Svg>
+      );
+    case 'info':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 2} strokeLinecap="round">
+          <Path d="M12 10.8v5.4M12 7.4h.01" />
+        </Svg>
+      );
+    case 'warning':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 2} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M10.3 4.3 2.6 17.6A2 2 0 0 0 4.3 20.6h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z" />
+          <Path d="M12 9.4v4.2M12 16.8h.01" />
         </Svg>
       );
     // Paper-plane send: R'Bot's chat composer. Same 24-unit outline style as the

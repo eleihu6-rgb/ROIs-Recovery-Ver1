@@ -1,0 +1,76 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+# Ryan, 2026-09-13 — a DXB (Emirates) crew's absence history, read back on the simulator.
+#
+# Crew K1014 (Nasser Al Suwaidi, CA, DXB, carrier EK) — never used by any crew
+# recovery case fixture (those are ET/ADD: J4002, J4005, J4011-J4018). Emirates
+# signs in through the ROIS live-server mobile-roster contract, and its absence
+# record is ROIS-owned: the row is airline='EK', crew_id='K1014',
+# note='DXB K1014 sick - history demo', active for 2026-09-13.
+#
+# The submit side (status-card pop-up) is covered by
+# .maestro/ek_k1015_popup_standard.yaml; this flow is the deterministic read-back.
+#
+# Run: cd crew-app && maestro test .maestro/ek_k1014_absence_history.yaml
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-EK"
+    timeout: 15000
+- tapOn:
+    id: "airline-EK"
+# Emirates prefills its default crew (K1003); swap in the demo crew K1014.
+- assertVisible:
+    id: "crew-id"
+- tapOn:
+    id: "crew-id"
+- eraseText: 20
+- inputText: "K1014"
+- pressKey: Enter
+- assertVisible:
+    id: "crew-pw"
+- takeScreenshot: ek-absence-Ver1-00-login
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "OK"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 240000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+# Home scrolls under the floating dock; Quick actions is the last block.
+- swipe:
+    start: 50%, 84%
+    end: 50%, 30%
+    duration: 400
+- tapOn:
+    id: "qa-absence"
+- assertVisible:
+    id: "page-absence"
+- assertVisible: "Absence Request"
+- takeScreenshot: ek-absence-Ver1-01-form
+# The top-right history icon opens the crew's own submitted requests for this month.
+- tapOn:
+    id: "absence-history"
+- assertVisible:
+    id: "page-absence-history"
+- assertVisible: "Absence History"
+- assertVisible: "SEP 2026 · 1 REQUEST"
+- assertVisible: "Sick leave"
+- assertVisible: "Active"
+- assertVisible: "13 Sep 2026"
+- assertVisible: "DXB K1014 sick - history demo"
+- takeScreenshot: ek-absence-Ver1-03-history
+# Back chevron returns to the form the crew came from.
+- tapOn:
+    id: "page-back"
+- assertVisible: "Report an absence"

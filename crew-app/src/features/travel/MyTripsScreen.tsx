@@ -8,10 +8,10 @@ import {
   StatusBar,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Modal,
 } from 'react-native';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
+import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { addTrips, syncCapturedTrips } from './tripsSlice';
 import { classifyTrips, type Trip } from './tripCsv';
@@ -25,7 +25,7 @@ import { classifyMeetings, meetingAlarmHhmm, meetingStart } from '../meetings/me
 import { toggleMeetingMute } from '../meetings/meetingsSlice';
 import { airlineByCode } from '../auth/airlines';
 import { alarmOptions, computeEffectiveAlarms } from '../settings/alarmSetup';
-import { setDutyOverride, reconcileAlarms, setAgendaFilter, type AgendaFilter } from '../alarms/alarmsSlice';
+import { setDutyOverride, reconcileAlarms, setAgendaFilter } from '../alarms/alarmsSlice';
 import { toggleDutyCalendar } from '../calendar/flightCalendarSlice';
 import { describeCalendarToggle } from '../calendar/dutyCalendarMessages';
 import { colors, font, space } from '../../theme';
@@ -36,6 +36,23 @@ import {
 } from './components/TripEmptyStates';
 
 type Tab = 'upcoming' | 'past';
+
+/**
+ * One product pop-up per state (pop-up standard: status cards are AppDialogs,
+ * never a native alert). `status` is a title/message/action card; `menu` is a
+ * small chooser rendered through the component's `children` escape hatch.
+ */
+type DialogState =
+  | {
+      kind: 'status';
+      tone: AppDialogTone;
+      title: string;
+      message?: string;
+      confirmLabel: string;
+      cancelLabel?: string;
+      onConfirm?: () => void;
+    }
+  | { kind: 'menu'; menu: 'add' | 'show' };
 
 // ─── Tab Panels ───────────────────────────────────────────────────────────────
 
@@ -129,6 +146,15 @@ export function MyTripsScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('upcoming');
   const [importing, setImporting] = useState(false);
   const [portalVisible, setPortalVisible] = useState(false);
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+  function closeDialog() {
+    setDialog(null);
+  }
+  function confirmDialog() {
+    const d = dialog;
+    setDialog(null);
+    if (d?.kind === 'status') d.onConfirm?.();
+  }
 
   const dispatch = useAppDispatch();
   const trips = useAppSelector(s => s.trips.trips);
@@ -252,7 +278,7 @@ export function MyTripsScreen() {
       // 'busy' (a tap already in flight) maps to null → stay quiet.
       const message = describeCalendarToggle(result, trip);
       if (message) {
-        Alert.alert(message.title, message.body);
+        setDialog({ kind: 'status', tone: message.tone, title: message.title, message: message.body, confirmLabel: 'Got it' });
       }
     },
     [dispatch, trips],
@@ -310,7 +336,7 @@ export function MyTripsScreen() {
       await ingestTrips(parsed);
     } catch (err) {
       if (!(err instanceof TripImportCancelled)) {
-        Alert.alert('Could not add trip', (err as Error).message);
+        setDialog({ kind: 'status', tone: 'destructive', title: 'Could not add trip', message: (err as Error).message, confirmLabel: 'Got it' });
       }
     } finally {
       setImporting(false);
@@ -325,12 +351,15 @@ export function MyTripsScreen() {
       dispatch(setDuties(duties));
       await saveDuties(duties);
     }
-    Alert.alert(
-      'Roster refreshed',
-      `Captured ${parsed.length} trip${parsed.length === 1 ? '' : 's'} and ${duties.length} dut${
+    setDialog({
+      kind: 'status',
+      tone: 'success',
+      title: 'Roster refreshed',
+      message: `Captured ${parsed.length} trip${parsed.length === 1 ? '' : 's'} and ${duties.length} dut${
         duties.length === 1 ? 'y' : 'ies'
       } from the crew portal.`,
-    );
+      confirmLabel: 'Got it',
+    });
   };
 
   // Add Trip → choose source (doc/Add Trip Ver2): CSV or crew portal.
@@ -338,21 +367,11 @@ export function MyTripsScreen() {
     if (importing) {
       return;
     }
-    Alert.alert('Add Trip', 'How would you like to add your trip?', [
-      { text: 'Import CSV file', onPress: importFromCsv },
-      { text: 'Capture from Crew Portal', onPress: () => setPortalVisible(true) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    setDialog({ kind: 'menu', menu: 'add' });
   };
 
   const handleFilter = () => {
-    const label = (f: AgendaFilter) => agendaFilter === f ? '✓ ' : '';
-    Alert.alert('Show', undefined, [
-      { text: `${label('all')}All`, onPress: () => dispatch(setAgendaFilter('all')) },
-      { text: `${label('work')}Work (crew portal)`, onPress: () => dispatch(setAgendaFilter('work')) },
-      { text: `${label('personal')}Personal (iPhone calendar)`, onPress: () => dispatch(setAgendaFilter('personal')) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    setDialog({ kind: 'menu', menu: 'show' });
   };
 
   const allTrips = activeTab === 'upcoming' ? upcoming : past;
@@ -479,6 +498,68 @@ export function MyTripsScreen() {
           />
         ) : null}
       </Modal>
+
+      {/* Product pop-up (pop-up standard): status cards for calendar/import
+          outcomes, and the Add-Trip / Show choosers via the children slot. */}
+      <AppDialog
+        visible={dialog !== null}
+        onClose={closeDialog}
+        onConfirm={confirmDialog}
+        tone={dialog?.kind === 'status' ? dialog.tone : 'neutral'}
+        title={
+          dialog?.kind === 'status'
+            ? dialog.title
+            : dialog?.menu === 'add'
+              ? 'Add Trip'
+              : dialog?.menu === 'show'
+                ? 'Show'
+                : ''
+        }
+        message={
+          dialog?.kind === 'status'
+            ? dialog.message
+            : dialog?.menu === 'add'
+              ? 'How would you like to add your trip?'
+              : undefined
+        }
+        cancelLabel={dialog?.kind === 'status' ? dialog.cancelLabel : 'Cancel'}
+        confirmLabel={dialog?.kind === 'status' ? dialog.confirmLabel : undefined}
+        onCancel={closeDialog}
+        testID="mytrips-dialog"
+      >
+        {dialog?.kind === 'menu' && dialog.menu === 'add' ? (
+          <>
+            <TouchableOpacity
+              style={styles.menuOption}
+              activeOpacity={0.7}
+              onPress={() => { closeDialog(); importFromCsv(); }}
+              testID="mytrips-import-csv">
+              <Text style={styles.menuOptionText}>Import CSV file</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuOption}
+              activeOpacity={0.7}
+              onPress={() => { closeDialog(); setPortalVisible(true); }}
+              testID="mytrips-capture-portal">
+              <Text style={styles.menuOptionText}>Capture from Crew Portal</Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
+        {dialog?.kind === 'menu' && dialog.menu === 'show' ? (
+          <>
+            {([['all', 'All'], ['work', 'Work (crew portal)'], ['personal', 'Personal (iPhone calendar)']] as const).map(([filter, label]) => (
+              <TouchableOpacity
+                key={filter}
+                style={styles.menuOption}
+                activeOpacity={0.7}
+                onPress={() => { closeDialog(); dispatch(setAgendaFilter(filter)); }}
+                testID={`mytrips-filter-${filter}`}>
+                <Text style={styles.menuOptionText}>{agendaFilter === filter ? '✓ ' : ''}{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </>
+        ) : null}
+      </AppDialog>
     </SafeAreaView>
   );
 }
@@ -487,6 +568,16 @@ export function MyTripsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.card },
+
+  // Chooser rows inside the Add-Trip / Show pop-up (children slot).
+  menuOption: {
+    width: '100%',
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.hairline,
+    alignItems: 'center',
+  },
+  menuOptionText: { fontSize: 15, fontWeight: '600', color: colors.primary },
 
   topNav: {
     flexDirection: 'row',

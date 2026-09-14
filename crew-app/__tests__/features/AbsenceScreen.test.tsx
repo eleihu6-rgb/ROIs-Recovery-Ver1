@@ -6,7 +6,6 @@ import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { Alert } from 'react-native';
 
 import { AbsenceScreen } from '../../src/features/v2/AbsenceScreen';
 import authReducer, { login } from '../../src/features/auth/authSlice';
@@ -103,7 +102,6 @@ function renderScreen(store: ReturnType<typeof configureStore>) {
 describe('AbsenceScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
   it('selects Sick leave by default and disables Emergency/Personal as coming soon', async () => {
@@ -149,7 +147,7 @@ describe('AbsenceScreen', () => {
     expect(tree.getByText('ET470')).toBeTruthy();
   });
 
-  it('submits sick leave for the selected range + note and shows the success alert', async () => {
+  it('submits sick leave and confirms with the success pop-up before leaving the form', async () => {
     const mockResult: SubmitAbsenceResult = {
       absenceId: 12,
       assignment: 'ILL',
@@ -181,7 +179,15 @@ describe('AbsenceScreen', () => {
     expect(call.fromDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(call.toDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
-    expect(Alert.alert).toHaveBeenCalledWith('Request submitted', 'Sick leave added. Original duties remain assigned pending Crew Control recovery.');
+    // Pop-up standard: a success status card, and the crew stays on the form
+    // until they acknowledge it (the old alert navigated away immediately).
+    expect(tree.getByTestId('absence-dialog-title')).toBeTruthy();
+    expect(tree.getByText('Request submitted')).toBeTruthy();
+    expect(tree.getByText('Sick leave added. Original duties remain assigned pending Crew Control recovery.')).toBeTruthy();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+
+    fireEvent.press(tree.getByTestId('absence-dialog-confirm'));
+
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
   });
 
@@ -194,7 +200,7 @@ describe('AbsenceScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('AbsenceHistory');
   });
 
-  it('shows the server error message and stays on the screen when submission fails', async () => {
+  it('shows the server error in a destructive pop-up and stays on the screen', async () => {
     (submitAbsence as jest.Mock).mockRejectedValue(
       new Error('An absence already covers part of this range.'),
     );
@@ -205,10 +211,27 @@ describe('AbsenceScreen', () => {
       fireEvent.press(tree.getByTestId('absence-submit'));
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Unable to submit',
-      'An absence already covers part of this range.',
-    );
+    expect(tree.getByText('Unable to submit')).toBeTruthy();
+    expect(tree.getByText('An absence already covers part of this range.')).toBeTruthy();
+
+    // Dismissing the failure returns the crew to the form, not away from it.
+    fireEvent.press(tree.getByTestId('absence-dialog-confirm'));
+
+    expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('tells a guest to sign in with a warning pop-up instead of submitting', async () => {
+    const store = await makeStore([]);
+    await runThunk(store, login({ airline: '', crewId: '', password: '', keepLogin: false }));
+    const tree = renderScreen(store);
+
+    await act(async () => {
+      fireEvent.press(tree.getByTestId('absence-submit'));
+    });
+
+    expect(submitAbsence).not.toHaveBeenCalled();
+    expect(tree.getByText('Airline sign-in needed')).toBeTruthy();
+    expect(tree.getByText('Reporting an absence needs your crew ID. Sign in with your airline on Profile first.')).toBeTruthy();
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
 });

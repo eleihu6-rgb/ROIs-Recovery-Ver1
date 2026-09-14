@@ -9,7 +9,7 @@ import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { Alert, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
 
@@ -224,17 +224,16 @@ describe('social sign-in', () => {
     expect(isProviderConfigured('google')).toBe(false);
     expect(isProviderConfigured('facebook')).toBe(false);
 
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     const store = makeStore();
-    const { getByTestId } = renderLogin(store);
+    const { getByTestId, getByText } = renderLogin(store);
 
     await act(async () => {
       fireEvent.press(getByTestId('social-google'));
     });
 
-    expect(alert).toHaveBeenCalledTimes(1);
-    expect(alert.mock.calls[0][0]).toBe('Not available yet');
-    expect(String(alert.mock.calls[0][1])).toContain('GoogleIosClientId');
+    // Pop-up standard: a destructive AppDialog status card, not a native alert.
+    expect(getByTestId('login-dialog-title').props.children).toBe('Not available yet');
+    expect(getByText(/GoogleIosClientId/)).toBeTruthy();
     expect(store.getState().auth.loggedIn).toBe(false);
   });
 

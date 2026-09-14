@@ -8,6 +8,7 @@ import {NotificationsScreen} from '../../src/features/notifications/Notification
 import notificationsReducer, {
   setFeed,
 } from '../../src/features/notifications/notificationsSlice';
+import authReducer from '../../src/features/auth/authSlice';
 import settingsReducer from '../../src/features/settings/settingsSlice';
 
 // The Alerts screen moved onto the v2 surface: it now carries its own back
@@ -24,7 +25,9 @@ jest.mock('react-native-safe-area-context', () => ({
 
 function renderWithPendingDiscretion() {
   const store = configureStore({
-    reducer: {notifications: notificationsReducer, settings: settingsReducer},
+    // The screen reads the active crew session (auth) to attach credentials, so
+    // the store must carry the auth slice — it was missing and the test crashed.
+    reducer: {notifications: notificationsReducer, settings: settingsReducer, auth: authReducer},
   });
   store.dispatch(setFeed({
     cursor: 1,
@@ -59,7 +62,7 @@ function renderWithPendingDiscretion() {
 /** The sick-leave stand-down the crew actually receives (Crew Recovery Story 101). */
 function renderWithRosterChange() {
   const store = configureStore({
-    reducer: {notifications: notificationsReducer, settings: settingsReducer},
+    reducer: {notifications: notificationsReducer, settings: settingsReducer, auth: authReducer},
   });
   store.dispatch(setFeed({
     cursor: 4,
@@ -143,12 +146,19 @@ describe('NotificationsScreen', () => {
       .map(node => textContent(node.props.children))
       .join('\n');
 
+    // FDP is a duty property: the card carries the check-in/release window, the
+    // recalculated FDP and the requested extension — not two identical stamps.
     expect(text).toContain('ACTION REQUIRED');
-    expect(text).toContain('Flight delayed 120 min');
-    expect(text).toContain('FDP 9h45 (585m) → 14h45 (885m)');
-    expect(text).toContain('Accept or reject 45 min FDP discretion.');
-    expect(text).toContain('Reject');
-    expect(text).toContain('Accept +45m');
+    expect(text).toContain('FDP discretion · Duty PROJ-90002513:1');
+    expect(text).toContain('Check-in (report)');
+    expect(text).toContain('22 Aug 08:05z');
+    expect(text).toContain('9h45');
+    expect(text).toContain('Revised schedule recalculates FDP to 14h45.');
+    expect(text).toContain('Plan limit 14h00 · exceed by 45m');
+    expect(text).toContain('Do you agree to a 45 min FDP extension?');
+    // Yes sits left of No, so the affirmative is 'Yes · +45m'.
+    expect(text).toContain('Yes · +45m');
+    expect(text).toContain('No');
   });
 
   it('lays a roster change out as BEFORE → AFTER, not as prose', () => {
