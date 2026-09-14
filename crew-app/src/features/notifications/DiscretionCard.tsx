@@ -176,11 +176,6 @@ export function DiscretionCard({
         </View>
         <Text style={[s.fdpDelta, {color: p.cardInk}]} testID="disc-fdp-delta">+{requested}m</Text>
       </View>
-      {recalculated != null && current != null && recalculated !== current && (
-        <Text style={[s.note, {color: p.cardSoft}]} testID="disc-fdp-recalc">
-          Revised schedule recalculates FDP to {fmtHm(recalculated)}.
-        </Text>
-      )}
       <Text style={[s.note, {color: p.cardSoft}]} testID="disc-limit">
         {d.limitMin == null
           ? 'Regulatory assessment pending'

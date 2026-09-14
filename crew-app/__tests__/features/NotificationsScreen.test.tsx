@@ -146,14 +146,14 @@ describe('NotificationsScreen', () => {
       .map(node => textContent(node.props.children))
       .join('\n');
 
-    // FDP is a duty property: the card carries the check-in/release window, the
-    // recalculated FDP and the requested extension — not two identical stamps.
+    // FDP is a duty property: the card carries the check-in/release window and
+    // the single current → proposed FDP row without repeating the proposed value.
     expect(text).toContain('ACTION REQUIRED');
     expect(text).toContain('FDP discretion · Duty PROJ-90002513:1');
     expect(text).toContain('Check-in (report)');
     expect(text).toContain('22 Aug 08:05z');
     expect(text).toContain('9h45');
-    expect(text).toContain('Revised schedule recalculates FDP to 14h45.');
+    expect(text).not.toContain('Revised schedule recalculates FDP');
     expect(text).toContain('Plan limit 14h00 · exceed by 45m');
     expect(text).toContain('Do you agree to a 45 min FDP extension?');
     // Yes sits left of No, so the affirmative is 'Yes · +45m'.
