@@ -44,6 +44,9 @@ const GROUND_GROUPS = new Set(['SBY', 'DO', 'VAC', 'SIM', 'TRN', 'ADM', 'OFF', '
 const PUCK_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 const PUCK_FONT_MONO = '"JetBrains Mono", "Fira Code", monospace'
 
+/** Minimum horizontal gap (px) kept between adjacent puck columns so text never touches. */
+const PAIRING_PUCK_COL_GAP = 5
+
 /**
  * Calculate Y position for a row, accounting for frozen rows and custom row height.
  * Uses PAIRING_HEADER_HEIGHT (40px) for the header offset.
@@ -550,7 +553,13 @@ export const buildPairingDutyBuckets = (items: PairingItem[]): Map<number, Pairi
 }
 
 /**
- * Draw full flight puck (≥60px) with dep_arp + time | flt_num | arv_arp + time.
+ * Draw full flight puck (≥60px), width-responsive so text never overlaps — same measure-first
+ * degradation ladder as the Roster pane's drawRosterPuck and the Flight pane's drawFullPuck
+ * (§Gantt-Unify). The center flt_num is the primary identity and is always drawn; the dep/arv
+ * columns are measured against it and degrade as the puck narrows: airport+time each side →
+ * airports only → flt_num only. Without this measure-first step the three columns were drawn at
+ * fixed offsets and piled on top of each other on wider legs (Ryan's pairing overlap report:
+ * "ADD 09:00 ET2683 14:00 JNB" stacked on one another).
  */
 const drawFullFlightPuck = (
   ctx: CanvasRenderingContext2D,
@@ -568,45 +577,89 @@ const drawFullFlightPuck = (
   const textColor = groundText || (isDH ? '#d8b4fe' : '#86efac')
   const airportColor = groundText || (isDH ? '#d8b4fe' : '#93c5fd')
   const timeColor = groundText || (isDH ? '#c4b5fd' : '#7dd3fc')
+  // Dep time is flagged amber with a "→" suffix once it reflects the ACTUAL (shifted) time,
+  // same treatment as the Flight/Roster panes.
+  const depTimeColor = showActualTimes ? DELAY_GHOST_ACTUAL_TIME_COLOR : timeColor
+
+  const fltNum = seg.fltNum || ''
+  const depArp = seg.depArp || ''
+  const arvArp = seg.arvArp || ''
+  const depSrc = showActualTimes ? seg.actStrDtUtc : seg.schStrDtUtc
+  const depTime = depSrc ? formatTime(depSrc, timezone) + (showActualTimes ? ' →' : '') : ''
+  const arvTime = seg.schEndDtUtc ? formatTime(seg.schEndDtUtc, timezone) : ''
+
+  const AIRPORT_FONT = `bold 9px ${PUCK_FONT_FAMILY}`
+  const TIME_FONT = `8px ${PUCK_FONT_MONO}`
+  const FLT_FONT = `bold 9px ${PUCK_FONT_FAMILY}`
 
   ctx.save()
   ctx.beginPath()
   ctx.rect(x + 2, y + 1, width - 4, height - 2)
   ctx.clip()
 
+  // Measure once, then pick the richest layout that fits without collision.
+  ctx.font = AIRPORT_FONT
+  const depArpW = ctx.measureText(depArp).width
+  const arvArpW = ctx.measureText(arvArp).width
+  ctx.font = TIME_FONT
+  const depTimeW = depTime ? ctx.measureText(depTime).width : 0
+  const arvTimeW = arvTime ? ctx.measureText(arvTime).width : 0
+  ctx.font = FLT_FONT
+  const fltW = ctx.measureText(fltNum).width
+
+  const innerLeft = x + 4
+  const innerRight = x + width - 4
   const centerX = x + width / 2
+  const fltLeftEdge = centerX - fltW / 2
+  const fltRightEdge = centerX + fltW / 2
 
-  // Left: dep_arp
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'middle'
-  ctx.font = `bold 9px ${PUCK_FONT_FAMILY}`
-  ctx.fillStyle = airportColor
-  ctx.fillText(seg.depArp || '', x + 4, y + height / 2 - 4)
+  const leftColW = Math.max(depArpW, depTimeW)
+  const rightColW = Math.max(arvArpW, arvTimeW)
+  const fitsWithTimes =
+    innerLeft + leftColW + PAIRING_PUCK_COL_GAP <= fltLeftEdge &&
+    fltRightEdge + PAIRING_PUCK_COL_GAP <= innerRight - rightColW
+  const fitsAirportsOnly =
+    innerLeft + depArpW + PAIRING_PUCK_COL_GAP <= fltLeftEdge &&
+    fltRightEdge + PAIRING_PUCK_COL_GAP <= innerRight - arvArpW
 
-  // Left bottom: dep_time — flagged amber with a "→" suffix once it reflects the ACTUAL
-  // (shifted) time, same treatment as the Flight pane (drawFullPuck in flight-renderer.ts).
-  ctx.font = `8px ${PUCK_FONT_MONO}`
-  ctx.fillStyle = showActualTimes ? DELAY_GHOST_ACTUAL_TIME_COLOR : timeColor
-  const depTime = formatTime(showActualTimes ? seg.actStrDtUtc : seg.schStrDtUtc, timezone) + (showActualTimes ? ' →' : '')
-  ctx.fillText(depTime, x + 4, y + height / 2 + 4)
-
-  // Center: flt_num
+  // Center: flt_num (always drawn).
   ctx.textAlign = 'center'
-  ctx.font = `bold 9px ${PUCK_FONT_FAMILY}`
+  ctx.textBaseline = 'middle'
+  ctx.font = FLT_FONT
   ctx.fillStyle = textColor
-  ctx.fillText(seg.fltNum || '', centerX, y + height / 2)
+  ctx.fillText(fltNum, centerX, y + height / 2)
 
-  // Right: arv_arp
-  ctx.textAlign = 'right'
-  ctx.font = `bold 9px ${PUCK_FONT_FAMILY}`
-  ctx.fillStyle = airportColor
-  ctx.fillText(seg.arvArp || '', x + width - 4, y + height / 2 - 4)
-
-  // Right bottom: arv_time
-  ctx.font = `8px ${PUCK_FONT_MONO}`
-  ctx.fillStyle = timeColor
-  const arvTime = formatTime(seg.schEndDtUtc, timezone)
-  ctx.fillText(arvTime, x + width - 4, y + height / 2 + 4)
+  if (fitsWithTimes) {
+    // dep column: airport (top) + time (bottom)
+    ctx.textAlign = 'left'
+    ctx.font = AIRPORT_FONT
+    ctx.fillStyle = airportColor
+    ctx.fillText(depArp, innerLeft, y + height / 2 - 4)
+    if (depTime) {
+      ctx.font = TIME_FONT
+      ctx.fillStyle = depTimeColor
+      ctx.fillText(depTime, innerLeft, y + height / 2 + 4)
+    }
+    // arv column: airport (top) + time (bottom)
+    ctx.textAlign = 'right'
+    ctx.font = AIRPORT_FONT
+    ctx.fillStyle = airportColor
+    ctx.fillText(arvArp, innerRight, y + height / 2 - 4)
+    if (arvTime) {
+      ctx.font = TIME_FONT
+      ctx.fillStyle = timeColor
+      ctx.fillText(arvTime, innerRight, y + height / 2 + 4)
+    }
+  } else if (fitsAirportsOnly) {
+    // Times dropped — single row: dep_arp | flt_num | arv_arp.
+    ctx.font = AIRPORT_FONT
+    ctx.fillStyle = airportColor
+    ctx.textAlign = 'left'
+    ctx.fillText(depArp, innerLeft, y + height / 2)
+    ctx.textAlign = 'right'
+    ctx.fillText(arvArp, innerRight, y + height / 2)
+  }
+  // else: flt_num only — nothing else fits beside it without overlapping.
 
   ctx.restore()
 }
