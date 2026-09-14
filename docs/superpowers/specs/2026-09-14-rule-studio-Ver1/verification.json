@@ -1,0 +1,18 @@
+{
+  "scope": "HTML design prototypes only; no product/engine validation",
+  "screenshots": [
+    "docs/assets/screenshots/rule-studio/workbench-definition-Ver2.png",
+    "docs/assets/screenshots/rule-studio/workbench-review-Ver2.png",
+    "docs/assets/screenshots/rule-studio/workbench-failure-Ver2.png",
+    "docs/assets/screenshots/rule-studio/dossier-evidence-Ver1.png",
+    "docs/assets/screenshots/rule-studio/dossier-review-Ver2.png",
+    "docs/assets/screenshots/rule-studio/lab-definition-Ver2.png",
+    "docs/assets/screenshots/rule-studio/lab-review-Ver2.png",
+    "docs/assets/screenshots/rule-studio/design-overview-Ver2.png"
+  ],
+  "checks": [
+    "workbench: PASS — revision, stage chat, gates, pass/fail/revise/rerun, stale lock, restore, invalid input, responsive layout, no JS errors",
+    "dossier: PASS — revision, stage chat, gates, pass/fail/revise/rerun, stale lock, restore, invalid input, responsive layout, no JS errors",
+    "lab: PASS — revision, stage chat, gates, pass/fail/revise/rerun, stale lock, restore, invalid input, responsive layout, no JS errors"
+  ]
+}

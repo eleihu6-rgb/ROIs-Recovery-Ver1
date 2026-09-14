@@ -1,0 +1,18 @@
+{
+  "scope": "Ver 2 documentation prototype, no real rule/optimizer execution",
+  "checks": [
+    "PASS: three steps, intake/matching, modify/copy/new, required scope, invalid Y>X, one-click field/case citations, retained chat, tolerance modes, enforcement, A/B cases, build gates, collapsed code, automatic result return, GIF/static toggle, benchmark deltas, logic/performance failure, cancellation, stale lock, comparison, 800px viewport, no JS errors."
+  ],
+  "screenshots": [
+    "docs/assets/screenshots/rule-studio-ver2/01-intake-Ver4.png",
+    "docs/assets/screenshots/rule-studio-ver2/02-match-and-choice-Ver3.png",
+    "docs/assets/screenshots/rule-studio-ver2/03-parameters-citation-Ver3.png",
+    "docs/assets/screenshots/rule-studio-ver2/04-logic-tolerance-Ver2.png",
+    "docs/assets/screenshots/rule-studio-ver2/05-enforcement-Ver2.png",
+    "docs/assets/screenshots/rule-studio-ver2/06-build-default-Ver2.png",
+    "docs/assets/screenshots/rule-studio-ver2/07-auto-results-Ver2.png",
+    "docs/assets/screenshots/rule-studio-ver2/08-benchmark-Ver2.png",
+    "docs/assets/screenshots/rule-studio-ver2/09-failure-Ver2.png",
+    "docs/assets/screenshots/rule-studio-ver2/10-version-compare-Ver2.png"
+  ]
+}
