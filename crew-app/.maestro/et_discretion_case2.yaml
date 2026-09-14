@@ -1,0 +1,62 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+# Case-2 crew-app Discretion card — proves Ryan's 3 fixes on-device:
+#   Bug 1: title reads THIS duty (ET2681/ET2682), not the whole pairing.
+#   Bug 2: release shows the pushed 17:45z, not the un-shifted 16:15z.
+#   Bug 3: proposed FDP reads 15h30 (matches gantt), not 17h00.
+# Data: ET crew T2001 (Pier2026), pairing 152675 duty 1, rejected proposal.
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-ET"
+- assertVisible:
+    id: "crew-id"
+- tapOn:
+    id: "crew-id"
+- eraseText
+- inputText: "T2001"
+- tapOn:
+    id: "crew-pw"
+- eraseText
+- inputText: "Pier2026"
+- hideKeyboard
+- tapOn:
+    id: "login-btn"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 30000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- swipe:
+    start: 50%, 84%
+    end: 50%, 30%
+    duration: 400
+- tapOn:
+    id: "qa-discretion"
+- assertVisible:
+    id: "page-discretion"
+- extendedWaitUntil:
+    visible:
+      id: "discretion-card"
+    timeout: 20000
+- assertVisible: "HISTORY"
+# The whole corrected card fits on one screen (title, check-in/release, legs,
+# FDP current -> proposed). Assert its parts by testID (the composed/wrapped
+# title defeats Maestro plain-text extraction; the pixels carry the content).
+- assertVisible:
+    id: "disc-title"
+- assertVisible:
+    id: "disc-release"
+- assertVisible:
+    id: "disc-fdp-proposed"
+- assertVisible: "15h30"
+- takeScreenshot: case2-crew-app-discretion-corrected-Ver1

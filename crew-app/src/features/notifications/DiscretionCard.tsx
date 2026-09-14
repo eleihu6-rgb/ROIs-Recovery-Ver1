@@ -59,8 +59,12 @@ export function fdpExtension(d: DiscretionRequest): {
   const current = d.duty?.fdpBeforeMin ?? d.plannedFdpMin ?? null;
   const recalculated = d.duty?.fdpAfterMin ?? d.actualFdpMin ?? null;
   const requested = d.extensionRequestedMin;
-  const base = recalculated != null && current != null && recalculated > current ? recalculated : current;
-  const proposed = base == null ? null : base + requested;
+  // The proposed FDP is the extended duty the crew agrees to: the recalculated
+  // (revised-schedule) FDP itself, NOT recalculated + requested. Because
+  // requested = recalculated − current, adding it on top double-counts the delay
+  // (930 + 90 = 1020 = 17h00 instead of the real 930 = 15h30 the gantt shows).
+  // When there is no recalculated value, fall back to current + requested.
+  const proposed = recalculated ?? (current != null ? current + requested : null);
   return {current, recalculated, proposed, requested};
 }
 
@@ -115,6 +119,11 @@ export function DiscretionCard({
   const legs = duty?.legs ?? [];
   const report = duty?.reportUtc ?? d.schDep ?? null;
   const release = duty?.releaseUtc ?? d.schArv ?? null;
+  // Title the card by THIS duty's own flights (the legs listed below), not the
+  // whole-pairing label — pairingLabel spans every duty (e.g. all four of
+  // ET2681/ET2682/ET2683/ET2684) and reads as phantom flights on a single-duty
+  // card that only holds ET2681/ET2682.
+  const dutyLabel = legs.length > 0 ? legs.map(leg => leg.fltNum).join('/') : duty?.pairingLabel ?? null;
   const terminal = d.state !== 'pending';
   return (
     <View style={[s.card, {backgroundColor: p.cardSolid}]} testID="discretion-card">
@@ -124,7 +133,7 @@ export function DiscretionCard({
             <Icon name="shield" size={16} color={p.cardInk} strokeWidth={1.7} />
           </View>
           <Text style={[s.title, {color: p.cardInk}]} testID="disc-title">
-            FDP discretion{duty?.pairingLabel ? ` · ${duty.pairingLabel}` : ''} · Duty {d.dutyId}
+            FDP discretion{dutyLabel ? ` · ${dutyLabel}` : ''} · Duty {d.dutyId}
           </Text>
         </View>
         <Text style={[s.extBadge, {backgroundColor: p.btn}]}>+{requested}m</Text>

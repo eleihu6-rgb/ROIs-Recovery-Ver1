@@ -109,9 +109,14 @@ export function buildDutyDetail(
         operated: actDepUtc != null && schDepUtc != null && actDepUtc !== schDepUtc,
       }
     })
+  // Report/release show the REVISED (proposed) duty window the crew will actually
+  // fly — the 'after' window that carries the operated delay — so a delayed return
+  // leg PUSHES the release (e.g. 16:15Z → 17:45Z), matching the gantt Proposed
+  // window. When the duty runs on schedule the two windows are identical, so this
+  // only moves the release on a genuine delay. FDP before/after keep both values.
   return {
     pairingId: String(pairingId), pairingLabel: source.pairingLabel, dutySeq: String(dutySeq),
-    reportUtc: before.reportUtc, releaseUtc: before.releaseUtc,
+    reportUtc: after.reportUtc, releaseUtc: after.releaseUtc,
     fdpBeforeMin: before.fdpMin, fdpAfterMin: after.fdpMin, legs,
   }
 }
@@ -123,16 +128,40 @@ export async function prepareConsent(o: CrewNotifyServiceOptions, pairingId: num
   const unchangedSchedule = source.flights.every(f =>
     ['dep', 'arv'].every(side => ['est', 'act'].every(kind => f[`${kind}_${side}_dt_utc`] == null
       || Date.parse(String(f[`${kind}_${side}_dt_utc`])) === Date.parse(String(f[`sch_${side}_dt_utc`])))))
+  // Scheduled briefing/debriefing buffers, measured from the stored scheduled envelope
+  // (brief_start → duty_sch_str, and duty_sch_end → debrief_end). Deriving report/release
+  // as the duty envelope ± these buffers makes the 'sch' window reproduce the stored
+  // brief_start/debrief_end exactly (an algebraic identity), while the 'act' window carries
+  // the operated delay: a delayed flight PUSHES the release, instead of both windows reusing
+  // the planned debrief time. No delay ⇒ act == sch, so the release only moves on a real delay.
+  const bufferMin = (from: unknown, to: unknown): number | null =>
+    from != null && to != null ? (Date.parse(utcIso(to)) - Date.parse(utcIso(from))) / 60000 : null
+  const briefBufferMin = bufferMin(segment.brief_start_utc, segment.duty_sch_str_dt_utc)
+  const debriefBufferMin = bufferMin(lastSegment.duty_sch_end_dt_utc, lastSegment.debrief_end_utc)
+  const shift = (value: unknown, minutes: number | null): string | null =>
+    value != null && minutes != null ? new Date(Date.parse(utcIso(value)) + minutes * 60000).toISOString() : null
   const window = (kind: 'sch' | 'act') => {
-    const report = segment.brief_start_utc ?? segment[`duty_${kind}_str_dt_utc`]
-    const release = lastSegment.debrief_end_utc ?? segment[`duty_${kind}_end_dt_utc`]
-    // No revised operational time means the calculated scheduled duty is still
-    // the current duty. A changed estimate cannot use this baseline fallback.
-    const fdp = segment[`duty_${kind}_fdp_min`] ?? (kind === 'act' && unchangedSchedule ? segment.duty_sch_fdp_min : null)
-    if (!report || !release || fdp == null || !Number.isFinite(Number(fdp))) {
+    const report = shift(segment[`duty_${kind}_str_dt_utc`], briefBufferMin == null ? null : -briefBufferMin)
+      ?? segment.brief_start_utc ?? segment[`duty_${kind}_str_dt_utc`]
+    const release = shift(lastSegment[`duty_${kind}_end_dt_utc`], debriefBufferMin)
+      ?? lastSegment.debrief_end_utc ?? lastSegment[`duty_${kind}_end_dt_utc`]
+    if (!report || !release) {
       throw new CrewNotifyServiceError(409, 'Authoritative duty report, release and FDP values must be calculated before requesting agreement.')
     }
-    return { reportUtc: utcIso(report), releaseUtc: utcIso(release), fdpMin: Number(fdp) }
+    const reportUtc = utcIso(report)
+    const releaseUtc = utcIso(release)
+    // The FDP the crew is asked to extend is the duty period (check-in -> release). The
+    // operated column is preferred; when it is empty (app-built pairings and imported rows
+    // without a host-computed value) derive it from the same authoritative window so a
+    // genuine published delay can still be proposed. No revised operational time means the
+    // calculated scheduled duty is still the current duty, so that keeps its stored FDP.
+    const dutyPeriodMin = Math.round((Date.parse(releaseUtc) - Date.parse(reportUtc)) / 60000)
+    const fdp = segment[`duty_${kind}_fdp_min`]
+      ?? (kind === 'act' ? (unchangedSchedule ? segment.duty_sch_fdp_min : dutyPeriodMin) : null)
+    if (fdp == null || !Number.isFinite(Number(fdp)) || Number(fdp) <= 0) {
+      throw new CrewNotifyServiceError(409, 'Authoritative duty report, release and FDP values must be calculated before requesting agreement.')
+    }
+    return { reportUtc, releaseUtc, fdpMin: Number(fdp) }
   }
   let previous: Awaited<ReturnType<typeof getControllerConsent>> | null = null
   let previousProposal: DiscretionProposal | null = null

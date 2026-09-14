@@ -44,6 +44,24 @@ describe('FDP consent communication', () => {
     expect(status.proceedAllowed).toBe(false)
     await expect(getControllerConsent(p.options, created.proposalId, 'other-controller')).rejects.toMatchObject({ statusCode: 404 })
   })
+  it('derives the operated FDP from the duty period when the operated column is empty', async () => {
+    const p = pool()
+    // App-built pairings leave duty_act_fdp_min null. A published delay still has to be
+    // proposable, so the operated FDP falls back to the authoritative duty period.
+    p.state.source = {
+      ...source,
+      segments: [
+        { ...source.segments[0], duty_act_fdp_min: null, duty_act_str_dt_utc: '2026-09-12T08:00:00Z', duty_act_end_dt_utc: '2026-09-12T20:30:00Z' },
+        source.segments[1],
+      ],
+      flights: [{ id: 21, est_dep_dt_utc: '2026-09-12T09:00:00Z' }, { id: 22 }],
+    }
+    const prepared = await prepareConsent(p.options, 987654, 1)
+    expect(prepared.before.fdpMin).toBe(570)
+    expect(prepared.after.reportUtc).toBe('2026-09-12T08:00:00.000Z')
+    expect(prepared.after.releaseUtc).toBe('2026-09-12T20:30:00.000Z')
+    expect(prepared.after.fdpMin).toBe(750)
+  })
   it('rejects caller-invented before/after FDP and missing canonical counters', async () => {
     const p = pool()
     await expect(createConsent(p.options, { ...proposal, after: { ...proposal.after, fdpMin: 600 } }, 'controller')).rejects.toMatchObject({ statusCode: 409 })
@@ -86,6 +104,12 @@ describe('FDP consent communication', () => {
     const prepared = await prepareConsent(p.options, 987654, 1, 'controller')
     expect(prepared.duty).toMatchObject({ dutySeq: '1', fdpBeforeMin: 570, fdpAfterMin: 630 })
     expect(prepared.duty.legs.map(l => [l.depArp, l.arvArp])).toEqual([['ADD', 'ASO'], ['ASO', 'ADD']])
+    // The card's check-in/release show the REVISED (proposed) duty window, so a
+    // delayed return leg PUSHES the release — not the un-shifted before window.
+    // Here after.releaseUtc (19:00) differs from before.releaseUtc (18:00).
+    expect(prepared.duty.reportUtc).toBe(prepared.after.reportUtc)
+    expect(prepared.duty.releaseUtc).toBe(prepared.after.releaseUtc)
+    expect(prepared.duty.releaseUtc).not.toBe(prepared.before.releaseUtc)
     const created = await createConsent(p.options, proposal, 'controller')
     // The immutable snapshot is stored with every recipient, not just the controller reply.
     expect(created.requests[0].duty).toEqual(prepared.duty)
