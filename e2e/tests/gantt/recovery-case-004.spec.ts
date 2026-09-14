@@ -52,7 +52,7 @@ async function openPairingRecovery(page: Page, dashboard: GanttDashboardPage, id
   expect(await rightClickPairingSeg(page, dashboard.pairingCanvas, segment!)).toBe(true)
   await page.getByRole('button', { name: /Recovery — open seats/ }).click()
   await expect(page.getByTestId('recovery-pairing-options')).not.toBeVisible()
-  await expect(page.getByRole('combobox', { name: 'Open rank' })).toBeEnabled({ timeout: 60000 })
+  await expect(page.getByRole('combobox', { name: 'Open rank' })).toBeEnabled({ timeout: 180000 })
 }
 
 async function searchPairings(page: Page, dashboard: GanttDashboardPage, anchorId = fixture.anchorFlightId, from = '2026-09-17', to = '2026-09-25', screenshot = 'case4-pairing-options') {
@@ -146,10 +146,10 @@ for (const method of methods) {
       const dialog = page.getByTestId('recovery-violation-dialog')
       await dialog.getByRole('combobox', { name: 'Open rank' }).selectOption(index === 0 ? 'CA' : 'FO')
       await dialog.getByRole('button', { name: method.label, exact: true }).click()
-      await dialog.getByRole('button', { name: 'Find roster options', exact: true }).click()
+      await expect(dialog.getByRole('button', { name: 'Find roster options', exact: true })).toHaveCount(0)
       const candidate = dialog.getByTestId(`recovery-crew-checkbox-${crewId}`)
-      await expect(candidate).toBeVisible({ timeout: 60000 })
-      await expect(candidate).toBeEnabled({ timeout: 60000 })
+      await expect(candidate).toBeVisible({ timeout: 180000 })
+      await expect(candidate).toBeEnabled({ timeout: 180000 })
       await candidate.check()
       await dialog.getByRole('button', { name: /Cost breakdown/ }).click()
       const costs = page.getByTestId('recovery-cost-breakdown-dialog')

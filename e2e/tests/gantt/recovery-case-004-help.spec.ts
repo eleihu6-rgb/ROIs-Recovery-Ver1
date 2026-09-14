@@ -31,11 +31,12 @@ test('Help Case 4 documents open-pairing build and staffing workflow', async ({ 
   await expect(article.locator('h1')).toContainText('Case study 4')
   for (const text of [
     'Ad hoc new flight', 'Shift Handover', 'Open in Live', 'Pairing Options', 'Search Pairing Options', 'Build pairing (Save)', 'immediate save',
-    'By cost tier', 'cheapest priced executable candidate', 'keeps its full candidate list', 'seven executable candidates', 'recomputed calendar-month credit', 'not already-flown hours', 'same option table as Cases 1–3', 'Executable', 'Filtered', 'Detail', 'Recovery — open seats', 'Open rank', 'Find roster options', 'Standby Crew', 'Available Crew',
+    'By cost tier', 'cheapest priced executable candidate', 'keeps its full candidate list', 'seven executable candidates', 'recomputed calendar-month credit', 'not already-flown hours', 'same option table as Cases 1–3', 'Executable', 'Filtered', 'Detail', 'Recovery — open seats', 'Open rank', 'Solutions are detected automatically', 'Standby Crew', 'Available Crew',
     'independent time scale per duty', 'search limit', 'Move-up / Roster Transfer', 'Preview', 'Apply', 'Save', 'Cost breakdown', 'Unpriced', 'Partial',
   ]) await expect(article).toContainText(text)
   await expect(article).toContainText('Standby is a common approach across Cases 1–4')
   await expect(article).toContainText('donor vacancy remains')
+  await expect(article).not.toContainText('Find roster options')
 
   const directory = path.join(repoRoot, 'docs/assets/screenshots/crew-recovery')
   let version = 1

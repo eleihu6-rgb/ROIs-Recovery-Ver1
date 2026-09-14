@@ -37,8 +37,8 @@ export default function RecoveryCase004() {
       <HelpH2>Staff an open or partially staffed pairing</HelpH2>
       <HelpStep n={3}>
         Close Recovery without assigning crew if needed: the pairing remains saved. Right-click that open or partially staffed pairing and choose <strong>Recovery — open seats</strong> to resume directly at roster options. Recovery shows the pairing’s remaining
-        required rank seats and preserves existing assignments. Select an <strong>Open rank</strong>, then
-        choose <strong>Find roster options</strong>. Fill missing seats only; do not overfill the composition.
+        required rank seats and preserves existing assignments. Solutions are detected automatically for the first <strong>Open rank</strong> when Recovery opens
+        or a pairing is built. Changing the rank automatically refreshes the solutions. Fill missing seats only; do not overfill the composition.
       </HelpStep>
       <HelpStep n={4}>
         The common recovery methods are <strong>Standby Crew</strong>, <strong>Available Crew</strong> and
@@ -52,7 +52,7 @@ export default function RecoveryCase004() {
         keeps its full candidate list, including higher-cost alternatives. The star marks the cheapest method.
         Unpriced candidates are excluded, and different currencies are not compared.
       </HelpTip>
-      <HelpScreenshot src="/help/screenshots/recovery-case4-cost-tiers-Ver1.png" alt="Case 4 Recovery showing shared By strategy and By cost tier navigation" caption="Select a method by its lowest executable cost; all of that method’s candidates remain available for comparison." />
+      <HelpScreenshot src="/help/screenshots/recovery-case4-cost-tiers-Ver2.png" alt="Case 4 Recovery showing shared By strategy and By cost tier navigation" caption="Select a method by its lowest executable cost; all of that method’s candidates remain available for comparison." />
       <HelpStep n={5}>
         Move-up / Roster Transfer removes only the selected crew’s actual donor pairing before adding the
         open pairing. A donor vacancy remains a prominent <strong>Partial</strong> recovery warning; staffing
@@ -63,7 +63,7 @@ export default function RecoveryCase004() {
         must match. A missing candidate can mean the crew is not loaded or is not eligible for this pairing.
       </HelpTip>
 
-      <HelpScreenshot src="/help/screenshots/recovery-case4-standby-cost-Ver2.png" alt="Standby crew cost breakdown with incremental guarantee-hours pay" caption="Standby uses the existing Cost Library. This example crosses a GH pay tier; prices come from saved roster credit, not a special Case 4 tariff." />
+      <HelpScreenshot src="/help/screenshots/recovery-case4-standby-cost-Ver3.png" alt="Standby crew cost breakdown with incremental guarantee-hours pay" caption="Standby uses the existing Cost Library. This example crosses a GH pay tier; prices come from saved roster credit, not a special Case 4 tariff." />
       <HelpNote>
         The prepared Captain standby pool has seven executable candidates, including zero-cost options
         and options crossing the GH guarantee or a higher pay tier. These estimates come from real saved

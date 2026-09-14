@@ -72,9 +72,10 @@ export function OpenRecoveryWorkspace({ incident, onClose, PlanGroup, DetailDial
     void pairingApi.getDetail(pairingId).then(value => {
       if (cancelled) return
       const item: PairingItem = { pairing: value.pairing, segments: value.segments, flights: [], sessionTags: [] }
+      setBusy(false)
       setDetail(item)
       setRank(openPairingSeats(item)[0]?.rank ?? '')
-    }).catch(cause => { if (!cancelled) setError(String(cause)) }).finally(() => { if (!cancelled) setBusy(false) })
+    }).catch(cause => { if (!cancelled) { setError(String(cause)); setBusy(false) } })
     return () => { cancelled = true }
   }, [pairingId])
 

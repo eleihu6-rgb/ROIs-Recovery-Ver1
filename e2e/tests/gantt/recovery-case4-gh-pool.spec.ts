@@ -52,7 +52,7 @@ async function openPairingRecovery(page: Page, dashboard: GanttDashboardPage, id
   expect(await rightClickPairingSeg(page, dashboard.pairingCanvas, segment!)).toBe(true)
   await page.getByRole('button', { name: /Recovery — open seats/ }).click()
   await expect(page.getByTestId('recovery-pairing-options')).not.toBeVisible()
-  await expect(page.getByRole('combobox', { name: 'Open rank' })).toBeEnabled({ timeout: 60000 })
+  await expect(page.getByRole('combobox', { name: 'Open rank' })).toBeEnabled({ timeout: 180000 })
 }
 
 test('Case 4 seven real standby rosters with GH cost spread', async ({ page, request }) => {
@@ -60,10 +60,9 @@ test('Case 4 seven real standby rosters with GH cost spread', async ({ page, req
   await openPairingRecovery(page, dashboard, 152689)
   const dialog = page.getByTestId('recovery-violation-dialog')
   await dialog.getByRole('combobox', { name: 'Open rank' }).selectOption('CA')
-  await dialog.getByRole('button', { name: 'Find roster options', exact: true }).click()
-  await expect(dialog.getByRole('button', { name: 'Find roster options', exact: true })).toBeEnabled({ timeout: 180000 })
+  await expect(dialog.getByRole('button', { name: 'Find roster options', exact: true })).toHaveCount(0)
   const group = dialog.getByTestId('recovery-options-standby')
-  await expect(group.getByRole('tab', { name: 'Executable (7)', exact: true })).toBeVisible()
+  await expect(group.getByRole('tab', { name: 'Executable (7)', exact: true })).toBeVisible({ timeout: 180000 })
   await group.getByRole('tab', { name: 'Executable (7)', exact: true }).click()
   await shot(page, 'case4-gh-pool-seven-options')
   const cases = [['C4002',0,'21:30'],['C4003',0,'51:15'],['C4004',75,'83:20'],['C4005',185,'84:15'],['C4006',326.25,'89:25'],['C4007',0,'29:25'],['C4008',0,'29:55']] as const

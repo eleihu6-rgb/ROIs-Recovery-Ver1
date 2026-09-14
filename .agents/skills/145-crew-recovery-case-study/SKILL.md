@@ -77,6 +77,11 @@ Always recheck current source and prepared data before replay.
   a leaf selects that entire method, not only candidates within the numeric tier.
   Exclude unpriced/non-executable options and do not compare mixed currencies.
   Pairing Options stays first only while no pairing exists.
+- Automatically detect all three staffing strategies when saved pairing details load
+  (including immediately after Build pairing); default to the first open rank and
+  refresh automatically on rank or ruleset changes. No Find roster options button.
+  Keep discovery stable during Preview/crew floating and method switching; actual
+  roster changes are guarded by Preview/Apply fingerprints, not array ordering.
 - Standard controls: All / Executable / Filtered, crew/name/rank, Cancel / Add /
   Stability / Cost, execution checkbox, row Preview / Detail and clickable cost.
   `RecoveryPreviewDock` is shared across incident types. Eligibility checks must
