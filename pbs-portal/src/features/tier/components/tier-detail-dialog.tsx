@@ -373,7 +373,7 @@ export const TierDetailDialog = ({
 
   return (
     <PbsDialogFrame
-      ariaLabelledBy="tier-detail-title"
+      ariaLabel={detail.title}
       bodyClassName="py-4"
       footer={(
         <TierDetailActionBar
@@ -393,21 +393,15 @@ export const TierDetailDialog = ({
         />
       )}
       header={(
-        <div className="flex items-start justify-between gap-4 border-b border-[#eef1f6] pb-4">
+        <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
           <div className="min-w-0">
-            <h3
-              className="text-xs font-semibold uppercase tracking-[0.04em] text-[#7f8392]"
-              id="tier-detail-title"
-            >
-              {detail.title}
-            </h3>
-            <p className="mt-1 break-words text-xl font-semibold leading-7 text-[#282c3b]">
+            <p className="break-words text-xl font-semibold leading-7 text-foreground">
               {detail.subtitle}
             </p>
           </div>
           <button
             aria-label="Close tier detail"
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-[#d8dde6] bg-white text-[#7f8392] hover:bg-[#f8f9fb] focus:outline-none focus:ring-2 focus:ring-[#706cd5] focus:ring-offset-1"
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-border bg-background text-muted-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
             type="button"
             onClick={onClose}
           >
@@ -416,7 +410,7 @@ export const TierDetailDialog = ({
         </div>
       )}
       overlayClassName="z-40 bg-white/70"
-      panelClassName="w-[calc(100%-24px)] max-w-[760px] rounded-3xl p-4 shadow-[0_20px_60px_rgba(45,49,66,0.18)]"
+      panelClassName="w-[calc(100%-24px)] max-w-[760px] rounded-3xl p-4 shadow-xl"
       testId="tier-detail-dialog"
       onClose={onClose}
     >

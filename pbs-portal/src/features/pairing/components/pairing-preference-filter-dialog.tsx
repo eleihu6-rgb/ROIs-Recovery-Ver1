@@ -1,12 +1,11 @@
 import {
   ChevronDownIcon,
   MagnifyingGlassIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { AppDialog } from "@rois/ui";
 import type { PairingPreferencePickerFilterDraft } from "./pairing-preference-picker-filters";
-import { useScaledPageCanvasPortalTarget } from "@/shared/components/layout/scaled-page-canvas";
 import { PbsDatePicker } from "@/shared/components/preferences/pbs-date-picker";
 import { cn } from "@/shared/lib/cn";
 import type { ScaledDropdownPosition } from "@/shared/lib/scaled-dropdown-position";
@@ -32,10 +31,10 @@ type PairingPreferenceFilterDialogProps = {
 };
 
 const TEXT_CLASS = "text-xs leading-4";
-const LABEL_CLASS = "mb-1.5 block text-xs font-semibold text-[#687386]";
-const INPUT_CLASS = "h-8 w-full min-w-0 rounded-md border border-[#d8dde6] bg-white px-2 text-xs font-semibold text-[#41495a] outline-none focus:border-[#7774d7] focus:ring-2 focus:ring-[#7774d7]/15 disabled:cursor-not-allowed disabled:bg-[#f5f7fa]";
+const LABEL_CLASS = "mb-1.5 block text-xs font-semibold text-muted-foreground";
+const INPUT_CLASS = "h-8 w-full min-w-0 rounded-md border border-border bg-background px-2 text-xs font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-muted";
 const FIELD_GROUP_CLASS = "min-w-0";
-const ATTRIBUTE_TITLE_CLASS = "m-0 text-xs font-semibold text-[#687386]";
+const ATTRIBUTE_TITLE_CLASS = "m-0 text-xs font-semibold text-muted-foreground";
 
 const STATION_DROPDOWN_GAP = 4;
 const STATION_DROPDOWN_HEADER_HEIGHT = 36;
@@ -104,12 +103,6 @@ const resolveStationDropdownPosition = (
   };
 };
 
-const getFocusableElements = (root: HTMLElement) => Array.from(
-  root.querySelectorAll<HTMLElement>(
-    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-  ),
-).filter((element) => !element.hasAttribute("disabled"));
-
 const FilterRangeField = ({
   describedBy,
   disabled,
@@ -154,7 +147,7 @@ const FilterRangeField = ({
         aria-describedby={hasError ? describedBy : undefined}
         aria-invalid={hasError || undefined}
         aria-label={fromAriaLabel}
-        className={cn(INPUT_CLASS, hasError && "border-[#c75b61]")}
+        className={cn(INPUT_CLASS, hasError && "border-destructive")}
         disabled={disabled}
         min={fromMin}
         placeholder={fromPlaceholder}
@@ -163,12 +156,12 @@ const FilterRangeField = ({
         value={fromValue}
         onChange={(event) => onFromChange(event.target.value)}
       />
-      <span aria-hidden="true" className="shrink-0 text-xs font-semibold text-[#9aa2b1]">to</span>
+      <span aria-hidden="true" className="shrink-0 text-xs font-semibold text-muted-foreground">to</span>
       <input
         aria-describedby={hasError ? describedBy : undefined}
         aria-invalid={hasError || undefined}
         aria-label={toAriaLabel}
-        className={cn(INPUT_CLASS, hasError && "border-[#c75b61]")}
+        className={cn(INPUT_CLASS, hasError && "border-destructive")}
         disabled={disabled}
         min={toMin}
         placeholder={toPlaceholder}
@@ -281,13 +274,15 @@ const CodeMultiSelectField = ({
     ? createPortal(
       <div
         ref={dropdownRef}
-        className="fixed z-[95] flex overflow-hidden rounded-lg border border-[#d8dde6] bg-white shadow-[0_10px_26px_rgba(54,63,84,0.14)]"
+        className="fixed z-[95] flex overflow-hidden rounded-lg border border-border bg-background shadow-lg"
         data-placement={position.openAbove ? "top" : "bottom"}
         data-testid={`${testId ?? "pairing-filter-station"}-dropdown`}
         style={{
           bottom: position.viewportBottom ?? undefined,
           left: position.viewportLeft,
           maxHeight: position.designMaxPopupHeight,
+          // Re-enable interaction with a modal AppDialog's `pointer-events: none` body lock.
+          pointerEvents: "auto",
           top: position.viewportTop ?? undefined,
           transform: `scale(${position.scale})`,
           transformOrigin: position.openAbove ? "bottom left" : "top left",
@@ -306,12 +301,12 @@ const CodeMultiSelectField = ({
         }}
       >
         <div className="flex min-h-0 w-full flex-col">
-          <label className="flex h-9 items-center gap-2 border-b border-[#e7ebf2] px-2">
-            <MagnifyingGlassIcon className="h-3.5 w-3.5 shrink-0 text-[#8d94a5]" />
+          <label className="flex h-9 items-center gap-2 border-b border-border px-2">
+            <MagnifyingGlassIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <input
               autoFocus
               aria-label={`${label} search`}
-              className="min-w-0 flex-1 border-0 bg-transparent text-xs font-semibold text-[#41495a] outline-none placeholder:text-[#9aa2b1]"
+              className="min-w-0 flex-1 border-0 bg-transparent text-xs font-semibold text-foreground outline-none placeholder:text-muted-foreground"
               placeholder="Search..."
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -331,8 +326,8 @@ const CodeMultiSelectField = ({
                 key={option}
                 aria-selected={selected.has(option)}
                 className={cn(
-                  "flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-[#f6f7ff] focus-visible:bg-[#f6f7ff] focus-visible:outline-none",
-                  selected.has(option) ? "font-bold text-[#5652c6]" : "font-semibold text-[#424a5a]",
+                  "flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                  selected.has(option) ? "font-bold text-primary" : "font-semibold text-foreground",
                 )}
                 role="option"
                 type="button"
@@ -341,14 +336,14 @@ const CodeMultiSelectField = ({
               >
                 <span className={cn(
                   "inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border",
-                  selected.has(option) ? "border-[#6663d8] bg-[#6663d8]" : "border-[#cbd1dd] bg-white",
+                  selected.has(option) ? "border-primary bg-primary" : "border-border bg-background",
                 )}>
                   {selected.has(option) ? <span className="text-3xs font-bold leading-none text-white">✓</span> : null}
                 </span>
                 {option}
               </button>
             )) : (
-              <p className="m-0 px-2.5 py-2 text-xs font-semibold text-[#8d94a5]">No stations match</p>
+              <p className="m-0 px-2.5 py-2 text-xs font-semibold text-muted-foreground">No stations match</p>
             )}
           </div>
         </div>
@@ -367,8 +362,8 @@ const CodeMultiSelectField = ({
         aria-haspopup="listbox"
         aria-invalid={hasError || undefined}
         className={cn(
-          "flex min-h-8 w-full cursor-pointer items-center gap-1.5 rounded-md border border-[#d8dde6] bg-white px-2 text-left text-xs font-semibold text-[#41495a] outline-none focus:border-[#7774d7] focus:ring-2 focus:ring-[#7774d7]/15 disabled:cursor-not-allowed disabled:bg-[#f5f7fa]",
-          hasError && "border-[#c75b61]",
+          "flex min-h-8 w-full cursor-pointer items-center gap-1.5 rounded-md border border-border bg-background px-2 text-left text-xs font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-muted",
+          hasError && "border-destructive",
         )}
         disabled={disabled}
         type="button"
@@ -385,17 +380,17 @@ const CodeMultiSelectField = ({
         }}
       >
         {value.length === 0 ? (
-          <span className="flex-1 text-[#9099aa]">{isLoading ? "Loading stations..." : placeholder}</span>
+          <span className="flex-1 text-muted-foreground">{isLoading ? "Loading stations..." : placeholder}</span>
         ) : (
           <span className="flex min-w-0 flex-1 flex-wrap gap-1">
             {value.map((code) => (
-              <span key={code} className="inline-flex items-center rounded bg-[#eef0fb] px-1.5 py-0.5 text-2xs font-bold text-[#5652c6]">
+              <span key={code} className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-2xs font-bold text-primary">
                 {code.toUpperCase()}
               </span>
             ))}
           </span>
         )}
-        <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-[#8d94a5]" />
+        <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       </button>
 
       {dropdown}
@@ -419,8 +414,8 @@ const AttributeToggle = ({
     className={cn(
       "h-8 cursor-pointer rounded-lg border px-3 text-xs font-bold disabled:cursor-not-allowed",
       pressed
-        ? "border-[#6663d8] bg-[#6663d8] text-white"
-        : "border-[#d8dde6] bg-white text-[#596273]",
+        ? "border-primary bg-primary text-primary-foreground"
+        : "border-border bg-background text-muted-foreground",
     )}
     disabled={disabled}
     type="button"
@@ -446,10 +441,7 @@ export const PairingPreferenceFilterDialog = ({
   onDateRangeChange,
   onDraftChange,
 }: PairingPreferenceFilterDialogProps) => {
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const scaledPortalTarget = useScaledPageCanvasPortalTarget();
-  const headingId = useId();
-  const errorId = `${headingId}-error`;
+  const errorId = useId();
   const normalizedError = error.toLowerCase();
   const hasDateError = normalizedError.includes("date");
   const hasCheckInError = normalizedError.includes("check-in");
@@ -459,70 +451,50 @@ export const PairingPreferenceFilterDialog = ({
   const hasCreditError = normalizedError.includes("credit");
   const hasStationError = normalizedError.includes("station");
 
-  useEffect(() => {
-    window.setTimeout(() => {
-      const firstFocusable = dialogRef.current ? getFocusableElements(dialogRef.current)[0] : null;
-      firstFocusable?.focus();
-    }, 0);
-  }, []);
-
-  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onCancel();
-      return;
-    }
-
-    if (event.key !== "Tab" || !dialogRef.current) {
-      return;
-    }
-
-    const focusable = getFocusableElements(dialogRef.current);
-    if (focusable.length === 0) {
-      return;
-    }
-
-    const first = focusable[0]!;
-    const last = focusable[focusable.length - 1]!;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
-  const dialog = (
-    <div
-      className="pointer-events-auto fixed inset-0 z-[80] flex items-center justify-center bg-[#1f2430]/35 px-4 py-6"
-      data-testid="pairing-preference-filter-dialog-overlay"
-      onMouseDown={onCancel}
-    >
-      <div
-        ref={dialogRef}
-        aria-labelledby={headingId}
-        aria-modal="true"
-        className="flex max-h-[88vh] w-full max-w-[760px] flex-col overflow-hidden rounded-lg bg-white shadow-[0_20px_56px_rgba(33,39,54,0.22)]"
-        data-testid="pairing-preference-filter-dialog"
-        role="dialog"
-        onKeyDown={handleDialogKeyDown}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="flex min-h-12 shrink-0 items-center justify-between border-b border-[#e7ebf2] px-4 sm:px-5">
-          <h2 id={headingId} className="m-0 text-sm font-bold text-[#242b3a]">Pairing Filters</h2>
+  return (
+    <AppDialog
+      open
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onCancel();
+        }
+      }}
+      title="Pairing Filters"
+      className="w-full max-w-[760px]"
+      bodyClassName="p-0"
+      data-testid="pairing-preference-filter-dialog"
+      footer={(
+        <div className="flex w-full items-center justify-between gap-2" data-testid="pairing-filter-dialog-footer">
           <button
-            aria-label="Close Pairing Filters"
-            className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[#8b93a4] hover:bg-[#f3f5f9]"
+            className="h-8 cursor-pointer rounded-lg border border-border bg-background px-3 text-xs font-bold text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={disabled}
             type="button"
-            onClick={onCancel}
+            onClick={onClear}
           >
-            <XMarkIcon className="h-4 w-4" />
+            Clear All
           </button>
+          <div className="flex gap-2">
+            <button
+              className="h-8 cursor-pointer rounded-lg border border-border bg-background px-3 text-xs font-bold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={disabled}
+              type="button"
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+            <button
+              className="h-8 cursor-pointer rounded-lg border border-primary bg-primary px-3 text-xs font-bold text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
+              disabled={disabled}
+              type="button"
+              onClick={onApply}
+            >
+              Apply Filters
+            </button>
+          </div>
         </div>
-
-        <div className="grid gap-4 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-5" data-testid="pairing-filter-dialog-body">
+      )}
+    >
+        <div className="grid gap-4 overflow-x-hidden px-4 py-4 sm:px-5" data-testid="pairing-filter-dialog-body">
           <section aria-label="Basic filters" className="grid gap-3">
             <div className="grid grid-cols-2 gap-3 gap-x-4">
               <div aria-label="Dates" aria-describedby={hasDateError ? errorId : undefined} className={FIELD_GROUP_CLASS} data-testid="pairing-filter-dates-field" role="group">
@@ -590,7 +562,7 @@ export const PairingPreferenceFilterDialog = ({
             </div>
           </section>
 
-          <section aria-label="Station filters" className="grid gap-3 border-t border-[#eef1f6] pt-3">
+          <section aria-label="Station filters" className="grid gap-3 border-t border-border pt-3">
             <div className="grid grid-cols-2 gap-3 gap-x-4">
               <CodeMultiSelectField
                 describedBy={errorId}
@@ -619,7 +591,7 @@ export const PairingPreferenceFilterDialog = ({
             </div>
           </section>
 
-          <section aria-label="Layover and credit filters" className="grid grid-cols-2 gap-3 gap-x-4 border-t border-[#eef1f6] pt-3">
+          <section aria-label="Layover and credit filters" className="grid grid-cols-2 gap-3 gap-x-4 border-t border-border pt-3">
             <FilterRangeField
               describedBy={errorId}
               disabled={disabled}
@@ -655,7 +627,7 @@ export const PairingPreferenceFilterDialog = ({
             />
           </section>
 
-          <section aria-label="Attribute filters" className="grid gap-2 border-t border-[#eef1f6] pt-3">
+          <section aria-label="Attribute filters" className="grid gap-2 border-t border-border pt-3">
             <p className={ATTRIBUTE_TITLE_CLASS}>Attributes</p>
             <div className="flex flex-wrap gap-2">
               <AttributeToggle
@@ -674,47 +646,11 @@ export const PairingPreferenceFilterDialog = ({
           </section>
 
           {error ? (
-            <p id={errorId} className={cn("m-0 rounded-lg border border-[#f0c5c7] bg-[#fff7f7] px-3 py-2 font-semibold text-[#b84c52]", TEXT_CLASS)} role="alert">
+            <p id={errorId} className={cn("m-0 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 font-semibold text-destructive", TEXT_CLASS)} role="alert">
               {error}
             </p>
           ) : null}
         </div>
-
-        <div className="flex min-h-14 shrink-0 items-center justify-between border-t border-[#e7ebf2] px-4 sm:px-5" data-testid="pairing-filter-dialog-footer">
-          <button
-            className="h-8 cursor-pointer rounded-lg border border-[#d8dde6] bg-white px-3 text-xs font-bold text-[#606a7c] disabled:cursor-not-allowed disabled:text-[#a4abba]"
-            disabled={disabled}
-            type="button"
-            onClick={onClear}
-          >
-            Clear All
-          </button>
-          <div className="flex gap-2">
-            <button
-              className="h-8 cursor-pointer rounded-lg border border-[#d8dde6] bg-white px-3 text-xs font-bold text-[#2c3342] disabled:cursor-not-allowed disabled:text-[#a4abba]"
-              disabled={disabled}
-              type="button"
-              onClick={onCancel}
-            >
-              Cancel
-            </button>
-            <button
-              className="h-8 cursor-pointer rounded-lg border border-[#6663d8] bg-[#6663d8] px-3 text-xs font-bold text-white disabled:cursor-not-allowed disabled:border-[#aaa6e4] disabled:bg-[#aaa6e4]"
-              disabled={disabled}
-              type="button"
-              onClick={onApply}
-            >
-              Apply Filters
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AppDialog>
   );
-
-  if (typeof document === "undefined") {
-    return dialog;
-  }
-
-  return scaledPortalTarget ? createPortal(dialog, scaledPortalTarget) : dialog;
 };

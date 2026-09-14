@@ -14,8 +14,8 @@
  * 同样在此文件递增对应版本号（与 EVACC 在前端文件里维护版本的做法一致）。
  * 目前仅在 gantt 前端展示（ThemeSwitcher 下拉里）。
  */
-export const BACKEND_VERSION = 231  // GET /rules returns updated_by for the Update By column
-export const FRONTEND_VERSION = 451 // Recovery Help Case 3 - 8004 crew-fleet mismatch
+export const BACKEND_VERSION = 233  // FDP discretion: delayed flight now PUSHES the Proposed release (act window = duty envelope + scheduled debrief buffer), so before/after release differ (232 = derive operated FDP from duty window)
+export const FRONTEND_VERSION = 459 // Recovery Case 2 - Report/Release shown as compact UTC ("30 Sep 00:45Z") so a delay past midnight is legible (458 = FDP discretion in hours not minutes)
 export const RULE_VERSION = 40  // rule-engine-rs: RuleSet-driven enabled_functions gate in check_line
 
 /** 展示用版本串，如 `Ver:B1/F1/R1`。 */

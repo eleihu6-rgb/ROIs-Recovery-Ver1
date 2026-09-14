@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { Check, Info, TriangleAlert, X } from "lucide-react";
 
 import { cn } from "../lib/utils";
 
@@ -8,50 +8,65 @@ import { cn } from "../lib/utils";
  * AppDialog — the project-wide standard pop-up window.
  *
  * Every application pop-up MUST use this component so the whole platform shares
- * a single window chrome. The standard (see root CLAUDE.md「弹窗窗口标准」):
+ * a single window chrome. The standard (see root CLAUDE.md「弹窗窗口标准」 and
+ * docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md):
  *
- *   1. An icon sits in the top-left corner of the title bar.
- *   2. The title bar uses the primary (blue) background with white title text.
- *   3. A close button sits in the top-right corner.
- *   4. All action buttons sit at the bottom-right (the `footer`).
- *   5. The window is movable by dragging the title bar.
+ *   1. A tone band (primary for neutral, green/yellow/red for status) tops the
+ *      window and carries the state glyph.
+ *   2. The glyph is an outline circle — centred and large in `status` (message
+ *      and confirmation pop-ups), a small badge left of the title in `panel`
+ *      (data-entry pop-ups, where information density wins).
+ *   3. Actions are pills at the end of the body (no footer bar): Cancel as an
+ *      outline pill, the primary action as a filled pill.
+ *   4. A white circular close disc straddles the top-right corner.
+ *   5. The window is movable by dragging the band.
  *   6. Opt-in: the window is resizable by dragging edges/corners (`resizable`).
  *
  * Built directly on the Radix Dialog primitives (the same primitives `Dialog`
  * exports) so it stays "the one dialog" — do not introduce Modal/Drawer
  * substitutes.
  */
+export type AppDialogTone = "neutral" | "success" | "warning" | "destructive";
+
 export interface AppDialogProps {
   /** Controlled open state. */
   open: boolean;
   /** Open-state change handler (close button, overlay click, Esc). */
   onOpenChange: (open: boolean) => void;
-  /** White title text shown in the blue title bar. */
+  /** Title. White in the band for `panel`; centred body heading for `status`. */
   title: React.ReactNode;
-  /** Icon shown in the top-left corner of the title bar. */
+  /** Glyph shown in the band circle. Defaults to the tone's own glyph. */
   icon?: React.ReactNode;
-  /** Optional muted description rendered at the top of the body. */
+  /** Optional muted description (top of the body, or centred under a status title). */
   description?: React.ReactNode;
-  /** Action buttons — rendered bottom-right. Omit for a footer-less window. */
+  /** Action buttons — rendered as a centred pill row after the body. */
   footer?: React.ReactNode;
   /** Window body. */
   children?: React.ReactNode;
+  /**
+   * `panel` (default) keeps the dense data-entry layout: title in the band.
+   * `status` is the message/confirmation layout: big centred glyph, centred
+   * title + message. Use `status` for anything that only reports an outcome.
+   */
+  variant?: "status" | "panel";
+  /** Semantic colour of the band. Never brand — it describes the outcome. */
+  tone?: AppDialogTone;
   /** Extra classes for the window container (width etc., e.g. `sm:max-w-[540px]`). */
   className?: string;
   /** Extra classes for the dimming overlay (default is `bg-black/25`). */
   overlayClassName?: string;
   /** Extra classes for the scrollable body region. */
   bodyClassName?: string;
-  /** Extra classes for the footer action bar (e.g. compact `py-1`). */
+  /** Extra classes for the pill action row (e.g. the compact `py-1`). */
   footerClassName?: string;
-  /** Allow dragging the window by its title bar. Default `true`. */
+  /** Allow dragging the window by its tone band. Default `true`. */
   draggable?: boolean;
   /**
    * Allow resizing via edge/corner handles. Default `false` (opt-in).
    * Size resets each time the dialog opens (same as drag offset).
    */
   resizable?: boolean;
-  /** Show the top-right close button. Default `true`. */
+  /** Show the top-right close disc. Default `true`. */
   showClose?: boolean;
   /** Close when clicking the overlay / pressing Esc. Default `true`. */
   dismissable?: boolean;
@@ -93,6 +108,25 @@ const MIN_WIDTH = 320;
 const MIN_HEIGHT = 280;
 /** Leave a small margin so the window does not flush against the viewport edge. */
 const VIEWPORT_MARGIN_PX = 16;
+
+/** Band colour per tone. Literal classes so Tailwind keeps them in the build. */
+const TONE_BAND: Record<AppDialogTone, string> = {
+  neutral: "bg-primary text-primary-foreground",
+  success: "bg-success text-success-foreground",
+  warning: "bg-warning text-warning-foreground",
+  destructive: "bg-destructive text-destructive-foreground",
+};
+
+/**
+ * Default outline glyph per tone — the reference's check / cross, extended with
+ * info and warning so every tone reads at a glance without a caller icon.
+ */
+const ToneGlyph = ({ tone }: { tone: AppDialogTone }): React.ReactElement => {
+  if (tone === "success") return <Check className="h-full w-full" strokeWidth={2} />;
+  if (tone === "destructive") return <X className="h-full w-full" strokeWidth={2} />;
+  if (tone === "warning") return <TriangleAlert className="h-full w-full" strokeWidth={2} />;
+  return <Info className="h-full w-full" strokeWidth={2} />;
+};
 
 const viewportMaxSize = (): { maxW: number; maxH: number } => ({
   maxW: Math.max(MIN_WIDTH, window.innerWidth - VIEWPORT_MARGIN_PX * 2),
@@ -176,6 +210,8 @@ export const AppDialog = ({
   showClose = true,
   dismissable = true,
   modal = true,
+  variant = "panel",
+  tone = "neutral",
   "data-testid": testId,
 }: AppDialogProps): React.ReactElement => {
   const [offset, setOffset] = React.useState({ x: 0, y: 0 });
@@ -407,52 +443,93 @@ export const AppDialog = ({
           )}
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg">
-          {/* 1+2+3 — blue title bar: icon (left), white title, close (right). Doubles as the drag handle. */}
+          {/* 1+2 — tone band: neutral/status colour, state glyph, drag handle.
+              `panel` keeps the dense header (badge glyph + title inline);
+              `status` is the reference layout (big centred glyph only). */}
           <div
             data-app-dialog-header
             onPointerDown={handlePointerDown}
             className={cn(
-              "flex shrink-0 select-none items-center gap-2 bg-primary px-4 py-2.5 text-primary-foreground",
+              "flex shrink-0 select-none",
+              TONE_BAND[tone],
+              variant === "status"
+                ? "h-28 items-center justify-center px-4"
+                : "items-center gap-2 px-4 py-2.5",
               draggable ? "cursor-move" : "cursor-default",
             )}
           >
-            {icon && (
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center text-primary-foreground">
-                {icon}
-              </span>
-            )}
-            <DialogPrimitive.Title className="min-w-0 flex-1 truncate text-sm font-semibold leading-none">
-              {title}
-            </DialogPrimitive.Title>
-            {showClose && (
-              <DialogPrimitive.Close
-                data-no-drag
-                data-testid={testId ? `${testId}-close` : undefined}
-                aria-label="Close"
-                className="relative z-30 -mr-1 rounded-sm p-0.5 text-primary-foreground opacity-80 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-primary-foreground/60"
+            {variant === "status" ? (
+              <span
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-current p-3"
+                data-testid={testId ? `${testId}-glyph` : undefined}
               >
-                <X className="h-4 w-4" />
-              </DialogPrimitive.Close>
+                {icon ?? <ToneGlyph tone={tone} />}
+              </span>
+            ) : (
+              <>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current p-1.5">
+                  {icon ?? <ToneGlyph tone={tone} />}
+                </span>
+                <DialogPrimitive.Title className="min-w-0 flex-1 truncate text-sm font-semibold leading-none">
+                  {title}
+                </DialogPrimitive.Title>
+              </>
             )}
           </div>
 
           {/* Body */}
-          <div className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-4", bodyClassName)}>
+          <div
+            className={cn(
+              "min-h-0 flex-1 overflow-y-auto px-5 py-4",
+              variant === "status" && "text-center",
+              bodyClassName,
+            )}
+          >
+            {variant === "status" && (
+              <DialogPrimitive.Title className="text-base font-semibold text-foreground">
+                {title}
+              </DialogPrimitive.Title>
+            )}
             {description && (
-              <DialogPrimitive.Description className="mb-3 text-xs text-muted-foreground">
+              <DialogPrimitive.Description
+                className={cn(
+                  "text-xs text-muted-foreground",
+                  variant === "status" ? "mt-2" : "mb-3",
+                )}
+              >
                 {description}
               </DialogPrimitive.Description>
             )}
             {children}
           </div>
 
-          {/* 4 — footer: all action buttons bottom-right. */}
+          {/* 3 — actions: centred pill row at the end of the body (no footer bar). */}
           {footer && (
-            <div className={cn("flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/30 px-5 py-3", footerClassName)}>
+            <div
+              data-app-dialog-actions
+              className={cn(
+                "flex shrink-0 flex-wrap items-center justify-center gap-2 px-5 pb-4 pt-1",
+                "[&_button]:rounded-full [&_button]:px-6",
+                footerClassName,
+              )}
+            >
               {footer}
             </div>
           )}
           </div>
+
+          {/* 4 — close disc straddling the top-right corner (outside the clipped
+              wrapper so it can overhang the card). */}
+          {showClose && (
+            <DialogPrimitive.Close
+              data-no-drag
+              data-testid={testId ? `${testId}-close` : undefined}
+              aria-label="Close"
+              className="absolute -right-3.5 -top-3.5 z-40 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-md outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </DialogPrimitive.Close>
+          )}
 
           {resizable &&
             RESIZE_HANDLES.map((h) => (

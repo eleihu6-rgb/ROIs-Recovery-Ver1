@@ -610,6 +610,7 @@ export const PairingPropertyConfigDialog = ({
     && isConditionComplete
     && (!confirmSavesFavorite || !containsExplicitFavoriteDate);
   const canSaveFavorite = isConditionComplete && !containsExplicitFavoriteDate;
+  const resolvedDialogAriaLabel = dialogAriaLabel ?? `Configure ${draft.name}`;
   const defaultDialogTitle = isPairingNumberProperty
     ? "Configure Pairing Preference"
       : isAirportPreferenceProperty
@@ -635,6 +636,10 @@ export const PairingPropertyConfigDialog = ({
                       : isTimeBetweenFlightsProperty
                         ? "Configure Time Between Flights"
                         : t("pairing.dialog.configureTitle");
+  const resolvedDialogTitle = dialogTitle ?? defaultDialogTitle;
+  // The AppDialog band already shows the dialog name, so only keep a separate header
+  // title line when it carries something different from that band title.
+  const showsHeaderTitle = resolvedDialogTitle !== resolvedDialogAriaLabel;
 
   if (!isOpen) {
     return null;
@@ -718,7 +723,7 @@ export const PairingPropertyConfigDialog = ({
 
   return (
     <PbsDialogFrame
-      ariaLabel={dialogAriaLabel ?? `Configure ${draft.name}`}
+      ariaLabel={resolvedDialogAriaLabel}
       bodyClassName="mt-5"
       closeDisabled={isPending || isFavoritePending}
       footerClassName="mt-6"
@@ -730,11 +735,13 @@ export const PairingPropertyConfigDialog = ({
       header={(
         <div className="flex items-center">
           <div>
-            <p className="m-0 text-base font-bold leading-5 text-[#282c3b]">
-              {dialogTitle ?? defaultDialogTitle}
-            </p>
+            {showsHeaderTitle ? (
+              <p className="m-0 text-base font-bold leading-5 text-foreground">
+                {resolvedDialogTitle}
+              </p>
+            ) : null}
             {dialogSubtitle || !isPreferenceDialogProperty ? (
-              <p className="m-0 mt-1 text-sm font-medium leading-5 text-[#6f7485]">
+              <p className={`m-0 text-sm font-medium leading-5 text-muted-foreground${showsHeaderTitle ? " mt-1" : ""}`}>
                 {dialogSubtitle ?? draft.name}
               </p>
             ) : null}

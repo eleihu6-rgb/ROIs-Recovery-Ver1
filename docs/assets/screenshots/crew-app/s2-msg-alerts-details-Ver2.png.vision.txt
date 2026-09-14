@@ -1,0 +1,15 @@
+1. Alerts screen, showing 4 alerts. The top alert is in an action-required state, requesting agreement to a 60-minute FDP extension; “Yes · +60m” and “No” options are visible. Regulatory assessment is pending.
+
+2. Visible status/counts/identifiers:
+
+- `4`
+- `FDP discretion · PI201/PI202 · Duty 1`
+- `On schedule`
+- `DELAYED +2h00`
+- `FDP CURRENT 11h00`
+- `FDP PROPOSED 14h00`
+- `+60m`
+- `Regulatory assessment pending`
+- Notification: `FDP` and `13 Sep 2227z`
+
+3. No obvious clipping, overlap, empty panes, or missing data. The delayed-flight timing wraps onto two lines but remains readable.

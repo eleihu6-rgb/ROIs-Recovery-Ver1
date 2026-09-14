@@ -466,13 +466,25 @@ Stale = selector/route/field renamed but the feature still exists, or UI structu
 
 ## 弹窗窗口标准（Pop-up Window Standard，强制执行）
 
-> 全平台所有弹窗（gantt / pbs-portal / pbs-app）必须共用同一套窗口外观，参考 `image/pop-up-window-template.png`。
+> 全平台所有弹窗（gantt / pbs-portal / pbs-app / crew-app）共用同一套 Status-Card 外观，参考 `image/pop-up-window-template.png` 与 2026-09-13 的 status-card 设计稿。
+> 完整规格见 `docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md`。
 
-唯一实现组件：`@rois/ui` 的 **`AppDialog`**（`packages/ui/src/composites/app-dialog.tsx`，基于 Radix Dialog 原语）。**禁止**再直接用裸 `Dialog`/`DialogContent` 拼装业务弹窗，也禁止用 Modal/Drawer/Popover 代替弹窗。
+唯一实现组件：
 
-标准外观（六条，缺一不可，具体 prop 见组件源码）：左上角图标（`icon`）、蓝色标题栏+白色标题（`bg-primary`/`text-primary-foreground`，禁止硬编码颜色）、右上角关闭按钮（`showClose`）、右下角按钮区（`footer`，取消在左主操作在右）、可拖拽（`draggable`）、可关闭性由 `dismissable` 控制（执行中操作应临时设为 `false`）。
+- Web（gantt / pbs-portal）：`@rois/ui` 的 **`AppDialog`**（`packages/ui/src/composites/app-dialog.tsx`，基于 Radix Dialog 原语）。**禁止**再直接用裸 `Dialog`/`AlertDialog` 拼装业务弹窗，也禁止用 Modal/Drawer/Popover/`createPortal` 自建弹窗框架（含模块内自研 frame；发现即改为委托 AppDialog）。
+- crew-app（React Native）：**`components/v2/AppDialog.tsx`**。产品级提示/确认一律用它；`Alert.alert` 仅保留给 OS 级系统提示（钥匙串/权限等原生 sheet 才是正确交互的场景），且必须写明理由。
 
-新增弹窗或改造旧弹窗一律走 `AppDialog`；若标准本身需要扩展，改 `AppDialog` 而非在业务侧另起炉灶。
+标准外观（必须齐备，具体 prop 见组件源码）：
+
+1. **Tone 色带**置顶：`tone` 决定语义色，一律取主题 token，禁止硬编码颜色 —— `neutral`=`primary`、`success`=`success`（新增 token）、`warning`=`warning`（新增 token）、`destructive`=`destructive`。
+2. **描边圆形图标**：`status` 变体居中大圆、`panel` 变体在色带左侧小圆 + 行内标题（数据录入类弹窗保持信息密度）。
+3. **动作按钮在 body 内、居中 pill 排布**（不再有独立 footer 条）：取消为描边 pill、主操作为实心 pill；危险操作才用 `destructive`。
+4. **右上角圆形关闭按钮**，骑跨卡片边角（白色圆盘 + 深色 ✕）。
+5. 可拖拽（色带即拖拽把手）；`dismissable=false` 用于执行中的操作。
+6. `variant`：消息/结果/确认类弹窗必须用 `variant="status"` + 对应 `tone`；仅数据表格/表单类弹窗保持 `panel`（可省略该 prop）。
+
+新增弹窗一律走上述两个组件；若标准本身需要扩展，改组件而非在业务侧另起炉灶。
+
 
 ## 样式与排版标准（CSS / Typography Standard，强制执行）
 

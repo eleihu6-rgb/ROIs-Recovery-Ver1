@@ -1,0 +1,20 @@
+1. Recovery dialog over the Live roster screen; “Loaded Live data only.” FDP Discretion is selected, and its crew-agreement option is rejected.
+
+2. Visible text:
+- “Rule 3007 · ET2681 · 2026-09-29”
+- “3 Crew · 1 Roster”
+- “FDP Discretion” — “Selected”
+- Options: “1”; Executable: “0”; Filtered: “0”; Best cost: “¥0.00”
+- “1 available · 0 filtered”
+- “All (1)”; “Executable (0)”; “Filtered (0)”
+- “Crew consent”; “Crew rejected”
+- “Cancel 0”; “Add 0”; “Stability 100%”; “Cost ¥0.00”
+- “FDP Discretion · request crew agreement”
+- “The crew rejected the FDP extension. Standby Crew callout is the next best solution.”
+- “3 degraded”
+
+3. Potential issues:
+- The selected recovery method has zero executable options and ¥0.00 cost.
+- The “Apply selected option” button appears enabled despite the option being rejected and non-executable.
+- Warning/error messages are densely compressed in the lower pane; no obvious clipping or overlap.
+- Background roster content is partially obscured by the dialog.

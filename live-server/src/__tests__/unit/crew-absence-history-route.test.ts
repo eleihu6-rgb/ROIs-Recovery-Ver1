@@ -164,6 +164,41 @@ describe('POST /api/crew-app/v1/absences', () => {
     await app.close()
   })
 
+  it('accepts an Emirates (DXB) crew, whose absence record is ROIS-owned', async () => {
+    mobileRosterService.verifyMobileCrewCredentials.mockResolvedValue({ crewId: 'K1014' })
+    absenceService.listCrewAbsences.mockResolvedValue([])
+    const app = await buildApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/crew-app/v1/absences',
+      payload: { ...monthRequest, airline: 'EK', crewId: 'K1014' },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({ code: 200, data: { absences: [] }, message: 'ok' })
+    expect(mobileRosterService.verifyMobileCrewCredentials).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ airline: 'EK', crewId: 'K1014' }),
+    )
+    await app.close()
+  })
+
+  it('keeps the notification feed at F8/ET (EK still uses the EVACC gateway)', async () => {
+    const app = await buildApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/crew-app/v1/notifications',
+      payload: { airline: 'EK', crewId: 'K1014', password: 'Pier2026' },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json().code).toBe(400)
+    expect(mobileRosterService.verifyMobileCrewCredentials).not.toHaveBeenCalled()
+    await app.close()
+  })
+
   it('reaches the handler without a Bearer token (crew body-credential route)', async () => {
     mobileRosterService.verifyMobileCrewCredentials.mockResolvedValue({ crewId: 'J4002' })
     absenceService.listCrewAbsences.mockResolvedValue([])

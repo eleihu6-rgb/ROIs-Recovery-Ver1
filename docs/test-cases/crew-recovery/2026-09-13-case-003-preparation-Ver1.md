@@ -19,6 +19,7 @@ Cross-base positioning).
 | Both flights changed 788 → 7M8; 8004 fires for all 4 crew | Done |
 | Recovery entry points (Alert Center / Pairing pane / Roster pane) | **Verified — Playwright PASS** |
 | Recovery option execution (Executable / cost / Preview / Apply / Save) | **Verified — Playwright PASS** |
+| 8004 fully cleared by 7M8-qualified Roster transfers (Alert Center 4 → 0) | **Verified — Playwright PASS (§9)** |
 
 ## 2. Isolation from Case 1 and Case 2
 
@@ -153,10 +154,13 @@ Screenshots: `case3-options-{executable,cost-breakdown,preview,applied-draft,sav
 L3003 ("Crew fleet (788) is invalid for the pairing (7M8)") — a 788-only candidate cannot
 clear a 7M8 fleet mismatch. The fleet constraint does not block executability, so the
 transfer commits and the warning persists. A fully clearing transfer needs a 7M8-qualified
-candidate (the ADD 7M8 pool `J40xx` is busy in this window).
+candidate. (Later correction: the ADD 7M8 pool `J40xx` is **not** fully busy in this window —
+`J4001`–`J4018` (CA) and `J4023`–`J4040` (FO) are free on 2026-09-19; only `J4020`–`J4022` hold a
+09-19 duty. See §9 for the fully-clearing run.)
 
-Not verified: 8004 clearance by a qualified replacement; cross-base / standby option
-execution; crew-app notification.
+Originally not verified: 8004 clearance by a qualified replacement; cross-base / standby option
+execution; crew-app notification. **8004 clearance is now verified — see §9.** Cross-base /
+standby execution and crew-app notification remain unverified.
 
 ## 5. Code changes and findings
 
@@ -211,13 +215,14 @@ Published as a Help Case Study alongside Case 1 and Case 2 (skill 003):
 | Topic body | `gantt/src/components/help/topics/recovery/recovery-case-003.tsx` |
 | Registry | `gantt/src/components/help/help-data.ts` (after `recovery-case-002`), `stepCount: 10` |
 | Lazy import | `gantt/src/components/help/help-view.tsx` |
-| Screenshots (5) | `gantt/public/help/screenshots/s3-{entry-alert-center,entry-pairing-pane,entry-roster-pane,options-executable,options-preview}-Ver1.png` |
-| Content test | `e2e/tests/gantt/help/help-recovery.spec.ts` — image count 5 + text assertions + search keywords |
-| Version | `FRONTEND_VERSION` 450 → **451** |
+| Screenshots (6) | `gantt/public/help/screenshots/s3-{entry-alert-center,entry-pairing-pane,entry-roster-pane}-Ver1.png`, `s3-options-executable-Ver2.png`, `s3-options-cost-breakdown-Ver1.png`, `s3-options-preview-Ver1.png` |
+| Content test | `e2e/tests/gantt/help/help-recovery.spec.ts` — image count 6 + text assertions + search keywords |
+| Version | `FRONTEND_VERSION` 450 → 451 → **452** (the cost article revision) |
 
 Content covers: the incident (pairing 152227, ET452/ET453 changed 788 → 7M8), the crew and the
 ADD/788 scoping, the three entry points, the three recovery methods, the
-Executable/Filtered/Best-cost tiers, the Unpriced cost state, the soft-fleet warning, and the
+Executable/Filtered/Best-cost tiers, the library-priced transfer cost breakdown (with Unpriced
+kept as the state for contexts that have no tariff), the soft-fleet warning, and the
 Preview → Apply (draft) → Save boundaries. It is published as **Partial** because a 788-only
 replacement does not clear the 8004 and the Standby / Cross-base options were not executed.
 
@@ -234,3 +239,196 @@ Notes / limitations:
 * `scripts/check-help-menu-coverage.mjs` and `scripts/check-legality-help-coverage.mjs` each report
   one **pre-existing** gap unrelated to this change (System → Interface page; rule 7509
   Avoid Co-pairing). No topics were invented to silence them.
+
+## 8. Transfer cost pricing — library-priced recovery options (read-only verification)
+
+**Problem.** Every roster-transfer option in the Case 3 dialog showed **Unpriced**, so the
+planner saw no cost at all for the case's primary recovery method. Two causes: the front end
+sent no `transferContext` (so the route fell through to a component build that had no tariff
+for an ADD transfer), and `calculate-cost/batch` was capped at 128 inputs, so a Live roster's
+larger option list 400'd and marked every candidate Unpriced.
+
+**Change.**
+* `live-server/src/services/recovery/transfer-gh-cost.ts` (new) — GH-only estimate: the receiving
+  crew's incremental guaranteed-hours pay plus the source crew's released-duty saving, priced
+  through the Cost Library `guarantee` calculator. It throws, and the route reports
+  `Calculation unavailable: …`, for cross-base / cross-role / multi-rank / non-pilot contexts, a
+  target already assigned to the pairing, a non-ADD-based target, or a pairing that spans months.
+* `live-server/src/routes/recovery/recovery-cost.ts` — `transferContext` added to the schema;
+  `priceComponents()` extracted; the `transfer` branch sums the configured roster-change
+  components with the transfer GH rows.
+* `gantt/src/services/recovery-candidates.ts` — `optionToLibraryCostInput` emits
+  `transferContext` for `mode: 'transfer'`.
+* `gantt/src/services/recovery-api.ts` — `chunkRecoveryCostInputs` splits the batch to 128 so the
+  whole option list prices instead of 400-ing.
+* Cost library components used: `1009` Roster transfer base (150) + `1015` Roster change penalty
+  (260) = **US$410.00**, plus `1016` follow-on impact (1800) when follow-ons exist.
+
+**Unit tests (PASS).**
+* `live-server`: `npx vitest run src/services/recovery/transfer-gh-cost.test.ts src/services/recovery/swap-gh-cost.test.ts` → **33 passed**.
+* `gantt`: `npx vitest run src/services/__tests__/recovery-swap-gh.test.ts` → **4 passed**
+  (includes the transfer-context mapping).
+
+**Real-UI read-only verification (PASS).**
+`e2e/tests/gantt/recovery-case-003-costs.spec.ts` — opens Recovery on pairing 152227 / source
+L3001 and reads the option costs, with **no Apply / Save** (asserts `draftOps === 0`).
+
+```
+cd e2e && GANTT_BASE_URL=http://localhost:5567 GANTT_API_URL=http://localhost:3000 \
+  npx playwright test --config=config/case3.config.ts tests/gantt/recovery-case-003-costs.spec.ts --reporter=list
+→ 1 passed (45.5s)
+```
+
+Observed: **35** transfer quotes, **25** under-GH at **US$410.00**, **10** over-GH
+(US$430.00 / 450.00 / 540.00 / 800.00 / 810.00 / 880.00 / 1,235.00 / 1,415.00 / 1,460.00 /
+1,547.50). Cost-breakdown dialog: **4 priced rules**, PRICED TOTAL US$410.00. Over-GH example
+J4002: `+US$20.00` incremental GH pay on top of the US$410.00 base → US$430.00. Non-ADD-based
+candidates (e.g. 1347, 1581) correctly report
+`Calculation unavailable: Transfer GH pricing requires the receiving crew to be based at the pairing base`.
+
+Evidence: `docs/assets/screenshots/crew-recovery/case3-options-executable-Ver2.png`,
+`case3-options-cost-breakdown-Ver2.png`, `case3-options-cost-breakdown-over-gh-Ver2.png`
+(visually inspected — the Executable list shows BEST COST US$410.00 and the breakdown dialog
+shows the four priced rules).
+
+**Stale Help corrected.** `recovery-case-003.tsx` previously said the ADD transfer cost was
+"Unpriced because no cost-library entry exists" — no longer true. The article now documents the
+priced breakdown and points at the new `s3-options-executable-Ver2.png` /
+`s3-options-cost-breakdown-Ver1.png` captures; `FRONTEND_VERSION` 451 → **452**.
+
+**Data side-effect (SIT).** `crew_manday_fd_daily` September-2026 credit was recomputed for the
+L3/T2/J4 candidate pool (`.local/case3/recompute-pool.ts`) so receiving crews have a saved credit
+baseline; crews with no saved rows are priced from a documented 0h baseline.
+
+## 9. The 8004 is fully cleared — 7M8-qualified Roster transfers (write run)
+
+**Closes the §4 gap.** The last open item was "not verified: 8004 clearance by a qualified
+replacement". This run executes the clearing transfers on the real Live UI and proves the Alert
+Center **8004 count goes 4 → 0** with no new 8004 on the incoming crew.
+
+**Key correction to the earlier guess.** The ADD 7M8 pool is **not** busy across 2026-09-17..21.
+`J4001`–`J4018` (CA) and `J4023`–`J4040` (FO) have no duty overlapping the 152227 window
+(2026-09-19 00:15–11:20Z); only `J4020` (CA) / `J4021`,`J4022` (FO) hold a 09-19 duty row. The
+Recovery **Executable** list therefore already offered 7M8-qualified transfers (`J4003`, `J4004`,
+`J4005`, `J4009`, `J4011`, `J4014`, `J4015`, `J4019` at US$410.00 with **no fleet warning**), while
+788-only candidates (`L3003`–`L3005`, `T20xx`) carried
+`Fleet mismatch: Target Crew … is not qualified for aircraft type 7M8`.
+
+**Test.** `e2e/tests/gantt/recovery-case-003-clear.spec.ts` (new; matched by
+`e2e/config/case3.config.ts` `-clear`). For each of the four 788 crew it opens Recovery on the
+Roster context menu, filters the Roster plan to **Executable**, asserts the chosen **7M8** target
+row carries **no** `Fleet mismatch`, ticks it, **Apply**s to the draft and **Save**s, then reads the
+Alert Center 8004 rows back and asserts the count stepped down 4 → 3 → 2 → 1 → 0.
+
+```
+cd e2e && GANTT_BASE_URL=http://localhost:5567 GANTT_API_URL=http://localhost:3000 \
+  npx playwright test --config=config/case3.config.ts tests/gantt/recovery-case-003-clear.spec.ts --reporter=list
+→ 1 passed (2.7m)
+```
+
+Steps executed (source 788 → target 7M8, seat):
+
+| # | Transfer | After step: remaining 8004 crew |
+|---|---|---|
+| 1 | L3001 → **J4003** (CA) | L3002, L3006, L3007 |
+| 2 | L3002 → **J4005** (CA) | L3006, L3007 |
+| 3 | L3006 → **J4024** (FO) | L3007 |
+| 4 | L3007 → **J4025** (FO) | *(none — 8004 = 0)* |
+
+Final pairing 152227 crew: **J4003, J4005 (CA) + J4024, J4025 (FO)** — all 7M8-qualified.
+
+**Independent DB confirmation** (`f8_sit_live`): `rule_violation_2026_09` has **0** rows with
+`rule_code='8004'` and `pairing_id=152227`; **0** 8004 rows for the incoming crew; the four active
+roster rows are J4003/J4005/J4024/J4025.
+
+**Evidence (real-UI screenshots, visually inspected):**
+
+| File (under `docs/assets/screenshots/crew-recovery/`) | Shows |
+|---|---|
+| `case3-clear-baseline-alert-center-Ver1.png` | Alert Center grouped by Rule: `8004/001` present with **4** rows (L3001/L3002/L3006/L3007). |
+| `case3-clear-option-7m8-Ver1.png` | Recovery Executable list: `Transfer to J4003` at US$410.00 with no warning, next to the L3003 `Fleet mismatch` warning. |
+| `case3-clear-final-alert-center-Ver1.png` | Same view after the four saves: **no 8004 group and no 8004 row**; RULE count 61 → 57. |
+| `case3-clear-final-roster-Ver1.png` | Roster scrolled to J4003 holding pairing 152227. |
+
+**Help updated.** `recovery-case-003.tsx` no longer says "a fully clearing replacement is not yet
+demonstrated"; Step 10 documents the four transfers and the 8004 → 0 outcome, with the new
+`s3-clear-before/after-alert-center-Ver1.png` captures (topic image count 6 → 8).
+`help-data.ts` overview corrected. `FRONTEND_VERSION` 452 → **453**.
+
+**Fixture restored.** After the run, `.local/case3/reset-152227.cjs` (run via
+`live-server/node_modules/.bin/tsx`) released the four 7M8 crew, re-assigned
+`L3001/L3002/L3006/L3007`, and rechecked 8004 → the prepared baseline (4 × 8004) is intact.
+
+**Still not verified (unchanged).** Standby Crew callout and Cross-base positioning execution for
+this case; crew-app notification delivery.
+
+## 10. Ryan feedback 2026-09-13 — fleet match is mandatory; cost variety
+
+Two items raised after reviewing the Case-3 Recovery dialog.
+
+### 10.1 DONE — drop crew who are not fleet-qualified (fleet matching is a must)
+
+> *"when scroll down, some crew had no fleet, that mean they are not usable, what is the point to
+> list them here? remove them. for this case, fleet matching is a must"*
+
+Supersedes the 2026-09-12 soft-fleet decision **for the fleet-qualification trigger only**.
+
+* `gantt/src/services/recovery-candidates.ts` — new `fleetHardBlocked(crew)` = `trigger ===
+  'roster-qualification' && requiredFleets.some(f => !qualifiesForFleet(crew, f))`. An unqualified
+  candidate is now **omitted** from the Roster plan (transfer, swap) and from the Standby list
+  instead of being offered with a `Fleet mismatch` warning. Every other trigger keeps aircraft type
+  soft.
+* **Swap return direction (was missed on the first pass).** A swap is two-way: the releasing crew
+  receives the candidate's Pairing. For an 8004 that Pairing is another 7M8 duty, so the 788 source
+  crew simply carries the mismatch across and the row still warned
+  `Fleet mismatch (8004) … on 2026-09-20`. A swap is now dropped too when
+  `trigger === 'roster-qualification'` and the source crew is not qualified for the candidate
+  Pairing's fleet — a fleet swap needs **both** directions to be valid. Net effect on Case 3: the
+  Roster plan contains **transfers only** (18 options); every swap row is gone.
+* Unit tests flipped to the new contract in `gantt/src/services/__tests__/recovery-candidates.test.ts`
+  (`does not treat a partial fleet code as a qualification (8004 fleet is a hard filter)`,
+  `drops a receiving Crew who does not hold every loaded flight fleet on an 8004 recovery`,
+  `drops a swap whose return pairing would leave the source crew on an unqualified fleet (8004)`).
+
+**Verified.** `cd gantt && npx vitest run src/services/__tests__/recovery-candidates.test.ts
+src/services/__tests__/recovery-swap-gh.test.ts` → **30 passed**. Real-UI read-only cost run:
+transfer candidates **36 → 18** (only 7M8-qualified crew; the L3003/L3004/L3005 and T20xx
+fleet-mismatch rows are gone) and **non-transfer (swap) quotes `[]`** — no unresolved-8004 rows.
+Full clear re-run still PASS: **1 passed (28.3s)**, 8004 4 → 0.
+
+Help updated: `recovery-case-003.tsx` now says fleet matching is **mandatory** / unqualified crew
+are **not listed**; new capture `s3-options-executable-Ver3.png`; `help-data.ts` overview corrected;
+Help content spec updated. Help suite **75 passed**. `FRONTEND_VERSION` 453 → **455** (455 because a
+concurrent Case-2 Help change had already taken 454).
+
+### 10.2 OPEN — design a wider cost spread (needs a business call)
+
+> *"need to design different cost, by adjust these crew roster, make some of them get over GH pay,
+> it would highlight the cost saving for airlines, lowest cost crew ranks higher"*
+
+Mechanics (measured): the transfer quote = US$410.00 configured roster-change components
+(1009 + 1015) **+ the receiving crew's incremental GH pay**. Incremental pay is 0 while the crew
+stays under the Cost-Library guarantee (`cost_type 1002` / instance 1 / `guarantee`: **85 h** at
+US$100/h, ×1.2 to 90 h then ×1.5). Adding the 152227 duty (7:35) crosses 85 h only when the crew's
+saved September credit is already **> 77:25**.
+
+Current Executable ladder (CA source L3001, after 10.1) — 18 candidates, cheapest first:
+
+| Saved Sept credit | Crew | Transfer quote |
+|---|---|---|
+| ≈08:00–48:30 | J4003, J4004, J4005, J4009, J4011, J4014, J4015, J4019 | **US$410.00** (under GH; ranked first) |
+| 77:36–94:12 | J4002, J4006, J4018, J4016, J4001, J4017, J4007, J4010, J4013, J4008 | US$430.00 → **US$1,547.50** (over GH) |
+
+So a cost ladder already exists (cheapest ranked first, up to US$1,137.50 saved vs the dearest), but
+the cheapest **eight** rows are all US$410.00 because those crew are all well under GH. Making the
+*top* of the list vary needs the cheap band to shrink, which is a fixture-design choice:
+
+* **Option A (recommended)** — accept the ladder as-is. No data change; the saving is already
+  demonstrable (US$410.00 vs US$1,547.50). Optionally nudge J4004 (7:35 short of the floor) over GH
+  with one small extra duty so a second low price appears.
+* **Option B** — rebalance the cheap band: assign extra September 7M8 flying to the under-GH
+  candidates so they cross 85 h. Blocked/expensive: J4011/J4014/J4015 are Case-1 crew (their credit
+  feeds Case-1 GH numbers) and J4004/J4009/J4019 appear in the one-time batch-assign spec; the
+  others need ~30–70 h of extra flying each.
+* **Option C** — lower the demo guarantee in the Cost Library (85 h → e.g. 60 h) so more candidates
+  land over GH. Cheapest to implement but changes Case-1/Case-2 GH quotes and their Help/specs.

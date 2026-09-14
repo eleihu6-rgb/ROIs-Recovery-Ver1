@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { formatUiDate } from '@rois/ui'
 import { dashboardApi, type DashboardOverview } from '@/services/dashboard-service'
+import { DisruptionCasesPanel } from './disruption-cases-panel'
+import { ShiftHandoverPanel } from './shift-handover-panel'
 
 /** Indeterminate loading bar — sits flush at the bottom inside the card */
 const CardProgress = () => (
@@ -119,7 +121,7 @@ export const DashboardView = () => {
   const maxDay  = Math.max(...(data?.flightsByDay.map((d) => d.count) ?? [1]), 1)
 
   return (
-    <div className="h-full overflow-y-auto p-5">
+    <div className="h-full overflow-y-auto p-5" data-testid="dashboard-view">
         {/* Page header */}
         <div className="mb-4 flex items-start justify-between">
           <div>
@@ -232,6 +234,12 @@ export const DashboardView = () => {
             )}
           </ChartCard>
 
+        </div>
+
+        {/* ─── Disruption cases + shift handover ───────────────────────── */}
+        <div className="mt-2.5 grid grid-cols-1 gap-2.5 xl:grid-cols-[1.6fr_1fr]">
+          <DisruptionCasesPanel />
+          <ShiftHandoverPanel />
         </div>
     </div>
   )

@@ -1,0 +1,20 @@
+1. Live screen showing the Roster and Pairing timeline, in a “clear final roster” state. No dialog is open.
+
+2. Visible status/counts and identifiers:
+
+   - `3 degraded`
+   - `Roster 438/968`
+   - `Pairing 2831/3023`
+   - `2026RP09` (shown for both sections)
+   - `Open, Partial`
+   - `NOW`
+   - `P · PBS Solver Ruleset ED`
+   - `DEV`
+   - `Ver:B266/F498/R40`
+   - Pairing rules: `CA(1:0)FO(1:0)`, `CA(1:0)`, `F0(1:0)`, `CA(2:0)FO(2:0)`, `CA(2:0)FO(2:0)`.
+
+3. Issues visible:
+
+   - The Pairing timeline pane is largely empty; rows contain date placeholders but no visible pairing bars/data.
+   - `NOW`/`NOV` labels and nearby roster bars appear overlapped around the Sep 13–14 area.
+   - Some status/rule text is very small; no additional unreadable text can be verified.

@@ -1,0 +1,9 @@
+1. A “Recovery” case-study page: “Case study 3 — 8004 crew-fleet mismatch at ADD (Partial),” showing recovery instructions and an embedded UI screenshot.
+
+2. Visible identifiers/counts:
+   - “10 steps”
+   - Rule “8004”
+   - Airport/code “ADD”
+   - “788” and “778”
+
+3. No obvious clipped or overlapped text. The embedded screenshot is very small and largely unreadable. The page has a very large blank area below the content, but no other clear UI breakage is visible.

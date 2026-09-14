@@ -215,6 +215,8 @@ export const AirportMultiSelect = ({
           bottom: dropdownPosition.viewportBottom ?? undefined,
           left: dropdownPosition.viewportLeft,
           maxHeight: dropdownPosition.designMaxPopupHeight,
+          // Re-enable interaction with a modal AppDialog's `pointer-events: none` body lock.
+          pointerEvents: "auto",
           top: dropdownPosition.viewportTop ?? undefined,
           transform: `scale(${dropdownPosition.scale})`,
           transformOrigin: dropdownPosition.openAbove ? "bottom left" : "top left",

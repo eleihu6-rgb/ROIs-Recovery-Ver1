@@ -517,7 +517,12 @@ export const ContextMenu = () => {
   } else if (paneType === 'pairing' && Number.isFinite(Number(task.pairingId ?? task.id)) && Number(task.pairingId ?? task.id) > 0) {
     // Pairing pane actions: task.id may be a segment/mock ID; task.pairingId is the actual pairing ID when provided.
     const pairingId = Number(task.pairingId ?? task.id)
+    const openPairing = !scenarioId && usePairingStore.getState().items.find(entry => entry.pairing.id === pairingId)?.pairing.composition.some(slot => slot.plan > slot.fill)
     items.push(
+      ...(openPairing ? [{ icon: ShieldAlert, label: 'Recovery — open seats', onClick: () => {
+        window.dispatchEvent(new CustomEvent('recovery:open', { detail: { kind: 'open-pairing', pairingId } }))
+        closeContextMenu()
+      } }] : []),
       ...(pairingRecoverySnapshot ? [{
         icon: ShieldAlert,
         label: 'Recovery',
@@ -661,6 +666,10 @@ export const ContextMenu = () => {
     const flightIds = selectedIds.size > 0 ? [...selectedIds] : [task.id]
 
     items.push(
+      ...(!scenarioId ? [{ icon: ShieldAlert, label: 'Recovery', onClick: () => {
+        window.dispatchEvent(new CustomEvent('recovery:open', { detail: { kind: 'unpaired-flight', flightId: Number(findCtx.findFltId ?? task.id) } }))
+        closeContextMenu()
+      } }] : []),
       { icon: Plane, label: 'Flight Detail', onClick: () => { openFlightDetail(task.id); closeContextMenu() } },
       { icon: Crosshair, label: 'Select', onClick: () => { selectTask(task.id); closeContextMenu() } },
       {

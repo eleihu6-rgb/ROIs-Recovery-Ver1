@@ -1,6 +1,6 @@
 ---
 name: 145-crew-recovery-case-study
-description: Prepare and test crew recovery cases for unavailability, flight delay and related disruptions; select applicable recovery approaches, isolate fixtures, record UI evidence, publish supported Help and restore baselines.
+description: Prepare and test crew recovery cases for unavailability, flight delay, unpaired flights and open or partially staffed pairings; reuse recovery approaches, isolate fixtures, record UI evidence, publish supported Help and restore baselines.
 ---
 
 # Crew recovery case studies
@@ -9,6 +9,132 @@ Use this skill when preparing or documenting a concrete crew-unavailable, flight
 Gantt Help, especially when the case must be reproduced through the real mobile
 crew UI and the real controller/Recovery UI. This is a case-study workflow, not
 a generic recovery explanation and not permission to mutate unrelated roster data.
+
+## Shared Cases 1–4 workflow and Case 4 decisions
+
+Ryan confirmed these product decisions on 2026-09-14. Case 4 implementation and
+real-UI build/staffing/reset evidence are recorded in
+`docs/test-cases/crew-recovery/2026-09-14-case4-delivery-Ver1.md`.
+Always recheck current source and prepared data before replay.
+
+- Reuse the existing Recovery UI and common roster strategies across Cases 1–4.
+  Once a pairing has an open required seat, standby callout is a common approach;
+  select it by actual availability, location, qualification, legality and cost,
+  not by incident number. For Cases 1–3, retain the existing assigned-source
+  replacement/absence workflow; do not de-assign crews merely to manufacture an
+  open-pairing entry.
+- Unpaired flight → right-click Recovery → **Pairing Options** first in the left
+  strategy list. Show alternative complete rotations containing the selected flight
+  on the right, with a chart and segment/duty/rest details. Reuse the round-trip
+  builder and its validation; a skill is development guidance, not a runtime API.
+- Case 4 construction uses **unpaired flights only**. Never extend, split or reshape
+  an existing pairing. Each option must be a same-airline, exact-fleet base-to-base
+  loop; explain when no valid option exists. Its prepared case uses ET flights in
+  **17–25 September 2026**; ADD is the prepared home base. These fixture dates and
+  airline are not universal product restrictions.
+- Confirming **Build pairing** commits a real pairing and brings it to row 1 of
+  the Pairing pane, then populates roster options from its persisted composition.
+  Closing Recovery preserves that pairing even if no crew assignment is saved.
+- Any open or partially staffed pairing can reopen Recovery directly at roster
+  options, **without Pairing Options**. Fill remaining required rank seats only;
+  preserve existing assignments and never overfill the composition.
+- Reuse standby eligibility, authoritative legality preview, Cost Library pricing
+  and breakdowns, and **Preview → Apply draft → Save**. Case 4 standby pricing has
+  no special tariff: use the same applicable GH/standby-credit calculation as the
+  other cases. Missing cost inputs remain Unpriced, not zero. Pairing construction
+  validation alone does not establish a particular crew's roster legality.
+- Evaluate available-crew assignment, standby and move-up/transfer where supported.
+  A move-up must expose donor changes and remaining vacancies; it is not a two-way
+  swap when the new open pairing has no source crew. Ryan allows a move-up to leave
+  a donor vacancy only with a prominent remaining-vacancy warning and overall
+  **Partial** recovery status. Filling one seat is also Partial until every required
+  seat is covered; a fully staffed target does not clear an unresolved donor vacancy.
+- Prepare independent Case 4 flights, crews, candidate duties and a scoped baseline
+  manifest. **Never reuse any Case 1–3 flight, pairing or crew for Case 4**, including
+  standby candidates, donor crews and their linked duties. Enforce disjoint ID sets
+  against all three protected manifests before fixture writes; separate pairing IDs
+  do not isolate shared physical flights or shared crews. Cases 1 and 3 overlap the
+  requested dates. Compare the protected records before and after testing/reset.
+  Test each roster strategy from
+  an equivalent baseline through Save/reload, then restore Case 4 to its prepared
+  **unpaired-flight** state for Ryan's replay, preserving Cases 1–3 and audit history.
+  This deliberate test reset is separate from normal close behavior, which keeps
+  the created pairing saved.
+
+### Shared staffing presentation standard (Cases 1–4)
+
+- All three open-seat strategies — Standby Crew, Available Crew and Move-up / Roster
+  Transfer — use the existing `PlanGroup` and `RecoveryDetailDialog` from the
+  Recovery wrapper, injected into `OpenRecoveryWorkspace` to avoid a runtime import
+  cycle. Do not reintroduce a separate minimal candidate-card implementation.
+- `open-recovery-presentation.ts` adapts open-seat candidates to `RecoveryOption`;
+  keep the source crew empty (no displaced crew), retain the standby and show the
+  donor release as a vacancy, not a fictitious two-way swap. Cost rows/notes come
+  directly from the Cost Library; null cost remains Unpriced.
+- The left rail is also shared: inject existing `PlanTree` after pairing creation,
+  including **By strategy**, **By cost tier**, method counts and cheapest-method star.
+  Cost tiers bucket each method by its minimum priced executable option; selecting
+  a leaf selects that entire method, not only candidates within the numeric tier.
+  Exclude unpriced/non-executable options and do not compare mixed currencies.
+  Pairing Options stays first only while no pairing exists.
+- Standard controls: All / Executable / Filtered, crew/name/rank, Cancel / Add /
+  Stability / Cost, execution checkbox, row Preview / Detail and clickable cost.
+  `RecoveryPreviewDock` is shared across incident types. Eligibility checks must
+  finish before showing Executable; Preview and Apply still revalidate.
+- Regress every strategy’s cost dialog, before/after details and compact preview,
+  plus Cases 1–3. For UI-only follow-ups, use an existing saved Case 4 pairing
+  read-only and leave it intact; do not reset user-created pairings. Report Save
+  as unrun when the validation stops at Preview rather than claiming full execution.
+
+### Wide-window search and display regression
+
+- Anchor recovery searches at the selected flight, connecting backwards to base then
+  forwards to base. Seeding every earlier base departure can exhaust the search budget
+  before the incident is visited. Prefer direct base connections within the bounded search;
+  incomplete search is not proof that no valid route exists.
+- Verify the actual anchor date and exact fleet, not flight number alone. Include wide
+  Gantt-scope replay (Aug25–Oct07, ET895 Sep19) as well as the Sep17 prepared fixture.
+- Match Cases 1–3 shell, compact strategy rail and fixed footer without modifying their
+  legacy workflow. Long layovers use explicit gaps between duty-local chart scales;
+  keep flight labels outside bars and disclose independent scales.
+
+### Dashboard handover entry point
+
+- `gantt/src/config/recovery-cases.ts` feeds both Disruption Cases and the handover
+  Related case dropdown. Case4 points to prepared Sep17 ET895 flight159578, never
+  a deleted test pairing. Show unassigned/build-first until the planner builds.
+- Operational causes are sick leave, flight delay, aircraft fleet change and ad hoc
+  new flight; rule codes are diagnostic context, not the disruption cause.
+- A new follow-up found shared data drift against the older protected snapshot.
+  Audit first; do not overwrite newer scenario/crew changes with a historical reset.
+
+### Implemented Case 4 references and replay cautions
+
+- Runtime: `recovery-pairing-options.tsx`, `open-recovery-workspace.tsx`,
+  `open-pairing-recovery.ts`, backend `pairing/recovery-rotations.ts` and
+  `recovery/open-pairing-gh-cost.ts`. The exported Recovery wrapper preserves
+  legacy violation recovery; the open-incident branch is separate.
+- Prepared target: ET895/ET894, ADD–BJM–ADD, 17 September; search window 17–25
+  September 2026. C4001–C4020 are the isolated candidate cohort, fleet 738.
+  ASBY must cover the **05:15 UTC report**, not merely 07:15 departure;
+  the prepared standby window is **04:00–12:00 UTC**.
+- Preserve saved calendar-month credit for pricing. Available pilots also need
+  a genuine saved/recomputed credit baseline; never replace missing inputs by zero.
+- On macOS, raw pg `timestamp without time zone` can appear shifted in JSON.
+  Verify `column::text`/`to_char` before correcting times; do not "fix" a parser offset.
+- After normal Save, Case 4 waits for the in-flight pairing-list refresh and then
+  reconciles only its affected pairing details. Without that ordering, a stale
+  own-save WebSocket list response can overwrite the new full-seat coverage.
+- Private protected records, fixture baseline and audited reset scripts live in
+  `.local/case4/`; do not publish their raw snapshots. Reset donor assignments
+  through the roster service, restore callout markers, and verify semantic roster
+  equality (IDs/audit stamps and derived duty timezone cache fields may change).
+  Soft-delete the exact test target only after it has no active assignments; retain
+  its execution history. Generic pairing delete physically removes history, while
+  generic remove-flight currently rejects even historical deleted roster rows.
+- Cases 1–3 read-only regression lives in `recovery-cases-1-3-readonly.spec.ts`.
+  Case 1 uses Alert Center’s selected SL/FLY overlap; Case 3 source is L3002,
+  not the previously transferred L3001. Do not reseed protected cases to make a test pass.
 
 ## Choose the approach from the incident
 
@@ -310,6 +436,23 @@ pairing detail/composition **and pairing-list caches** using current invalidatio
 utilities. Case 1's first reset left a stale CA(2:1) list badge despite CA 2/2 in SQL.
 Assert displayed coverage as well as assignment IDs after a fresh UI load. Preserve
 honest audit timestamps; baseline restoration does not mean erasing audit history.
+
+## Roster / manday integrity — mandatory for cost fixtures
+
+Never create dummy `crew_manday_*` totals to manufacture GH prices. First persist
+real roster duties/complete valid pairings, then run the existing Rust manday driver.
+Verify actual assignment IDs and duty-grained credit against recomputed daily credit;
+recompute in a rolled-back transaction to prove saved totals reproduce from roster.
+Saved future duties contribute planned calendar-month credit, not already-flown time.
+Do not change tariffs, standby duration or qualification labels to force a spread.
+
+Case4 GH pool follow-up: C4002–C4008 are seven existing isolated CA standby crews.
+Six supporting saved pairings were added only to C4004/5/6; recomputed September
+credits83:20/84:15/89:25 produce USD75/185/326.25 for Sep17 pairing152689, while
+C4002/3/7/8 remain USD0. All seven passed real UI Preview and a full Rust manday
+reproduction test. Keep these supporting assignments for review, and do not apply
+older Case4 baseline/reset scripts over the enhanced fixture. See
+`docs/test-cases/crew-recovery/2026-09-14-1540-case4-gh-pool-Ver1.md`.
 
 ## GH comparison and candidate visibility
 

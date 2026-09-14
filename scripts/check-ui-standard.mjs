@@ -53,6 +53,22 @@ const WARN_RULES = [
   { id: 'inline-font', re: /fontFamily\s*:\s*['"`](?!var\(--font)/g, fix: "use var(--font-sans) / var(--font-mono) instead of a literal family" },
 ]
 
+/**
+ * Pop-up implementation guard (root CLAUDE.md §弹窗窗口标准; spec
+ * docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md):
+ * a pop-up must be the shared AppDialog. The Radix dialog primitives are only
+ * legal inside packages/ui, where AppDialog wraps them, and a hand-written
+ * `role="dialog"` means the module rolled its own overlay instead.
+ *
+ * Both are HARD: the three bespoke pbs-portal frames were migrated to AppDialog
+ * on 2026-09-13, so nothing legitimate writes its own dialog markup any more.
+ */
+const POPUP_HARD_RULES = [
+  { id: 'raw-radix-dialog', re: /from\s+['"]@radix-ui\/react-dialog['"]/g, fix: 'render @rois/ui AppDialog instead of the raw Radix dialog primitives' },
+  { id: 'bespoke-dialog', re: /role=["']dialog["']/g, fix: 'use @rois/ui AppDialog for a pop-up (a hand-rolled overlay is a standard violation)' },
+]
+const POPUP_RULE_EXEMPT_DIR = 'packages/ui/src'
+
 /** @returns {string[]} absolute file paths under dir matching SCAN_EXT. */
 const walk = (dir) => {
   let out = []
@@ -79,6 +95,9 @@ export const scanUiStandard = (targets = DEFAULT_TARGETS) => {
     let files
     try { files = walk(root) } catch { continue } // target may not exist in a partial checkout
     for (const file of files) {
+      const rel = relative(REPO_ROOT, file)
+      // The pop-up guard exempts packages/ui, which owns the AppDialog wrapper.
+      const isPopupExempt = rel.startsWith(POPUP_RULE_EXEMPT_DIR)
       const lines = readFileSync(file, 'utf8').split('\n')
       lines.forEach((line, i) => {
         const prev = i > 0 ? lines[i - 1] : ''
@@ -88,12 +107,16 @@ export const scanUiStandard = (targets = DEFAULT_TARGETS) => {
             rule.re.lastIndex = 0
             let m
             while ((m = rule.re.exec(line)) !== null) {
-              sink.push({ rule: rule.id, fix: rule.fix, file: relative(REPO_ROOT, file), line: i + 1, token: m[0] })
+              sink.push({ rule: rule.id, fix: rule.fix, file: rel, line: i + 1, token: m[0] })
             }
           }
         }
         collect(HARD_RULES, hard)
         collect(WARN_RULES, warn)
+        if (!isPopupExempt) {
+          collect(POPUP_HARD_RULES, hard)
+          collect(POPUP_HARD_RULES, hard)
+        }
       })
     }
   }

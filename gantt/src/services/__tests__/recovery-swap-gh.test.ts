@@ -116,6 +116,23 @@ describe('swap-duty GH cost mapping', () => {
     expect(optionToLibraryCostInput(option('transfer', 'transfer'))).not.toHaveProperty('swapContext')
   })
 
+  it('sends the source pairing as the transfer context for a one-way roster transfer', () => {
+    const input = optionToLibraryCostInput(option('transfer', 'transfer'))
+
+    expect(input).toMatchObject({
+      mode: 'transfer',
+      changed: 1,
+      transferContext: {
+        sourceCrewId: 'J4002',
+        sourcePairingId: 152097,
+        targetCrewId: 'J4011',
+      },
+    })
+    // A receiving crew has no pairing of its own, so no swap identity is sent.
+    expect(input).not.toHaveProperty('swapContext')
+    expect(input).not.toHaveProperty('standbyContext')
+  })
+
   it('sorts signed negative, zero, positive, then unpriced swap-duty costs', async () => {
     const plans = plansWithSwapDuty([
       option('positive', 'swap-duty', { metrics: metrics(90) }),

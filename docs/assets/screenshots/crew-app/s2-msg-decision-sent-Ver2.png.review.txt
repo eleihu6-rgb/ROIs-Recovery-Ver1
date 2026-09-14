@@ -1,0 +1,52 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-app/s2-msg-decision-sent-Ver2.png
+  size:   1260x2736
+  pixels: meanLuminance=134 uniqueColors=4807 inkRatio=0.88535 blank=false
+  ocr:    32 text blocks
+  asserted present: "Decision sent"
+  vision: PASS (model=gpt-5.6-luna, 7.6s)
+
+--- OCR text (reading order, top to bottom) ---
+3:33
+•••0
+Discretion
+HISTORY
+FDP discretion • PI201/PI202 • Duty
+1
+CHECK-IN (REPORT)
+RELEASE
+28 Sep 04:00z
+28 Sep 15:15z
+FLIGHTS
+Decision sent
+FDP discretion accepted.
+Got it
+Independent regulatory approval still required.
+Agreed • 13 Sep 22:33z
+Agreement does not override regulatory limits.
+FDP discretion • PI201/PI202 • Duty
+1
+CHECK-IN (REPORT)
+RELEASE
+28 Sep 04:00z
+28 Sep 15:15z
+FLIGHTS
+06:00z → 10:00z
+PI201
+SIN → HKG
+On schedule
+11:00z → 15:00z
+PI202
+HKG → SIN
+DELAYED +2h00 13:00z →
+
+--- model visual read (multimodal model, asked about this exact PNG) ---
+1. The “Discretion” screen, showing history. A confirmation dialog is open: “Decision sent” / “FDP discretion accepted.” with “Got it.”
+
+2. Visible status text:
+   - “On schedule”
+   - “DELAYED +2h00”
+   - “Agreed · 13 Sep 22:33z”
+   - “FDP discretion · PI201/PI202 · Duty 1”
+
+3. The dialog overlays and dims the underlying content. The lower flight details are cut off at the bottom of the screenshot; “13:00z →” is visibly incomplete. No empty panes or obvious alignment defects are visible.

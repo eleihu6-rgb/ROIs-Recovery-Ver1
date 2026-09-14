@@ -1,0 +1,162 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/case3-options-executable-Ver2.png
+  size:   1600x1000
+  pixels: meanLuminance=228.7 uniqueColors=5858 inkRatio=0.24356 blank=false
+  ocr:    155 text blocks
+
+--- OCR text (reading order, top to bottom) ---
+.5/R40
+L→
+© Filtered: 3
+Recovery Loaded Live data only
+Recovery methods
+Rule 8004 • ET452 • 2026-09-18 1 Crew • 1 Roster
+Pick a strategy or cost tier; the cheapest is
+Row 3: Crew fleet (788) is invalid for the pairing (7M8) on 2026-09-18.
+4S
+marked *.
+Crewk
+* BEST COST • US$410.00
+BY STRATEGY
+• Roster transfer or exchange
+Selected
+L3001
+complete roster transter is preterreo, excnange candidates are oraered by rank, base, next-task impact, annual mignt time ano stant-uime proximity
+Selam
+• Roster transfer or exc...
+33
+L3005
+• Standby Crew callout
+Options
+Executable
+Filtered
+Best cost
+DaWIt
+33
+33
+US$410.00
+• Cross-base positioning
+L3003
+Eyob y
+• Roster transfer or exchange
+33 avallable • 3 filtered
+НАНХОНОАННЕЫО НН АН НЫ
+L3004
+• USD 0
+Meron
+All (33)|
+Executable (33) |
+Filtered (3)
+L300!
+USD 0-10k
+CANCEL
+ADD
+STABILITY
+COST
+ACTIONS
+Girma
+• Roster transfer ...
+Transfer to J4003
+Executable
+L300€
+• USD 10k-50k
+1
+99.76%
+US$410.00
+© Preview
+© Detail •
+J4003 • same rank - same base • 7800 min start cac
+L3007
+• USD 50k+
+rnser To2a
+executable
+Eden &
+1
+99.76%
+U5SA70.0
+© Preview
+•› Deral
+J4004 • same rank • same Dase • 2070 min start gap
+L3008
+Keoee
+* = lowest available priced estimate;
+Transfer to J4005
+Executable
+99.76%
+US$410.00
+© Preview
+• Detail
+unpriced options excluded.
+L3005
+J4005 • same rank • same base - 8620 min start aap
+U
+Executable
+99.76%
+US$410.00
+© Preview
+• Detail
+4 S
+J4009 • same rank - same base • 5105 min start gap
+Pairing
+V4152
+• Transfer to J4011
+Executable
+99.76%
+US$410.00
+© Preview
+• Detail
+CA(1:
+J4ui• sallle tolk"salle bas
+T4109
+CA(1:
+Transfer to J4014
+Executable
+99.76%
+US$410.00
+c•» rrevew
+• Detal
+J4014 - same rank • same base - 8500 mın start gapl
+т4109
+FO(1:
+Transter to J4015
+cxecutaoe
+C4134
+99.76%
+US$410.00
+© Preview
+• Detail
+J4u • salleok soecse ovu lSouat
+CA(1:
+T420(
+executable
+99.76%
+US$410.00
+© Preview
+• Detail
+FO(1:
+anl• . came rank. sama hasel
+T4201
+CA(1:
+• Transfer to J4002
+Executable
+99.76%
+US$430.00
+© Preview
+• Detail
+EK763
+CA(2
+executable
+EK354
+99.76%
+US$450.00
+© Preview
+©Detail
+J4006 • same rank - same base • 2035 min start gap
+CA(2
+EK001
+Stability: round(max(0, min(100, 100 * (1 - (0.35*tollow-on + 0.30*cancelled + 0.20*added + 0.15*changed) / max(1, loaded rosters)))), 2
+CA(2
+Check one recovery option • Ctrl/Cmd + Enter to Apply
+Close
+Apply selected option
+No seiection

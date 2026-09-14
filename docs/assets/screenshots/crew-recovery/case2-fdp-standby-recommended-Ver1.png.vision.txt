@@ -1,0 +1,17 @@
+1. Recovery dialog, “Loaded Live data only.” The “Standby Crew callout” strategy is selected; another Standby Crew callout section is marked “Recommended next.”
+
+2. Visible text/counts:
+   - `Rule 3007 · ET2681 · 2026-09-29`
+   - `3 Crew · 1 Roster`
+   - `Selected`
+   - `Recommended next`
+   - `Options 6`, `Executable 0`, `Filtered 0`, `Best cost US$0.00`
+   - `6 available · 0 filtered`
+   - `All (6)`, `Executable (0)`, `Filtered (0)`
+   - Row status badges: `Checking`
+   - Visible costs: `US$0.00`, `US$240.00`, `US$675.00`, `US$1,350.00`, `US$1,950.00`
+
+3. Potential issues:
+   - The sixth option is counted but not visible; the fifth row is cut off by the bottom footer.
+   - The bottom stability formula/text is very small and difficult to read.
+   - No obvious overlap or major alignment defect is visible.

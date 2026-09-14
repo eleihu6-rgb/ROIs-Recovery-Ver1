@@ -154,8 +154,15 @@ describe('collectRecoveryAlerts', () => {
   })
 
   it('ignores rules that are not Recovery entry points', () => {
-    const other = new Map([[100, [{ ruleCode: '3007', severity: 1, message: 'fdp', passed: false }]]])
+    const other = new Map([[100, [{ ruleCode: '8002', severity: 1, message: 'rolling block limit', passed: false }]]])
     expect(collectRecoveryAlerts({ crewId: 'A', pairingId: 100, persistedViolations: other })).toEqual([])
+  })
+
+  it('retains the Case 2 published-delay entry', () => {
+    const delayed = new Map([[100, [{ ruleCode: '3007', severity: 3, message: 'published delay FDP', passed: false }]]])
+    expect(collectRecoveryAlerts({ crewId: 'A', pairingId: 100, persistedViolations: delayed })).toEqual([
+      { ruleCode: '3007', severity: 3, message: 'published delay FDP' },
+    ])
   })
 })
 

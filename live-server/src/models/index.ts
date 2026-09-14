@@ -25,6 +25,9 @@ export { rosterPeriod, rosterPeriodConfig } from './base/roster-period'
 export { route } from './base/route'
 export { severity } from './base/severity'
 
+// ── dashboard ─────────────────────────────────────────────
+export { crewControlHandover } from './dashboard/crew-control-handover'
+
 // ── crew ──────────────────────────────────────────────────
 export { crew } from './crew/crew'
 export { crewBase } from './crew/crew-base'

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Button, Input } from '@rois/ui'
 import { api } from '@/services/api'
+import { fdpHoursToMin, formatFdpHm, formatFdpHours, formatUtcStamp } from '@/utils/fdp-duration'
+
+// Crew reply window (days). The deadline is defaulted server-side, not entered by
+// the controller, so the request always stays open comfortably past the duty.
+const REPLY_WINDOW_DAYS = 14
 
 export interface DiscretionConsentProposal {
   airline: 'F8' | 'ET'
@@ -55,13 +60,13 @@ export function DiscretionConsentPanel({ proposal, previous, onFeedback, onRetur
         const window = value as DiscretionConsentProposal['before']
         return <div key={String(label)} className="rounded-md border border-border p-2">
           <p className="font-medium">{String(label)} · UTC</p>
-          <p className="font-mono tabular-nums">Report {window.reportUtc}</p>
-          <p className="font-mono tabular-nums">Release {window.releaseUtc}</p>
-          <p className="font-mono tabular-nums">FDP {window.fdpMin} min</p>
+          <p className="font-mono tabular-nums">Report {formatUtcStamp(window.reportUtc)}</p>
+          <p className="font-mono tabular-nums">Release {formatUtcStamp(window.releaseUtc)}</p>
+          <p className="font-mono tabular-nums">FDP {formatFdpHm(window.fdpMin)}</p>
         </div>
       })}
     </div>
-    <p>Requested extension: <span className="font-mono tabular-nums">{proposal.extensionRequestedMin} min</span>. Every assigned crew member must reply Yes.</p>
+    <p>Requested extension: <span className="font-mono tabular-nums">{formatFdpHours(proposal.extensionRequestedMin)}</span>. Every assigned crew member must reply Yes.</p>
     <label className="block space-y-1">Reason for crew
       <Input aria-label="Reason for crew" value={reason} maxLength={500} disabled={busy || !!feedback} onChange={e => setReason(e.target.value)} />
     </label>
@@ -90,8 +95,8 @@ export function DiscretionConsentComposer({ pairingId, dutySeq, ruleSetId, onRet
   const [canonicalDuty, setCanonicalDuty] = useState<Pick<DiscretionConsentProposal, 'before' | 'after'> | null>(null)
   const [previous, setPrevious] = useState<Feedback | null>(null)
   const [reason, setReason] = useState('')
+  // Extension is entered and shown in hours (never raw minutes).
   const [extension, setExtension] = useState('')
-  const [expiry, setExpiry] = useState('')
   const [error, setError] = useState('')
   useEffect(() => {
     let active = true
@@ -106,24 +111,25 @@ export function DiscretionConsentComposer({ pairingId, dutySeq, ruleSetId, onRet
         setDuty(prepared.previousProposal ? { before: prepared.previousProposal.before, after: prepared.previousProposal.after } : current)
         setPrevious(prepared.previous ?? null)
         if (prepared.previousProposal) {
-          setExtension(String(prepared.previousProposal.extensionRequestedMin))
-          setExpiry(prepared.previousProposal.expiresUtc.slice(0, 16))
+          setExtension(String(prepared.previousProposal.extensionRequestedMin / 60))
           setReason(prepared.previousProposal.reason)
+        } else {
+          // Default the extension to the operated FDP increase (after − before) in hours.
+          setExtension(String(Math.max(prepared.after.fdpMin - prepared.before.fdpMin, 0) / 60))
         }
       })
       .catch(err => { if (active) setError(err instanceof Error ? err.message : 'Unable to load duty details.') })
     return () => { active = false }
   }, [pairingId, dutySeq])
-  const expiryDate = new Date(expiry.endsWith('Z') ? expiry : `${expiry}Z`)
-  const valid = airline && duty && Number.isInteger(Number(extension)) && Number(extension) > 0 && Number.isFinite(expiryDate.getTime())
+  const valid = airline && duty && Number(extension) > 0
+  const expiresUtc = new Date(Date.now() + REPLY_WINDOW_DAYS * 864e5).toISOString()
   return <div className="space-y-2" data-testid="discretion-consent-composer">
     {error && <p role="alert" className="text-destructive">{error}</p>}
     {!duty && !error && <p>Loading duty details…</p>}
-    {duty && <div className="grid grid-cols-2 gap-2 px-3 pt-3 text-xs">
-      <label>Extension requested · minutes<Input aria-label="Extension requested in minutes" type="number" min="1" value={extension} disabled={!!previous} onChange={e => setExtension(e.target.value)} /></label>
-      <label>Reply deadline · UTC<Input aria-label="Reply deadline UTC" type="datetime-local" value={expiry} disabled={!!previous} onChange={e => setExpiry(e.target.value)} /></label>
+    {duty && <div className="px-3 pt-3 text-xs">
+      <label className="block space-y-1">Extension requested · hours<Input aria-label="Extension requested in hours" type="number" min="0.5" step="0.5" value={extension} disabled={!!previous} onChange={e => setExtension(e.target.value)} /></label>
     </div>}
     {valid && <DiscretionConsentPanel onReturnToReview={onReturnToReview} previous={previous} onFeedback={(value, text) => { setPrevious(value); setReason(text); if (!value && canonicalDuty) setDuty(canonicalDuty) }} proposal={{ airline, pairingId, dutySeq, ruleSetId, ...duty,
-      extensionRequestedMin: Number(extension), reason, expiresUtc: expiryDate.toISOString() }} />}
+      extensionRequestedMin: fdpHoursToMin(extension), reason, expiresUtc }} />}
   </div>
 }

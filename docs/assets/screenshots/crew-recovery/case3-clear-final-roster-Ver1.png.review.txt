@@ -1,0 +1,187 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/case3-clear-final-roster-Ver1.png
+  size:   1600x1000
+  pixels: meanLuminance=235.8 uniqueColors=7891 inkRatio=0.26153 blank=false
+  ocr:    180 text blocks
+
+--- OCR text (reading order, top to bottom) ---
+98 Dashboard
+Live
+A Scenario ~
+3 Data
+sa Legality
+System
+Д Regression
+Ca PBS
+§ Dev
+• Help
+• Release
+• 3 degraded
+@.
+admin• F8_SIT_LIVE Ver:B266/F498/R40C>
+2026-08-25~ 2026-10-07 -
+y P • PBS Solver Ruleset FD
+• UTC UTC ~
+• Roster
+• Pairing
+• Flight
+Reset
+Sep 2026
+Oct 2026
+Roster
+7438/968
+2026RP89
+5 S
+6 S
+7 M
+8T
+9W 10T
+12 S
+13 S
+14 M 15 T
+16 W 17 T
+22 T
+23W 24T 25F 26S 27S 28M 29T 30W
+2F
+5M 6T 7W
+Crewld
+Rank Base Sen
+RpCred RpDO
+2 S REPLACE 8 1 = = =X
+J4001
+CA
+ADD
+80:45
+NOVO
+M0 00
+00
+Meseret Gebremariam
+J4002
+CA
+ADD
+77:35
+:00
+SL
+GeTnet KITe
+ace c
+J4003
+CA
+ADD
+46:40
+Mesfin Ayele
+J4004
+CA
+ADD
+76:20
+Almaz belay
+J4005
+CA
+ADD
+22:50
+Tsegaye Wondimu
+J4006
+CA
+ADD
+77:45
+wonowossen ieтeral
+J4007
+CA
+ADD
+83:55
+08
+Tsehay Sisay
+J4008
+CA
+ADD
+94:10
+• •
+Endale Aregawi
+J4009
+CA
+ADD
+48:30
+IA
+...
+Oct 2026
+# Pairing
+T 2831/3023
+2026RP89
+S9p 202
+6S
+7M
+8T
+9W
+10 T
+11 F
+12 S
+13 S
+15 T
+16 W
+18 F
+19 S
+20 S
+21 M
+22 T
+23W
+24 T
+25 F
+26 S 27 S 28 M 29T
+2F
+3S
+4 s
+5 M
+6T
+7W
+Pairing
+Base
+Tp
+Fleet
+Cred
+Open, Partial x
+RELACEE
+5 x
+Comp
+V4152
+YVR FLY 737
+04:00
+<< 2026-08-25
+CA(1:0)FO(1:0)
+T4109
+YYZ FLY 737
+09:35
+<< 2026-08-25
+CA(1:0)
+T4109A
+YYZ FLY 737
+09:35
+<< 2026-08-25
+FO(1:0)
+C4134
+YYC FLY 737
+04:00
+<< 2026-08-25
+CA(1:0)FO(1:0)
+T4200
+YYZ FLY 737
+08:15
+<< 2026-08-25
+FO(1:0)|
+T4201
+YYZ FLY 737
+08:10
+<< 2026-08-25
+CA(1:0)FO(1:0)
+EK763/E DXB FLY
+A380
+16:30
+<< 2026-08-25
+CA(2)FO(2:0)
+EK354/E DXB FLY A380
+15:00
+<< 2026-08-25
+CA(2:0)FO(2:0)
+EKOO1/E DXB FLY A380
+15:15
+<< 2026-08-25
+CA(2:0)FO(2:0)
+No selection

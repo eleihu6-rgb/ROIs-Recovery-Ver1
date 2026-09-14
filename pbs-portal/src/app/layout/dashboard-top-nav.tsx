@@ -373,18 +373,18 @@ export const DashboardTopNav = ({
           closeOnOverlayClick
           footerClassName="mt-6 flex justify-end gap-3"
           overlayClassName="z-[60] bg-black/45"
-          panelClassName="w-full max-w-[420px] rounded-4xl border-white/10 bg-[#2b2f36] p-6 text-white shadow-[0_24px_60px_rgba(0,0,0,0.35)]"
+          panelClassName="w-full max-w-[420px] rounded-4xl border-border bg-background p-6 text-foreground shadow-xl"
           footer={(
             <>
               <Button
-                className="h-10 rounded-3xl border border-white/15 bg-transparent px-4 text-sm font-medium text-white hover:bg-white/5"
+                className="h-10 rounded-3xl border border-border bg-transparent px-4 text-sm font-medium text-foreground hover:bg-muted"
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
               >
                 Cancel
               </Button>
               <Button
-                className="h-10 rounded-3xl bg-[#706cd5] px-4 text-sm font-semibold text-white hover:bg-[#615ec1]"
+                className="h-10 rounded-3xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                 type="button"
                 onClick={() => void handleLogout()}
               >
@@ -394,8 +394,8 @@ export const DashboardTopNav = ({
           )}
           onClose={() => setShowLogoutConfirm(false)}
         >
-          <h2 className="text-xl font-semibold leading-7">Log out of ROIS Crew?</h2>
-          <p className="mt-2 text-sm leading-6 text-[#d2d4db]">
+          <h2 className="text-xl font-semibold leading-7 text-foreground">Log out of ROIS Crew?</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
             You will return to the login page and need to sign in again to keep working.
           </p>
         </PbsDialogFrame>

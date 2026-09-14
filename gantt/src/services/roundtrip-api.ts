@@ -46,6 +46,7 @@ export interface RoundtripRotation {
   layoverMinutes: number[]
 }
 export interface RoundtripSearch {
+  truncated?: boolean
   flights: RoundtripFlight[]
   linkedFlights: Record<number, RoundtripFlight>
   rotations: RoundtripRotation[]
@@ -71,8 +72,8 @@ export interface RoundtripBuildReceipt {
 export const roundtripApi = {
   options: async (): Promise<RoundtripOptions> =>
     api.get('/api/pairing/roundtrip/options') as Promise<RoundtripOptions>,
-  search: async (scope: RoundtripScope): Promise<RoundtripSearch> =>
-    api.post('/api/pairing/roundtrip/search', { scope }) as Promise<RoundtripSearch>,
-  build: async (scope: RoundtripScope, flightIds: number[]): Promise<RoundtripBuildReceipt> =>
-    api.post('/api/pairing/roundtrip/build', { scope, flightIds }) as Promise<RoundtripBuildReceipt>,
+  search: async (scope: RoundtripScope, anchorFlightId?: number): Promise<RoundtripSearch> =>
+    api.post('/api/pairing/roundtrip/search', { scope, anchorFlightId }) as Promise<RoundtripSearch>,
+  build: async (scope: RoundtripScope, flightIds: number[], anchorFlightId?: number): Promise<RoundtripBuildReceipt> =>
+    api.post('/api/pairing/roundtrip/build', { scope, flightIds, anchorFlightId }) as Promise<RoundtripBuildReceipt>,
 }

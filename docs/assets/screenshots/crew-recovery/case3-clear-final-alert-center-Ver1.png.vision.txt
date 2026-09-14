@@ -1,0 +1,21 @@
+1. **Screen/dialog:** “LEGALITY Alert Center” modal over the roster/Gantt screen. It is grouped by **Rule**, with **Recovery selected** and status **“Checking legality…”**. A success toast says **“Changes saved successfully”**, while an **“unsaved Gantt draft”** notice is also visible.
+
+2. **Visible badges/counts/identifiers:**
+
+   - **3 degraded**
+   - Alert Center badges: **4**, **3**
+   - **438/968**, **2026RP09**
+   - **0 selected**
+   - **RULE (57)**
+   - Rule IDs: **3007**, **1001/001**, **3007/001**, **7305/001**, **7504/001**, **7505/001**, **7506/001**, **7507/001**, **8002/002**
+   - Visible severity badges: **3**, **2**, **1**
+   - **“Changes saved successfully”**
+   - **“Use Save to commit it.”**
+   - **“unsaved Gantt draft.”**
+
+3. **Potentially broken:**
+
+   - The success toast and unsaved-draft notice overlap the top-right application area.
+   - The **“Close”** control appears centered below the table without an obvious button boundary.
+   - Several lower alert rows are visibly faded/disabled, though their checkboxes remain present.
+   - No clearly clipped or unreadable table text is apparent.

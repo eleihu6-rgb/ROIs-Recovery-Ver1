@@ -1,0 +1,50 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-app/s2-msg-home-quick-action-Ver2.png
+  size:   1260x2736
+  pixels: meanLuminance=129.3 uniqueColors=121744 inkRatio=0.9724 blank=false
+  ocr:    27 text blocks
+  asserted present: "Quick actions", "Discretion"
+  vision: PASS (model=gpt-5.6-luna, 6.3s)
+
+--- OCR text (reading order, top to bottom) ---
+2:52
+Good afternoon
+Upcoming Trip
+PI201 • 28 Sep 2026 • Reports in 14 days
+SIN
+HKGR
+Ready 10:00L
+Check-in 12:00L
+14:00L
+18:00L
+00
+View Trip Details
+Explore your destinations
+See all
+HKG
+Hong Kong
+FLIGHT
+PI201 28 Sep
+Quick actions
+•••
+Check-In
+Absence
+Discretion
+Duty Swap
+More
+Home
+AI
+
+--- model visual read (multimodal model, asked about this exact PNG) ---
+1. Crew app Home screen, in an authenticated afternoon state with an upcoming SIN → HKG trip and quick actions visible.
+
+2. Visible status text:
+   - “Good afternoon”
+   - “Upcoming Trip”
+   - “PI201 · 28 Sep 2026 · Reports in 14 days”
+   - “Ready 10:00L”
+   - “Check-in 12:00L”
+   - Quick actions: “Check-In”, “Absence”, “Discretion”, “Duty Swap”, “More”
+   - Bottom navigation: “Home”, “AI”
+
+3. Nothing clearly broken. Text and panels appear aligned, with no visible errors, clipped text, overlapping elements, or empty panes.

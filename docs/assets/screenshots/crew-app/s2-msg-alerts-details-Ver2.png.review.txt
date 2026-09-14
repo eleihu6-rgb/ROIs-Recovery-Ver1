@@ -1,0 +1,68 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-app/s2-msg-alerts-details-Ver2.png
+  size:   1260x2736
+  pixels: meanLuminance=188.3 uniqueColors=4423 inkRatio=0.38693 blank=false
+  ocr:    42 text blocks
+  asserted present: "ACTION REQUIRED", "DELAYED", "CHECK-IN"
+  vision: PASS (model=gpt-5.6-luna, 8.3s)
+
+--- OCR text (reading order, top to bottom) ---
+3:33
+•0oc
+<
+Alerts
+4
+ACTION REQUIRED
+FDP discretion • PI201/PI202 • Duty
+1
+CHECK-IN (REPORT)
+RELEASE
+28 Sep 04:00z
+28 Sep 15:15z
+FLIGHTS
+06:00z → 10:00z
+PI201
+SIN → HKG
+On schedule
+11:00z → 15:00z
+PI202
+HKG → SIN
+DELAYED +2h00 13:00z →
+17:00z
+FDP CURRENT
+FDP PROPOSED
+11h00> 14h00
++60m
+Revised schedule recalculates FDP to 13h00.
+Regulatory assessment pending
+PI202 delayed by 2h; the duty FDP now recalculates to
+13h00. Agreement requested to extend by 60 minutes.
+Independent regulatory approval still required.
+Do you agree to a 60 min FDP extension?
+Yes• +60m
+No
+Agreement does not override regulatory limits.
+NOTIFICATIONS
+• FDP •
+13 Sep 2227z
+FDP extension agreement requested
+PI202 delayed by 2h; the duty FDP now recalculates to
+13h00. Agreement requested to extend by 60 minutes.
+Independent regulatory approval still required.
+
+--- model visual read (multimodal model, asked about this exact PNG) ---
+1. Alerts screen, showing 4 alerts. The top alert is in an action-required state, requesting agreement to a 60-minute FDP extension; “Yes · +60m” and “No” options are visible. Regulatory assessment is pending.
+
+2. Visible status/counts/identifiers:
+
+- `4`
+- `FDP discretion · PI201/PI202 · Duty 1`
+- `On schedule`
+- `DELAYED +2h00`
+- `FDP CURRENT 11h00`
+- `FDP PROPOSED 14h00`
+- `+60m`
+- `Regulatory assessment pending`
+- Notification: `FDP` and `13 Sep 2227z`
+
+3. No obvious clipping, overlap, empty panes, or missing data. The delayed-flight timing wraps onto two lines but remains readable.

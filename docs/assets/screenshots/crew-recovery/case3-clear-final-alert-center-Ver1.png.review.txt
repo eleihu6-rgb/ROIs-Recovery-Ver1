@@ -1,0 +1,274 @@
+screenshot-review: FAIL
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/case3-clear-final-alert-center-Ver1.png
+  size:   1600x1000
+  pixels: meanLuminance=208.3 uniqueColors=6902 inkRatio=0.56488 blank=false
+  ocr:    240 text blocks
+  asserted present: "8004"
+  vision: PASS (model=gpt-5.6-luna, 12.1s)
+  failures:
+    - missing expected text: 8004
+
+--- OCR text (reading order, top to bottom) ---
+28 Dashboard
+Live
+Scenario
+Data
+sa Legality
+System 4 Regression to PBS
+y Dev
+• Help < Release
+• 3 degraded
+DEV
+admin • F8_SIT_LIVE Ver:B266/F498/R40 [>
+Changes saved successfully
+2026-08-25~ 2026-10-07-
+Q
+© P . PBS Solver Ruleset FD
+OUTC UTC"
+unsaved Gantt draft.
+Use Save to commit it.
+Sep 2026
+Oct 2026
+Roster
+T 438/968
+2026RP89
+2W
+4 F
+5S
+6 S 7M 8T 9W 10T 11F 125 13S 14M 15T 16W 17T 18F
+19 S 20S 21M 22T 23W 24 T
+25 F
+26 S 27 S 28 M
+29 T 30W
+2F 3S
+4S
+Crewld
+Rank Base
+Sen
+RpCred
+RpDO
+REPLACE=
+L3001
+CA
+ADD
+00:01
+LEGALITY Alert Center
+Selam Tesema
+L3002
+CA
+ADD
+00:01
+Aug 25, 2026
+Oct 7, 2026
+Q Search crew ID, rank, or base
+O selected
+ERecovery selected
+* Mixed recovery C Checking legallty....
+DaWIT WVOTKU
+L3003
+CA
+ADD
+07:3!
+KGROV KY
+SEV
+CREW
+RANK
+RULS TEN
+MESSAGE
+Eyob Yohannes
+Severity
+L3004
+CA
+ADD
+T2001
+ADD
+CA
+3007
+Published delay: actual departure is later than scheduled; open Recovery preparation to review
+FDP impact and request crew agreement (FDP Discretion).
+Meron teeke
+Rule
+L3005
+CA
+ADD
+T2021
+ADD
+FO
+3007
+Published delay: actual departure is later than scheduled; open Recovery preparation to review
+Girma Hunde
+Base
+FDP impact and request crew agreement (FDP Discretion).
+L3006
+FO
+ADD
+00:01
+Rank
+T2022
+ADD
+FO
+3007
+Published delay: actual departure is later than scheduled; open Recovery preparation to review
+halu bekele
+FDP impact and request crew agreement (FDP Discretion).
+L3007
+FO
+ADD
+00:01
+RULE (57)
+Eden Getachew
+J4002
+ADD
+CA
+1001/001
+Row 1: Overlapping assignments between SL (2026-09-24) and FLY (2026-09-24) are not
+3007
+allowed.
+L3008
+FO
+ADD
+1001/001
+Keoede lestave
+T2004
+ADD
+CA
+1001/001
+Row 1: Overlapping assignments between PAX (2026-09-26) and OFC (2026-09-27) are not |
+3007/001
+allowed.
+L3009
+FO
+ADD
+7305/001
+T2005
+ADD
+1001/001
+Row 1: Overlapping assignments between PAX (2026-09-26) and OFC (2026-09-27) are not |
+Oct 2026
+Pairing
+T 2831/3023
+7504/001
+allowed.
+2F
+31
+3 S
+4 S
+Pairing
+Base
+Fleet
+7505/001
+#RELACET5
+Comp
+T2005
+ADD
+CA
+1001/001
+Row 1: Overlapping assignments between PAX (2026-09-26) and MTG (2026-09-27) are not
+V4152
+YVR
+FLY
+737
+allowed.
+7506/001
+CA(1:0)FO(1:0)
+7507/001
+1435
+YUL
+CA
+8002/002
+Row 1: Cumulative DP 60:45 exceeds 60:00 in the 7CD window 2026-09-10..2026-09-16|
+T4109
+YYZ
+FLY
+737
+(America/Toronto).
+8002/002
+CA(1:0)
+T4109A
+YYZ
+FLY
+737
+J4001
+ADD
+CA
+7506/001
+Row 1: Multiple check-ins per day (2026-09-13).
+FO(1:0)
+J4002
+ADD
+CA
+7506/001
+Row 1: Multiple check-ins per day (2026-09-04).
+C4134
+YYC
+FLY
+737
+CA(1:0)FO(1:0)
+J4004
+ADD
+CA
+7505/001
+Row 1: The number of days off(11) must be at least 12 in 1 RP (2026-09-01, 2026-09-30).
+T4200
+YYZ
+FLY
+737
+FO(1:0)
+J4006
+ADD
+CA
+7506/001
+Row 1: Multiple check-ins per day (2026-09-03).
+T4201
+YYZ
+FLY
+737
+CA(1:0)FO(1:0)
+J4007
+ADD
+CA
+7505/001
+Row 1: The number of days off(9) must be at least 12 in 1 RP (2026-09-01, 2026-09-30).
+EK763/E
+DXB
+FLY
+A380
+16
+Close
+CA(2)FO(2:0)
+EK354/E DXB
+FLY
+A380
+15:00
+<<2026-08-25
+CA(2:0)FO(2:0)
+EK001/E DXB
+FLY
+A380
+15:15
+<< 2026-08-25
+CA(2:01FO(2:0)
+No selection
+
+--- model visual read (multimodal model, asked about this exact PNG) ---
+1. **Screen/dialog:** “LEGALITY Alert Center” modal over the roster/Gantt screen. It is grouped by **Rule**, with **Recovery selected** and status **“Checking legality…”**. A success toast says **“Changes saved successfully”**, while an **“unsaved Gantt draft”** notice is also visible.
+
+2. **Visible badges/counts/identifiers:**
+
+   - **3 degraded**
+   - Alert Center badges: **4**, **3**
+   - **438/968**, **2026RP09**
+   - **0 selected**
+   - **RULE (57)**
+   - Rule IDs: **3007**, **1001/001**, **3007/001**, **7305/001**, **7504/001**, **7505/001**, **7506/001**, **7507/001**, **8002/002**
+   - Visible severity badges: **3**, **2**, **1**
+   - **“Changes saved successfully”**
+   - **“Use Save to commit it.”**
+   - **“unsaved Gantt draft.”**
+
+3. **Potentially broken:**
+
+   - The success toast and unsaved-draft notice overlap the top-right application area.
+   - The **“Close”** control appears centered below the table without an obvious button boundary.
+   - Several lower alert rows are visibly faded/disabled, though their checkboxes remain present.
+   - No clearly clipped or unreadable table text is apparent.

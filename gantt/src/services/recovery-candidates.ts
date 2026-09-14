@@ -521,8 +521,10 @@ const qualifiesForFleet = (crew: RecoveryCrewSnapshot, fleet: string | null | un
 }
 
 /**
- * Aircraft-type (fleet) qualification is a SOFT constraint in Recovery: a
- * mismatch never blocks the option, it is reported so the planner can decide.
+ * Aircraft-type (fleet) mismatch wording. Recovery treats fleet as a SOFT constraint
+ * for most triggers (the option is offered with this warning), but the fleet-qualification
+ * trigger (Rule 8004) hard-filters unqualified candidates before this string is ever used,
+ * because a crew who cannot operate the pairing's fleet cannot resolve an 8004.
  * Kept in one place so every method words it the same way.
  */
 const fleetMismatchWarning = (crewRole: string, crewId: string, fleet: string, context?: string): string =>
@@ -1600,6 +1602,15 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
   // Swap-duty candidates are also drawn from the same scope: the business-date
   // condition (not "still active") decides which Pairings qualify.
   const targetGroups = sourceScope.filter((group) => group.crewId !== source.crewId && group.pairingId !== source.pairingId)
+  // A fleet-qualification alert (Rule 8004) exists BECAUSE the crew's fleet does not
+  // cover the operated fleet, so a candidate who is also unqualified cannot resolve it.
+  // Fleet matching is therefore a HARD filter for this trigger (product decision
+  // 2026-09-13, superseding the earlier soft-fleet rule): such candidates are omitted
+  // entirely instead of being listed with a "Fleet mismatch" warning the planner cannot
+  // act on. Every other trigger keeps aircraft type soft.
+  const fleetHardBlocked = (crewCandidate: RecoveryCrewSnapshot): boolean =>
+    trigger === 'roster-qualification'
+    && requiredFleets.some((fleet) => !qualifiesForFleet(crewCandidate, fleet))
 
   for (const targetCrew of targetCrews) {
     if (trigger !== 'roster-qualification') break
@@ -1613,11 +1624,10 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
     const targetItems = itemsOf(targetCrew.crewId)
     const baseReasons: string[] = []
     if (requiredOrder != null && (targetOrder == null || targetOrder > requiredOrder)) baseReasons.push('Target Crew Rank is lower than the required Rank or has no rank mapping.')
-    const missingFleet = requiredFleets.find((fleet) => !qualifiesForFleet(targetCrew, fleet))
-    // Aircraft type is a SOFT constraint: the candidate stays listed and applyable,
-    // the mismatch is displayed instead of blocking it.
+    // Aircraft type is a HARD filter here: an unqualified candidate is not usable for an
+    // 8004 recovery, so it is dropped rather than offered with a warning.
+    if (fleetHardBlocked(targetCrew)) continue
     const warnings: string[] = []
-    if (missingFleet) warnings.push(fleetMismatchWarning('Target Crew', targetCrew.crewId, missingFleet))
 
     // Direct transfer retains all target Crew Roster assignments, so none may overlap
     // the received Roster. Invalid candidates are excluded instead of presented as plans.
@@ -1636,7 +1646,17 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
         targetRoster,
         new Set([source.pairingId]),
       )
-      if (baseReasons.length === 0 && !targetHasConflict && !sourceHasConflict) {
+      // A swap is two-way: the source crew takes the candidate's Pairing. For a fleet
+      // -qualification alert (8004) a swap only helps if BOTH directions are
+      // fleet-valid, otherwise the source crew is simply moved onto a pairing they are
+      // not qualified for and the 8004 (dated on the candidate's pairing) follows them.
+      // Drop those swaps instead of listing them with an unresolved 8004 warning.
+      const targetFleetCodes = [
+        ...new Set(targetRoster.items.map((item) => item.fleetCode?.trim().toUpperCase()).filter((value): value is string => Boolean(value))),
+      ]
+      const swapLeavesFleetMismatch = trigger === 'roster-qualification'
+        && targetFleetCodes.some((fleet) => !qualifiesForFleet(sourceCrew, fleet))
+      if (baseReasons.length === 0 && !swapLeavesFleetMismatch && !targetHasConflict && !sourceHasConflict) {
         rosterOptions.push(makeOption({
           allItems: input.items, allGroups: activeGroups, source, target: targetRoster, targetCrew, sourceCrew, mode: 'swap', standbyTaskId: null,
           standbyWindow: null, timeDistanceMinutes: Math.round(Math.abs(targetRoster.start - source.start) / 60000),
@@ -1661,6 +1681,8 @@ const buildSingleRecoveryPlans = (input: BuildRecoveryPlansInput & { alert: Reco
   for (const [targetCrewId, standbyTask] of standbyByCrew) {
     const targetCrew = crewsById.get(targetCrewId)
     if (!targetCrew) continue
+    // An 8004 callout needs a crew who can operate the pairing's fleet; drop the rest.
+    if (fleetHardBlocked(targetCrew)) continue
     const sameRank = !!sourceCrew.rank && sourceCrew.rank.toUpperCase() === targetCrew.rank.toUpperCase()
     const sameBase = !!sourceCrew.base && sourceCrew.base.toUpperCase() === targetCrew.base.toUpperCase()
     const crossDivision = !!sourceCrew.division && !!targetCrew.division && sourceCrew.division !== targetCrew.division
@@ -2434,6 +2456,11 @@ export const optionToLibraryCostInput = (
       ? { standbyContext: { crewId: option.targetCrewId, pairingId: option.sourcePairingId, standbyTaskId: option.standbyTaskId } } : {}),
     ...(option.mode === 'swap-duty' && option.sourceCrewId && option.targetCrewId && option.sourcePairingId && option.targetPairingId
       ? { swapContext: { sourceCrewId: option.sourceCrewId, sourcePairingId: option.sourcePairingId, targetCrewId: option.targetCrewId, targetPairingId: option.targetPairingId } } : {}),
+    // One-way transfer: the receiving candidate has no pairing of its own, so the
+    // released pairing is the source pairing. The bridge combines the configured
+    // roster-change components with the receiving crew's incremental GH pay.
+    ...(option.mode === 'transfer' && option.sourceCrewId && option.sourcePairingId && option.targetCrewId
+      ? { transferContext: { sourceCrewId: option.sourceCrewId, sourcePairingId: option.sourcePairingId, targetCrewId: option.targetCrewId } } : {}),
     crossBase: isCrossBase ? 1 : 0,
     crossDivision: option.metrics.followOnImpactCount >= 0 && option.mode.includes('cross-division') ? 1 : 0,
     crossRole: isSwap ? 1 : 0,

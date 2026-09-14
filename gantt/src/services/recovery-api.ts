@@ -42,8 +42,11 @@ export const recoveryTraceApi = {
 }
 
 export interface RecoveryLibraryCostApiInput {
+  openPairingContext?: { crewId: string; pairingId: number; donorPairingId?: number }
   swapContext?: { sourceCrewId: string; sourcePairingId: number; targetCrewId: string; targetPairingId: number }
   standbyContext?: { crewId: string; pairingId: number; standbyTaskId: number }
+  /** One-way Roster transfer: the source crew releases the pairing to the target crew. */
+  transferContext?: { sourceCrewId: string; sourcePairingId: number; targetCrewId: string }
   mode: 'transfer' | 'swap' | 'standby' | 'swap-duty' | 'flight-delay' | 'fdp-discretion' | 'cross-base-standby' | 'cross-base-swap' | 'cross-base-destination' | 'cross-base-direct'
   crossBase: number
   crossDivision: number
@@ -84,10 +87,37 @@ export interface RecoveryLibraryCostResult {
   notes: string[]
 }
 
+/**
+ * live-server caps one batch at 128 inputs (`z.array(costInputSchema).max(128)`).
+ * A Live roster with many alerts produces far more options than that, and a 400
+ * makes `enrichPlansWithLibraryCosts` mark every candidate `Unpriced`. Splitting
+ * the request keeps each call inside the contract and the concatenated results
+ * in the same order as the inputs, which the cursor-based enrichment relies on.
+ */
+export const RECOVERY_COST_BATCH_LIMIT = 128
+
+export const chunkRecoveryCostInputs = <T>(
+  inputs: readonly T[],
+  size: number = RECOVERY_COST_BATCH_LIMIT,
+): T[][] => {
+  if (!Number.isInteger(size) || size < 1) throw new Error('Chunk size must be a positive integer')
+  const chunks: T[][] = []
+  for (let i = 0; i < inputs.length; i += size) chunks.push(inputs.slice(i, i + size))
+  return chunks
+}
+
 export const recoveryCostApi = {
   /** Batch cost calculation — used by the recovery dialog to refresh directCost from the cost library. */
-  postBatch: (inputs: RecoveryLibraryCostApiInput[]): Promise<{ results: RecoveryLibraryCostApiResult[] }> =>
-    recoveryTraceClient.post('/api/recovery/calculate-cost/batch', { inputs }) as Promise<{ results: RecoveryLibraryCostApiResult[] }>,
+  postBatch: async (inputs: RecoveryLibraryCostApiInput[]): Promise<{ results: RecoveryLibraryCostApiResult[] }> => {
+    const results: RecoveryLibraryCostApiResult[] = []
+    for (const chunk of chunkRecoveryCostInputs(inputs)) {
+      const response = (await recoveryTraceClient.post('/api/recovery/calculate-cost/batch', {
+        inputs: chunk,
+      })) as { results: RecoveryLibraryCostApiResult[] }
+      results.push(...response.results)
+    }
+    return { results }
+  },
 }
 
 

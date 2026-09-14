@@ -295,6 +295,9 @@ export const PortalDatePicker = ({
         style={{
           left: position.left,
           maxHeight: position.maxHeight,
+          // Re-enable interaction: a modal AppDialog locks `body` to `pointer-events: none`
+          // (react-remove-scroll), which this body-portaled popover must opt out of.
+          pointerEvents: "auto",
           top: position.top,
           transform: `scale(${position.scale})`,
           transformOrigin: "top left",

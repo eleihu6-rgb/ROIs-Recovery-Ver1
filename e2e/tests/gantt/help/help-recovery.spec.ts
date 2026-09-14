@@ -13,8 +13,8 @@ const SCREENSHOT_DIR = path.join(REPO_ROOT, 'docs/assets/screenshots/gantt')
 const imageCountFor = (slug: string): number => {
   if (slug === 'recovery-cost-library') return 5
   if (slug === 'recovery-case-001') return 4
-  if (slug === 'recovery-case-002') return 4
-  if (slug === 'recovery-case-003') return 5
+  if (slug === 'recovery-case-002') return 5
+  if (slug === 'recovery-case-003') return 8
   if (['recovery-102', 'recovery-103', 'recovery-104'].includes(slug)) return 1
   return 0
 }
@@ -96,6 +96,7 @@ test.describe('Recovery Help cases', () => {
         'recovery-case-001',
         'recovery-case-002',
         'recovery-case-003',
+        'recovery-case-004',
       ].map((slug) => `help-topic-${slug}`),
     )
 
@@ -135,20 +136,34 @@ test.describe('Recovery Help cases', () => {
     await expect(article.getByTestId('s1-swap-costs').locator('tbody tr')).toHaveCount(6)
 
     article = await openTopic(page, 'recovery-case-002')
-    await expect(article).toContainText('S2 - Flight Delay')
+    await expect(article).toContainText('S2 published flight delay at ADD')
+    await expect(article).toContainText('ET2681')
+    await expect(article).toContainText('ET2684 JNB to ADD')
+    await expect(article).toContainText('Rule 3007')
+    await expect(article).toContainText('T2001')
     await expect(article).toContainText('Request FDP agreement')
-    await expect(article).toContainText('consent alone never makes an over-limit FDP legal')
-    await expect(article.getByTestId('s2-standby-costs').locator('tbody tr')).toHaveCount(6)
-    await expect(article.getByTestId('s2-swap-costs').locator('tbody tr')).toHaveCount(6)
+    await expect(article).toContainText('Request FDP discretion')
+    await expect(article).toContainText('Crew rejected')
+    await expect(article).toContainText('Recommended next')
+    await expect(article).toContainText('never makes an over-limit FDP legal')
+    await expect(article).toContainText('1,350.00')
+    await expect(article.getByTestId('s2-standby-costs').locator('tbody tr')).toHaveCount(4)
+    await expect(article).toContainText('J4021')
+    await expect(article).toContainText('Unpriced')
+    await expect(article).toContainText('No executable candidates in the current loaded data range')
 
     article = await openTopic(page, 'recovery-case-003')
     await expect(article).toContainText('Case 3 - aircraft qualification (Rule 8004)')
     await expect(article).toContainText('152227')
     await expect(article).toContainText('Crew fleet (788) is invalid for the pairing (7M8)')
-    for (const text of ['Alert Center', 'Pairing pane', 'Roster pane', 'Roster transfer or exchange', 'Standby Crew callout', 'Cross-base positioning', 'Unpriced', 'soft constraint', 'Preview is not Apply']) {
+    for (const text of ['Alert Center', 'Pairing pane', 'Roster pane', 'Roster transfer or exchange', 'Standby Crew callout', 'Cross-base positioning', 'US$410.00', 'incremental guaranteed-hours pay', 'Unpriced', 'Fleet matching is mandatory', 'not listed', 'exchange is also dropped', 'both directions to be fleet-valid', 'Preview is not Apply', 'L3001 to J4003', 'L3007 to J4025']) {
       await expect(article).toContainText(text)
     }
-    await expect(article).toContainText('the 8004 remains after Save')
+    // The article now documents the FULL clearance, not the old "still Partial / 8004 remains" state.
+    await expect(article).toContainText('8004/001')
+    await expect(article).toContainText('drops')
+    await expect(article).toContainText('zero')
+    await expect(article).not.toContainText('a fully clearing replacement is not yet demonstrated')
 
     const search = page.getByPlaceholder('Search topics…')
     for (const [query, topic] of [
@@ -158,6 +173,7 @@ test.describe('Recovery Help cases', () => {
       ['currency', 'recovery-costs'],
       ['J4002', 'recovery-case-001'],
       ['S2', 'recovery-case-002'],
+      ['ET2681', 'recovery-case-002'],
       ['discretion', 'recovery-case-002'],
       ['crew app', 'recovery-case-002'],
       ['8004', 'recovery-case-003'],

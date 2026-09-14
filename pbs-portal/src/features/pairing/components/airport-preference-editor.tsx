@@ -317,6 +317,8 @@ const AirportPreferenceLocationPicker = ({
         bottom: position.viewportBottom ?? undefined,
         left: position.viewportLeft,
         maxHeight: position.designMaxPopupHeight,
+        // Re-enable interaction with a modal AppDialog's `pointer-events: none` body lock.
+        pointerEvents: "auto",
         top: position.viewportTop ?? undefined,
         transform: `scale(${position.scale})`,
         transformOrigin: position.openAbove ? "bottom left" : "top left",

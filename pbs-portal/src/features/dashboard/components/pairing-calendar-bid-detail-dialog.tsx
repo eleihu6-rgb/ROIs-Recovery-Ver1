@@ -1,6 +1,5 @@
 import { PairingDialogDetail } from "@/features/pairing/components/pairing-dialog-detail";
 import type { PairingSearchResult } from "@/features/pairing/types";
-import { useScaledPageCanvasPortalTarget } from "@/shared/components/layout/scaled-page-canvas";
 import { TierSelectionTitle } from "@/shared/components/tiers";
 import { PbsDialogFrame } from "@/shared/components/ui/pbs-dialog-frame";
 
@@ -122,20 +121,20 @@ export const PairingCalendarBidDetailDialog = ({
   onSave,
   onTierToggle,
 }: PairingCalendarBidDetailDialogProps) => {
-  const portalTarget = useScaledPageCanvasPortalTarget();
   const summaryGridColumns = showEditSelector ? SUMMARY_GRID_COLUMNS_WITH_EDIT : SUMMARY_GRID_COLUMNS;
   const tierControlsDisabled = isPending || isTierEditingDisabled;
   const dialogTitle = buildDialogTitle(pairingNumber, detailRows, detailResults);
+  // AppDialog portals to the viewport (the legacy scaled-canvas portalTarget is now a
+  // no-op), so the width must be viewport-relative instead of the old fixed 880px.
   return (
     <PbsDialogFrame
-      ariaLabelledBy="pairing-bid-detail-title"
+      ariaLabel="Pairing Bid"
       bodyClassName="p-0"
       closeOnOverlayClick
       footerClassName="mt-5 flex justify-end gap-2"
       overlayClassName="pointer-events-auto z-[80] bg-white/70 backdrop-blur-[1px]"
       overlayTestId="pairing-bid-detail-overlay"
-      panelClassName="!max-h-[calc(var(--portal-page-shell-height)-32px)] !w-[880px] max-w-none shrink-0 rounded-3xl p-4 shadow-[0_20px_60px_rgba(45,49,66,0.18)]"
-      portalTarget={portalTarget}
+      panelClassName="w-[min(880px,calc(100vw-32px))] max-w-none shrink-0 rounded-3xl p-4 shadow-xl"
       footer={(
         <>
           <button
@@ -160,13 +159,7 @@ export const PairingCalendarBidDetailDialog = ({
       )}
       onClose={onClose}
     >
-          <h3
-            className="text-xs font-semibold uppercase tracking-[0.04em] text-[#7f8392]"
-            id="pairing-bid-detail-title"
-          >
-            Pairing Bid
-          </h3>
-          <p className="mt-1 text-xl font-semibold leading-7 text-[#282c3b]">
+          <p className="text-xl font-semibold leading-7 text-foreground">
             {dialogTitle}
           </p>
           <div className="mt-4" data-testid="pairing-bid-summary-grid">

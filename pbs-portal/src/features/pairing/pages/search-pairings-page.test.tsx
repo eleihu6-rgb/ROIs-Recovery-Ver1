@@ -1384,7 +1384,8 @@ describe("SearchPairingsPage", () => {
 
     expect(within(configureDialog).getByText("Configure Pairing Preference")).toBeInTheDocument();
     expect(within(configureDialog).getByText("PAIRINGS")).toBeInTheDocument();
-    expect(configureDialog.className).toContain("max-h-[calc(100vh-32px)]");
+    // AppDialog owns the window chrome; its default viewport bound is 100vh - 2rem.
+    expect(configureDialog.className).toContain("max-h-[calc(100vh-2rem)]");
     expect(configureDialog.className).toContain("w-[min(1120px,calc(100vw-32px))]");
     expect(within(configureDialog).getByRole("button", { name: "UPDATE BID" })).toBeInTheDocument();
   });

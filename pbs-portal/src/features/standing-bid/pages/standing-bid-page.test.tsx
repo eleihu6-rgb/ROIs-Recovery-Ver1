@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PbsStandingCurrentResponse } from "../../../../../packages/contracts/pbs-standing-bids.js";
 import { AppProviders } from "@/app/providers/app-providers";
@@ -865,10 +865,12 @@ describe("StandingBidPage", () => {
     await user.click(await screen.findByRole("button", { name: "Toggle T1 for Day of Week Off" }));
     await user.click(await screen.findByRole("button", { name: "ADD BID" }));
 
-    const recoveryAlert = await screen.findByRole("alert");
+    // The recovery alert lives in the right panel behind the (now Radix-modal) dialog
+    // window, so it is aria-hidden while the dialog is open.
+    const recoveryAlert = await screen.findByRole("alert", { hidden: true });
 
     expect(within(recoveryAlert).getByText(/changed in another request/i)).toBeInTheDocument();
-    await user.click(within(recoveryAlert).getByRole("button", { name: "Reload draft" }));
+    fireEvent.click(within(recoveryAlert).getByRole("button", { name: "Reload draft", hidden: true }));
 
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: standingBidPageDataQueryKey,

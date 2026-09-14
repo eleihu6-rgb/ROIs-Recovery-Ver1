@@ -9,7 +9,7 @@ import { useGanttViewStore } from '@/stores/gantt-view-store'
 import { checkLiveDraftLegality, useRosterStore } from '@/stores/roster-store'
 import { useRuleCheckStore } from '@/stores/rule-check-store'
 import { isDeadheadSegAssignment } from '@/utils/puck-duty-color'
-import type { RosterItem } from '@/types'
+import type { PairingItem, RosterItem } from '@/types'
 
 export interface AssignPairingResult {
   ok: boolean
@@ -69,7 +69,49 @@ export const assignPairingDraft = async (
   }
   const rosterActingRank = resolvedActingRank
 
-  // Build placeholder RosterItems for immediate visual feedback (one per segment).
+  const placeholders = buildPairingRosterItems(pairingItem, toCrewId, rosterActingRank)
+
+  const draft = useDraftStore.getState()
+  const beforeItems = useRosterStore.getState().main.rosterItems
+  useRuleCheckStore.getState().setChecking(true)
+  const opId = draft.addOp(
+    { type: 'assign-pairing', pairingId: pairing.id, crewId: toCrewId, rosterActingRank, tasks: placeholders as unknown as Record<string, unknown>[] },
+    [toCrewId],
+    [pairing.id],
+  )
+
+  // Optimistic apply — show the placeholder tasks immediately.
+  const base = useRosterStore.getState().main.baseItems
+  const displayed = draft.applyDraftOps(base)
+  useRosterStore.setState((s) => ({ main: { ...s.main, rosterItems: displayed } }))
+  usePairingStore.getState().refreshDraftCoverage(base, displayed)
+  useGanttViewStore.getState().markDirty()
+
+  void useLockStore.getState().acquireLock(toCrewId, [pairing.id]).catch(() => {})
+  const allowed = await checkLiveDraftLegality(
+    [toCrewId],
+    beforeItems,
+    displayed,
+    { relatedItems: placeholders, relatedPairingIds: [pairing.id], autoAcceptSoft: opts?.autoAcceptSoft },
+  )
+  if (!allowed) {
+    useDraftStore.getState().removeOp(opId)
+    const reverted = draft.applyDraftOps(base)
+    useRosterStore.setState((s) => ({ main: { ...s.main, rosterItems: reverted } }))
+    usePairingStore.getState().refreshDraftCoverage(base, reverted)
+    useGanttViewStore.getState().markDirty()
+    if (!useRuleCheckStore.getState().confirmDialog.open) {
+      useRuleCheckStore.getState().setChecking(false)
+    }
+    return { ok: false, reason: 'Assignment reverted — legality check did not approve', opId }
+  }
+  useRuleCheckStore.getState().setChecking(false)
+  return { ok: true, opId }
+}
+
+/** Shared canonical segment placeholders for assignment and Recovery preview. */
+export const buildPairingRosterItems = (pairingItem: PairingItem, toCrewId: string, rosterActingRank: string): RosterItem[] => {
+  const pairing = pairingItem.pairing
   let tempId = -Date.now()
   const placeholders: RosterItem[] = pairingItem.segments.length > 0
     ? pairingItem.segments.map((seg) => ({
@@ -125,40 +167,5 @@ export const assignPairingDraft = async (
         ybh: null, mbh: null, yal: null, mal: null, ydo: null, mdo: null, mcred: null,
       }]
 
-  const draft = useDraftStore.getState()
-  const beforeItems = useRosterStore.getState().main.rosterItems
-  useRuleCheckStore.getState().setChecking(true)
-  const opId = draft.addOp(
-    { type: 'assign-pairing', pairingId: pairing.id, crewId: toCrewId, rosterActingRank, tasks: placeholders as unknown as Record<string, unknown>[] },
-    [toCrewId],
-    [pairing.id],
-  )
-
-  // Optimistic apply — show the placeholder tasks immediately.
-  const base = useRosterStore.getState().main.baseItems
-  const displayed = draft.applyDraftOps(base)
-  useRosterStore.setState((s) => ({ main: { ...s.main, rosterItems: displayed } }))
-  usePairingStore.getState().refreshDraftCoverage(base, displayed)
-  useGanttViewStore.getState().markDirty()
-
-  void useLockStore.getState().acquireLock(toCrewId, [pairing.id]).catch(() => {})
-  const allowed = await checkLiveDraftLegality(
-    [toCrewId],
-    beforeItems,
-    displayed,
-    { relatedItems: placeholders, relatedPairingIds: [pairing.id], autoAcceptSoft: opts?.autoAcceptSoft },
-  )
-  if (!allowed) {
-    useDraftStore.getState().removeOp(opId)
-    const reverted = draft.applyDraftOps(base)
-    useRosterStore.setState((s) => ({ main: { ...s.main, rosterItems: reverted } }))
-    usePairingStore.getState().refreshDraftCoverage(base, reverted)
-    useGanttViewStore.getState().markDirty()
-    if (!useRuleCheckStore.getState().confirmDialog.open) {
-      useRuleCheckStore.getState().setChecking(false)
-    }
-    return { ok: false, reason: 'Assignment reverted — legality check did not approve', opId }
-  }
-  useRuleCheckStore.getState().setChecking(false)
-  return { ok: true, opId }
+  return placeholders
 }

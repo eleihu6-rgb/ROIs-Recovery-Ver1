@@ -1,7 +1,38 @@
-import { useEffect, useRef, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { cn } from "@/shared/lib/cn";
+import { useEffect, type ReactNode } from "react";
+import { AppDialog } from "@rois/ui";
 
+/**
+ * PbsDialogFrame — thin compatibility adapter over the shared `@rois/ui` AppDialog.
+ *
+ * The bespoke createPortal / focus-trap / scroll-lock frame it used to be is gone: the one
+ * legal pop-up implementation is AppDialog (root CLAUDE.md §弹窗窗口标准,
+ * docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md), so this
+ * component only maps the historical prop surface onto it, keeping ~15 pbs-portal call
+ * sites compiling and behaving unchanged.
+ *
+ * Mapping:
+ *   onClose        → AppDialog onOpenChange(false)
+ *   closeDisabled  → disables both close gestures
+ *   closeOnOverlayClick → AppDialog dismissable (outside click closes only when asked)
+ *   closeOnEscape  → a document keydown listener (AppDialog's dismissable also governs
+ *                    outside clicks, so Escape is handled here to keep the two gestures
+ *                    independent exactly as the legacy frame had them)
+ *   testId         → AppDialog data-testid
+ *   ariaLabel      → AppDialog title (the band title = dialog accessible name)
+ *   header         → rendered at the top of the body (the band already shows the title)
+ *   footer         → AppDialog footer (the centred pill action row)
+ *   panelClassName → AppDialog className; bodyClassName/overlayClassName/footerClassName
+ *                    map to the like-named AppDialog props
+ *
+ * `portalTarget`, `portalToBody` and `overlayTestId` are accepted for prop-surface
+ * compatibility but are no-ops: AppDialog owns its own Radix portal and overlay.
+ *
+ * The AppDialog close disc is intentionally not shown here. Every legacy caller renders
+ * its own (Playwright-tested) close control inside `header` / `footer`; adding the disc
+ * would render two competing close buttons and break those selectors. Dialogs migrated
+ * directly to AppDialog (the Pairing Filters dialog, the Bid Review popover) do use the
+ * standard overhanging disc.
+ */
 type PbsDialogFrameProps = {
   ariaLabel?: string;
   ariaLabelledBy?: string;
@@ -22,47 +53,8 @@ type PbsDialogFrameProps = {
   onClose?: () => void;
 };
 
-let lockCount = 0;
-let previousBodyOverflow = "";
-let previousHtmlOverflow = "";
-let dialogIdSeed = 0;
-const openDialogStack: number[] = [];
-const FOCUSABLE_SELECTOR = [
-  "a[href]",
-  "button:not([disabled])",
-  "input:not([disabled])",
-  "select:not([disabled])",
-  "textarea:not([disabled])",
-  "[tabindex]:not([tabindex='-1'])",
-].join(",");
-
-const listFocusableElements = (container: HTMLElement) =>
-  Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-    .filter((element) => element.getAttribute("aria-hidden") !== "true");
-
-const lockDocumentScroll = () => {
-  if (lockCount === 0) {
-    previousBodyOverflow = document.body.style.overflow;
-    previousHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
-  }
-
-  lockCount += 1;
-};
-
-const unlockDocumentScroll = () => {
-  lockCount = Math.max(0, lockCount - 1);
-
-  if (lockCount === 0) {
-    document.body.style.overflow = previousBodyOverflow;
-    document.documentElement.style.overflow = previousHtmlOverflow;
-  }
-};
-
 export const PbsDialogFrame = ({
   ariaLabel,
-  ariaLabelledBy,
   bodyClassName,
   children,
   closeDisabled = false,
@@ -72,44 +64,25 @@ export const PbsDialogFrame = ({
   footerClassName,
   header,
   overlayClassName,
-  overlayTestId,
   panelClassName,
-  portalTarget,
-  portalToBody = false,
   testId,
   onClose,
 }: PbsDialogFrameProps) => {
-  const dialogIdRef = useRef<number | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const usesPortal = portalToBody || Boolean(portalTarget);
-
-  if (dialogIdRef.current === null) {
-    dialogIdSeed += 1;
-    dialogIdRef.current = dialogIdSeed;
-  }
-
-  useEffect(() => {
-    lockDocumentScroll();
-    openDialogStack.push(dialogIdRef.current!);
-
-    return () => {
-      const currentId = dialogIdRef.current;
-      const stackIndex = currentId === null ? -1 : openDialogStack.lastIndexOf(currentId);
-      if (stackIndex >= 0) {
-        openDialogStack.splice(stackIndex, 1);
-      }
-      unlockDocumentScroll();
-    };
-  }, []);
+  // AppDialog has a single `dismissable` flag that governs outside clicks *and* Escape.
+  // The legacy frame had two independent gestures, so:
+  //  - `dismissable` mirrors the old `closeOnOverlayClick` (default false: clicking the
+  //    dimmed background does nothing, so clicks into a nested popover never dismiss the
+  //    window), and
+  //  - Escape (default true) is wired here so it keeps working independently.
+  const dismissable = !closeDisabled && closeOnOverlayClick;
 
   useEffect(() => {
-    if (!closeOnEscape || !onClose) {
+    if (!closeOnEscape || closeDisabled || !onClose) {
       return undefined;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      const isTopDialog = openDialogStack.at(-1) === dialogIdRef.current;
-      if (event.key !== "Escape" || closeDisabled || !isTopDialog) {
+      if (event.key !== "Escape") {
         return;
       }
 
@@ -124,122 +97,26 @@ export const PbsDialogFrame = ({
     };
   }, [closeDisabled, closeOnEscape, onClose]);
 
-  useEffect(() => {
-    if (!usesPortal) {
-      return undefined;
-    }
-
-    const panel = panelRef.current;
-    const trigger = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
-
-    if (!panel) {
-      return undefined;
-    }
-
-    const focusableElements = listFocusableElements(panel);
-    (focusableElements[0] ?? panel).focus();
-
-    const handleFocusKeyDown = (event: KeyboardEvent) => {
-      const isTopDialog = openDialogStack.at(-1) === dialogIdRef.current;
-
-      if (event.key !== "Tab" || !isTopDialog) {
-        return;
-      }
-
-      const currentFocusableElements = listFocusableElements(panel);
-
-      if (currentFocusableElements.length === 0) {
-        event.preventDefault();
-        panel.focus();
-        return;
-      }
-
-      const firstElement = currentFocusableElements[0]!;
-      const lastElement = currentFocusableElements.at(-1)!;
-      const activeElement = document.activeElement;
-
-      if (!panel.contains(activeElement)) {
-        event.preventDefault();
-        (event.shiftKey ? lastElement : firstElement).focus();
-        return;
-      }
-
-      if (event.shiftKey && activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      } else if (!event.shiftKey && activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    };
-
-    window.addEventListener("keydown", handleFocusKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleFocusKeyDown);
-
-      if (trigger?.isConnected) {
-        trigger.focus();
-      }
-    };
-  }, [usesPortal]);
-
-  const handleOverlayClick = () => {
-    if (!closeOnOverlayClick || closeDisabled || !onClose) {
-      return;
-    }
-
-    onClose();
-  };
-
-  const dialog = (
-    <div
-      className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-[rgb(40_44_59_/_32%)] p-4",
-        overlayClassName,
-      )}
-      data-testid={overlayTestId}
-      onClick={handleOverlayClick}
+  return (
+    <AppDialog
+      open
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose?.();
+        }
+      }}
+      title={ariaLabel ?? ""}
+      className={panelClassName}
+      overlayClassName={overlayClassName}
+      bodyClassName={bodyClassName}
+      footerClassName={footerClassName}
+      footer={footer}
+      dismissable={dismissable}
+      showClose={false}
+      data-testid={testId}
     >
-      <div
-        aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy}
-        aria-modal="true"
-        className={cn(
-          "flex max-h-[calc(100vh-32px)] w-[min(620px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-[#dfe4ee] bg-white p-[18px] shadow-[0_18px_50px_rgb(20_24_38_/_22%)]",
-          panelClassName,
-        )}
-        data-testid={testId}
-        ref={panelRef}
-        role="dialog"
-        tabIndex={usesPortal ? -1 : undefined}
-        onClick={(event) => {
-          event.stopPropagation();
-        }}
-        onMouseDown={(event) => {
-          event.stopPropagation();
-        }}
-      >
-        {header ? <div className="shrink-0">{header}</div> : null}
-        <div className={cn("min-h-0 flex-1 overflow-y-auto pr-1", bodyClassName)}>{children}</div>
-        {footer ? (
-          <div className={cn("shrink-0", footerClassName)}>
-            {footer}
-          </div>
-        ) : null}
-      </div>
-    </div>
+      {header ? <div className="shrink-0">{header}</div> : null}
+      {children}
+    </AppDialog>
   );
-
-  if (typeof document === "undefined") {
-    return dialog;
-  }
-
-  if (portalTarget) {
-    return createPortal(dialog, portalTarget);
-  }
-
-  return portalToBody ? createPortal(dialog, document.body) : dialog;
 };

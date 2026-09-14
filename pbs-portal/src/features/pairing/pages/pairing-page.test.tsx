@@ -1335,6 +1335,13 @@ describe("PairingPage", () => {
       expect(screen.getAllByText("Prefer Pairing Type")).toHaveLength(3);
     });
 
+    // The add flow leaves this dialog open in this fixture. Close it before reaching for
+    // the background: AppDialog is a real modal, so the rest of the page is aria-hidden
+    // (and unreachable through role queries) while a dialog is open.
+    if (screen.queryByRole("dialog")) {
+      await user.click(within(pairingTypeDialog).getByRole("button", { name: /cancel/i }));
+    }
+
     await goToAvailablePropertyPage(user, 131);
     const pairingLengthDialog = await openPairingConfigDialog(user, "Prefer Pairing Length");
     await user.click(within(pairingLengthDialog).getByRole("button", { name: "Avoid" }));

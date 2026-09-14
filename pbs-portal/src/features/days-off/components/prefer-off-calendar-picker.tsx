@@ -260,6 +260,9 @@ export const PreferOffCalendarPicker = ({
           style={{
             left: position.left,
             maxHeight: position.maxHeight,
+            // A modal AppDialog locks `body` to `pointer-events: none`; opt this
+            // body-portaled popover back in so it stays clickable.
+            pointerEvents: "auto",
             top: position.top,
             transform: `scale(${position.scale})`,
             transformOrigin: "top left",

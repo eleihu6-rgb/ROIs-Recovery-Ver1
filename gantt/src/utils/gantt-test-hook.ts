@@ -276,7 +276,7 @@ export interface GanttTestApi {
    * V4-P03 像素等价回归用：第一条可见 flight 的几何探针。
    * 返回足以重现 msToX 几何的所有原始值，测试侧可用相同算术重算 x 并点击验证选中。
    */
-  flightProbe: () => {
+  flightProbe: (flightId?: number) => {
     id: number; schDepDtUtc: string; rowIndex: number; rowCenterY: number
     scrollX: number; pxPerHour: number; rangeStartIso: string
   } | null
@@ -289,7 +289,7 @@ export interface GanttTestApi {
     id: number; pairingId: number; x: number; y: number; rowIndex: number; scrollX: number; scrollY: number
   } | null
   /** Bring one specific roster_flight item into the roster viewport; returns its on-canvas x/y (or null). */
-  focusRosterItem: (itemId: number) => {
+  focusRosterItem: (itemId: number, readOnly?: boolean) => {
     id: number; pairingId: number | null; crewId: string; x: number; y: number; rowIndex: number; scrollX: number; scrollY: number
   } | null
   /** V4-P03：判断指定 id 的 flight 是否在当前选中集合中。 */
@@ -355,7 +355,7 @@ export interface GanttTestApi {
    * ALL visible segments per row (vs `pairingProbes` which returns one per row).
    * Used by tests that need to right-click a puck they have already discovered.
    */
-  pairingVisibleSegments: (limit?: number) => Array<{
+  pairingVisibleSegments: (limit?: number, targetPairingId?: number) => Array<{
     segId: number; pairingId: number; fltId: number | null; schStrDtUtc: string; rowIndex: number
     scrollX: number; scrollY: number; pxPerHour: number; rangeStartIso: string; headerHeight: number; rowHeight: number
   }>
@@ -1237,7 +1237,7 @@ const paneScrollY = (paneTypePrefix: string): number => {
  *   - Scrollable rows: HEADER_HEIGHT + rowIndex * ROW_HEIGHT - scrollY
  *   (rowIndex is the FULL index in the reordered array, matching what the renderer uses)
  */
-const flightProbe = (): {
+const flightProbe = (flightId?: number): {
   id: number; schDepDtUtc: string; rowIndex: number; rowCenterY: number
   scrollX: number; pxPerHour: number; rangeStartIso: string
 } | null => {
@@ -1274,6 +1274,7 @@ const flightProbe = (): {
     const row = orderedRows[rowIndex]
     if (!row) continue
     for (const flight of row.flights) {
+      if (flightId != null && flight.id !== flightId) continue
       if (!flight.schDepDtUtc) continue
       const depMs = new Date(
         flight.schDepDtUtc.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(flight.schDepDtUtc)
@@ -1281,7 +1282,7 @@ const flightProbe = (): {
           : flight.schDepDtUtc + 'Z'
       ).getTime()
       const x = (Math.trunc((depMs - rangeStartMs) / 60_000) / 60) * pxPerHour - scrollX
-      if (x >= 20 && x <= 600) {
+      if (flightId != null || (x >= 20 && x <= 600)) {
         // ── Issue A fix: match base-renderer.ts rowY() scrollable branch exactly ──
         // base-renderer.ts rowY() line ~61: HEADER_HEIGHT + rowIndex * ROW_HEIGHT - scrollY
         // rowIndex is the full index in the reordered array (not offset by frozenRowCount).
@@ -1425,7 +1426,7 @@ const focusPairingSegment = (segId: number): {
  * order base-renderer drew) and base-renderer's rowY geometry (HEADER_HEIGHT + rowIndex *
  * ROW_HEIGHT).
  */
-const focusRosterItem = (itemId: number): {
+const focusRosterItem = (itemId: number, readOnly = false): {
   id: number; pairingId: number | null; crewId: string; x: number; y: number; rowIndex: number; scrollX: number; scrollY: number
 } | null => {
   const order = panelRowsByPane.get('roster-main') ?? []
@@ -1449,14 +1450,14 @@ const focusRosterItem = (itemId: number): {
   const ms = new Date(iso.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(iso) ? iso : iso + 'Z').getTime()
   const contentX = (Math.trunc((ms - rangeStartMs) / 60_000) / 60) * pxPerHour
 
-  useGanttViewStore.getState().setScrollX(Math.max(0, Math.round(contentX - 150)))
+  if (!readOnly) useGanttViewStore.getState().setScrollX(Math.max(0, Math.round(contentX - 150)))
   const scrollX = useGanttViewStore.getState().scrollX
 
   let rosterPaneId: string | null = null
   for (const p of useLayoutStore.getState().panes.values()) {
     if (p.type === 'roster') { rosterPaneId = p.id; break }
   }
-  if (rosterPaneId) {
+  if (rosterPaneId && !readOnly) {
     useLayoutStore.getState().setViewport(rosterPaneId, { scrollY: Math.max(0, rowIndex * ROW_HEIGHT - 2 * ROW_HEIGHT) })
   }
   const scrollY = rosterPaneId ? (useLayoutStore.getState().panes.get(rosterPaneId)?.viewport?.scrollY ?? 0) : 0
@@ -1758,7 +1759,7 @@ const pairingProbes = (limit = 12): Array<{
 /** V4-P05: a probe that includes ALL visible segments per row (not just the first
  *  one with x in [20, 2000]). Lets tests click on whichever segment actually lands
  *  under the cursor when the pairing's earliest qualifying segment is far away. */
-const pairingVisibleSegments = (limit = 2000): Array<{
+const pairingVisibleSegments = (limit = 2000, targetPairingId?: number): Array<{
   segId: number; pairingId: number; fltId: number | null; schStrDtUtc: string; rowIndex: number
   scrollX: number; scrollY: number; pxPerHour: number; rangeStartIso: string; headerHeight: number; rowHeight: number
 }> => {
@@ -1783,7 +1784,7 @@ const pairingVisibleSegments = (limit = 2000): Array<{
     if (frozenSet.has(String(item.pairing.id))) frozen.push(item)
     else nonFrozen.push(item)
   }
-  const orderedItems = [...frozen, ...nonFrozen]
+  const orderedItems = targetPairingId == null ? [...frozen, ...nonFrozen] : (pairingOrderByPane.get('pairing') ?? []).map(row => pairingItems.find(item => String(item.pairing.id) === row.id)).filter((item): item is typeof pairingItems[number] => Boolean(item))
 
   const out: ReturnType<typeof pairingVisibleSegments> = []
   for (let rowIndex = 0; rowIndex < orderedItems.length && out.length < limit; rowIndex++) {

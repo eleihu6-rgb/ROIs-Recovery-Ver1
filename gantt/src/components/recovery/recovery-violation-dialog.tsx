@@ -1,5 +1,6 @@
+import { RecoveryPreviewDock } from './recovery-preview-dock'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, CheckCircle2, Eye, Loader2, Maximize2, Minimize2, ShieldAlert, Users } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, Eye, Loader2, Maximize2, ShieldAlert, Users } from 'lucide-react'
 import { AppDialog, Button, Popover, PopoverContent, PopoverTrigger } from '@rois/ui'
 import type { RosterItem } from '@/types'
 import { useRosterStore } from '@/stores/roster-store'
@@ -21,12 +22,16 @@ import { buildRecoveryDraftPlan } from '@/services/recovery-draft'
 import { recoveryTraceApi } from '@/services/recovery-api'
 import { RecoveryCostBreakdownDialog } from './recovery-cost-breakdown-dialog'
 import { DiscretionConsentComposer } from './discretion-consent-panel'
+import { FdpConsentChip, FdpDiscretionActionButton, fdpConsentNeedsFallback, useFdpDiscretionConsent, type FdpConsentStatus } from './fdp-discretion-action'
 import { buildRecoveryPlans, enrichPlansWithLibraryCosts, isRosterCompleted, recoveryRuleFailures, ROSTER_STABILITY_FORMULA, type CrossBaseCandidateTrace, type RecoveryAlertSnapshot, type RecoveryFlightSnapshot, type RecoveryLibraryCostFetcher, type RecoveryOption, type RecoveryPlans } from '@/services/recovery-candidates'
 import { recoveryCostApi } from '@/services/recovery-api'
 import { notify } from '@/utils/notify'
 import { bringCrewIdsToTop } from '@/utils/bring-matches-to-top'
+import { OpenRecoveryWorkspace } from './open-recovery-workspace'
+import type { OpenRecoveryIncident } from '@/services/open-pairing-recovery'
 
 interface Props {
+  incident?: OpenRecoveryIncident | null
   open: boolean
   onClose: () => void
   /** One or more alerts selected in Alert Center. A single alert remains supported for hover recovery. */
@@ -530,7 +535,7 @@ const RecoveryDetailChangesTable = memo(function RecoveryDetailChangesTable({ ch
  * With this component, opening the Detail dialog only mounts `<RecoveryDetailDialog>`
  * and its `RecoveryDetailChangesTable` — the parent dialog body is left alone.
  */
-const RecoveryDetailDialog = memo(function RecoveryDetailDialog({
+export const RecoveryDetailDialog = memo(function RecoveryDetailDialog({
   option,
   open,
   onOpenChange,
@@ -593,15 +598,19 @@ rulesetId: number
           </div>
         </div>
         <RecoveryDetailChangesTable changes={option.changes} />
-        <div className="mt-3 flex items-center gap-2 text-2xs text-muted-foreground">
+        {(option.mode === 'standby' || option.mode === 'cross-base-standby') && <div className="mt-3 flex items-center gap-2 text-2xs text-muted-foreground">
           <Users className="h-3.5 w-3.5" />Callout Standby retains the original SBY task and marks it with a yellow C indicator in the Live Gantt preview.
-        </div>
+        </div>}
       </div>
     </AppDialog>
   )
 })
 
-export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) => {
+export const RecoveryViolationDialog = (props: Props) => props.incident && props.open
+  ? <OpenRecoveryWorkspace key={JSON.stringify(props.incident)} incident={props.incident} onClose={props.onClose} PlanGroup={PlanGroup} DetailDialog={RecoveryDetailDialog} PlanTree={PlanTree} />
+  : <ViolationRecoveryWorkspace {...props} />
+
+const ViolationRecoveryWorkspace = ({ open, onClose, alert = null }: Props) => {
   const mainItems = useRosterStore((s) => s.main.rosterItems)
   const subItems = useRosterStore((s) => s.sub.rosterItems)
   const pairings = usePairingStore((s) => s.items)
@@ -628,6 +637,9 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   const [building, setBuilding] = useState(false)
   const [previewCollapsed, setPreviewCollapsed] = useState(false)
   const [previewedOptionId, setPreviewedOptionId] = useState<string | null>(null)
+  // Latest FDP-discretion communication outcome, lifted from the option row so the
+  // Standby group can be flagged as the next best answer after a rejection.
+  const [fdpConsentStatus, setFdpConsentStatus] = useState<FdpConsentStatus | null>(null)
   const selectedAlerts = useMemo(() => Array.isArray(alert) ? alert : alert ? [alert] : [], [alert])
 
   const items = useMemo(() => uniqueItems([...mainItems, ...subItems]), [mainItems, subItems])
@@ -638,19 +650,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
   // of right column) so the user always knows which method is the cheapest.
   // Mixed is included in the comparison only when it's visible (alerts > 1)
   // so single-alert flows don't get a misleading "mixed is cheapest" hint.
-  const bestGroupId = useMemo<RecoveryPlans['roster']['id'] | null>(() => {
-    if (!plans) return null
-    const rows = visiblePlanGroups(plans)
-    const currencies = new Set(rows.flatMap(g => g.options.filter(o => !o.metrics.costEnrichmentFailed).map(o => o.metrics.currency)))
-    if (currencies.size > 1) return null
-    let bestId: RecoveryPlans['roster']['id'] | null = null
-    let bestCost = Number.POSITIVE_INFINITY
-    for (const group of rows) {
-      const min = minOptionCost(group.options)
-      if (min != null && min < bestCost) { bestCost = min; bestId = group.id }
-    }
-    return bestId
-  }, [plans])
+  const bestGroupId = useMemo(() => plans ? bestRecoveryGroupId(visiblePlanGroups(plans)) : null, [plans])
   const selectedPlan = plans ? planForType(plans, selectedPlanType) : null
   // O(1) lookup across the active + filtered (excluded) option lists so the
   // Detail dialog opens instantly — without this we linearly scan both lists
@@ -692,6 +692,7 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
       setDetailOpen(false)
       setPreviewCollapsed(false)
       setPreviewedOptionId(null)
+      setFdpConsentStatus(null)
       clearPreview()
     }
   }, [open, clearPreview])
@@ -1034,22 +1035,10 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
          ? <div className="flex w-full items-center justify-between gap-2"><span className="truncate text-2xs text-muted-foreground">Preview only · not saved · {applyShortcutLabel} to Apply</span><div className="flex shrink-0 gap-2"><Button variant="ghost" className="h-7 gap-1 px-2" onClick={() => setPreviewCollapsed(false)} data-testid="recovery-return-to-options"><Maximize2 className="h-3.5 w-3.5" />Options</Button><span title={applyButtonTitle}><Button className="h-7 gap-1.5 px-3" disabled={applying || !isApplicableOption(executionOption)} onClick={() => void apply()} aria-keyshortcuts="Control+Enter Meta+Enter" data-testid="recovery-apply-preview"><CheckCircle2 className="h-3.5 w-3.5" />{applying ? 'Applying...' : 'Apply'}</Button></span><Button variant="ghost" className="h-7 px-2" onClick={() => { clearPreview(); onClose() }}>Close</Button></div></div>
           : <div className="flex w-full items-center justify-between gap-2"><span className="text-2xs text-muted-foreground">{executionLabel} · {applyShortcutLabel} to Apply</span><div className="flex gap-2"><Button variant="ghost" className="h-7 px-2" onClick={onClose}>Close</Button><span title={applyButtonTitle}><Button className="h-7 gap-1.5 px-3" disabled={applying || !isApplicableOption(executionOption)} onClick={() => void apply()} aria-keyshortcuts="Control+Enter Meta+Enter" data-testid="recovery-apply"><CheckCircle2 className="h-3.5 w-3.5" />{applying ? 'Applying...' : 'Apply selected option'}</Button></span></div></div>}
     >
-      {previewCollapsed && previewedOption ? <div className="p-3" data-testid="recovery-preview-dock">
-        <div className="flex items-start gap-2 rounded border border-emerald-500/30 bg-emerald-500/[0.08] p-3">
-          <Eye className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-          <div className="min-w-0">
-            <div className="truncate text-xs font-semibold text-foreground">{previewedOption.title}</div>
-            <div className="mt-1 text-2xs leading-4 text-muted-foreground">The Live Gantt shows the original roster and the selected recovery roster together. The preview remains in memory only.</div>
-          </div>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-2xs">
-           {metric('Affected Crew', previewedOption.subOptions?.length ? [...new Set(previewedOption.subOptions.flatMap((candidate) => [candidate.sourceCrewId, candidate.targetCrewId]))].join(', ') : previewedOption.targetCrewId)}
-          {metric('Method', previewedOption.mode === 'standby' ? 'Callout SBY' : 'Roster transfer / swap')}
-          {metric('Roster impact', previewedOption.metrics.changedRosterCount)}
-          {metric('Total cost', optionCostLabel(previewedOption))}
-        </div>
-        <Button variant="ghost" className="mt-3 h-7 gap-1 px-2 text-2xs" onClick={() => setPreviewCollapsed(false)} data-testid="recovery-expand-options"><Minimize2 className="h-3.5 w-3.5" />Return to recovery options</Button>
-      </div> : <div className={alert
+      {previewCollapsed && previewedOption ? <RecoveryPreviewDock title={previewedOption.title}
+        crew={previewedOption.subOptions?.length ? [...new Set(previewedOption.subOptions.flatMap(candidate => [candidate.sourceCrewId, candidate.targetCrewId]))].join(', ') : previewedOption.targetCrewId}
+        method={previewedOption.mode === 'standby' ? 'Callout SBY' : 'Roster transfer / swap'}
+        impact={previewedOption.metrics.changedRosterCount} cost={optionCostLabel(previewedOption)} onReturn={() => setPreviewCollapsed(false)} /> : <div className={alert
         ? 'flex h-[min(92vh,920px)] min-h-0 flex-1 flex-col'
         : 'grid h-[min(92vh,920px)] min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(150px,0.4fr)_minmax(0,1.6fr)] lg:min-h-[680px] lg:grid-cols-[minmax(0,0.45fr)_minmax(0,1.85fr)] lg:grid-rows-1'}>
         {!alert && <section className="flex min-h-0 min-w-0 flex-col border-b border-border lg:border-b-0 lg:border-r">
@@ -1092,7 +1081,20 @@ export const RecoveryViolationDialog = ({ open, onClose, alert = null }: Props) 
                 selectedPlanType={selectedPlanType}
                 bestGroupId={bestGroupId}
               />
-              {selectedPlan && <PlanGroup group={selectedPlan} selectedOptionId={selectedOptionId} executionOptionId={executionOptionId} onSelect={selectOption} onToggleExecution={selectExecutionOption} onDetail={openDetail} onPreview={previewInLive} onShowCostBreakdown={setCostBreakdownOption} />}
+              {selectedPlan && <PlanGroup
+                group={selectedPlan}
+                selectedOptionId={selectedOptionId}
+                executionOptionId={executionOptionId}
+                onSelect={selectOption}
+                onToggleExecution={selectExecutionOption}
+                onDetail={openDetail}
+                onPreview={previewInLive}
+                onShowCostBreakdown={setCostBreakdownOption}
+                ruleSetId={rulesetId}
+                recommendedNext={selectedPlan.id === 'standby' && fdpConsentNeedsFallback(fdpConsentStatus ?? 'not-sent')}
+                onSelectGroup={selectPlanType}
+                onFdpStatusChange={setFdpConsentStatus}
+              />}
               <div className="shrink-0 text-3xs text-muted-foreground/60">Stability: <span className="font-mono">{ROSTER_STABILITY_FORMULA}</span></div>
             </div>
           </div>}
@@ -1191,12 +1193,25 @@ const FlightDelayFlights = ({ option }: { option: RecoveryOption }) => {
   )
 }
 
-const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onToggleExecution, onDetail, onPreview, onShowCostBreakdown }: { group: RecoveryPlans['roster']; selectedOptionId: string | null; executionOptionId: string | null; onSelect: (option: RecoveryOption) => void; onToggleExecution: (option: RecoveryOption, checked: boolean) => void; onDetail: (option: RecoveryOption) => void; onPreview: (option: RecoveryOption) => void; onShowCostBreakdown: (option: RecoveryOption) => void }) => {
+export const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onToggleExecution, onDetail, onPreview, onShowCostBreakdown, ruleSetId, recommendedNext, onSelectGroup, onFdpStatusChange }: { group: RecoveryPlans['roster']; selectedOptionId: string | null; executionOptionId: string | null; onSelect: (option: RecoveryOption) => void; onToggleExecution: (option: RecoveryOption, checked: boolean) => void; onDetail: (option: RecoveryOption) => void; onPreview: (option: RecoveryOption) => void; onShowCostBreakdown: (option: RecoveryOption) => void; ruleSetId?: number | null; recommendedNext?: boolean; onSelectGroup?: (planType: RecoveryPlans['roster']['id']) => void; onFdpStatusChange?: (status: FdpConsentStatus) => void }) => {
   const tone = planTone(group.id)
   const excludedCount = group.excludedOptions.length
   const isExecutable = (option: RecoveryOption): boolean => isApplicableOption(option)
   const executableOptions = group.options.filter(isExecutable)
   const [filter, setFilter] = useState<'all' | 'executable' | 'filtered'>('all')
+  // FDP discretion is the only method whose "option" is a crew-agreement request
+  // rather than a roster change, so it owns the communication state for the row.
+  const isFdpGroup = group.id === 'fdp-discretion'
+  const fdpOption = isFdpGroup ? group.options[0] : undefined
+  const fdp = useFdpDiscretionConsent({
+    enabled: isFdpGroup && !!fdpOption,
+    pairingId: fdpOption?.sourcePairingId ?? null,
+    dutySeq: fdpOption?.fdpDiscretion?.dutySeq ?? null,
+    ruleSetId: ruleSetId ?? null,
+    crewId: fdpOption?.targetCrewId ?? '',
+    onStatusChange: onFdpStatusChange,
+  })
+  const fdpFallback = fdpConsentNeedsFallback(fdp.status)
   // Reset to 'all' when the user switches between Roster / Standby / Cross-base methods
   // so they always start by seeing the full candidate set.
   useEffect(() => { setFilter('all') }, [group.id])
@@ -1209,11 +1224,29 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
   const isFilteredTab = filter === 'filtered'
   // Flight Delay lists the affected Pairing's flights instead of Crew candidates.
   const isFlightDelayGroup = group.id === 'flight-delay'
+  // The FDP row carries a request button + status chip before Preview/Detail, so it
+  // needs a wider ACTIONS column. Tailwind must see the class strings literally.
+  const rowColumns = isFlightDelayGroup
+    ? { base: 'grid-cols-[minmax(0,1fr)_180px]', sm: 'sm:grid-cols-[minmax(0,1fr)_180px]' }
+    : isFdpGroup
+      ? { base: 'grid-cols-[minmax(200px,1fr)_56px_56px_72px_88px_300px]', sm: 'sm:grid-cols-[minmax(200px,1fr)_56px_56px_72px_88px_300px]' }
+      : { base: 'grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px]', sm: 'sm:grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px]' }
   return (
     <section className={["flex min-h-0 min-w-0 flex-1 flex-col border border-l-4 bg-card", tone.section].join(' ')} data-testid={`recovery-options-${group.id}`}>
       <div className={['shrink-0 border-b border-border px-2.5 py-1.5', tone.header].join(' ')}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-semibold text-foreground"><span className={['h-2 w-2 rounded-full', tone.dot].join(' ')} />{group.title}</div>
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-foreground">
+            <span className={['h-2 w-2 rounded-full', tone.dot].join(' ')} />{group.title}
+            {recommendedNext && (
+              <span
+                className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-2xs font-semibold text-emerald-700 dark:text-emerald-300"
+                title="The crew refused the FDP extension, so the next best answer is a Standby Crew callout."
+                data-testid="recovery-standby-recommended"
+              >
+                Recommended next
+              </span>
+            )}
+          </div>
           <span className="text-2xs tabular-nums text-muted-foreground">{group.options.length} available · {excludedCount} filtered</span>
         </div>
         <div className="mt-0.5 text-2xs text-muted-foreground">{group.description}</div>
@@ -1247,7 +1280,7 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
       {visibleOptions.length === 0 && !isFilteredTab ? <div className="min-h-0 flex-1 px-3 py-3 text-xs text-muted-foreground">{filter === 'executable' ? 'No executable Crew in this plan. Try a different recovery method or check the Filtered tab.' : 'No executable candidates in the current loaded data range.'}</div> : null}
       {isFilteredTab && visibleFiltered.length === 0 ? <div className="min-h-0 flex-1 px-3 py-3 text-xs text-muted-foreground">No options were filtered out by Rule check. Every candidate in this plan is potentially executable.</div> : null}
       {(visibleOptions.length > 0 || (isFilteredTab && visibleFiltered.length > 0)) && <div className="min-h-0 flex-1 overflow-auto">
-        <div className={['sticky top-0 z-10 hidden gap-2 border-b border-border bg-background/95 px-3 py-1.5 text-3xs uppercase tracking-wide text-muted-foreground backdrop-blur sm:grid', isFlightDelayGroup ? 'grid-cols-[minmax(0,1fr)_180px]' : 'grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px]'].join(' ')}>
+        <div className={['sticky top-0 z-10 hidden gap-2 border-b border-border bg-background/95 px-3 py-1.5 text-3xs uppercase tracking-wide text-muted-foreground backdrop-blur sm:grid', rowColumns.base].join(' ')}>
           {isFlightDelayGroup
             ? <><span className="border-r border-border/60 pr-2" data-testid="recovery-flight-delay-column">Flight</span><span className="text-right">Actions</span></>
             : <><span className="border-r border-border/60 pr-2">Crew / option</span><span className="text-center">Cancel</span><span className="text-center">Add</span><span className="text-center">Stability</span><span className="text-center">Cost</span><span className="text-right">Actions</span></>}
@@ -1268,14 +1301,18 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                     <span className={selected ? ['h-2 w-2 rounded-full', tone.dot].join(' ') : 'h-2 w-2 rounded-full bg-border'} aria-hidden="true" />
                   </div>
                 </div>
-              : <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_60px_60px_80px_100px_180px] sm:items-center">
+              : <div className={['grid gap-2 sm:items-center', rowColumns.sm].join(' ')}>
               <div className="flex min-w-0 items-start gap-2">
                 <label className="mt-0.5 flex shrink-0 items-center text-2xs text-muted-foreground" title="Select this Crew for execution">
                   <input type="checkbox" checked={executionSelected} disabled={!executable} onChange={(event) => onToggleExecution(option, event.target.checked)} aria-label={`Execute recovery with Crew ${option.targetCrewId}`} data-testid={`recovery-crew-checkbox-${option.targetCrewId}`} className="h-3.5 w-3.5 accent-primary" />
                   <span className="sr-only">Execute with Crew {option.targetCrewId}</span>
                 </label>
                 <button type="button" className="min-w-0 text-left" onClick={() => onSelect(option)}>
-                  <div className="flex flex-wrap items-center gap-1.5 text-2xs font-semibold text-foreground"><span>{option.title}</span><span className={["rounded px-1.5 py-0.5 text-2xs", executable ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : option.ruleCheck === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'].join(' ')}>{optionBadge(option)}</span></div>
+                  <div className="flex flex-wrap items-center gap-1.5 text-2xs font-semibold text-foreground">
+                    <span>{option.title}</span>
+                    <span className={["rounded px-1.5 py-0.5 text-2xs", executable ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : option.ruleCheck === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'].join(' ')}>{optionBadge(option)}</span>
+                    {option.mode === 'fdp-discretion' && <FdpConsentChip status={fdp.status} feedback={fdp.feedback} />}
+                  </div>
                   <div className="mt-0.5 text-3xs text-muted-foreground">{option.targetCrewId} · {option.sameRank ? 'same rank' : 'rank adjustment'} · {option.sameBase ? 'same base' : 'cross base'}{option.timeDistanceMinutes != null ? ` · ${option.timeDistanceMinutes} min start gap` : ''}</div>
                 </button>
               </div>
@@ -1290,6 +1327,14 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
                 <button type="button" className="hidden border-l border-border/50 px-1.5 text-center text-2xs font-semibold tabular-nums text-foreground underline-offset-2 hover:underline sm:block" onClick={() => onShowCostBreakdown(option)} data-testid={`recovery-cost-button-${option.id}`}>{optionCostLabel(option)}</button>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border/60 pt-1 sm:border-0 sm:pt-0">
+                {option.mode === 'fdp-discretion' && (
+                  <FdpDiscretionActionButton
+                    state={fdp}
+                    disabled={!fdp.ready}
+                    disabledReason={fdp.error || 'Preparing the authoritative duty window for this crew…'}
+                    testId={`recovery-fdp-request-${option.id}`}
+                  />
+                )}
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onPreview(option)} data-testid={`recovery-preview-${option.id}`}><Eye className="h-3.5 w-3.5" />Preview</button>
                 <button type="button" className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-3xs font-medium text-foreground hover:bg-accent" onClick={() => onDetail(option)} data-testid="recovery-detail"><Eye className="h-3.5 w-3.5" />Detail</button>
                 <span className={selected ? ['h-2 w-2 rounded-full', tone.dot].join(' ') : 'h-2 w-2 rounded-full bg-border'} aria-hidden="true" />
@@ -1316,6 +1361,21 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
               <span>Support base: <b>{option.positioning.supportBase}</b> · Recovery base: <b>{option.positioning.recoveryBase}</b></span>
               <span>DHD: <b>{option.positioning.outbound.fltNum}</b> outbound / <b>{option.positioning.inbound.fltNum}</b> return · {money(option.metrics.dhdFlightCost, option.metrics.currency)}</span>
             </div>}
+            {option.mode === 'fdp-discretion' && fdpFallback && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-destructive/40 bg-destructive/[0.06] p-2 text-2xs text-destructive" data-testid="recovery-fdp-fallback-hint">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {fdp.status === 'expired'
+                    ? 'The crew did not reply before the deadline.'
+                    : 'The crew rejected the FDP extension.'} Standby Crew callout is the next best solution.
+                </span>
+                {onSelectGroup && (
+                  <button type="button" className="font-semibold underline underline-offset-2" onClick={() => onSelectGroup('standby')} data-testid="recovery-fdp-show-standby">
+                    Show Standby Crew callout
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         })}
         {visibleFiltered.map((option) => {
@@ -1395,6 +1455,7 @@ const PlanGroup = ({ group, selectedOptionId, executionOptionId, onSelect, onTog
           </PopoverContent>
         </Popover>
       )}
+      {isFdpGroup && fdp.dialog}
     </section>
   )
 }
@@ -1432,22 +1493,27 @@ const bestCost = (group: RecoveryPlans['roster']): string => {
  * leaf drives the parent `selectPlanType`, which re-renders the right
  * column's PlanSummary + PlanGroup.
  */
-const PlanTree = ({
+export const PlanTree = ({
   plans,
+  groups,
+  disabled = false,
   selectedPlanType,
-  bestGroupId,
+  bestGroupId: suppliedBestGroupId,
   onSelect,
 }: {
-  plans: RecoveryPlans
+  plans?: RecoveryPlans
+  groups?: RecoveryPlans['roster'][]
+  disabled?: boolean
   selectedPlanType: RecoveryPlans['roster']['id']
-  bestGroupId: RecoveryPlans['roster']['id'] | null
+  bestGroupId?: RecoveryPlans['roster']['id'] | null
   onSelect: (planType: RecoveryPlans['roster']['id']) => void
 }) => {
   // Mixed recovery is only meaningful for multi-alert plans (one alert
   // always trivially picks itself). Hide the leaf in the tree when
   // alerts.length <= 1 so single-alert flows (right-click → Recovery, single
   // Alert Center row) never expose a no-op entry.
-  const rows = visiblePlanGroups(plans)
+  const rows = groups ?? (plans ? visiblePlanGroups(plans) : [])
+  const bestGroupId = suppliedBestGroupId === undefined ? bestRecoveryGroupId(rows) : suppliedBestGroupId
   const currencies = new Set(rows.flatMap(g => g.options.filter(o => !o.metrics.costEnrichmentFailed).map(o => o.metrics.currency)))
   const currency = currencies.size === 1 ? [...currencies][0] : null
   const costTiers = useMemo(() => {
@@ -1485,7 +1551,9 @@ const PlanTree = ({
               <li key={group.id} role="treeitem" aria-selected={selected}>
                 <button
                   type="button"
+                  disabled={disabled}
                   onClick={() => onSelect(group.id)}
+                  aria-label={group.title}
                   data-testid={`recovery-plan-filter-${group.id}`}
                   className={[
                     'flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-xs transition-colors',
@@ -1504,7 +1572,7 @@ const PlanTree = ({
           })}
         </ul>
         <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">By cost tier</div>
-        <ul className="space-y-0.5" role="tree">
+        <ul className="space-y-0.5" role="tree" aria-label="By cost tier">
           {costTiers.map((tier) => (
             <li key={tier.key} role="treeitem">
               <div className="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs text-foreground">
@@ -1525,7 +1593,9 @@ const PlanTree = ({
                     <li key={group.id}>
                       <button
                         type="button"
-                        onClick={() => onSelect(group.id)}
+                        data-testid={`recovery-cost-tier-${tier.key}-${group.id}`}
+                        disabled={disabled}
+                  onClick={() => onSelect(group.id)}
                         className={[
                           'flex w-full items-center justify-between gap-2 rounded px-2 py-0.5 text-left text-2xs transition-colors',
                           selected ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
@@ -1621,4 +1691,17 @@ const minOptionCost = (options: RecoveryOption[]): number | null => {
     if (best == null || cost < best) best = cost
   }
   return best
+}
+
+/** Same priced/executable comparison for every recovery incident type. */
+const bestRecoveryGroupId = (rows: RecoveryPlans['roster'][]): RecoveryPlans['roster']['id'] | null => {
+  const currencies = new Set(rows.flatMap(group => group.options.filter(option => !option.metrics.costEnrichmentFailed).map(option => option.metrics.currency)))
+  if (currencies.size > 1) return null
+  let bestId: RecoveryPlans['roster']['id'] | null = null
+  let bestCost = Number.POSITIVE_INFINITY
+  for (const group of rows) {
+    const min = minOptionCost(group.options)
+    if (min != null && min < bestCost) { bestCost = min; bestId = group.id }
+  }
+  return bestId
 }

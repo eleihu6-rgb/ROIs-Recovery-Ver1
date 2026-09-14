@@ -128,20 +128,11 @@ describe("PairingCalendarBidDetailDialog", () => {
     expect(within(summaryGrid).getAllByText("20260408").length).toBeGreaterThanOrEqual(3);
     expect(within(summaryGrid).getByText("20260410")).toBeInTheDocument();
     const dialog = screen.getByRole("dialog", { name: "Pairing Bid" });
-    const overlay = screen.getByTestId("pairing-bid-detail-overlay");
 
-    expect(screen.getByTestId("scaled-page-dialog-portal-root")).toContainElement(overlay);
-    expect(overlay.parentElement).not.toBe(document.body);
-    expect(document.body.style.overflow).toBe("hidden");
-    expect(overlay.className).toContain("justify-center");
-    expect(overlay.className).toContain("overflow-hidden");
-    expect(overlay.className).toContain("inset-0");
-    expect(overlay.className).not.toContain("justify-start");
-    expect(overlay.className).not.toContain("bottom-4");
-    expect(dialog.className).toContain("!w-[880px]");
-    expect(dialog.className).toContain("!max-h-[calc(var(--portal-page-shell-height)-32px)]");
+    // AppDialog owns the overlay + Radix portal; the legacy portalTarget is now a no-op.
+    expect(screen.getByTestId("scaled-page-dialog-portal-root")).not.toContainElement(dialog);
+    expect(dialog.className).toContain("w-[min(880px,calc(100vw-32px))]");
     expect(dialog.className).not.toContain("w-[min(1600px,calc(100vw-96px))]");
-    expect(dialog).not.toHaveAttribute("style");
     expect(screen.getByTestId("pairing-bid-detail-scroll-region").className).toContain("overflow-x-auto");
     expect(screen.getByText("QUAL")).toBeInTheDocument();
     expect(screen.getByText("ALN")).toBeInTheDocument();
@@ -205,7 +196,8 @@ describe("PairingCalendarBidDetailDialog", () => {
     fireEvent.click(dialog);
     expect(onClose).not.toHaveBeenCalled();
 
-    fireEvent.click(overlay);
+    // Escape dismissal is preserved by the PbsDialogFrame adapter.
+    fireEvent.keyDown(window, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
 
     unmount();

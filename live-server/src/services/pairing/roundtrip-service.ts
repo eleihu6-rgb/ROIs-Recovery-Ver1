@@ -9,6 +9,7 @@ import { pairing } from '../../models/pairing/pairing.js'
 import { pairingSegment } from '../../models/pairing/pairing-segment.js'
 import { notDeleted } from '../../utils/db.js'
 import { pairingBuildService } from './pairing-build-service.js'
+import { chooseRecoveryRotations } from './recovery-rotations.js'
 import { buildFlightLinks, chooseRotations, isRoundtripFlightCancelled, linkScope, roundtripError, roundtripScopeSchema, scopeBounds, scopeFleetMatches, toRoundtripFlight, validateRotation, type Rotation, type RoundtripFlight, type RoundtripScope } from './roundtrip-chooser.js'
 
 export const roundtripService = {
@@ -30,10 +31,10 @@ export const roundtripService = {
     if (new Set(scope.composition.map(c => c.rank)).size !== scope.composition.length || scope.composition.some(c => !options.ranks.includes(c.rank)) || !scope.composition.some(c => c.plan > 0)) throw roundtripError('Select valid, unique crew ranks and positive composition')
     return scope
   },
-  async search(fastify: FastifyInstance, input: RoundtripScope) {
+  async search(fastify: FastifyInstance, input: RoundtripScope, anchorFlightId?: number) {
     const scope = await this.validateScope(fastify, input)
     const bounds = scopeBounds(scope)
-    const linkBounds = scopeBounds(linkScope(scope))
+    const linkBounds = anchorFlightId == null ? scopeBounds(linkScope(scope)) : bounds
     const covered = fastify.db.select({ id: pairingSegment.id }).from(pairingSegment)
       .innerJoin(pairing, and(eq(pairing.id, pairingSegment.pairingId), notDeleted(pairing.isDeleted)))
       .where(and(eq(pairingSegment.fltId, flight.id), eq(pairing.division, 'P'), notDeleted(pairingSegment.isDeleted), or(isNull(pairingSegment.segAssignment), notInArray(pairingSegment.segAssignment, ['DH', 'DHD']))))
@@ -47,6 +48,10 @@ export const roundtripService = {
     const inScope = (f: typeof activeRows[number]): boolean => f.schDepDtUtc >= bounds.start && f.schArvDtUtc < bounds.end
     const linkFlights = activeRows.filter(f => baseAirlines.has(f.airline) && scopeFleetMatches(scope, f.fleet)).map(toRoundtripFlight)
     const flights = activeRows.filter(f => inScope(f) && baseAirlines.has(f.airline) && scopeFleetMatches(scope, f.fleet)).map(toRoundtripFlight)
+    if (anchorFlightId != null) {
+      if (!flights.some(f => f.id === anchorFlightId)) throw roundtripError('Selected flight is no longer open or is outside the selected scope', 409)
+      return { flights, linkedFlights: {}, selectionRotations: {}, links: {}, ...chooseRecoveryRotations(flights, scope, anchorFlightId) }
+    }
     const rotations = chooseRotations(flights, scope)
     const links = buildFlightLinks(linkFlights, rotations, scope)
     const scopeFlightIds = new Set(flights.map(f => f.id))
@@ -67,8 +72,9 @@ export const roundtripService = {
     }
     return { flights, linkedFlights, rotations, selectionRotations, links }
   },
-  async build(fastify: FastifyInstance, input: RoundtripScope, flightIds: number[], username: string) {
+  async build(fastify: FastifyInstance, input: RoundtripScope, flightIds: number[], username: string, anchorFlightId?: number) {
     const scope = await this.validateScope(fastify, input)
-    return pairingBuildService.build(fastify, flightIds, username, linkScope(scope))
+    if (anchorFlightId != null && !flightIds.includes(anchorFlightId)) throw roundtripError('Pairing must include the selected flight')
+    return pairingBuildService.build(fastify, flightIds, username, anchorFlightId == null ? linkScope(scope) : scope)
   },
 }

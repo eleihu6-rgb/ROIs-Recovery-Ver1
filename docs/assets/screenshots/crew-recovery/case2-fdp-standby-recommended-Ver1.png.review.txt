@@ -1,0 +1,108 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/case2-fdp-standby-recommended-Ver1.png
+  size:   1440x900
+  pixels: meanLuminance=232.8 uniqueColors=5132 inkRatio=0.17863 blank=false
+  ocr:    80 text blocks
+  asserted present: "Recommended next"
+  vision: PASS (model=gpt-5.6-luna, 9.0s)
+
+--- OCR text (reading order, top to bottom) ---
+Recovery Loaded Live data only
+Recovery methods
+Rule 3007 • ET2681 • 2026-09-29 3 Crew • 1 Roster
+Pick a strategy or cost tler; the cheapest Is
+Published delay: actual departure later than scheduled; open Recovery preparation tor FDP impact review
+marked*.
+BY STRATEGY
+Standby Crew callout
+Selected
+The original SBY ground task Is retalned. A matching SBY task Is marked Callout Standby in the prevlew.
+• FDP Discretion
+• Standby Crew callout
+Options
+Executable
+Filtered
+Best cost
+US$0.00
+• Swap duty
+• Flight Delay
+• Standby Crew callout
+Recommended next
+6 avallable • 0 filtered
+The original SBY ground task Is retalned. A matching SBY task Is marked Callout Standby in the preview.
+BY COST TIER
+All (6) Executable (0) Filtered (0)
+* = lowest avallable priced estimate;
+unpriced options excluded.
+CREW / OPTION
+CANCEL
+ADD
+STABILITY
+COST
+ACTIONS
+Callout T2002
+Checking
+99.75%
+US$0.00
+©Preview
+•Detail•
+CAmeaAk CAMRORSR
+GH 85h • credit before 55:30 → after 71:00 (HH:MM).
+SBY window: 2026-09-29T00:00:00.000Z - 2026-09-29T08:00:00.000Z • original SBY retalned • Callout Icon in preview
+Callout T2003 Checking
+99.75%
+US$240.00
+• Preview
+• Detail
+T2003 - same rank • same base
+5
+GH 85h - credit before 71:30 → after 87:00 (HH:MM).
+SBY window: 2026-09-29T00:00:00.000Z - 2026-09-29T08:00:00.000Z • original SBY retalned • Callout Icon in prevlew
+Callout T2004 Checking
+99.75%
+US$675.00
+© Preview
+• Detail
+12004 - same rank • same base
+GH 85h - credit before 75:00 → after 90:30 (HH:MM)
+SBY window: 2026-09-29T00:00:00.000Z - 2026-09-29T08:00:00.000Z • original SBY retained - Callout Icon in preview
+Callout T2005 Checking
+99.75%
+US$1,350.00
+© Preview
+• Detail
+a camRAnk CAmROASA
+GH 85h • credit before 79:30 → after 95:00 (HH:MM).
+SBY window: 2026-09-29T00:00:00.000Z - 2026-09-29T08:00:00.000Z • orlginal SBY retalned • Callout Icon in prevlew
+Callout T2006 Checking
+99.75%
+US$1,950.00
+• Preview
+• Detail
+T2006 • same rank • same base
+GH 85h • credit before 83:30 → after 99:00 (HH:MM).
+SBY window: 2026-09-29T00:00:00.000Z - 2026-09-29T08:00:00.000Z • orlainal SBY retalned • Callout Icon in prevlew
+stabillty: roundmax10, mzn1100, 100 * 1 - 10.33т0LL0w-0n + 0.30жcancelleo + u.zosadded + 0._5*cnangea/ maxia loadeo rostersz
+Check one recovery option • Ctrl/Cmd + Enter to Apply
+Close
+Apply selected option
+No SeIectIon
+
+--- model visual read (multimodal model, asked about this exact PNG) ---
+1. Recovery dialog, “Loaded Live data only.” The “Standby Crew callout” strategy is selected; another Standby Crew callout section is marked “Recommended next.”
+
+2. Visible text/counts:
+   - `Rule 3007 · ET2681 · 2026-09-29`
+   - `3 Crew · 1 Roster`
+   - `Selected`
+   - `Recommended next`
+   - `Options 6`, `Executable 0`, `Filtered 0`, `Best cost US$0.00`
+   - `6 available · 0 filtered`
+   - `All (6)`, `Executable (0)`, `Filtered (0)`
+   - Row status badges: `Checking`
+   - Visible costs: `US$0.00`, `US$240.00`, `US$675.00`, `US$1,350.00`, `US$1,950.00`
+
+3. Potential issues:
+   - The sixth option is counted but not visible; the fifth row is cut off by the bottom footer.
+   - The bottom stability formula/text is very small and difficult to read.
+   - No obvious overlap or major alignment defect is visible.

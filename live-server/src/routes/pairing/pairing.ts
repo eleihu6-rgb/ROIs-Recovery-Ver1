@@ -33,9 +33,9 @@ const bodySchema = z.object({
 export default async function pairingRoutes(fastify: FastifyInstance) {
   fastify.get('/roundtrip/options', async (_request, reply) => success(reply, await roundtripService.options(fastify)))
   fastify.post('/roundtrip/search', async (request, reply) => {
-    const parsed = z.object({ scope: roundtripScopeSchema }).safeParse(request.body)
+    const parsed = z.object({ scope: roundtripScopeSchema, anchorFlightId: z.number().int().positive().optional() }).safeParse(request.body)
     if (!parsed.success) return error(reply, 400, parsed.error.message)
-    try { return success(reply, await roundtripService.search(fastify, parsed.data.scope)) }
+    try { return success(reply, await roundtripService.search(fastify, parsed.data.scope, parsed.data.anchorFlightId)) }
     catch (err) {
       const problem = err as Error & { statusCode?: number }
       if (problem.statusCode) return error(reply, problem.statusCode, problem.message)
@@ -43,9 +43,9 @@ export default async function pairingRoutes(fastify: FastifyInstance) {
     }
   })
   fastify.post('/roundtrip/build', async (request, reply) => {
-    const parsed = z.object({ scope: roundtripScopeSchema, flightIds: z.array(z.number().int().positive()).min(1).max(roundtripProfile.limits.maxRotationLegs) }).safeParse(request.body)
+    const parsed = z.object({ scope: roundtripScopeSchema, anchorFlightId: z.number().int().positive().optional(), flightIds: z.array(z.number().int().positive()).min(1).max(roundtripProfile.limits.maxRotationLegs) }).safeParse(request.body)
     if (!parsed.success) return error(reply, 400, parsed.error.message)
-    try { return success(reply, await roundtripService.build(fastify, parsed.data.scope, parsed.data.flightIds, request.authUser?.userCode ?? 'system')) }
+    try { return success(reply, await roundtripService.build(fastify, parsed.data.scope, parsed.data.flightIds, request.authUser?.userCode ?? 'system', parsed.data.anchorFlightId)) }
     catch (err) {
       const problem = err as Error & { statusCode?: number }
       if (problem.statusCode) return error(reply, problem.statusCode, problem.message)

@@ -14,7 +14,9 @@ test('Recovery Cost Library — real catalogue, GH, standby, delay and membershi
   await page.getByTestId('module-nav-legality').click()
   await page.getByRole('button', { name: 'Cost Templates', exact: true }).click()
   const library = page.getByTestId('cost-library-view')
-  await expect(library).toBeVisible()
+  // The Cost Library mounts lazily behind the Legality shell; under a full-suite
+  // run the default 5s is too tight, which failed this capture spec spuriously.
+  await expect(library).toBeVisible({ timeout: 20_000 })
   const shot = async (locator: Locator, name: string) => {
     const dir = path.join(ROOT, 'docs/assets/screenshots/gantt')
     mkdirSync(dir, { recursive: true })

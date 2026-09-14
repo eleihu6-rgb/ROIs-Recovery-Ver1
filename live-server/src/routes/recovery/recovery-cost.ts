@@ -33,11 +33,16 @@ import { CostLibraryError } from '../../services/cost/cost-library-service.js'
 import { calculateCost } from '../../services/cost/cost-calculator.js'
 import { calculateSwapGhCost } from '../../services/recovery/swap-gh-cost.js'
 import { calculateStandbyGhCost } from '../../services/recovery/standby-gh-cost.js'
+import { calculateTransferGhCost } from '../../services/recovery/transfer-gh-cost.js'
+import { calculateOpenPairingGhCost } from '../../services/recovery/open-pairing-gh-cost.js'
 import { validateParameters } from '../../services/cost/cost-validation.js'
 
 const costInputSchema = z.object({
+  openPairingContext: z.object({ crewId: z.string().min(1).max(40), pairingId: z.number().int().positive(), donorPairingId: z.number().int().positive().optional() }).optional(),
   swapContext: z.object({ sourceCrewId: z.string().min(1).max(40), sourcePairingId: z.number().int().positive(), targetCrewId: z.string().min(1).max(40), targetPairingId: z.number().int().positive() }).optional(),
   standbyContext: z.object({ crewId: z.string().min(1).max(40), pairingId: z.number().int().positive(), standbyTaskId: z.number().int().positive() }).optional(),
+  // One-way Roster transfer: the source crew releases the pairing to the target crew.
+  transferContext: z.object({ sourceCrewId: z.string().min(1).max(40), sourcePairingId: z.number().int().positive(), targetCrewId: z.string().min(1).max(40) }).optional(),
   // `swap-duty` (Assignment Overlap) prices like a swap; `flight-delay` keeps the
   // Crew and is priced as a delay-only option (no roster-change components).
   mode: z.enum(['transfer', 'swap', 'standby', 'swap-duty', 'flight-delay', 'fdp-discretion', 'cross-base-standby', 'cross-base-swap', 'cross-base-destination', 'cross-base-direct']),
@@ -155,17 +160,8 @@ const buildCalculatorInputs = (
 }
 
 export default async function recoveryCostRoutes(fastify: FastifyInstance): Promise<void> {
-  const calculate = async (input: CostInput): Promise<RecoveryCostBreakdown> => {
-    if (input.mode === 'standby' && input.standbyContext) {
-      return calculateStandbyGhCost(fastify.pgPool, input.standbyContext)
-    }
-    if (input.mode === 'swap-duty') {
-      if (!input.swapContext) return { directCost: null, currency: 'USD', breakdown: [], notes: ['Swap GH pricing requires both saved crew and pairing identities.'] }
-      if (input.crossBase || input.crossDivision || input.crossRole || input.followOnImpactCount || input.dhdOutboundSectors || input.dhdFlightCost || input.dhdCostSavings) {
-        return { directCost: null, currency: 'USD', breakdown: [], notes: ['Swap GH estimate does not cover cross-base, cross-role, positioning or follow-on changes.'] }
-      }
-      return calculateSwapGhCost(fastify.pgPool, input.swapContext)
-    }
+  /** Price the configured library components (roster-change / positioning / penalties). */
+  const priceComponents = async (input: CostInput): Promise<RecoveryCostBreakdown> => {
     const components = buildComponents(input)
     if (components.length === 0) {
       return { directCost: null, currency: 'CNY', breakdown: [], notes: ['No complete cost estimate is configured for this option.'] }
@@ -333,6 +329,44 @@ export default async function recoveryCostRoutes(fastify: FastifyInstance): Prom
     }
     const complete = breakdown.length > 0 && breakdown.every(row => row.status === 'priced') && new Set(breakdown.map(row => row.currencyCode)).size <= 1
     return { directCost: complete ? directCost : null, currency: firstCurrency, breakdown, notes }
+  }
+
+  const calculate = async (input: CostInput): Promise<RecoveryCostBreakdown> => {
+    if (input.mode === 'transfer' && input.openPairingContext) {
+      const [fees, gh] = await Promise.all([priceComponents(input), calculateOpenPairingGhCost(fastify.pgPool, input.openPairingContext)])
+      return { directCost: fees.directCost != null && gh.directCost != null && fees.currency === gh.currency ? Math.round((fees.directCost + gh.directCost) * 100) / 100 : null,
+        currency: gh.currency, breakdown: [...fees.breakdown, ...gh.breakdown], notes: [...fees.notes, ...gh.notes] }
+    }
+    if (input.mode === 'standby' && input.standbyContext) {
+      return calculateStandbyGhCost(fastify.pgPool, input.standbyContext)
+    }
+    if (input.mode === 'swap-duty') {
+      if (!input.swapContext) return { directCost: null, currency: 'USD', breakdown: [], notes: ['Swap GH pricing requires both saved crew and pairing identities.'] }
+      if (input.crossBase || input.crossDivision || input.crossRole || input.followOnImpactCount || input.dhdOutboundSectors || input.dhdFlightCost || input.dhdCostSavings) {
+        return { directCost: null, currency: 'USD', breakdown: [], notes: ['Swap GH estimate does not cover cross-base, cross-role, positioning or follow-on changes.'] }
+      }
+      return calculateSwapGhCost(fastify.pgPool, input.swapContext)
+    }
+    if (input.mode === 'transfer' && input.transferContext) {
+      if (input.crossBase || input.crossDivision || input.crossRole || input.followOnImpactCount || input.dhdOutboundSectors || input.dhdFlightCost || input.dhdCostSavings) {
+        return { directCost: null, currency: 'USD', breakdown: [], notes: ['Transfer GH estimate does not cover cross-base, cross-role, positioning or follow-on changes.'] }
+      }
+      // Composition: configured roster-change components + each crew's incremental
+      // GH pay. The GH rows are what make the quote crew-specific — a receiving
+      // crew still under guaranteed hours contributes no incremental pay.
+      const [fees, gh] = await Promise.all([
+        priceComponents(input),
+        calculateTransferGhCost(fastify.pgPool, input.transferContext),
+      ])
+      const priced = fees.directCost != null && gh.directCost != null && fees.currency === gh.currency
+      return {
+        directCost: priced ? Math.round((fees.directCost! + gh.directCost!) * 100) / 100 : null,
+        currency: gh.currency,
+        breakdown: [...fees.breakdown, ...gh.breakdown],
+        notes: [...fees.notes, ...gh.notes],
+      }
+    }
+    return priceComponents(input)
   }
 
   fastify.post('/calculate-cost', async (request: FastifyRequest, reply) => {

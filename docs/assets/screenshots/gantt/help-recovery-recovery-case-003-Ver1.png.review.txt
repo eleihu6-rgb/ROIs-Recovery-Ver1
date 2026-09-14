@@ -1,0 +1,34 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/gantt/help-recovery-recovery-case-003-Ver1.png
+  size:   672x5299
+  pixels: meanLuminance=251.7 uniqueColors=4025 inkRatio=0.02448 blank=false
+  ocr:    27 text blocks
+
+--- OCR text (reading order, top to bottom) ---
+Recovery › Case study 3 - 8004 crew-tleet mismatch at ADD (Partial)
+Case study 3 - 8004 crew-fleet mismatch at ADD
+(Partial)
+1D steps
+Center, Pairing pane and Roster pane, three recovery methods, Executable and Filtered candidates,
+Rule 8004 crew fleet mismatch for ADD pairing 152227: flights changed 788 to 7M8, alert from Alert
+not listed - and a 7M8-qualified replacement fully clears the 8004.
+cost breakdown, Preview, Apply to draft and Save. Fleet matching is mandatory - unqualified crew are
+option chain (Executable list, library-priced cost breakdown, Preview, Apply to draft and Save) and the
+Warning: Partial - the Rule 8004 crew-fleet trigger, all three Recovery entry points, the roster-transfer
+full clearance (four 7M8-qualified transfers drop the Alert Center 8004 count to zero) are verified on
+the real Live Ul, and fleet matching is enforced (unqualified crew are not listed for an 8004). The
+Standby Crew callout and Cross-base positioning options were not executed for this case.
+Incident and operating objective
+fleet the crew are not qualified for. The prepared pairing is 152227 on 19 September 2026 at ADD: ET452
+Case 3 - aircraft qualification (Rule 8004) models a fully rostered pairing whose flights are changed to a
+two Captains and two First Officers. Both flights are then changed to fleet 7M8, so the 788-qualified crew
+ADD to CAI 02:15-06:05Z and ET453 CAI to ADD07:20-11:05Z. It is a 788 pairing with a composition of
+no longer cover the operated fleet and Alert Center shows 8004/001 - "Crew fleet (788) is invalid for the
+pairing (7M8)".
+Note: The crew are the synthetic ADD / 788 pool L3001-L3010 (5 CA + 5 FO), separate from Case 1
+L3006, L3007 (FO). The Rule 8004 FLEET row is enabled and scoped to Base ADD and Fleet 788for
+(J4002)and Case2 (S21001-S21039). Pairing 152227 is rostered with L3001,L3002 (CA) and
+this case, so only these crew are checked and no other Live crew is affected.
+Three Recovery entry points
+• From the Alert Center, tick the 8004 row for the affected crew and pairing, then choose Recovery
+selected. The row is anlv selectanle winile the Roster has not ended.

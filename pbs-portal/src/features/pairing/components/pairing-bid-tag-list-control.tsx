@@ -160,6 +160,8 @@ const TagListAutocompleteMenu = ({
       role="listbox"
       style={{
         left: position.left,
+        // Re-enable interaction with a modal AppDialog's `pointer-events: none` body lock.
+        pointerEvents: "auto",
         top: position.top,
         width: position.width,
       }}

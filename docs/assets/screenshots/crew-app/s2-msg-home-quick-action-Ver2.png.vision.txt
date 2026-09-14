@@ -1,0 +1,12 @@
+1. Crew app Home screen, in an authenticated afternoon state with an upcoming SIN → HKG trip and quick actions visible.
+
+2. Visible status text:
+   - “Good afternoon”
+   - “Upcoming Trip”
+   - “PI201 · 28 Sep 2026 · Reports in 14 days”
+   - “Ready 10:00L”
+   - “Check-in 12:00L”
+   - Quick actions: “Check-In”, “Absence”, “Discretion”, “Duty Swap”, “More”
+   - Bottom navigation: “Home”, “AI”
+
+3. Nothing clearly broken. Text and panels appear aligned, with no visible errors, clipped text, overlapping elements, or empty panes.

@@ -81,7 +81,7 @@ describe('RecoveryCostBreakdownDialog (P0-1 lite)', () => {
     expect(screen.getAllByText(/^fixed$/).length).toBeGreaterThan(0)
     expect(screen.getByText(/rev 4/)).toBeInTheDocument()
     // ¥1,500 may appear as both unit price and amount on the same row; just confirm presence.
-    expect(screen.getAllByText('¥1,500').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('¥1,500.00').length).toBeGreaterThan(0)
 
     expect(screen.getByText('Cross-division premium')).toBeInTheDocument()
     const unpricedBadges = screen.getAllByTestId('recovery-cost-breakdown-row-status')

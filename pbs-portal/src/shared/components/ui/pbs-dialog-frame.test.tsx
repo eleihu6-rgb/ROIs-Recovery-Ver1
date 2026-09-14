@@ -1,21 +1,40 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { PbsDialogFrame } from "@/shared/components/ui/pbs-dialog-frame";
 
 describe("PbsDialogFrame", () => {
-  it("renders inside the caller tree so workbench scaling still applies", () => {
+  it("renders an AppDialog named from ariaLabel and forwards the test id", () => {
     render(
-      <div data-testid="scaled-shell" style={{ transform: "scale(0.6)" }}>
-        <PbsDialogFrame ariaLabel="Scaled dialog">
-          <p>Dialog body</p>
-        </PbsDialogFrame>
-      </div>,
+      <PbsDialogFrame ariaLabel="Scaled dialog" testId="scaled-dialog">
+        <p>Dialog body</p>
+      </PbsDialogFrame>,
     );
 
-    expect(screen.getByRole("dialog", { name: "Scaled dialog" }).closest("[data-testid='scaled-shell']"))
-      .toBe(screen.getByTestId("scaled-shell"));
+    const dialog = screen.getByRole("dialog", { name: "Scaled dialog" });
+
+    expect(screen.getByTestId("scaled-dialog")).toBe(dialog);
+    expect(within(dialog).getByText("Dialog body")).toBeInTheDocument();
   });
 
-  it("keeps Escape close handling after inline rendering", () => {
+  it("renders the header inside the body and the footer as the AppDialog action row", () => {
+    render(
+      <PbsDialogFrame
+        ariaLabel="Configure thing"
+        header={<p>Header subtitle</p>}
+        footer={<button type="button">APPLY</button>}
+      >
+        <p>Dialog body</p>
+      </PbsDialogFrame>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Configure thing" });
+    const actionRow = dialog.querySelector("[data-app-dialog-actions]");
+
+    expect(within(dialog).getByText("Header subtitle")).toBeInTheDocument();
+    expect(actionRow).not.toBeNull();
+    expect(within(actionRow as HTMLElement).getByRole("button", { name: "APPLY" })).toBeInTheDocument();
+  });
+
+  it("closes through AppDialog Escape handling", () => {
     const handleClose = vi.fn();
 
     render(
@@ -24,83 +43,47 @@ describe("PbsDialogFrame", () => {
       </PbsDialogFrame>,
     );
 
-    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(document, { key: "Escape" });
 
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
-  it("portals an opted-in viewport dialog and keeps keyboard focus inside it", () => {
-    const trigger = document.createElement("button");
-    trigger.textContent = "Open viewport dialog";
-    document.body.appendChild(trigger);
-    trigger.focus();
+  it("keeps the dialog open while closeDisabled blocks dismissal", () => {
+    const handleClose = vi.fn();
 
-    const { unmount } = render(
-      <div data-testid="scaled-shell" style={{ transform: "scale(0.6)" }}>
-        <PbsDialogFrame
-          ariaLabel="Viewport dialog"
-          overlayTestId="viewport-overlay"
-          portalToBody
-        >
-          <button type="button">First action</button>
-          <button type="button">Last action</button>
-        </PbsDialogFrame>
-      </div>,
+    render(
+      <PbsDialogFrame ariaLabel="Pending dialog" closeDisabled onClose={handleClose}>
+        <p>Dialog body</p>
+      </PbsDialogFrame>,
     );
 
-    const dialog = screen.getByRole("dialog", { name: "Viewport dialog" });
-    const firstAction = screen.getByRole("button", { name: "First action" });
-    const lastAction = screen.getByRole("button", { name: "Last action" });
+    fireEvent.keyDown(document, { key: "Escape" });
 
-    expect(screen.getByTestId("scaled-shell")).not.toContainElement(dialog);
-    expect(screen.getByTestId("viewport-overlay").parentElement).toBe(document.body);
-    expect(firstAction).toHaveFocus();
-
-    fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
-    expect(lastAction).toHaveFocus();
-
-    fireEvent.keyDown(window, { key: "Tab" });
-    expect(firstAction).toHaveFocus();
-
-    unmount();
-
-    expect(trigger).toHaveFocus();
-    trigger.remove();
+    expect(handleClose).not.toHaveBeenCalled();
   });
 
-  it("portals to an explicit canvas target and preserves portal focus behavior", () => {
+  it("accepts the legacy portal props as no-ops and still renders the dialog", () => {
     const portalTarget = document.createElement("div");
-    portalTarget.dataset.testid = "canvas-portal-target";
-    const scaledShell = document.createElement("div");
-    scaledShell.dataset.testid = "scaled-shell-target";
-    scaledShell.style.transform = "scale(0.6)";
-    scaledShell.appendChild(portalTarget);
-    document.body.appendChild(scaledShell);
+    document.body.appendChild(portalTarget);
 
-    const trigger = document.createElement("button");
-    trigger.textContent = "Open canvas dialog";
-    document.body.appendChild(trigger);
-    trigger.focus();
-
-    const { unmount } = render(
+    render(
       <PbsDialogFrame
-        ariaLabel="Canvas dialog"
-        overlayTestId="canvas-overlay"
+        ariaLabel="Portal dialog"
+        overlayClassName="test-overlay"
+        overlayTestId="legacy-overlay"
         portalTarget={portalTarget}
+        portalToBody
       >
         <button type="button">Canvas action</button>
       </PbsDialogFrame>,
     );
 
-    const dialog = screen.getByRole("dialog", { name: "Canvas dialog" });
-    expect(portalTarget).toContainElement(screen.getByTestId("canvas-overlay"));
-    expect(scaledShell).toContainElement(dialog);
-    expect(screen.getByRole("button", { name: "Canvas action" })).toHaveFocus();
+    const dialog = screen.getByRole("dialog", { name: "Portal dialog" });
 
-    unmount();
+    expect(within(dialog).getByRole("button", { name: "Canvas action" })).toBeInTheDocument();
+    // AppDialog owns its own Radix portal, so the dialog is no longer nested in the caller target.
+    expect(portalTarget).not.toContainElement(dialog);
 
-    expect(trigger).toHaveFocus();
-    trigger.remove();
-    scaledShell.remove();
+    portalTarget.remove();
   });
 });

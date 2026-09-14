@@ -514,14 +514,10 @@ describe("SharedBiddingWorkbenchLayout", () => {
     await user.click(await screen.findByRole("button", { name: "View pairing bid M4959" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Pairing Bid" });
-    const overlay = screen.getByTestId("pairing-bid-detail-overlay");
     const portalRoot = screen.getByTestId("scaled-page-dialog-portal-root");
 
-    expect(portalRoot).toContainElement(overlay);
-    expect(overlay.className).toContain("justify-center");
-    expect(overlay.className).toContain("inset-0");
-    expect(overlay.className).not.toContain("justify-start");
-    expect(overlay.className).not.toContain("bottom-4");
+    // AppDialog owns the overlay + Radix portal; the legacy portalTarget is now a no-op.
+    expect(portalRoot).not.toContainElement(dialog);
     expect(within(dialog).getByText("PAIRING")).toBeInTheDocument();
     expect(within(dialog).getByText("ID")).toBeInTheDocument();
     expect(within(dialog).getByText("ORIG")).toBeInTheDocument();
@@ -546,9 +542,10 @@ describe("SharedBiddingWorkbenchLayout", () => {
     expect(within(dialog).getAllByText("YVR").length).toBeGreaterThan(0);
     expect(within(dialog).getAllByText("-240").length).toBeGreaterThan(0);
     expect(within(dialog).queryByText("REPORT")).not.toBeInTheDocument();
-    expect(dialog.className).toContain("!w-[880px]");
+    expect(dialog.className).toContain("w-[min(880px,calc(100vw-32px))]");
     expect(dialog.className).not.toContain("w-[min(1600px,calc(100vw-96px))]");
-    expect(dialog).not.toHaveAttribute("style");
+    // AppDialog centers itself through an inline drag transform.
+    expect(dialog.getAttribute("style")).toContain("translate(");
     expect(within(dialog).getByText("QUAL")).toBeInTheDocument();
     expect(within(dialog).getByText("ALN")).toBeInTheDocument();
     expect(within(dialog).getByText("Flight")).toBeInTheDocument();

@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 /** Case 3 (8004 crew-fleet mismatch) — real Live UI validation against the local stack. */
 export default defineConfig({
   testDir: path.join(__dirname, '../tests/gantt'),
-  testMatch: /recovery-case-003(?:-options)?\.spec\.ts/,
+  testMatch: /recovery-case-003(?:-options|-costs|-clear|-standby)?\.spec\.ts/,
   timeout: 900_000,
   workers: 1,
   retries: 0,

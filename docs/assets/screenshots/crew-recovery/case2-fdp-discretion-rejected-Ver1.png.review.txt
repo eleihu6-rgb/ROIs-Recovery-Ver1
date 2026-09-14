@@ -1,0 +1,147 @@
+screenshot-review: PASS
+  image:  /Users/kimi/DevOps/ROIs-Recovery-Ver1/docs/assets/screenshots/crew-recovery/case2-fdp-discretion-rejected-Ver1.png
+  size:   1440x900
+  pixels: meanLuminance=204.6 uniqueColors=8903 inkRatio=0.55873 blank=false
+  ocr:    116 text blocks
+  asserted present: "Crew rejected", "Resend"
+  vision: PASS (model=gpt-5.6-luna, 8.4s)
+
+--- OCR text (reading order, top to bottom) ---
+80 Dashboard
+Live x
+A Scenario v
+• Data
+sio Legality System Regression t: PBS
+§ Dev
+• Help
+6 Release
+• 3 degraded
+DEV
+admin • F8_SIT_LIVE Ver:B273/F624/R40 (
+2026-08-25~ 2026-10-07-
+Q a
+©P . PBS Solver Ruleset FD
+O UTC UTC -
+• Roster •Pairing•Flight
+Reset
+• Checking...
+Sep 2026
+Roster
+7 438/968
+2826RP89
+Oct 2026
+9
+12
+14
+18
+19
+22 23 24
+25
+26
+27
+28
+30
+3
+4
+Crewid
+Rank Base Sen
+RpCred RpDO
+1$REPLACE 71 ===X
+T2001
+CA
+ADD
+26:00
+NOW
+Recovery Loaded Live data only
+Recovery methods
+Rule 3007 • ET2681 • 2026-09-29 3 Crew • 1 Roster
+Pick a strategy or cost tier; the cheapest Is
+Published delay: actual departure later than scheduled; open Recovery preparation for FDP impact review
+marked *.
+BY STRATEGY
+• FDP Discretion
+SRIPCTOd
+Request crew agreement for regulated FDP extension before any roster execution.
+• FDP Discretion
+• Standby Crew callout
+Options
+Executable
+Filtered
+Best cost
+·0.00
+• Swap duty
+6
+• Flight Delay
+• FDP Discretion
+1 avallable • 0 filtered
+Request crew agreement for regulated FDP extension before any roster execution.
+BY COST TIER
+All (1)
+Executable (0) Filtered (0)
+* = lowest avallable priced estimate;
+CREW / OPTION
+CANCEL
+ADD
+STABILITY
+COST
+ACTIONS
+unpriced options excluded.
+FDP Discretion • request crew agreement Crew consent
+® Crew rejected
+100%
+·0.00
+S Resend
+• Preview
+• Detail •
+CMRAnK SAMROAS
+A Crew agreement communication only; Apply remalns disabled until independent FDP legallty execution Is Implemented.
+A The crew rejected the FDP extension. Standby Crew callout Is the next best solution. Show Standby Crew callout
+Stability: round(max(0, min(100, 100 * (1 - (0.35*follow-on + 0.30*cancelled + 0.20tadded + 0.15*changed) / max(1, loaded rosters)))), 2)
+Check one recovery option • Ctrl/Cmd + Enter to Apply
+Close
+Apply selected option
+14200
+YYZ FLY 737
+08:15
+<<2026-08-25
+FO(1:0)
+T4201
+YYZ
+FLY 737
+08:10
+<<2026-08-25
+CA(1:0)FO(1:0)
+EK763/E DXB
+FLY
+A380
+16:30
+<<2026-08-25
+CA(2)FO(2:0)
+EK354/E DXB
+FLY A380
+15:00
+<<2026-08-25
+P
+No selection
+
+--- model visual read (multimodal model, asked about this exact PNG) ---
+1. Recovery dialog over the Live roster screen; “Loaded Live data only.” FDP Discretion is selected, and its crew-agreement option is rejected.
+
+2. Visible text:
+- “Rule 3007 · ET2681 · 2026-09-29”
+- “3 Crew · 1 Roster”
+- “FDP Discretion” — “Selected”
+- Options: “1”; Executable: “0”; Filtered: “0”; Best cost: “¥0.00”
+- “1 available · 0 filtered”
+- “All (1)”; “Executable (0)”; “Filtered (0)”
+- “Crew consent”; “Crew rejected”
+- “Cancel 0”; “Add 0”; “Stability 100%”; “Cost ¥0.00”
+- “FDP Discretion · request crew agreement”
+- “The crew rejected the FDP extension. Standby Crew callout is the next best solution.”
+- “3 degraded”
+
+3. Potential issues:
+- The selected recovery method has zero executable options and ¥0.00 cost.
+- The “Apply selected option” button appears enabled despite the option being rejected and non-executable.
+- Warning/error messages are densely compressed in the lower pane; no obvious clipping or overlap.
+- Background roster content is partially obscured by the dialog.

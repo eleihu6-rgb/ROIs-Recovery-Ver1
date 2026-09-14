@@ -20,7 +20,7 @@ export interface RecoveryCostBreakdownDialogProps {
   /** Total currency label (usually the first row's currency). */
   currency: string
   /** Sum of priced components. */
-  total: number
+  total: number | null
   /** True if the cost library enrichment call failed. Renders an error banner instead of a table. */
   enrichmentFailed?: boolean
   /** Test ID prefix (e.g. "recovery-option-cost"). */
@@ -75,9 +75,10 @@ export const RecoveryCostBreakdownDialog = ({
   const mixedCurrencies = currencyTotals.length > 1
 
   const unpricedCount = rows.filter((row) => row.status !== 'priced').length
+  const incomplete = total == null || !Number.isFinite(total)
   const headerStatus = enrichmentFailed
     ? { label: 'unavailable', className: 'bg-rose-500/15 text-rose-700 dark:text-rose-300' }
-    : unpricedCount === 0
+    : unpricedCount === 0 && !incomplete
       ? { label: 'all priced', className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' }
       : { label: `${unpricedCount} unpriced`, className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' }
 
@@ -106,7 +107,7 @@ export const RecoveryCostBreakdownDialog = ({
           <div className="text-right">
             <div className="text-3xs uppercase tracking-wide text-muted-foreground">Priced total</div>
             <div className="text-sm font-semibold tabular-nums text-foreground" data-testid={`${testIdPrefix}-total`}>
-              {enrichmentFailed ? 'Unpriced' : money(total, currency)}
+              {enrichmentFailed || incomplete ? 'Unpriced' : money(total!, currency)}
             </div>
           </div>
         </div>
@@ -135,8 +136,7 @@ export const RecoveryCostBreakdownDialog = ({
           >
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <div>
-              Cost library unreachable. Showing the hard-coded estimate
-              ({enrichmentFailed ? 'Unpriced' : money(total, currency)}) without per-component breakdown.
+              Cost estimate unavailable. Refresh the option to retry the Cost Library.
             </div>
           </div>
         )}

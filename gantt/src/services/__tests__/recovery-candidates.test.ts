@@ -458,7 +458,7 @@ describe('buildRecoveryPlans', () => {
     expect(failures).not.toContain('9123: placeholder off-anchor both')
   })
 
-  it('does not treat a partial fleet code as a qualification', () => {
+  it('does not treat a partial fleet code as a qualification (8004 fleet is a hard filter)', () => {
     const plans = buildRecoveryPlans({
       alert: { ...alert, fleet: '7M8' },
       items: [item(1, 'A', 100, range.sourceStart, range.sourceEnd)],
@@ -467,16 +467,13 @@ describe('buildRecoveryPlans', () => {
       now: testNow,
     })
 
-    // Aircraft type is a SOFT constraint: the candidate stays selectable, and the
-    // partial code still must NOT count as a qualification — it surfaces as a warning.
-    const option = plans.roster.options.find((candidate) => candidate.targetCrewId === '1464')
-    expect(option).toBeDefined()
-    expect(option?.localExecutable).toBe(true)
-    expect(option?.warnings?.join(' ')).toContain('Fleet mismatch')
-    expect(option?.warnings?.join(' ')).toContain('7M8')
+    // Fleet matching is a HARD filter for the 8004 trigger: the partial code '7M' is not
+    // the qualification '7M8', so the candidate is not offered at all (product decision
+    // 2026-09-13 — the planner cannot fix an 8004 with another unqualified crew).
+    expect(plans.roster.options.find((candidate) => candidate.targetCrewId === '1464')).toBeUndefined()
   })
 
-  it('reports every loaded flight fleet the receiving Crew does not hold as a soft warning', () => {
+  it('drops a receiving Crew who does not hold every loaded flight fleet on an 8004 recovery', () => {
     const plans = buildRecoveryPlans({
       alert: { ...alert, fleet: 'A320' },
       items: [
@@ -488,11 +485,27 @@ describe('buildRecoveryPlans', () => {
       now: testNow,
     })
 
-    // Fleet is soft: the option is offered and selectable, the missing 7M8 is shown.
-    const option = plans.roster.options.find((candidate) => candidate.targetCrewId === 'B')
-    expect(option).toBeDefined()
-    expect(option?.localExecutable).toBe(true)
-    expect(option?.warnings?.join(' ')).toContain('7M8')
+    // Fleet is a hard filter here: B does not hold the 7M8 leg, so the option is absent.
+    expect(plans.roster.options.find((candidate) => candidate.targetCrewId === 'B')).toBeUndefined()
+  })
+
+  it('drops a swap whose return pairing would leave the source crew on an unqualified fleet (8004)', () => {
+    const plans = buildRecoveryPlans({
+      alert: { ...alert, fleet: 'A320' },
+      items: [
+        item(1, 'A', 100, range.sourceStart, range.sourceEnd, { fleetCode: 'A320' }),
+        item(2, 'B', 200, range.targetStart, range.targetEnd, { fleetCode: '7M8' }),
+      ],
+      crews: [crew('A', { fleetQuals: ['A320'] }), crew('B', { fleetQuals: ['A320', '7M8'] })],
+      rankOrder: new Map([['CA', 1]]),
+      now: testNow,
+    })
+
+    // The transfer is offered: B can operate the affected A320 pairing.
+    expect(plans.roster.options.some((candidate) => candidate.mode === 'transfer' && candidate.targetCrewId === 'B')).toBe(true)
+    // The swap is not: A would receive B's 7M8 pairing and simply carry the 8004 across,
+    // so it is dropped instead of being listed with an unresolved fleet warning.
+    expect(plans.roster.options.some((candidate) => candidate.mode === 'swap' && candidate.targetCrewId === 'B')).toBe(false)
   })
 
   it('does not generate recovery options for a completed Roster', () => {

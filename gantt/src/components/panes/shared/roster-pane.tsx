@@ -47,6 +47,7 @@ import { PaneConditionStrip } from '@/components/panes/pane-condition-strip'
 import { ViolationListDialog } from '@/components/panes/violation-list-dialog'
 import type { CrewViolationRow } from '@/components/panes/violation-list-dialog'
 import { RecoveryViolationDialog } from '@/components/recovery/recovery-violation-dialog'
+import type { OpenRecoveryIncident } from '@/services/open-pairing-recovery'
 import { recoveryTriggerFor } from '@/services/recovery-trigger'
 import type { RecoveryAlertSnapshot } from '@/services/recovery-candidates'
 import { QualityAnalysisDialog } from '@/components/panes/quality-analysis-dialog'
@@ -216,6 +217,7 @@ export const SharedRosterPane = ({
   const [sortDialogOpen, setSortDialogOpen] = useState(false)
   const [alertCenterOpen, setAlertCenterOpen] = useState(false)
   const [recoveryAlert, setRecoveryAlert] = useState<RecoveryAlertSnapshot[] | null>(null)
+  const [openRecoveryIncident, setOpenRecoveryIncident] = useState<OpenRecoveryIncident | null>(null)
   const [qualityOpen, setQualityOpen] = useState(false)
   const [qualityIssueCount, setQualityIssueCount] = useState(0)
   const [crewBellCrewId, setCrewBellCrewId] = useState<string | null>(null)
@@ -239,6 +241,13 @@ export const SharedRosterPane = ({
   useEffect(() => {
     if (!isLive || livePaneType !== 'roster-main') return
     const onRecoveryOpen = (event: Event) => {
+      const incident = (event as CustomEvent<OpenRecoveryIncident>).detail
+      if (incident?.kind === 'unpaired-flight' || incident?.kind === 'open-pairing') {
+        setRecoveryAlert(null)
+        setOpenRecoveryIncident(incident)
+        setAlertCenterOpen(false)
+        return
+      }
       const detail = (event as CustomEvent<RecoveryAlertSnapshot | RecoveryAlertSnapshot[]>).detail
       const snapshots = (Array.isArray(detail) ? detail : detail ? [detail] : [])
         .filter((snapshot) => snapshot.pairingId != null && recoveryTriggerFor(snapshot.ruleCode) != null)
@@ -726,9 +735,10 @@ export const SharedRosterPane = ({
       )}
       {isLive && (
         <RecoveryViolationDialog
-          open={recoveryAlert !== null}
+          open={recoveryAlert !== null || openRecoveryIncident !== null}
+          incident={openRecoveryIncident}
           alert={recoveryAlert}
-          onClose={() => setRecoveryAlert(null)}
+          onClose={() => { setRecoveryAlert(null); setOpenRecoveryIncident(null) }}
         />
       )}
       {qualityAnalysis && (

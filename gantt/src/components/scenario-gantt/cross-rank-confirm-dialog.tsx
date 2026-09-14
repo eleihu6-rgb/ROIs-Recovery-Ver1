@@ -2,7 +2,6 @@
 import { createContext, useCallback, useContext, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AppDialog, Button } from '@rois/ui'
-import { AlertTriangle } from 'lucide-react'
 
 interface CrossRankPayload {
   crewId: string
@@ -49,26 +48,30 @@ export const CrossRankConfirmProvider = ({ children }: { children: ReactNode }) 
         open={open}
         onOpenChange={(o) => { if (!o) close(false) }}
         data-testid="cross-rank-confirm"
-        icon={<AlertTriangle className="h-4 w-4 shrink-0" />}
+        // Pop-up standard: a message + confirm is the `status` layout — the tone
+        // glyph replaces the old title-bar icon, and the message is centred.
+        variant="status"
+        tone="warning"
         title="Cross-rank assignment"
         showClose
+        description={(
+          <>
+            <span className="block">
+              Crew <span className="font-mono font-medium">{payload?.crewId}</span>
+              {' '}(rank <span className="font-mono font-medium">{payload?.crewRank}</span>) will be assigned to
+              {' '}<span className="font-medium">{payload?.pairingLabel ?? ''}</span>
+              {' '}acting as <span className="font-mono font-medium">{payload?.actingRank}</span>.
+            </span>
+            <span className="mt-2 block">Continue with the cross-rank assignment?</span>
+          </>
+        )}
         footer={
           <>
-            <Button variant="ghost" data-testid="cross-rank-cancel" onClick={() => close(false)}>Cancel</Button>
+            <Button variant="outline" data-testid="cross-rank-cancel" onClick={() => close(false)}>Cancel</Button>
             <Button data-testid="cross-rank-confirm-btn" onClick={() => close(true)}>Confirm</Button>
           </>
         }
-      >
-        <div className="flex flex-col gap-1.5 py-1">
-          <p className="text-sm text-foreground">
-            Crew <span className="font-mono font-medium">{payload?.crewId}</span>
-            {' '}(rank <span className="font-mono font-medium">{payload?.crewRank}</span>) will be assigned to
-            {' '}<span className="font-medium">{payload?.pairingLabel ?? ''}</span>
-            {' '}acting as <span className="font-mono font-medium">{payload?.actingRank}</span>.
-          </p>
-          <p className="text-xs text-muted-foreground">Continue with the cross-rank assignment?</p>
-        </div>
-      </AppDialog>
+      />
     </CrossRankConfirmContext.Provider>
   )
 }
