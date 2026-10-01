@@ -14,6 +14,8 @@ def test_all_tools_defined():
         'reset_filters', 'set_date_range', 'create_crew_bids', 'prepare_pa_removal',
         'build_pairings', 'auto_assign_pairings',
         'move_task', 'swap_tasks', 'unassign_task', 'add_ground_task',
+        'save_changes', 'undo_changes',
+        'recover_violation', 'recover_open_pairing', 'best_fit_crew',
     }
 
 
@@ -571,3 +573,23 @@ def test_auto_assign_missing_message_asks_for_crew_then_period():
     assert auto_assign_missing_message({'name': 'auto_assign_pairings', 'input': {
         'crewIds': ['T2004'], 'month': 'September'}}) is None
     assert auto_assign_missing_message({'name': 'build_pairings', 'input': {}}) is None
+
+
+def test_recover_violation_normalizes_scope():
+    assert tool_call_to_action({'name': 'recover_violation', 'input': {'crewId': ' t2004 ', 'ruleCode': '8004'}}) == {
+        'type': 'recover_violation', 'crewId': 'T2004', 'ruleCode': '8004'}
+    # unknown rule dropped (Recovery handles 8004/1001/3007 only); bad date dropped
+    assert tool_call_to_action({'name': 'recover_violation', 'input': {'ruleCode': '7505', 'pairing': 'ET137/ET136', 'date': 'soon'}}) == {
+        'type': 'recover_violation', 'pairing': 'ET137/ET136'}
+
+
+def test_recover_open_pairing_needs_a_pairing():
+    assert tool_call_to_action({'name': 'recover_open_pairing', 'input': {}}) is None
+    assert tool_call_to_action({'name': 'recover_open_pairing', 'input': {'pairing': 'ET137/ET136', 'date': '2026-09-19'}}) == {
+        'type': 'recover_open_pairing', 'pairing': 'ET137/ET136', 'date': '2026-09-19'}
+
+
+def test_best_fit_empty_list_means_in_view():
+    assert tool_call_to_action({'name': 'best_fit_crew', 'input': {'pairings': []}}) == {'type': 'best_fit_crew', 'pairings': []}
+    assert tool_call_to_action({'name': 'best_fit_crew', 'input': {'pairings': ['152227', ' '], 'ranks': ['ca']}}) == {
+        'type': 'best_fit_crew', 'pairings': ['152227'], 'ranks': ['CA']}

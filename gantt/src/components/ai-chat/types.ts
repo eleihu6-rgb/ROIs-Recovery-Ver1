@@ -24,6 +24,16 @@ export type AiAction =
   | { type: 'filter_flight'; depArps?: string[]; arvArps?: string[]; fltNums?: string[]; fleets?: string[]; statuses?: string[] }
   | { type: 'sort_roster'; paneId: string; field?: string; direction?: 'asc' | 'desc'; criteria?: AiSortCriterion[] }
   | { type: 'reset_filters' }
+  /** Show the L2 plan card for everything pending (R'Bot then saves only after the user approves). */
+  | { type: 'save_changes' }
+  /** Undo the last N draft changes (draft only, nothing saved). */
+  | { type: 'undo_changes'; count: number }
+  /** Open the Live Recovery dialog for recoverable alerts (8004 / 1001 / 3007), optionally scoped. */
+  | { type: 'recover_violation'; crewId?: string; ruleCode?: string; pairing?: string; date?: string }
+  /** Open "Recovery — open seats" for one pairing with an open position. */
+  | { type: 'recover_open_pairing'; pairing: string; date?: string }
+  /** Open Best-fit crew for named pairings, or the open pairings in view when none are named. */
+  | { type: 'best_fit_crew'; pairings: string[]; date?: string; ranks?: string[] }
   | { type: 'set_date_range'; start: string; end: string }
   | { type: 'prepare_pa_removal'; start: string; end: string; bases?: string[]; ranks?: string[]; crewIds?: string[] }
   // ── Phase 1 Live Roster mutations — stage into the draft store only, never Save/commit. ──

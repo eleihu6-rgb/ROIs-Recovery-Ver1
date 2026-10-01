@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Bot, Send, X, MessageSquare } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Bot, Send, X, MessageSquare, ScanEye } from 'lucide-react'
 import { useAiChat } from './use-ai-chat'
 import { useAiHints } from './use-ai-hints'
+import { RbotPlanCard } from './rbot-plan-card'
 
 export const AiChatPanel = () => {
   const [open, setOpen] = useState(false)
@@ -9,8 +10,15 @@ export const AiChatPanel = () => {
   // Reseed which client-specific examples surface each time the panel is opened, so
   // users discover the full range (base/rank/fleet/crew id) over repeated visits.
   const [rotateSeed, setRotateSeed] = useState(0)
-  const { thread, busy, send } = useAiChat()
+  const { thread, busy, send, viewGantt, onPlanSaved } = useAiChat()
+  const lastPlanIndex = thread.reduce((last, m, i) => (m.plan ? i : last), -1)
   const hints = useAiHints(open)
+  // Keep the newest message in view (View Gantt summaries are long).
+  const threadRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = threadRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [thread, busy, open])
 
   useEffect(() => {
     if (open) setRotateSeed((s) => s + 1)
@@ -77,7 +85,7 @@ export const AiChatPanel = () => {
         </button>
       </div>
 
-      <div className="flex-1 space-y-2 overflow-y-auto p-3" data-testid="ai-chat-thread">
+      <div ref={threadRef} className="flex-1 space-y-2 overflow-y-auto p-3" data-testid="ai-chat-thread">
         {thread.length === 0 && (
           <p className="text-xs text-muted-foreground" data-testid="ai-chat-tips">
             Try: {tips.join(', ')}.
@@ -87,12 +95,35 @@ export const AiChatPanel = () => {
           <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
             <div
               className={[
-                'inline-block max-w-[85%] rounded-md px-2 py-1 text-xs',
+                'inline-block max-w-[85%] whitespace-pre-line rounded-md px-2 py-1 text-left text-xs',
                 m.role === 'user' ? 'bg-primary/10 text-foreground' : 'bg-muted text-foreground',
               ].join(' ')}
             >
               {m.content}
             </div>
+            {i === thread.length - 1 && m.followUps && m.followUps.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1" data-testid="ai-chat-followups">
+                {m.followUps.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => void send(q)}
+                    disabled={busy}
+                    className="rounded-full border border-border px-2 py-0.5 text-2xs text-foreground hover:bg-accent disabled:opacity-50"
+                    data-testid="ai-chat-followup"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+            {m.plan && (
+              <RbotPlanCard
+                rbotOpIds={m.plan.rbotOpIds}
+                instruction={m.plan.instruction}
+                active={i === lastPlanIndex}
+                onSaved={onPlanSaved}
+              />
+            )}
             {m.applied?.map((chip, j) => (
               <div key={j} className="mt-1 text-2xs text-muted-foreground" data-testid="ai-chat-applied">
                 ✓ {chip}
@@ -107,7 +138,19 @@ export const AiChatPanel = () => {
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 border-t border-border p-2">
+      <div className="flex shrink-0 items-center gap-1.5 border-t border-border px-2 pt-2">
+        <button
+          data-testid="ai-chat-view-gantt"
+          onClick={viewGantt}
+          disabled={busy}
+          title="Read what is on the Gantt screen now"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-2xs text-foreground hover:bg-accent disabled:opacity-50"
+        >
+          <ScanEye className="h-3 w-3 shrink-0" />
+          View Gantt
+        </button>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5 p-2">
         <input
           data-testid="ai-chat-input"
           className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs outline-none"

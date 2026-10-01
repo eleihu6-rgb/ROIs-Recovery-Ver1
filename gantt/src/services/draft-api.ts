@@ -93,6 +93,10 @@ export interface CommitRequest {
   affectedPairingIds: number[]
   /** Optional RULE workset id for post-commit live legality recheck. */
   rulesetId?: number
+  /** Set when R'Bot saved an approved plan — recorded in the server audit log. */
+  via?: 'rbot'
+  /** The user's instruction that produced the plan (audit only). */
+  instruction?: string
 }
 
 export const draftApi = {

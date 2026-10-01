@@ -696,15 +696,15 @@ export const usePairingStore = create<PairingStore>((set, get) => ({
   },
 
   refreshDraftCoverage: (baseItems, displayedItems) => {
-    // Derive each pairing's composition fill directly from the EFFECTIVE roster
-    // (displayedItems = baseItems + draft ops). The server's authoritative fill
-    // value can lag (e.g. Pairing Info shows empty but slot.fill=1), so adding
-    // a delta on top of the stale value double-counts — instead, mirror the
-    // Scenario-side `computeScenarioPairingCompositions` semantics:
-    //   fill = min(plan, distinct-crew-count-for-this-rank).
-    // baseItems is accepted but unused — kept in the signature for callers
-    // and to make the contract explicit.
-    void baseItems
+    // Only slots (pairing × rank) the draft actually changed are recomputed; every other
+    // slot keeps the server's authoritative fill. The loaded roster is a SUBSET of crew
+    // (window / division / lazy load), so recomputing untouched pairings from it made
+    // pairings whose crew are not loaded look under-filled and flip Full→Partial→Open
+    // on any unrelated edit (R'Bot View Gantt surfaced this, 2026-09-30).
+    // For a changed slot: fill = min(plan, distinct-crew-count) from the EFFECTIVE roster
+    // (displayedItems = baseItems + draft ops) — the server fill can lag, so adding a
+    // delta on top of it double-counts (Scenario `computeScenarioPairingCompositions`
+    // semantics).
     const counts = (items: RosterItem[]): Map<string, number> => {
       const crewsByPairingRank = new Map<string, Set<string>>()
       for (const item of items) {
@@ -719,14 +719,24 @@ export const usePairingStore = create<PairingStore>((set, get) => ({
       return new Map([...crewsByPairingRank].map(([key, crewIds]) => [key, crewIds.size]))
     }
 
+    const baseCounts = counts(baseItems)
     const effectiveCounts = counts(displayedItems)
+    const changed = new Set<string>()
+    for (const key of new Set([...baseCounts.keys(), ...effectiveCounts.keys()])) {
+      if ((baseCounts.get(key) ?? 0) !== (effectiveCounts.get(key) ?? 0)) changed.add(key)
+    }
 
     set((state) => {
       const items = state.items.map((item) => {
-        const composition = item.pairing.composition.map((slot) => ({
-          ...slot,
-          fill: Math.min(slot.plan, effectiveCounts.get(`${item.pairing.id}:${slot.rank}`) ?? 0),
-        }))
+        const authoritative = state.authoritativeComposition.get(item.pairing.id)
+        const composition = item.pairing.composition.map((slot, i) => {
+          const key = `${item.pairing.id}:${slot.rank}`
+          if (changed.has(key)) {
+            return { ...slot, fill: Math.min(slot.plan, effectiveCounts.get(key) ?? 0) }
+          }
+          const serverSlot = authoritative?.find((a) => a.rank === slot.rank) ?? authoritative?.[i]
+          return serverSlot ? { ...slot, fill: serverSlot.fill } : slot
+        })
         return {
           ...item,
           pairing: {

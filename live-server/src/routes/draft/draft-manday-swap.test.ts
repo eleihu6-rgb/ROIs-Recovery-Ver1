@@ -180,4 +180,50 @@ describe('draft commit Manday recompute for swap operations', () => {
     expect(ids[0]).not.toBe(ids[1])
     await app.close()
   })
+
+  it("records an audit log entry when R'Bot saves an approved plan", async () => {
+    const app = await buildApp()
+    const info = vi.spyOn(app.log, 'info')
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/draft/commit',
+      payload: {
+        username: 'planner',
+        affectedCrewIds: ['390', '391'],
+        affectedPairingIds: [11012, 11013],
+        operations: [{ type: 'swap', taskIdA: 1, taskIdB: 2 }],
+        via: 'rbot',
+        instruction: 'swap 390 and 391 on 12 June',
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    const audit = info.mock.calls.find((c) => (c[0] as { audit?: string })?.audit === 'draft-commit')
+    expect(audit?.[0]).toEqual({
+      audit: 'draft-commit',
+      via: 'rbot',
+      username: 'planner',
+      instruction: 'swap 390 and 391 on 12 June',
+      affectedCrewIds: ['390', '391'],
+      affectedPairingIds: [11012, 11013],
+      opTypes: ['swap'],
+    })
+    await app.close()
+  })
+
+  it('a normal Save (no via) writes no R\'Bot audit entry, and an unknown via is rejected', async () => {
+    const app = await buildApp()
+    const info = vi.spyOn(app.log, 'info')
+    const base = {
+      username: 'planner', affectedCrewIds: ['390', '391'], affectedPairingIds: [11012, 11013],
+      operations: [{ type: 'swap', taskIdA: 1, taskIdB: 2 }],
+    }
+    expect((await app.inject({ method: 'POST', url: '/api/draft/commit', payload: base })).statusCode).toBe(200)
+    expect(info.mock.calls.some((c) => (c[0] as { audit?: string })?.audit === 'draft-commit')).toBe(false)
+    // API convention: HTTP 200 with the error code in the body (utils/response.ts fail()).
+    const bad = await app.inject({ method: 'POST', url: '/api/draft/commit', payload: { ...base, via: 'robot' } })
+    expect(bad.json()).toMatchObject({ code: 400, data: null })
+    await app.close()
+  })
 })

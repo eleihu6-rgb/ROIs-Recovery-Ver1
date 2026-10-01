@@ -11,6 +11,15 @@ import { test, expect, type Page } from '@playwright/test'
 import { GanttDashboardPage } from '../../pages/gantt/gantt-dashboard-page'
 import { seedGanttAuth, readHook } from '../../utils/gantt-hook'
 
+/**
+ * Mirrors the gantt panel sort (sortPanelRowsByValues): numeric when both ids are
+ * numbers, else string order — SIT has alphanumeric crew ids (e.g. T2044).
+ */
+const cmpCrewId = (a: string, b: string): number => {
+  const na = Number(a), nb = Number(b)
+  return Number.isFinite(na) && Number.isFinite(nb) ? na - nb : a.localeCompare(b)
+}
+
 test.describe('AI chat panel', () => {
   let dashboard: GanttDashboardPage
 
@@ -18,7 +27,7 @@ test.describe('AI chat panel', () => {
     await seedGanttAuth(page, request)
 
     // Deterministic AI stub: filter→BKK crew; reset/clear→reset_filters.
-    await page.route('**/altair/ai/chat', async (route) => {
+    await page.route('**/ai/chat', async (route) => {
       const body = route.request().postDataJSON() as { messages: { content: string }[] }
       const last = (body.messages[body.messages.length - 1]?.content ?? '').toLowerCase()
       if (last.includes('reset') || last.includes('clear')) {
@@ -93,7 +102,7 @@ test.describe("AI chat — R'Bot example tips reflect the airline's real setup (
   const CLIENT_TOKENS = [HINTS.base, HINTS.rank, HINTS.fleet, HINTS.crewId]
 
   const stubHints = (page: import('@playwright/test').Page) =>
-    page.route('**/altair/live/api/ai/hints', (route) => route.fulfill({ json: HINTS }))
+    page.route('**/api/ai/hints', (route) => route.fulfill({ json: HINTS }))
 
   test('Live-1002 — tips use stored hints (base/rank/fleet/crew id), never Bangkok', async ({ page, request }) => {
     await seedGanttAuth(page, request)
@@ -142,7 +151,7 @@ test.describe("AI chat — R'Bot example tips reflect the airline's real setup (
     await stubHints(page)
 
     // Stub the AI: a crew-id prompt → filter_crew by crewIds (now a supported field).
-    await page.route('**/altair/ai/chat', (route) =>
+    await page.route('**/ai/chat', (route) =>
       route.fulfill({
         json: {
           role: 'assistant',
@@ -195,7 +204,7 @@ test.describe('AI chat — interactive combos (regression)', () => {
   test('Live-1004 — combo: one AI turn filters crew AND sorts the roster — data actually refetched', async ({ page }) => {
     // Stub a single response carrying BOTH actions (live LLM verified to emit this
     // combo for "filter crew to base YEG and sort roster by crewId desc").
-    await page.route('**/altair/ai/chat', (route) =>
+    await page.route('**/ai/chat', (route) =>
       route.fulfill({
         json: {
           role: 'assistant',
@@ -239,14 +248,13 @@ test.describe('AI chat — interactive combos (regression)', () => {
     await expect
       .poll(async () => {
         const rows = await readHook<Array<{ crewId: string }>>(page, 'rosterPanelOrder')
-        const ids = rows.map((r) => Number(r.crewId))
-        return ids.length > 1 && ids.every((v, i) => i === 0 || ids[i - 1] >= v)
+        return rows.length > 1 && rows.every((r, i) => i === 0 || cmpCrewId(rows[i - 1].crewId, r.crewId) >= 0)
       }, { timeout: 30_000 })
       .toBe(true)
   })
 
   test('Live-1006 — RBot applies multi-key roster sorting criteria', async ({ page }) => {
-    await page.route('**/altair/ai/chat', (route) =>
+    await page.route('**/ai/chat', (route) =>
       route.fulfill({
         json: {
           role: 'assistant',
@@ -284,7 +292,7 @@ test.describe('AI chat — interactive combos (regression)', () => {
           const rankCmp = prev.rank.localeCompare(row.rank)
           if (rankCmp < 0) return true
           if (rankCmp > 0) return false
-          return Number(prev.crewId) >= Number(row.crewId)
+          return cmpCrewId(prev.crewId, row.crewId) >= 0
         })
       }, { timeout: 30_000 })
       .toBe(true)
@@ -293,7 +301,7 @@ test.describe('AI chat — interactive combos (regression)', () => {
   test('Live-1005 — date range change via AI reloads the board onto the new period', async ({ page }) => {
     const before = await readHook<{ start: string; end: string }>(page, 'dateRange')
 
-    await page.route('**/altair/ai/chat', (route) =>
+    await page.route('**/ai/chat', (route) =>
       route.fulfill({
         json: {
           role: 'assistant',

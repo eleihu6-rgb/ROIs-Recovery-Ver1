@@ -85,6 +85,74 @@ TOOLS: list[dict[str, Any]] = [
         'input_schema': {'type': 'object', 'properties': {}},
     },
     {
+        'name': 'save_changes',
+        'description': "Use when the user asks to save / commit / apply the unsaved roster changes. It does "
+                       "NOT save by itself: it shows a plan card listing every pending change and the "
+                       "legality result; the change is saved only when the user presses 'Yes, save' on "
+                       "the card. Never tell the user the changes are saved.",
+        'input_schema': {'type': 'object', 'properties': {}},
+    },
+    {
+        'name': 'recover_violation',
+        'description': "Open the LIVE gantt's Recovery dialog for recoverable legality alerts — rule 8004 "
+                       "(aircraft qualification), 1001 (assignment overlap) or 3007 (published delay / FDP). "
+                       "Use for 'recover', 'fix the violation', 'fix crew X's 8004', 'resolve the overlap'. "
+                       "Optionally scope to a crew id, a rule code and/or a pairing. It only OPENS the dialog: "
+                       "the planner picks a recovery option and presses Apply (staged draft), then Save.",
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'crewId': {'type': 'string', 'description': 'Crew employee code, e.g. T2004'},
+                'ruleCode': {'type': 'string', 'enum': ['8004', '1001', '3007']},
+                'pairing': {'type': 'string', 'description': 'Pairing label (e.g. ET137/ET136) or numeric id'},
+                'date': {'type': 'string', 'description': 'Pairing date YYYY-MM-DD when the label repeats'},
+            },
+        },
+    },
+    {
+        'name': 'recover_open_pairing',
+        'description': "Open the LIVE gantt's 'Recovery — open seats' dialog for ONE pairing that still has an "
+                       "open position, to staff it (reserve / standby callout options with cost). Use for "
+                       "'staff pairing X', 'fill the open seat on X', 'recovery for open pairing X'. Needs the "
+                       "pairing label or id; if the label runs on several days, also the date. Only opens the "
+                       "dialog — the planner picks an option and Applies, then Saves.",
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'pairing': {'type': 'string', 'description': 'Pairing label (e.g. ET137/ET136) or numeric id'},
+                'date': {'type': 'string', 'description': 'Pairing date YYYY-MM-DD'},
+            },
+            'required': ['pairing'],
+        },
+    },
+    {
+        'name': 'best_fit_crew',
+        'description': "Open the LIVE gantt's 'Best-fit crew' dialog, which ranks legal crew for pairings with "
+                       "open positions. Use for 'who can fly X', 'best crew for X', 'find crew for the open "
+                       "pairings'. Pass pairing labels/ids the user named; pass an EMPTY list for 'the open "
+                       "pairings in view / here / these'. Optional ranks limits to open CA/FO/... slots. Only "
+                       "opens the dialog — the planner reviews and Applies, then Saves.",
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'pairings': {'type': 'array', 'items': {'type': 'string'},
+                             'description': 'Pairing labels or ids; [] = open pairings in the current view'},
+                'date': {'type': 'string', 'description': 'Pairing date YYYY-MM-DD when a label repeats'},
+                'ranks': {'type': 'array', 'items': {'type': 'string'}, 'description': "e.g. ['CA']"},
+            },
+            'required': ['pairings'],
+        },
+    },
+    {
+        'name': 'undo_changes',
+        'description': "Undo the last N unsaved roster changes (draft only). Use for 'undo', 'undo that', "
+                       "'take back the last 2 changes'. Default 1.",
+        'input_schema': {
+            'type': 'object',
+            'properties': {'count': {'type': 'integer', 'description': 'How many changes to undo, 1-20'}},
+        },
+    },
+    {
         'name': 'set_date_range',
         'description': "Change the board's planning date range. Both start and end are required, "
                        "format YYYY-MM-DD (e.g. 2026-07-01). Resolve relative phrases like "
@@ -420,6 +488,14 @@ def tool_call_to_action(call: dict[str, Any]) -> dict[str, Any] | None:
         }
     if name == 'reset_filters':
         return {'type': 'reset_filters'}
+    if name == 'save_changes':
+        return {'type': 'save_changes'}
+    if name in ('recover_violation', 'recover_open_pairing', 'best_fit_crew'):
+        return _recovery_action(name, data)
+    if name == 'undo_changes':
+        raw = data.get('count', 1)
+        count = raw if isinstance(raw, int) and not isinstance(raw, bool) else 1
+        return {'type': 'undo_changes', 'count': max(1, min(count, 20))}
     if name == 'set_date_range':
         start, end = data.get('start'), data.get('end')
         if not (_is_iso_date(start) and _is_iso_date(end)):
@@ -757,3 +833,97 @@ def auto_assign_missing_message(call: dict[str, Any]) -> str | None:
     if not has_crew:
         return 'Which crew should I auto-assign open pairings to?'
     return 'Which month or date range should I auto-assign open pairings for?'
+
+
+# ── R'Bot "for this view" defaults ────────────────────────────────────────────
+# Registry: which tool fields may be filled from the user's last View Gantt read
+# (viewport.viewDefaults, computed by the gantt from what is on screen). A new
+# view-aware feature is added here, not in the prompt. 'period' = start/end.
+VIEW_DEFAULT_FIELDS: dict[str, tuple[str, ...]] = {
+    'build_pairings': ('base', 'fleets', 'period'),
+    'auto_assign_pairings': ('crewIds', 'period'),
+}
+
+
+def _nonblank(value: Any) -> bool:
+    return isinstance(value, str) and value.strip() != ''
+
+
+def apply_view_defaults(call: dict[str, Any], viewport: dict[str, Any] | None) -> tuple[dict[str, Any], list[str]]:
+    """Fill a tool call's missing scope from viewDefaults; return (call, used-descriptions).
+
+    Only fills what the user left out — explicit values always win. Fleets are taken from
+    the view only when the base also came from the view (an explicit "build ADD" keeps its
+    all-fleets meaning). Crew are filled only when the view shows few enough to act on.
+    """
+    fields = VIEW_DEFAULT_FIELDS.get(call.get('name') or '')
+    vd = (viewport or {}).get('viewDefaults')
+    if not fields or not isinstance(vd, dict):
+        return call, []
+    data = dict(call.get('input') or {})
+    used: list[str] = []
+
+    base_from_view = False
+    if 'base' in fields and not _nonblank(data.get('base')) and _nonblank(vd.get('base')):
+        data['base'] = vd['base'].strip().upper()
+        base_from_view = True
+        used.append(f"base {data['base']}")
+    if 'fleets' in fields and base_from_view and not data.get('fleets'):
+        fleets = vd.get('fleets')
+        if isinstance(fleets, list) and fleets and all(_nonblank(f) for f in fleets):
+            data['fleets'] = fleets
+            used.append(f"fleet {'/'.join(fleets)}")
+    if 'crewIds' in fields and not data.get('crewIds'):
+        crew = vd.get('crewIds')
+        if isinstance(crew, list) and 0 < len(crew) <= MAX_SCOPE_ITEMS and all(_nonblank(c) for c in crew):
+            data['crewIds'] = crew
+            used.append(f"{len(crew)} crew on screen ({', '.join(crew[:5])}{'…' if len(crew) > 5 else ''})")
+    if 'period' in fields:
+        has_period = (_is_iso_date(data.get('start')) and _is_iso_date(data.get('end'))) or data.get('month') not in (None, '')
+        if not has_period and _is_iso_date(vd.get('start')) and _is_iso_date(vd.get('end')):
+            data['start'], data['end'] = vd['start'], vd['end']
+            used.append(f"{vd['start']} – {vd['end']}")
+
+    if not used:
+        return call, []
+    return {**call, 'input': data}, used
+
+
+def view_defaults_note(used: list[str]) -> str:
+    return f"Using {', '.join(used)} from your Gantt view."
+
+
+_RECOVERY_RULES = {'8004', '1001', '3007'}
+
+
+def _recovery_action(name: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    """Normalize the Recovery / Best-fit opener tools; None when unusable (assistant asks)."""
+    def text(key: str) -> str | None:
+        v = data.get(key)
+        return v.strip() if isinstance(v, str) and v.strip() else None
+
+    date_value = text('date')
+    date_out = {'date': date_value} if date_value and _is_iso_date(date_value) else {}
+    if name == 'recover_violation':
+        action: dict[str, Any] = {'type': name}
+        if text('crewId'):
+            action['crewId'] = text('crewId').upper()
+        rule = text('ruleCode')
+        if rule in _RECOVERY_RULES:
+            action['ruleCode'] = rule
+        if text('pairing'):
+            action['pairing'] = text('pairing')
+            action.update(date_out)
+        return action
+    if name == 'recover_open_pairing':
+        if not text('pairing'):
+            return None
+        return {'type': name, 'pairing': text('pairing'), **date_out}
+    raw = data.get('pairings')
+    pairings = [p.strip() for p in raw if isinstance(p, str) and p.strip()][:MAX_SCOPE_ITEMS] if isinstance(raw, list) else []
+    ranks_raw = data.get('ranks')
+    ranks = [r.strip().upper() for r in ranks_raw if isinstance(r, str) and r.strip()] if isinstance(ranks_raw, list) else []
+    action = {'type': name, 'pairings': pairings, **date_out}
+    if ranks:
+        action['ranks'] = ranks
+    return action

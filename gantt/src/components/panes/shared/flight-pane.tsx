@@ -46,6 +46,7 @@ import { getFilterStore } from '@/stores/filter-store'
 import type { FlightFilter } from '@/stores/filter-store'
 import { FilterDialog } from '@/components/layout/filter-dialog'
 import type { GanttContextId } from '@/types/gantt-context'
+import type { PaneReadout } from '@/components/ai-chat/viewport-readout'
 
 interface SharedFlightPaneProps {
   /** The pane instance ID used for per-pane scroll state. */
@@ -153,6 +154,11 @@ export const SharedFlightPane = ({
 
   // Keep refs in sync (read at interaction time without stale closure)
   flightRowsRef.current = flightRows
+  // R'Bot View Gantt: exactly the rows this pane renders.
+  const readout = useMemo<PaneReadout>(() => ({
+    contextId,
+    read: () => ({ kind: 'flight', rows: flightRows }),
+  }), [contextId, flightRows])
   flightRowsLenRef.current = flightRows.length
 
   // Composition status map from source — stable across quick-search
@@ -537,6 +543,7 @@ export const SharedFlightPane = ({
         />
         {splitter}
         <PaneCanvas
+          readout={readout}
           paneId={paneId}
           paneType="flight"
           canvasTestId={canvasTestId}

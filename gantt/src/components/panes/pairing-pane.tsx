@@ -5,6 +5,7 @@ import { useTimezoneStore } from '@/stores/timezone-store'
 import { PaneCanvas } from '@/components/gantt/pane-canvas'
 import { PaneHeaderCanvas } from '@/components/gantt/pane-header-canvas'
 import type { PanelRowData } from '@/components/gantt/pane-header-canvas'
+import type { PaneReadout } from '@/components/ai-chat/viewport-readout'
 import { PaneLoadingBar } from './pane-loading-bar'
 import { PaneToolbar, type FilterChip, type SortChip, type GlobalFilterChip } from './pane-toolbar'
 import { PaneConditionStrip } from './pane-condition-strip'
@@ -600,6 +601,11 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
   }, [legacyPaneType, reorderedPairingItems])
 
   // ─── Stable ref for items (used in callbacks to avoid recreating them) ───
+  // R'Bot View Gantt: exactly the rows this pane renders.
+  const readout = useMemo<PaneReadout>(() => ({
+    contextId: 'live',
+    read: () => ({ kind: 'pairing', items: reorderedPairingItems, coverageRanks: rankFilter }),
+  }), [reorderedPairingItems, rankFilter])
   const itemsRef = useRef(reorderedPairingItems)
   itemsRef.current = reorderedPairingItems
 
@@ -1163,6 +1169,7 @@ const PairingPaneImpl = ({ paneId, draggable, onDragStart, onDragEnd, onClose }:
         />
         <VerticalSplitter />
         <PaneCanvas
+          readout={readout}
           paneId={paneId}
           paneType={legacyPaneType}
           canvasTestId="pairing-canvas"

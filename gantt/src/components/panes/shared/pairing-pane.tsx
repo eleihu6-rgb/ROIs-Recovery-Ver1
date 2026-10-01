@@ -56,6 +56,7 @@ import { useResPlannerStore } from '@/stores/res-planner-store'
 import { useRoundtripBuilderStore } from '@/stores/roundtrip-builder-store'
 import { prependBuiltPairings } from '@/utils/pairing-build-focus'
 import type { GanttContextId } from '@/types/gantt-context'
+import type { PaneReadout } from '@/components/ai-chat/viewport-readout'
 
 interface SharedPairingPaneProps {
   /** The pane instance ID used for per-pane scroll state. */
@@ -233,6 +234,11 @@ export const SharedPairingPane = ({
   }, [sourceRows, quickFilter.search, createdFocus])
 
   pairingItemsRef.current = pairingItems
+  // R'Bot View Gantt: exactly the rows this pane renders.
+  const readout = useMemo<PaneReadout>(() => ({
+    contextId,
+    read: () => ({ kind: 'pairing', items: pairingItems, coverageRanks: pairingFilter.ranks }),
+  }), [contextId, pairingItems, pairingFilter.ranks])
   pairingItemsLenRef.current = pairingItems.length
 
   const panelRows = useMemo<PanelRowData[]>(
@@ -774,6 +780,7 @@ export const SharedPairingPane = ({
         />
         {splitter}
         <PaneCanvas
+          readout={readout}
           paneId={paneId}
           paneType="pairing"
           canvasTestId={canvasTestId}

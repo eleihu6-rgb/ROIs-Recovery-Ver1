@@ -159,6 +159,9 @@ const commitSchema = z.object({
   affectedPairingIds: z.array(z.number()),
   /** Optional RULE workset id for post-commit live legality recheck (falls back server-side). */
   rulesetId: z.number().int().positive().optional(),
+  /** R'Bot saved an approved plan card (audit only; permissions/locks unchanged). */
+  via: z.literal('rbot').optional(),
+  instruction: z.string().max(500).optional(),
 })
 
 export default async function draftRoutes(fastify: FastifyInstance) {
@@ -172,7 +175,7 @@ export default async function draftRoutes(fastify: FastifyInstance) {
     const parsed = commitSchema.safeParse(request.body)
     if (!parsed.success) return fail(reply, 400, parsed.error.message)
 
-    const { operations, username, affectedCrewIds, affectedPairingIds, rulesetId } = parsed.data
+    const { operations, username, affectedCrewIds, affectedPairingIds, rulesetId, via, instruction } = parsed.data
 
     // Verify lock ownership for all affected crews
     for (const crewId of affectedCrewIds) {
@@ -290,6 +293,20 @@ export default async function draftRoutes(fastify: FastifyInstance) {
       const message = err instanceof Error ? err.message : 'Transaction failed'
       fastify.log.error(err, 'Draft commit failed')
       return fail(reply, 500, message)
+    }
+
+    // Audit trail for R'Bot-initiated saves (no operation-audit table exists yet):
+    // who, what they asked for, and exactly which ops were committed.
+    if (via === 'rbot') {
+      fastify.log.info({
+        audit: 'draft-commit',
+        via,
+        username,
+        instruction,
+        affectedCrewIds,
+        affectedPairingIds,
+        opTypes: operations.map((o) => o.type),
+      }, "R'Bot plan saved")
     }
 
     // Release all locks

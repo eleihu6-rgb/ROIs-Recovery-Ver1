@@ -1,4 +1,4 @@
-import { useDraftStore } from '@/stores/draft-store'
+import { useDraftStore, type CommitAudit } from '@/stores/draft-store'
 import { useRosterStore } from '@/stores/roster-store'
 import { useRuleCheckStore } from '@/stores/rule-check-store'
 import { notify } from './notify'
@@ -8,7 +8,7 @@ import { notify } from './notify'
  * Runs rule pre-check, shows confirmation dialog if needed, then commits.
  * Returns true if save succeeded.
  */
-export const saveDraft = async (): Promise<boolean> => {
+export const saveDraft = async (audit?: CommitAudit): Promise<boolean> => {
   const draft = useDraftStore.getState()
   if (draft.operations.length === 0) return true
 
@@ -31,7 +31,7 @@ export const saveDraft = async (): Promise<boolean> => {
   }
 
   try {
-    await draft.commit()
+    await draft.commit(audit)
     notify.success('Changes saved successfully')
     return true
   } catch (err) {

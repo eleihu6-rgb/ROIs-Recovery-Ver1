@@ -6,6 +6,8 @@ import { useRosterStore } from '@/stores/roster-store'
 import { useCrewStore } from '@/stores/crew-store'
 import { useRoundtripBuilderStore } from '@/stores/roundtrip-builder-store'
 import { useUiStore } from '@/stores/ui-store'
+import { useDraftStore } from '@/stores/draft-store'
+import { openBestFit, openRecoveryForAlerts, openRecoveryForOpenPairing, resolvePairing } from './rbot-recovery'
 import { crewMemoApi } from '@/services/crew-memo-api'
 import { api } from '@/services/api'
 import { calendarDateToUtcMidnight, endOfCalendarDayUtc } from '@/components/gantt/gantt-utils'
@@ -46,12 +48,16 @@ const normalizeRosterSortCriteria = (action: Extract<AiAction, { type: 'sort_ros
  * the roster before an operation can touch it. Multiple rows come back together only when they
  * belong to the SAME pairing (multi-segment duty) — anything else is reported as ambiguous.
  */
+/** Crew loaded into the Live roster (the crew-store set the roster pane renders). */
+const isCrewLoaded = (crewId: string): boolean =>
+  useCrewStore.getState().items.some((c) => c.crew.crewId === crewId)
+
 function resolveCrewTasks(
   crewId: string,
   ref: { pairingLabel?: string; date?: string },
 ): { items: RosterItem[] } | { error: string } {
   const pane = useRosterStore.getState().main
-  if (!pane.crewList.some((c) => c.crewId === crewId)) {
+  if (!isCrewLoaded(crewId)) {
     return { error: `Crew ${crewId} is not currently loaded into the roster — load them into the roster first.` }
   }
   const all = pane.rosterItems.filter((i) => i.crewId === crewId)
@@ -140,6 +146,31 @@ export async function dispatchAiAction(action: AiAction): Promise<string | null>
       useFilterStore.getState().resetFilters()
       return 'Cleared all filters'
     }
+    case 'save_changes': {
+      // Never saves here: the chat shows the plan card (spec §16) and saves only on "Yes".
+      const n = useDraftStore.getState().operations.length
+      return n === 0 ? 'No unsaved changes to save' : `Reviewing ${n} unsaved change${n === 1 ? '' : 's'} before saving`
+    }
+    case 'recover_violation': {
+      let pairingId: number | undefined
+      if (action.pairing) {
+        const resolved = resolvePairing(action.pairing, action.date)
+        if ('error' in resolved) return resolved.error
+        pairingId = resolved.item.pairing.id
+      }
+      return openRecoveryForAlerts({ crewId: action.crewId, ruleCode: action.ruleCode, pairingId })
+    }
+    case 'recover_open_pairing':
+      return openRecoveryForOpenPairing(action.pairing, action.date)
+    case 'best_fit_crew':
+      return openBestFit(action.pairings, action.date, action.ranks ?? [])
+    case 'undo_changes': {
+      const draft = useDraftStore.getState()
+      const want = Math.max(1, Math.min(action.count, draft.operations.length))
+      let undone = 0
+      for (let i = 0; i < want; i++) if (useDraftStore.getState().undoOp()) undone++
+      return undone === 0 ? 'Nothing to undo' : `Undid ${undone} unsaved change${undone === 1 ? '' : 's'}`
+    }
     case 'set_date_range': {
       // Same convention as typing into the toolbar DateRangePicker: the calendar
       // dates are interpreted in the current DISPLAY timezone (timezone-store).
@@ -172,7 +203,7 @@ export async function dispatchAiAction(action: AiAction): Promise<string | null>
     case 'move_task': {
       const resolved = resolveCrewTasks(action.crewId, { pairingLabel: action.pairingLabel, date: action.date })
       if ('error' in resolved) return resolved.error
-      if (!useRosterStore.getState().main.crewList.some((c) => c.crewId === action.toCrewId)) {
+      if (!isCrewLoaded(action.toCrewId)) {
         return `Crew ${action.toCrewId} is not currently loaded into the roster — load them into the roster first.`
       }
       const roster = useRosterStore.getState()

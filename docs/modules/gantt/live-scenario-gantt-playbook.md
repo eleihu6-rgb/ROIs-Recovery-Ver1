@@ -1390,3 +1390,31 @@ Apply + Flight Delay redesign: `docs/superpowers/specs/2026-09-12-recovery-apply
 ## Recovery cases 102–104 and reusable extension contract
 
 See [the recovery study](../crew-recovery/2026-09-12-cases-102-104-study-Ver1.md) for pushed-source provenance, overlap eligibility, shared options/Preview/Apply flow, complete-pairing mutations, cost adapter limitations and Save/ripple review gaps. Reuse the existing trigger, candidate, dialog, cost breakdown and draft contracts when adding a case. The online Help Recovery category contains the operational workflow, separate 19-type Cost Library introduction and numbered case walkthroughs. See [verification and public screenshots](../crew-recovery/2026-09-12-recovery-help-verification-Ver1.md) for the distinction between current Help validation and unverified live recovery persistence.
+
+## R'Bot View Gantt readout (2026-09-30)
+
+`PaneCanvas` accepts an optional `readout` prop (`components/ai-chat/viewport-readout.ts`). Every pane that
+passes one (SharedRosterPane, SharedPairingPane, SharedFlightPane, and the Live legacy `panes/pairing-pane.tsx`)
+is registered while its canvas is mounted; `readOpenPanes()` returns only canvases that are laid out (hidden
+tabs excluded) with their visible time window (`rangeStart + scrollX/pxPerHour` … `+ canvasWidth/pxPerHour`).
+Nothing runs per frame and nothing is fetched (§First-Paint). The readout hands over exactly the rows the pane
+renders (filters + quick filter applied), so R'Bot counts match the screen. Pure counting lives in
+`viewport-snapshot.ts` (open positions = coverage open + partial, rank-scoped when the pane filters by rank).
+A new pane type joins R'Bot by passing `readout` — no R'Bot-side change. P2: `viewport-diff.ts` keeps an id-keyed state per read (not sent) and diffs the next read (duty changes only when the window is unchanged); `viewDefaults` (Live only: single base/fleet on screen, visible dates, ≤20 crew) feeds ai-server `VIEW_DEFAULT_FIELDS` so "build pairings for this view" fills missing scope. Trap: R'Bot roster mutations must check loaded crew via `crew-store` items — `roster-store.main.crewList` is never populated in Live. Trap: the first draft edit runs `refreshDraftCoverage`, which recomputes EVERY pairing's fill from loaded roster items, so unrelated pairings (e.g. PRAM/PRPM) can flip coverage. E2E: `e2e/tests/gantt/rbot-view-gantt.spec.ts`.
+Gotcha: stub R'Bot with `page.route('**/ai/chat')` — the prefix differs per env (`/altair/ai` locally,
+`/live-api/ai` on cr.rois.one), and an unmatched stub silently falls through to the real LLM.
+P3 (L2): R'Bot draft-staging actions show `RbotPlanCard`, which lists EVERY pending draft op (Save commits the
+whole draft) and saves only via `saveDraft({ via: 'rbot', instruction })` — same legality confirm, locks and
+permissions as the Save button. Policy is read fresh from dictionary SYS_PARAM `RBOT_AUTONOMY` /
+`RBOT_MAX_PLAN_CHANGES` (fails closed to L1). Trap: seeding dictionary rows by raw SQL leaves the live-server
+Redis cache (`<prefix>:dictionary:parent:SYS_PARAM`, 24h) stale — edit through Data or delete that key.
+Trap: deleting a duty marks `roster_flight.is_deleted = 1` (not physical), so a self-restoring e2e leaves a
+cancelled row; `rbot-l2-plan.spec.ts` fixture = J4040 GDO on 2026-10-05.
+Coverage recompute (fixed 2026-09-30): `pairing-store.refreshDraftCoverage` now recomputes ONLY slots (pairing × rank)
+whose distinct-crew count differs between baseItems and the draft; all other slots keep `authoritativeComposition`.
+Before, every loaded pairing was recomputed from the loaded roster subset, so pairings whose crew were not loaded
+flipped Full→Partial/Open on any unrelated edit. Residual: a CHANGED slot is still counted from loaded crew only.
+R'Bot Recovery/Best-fit reuse the `recovery:shortcut` / `recovery:open` window events (listener in SharedRosterPane,
+Live roster-main only) and `useBestFitStore.openWith`; `recovery:shortcut` accepts an optional scope and reports
+`matched` synchronously. Recovery refuses completed rosters (past pairings) — Case-3 152227 (2026-09-19) is no longer
+recoverable, so e2e positive Recovery paths need a future-dated fixture.

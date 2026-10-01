@@ -78,6 +78,12 @@ const applyPairingPaneAfterRedo = (op: DraftOp): void => {
   }
 }
 
+/** Who initiated a Save, for the server audit log (absent = the user pressed Save). */
+export interface CommitAudit {
+  via: 'rbot'
+  instruction: string
+}
+
 /** A single draft operation with metadata */
 export interface DraftOperation {
   id: string
@@ -112,7 +118,7 @@ interface DraftStore {
   redoOp: () => DraftOperation | null
 
   /** Commit all operations to server */
-  commit: () => Promise<boolean>
+  commit: (audit?: CommitAudit) => Promise<boolean>
   /** Discard all operations (but stay in draft mode) */
   discardAll: () => Promise<void>
 
@@ -237,7 +243,7 @@ export const useDraftStore = create<DraftStore>((set, get) => ({
     return first
   },
 
-  commit: async () => {
+  commit: async (audit) => {
     const { operations, saving } = get()
     if (operations.length === 0 || saving) return true
 
@@ -271,6 +277,7 @@ export const useDraftStore = create<DraftStore>((set, get) => ({
             && selectedRulesetId > 0
             ? { rulesetId: selectedRulesetId }
             : {}),
+          ...(audit ? { via: audit.via, instruction: audit.instruction } : {}),
         })
         await lockStore.releaseAllLocks()
       } else {

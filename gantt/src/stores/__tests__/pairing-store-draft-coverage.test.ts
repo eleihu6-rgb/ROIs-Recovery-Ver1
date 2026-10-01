@@ -101,7 +101,41 @@ describe('pairing-store draft coverage', () => {
 
     usePairingStore.getState().refreshDraftCoverage(base, displayed)
 
-    expect(usePairingStore.getState().items[0].pairing.composition[0].fill).toBe(0)
+    // Unchanged slot → keeps the server fill (1); not bumped to 2.
+    expect(usePairingStore.getState().items[0].pairing.composition[0].fill).toBe(1)
+  })
+
+  it('regression: an edit on another pairing never changes a pairing whose crew are not loaded', () => {
+    // Pairing 42 is covered on the server (CA 2/2) but its crew are outside the loaded roster.
+    // Pairing 43 is the one being edited. Before the fix, 42 was recomputed from the loaded
+    // roster (0 crew) and flipped Full → Open.
+    const full = { ...pairingItem(), pairing: { ...pairingItem().pairing, id: 42, composition: [{ rank: 'CA', plan: 2, fill: 2 }], isFull: true } as PairingItem['pairing'] }
+    const edited = { ...pairingItem(), pairing: { ...pairingItem().pairing, id: 43, composition: [{ rank: 'CA', plan: 1, fill: 1 }], isFull: true } as PairingItem['pairing'] }
+    usePairingStore.setState({
+      items: [full, edited],
+      authoritativeComposition: new Map([
+        [42, [{ rank: 'CA', plan: 2, fill: 2 }]],
+        [43, [{ rank: 'CA', plan: 1, fill: 1 }]],
+      ]),
+    })
+    const base = [rosterItem(1, 'C1', 43)]
+    const displayed: RosterItem[] = [] // C1 unassigned from 43
+
+    usePairingStore.getState().refreshDraftCoverage(base, displayed)
+
+    const [p42, p43] = usePairingStore.getState().items
+    expect(p42.pairing.composition[0].fill).toBe(2)
+    expect(p42.pairing.isFull).toBe(true)
+    expect(p43.pairing.composition[0].fill).toBe(0)
+    expect(p43.pairing.isFull).toBe(false)
+  })
+
+  it('regression: only the changed rank slot is recomputed on a multi-rank pairing', () => {
+    const multi = { ...pairingItem(), pairing: { ...pairingItem().pairing, composition: [{ rank: 'CA', plan: 1, fill: 1 }, { rank: 'FO', plan: 1, fill: 1 }], isFull: true } as PairingItem['pairing'] }
+    usePairingStore.setState({ items: [multi], authoritativeComposition: new Map([[42, [{ rank: 'CA', plan: 1, fill: 1 }, { rank: 'FO', plan: 1, fill: 1 }]]]) })
+    // Only the CA is loaded; the FO flying 42 is not. Removing the CA must not zero the FO slot.
+    usePairingStore.getState().refreshDraftCoverage([rosterItem(1, 'C1', 42, 'CA')], [])
+    expect(usePairingStore.getState().items[0].pairing.composition.map((s) => s.fill)).toEqual([0, 1])
   })
 })
 

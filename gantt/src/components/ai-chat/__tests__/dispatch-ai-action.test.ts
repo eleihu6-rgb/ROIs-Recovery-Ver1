@@ -16,8 +16,21 @@ const mocks = vi.hoisted(() => ({
   removeTasksByPairingAndCrew: vi.fn(),
   addGroundTask: vi.fn(),
   apiGet: vi.fn(),
-  rosterMain: { crewList: [] as Crew[], rosterItems: [] as RosterItem[] },
+  rosterMain: { rosterItems: [] as RosterItem[] },
+  draft: { operations: [] as Array<{ id: string }>, undoOp: vi.fn() },
 }))
+
+vi.mock('@/stores/draft-store', () => ({
+  useDraftStore: { getState: () => mocks.draft },
+}))
+
+const recovery = vi.hoisted(() => ({
+  openRecoveryForAlerts: vi.fn(() => 'alerts-chip'),
+  openRecoveryForOpenPairing: vi.fn(() => 'open-seat-chip'),
+  openBestFit: vi.fn(() => 'best-fit-chip'),
+  resolvePairing: vi.fn(),
+}))
+vi.mock('../rbot-recovery', () => recovery)
 
 vi.mock('@/stores/roster-store', () => ({
   useRosterStore: {
@@ -93,13 +106,17 @@ const assignmentOption = (assignment: string, defaultAssignmentGroup: string | n
   restTime: null,
 })
 
+/** Load crew into the Live roster the way the app does — via crew-store (what the pane renders). */
+const loadCrew = (crews: Crew[]): void => {
+  useCrewStore.setState({ items: crews.map((c) => ({ crew: c, sessionTags: [] }) as never) })
+}
+
 describe('dispatchAiAction', () => {
   beforeEach(() => {
     useFilterStore.getState().resetFilters()
     usePaneStore.getState().setSortCriteria('roster-main', [])
     useTimezoneStore.setState({ timezone: 'UTC' })
     useCrewStore.setState({ items: [] })
-    mocks.rosterMain.crewList = []
     mocks.rosterMain.rosterItems = []
     mocks.moveTask.mockReset()
     mocks.swapTasks.mockReset()
@@ -244,7 +261,7 @@ describe('dispatchAiAction', () => {
 
   describe('Phase 1 Live Roster mutations', () => {
     it('move_task moves a single-segment duty to another crew', async () => {
-      mocks.rosterMain.crewList = [crew('911'), crew('912')]
+      loadCrew([crew('911'), crew('912')])
       mocks.rosterMain.rosterItems = [rosterItem({ id: 1, crewId: '911' })]
       mocks.moveTask.mockResolvedValue(rosterItem({ id: 1, crewId: '912' }))
 
@@ -255,7 +272,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('move_task moves every segment of a multi-segment pairing', async () => {
-      mocks.rosterMain.crewList = [crew('911'), crew('912')]
+      loadCrew([crew('911'), crew('912')])
       mocks.rosterMain.rosterItems = [
         rosterItem({ id: 1, crewId: '911', pairingId: 100, segSeq: 1 }),
         rosterItem({ id: 2, crewId: '911', pairingId: 100, segSeq: 2 }),
@@ -271,7 +288,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('move_task rejects when the source crew is not loaded on the roster', async () => {
-      mocks.rosterMain.crewList = [crew('912')]
+      loadCrew([crew('912')])
       const chip = await dispatchAiAction({ type: 'move_task', crewId: '911', toCrewId: '912' })
 
       expect(chip).toContain('911')
@@ -280,7 +297,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('move_task rejects when the target crew is not loaded on the roster', async () => {
-      mocks.rosterMain.crewList = [crew('911')]
+      loadCrew([crew('911')])
       mocks.rosterMain.rosterItems = [rosterItem({ id: 1, crewId: '911' })]
 
       const chip = await dispatchAiAction({ type: 'move_task', crewId: '911', toCrewId: '999' })
@@ -291,7 +308,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('move_task asks to disambiguate when crew has more than one duty loaded', async () => {
-      mocks.rosterMain.crewList = [crew('911'), crew('912')]
+      loadCrew([crew('911'), crew('912')])
       mocks.rosterMain.rosterItems = [
         rosterItem({ id: 1, crewId: '911', pairingId: 100, pairingLabel: 'F100' }),
         rosterItem({ id: 2, crewId: '911', pairingId: 200, pairingLabel: 'F200' }),
@@ -304,7 +321,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('move_task uses pairingLabel to pick one duty among several', async () => {
-      mocks.rosterMain.crewList = [crew('911'), crew('912')]
+      loadCrew([crew('911'), crew('912')])
       mocks.rosterMain.rosterItems = [
         rosterItem({ id: 1, crewId: '911', pairingId: 100, pairingLabel: 'F100' }),
         rosterItem({ id: 2, crewId: '911', pairingId: 200, pairingLabel: 'F200' }),
@@ -317,7 +334,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('swap_tasks swaps two single duties', async () => {
-      mocks.rosterMain.crewList = [crew('911'), crew('912')]
+      loadCrew([crew('911'), crew('912')])
       mocks.rosterMain.rosterItems = [
         rosterItem({ id: 1, crewId: '911', pairingId: 100 }),
         rosterItem({ id: 2, crewId: '912', pairingId: 200 }),
@@ -331,7 +348,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('swap_tasks rejects when either side matches a multi-segment pairing', async () => {
-      mocks.rosterMain.crewList = [crew('911'), crew('912')]
+      loadCrew([crew('911'), crew('912')])
       mocks.rosterMain.rosterItems = [
         rosterItem({ id: 1, crewId: '911', pairingId: 100, segSeq: 1 }),
         rosterItem({ id: 2, crewId: '911', pairingId: 100, segSeq: 2 }),
@@ -345,7 +362,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('unassign_task removes a crew from a pairing via removeTasksByPairingAndCrew', async () => {
-      mocks.rosterMain.crewList = [crew('911')]
+      loadCrew([crew('911')])
       mocks.rosterMain.rosterItems = [rosterItem({ id: 1, crewId: '911', pairingId: 100, pairingLabel: 'F100' })]
 
       const chip = await dispatchAiAction({ type: 'unassign_task', crewId: '911' })
@@ -356,7 +373,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('unassign_task removes a ground task via removeTask', async () => {
-      mocks.rosterMain.crewList = [crew('911')]
+      loadCrew([crew('911')])
       mocks.rosterMain.rosterItems = [
         rosterItem({ id: 1, crewId: '911', pairingId: null, pairingLabel: null, label: 'DO', assignmentGroup: 'DO' }),
       ]
@@ -369,7 +386,7 @@ describe('dispatchAiAction', () => {
     })
 
     it('unassign_task returns an error chip when the crew is not loaded', async () => {
-      mocks.rosterMain.crewList = []
+      loadCrew([])
       const chip = await dispatchAiAction({ type: 'unassign_task', crewId: '911' })
 
       expect(chip).toContain('not currently loaded')
@@ -543,5 +560,51 @@ describe('auto_assign_pairings (R\'Bot → Auto-assign open pairings)', () => {
       type: 'auto_assign_pairings', crewIds: ['T2004'], start: 'nope', end: '2026-09-30',
     })).toBeNull()
     expect(useUiStore.getState().autoAssignOpen).toBe(false)
+  })
+})
+
+describe('save_changes / undo_changes (R\'Bot L2 plan)', () => {
+  beforeEach(() => {
+    mocks.draft.operations = []
+    mocks.draft.undoOp.mockReset()
+  })
+
+  it('save_changes never saves — it only reports what the plan card will review', async () => {
+    mocks.draft.operations = [{ id: 'd1' }, { id: 'd2' }]
+    expect(await dispatchAiAction({ type: 'save_changes' })).toBe('Reviewing 2 unsaved changes before saving')
+    mocks.draft.operations = []
+    expect(await dispatchAiAction({ type: 'save_changes' })).toBe('No unsaved changes to save')
+  })
+
+  it('undo_changes undoes at most what is pending', async () => {
+    mocks.draft.operations = [{ id: 'd1' }, { id: 'd2' }]
+    mocks.draft.undoOp.mockReturnValue({ id: 'x' })
+    expect(await dispatchAiAction({ type: 'undo_changes', count: 5 })).toBe('Undid 2 unsaved changes')
+    expect(mocks.draft.undoOp).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('Recovery / Best-fit openers', () => {
+  beforeEach(() => { for (const f of Object.values(recovery)) f.mockClear() })
+
+  it('recover_violation resolves a named pairing, then scopes the Recovery shortcut', async () => {
+    recovery.resolvePairing.mockReturnValue({ item: { pairing: { id: 152227 } } })
+    expect(await dispatchAiAction({ type: 'recover_violation', crewId: 'L3002', ruleCode: '8004', pairing: 'ET452/ET453', date: '2026-09-19' }))
+      .toBe('alerts-chip')
+    expect(recovery.resolvePairing).toHaveBeenCalledWith('ET452/ET453', '2026-09-19')
+    expect(recovery.openRecoveryForAlerts).toHaveBeenCalledWith({ crewId: 'L3002', ruleCode: '8004', pairingId: 152227 })
+  })
+
+  it('recover_violation reports an unresolvable pairing instead of opening anything', async () => {
+    recovery.resolvePairing.mockReturnValue({ error: 'Pairing X is not loaded in the pairing pane.' })
+    expect(await dispatchAiAction({ type: 'recover_violation', pairing: 'X' })).toBe('Pairing X is not loaded in the pairing pane.')
+    expect(recovery.openRecoveryForAlerts).not.toHaveBeenCalled()
+  })
+
+  it('recover_open_pairing and best_fit_crew route to their openers', async () => {
+    expect(await dispatchAiAction({ type: 'recover_open_pairing', pairing: '151614' })).toBe('open-seat-chip')
+    expect(recovery.openRecoveryForOpenPairing).toHaveBeenCalledWith('151614', undefined)
+    expect(await dispatchAiAction({ type: 'best_fit_crew', pairings: [], ranks: ['CA'] })).toBe('best-fit-chip')
+    expect(recovery.openBestFit).toHaveBeenCalledWith([], undefined, ['CA'])
   })
 })

@@ -7,6 +7,7 @@ import type { PaneType } from '@/types/pane'
 import { ROW_HEIGHT, HEADER_HEIGHT, PAIRING_HEADER_HEIGHT } from './gantt-constants'
 import type { RubberBandRect } from './interactions/base-interaction'
 import { publishRenderStats } from '@/utils/gantt-test-hook'
+import { registerPaneReadout, type PaneReadout } from '@/components/ai-chat/viewport-readout'
 
 interface PaneCanvasProps {
   /** Unique pane instance ID (e.g., 'roster-1', 'pairing-2') */
@@ -33,6 +34,8 @@ interface PaneCanvasProps {
   onCanvasDestroy?: () => void
   /** Current rubber-band selection rectangle (null = not active) */
   rubberBand?: RubberBandRect | null
+  /** R'Bot "View Gantt" readout — the rows this pane renders; read on demand only. */
+  readout?: PaneReadout
 }
 
 /**
@@ -56,6 +59,7 @@ export const PaneCanvas = ({
   onCanvasReady,
   onCanvasDestroy,
   rubberBand,
+  readout,
 }: PaneCanvasProps) => {
   // 统一数据源：viewport / timezone / dirty 信号一律从此读取，禁止直连 store。
   const source = useGanttSource()
@@ -90,6 +94,33 @@ export const PaneCanvas = ({
   const pxPerHourRef = useRef<number>(0)
   const rangeStartRef = useRef<Date>(new Date())
   const rangeEndRef = useRef<Date>(new Date())
+
+  // R'Bot readout: register while mounted; the visible time window and rows are read
+  // lazily when the user presses View Gantt (no per-frame work).
+  const readoutRef = useRef(readout)
+  readoutRef.current = readout
+  const canvasWidthRef = useRef(0)
+  canvasWidthRef.current = size.width
+  const timezoneRef = useRef(timezone)
+  timezoneRef.current = timezone
+  const readoutSourceRef = useRef(source)
+  readoutSourceRef.current = source
+  useEffect(
+    () =>
+      registerPaneReadout({
+        paneId,
+        getCanvas: () => canvasRef.current,
+        getReadout: () => readoutRef.current,
+        getWindow: () => {
+          const pph = pxPerHourRef.current
+          if (pph <= 0 || canvasWidthRef.current <= 0) return null
+          const startMs = rangeStartRef.current.getTime() + (readoutSourceRef.current.getScrollX() / pph) * 3_600_000
+          return { startMs, endMs: startMs + (canvasWidthRef.current / pph) * 3_600_000, timezone: timezoneRef.current }
+        },
+      }),
+    // canvasRef is a stable ref object; everything else is read through refs at call time.
+    [paneId, canvasRef],
+  )
 
   // Determine header height based on pane type (component-level for use in interactions)
   const headerHeight = paneType === 'pairing' ? PAIRING_HEADER_HEIGHT : HEADER_HEIGHT

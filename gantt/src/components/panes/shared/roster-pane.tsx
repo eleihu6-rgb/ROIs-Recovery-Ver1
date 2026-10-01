@@ -49,6 +49,7 @@ import type { CrewViolationRow } from '@/components/panes/violation-list-dialog'
 import { RecoveryViolationDialog } from '@/components/recovery/recovery-violation-dialog'
 import type { OpenRecoveryIncident } from '@/services/open-pairing-recovery'
 import { recoveryTriggerFor } from '@/services/recovery-trigger'
+import { matchesRecoveryScope, type RecoveryShortcutScope } from '@/components/ai-chat/rbot-recovery'
 import type { RecoveryAlertSnapshot } from '@/services/recovery-candidates'
 import { QualityAnalysisDialog } from '@/components/panes/quality-analysis-dialog'
 import { PaneQuickFilter, EMPTY_QUICK_FILTER, getQuickFilterChips } from '@/components/panes/pane-quick-filter'
@@ -63,6 +64,7 @@ import { useUiStore } from '@/stores/ui-store'
 import { useGanttViewStore } from '@/stores/gantt-view-store'
 import { notify } from '@/utils/notify'
 import type { GanttContextId } from '@/types/gantt-context'
+import type { PaneReadout } from '@/components/ai-chat/viewport-readout'
 import type { RosterItem } from '@/types'
 
 /**
@@ -264,12 +266,17 @@ export const SharedRosterPane = ({
 
   useEffect(() => {
     if (!isLive || livePaneType !== 'roster-main' || !alertCenter) return
-    const onRecoveryShortcut = () => {
+    // Optional scope (R'Bot "recover crew X's 8004"): the listener runs synchronously inside
+    // dispatchEvent, so it reports back through `matched` (-1 = no Live roster listening).
+    const onRecoveryShortcut = (event: Event) => {
+      const scope = (event as CustomEvent<RecoveryShortcutScope | null>).detail ?? null
       const recoverableRows = alertCenter.rows.filter((candidate) =>
-        recoveryTriggerFor(candidate.ruleCode) != null && candidate.pairingId != null && candidate.canRecover === true,
+        recoveryTriggerFor(candidate.ruleCode) != null && candidate.pairingId != null && candidate.canRecover === true
+        && matchesRecoveryScope(candidate, scope),
       )
+      if (scope) scope.matched = recoverableRows.length
       if (recoverableRows.length === 0) {
-        notify.info('No recoverable 8004, Assignment Overlap (1001) or Published Delay (3007) alert in the loaded Live data.')
+        if (!scope) notify.info('No recoverable 8004, Assignment Overlap (1001) or Published Delay (3007) alert in the loaded Live data.')
         return
       }
       setAlertCenterOpen(false)
@@ -708,6 +715,21 @@ export const SharedRosterPane = ({
     void getScenarioViolationStore(scenarioId).getState().runPreCheck(crewList, itemsRef.current)
   }, [pendingChanges, scenarioId])
 
+  // R'Bot View Gantt: exactly the rows this pane renders (after filter + quick-filter).
+  const readout = useMemo<PaneReadout>(() => ({
+    contextId,
+    read: () => ({
+      kind: 'roster',
+      rows: panelRows.map((r) => ({
+        crewId: r.rowId,
+        rank: r.values.rank ?? '',
+        base: r.values.base ?? '',
+        hasAlert: (r.maxViolationSeverity ?? 0) > 0,
+      })),
+      items,
+    }),
+  }), [contextId, panelRows, items])
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {toolbar?.(panelRows.length)}
@@ -847,6 +869,7 @@ export const SharedRosterPane = ({
         />
         {splitter}
         <PaneCanvas
+          readout={readout}
           paneId={paneId}
           paneType={paneType}
           canvasTestId={canvasTestId}
