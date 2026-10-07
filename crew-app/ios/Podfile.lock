@@ -1210,7 +1210,7 @@ PODS:
     - React-utils (= 0.74.5)
   - RNCAsyncStorage (2.2.0):
     - React-Core
-  - RNGestureHandler (2.31.2):
+  - RNGestureHandler (2.20.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1563,7 +1563,7 @@ SPEC CHECKSUMS:
   React-utils: 9fa4e5d0b5e6c6c85c958f19d6ef854337886417
   ReactCommon: 9f285823dbe955099978d9bff65a7653ca029256
   RNCAsyncStorage: b44e8a4e798c3e1f56bffccd0f591f674fb9198f
-  RNGestureHandler: 15641ba6217e52047c905299e43e1a1b0be3bfcc
+  RNGestureHandler: 4ed68e3ad5ef719da597621a4fa282194e9e0a8e
   RNKeychain: bbe2f6d5cc008920324acb49ef86ccc03d3b38e4
   RNReanimated: def444e044c354f38bb0a5926a8583ba19d944c1
   RNScreens: ef68e50aea531dd00c592ba4683bbcb89d4d2e1a
@@ -1572,6 +1572,6 @@ SPEC CHECKSUMS:
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d
   Yoga: 950bbfd7e6f04790fdb51149ed51df41f329fcc8
 
-PODFILE CHECKSUM: 515c0b092791677ba51f5302a8fea3eeec7579d4
+PODFILE CHECKSUM: e14b88e0367950c450c09ea92864f3882b0490d3
 
-COCOAPODS: 1.14.3
+COCOAPODS: 1.16.2
