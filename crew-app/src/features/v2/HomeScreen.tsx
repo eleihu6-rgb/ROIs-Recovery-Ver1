@@ -14,12 +14,15 @@ import { TicketCard, DashedLine } from '../../components/v2/TicketCard';
 import { daysUntil, greetingFor, legView, tripStartMs, MON } from './model';
 import { useAlarms, useDestinations, useNextTrip } from './useV2';
 import { useV2Nav } from './nav';
+import { useLayout } from '../../components/v2/useLayout';
 
 // The dock floats over the page, so the scroll content carries its own clearance.
 // 110 (dock height + the bottom inset) left the Quick actions card half-under the
 // pill at rest and only ~14pt clear after a full scroll; 150 clears it and still
 // reads as one page (Ryan, 2026-09-11).
 const DOCK_CLEAR = 150;
+// Duo inner screen is only ~669pt tall; the centred dock needs less clearance.
+const WIDE_DOCK_CLEAR = 100;
 
 export function HomeScreen() {
   const p = useCarrier();
@@ -47,10 +50,67 @@ export function HomeScreen() {
   // Explore: this month's upcoming rotations, one card per destination. The same
   // list backs the full-screen city viewer, so the tapped card is the page it opens.
   const destinations = useDestinations(now);
+  const { wide } = useLayout();
+
+  const ticketSection = trip && first ? (
+      <TicketCard palette={p} style={s.trip} holeY={holeY} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-next-trip">
+        <View style={s.uh}><Icon name="trip" size={22} color={p.cardInk} /><Text style={[s.uhText, { color: p.cardInk }]}>Upcoming Trip</Text></View>
+        <Text style={[s.sub, { color: p.cardSoft }]}>{first.fltNumber} · {first.day} {MON[first.monthIdx]} {first.year} · {inDays === 0 ? 'Reports today' : `Reports in ${inDays} day${inDays === 1 ? '' : 's'}`}</Text>
+        <View style={s.legRow}>
+          <View style={s.leg}>
+            <View><Text style={[s.cd, { color: p.cardInk }]}>{first.dep}</Text><Text style={[s.ct, { color: p.cardSoft }]}>{first.depTime}</Text></View>
+            <Icon name="plane" size={20} color={p.cardInk} />
+            <View><Text style={[s.cd, { color: p.cardInk }]}>{first.arv}</Text><Text style={[s.ct, { color: p.cardSoft }]}>{first.arvTime}{first.arvDayOffset ? ` ${first.arvDayOffset}` : ''}</Text></View>
+          </View>
+          <View style={s.kv}>
+            <Text style={[s.kvk, { color: p.cardSoft }]}>Ready <Text style={[s.kvv, { color: p.cardInk }]}>{first.ready}</Text></Text>
+            <Text style={[s.kvk, { color: p.cardSoft }]}>Check-in <Text style={[s.kvv, { color: p.cardInk }]}>{first.checkIn}</Text></Text>
+          </View>
+        </View>
+        <View style={{ marginVertical: 16 }} onLayout={e => setHoleY(20 + e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2)}><DashedLine color={p.cardLine} /></View>
+        <View style={s.btnRow}>
+          <View style={[s.btn, { backgroundColor: p.btn }]}><Text style={s.btnText}>View Trip Details</Text></View>
+          <View style={[s.btnSq, { backgroundColor: p.btn }]}><Icon name="qr" size={26} color="#fff" strokeWidth={1.8} /></View>
+        </View>
+      </TicketCard>
+    ) : null;
+  const exploreSection = (
+    <>
+      <View style={s.sec}><Text style={[s.secTitle, { color: p.ink }]}>Explore your destinations</Text><Text style={[s.secLink, { color: p.inkSoft }]}>See all</Text></View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.destRow} style={{ marginHorizontal: wide ? 0 : -22 }}>
+        {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
+        {destinations.map((d, i) => (
+          <Pressable key={d.city.airport} style={s.dest} onPress={() => nav.navigate('Destination', { index: i })} testID={`dest-${d.city.airport}`}>
+            <ImageBackground source={d.city.image} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: 14 }} />
+            <View style={s.destGrad} />
+            <View style={s.fav}><Icon name="heart" size={16} color="#fff" strokeWidth={1.8} /></View>
+            <View style={s.destBottom}>
+              <Text style={[s.destCo, { color: p.inkSoft }]}>{d.city.name === d.city.airport ? 'Destination' : d.city.airport}</Text>
+              <Text style={s.destCity}>{d.city.name}</Text>
+              <Text style={[s.destFrom, { color: p.inkSoft }]}>FLIGHT</Text>
+              <Text style={s.destFlt}>{d.leg.fltNumber} · {d.leg.day} {MON[d.leg.monthIdx]}</Text>
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </>
+  );
+  const quickSection = (
+    <View style={[s.qa, { backgroundColor: p.frost }]}>
+      <Text style={[s.qaTitle, { color: p.ink }]}>Quick actions</Text>
+      <View style={s.qaGrid}>
+        <QA icon="checkin" label="Check-In" onPress={() => nav.navigate('Spec', { id: 'checkin' })} palette={p} />
+        <QA icon="calcheck" label="Absence" onPress={() => nav.navigate('Spec', { id: 'absence' })} palette={p} />
+        <QA icon="shield" label="Discretion" onPress={() => nav.navigate('Discretion')} palette={p} />
+        <QA icon="swap" label="Duty Swap" onPress={() => nav.navigate('Spec', { id: 'swap' })} palette={p} />
+        <QA icon="more" label="More" onPress={() => nav.navigate('Spec', { id: 'more' })} palette={p} />
+      </View>
+    </View>
+  );
 
   return (
     <GradientScreen palette={p}>
-      <ScrollView contentContainerStyle={[s.body, { paddingTop: insets.top + 10, paddingBottom: DOCK_CLEAR }]} showsVerticalScrollIndicator={false} testID="home-screen">
+      <ScrollView contentContainerStyle={[s.body, { paddingTop: insets.top + 10, paddingBottom: wide ? WIDE_DOCK_CLEAR : DOCK_CLEAR }]} showsVerticalScrollIndicator={false} testID="home-screen">
         <View style={s.brandRow}>
           <BrandLogo airline={airline} height={34} />
           <View style={{ flexDirection: 'row', gap: 2 }}>
@@ -82,57 +142,19 @@ export function HomeScreen() {
             row now; Home goes straight to the trip (or straight to Explore when
             nothing is published). */}
 
-        {trip && first ? (
-          <TicketCard palette={p} style={s.trip} holeY={holeY} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-next-trip">
-            <View style={s.uh}><Icon name="trip" size={22} color={p.cardInk} /><Text style={[s.uhText, { color: p.cardInk }]}>Upcoming Trip</Text></View>
-            <Text style={[s.sub, { color: p.cardSoft }]}>{first.fltNumber} · {first.day} {MON[first.monthIdx]} {first.year} · {inDays === 0 ? 'Reports today' : `Reports in ${inDays} day${inDays === 1 ? '' : 's'}`}</Text>
-            <View style={s.legRow}>
-              <View style={s.leg}>
-                <View><Text style={[s.cd, { color: p.cardInk }]}>{first.dep}</Text><Text style={[s.ct, { color: p.cardSoft }]}>{first.depTime}</Text></View>
-                <Icon name="plane" size={20} color={p.cardInk} />
-                <View><Text style={[s.cd, { color: p.cardInk }]}>{first.arv}</Text><Text style={[s.ct, { color: p.cardSoft }]}>{first.arvTime}{first.arvDayOffset ? ` ${first.arvDayOffset}` : ''}</Text></View>
-              </View>
-              <View style={s.kv}>
-                <Text style={[s.kvk, { color: p.cardSoft }]}>Ready <Text style={[s.kvv, { color: p.cardInk }]}>{first.ready}</Text></Text>
-                <Text style={[s.kvk, { color: p.cardSoft }]}>Check-in <Text style={[s.kvv, { color: p.cardInk }]}>{first.checkIn}</Text></Text>
-              </View>
-            </View>
-            <View style={{ marginVertical: 16 }} onLayout={e => setHoleY(20 + e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2)}><DashedLine color={p.cardLine} /></View>
-            <View style={s.btnRow}>
-              <View style={[s.btn, { backgroundColor: p.btn }]}><Text style={s.btnText}>View Trip Details</Text></View>
-              <View style={[s.btnSq, { backgroundColor: p.btn }]}><Icon name="qr" size={26} color="#fff" strokeWidth={1.8} /></View>
-            </View>
-          </TicketCard>
-        ) : null}
-
-        <View style={s.sec}><Text style={[s.secTitle, { color: p.ink }]}>Explore your destinations</Text><Text style={[s.secLink, { color: p.inkSoft }]}>See all</Text></View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.destRow} style={{ marginHorizontal: -22 }}>
-          {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
-          {destinations.map((d, i) => (
-            <Pressable key={d.city.airport} style={s.dest} onPress={() => nav.navigate('Destination', { index: i })} testID={`dest-${d.city.airport}`}>
-              <ImageBackground source={d.city.image} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: 14 }} />
-              <View style={s.destGrad} />
-              <View style={s.fav}><Icon name="heart" size={16} color="#fff" strokeWidth={1.8} /></View>
-              <View style={s.destBottom}>
-                <Text style={[s.destCo, { color: p.inkSoft }]}>{d.city.name === d.city.airport ? 'Destination' : d.city.airport}</Text>
-                <Text style={s.destCity}>{d.city.name}</Text>
-                <Text style={[s.destFrom, { color: p.inkSoft }]}>FLIGHT</Text>
-                <Text style={s.destFlt}>{d.leg.fltNumber} · {d.leg.day} {MON[d.leg.monthIdx]}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        <View style={[s.qa, { backgroundColor: p.frost }]}>
-          <Text style={[s.qaTitle, { color: p.ink }]}>Quick actions</Text>
-          <View style={s.qaGrid}>
-            <QA icon="checkin" label="Check-In" onPress={() => nav.navigate('Spec', { id: 'checkin' })} palette={p} />
-            <QA icon="calcheck" label="Absence" onPress={() => nav.navigate('Spec', { id: 'absence' })} palette={p} />
-            <QA icon="shield" label="Discretion" onPress={() => nav.navigate('Discretion')} palette={p} />
-            <QA icon="swap" label="Duty Swap" onPress={() => nav.navigate('Spec', { id: 'swap' })} palette={p} />
-            <QA icon="more" label="More" onPress={() => nav.navigate('Spec', { id: 'more' })} palette={p} />
+        {wide && ticketSection ? (
+          // iPhone Duo inner screen: next trip left, destinations + quick actions right.
+          <View style={s.wideCols}>
+            <View style={s.wideCol}>{ticketSection}</View>
+            <View style={s.wideCol}>{exploreSection}{quickSection}</View>
           </View>
-        </View>
+        ) : (
+          <>
+            {ticketSection}
+            {exploreSection}
+            {quickSection}
+          </>
+        )}
       </ScrollView>
     </GradientScreen>
   );
@@ -158,6 +180,8 @@ function QA({ icon, label, onPress, palette }: { icon: IconName; label: string; 
 }
 
 const s = StyleSheet.create({
+  wideCols: { flexDirection: 'row', gap: 18, alignItems: 'flex-start' },
+  wideCol: { flex: 1, minWidth: 0 },
   body: { paddingHorizontal: 22 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },

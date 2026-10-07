@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon } from '../../components/v2/icons';
+import { useLayout } from '../../components/v2/useLayout';
 import { CrewAvatar } from '../settings/avatars';
 import { RBOT_AVATAR_INDEX } from './RBotEntry';
 import { store, useAppDispatch, useAppSelector } from '../../store';
@@ -155,6 +156,20 @@ export function RBotScreen(): React.JSX.Element {
   }, [thread, busy]);
 
   const showWelcome = thread.length === 0;
+  // iPhone Duo inner screen: the back chevron goes where every other page has it
+  // (left), so it reads as "back" on the wide layout; regular iPhones unchanged.
+  const { wide } = useLayout();
+  const backButton = (
+    <Pressable
+      onPress={() => nav.goBack()}
+      hitSlop={12}
+      style={styles.close}
+      accessibilityLabel="close"
+      testID="rbot-close"
+    >
+      <Icon name="back" size={24} color={p.ink} strokeWidth={1.8} />
+    </Pressable>
+  );
 
   return (
     <GradientScreen palette={p} texture={false}>
@@ -164,6 +179,7 @@ export function RBotScreen(): React.JSX.Element {
         keyboardVerticalOffset={0}
       >
         <View style={[styles.head, {paddingTop: insets.top + 8}]}>
+          {wide ? backButton : null}
           {/* Same R'Bot avatar as the dock entry — the panda, straight on the
               surface (no theme-coloured disc behind it). */}
           <View style={styles.headDisc}>
@@ -173,15 +189,7 @@ export function RBotScreen(): React.JSX.Element {
             <Text style={[styles.headTitle, {color: p.ink}]}>R&apos;Bot</Text>
             <Text style={[styles.headSub, {color: p.inkSoft}]}>Your crew assistant</Text>
           </View>
-          <Pressable
-            onPress={() => nav.goBack()}
-            hitSlop={12}
-            style={styles.close}
-            accessibilityLabel="close"
-            testID="rbot-close"
-          >
-            <Icon name="back" size={24} color={p.ink} strokeWidth={1.8} />
-          </Pressable>
+          {wide ? null : backButton}
         </View>
 
         <ScrollView
@@ -299,10 +307,13 @@ function Bubble({
   testID?: string;
 }) {
   const assistant = from === 'assistant';
+  // Wide (Duo inner): 86% of ~900pt makes unreadably long lines; cap the bubble.
+  const {wide} = useLayout();
   return (
     <View
       style={[
         assistant ? styles.bubbleLeft : styles.bubbleRight,
+        wide ? styles.bubbleWide : null,
         {backgroundColor: assistant ? palette.card : palette.btn},
       ]}
       testID={testID}
@@ -336,6 +347,7 @@ const styles = StyleSheet.create({
   headSub: {fontSize: 12, marginTop: 1},
   close: {width: 40, height: 40, alignItems: 'center', justifyContent: 'center'},
   thread: {paddingHorizontal: 18, paddingBottom: 14, gap: 10},
+  bubbleWide: {maxWidth: 560},
   bubbleLeft: {
     alignSelf: 'flex-start',
     maxWidth: '86%',

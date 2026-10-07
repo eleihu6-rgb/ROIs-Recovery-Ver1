@@ -1,0 +1,102 @@
+# Regular-iPhone regression walk · EK crew K1001 (October 2026 roster on cr.rois.one).
+#
+# Run on a regular iPhone (e.g. iPhone Air) — Maestro cannot drive the iPhone Duo's
+# inner screen; that is covered by ios/RoyceTravelTemplateUITests/DuoFitUITests.swift.
+# Used to prove the Duo wide-layout work leaves the compact layout unchanged: run it
+# on the baseline and on the change, then pixel-diff the screenshots.
+#
+# Pre-req (the app reads the roster API from user defaults; a reinstall wipes them):
+#   xcrun simctl spawn <udid> defaults write org.reactjs.native.example.RoyceTravelTemplate \
+#     F8RosterApiBaseURL https://cr.rois.one/api
+# Start on the login screen (fresh install). EK prefills the shared EK test account;
+# only the crew ID is replaced.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "login-screen"
+    timeout: 60000
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-search"
+- inputText: "Emirates"
+- tapOn:
+    id: "airline-EK"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "K1001"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-next-trip"
+    timeout: 180000
+- waitForAnimationToEnd
+- takeScreenshot: r01_home
+- tapOn:
+    id: "home-next-trip"
+- extendedWaitUntil:
+    visible:
+      id: "page-trip-details"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: r02_trip_details
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-title"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: r03_schedule
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-route"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: r04_route_map
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "cal-grid"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: r05_calendar
+- tapOn:
+    id: "dock-rbot"
+- extendedWaitUntil:
+    visible:
+      id: "rbot-close"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: r06_rbot
+- tapOn:
+    id: "rbot-close"
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-logout"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: r07_profile
+- tapOn:
+    id: "profile-logout"
+- extendedWaitUntil:
+    visible:
+      id: "profile-dialog"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: r08_logout_dialog

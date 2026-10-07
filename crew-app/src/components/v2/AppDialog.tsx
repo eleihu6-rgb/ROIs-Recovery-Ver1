@@ -13,6 +13,7 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useCarrier } from '../../theme/carrier';
+import { ALL_ORIENTATIONS } from './useLayout';
 import { Icon, type IconName } from './icons';
 
 export type AppDialogTone = 'neutral' | 'success' | 'warning' | 'destructive';
@@ -79,7 +80,7 @@ export function AppDialog({
   const accent = toneColor(tone, p);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} supportedOrientations={ALL_ORIENTATIONS}>
       <Pressable
         style={s.overlay}
         // Only the backdrop itself closes: taps that land on the card must not.

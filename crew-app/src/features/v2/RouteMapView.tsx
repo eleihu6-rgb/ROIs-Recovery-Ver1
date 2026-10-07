@@ -14,6 +14,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import Svg, { Circle, Path, Line, G } from 'react-native-svg';
 import { Icon } from '../../components/v2/icons';
+import { useLayout } from '../../components/v2/useLayout';
 import type { CarrierPalette } from '../../theme/carrier';
 import { MON, type MonthModel } from './model';
 import {
@@ -45,6 +46,8 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
   const home = useMemo(() => positionOf(base), [base]);
   const routes = useMemo(() => monthRoutes(month, base), [month, base]);
   const stats = useMemo(() => monthStats(month, base), [month, base]);
+  // iPhone Duo inner screen: map left half (full height), details right half.
+  const { wide } = useLayout();
 
   if (!home || routes.length === 0) {
     return (
@@ -59,10 +62,9 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
 
   const viewBox = routeViewBox(home, routes.map(r => r.position), zoom);
   const selected = routes.find(r => r.code === focused) ?? null;
-  return (
-    <ScrollView contentContainerStyle={s.wrap} showsVerticalScrollIndicator={false} testID="route-view">
-      <View style={[s.mapCard, { backgroundColor: p.g1, borderColor: p.frostLine }]} testID="route-map">
-        <Svg width="100%" height={MAP_HEIGHT} viewBox={viewBox} testID="route-svg">
+  const mapCard = (
+      <View style={[s.mapCard, { backgroundColor: p.g1, borderColor: p.frostLine }, wide && s.mapCardWide]} testID="route-map">
+        <Svg width="100%" height={wide ? '100%' : MAP_HEIGHT} viewBox={viewBox} testID="route-svg">
           <G opacity={0.9}>
             {WORLD_LAND_PATHS.map((d, i) => (
               <Path key={`land-${i}`} d={d} fill={p.g4} fillOpacity={0.34} stroke={p.frostLine} strokeWidth={0.4} />
@@ -106,7 +108,9 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
           </Pressable>
         </View>
       </View>
-
+  );
+  const details = (
+    <>
       <StatsCard stats={stats} month={month} palette={p} />
 
       <Text style={[s.listHead, { color: p.inkSoft }]}>Routes</Text>
@@ -134,6 +138,23 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
           </View>
         </Pressable>
       ))}
+    </>
+  );
+
+  if (wide) {
+    return (
+      <View style={s.wideRow} testID="route-view">
+        <View style={s.wideHalf}>{mapCard}</View>
+        <ScrollView style={s.wideHalf} contentContainerStyle={s.wideDetails} showsVerticalScrollIndicator={false} testID="route-details">
+          {details}
+        </ScrollView>
+      </View>
+    );
+  }
+  return (
+    <ScrollView contentContainerStyle={s.wrap} showsVerticalScrollIndicator={false} testID="route-view">
+      {mapCard}
+      {details}
     </ScrollView>
   );
 }
@@ -208,6 +229,12 @@ function graticule(viewBox: string, color: string): React.JSX.Element[] {
 const s = StyleSheet.create({
   wrap: { paddingHorizontal: 22, paddingTop: 4, paddingBottom: 130, gap: 10 },
   mapCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  // Wide (Duo inner): two equal halves; the map card fills its half's height and
+  // both halves stop above the floating dock.
+  wideRow: { flex: 1, flexDirection: 'row', gap: 14, paddingHorizontal: 22, paddingTop: 4, paddingBottom: 110 },
+  wideHalf: { flex: 1, minWidth: 0 },
+  mapCardWide: { flex: 1 },
+  wideDetails: { gap: 10, paddingBottom: 12 },
   mapBadge: { position: 'absolute', left: 10, top: 10, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginTop: 0 },
   mapBadgeBottom: { top: undefined, bottom: 10 },
   mapBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },

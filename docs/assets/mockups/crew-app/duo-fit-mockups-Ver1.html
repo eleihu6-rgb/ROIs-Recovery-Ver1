@@ -1,0 +1,78 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>crew-app Duo fit mockups</title>
+<style>
+:root{--bg:#f4f6f5;--ink:#17302a;--mut:#6b7c77;--card:#fff;--g:#2f6b5e;--g2:#8fb8ac;--hl:#d9822b;--line:#d5ddda}
+@media(prefers-color-scheme:dark){:root{--bg:#101716;--ink:#e6efec;--mut:#9fb0ab;--card:#1a2523;--g:#4f9a89;--g2:#2f5a50;--hl:#e8943a;--line:#2c3a37}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 -apple-system,system-ui,sans-serif;padding:24px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 20px;max-width:760px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;color:var(--mut);font-size:12px}
+.legend i{display:inline-block;width:14px;height:14px;border:2px solid var(--hl);border-radius:3px;vertical-align:-3px;margin-right:6px}
+section{margin:0 0 36px}h2{font-size:16px;margin:0 0 4px}.note{color:var(--mut);font-size:12.5px;margin:0 0 10px;max-width:900px}
+.frames{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+figure{margin:0}figcaption{font-size:11.5px;color:var(--mut);margin-top:6px}
+.dev{background:#0b0f0e;border-radius:26px;padding:7px;position:relative}
+.scr{width:100%;height:100%;border-radius:20px;overflow:hidden;position:relative;background:linear-gradient(170deg,#2a5148,#7fa99d);padding:8px;display:flex;flex-direction:column;gap:6px;color:#fff;font-size:9px}
+.air{width:182px;height:384px}.out{width:200px;height:292px}.in{width:420px;height:300px}
+.in .scr{flex-direction:row;flex-wrap:wrap;align-content:flex-start}
+.hinge{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#000;opacity:.55;z-index:5}
+.b{background:rgba(255,255,255,.92);color:#17302a;border-radius:6px;padding:4px 6px;display:flex;align-items:center;gap:4px;overflow:hidden;white-space:nowrap}
+.b.dk{background:rgba(0,0,0,.28);color:#fff}.b.ph{background:rgba(255,255,255,.35);color:#fff}
+.b.hl{outline:2px solid var(--hl);outline-offset:1px}.b.bad{background:#f5c9c1;color:#7a1d10}
+.grow{flex:1}.col{display:flex;flex-direction:column;gap:6px}.row{display:flex;gap:6px}.w{flex:1;min-width:0}
+.dock{position:absolute;left:8px;right:8px;bottom:8px;height:22px;border-radius:12px;background:rgba(0,0,0,.45);display:flex;justify-content:space-around;align-items:center;font-size:8px}
+.dock.n{left:50%;right:auto;width:150px;transform:translateX(-50%);outline:2px solid var(--hl)}
+.fix{font-size:12px;margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--hl);background:var(--card);max-width:900px}
+</style></head><body>
+<h1>crew-app — iPhone Duo fit mockups</h1>
+<p class="s">Wireframes, not pixel designs. Per screen: iPhone Air (today, unchanged), Duo outer screen (~466×678 pt portrait), Duo inner screen (~951×669 pt landscape, the new layout). Orange outline = what changes on the inner screen. Air and outer use the same compact layout.</p>
+<div class="legend"><span><i></i>changed on inner (wide) only</span><span>Frames drawn at ~0.44× scale</span><span>Dashed line = hinge keep-out (confirm on device)</span></div>
+<div id="app"></div>
+<script>
+const B=(t,c='',x='')=>`<div class="b ${c}" style="${x}">${t}</div>`;
+const H=(n)=>`height:${n}px`;
+const dock=(wide)=>`<div class="dock ${wide?'n':''}"><span>Home</span><span>Sched</span><span>Global</span><span>Profile</span></div>`;
+const frame=(cls,body,cap,hinge)=>`<figure><div class="dev ${cls}"><div class="scr">${hinge?'<div class="hinge"></div>':''}${body}</div></div><figcaption>${cap}</figcaption></figure>`;
+const S=[
+{t:'Login',n:'Today the card is clipped on the inner screen ("Login as Guest" cut off). Wide: two columns, card capped at 440 pt, nothing clipped; compact unchanged.',
+ p:()=>B('ROIs Altair','ph',H(60))+B('Airline  ▾')+B('Crew ID')+B('Password')+B('Login As Crew','dk',H(24))+B('Login as Guest','dk',H(24)),
+ w:()=>`<div class="w col" style="padding-top:40px">${B('ROIs Altair','ph hl',H(70))}${B('ALWAYS A WAY FORWARD','ph')}</div><div class="w col">${B('Airline  ▾','hl')}${B('Crew ID','hl')}${B('Password','hl')}${B('Login As Crew','dk hl',H(24))}${B('Login as Guest','dk hl',H(24))}</div>`,
+ fix:'maxWidth 440 centered; two columns when wide; ScrollView keeps the guest button reachable on short windows.'},
+{t:'Home',n:'Today one 850 pt-wide column with ~150 pt reserved for the dock. Wide: trip ticket left, destinations + quick actions right.',
+ p:()=>B('Hi, Crew  🔔 ⏰','ph')+B('Next trip · ticket card','',H(78))+B('Destinations ▸ ▸ ▸','',H(48))+B('Quick actions ×5','',H(26))+dock(0),
+ w:()=>`<div class="w col">${B('Hi, Crew  🔔 ⏰','ph')}${B('Next trip · ticket card','hl',H(150))}</div><div class="w col">${B('Destinations ▸ ▸ ▸','hl',H(80))}${B('Quick actions (wrap, ≥64pt)','hl',H(46))}</div>${dock(1)}`,
+ fix:'two columns when wide; dock narrow + centered; bottom clearance ~100 instead of 150; legRow wraps on the outer screen.'},
+{t:'Schedule — timeline',n:'Wide: master/detail. Date strip + day list left, selected day / flight card right.',
+ p:()=>B('Schedule  ⋯','ph')+B('date strip  ▸▸▸','',H(26))+B('Day card','',H(60))+B('Day card','',H(60))+dock(0),
+ w:()=>`<div class="w col">${B('Schedule  ⋯','ph')}${B('date strip','hl',H(26))}${B('Day card','hl',H(52))}${B('Day card','hl',H(52))}</div><div class="w col">${B('Selected day · flight cards','hl',H(190))}</div>${dock(1)}`,
+ fix:'two-pane when wide; compact list untouched.'},
+{t:'Schedule — calendar & route map',n:'Calendar cells are flat strips when wide; route map is a fixed 240 pt tall strip. Wide: grid capped, agenda alongside; map height from width.',
+ p:()=>B('Month grid 7×6','',H(110))+B('Agenda','',H(70))+dock(0),
+ w:()=>`<div class="w col">${B('Month grid (≤420pt)','hl',H(170))}</div><div class="w col">${B('Agenda / day timeline','hl',H(170))}</div>${dock(1)}`,
+ fix:'cells use minHeight; RouteMap height = min(width×0.55, windowH−220).'},
+{t:'Destination',n:'Pager must re-sync on width change (fold/unfold). Wide: info panel becomes a side card; header dots hidden when the outer screen is narrow.',
+ p:()=>B('← dots  Trip details','dk')+`<div class="grow"></div>`+B('City info panel (54%)','',H(150)),
+ w:()=>`<div class="w col">${B('← dots  Trip details','dk')}<div class="grow" style="height:150px"></div></div><div class="w col">${B('City info — side card','hl',H(250))}</div>`,
+ fix:'key FlatList on width; info panel side card ≤380 pt.'},
+{t:'R’Bot',n:'Reported: no return button on the Duo. Code has a close chevron at the header’s right end — verify on device; either way move it to the left like every other page. Wide: thread column capped at 560 pt.',
+ p:()=>B('←  R’Bot','ph hl')+B('bubble (86%)','',H(36))+B('bubble','',H(36))+B('composer','dk',H(24)),
+ w:()=>`<div class="w col" style="grid-column:span 2">${B('←  R’Bot','ph hl')}${B('thread ≤560pt, centered','hl',H(170))}${B('composer','dk',H(24))}</div>`,
+ fix:'left back button; thread maxWidth 560; compact header when wide + keyboard.'},
+{t:'Detail pages (PageShell: Trip details, Alarms, Preferences, Absence…)',n:'One change in PageShell fixes ~10 pages: content capped at 640 pt and centered; Absence form keeps its submit button above the keyboard.',
+ p:()=>B('←  Page title','ph')+B('KV row  label …… value')+B('KV row')+B('KV row'),
+ w:()=>`<div class="w col" style="grid-column:span 2;align-items:center"><div class="col" style="width:78%">${B('←  Page title','ph hl')}${B('KV row  label …… value','hl')}${B('KV row','hl')}${B('KV row','hl')}</div></div>`,
+ fix:'PageShell body maxWidth 640 + left/right insets; automaticallyAdjustKeyboardInsets.'},
+{t:'Profile / Alerts / Global',n:'Profile + Alerts: capped column. Global “Coming soon” becomes scrollable/centered.',
+ p:()=>B('Profile · avatar','ph')+B('row')+B('row')+B('row')+dock(0),
+ w:()=>`<div class="w col" style="grid-column:span 2;align-items:center"><div class="col" style="width:62%">${B('Profile · avatar','ph hl')}${B('row','hl')}${B('row','hl')}${B('row','hl')}</div></div>${dock(1)}`,
+ fix:'maxWidth ~640; Global in a ScrollView.'},
+{t:'Dialogs (AppDialog, avatar sheet, airline picker)',n:'Blocker: Modals default to portrait-only on iOS, so opening a dialog in landscape can snap/rotate. Fix = supportedOrientations on every Modal; body scrolls on short windows.',
+ p:()=>`<div class="grow"></div>`+B('Status-card dialog (≤340pt)','',H(80))+`<div class="grow"></div>`,
+ w:()=>`<div class="w"></div><div class="w col" style="justify-content:center;height:100%;padding-top:70px">${B('Dialog ≤340pt, scrollable body','hl',H(90))}</div>`,
+ fix:'supportedOrientations on all Modals; sheet maxWidth 480.'}
+];
+document.getElementById('app').innerHTML=S.map(s=>`<section><h2>${s.t}</h2><p class="note">${s.n}</p><div class="frames">
+${frame('air',s.p(),'iPhone Air · 420×912 · unchanged')}
+${frame('out',s.p(),'Duo outer · ~466×678 · compact')}
+${frame('in',s.w(),'Duo inner · ~951×669 · wide (new)',1)}
+</div><div class="fix"><b>Fix:</b> ${s.fix}</div></section>`).join('');
+</script></body></html>

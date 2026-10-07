@@ -17,6 +17,7 @@ import Svg, { Path } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/RootNavigator';
 import { useAppDispatch } from '../../store';
+import { ALL_ORIENTATIONS, useLayout } from '../../components/v2/useLayout';
 import { loginAsGuest, loginWithIdentity } from './authSlice';
 import { SOCIAL_PROVIDERS, PROVIDER_LABELS } from './identity';
 import type { SocialProvider } from './identity';
@@ -134,28 +135,32 @@ export function LoginScreen({ navigation }: Props) {
     }
   };
 
+  // iPhone Duo inner screen (landscape, ~669pt tall): hero and card side by side
+  // so the whole card — down to "Login as Guest" — fits without being clipped.
+  const { wide } = useLayout();
+
   return (
-    <GradientScreen palette={LOGIN}>
+    <GradientScreen palette={LOGIN} sideInsets={false}>
     <SafeAreaView style={styles.container} testID="login-screen">
       <StatusBar barStyle="light-content" backgroundColor={LOGIN.g1} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, wide && styles.scrollWide]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           {/* Hero */}
           {/* Hero — Altair mark + the product name (neutral brand before an airline is
               chosen). Ryan 2026-09-11: the app name sits under the logo, not the wordmark. */}
-          <View style={styles.hero}>
+          <View style={[styles.hero, wide && styles.heroWide]}>
             <AltairMark size={72} />
             <Text style={styles.appName}>ROIs Altair</Text>
             <Text style={styles.subtitle}>ALWAYS A WAY FORWARD</Text>
           </View>
 
           {/* Card */}
-          <View style={styles.card}>
+          <View style={[styles.card, wide && styles.cardWide]}>
             {/* No "Airline" label: the value (code + carrier name) already says it. */}
             <FieldRow icon="globe">
               <TouchableOpacity
@@ -379,7 +384,7 @@ function AirlinePicker({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent supportedOrientations={ALL_ORIENTATIONS}>
       {/* The picker is the login page's own palette (altair sage) so choosing a
           carrier never drops the crew into the app-theme purple. */}
       <GradientScreen palette={LOGIN} style={styles.sheet}>
@@ -433,7 +438,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' },
   scroll: { flexGrow: 1, paddingBottom: space.xxl32 },
 
+  scrollWide: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingBottom: 16, gap: 24 },
   hero: { alignItems: 'center', paddingTop: 36, paddingBottom: 28 },
+  heroWide: { flex: 1, paddingTop: 0, paddingBottom: 0 },
   logoCircle: {
     width: 76,
     height: 76,
@@ -447,6 +454,7 @@ const styles = StyleSheet.create({
   appName: { ...font.h1, color: colors.onPrimary, letterSpacing: 0.3, marginTop: 12 },
   subtitle: { fontSize: 10, fontWeight: '600', letterSpacing: 3.2, color: LOGIN.inkSoft, marginTop: 10 },
 
+  cardWide: { flex: 1, maxWidth: 460, marginHorizontal: 0 },
   card: {
     backgroundColor: colors.card,
     marginHorizontal: 18,
@@ -490,7 +498,9 @@ const styles = StyleSheet.create({
   rowInput: { flex: 1, fontSize: 16, color: LOGIN.g1, paddingVertical: 3, paddingHorizontal: 0 },
 
   // ── Airline picker sheet ──
-  sheet: { flex: 1 },
+  // Solid ground under the gradient: in a landscape Modal (Duo inner screen) the
+  // SVG gradient can fail to cover the full width, letting the login show through.
+  sheet: { flex: 1, backgroundColor: LOGIN.g2 },
   sheetInner: { flex: 1 },
   sheetHeader: {
     flexDirection: 'row',

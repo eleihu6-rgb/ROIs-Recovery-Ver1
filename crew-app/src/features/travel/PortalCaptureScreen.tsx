@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { AppDialog } from '../../components/v2/AppDialog';
+import { ALL_ORIENTATIONS } from '../../components/v2/useLayout';
 import { debugSetJson } from './portalDebug';
 import type { Trip } from './tripCsv';
 import { parsePortalCaptures, type PortalCapture, type PortalDuty } from './portalCapture';
@@ -272,7 +273,7 @@ export function PortalCaptureScreen({
       </View>
 
       {/* Captured-data inspector — lets us see the real portal JSON to tune the parser. */}
-      <Modal visible={showData} animationType="slide" onRequestClose={() => setShowData(false)}>
+      <Modal visible={showData} animationType="slide" onRequestClose={() => setShowData(false)} supportedOrientations={ALL_ORIENTATIONS}>
         <SafeAreaView style={styles.dataModal}>
           <View style={styles.dataHeader}>
             <Text style={styles.dataTitle}>Captured payloads ({captures.current.length})</Text>

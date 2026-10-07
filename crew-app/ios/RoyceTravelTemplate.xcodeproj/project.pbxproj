@@ -13,6 +13,7 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		2DCE005D87FFAC1160FBF754 /* AlarmModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31566B2C332DFA83D2D9F647 /* AlarmModule.swift */; };
+		6224C4D4CC65AF7D5FA57EFE /* DuoFitUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10AB3AFC59FF56868AF1DE10 /* DuoFitUITests.swift */; };
 		7699B88040F8A987B510C191 /* libPods-RoyceTravelTemplate-RoyceTravelTemplateTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-RoyceTravelTemplate-RoyceTravelTemplateTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		8F9265E3D90213C39C11C98B /* AlarmModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CA5552AE8E2BCDB21A7DCB /* AlarmModule.m */; };
@@ -23,10 +24,18 @@
 		CA1E0004000000000000B004 /* MeetingLiveActivityModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1E0004000000000000F004 /* MeetingLiveActivityModule.swift */; };
 		CA1E0005000000000000B005 /* MeetingLiveActivityModule.m in Sources */ = {isa = PBXBuildFile; fileRef = CA1E0005000000000000F005 /* MeetingLiveActivityModule.m */; };
 		CA1E0006000000000000B006 /* RoyceMeetingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1E0006000000000000F006 /* RoyceMeetingAttributes.swift */; };
+		E526C382CC7CDFA33D2A5BB9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A7B1DB8E43484C6B816CE95 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		00E356F41AD99517003FC87E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
+			remoteInfo = RoyceTravelTemplate;
+		};
+		44995473ED854E5CB05D9099 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
@@ -39,7 +48,9 @@
 		00E356EE1AD99517003FC87E /* RoyceTravelTemplateTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RoyceTravelTemplateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00E356F21AD99517003FC87E /* RoyceTravelTemplateTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RoyceTravelTemplateTests.m; sourceTree = "<group>"; };
+		0A7B1DB8E43484C6B816CE95 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		0C513DB7FA8B12B1BB4082AB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = RoyceTravelTemplate/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		10AB3AFC59FF56868AF1DE10 /* DuoFitUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DuoFitUITests.swift; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* RoyceTravelTemplate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RoyceTravelTemplate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = RoyceTravelTemplate/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = RoyceTravelTemplate/AppDelegate.mm; sourceTree = "<group>"; };
@@ -62,6 +73,7 @@
 		CA1E0004000000000000F004 /* MeetingLiveActivityModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MeetingLiveActivityModule.swift; path = RoyceTravelTemplate/MeetingLiveActivityModule.swift; sourceTree = "<group>"; };
 		CA1E0005000000000000F005 /* MeetingLiveActivityModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = MeetingLiveActivityModule.m; path = RoyceTravelTemplate/MeetingLiveActivityModule.m; sourceTree = "<group>"; };
 		CA1E0006000000000000F006 /* RoyceMeetingAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RoyceMeetingAttributes.swift; path = RoyceTravelTemplate/RoyceMeetingAttributes.swift; sourceTree = "<group>"; };
+		D067FE2198F4FBA8ADA925DD /* RoyceTravelTemplateUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RoyceTravelTemplateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F2CA5552AE8E2BCDB21A7DCB /* AlarmModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = AlarmModule.m; path = RoyceTravelTemplate/AlarmModule.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -80,6 +92,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				0C80B921A6F3F58F76C31292 /* libPods-RoyceTravelTemplate.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B2D91BE5D1EF4E42CC141B31 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E526C382CC7CDFA33D2A5BB9 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -133,6 +153,7 @@
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				5DCACB8F33CDC322A6C60F78 /* libPods-RoyceTravelTemplate.a */,
 				19F6CBCC0A4E27FBF8BF4A61 /* libPods-RoyceTravelTemplate-RoyceTravelTemplateTests.a */,
+				993DEF5D20D4C355F591AA23 /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -153,6 +174,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				8FBA0341DD624CE3B9A31E3B /* RoyceTravelTemplateUITests */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -164,8 +186,26 @@
 			children = (
 				13B07F961A680F5B00A75B9A /* RoyceTravelTemplate.app */,
 				00E356EE1AD99517003FC87E /* RoyceTravelTemplateTests.xctest */,
+				D067FE2198F4FBA8ADA925DD /* RoyceTravelTemplateUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		8FBA0341DD624CE3B9A31E3B /* RoyceTravelTemplateUITests */ = {
+			isa = PBXGroup;
+			children = (
+				10AB3AFC59FF56868AF1DE10 /* DuoFitUITests.swift */,
+			);
+			name = RoyceTravelTemplateUITests;
+			path = RoyceTravelTemplateUITests;
+			sourceTree = "<group>";
+		};
+		993DEF5D20D4C355F591AA23 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				0A7B1DB8E43484C6B816CE95 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
@@ -224,6 +264,24 @@
 			productReference = 13B07F961A680F5B00A75B9A /* RoyceTravelTemplate.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CA4EF6019809288FCC4D6E3F /* RoyceTravelTemplateUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3933B189C4A9772D8C4E559A /* Build configuration list for PBXNativeTarget "RoyceTravelTemplateUITests" */;
+			buildPhases = (
+				325E9660F6A95EFF686F81FF /* Sources */,
+				B2D91BE5D1EF4E42CC141B31 /* Frameworks */,
+				62F639DA72E6D9B7D23F00CC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				312854B0EB453984B6DE1517 /* PBXTargetDependency */,
+			);
+			name = RoyceTravelTemplateUITests;
+			productName = RoyceTravelTemplateUITests;
+			productReference = D067FE2198F4FBA8ADA925DD /* RoyceTravelTemplateUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -256,6 +314,7 @@
 			targets = (
 				13B07F861A680F5B00A75B9A /* RoyceTravelTemplate */,
 				00E356ED1AD99517003FC87E /* RoyceTravelTemplateTests */,
+				CA4EF6019809288FCC4D6E3F /* RoyceTravelTemplateUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -275,6 +334,13 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				B9BC6B0FDA6FE474165E6A3D /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		62F639DA72E6D9B7D23F00CC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -437,6 +503,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		325E9660F6A95EFF686F81FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6224C4D4CC65AF7D5FA57EFE /* DuoFitUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -444,6 +518,12 @@
 			isa = PBXTargetDependency;
 			target = 13B07F861A680F5B00A75B9A /* RoyceTravelTemplate */;
 			targetProxy = 00E356F41AD99517003FC87E /* PBXContainerItemProxy */;
+		};
+		312854B0EB453984B6DE1517 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RoyceTravelTemplate;
+			target = 13B07F861A680F5B00A75B9A /* RoyceTravelTemplate */;
+			targetProxy = 44995473ED854E5CB05D9099 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -560,6 +640,23 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "RoyceTravelTemplate/RoyceTravelTemplate-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		77E45520294427E4CD6CE509 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.reactjs.native.example.RoyceTravelTemplateUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = RoyceTravelTemplate;
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -722,6 +819,22 @@
 			};
 			name = Release;
 		};
+		BCCA722B8990D0E4E581C3A1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.reactjs.native.example.RoyceTravelTemplateUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = RoyceTravelTemplate;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -739,6 +852,15 @@
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
 				13B07F951A680F5B00A75B9A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3933B189C4A9772D8C4E559A /* Build configuration list for PBXNativeTarget "RoyceTravelTemplateUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				77E45520294427E4CD6CE509 /* Release */,
+				BCCA722B8990D0E4E581C3A1 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

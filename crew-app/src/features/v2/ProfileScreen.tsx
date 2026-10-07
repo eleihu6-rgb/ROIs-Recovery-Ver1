@@ -8,6 +8,7 @@ import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { useCarrier } from '../../theme/carrier';
 import { GradientScreen } from '../../components/v2/GradientScreen';
+import { ALL_ORIENTATIONS, useLayout } from '../../components/v2/useLayout';
 import { Icon, type IconName } from '../../components/v2/icons';
 import { NavRow } from '../../components/v2/rows';
 import { CrewAvatar, AVATAR_COUNT, avatarForCrew } from '../settings/avatars';
@@ -93,70 +94,92 @@ export function ProfileScreen() {
     ? [email, 'No airline account'].filter(Boolean).join(' · ')
     : [crewId, crewBase, countryName(nationality)].filter(Boolean).join(' · ');
 
+  const { wide } = useLayout();
+  const headSection = (
+    <>
+      <View style={s.titleRow}>
+        <Text style={[s.title, { color: p.ink }]}>My Profile</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <IconButton name="bell" badge={alertCount} palette={p} onPress={() => nav.navigate('Alerts')} testID="profile-alerts" />
+          <IconButton name="gear" palette={p} onPress={() => nav.navigate('Spec', { id: 'settings' })} testID="profile-settings" />
+        </View>
+      </View>
+      <View style={s.head}>
+        <Pressable onPress={() => setAvatarOpen(true)} testID="profile-avatar" accessibilityLabel="Change avatar">
+          <View style={s.avatar}>
+            <CrewAvatar index={avatar} size={80} bare />
+            <View style={s.cam}><Icon name="cam" size={14} color={p.g1} strokeWidth={2} /></View>
+          </View>
+        </Pressable>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.name, { color: p.ink }]} testID="profile-crew-name">
+            {guest ? identityName : crewName || crewId}
+          </Text>
+          <Text style={[s.meta, { color: p.inkSoft }]} testID="profile-crew-meta">{meta}</Text>
+          <View style={[s.chip, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
+            <Text style={[s.chipText, { color: p.ink }]} testID="profile-provider-chip">
+              {guest ? PROVIDER_LABELS[provider ?? 'guest'] : airlineByCode(airline).name}
+            </Text>
+            {guest ? null : <Icon name="star" size={12} color="#f2c14e" />}
+          </View>
+        </View>
+      </View>
+
+      {guest ? (
+        <Pressable style={[s.status, { backgroundColor: p.frost }]} onPress={onAddAirline} testID="profile-add-airline">
+          <View style={s.statusIc}><Icon name="globe" size={22} color={p.ink} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.statusT, { color: p.ink }]}>Sign in with your airline</Text>
+            <Text style={[s.statusS, { color: p.inkSoft }]}>
+              Add your crew ID to see your roster, block hours and trip trade.
+            </Text>
+          </View>
+          <Icon name="chev" size={20} color={p.inkSoft} />
+        </Pressable>
+      ) : (
+      <Pressable style={[s.status, { backgroundColor: p.frost }]} onPress={() => nav.navigate('Spec', { id: 'limits' })} testID="profile-block-hours">
+        <View style={s.statusIc}><Icon name="crown" size={22} color="#e9a53a" /></View>
+        <View style={{ flex: 1 }}><Text style={[s.statusT, { color: p.ink }]}>Block hours this month</Text><Text style={[s.statusS, { color: p.inkSoft }]}>{month.flightCount} flights · rolling 28-day limit 100h</Text></View>
+        <View style={{ alignItems: 'flex-end' }}><Text style={s.num}>{hours}</Text><Text style={[s.numS, { color: p.inkSoft }]}>OF 100 H</Text></View>
+      </Pressable>
+      )}
+    </>
+  );
+  const settingsSection = (
+    <>
+      <ListCard palette={p} style={{ marginTop: 22 }}>
+        <View style={divider}><NavRow icon="user" label="Personal Information" palette={p} onPress={() => nav.navigate('PersonalInfo')} testID="row-personal" /><DashedLine color={p.cardLine} /></View>
+        <View style={divider}><NavRow icon="bell" label="Alarms & Meetings" value={alarmsEnabled ? 'On' : 'Off'} palette={p} onPress={() => nav.navigate('AlarmsSettings')} testID="row-alarms" /><DashedLine color={p.cardLine} /></View>
+        <View style={divider}><NavRow icon="clock" label="Time Zone" value={TZ_LABEL[tz]} palette={p} onPress={() => nav.navigate('TimeZone')} testID="row-timezone" /><DashedLine color={p.cardLine} /></View>
+        <View style={divider}><NavRow icon="sliders" label="Preferences" palette={p} onPress={() => nav.navigate('Preferences')} testID="row-preferences" /><DashedLine color={p.cardLine} /></View>
+        <View style={divider}><NavRow icon="shield" label="Privacy & Security" palette={p} onPress={() => nav.navigate('Spec', { id: 'privacy' })} testID="row-privacy" /><DashedLine color={p.cardLine} /></View>
+        <NavRow icon="headset" label="Help & Support" palette={p} onPress={() => nav.navigate('Spec', { id: 'help' })} testID="row-help" />
+      </ListCard>
+
+      <Pressable style={s.logout} onPress={onLogout} testID="profile-logout"><Icon name="logout" size={20} color={p.ink} /><Text style={[s.logoutText, { color: p.ink }]}>Log Out</Text></Pressable>
+    </>
+  );
+
   return (
     <GradientScreen palette={p}>
       <ScrollView contentContainerStyle={[s.body, { paddingTop: insets.top + 8 }]} showsVerticalScrollIndicator={false} testID="profile-screen">
-        <View style={s.titleRow}>
-          <Text style={[s.title, { color: p.ink }]}>My Profile</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <IconButton name="bell" badge={alertCount} palette={p} onPress={() => nav.navigate('Alerts')} testID="profile-alerts" />
-            <IconButton name="gear" palette={p} onPress={() => nav.navigate('Spec', { id: 'settings' })} testID="profile-settings" />
+        {wide ? (
+          // iPhone Duo inner screen: identity + block hours left, settings + Log Out right,
+          // so Log Out is never pushed under the dock on the ~669pt-tall screen.
+          <View style={s.wideCols}>
+            <View style={s.wideCol}>{headSection}</View>
+            <View style={s.wideCol}>{settingsSection}</View>
           </View>
-        </View>
-        <View style={s.head}>
-          <Pressable onPress={() => setAvatarOpen(true)} testID="profile-avatar" accessibilityLabel="Change avatar">
-            <View style={s.avatar}>
-              <CrewAvatar index={avatar} size={80} bare />
-              <View style={s.cam}><Icon name="cam" size={14} color={p.g1} strokeWidth={2} /></View>
-            </View>
-          </Pressable>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.name, { color: p.ink }]} testID="profile-crew-name">
-              {guest ? identityName : crewName || crewId}
-            </Text>
-            <Text style={[s.meta, { color: p.inkSoft }]} testID="profile-crew-meta">{meta}</Text>
-            <View style={[s.chip, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
-              <Text style={[s.chipText, { color: p.ink }]} testID="profile-provider-chip">
-                {guest ? PROVIDER_LABELS[provider ?? 'guest'] : airlineByCode(airline).name}
-              </Text>
-              {guest ? null : <Icon name="star" size={12} color="#f2c14e" />}
-            </View>
-          </View>
-        </View>
-
-        {guest ? (
-          <Pressable style={[s.status, { backgroundColor: p.frost }]} onPress={onAddAirline} testID="profile-add-airline">
-            <View style={s.statusIc}><Icon name="globe" size={22} color={p.ink} /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.statusT, { color: p.ink }]}>Sign in with your airline</Text>
-              <Text style={[s.statusS, { color: p.inkSoft }]}>
-                Add your crew ID to see your roster, block hours and trip trade.
-              </Text>
-            </View>
-            <Icon name="chev" size={20} color={p.inkSoft} />
-          </Pressable>
         ) : (
-        <Pressable style={[s.status, { backgroundColor: p.frost }]} onPress={() => nav.navigate('Spec', { id: 'limits' })} testID="profile-block-hours">
-          <View style={s.statusIc}><Icon name="crown" size={22} color="#e9a53a" /></View>
-          <View style={{ flex: 1 }}><Text style={[s.statusT, { color: p.ink }]}>Block hours this month</Text><Text style={[s.statusS, { color: p.inkSoft }]}>{month.flightCount} flights · rolling 28-day limit 100h</Text></View>
-          <View style={{ alignItems: 'flex-end' }}><Text style={s.num}>{hours}</Text><Text style={[s.numS, { color: p.inkSoft }]}>OF 100 H</Text></View>
-        </Pressable>
+          <>
+            {headSection}
+            {settingsSection}
+          </>
         )}
-
-        <ListCard palette={p} style={{ marginTop: 22 }}>
-          <View style={divider}><NavRow icon="user" label="Personal Information" palette={p} onPress={() => nav.navigate('PersonalInfo')} testID="row-personal" /><DashedLine color={p.cardLine} /></View>
-          <View style={divider}><NavRow icon="bell" label="Alarms & Meetings" value={alarmsEnabled ? 'On' : 'Off'} palette={p} onPress={() => nav.navigate('AlarmsSettings')} testID="row-alarms" /><DashedLine color={p.cardLine} /></View>
-          <View style={divider}><NavRow icon="clock" label="Time Zone" value={TZ_LABEL[tz]} palette={p} onPress={() => nav.navigate('TimeZone')} testID="row-timezone" /><DashedLine color={p.cardLine} /></View>
-          <View style={divider}><NavRow icon="sliders" label="Preferences" palette={p} onPress={() => nav.navigate('Preferences')} testID="row-preferences" /><DashedLine color={p.cardLine} /></View>
-          <View style={divider}><NavRow icon="shield" label="Privacy & Security" palette={p} onPress={() => nav.navigate('Spec', { id: 'privacy' })} testID="row-privacy" /><DashedLine color={p.cardLine} /></View>
-          <NavRow icon="headset" label="Help & Support" palette={p} onPress={() => nav.navigate('Spec', { id: 'help' })} testID="row-help" />
-        </ListCard>
-
-        <Pressable style={s.logout} onPress={onLogout} testID="profile-logout"><Icon name="logout" size={20} color={p.ink} /><Text style={[s.logoutText, { color: p.ink }]}>Log Out</Text></Pressable>
       </ScrollView>
 
       {/* Avatar picker — tap the profile picture to swap the cartoon character. */}
-      <Modal visible={avatarOpen} transparent animationType="fade" onRequestClose={() => setAvatarOpen(false)}>
+      <Modal visible={avatarOpen} transparent animationType="fade" onRequestClose={() => setAvatarOpen(false)} supportedOrientations={ALL_ORIENTATIONS}>
         <Pressable style={s.backdrop} onPress={() => setAvatarOpen(false)}>
           <Pressable style={[s.sheet, { backgroundColor: p.g1 }]} onPress={() => {}}>
             <Text style={[s.sheetTitle, { color: p.ink }]}>Choose your avatar</Text>
@@ -199,6 +222,8 @@ export function ProfileScreen() {
 
 const s = StyleSheet.create({
   body: { paddingHorizontal: 22, paddingBottom: 110 },
+  wideCols: { flexDirection: 'row', gap: 18, alignItems: 'flex-start' },
+  wideCol: { flex: 1, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   title: { fontSize: 26, fontWeight: '600' },
   head: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 22 },

@@ -1,0 +1,396 @@
+{
+  "code": 200,
+  "data": {
+    "apiVersion": "1",
+    "airline": "EK",
+    "crew": {
+      "crewId": "K1001",
+      "firstName": "Fatima",
+      "lastName": "Al Zaabi",
+      "base": "DXB",
+      "rank": "CA",
+      "nationality": "AE",
+      "carrier": "EK"
+    },
+    "pairings": [
+      {
+        "pairingId": "152690",
+        "label": "EK372/EK371",
+        "checkInUtc": "2026-10-01T03:35:00.000Z",
+        "releaseUtc": "2026-10-01T21:50:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165917",
+            "flightNumber": "EK372",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "BKK",
+            "startUtc": "2026-10-01T05:35:00.000Z",
+            "endUtc": "2026-10-01T11:50:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-01T05:35:00.000Z",
+            "actEndUtc": "2026-10-01T11:50:00.000Z",
+            "blockMinutes": 375
+          },
+          {
+            "flightId": "165918",
+            "flightNumber": "EK371",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "BKK",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-01T15:35:00.000Z",
+            "endUtc": "2026-10-01T21:35:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-01T15:35:00.000Z",
+            "actEndUtc": "2026-10-01T21:35:00.000Z",
+            "blockMinutes": 360
+          }
+        ]
+      },
+      {
+        "pairingId": "152691",
+        "label": "EK001/EK002",
+        "checkInUtc": "2026-10-04T02:35:00.000Z",
+        "releaseUtc": "2026-10-05T21:20:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165700",
+            "flightNumber": "EK001",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "LHR",
+            "startUtc": "2026-10-04T04:35:00.000Z",
+            "endUtc": "2026-10-04T12:05:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-04T04:35:00.000Z",
+            "actEndUtc": "2026-10-04T12:05:00.000Z",
+            "blockMinutes": 450
+          },
+          {
+            "flightId": "165703",
+            "flightNumber": "EK002",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "LHR",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-05T13:20:00.000Z",
+            "endUtc": "2026-10-05T21:05:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-05T13:20:00.000Z",
+            "actEndUtc": "2026-10-05T21:05:00.000Z",
+            "blockMinutes": 465
+          }
+        ]
+      },
+      {
+        "pairingId": "152692",
+        "label": "EK354/EK355",
+        "checkInUtc": "2026-10-09T02:20:00.000Z",
+        "releaseUtc": "2026-10-10T23:30:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165874",
+            "flightNumber": "EK354",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "SIN",
+            "startUtc": "2026-10-09T04:20:00.000Z",
+            "endUtc": "2026-10-09T11:35:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-09T04:20:00.000Z",
+            "actEndUtc": "2026-10-09T11:35:00.000Z",
+            "blockMinutes": 435
+          },
+          {
+            "flightId": "165877",
+            "flightNumber": "EK355",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "SIN",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-10T15:30:00.000Z",
+            "endUtc": "2026-10-10T23:15:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-10T15:30:00.000Z",
+            "actEndUtc": "2026-10-10T23:15:00.000Z",
+            "blockMinutes": 465
+          }
+        ]
+      },
+      {
+        "pairingId": "152693",
+        "label": "EK372/EK371",
+        "checkInUtc": "2026-10-13T03:35:00.000Z",
+        "releaseUtc": "2026-10-13T21:50:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "161254",
+            "flightNumber": "EK372",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "BKK",
+            "startUtc": "2026-10-13T05:35:00.000Z",
+            "endUtc": "2026-10-13T11:50:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-13T05:35:00.000Z",
+            "actEndUtc": "2026-10-13T11:50:00.000Z",
+            "blockMinutes": 375
+          },
+          {
+            "flightId": "165941",
+            "flightNumber": "EK371",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "BKK",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-13T15:35:00.000Z",
+            "endUtc": "2026-10-13T21:35:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-13T15:35:00.000Z",
+            "actEndUtc": "2026-10-13T21:35:00.000Z",
+            "blockMinutes": 360
+          }
+        ]
+      },
+      {
+        "pairingId": "152694",
+        "label": "EK201/EK202",
+        "checkInUtc": "2026-10-15T02:40:00.000Z",
+        "releaseUtc": "2026-10-17T16:00:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165781",
+            "flightNumber": "EK201",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "JFK",
+            "startUtc": "2026-10-15T04:40:00.000Z",
+            "endUtc": "2026-10-15T19:10:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-15T04:40:00.000Z",
+            "actEndUtc": "2026-10-15T19:10:00.000Z",
+            "blockMinutes": 870
+          },
+          {
+            "flightId": "165784",
+            "flightNumber": "EK202",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "JFK",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-17T02:45:00.000Z",
+            "endUtc": "2026-10-17T15:45:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-17T02:45:00.000Z",
+            "actEndUtc": "2026-10-17T15:45:00.000Z",
+            "blockMinutes": 780
+          }
+        ]
+      },
+      {
+        "pairingId": "152698",
+        "label": "EK763/EK764",
+        "checkInUtc": "2026-10-21T02:15:00.000Z",
+        "releaseUtc": "2026-10-23T04:05:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "166016",
+            "flightNumber": "EK763",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "JNB",
+            "startUtc": "2026-10-21T04:15:00.000Z",
+            "endUtc": "2026-10-21T12:30:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-21T04:15:00.000Z",
+            "actEndUtc": "2026-10-21T12:30:00.000Z",
+            "blockMinutes": 495
+          },
+          {
+            "flightId": "166019",
+            "flightNumber": "EK764",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "JNB",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-22T19:35:00.000Z",
+            "endUtc": "2026-10-23T03:50:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-22T19:35:00.000Z",
+            "actEndUtc": "2026-10-23T03:50:00.000Z",
+            "blockMinutes": 495
+          }
+        ]
+      },
+      {
+        "pairingId": "152697",
+        "label": "EK414/EK413",
+        "checkInUtc": "2026-10-28T20:00:00.000Z",
+        "releaseUtc": "2026-10-30T19:00:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165867",
+            "flightNumber": "EK414",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "SYD",
+            "startUtc": "2026-10-28T22:00:00.000Z",
+            "endUtc": "2026-10-29T12:00:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-28T22:00:00.000Z",
+            "actEndUtc": "2026-10-29T12:00:00.000Z",
+            "blockMinutes": 840
+          },
+          {
+            "flightId": "165870",
+            "flightNumber": "EK413",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "SYD",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-30T05:00:00.000Z",
+            "endUtc": "2026-10-30T18:45:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-30T05:00:00.000Z",
+            "actEndUtc": "2026-10-30T18:45:00.000Z",
+            "blockMinutes": 825
+          }
+        ]
+      }
+    ],
+    "groundDuties": [
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-02T20:00:00.000Z",
+        "endUtc": "2026-10-03T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-06T20:00:00.000Z",
+        "endUtc": "2026-10-07T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "PRAM",
+        "label": null,
+        "startUtc": "2026-10-08T00:00:00.000Z",
+        "endUtc": "2026-10-08T12:00:00.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-11T20:00:00.000Z",
+        "endUtc": "2026-10-12T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-18T20:00:00.000Z",
+        "endUtc": "2026-10-19T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "PRPM",
+        "label": null,
+        "startUtc": "2026-10-20T10:00:00.000Z",
+        "endUtc": "2026-10-20T19:59:00.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-23T20:00:00.000Z",
+        "endUtc": "2026-10-24T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-24T20:00:00.000Z",
+        "endUtc": "2026-10-25T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-25T20:00:00.000Z",
+        "endUtc": "2026-10-26T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-26T20:00:00.000Z",
+        "endUtc": "2026-10-27T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-27T20:00:00.000Z",
+        "endUtc": "2026-10-28T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      }
+    ]
+  },
+  "message": "ok"
+}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, type ViewStyle } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect, Circle, Path, G } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CarrierPalette } from '../../theme/carrier';
 
 export interface GradientScreenProps {
@@ -8,6 +9,14 @@ export interface GradientScreenProps {
   children?: React.ReactNode;
   texture?: boolean;
   style?: ViewStyle;
+  /**
+   * Keep content out of the left/right safe areas (default on). On the iPhone
+   * Duo inner screen the status bar is an 84pt strip down the RIGHT edge, so
+   * content would otherwise sit under the clock; on a portrait iPhone both
+   * side insets are 0 and nothing moves. Pass false when the caller already
+   * applies them (e.g. a SafeAreaView inside).
+   */
+  sideInsets?: boolean;
 }
 
 export function GradientScreen({
@@ -15,7 +24,9 @@ export function GradientScreen({
   children,
   texture = true,
   style,
+  sideInsets = true,
 }: GradientScreenProps): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   return (
     <View style={[styles.root, style]}>
       <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
@@ -50,7 +61,11 @@ export function GradientScreen({
           </Svg>
         </View>
       ) : null}
-      {children}
+      {sideInsets && (insets.left > 0 || insets.right > 0) ? (
+        <View style={[styles.root, { paddingLeft: insets.left, paddingRight: insets.right }]}>{children}</View>
+      ) : (
+        children
+      )}
     </View>
   );
 }

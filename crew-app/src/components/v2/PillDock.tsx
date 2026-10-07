@@ -5,6 +5,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Icon, type IconName } from './icons';
 import { RBotEntry } from '../../features/rbot/RBotEntry';
 import type { CarrierPalette } from '../../theme/carrier';
+import { useLayout } from './useLayout';
 
 export interface PillDockProps extends BottomTabBarProps {
   palette: CarrierPalette;
@@ -19,6 +20,12 @@ const ICON_BY_ROUTE: Record<string, IconName> = {
 
 export function PillDock({ state, descriptors, navigation, palette }: PillDockProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
+  // iPhone Duo inner screen: a full-width dock would stretch the 4 tabs across
+  // ~900pt; keep the regular-iPhone bar width and centre it instead.
+  const { wide, width } = useLayout();
+  // Centre within the safe area: the Duo's status bar takes the right edge.
+  const wideLeft = Math.max(22, insets.left + (width - insets.left - insets.right - WIDE_DOCK_WIDTH) / 2);
+  const wideRight = Math.max(22, width - wideLeft - WIDE_DOCK_WIDTH);
   // The Schedule tab scrolls near-white duty cards right up to the bar, where the
   // frosted glass look vanishes. That tab gets a solid tint of the theme instead:
   // light enough to belong to the page, dark theme ink for the icons/labels, and
@@ -27,7 +34,7 @@ export function PillDock({ state, descriptors, navigation, palette }: PillDockPr
 
   return (
     <View
-      style={[styles.row, { bottom: Math.max(insets.bottom, 22) - 4 }]}
+      style={[styles.row, { bottom: Math.max(insets.bottom, 22) - 4, left: wide ? wideLeft : 22, right: wide ? wideRight : 22 }]}
       pointerEvents="box-none"
     >
       <View
@@ -90,6 +97,9 @@ export function PillDock({ state, descriptors, navigation, palette }: PillDockPr
     </View>
   );
 }
+
+/** Dock row width on the wide (Duo inner) layout — about a regular iPhone's bar. */
+const WIDE_DOCK_WIDTH = 460;
 
 const styles = StyleSheet.create({
   // The floating row: the pill dock owns the four tabs, R'Bot owns its own box.

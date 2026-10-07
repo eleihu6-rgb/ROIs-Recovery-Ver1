@@ -249,12 +249,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   navLabel: {
-    flex: 1,
+    // Grow into the free space like `flex: 1`, but from the label's own width, so
+    // label and a long value share a narrow row instead of the label collapsing to
+    // one letter per line (Duo two-column pages). Rows that fit render as before.
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
     fontSize: 15,
     fontWeight: '500',
   },
   navValue: {
     fontSize: 13,
+    // A long value in a narrow column (Duo two-column pages) shrinks/wraps itself
+    // instead of crushing the label to one letter per line; no effect when it fits.
+    flexShrink: 1,
+    textAlign: 'right',
   },
   radioRow: {
     flexDirection: 'row',

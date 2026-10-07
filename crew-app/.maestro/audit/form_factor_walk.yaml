@@ -1,0 +1,114 @@
+# Form-factor audit walk (iPhone / iPhone Duo): login as prefilled TG crew and
+# screenshot every main screen. Optional taps so one missing element doesn't
+# abort the walk. Run: maestro --device <udid> test <this> --test-output-dir <dir>
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- takeScreenshot: 01_login
+- extendedWaitUntil:
+    visible:
+      id: "airline-dropdown"
+    timeout: 30000
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- takeScreenshot: 02_home
+- scrollUntilVisible:
+    element:
+      id: "dest-.*"
+    direction: DOWN
+    optional: true
+- takeScreenshot: 03_home_scrolled
+- tapOn:
+    id: "home-alarms"
+    optional: true
+- takeScreenshot: 04_alarms
+- tapOn:
+    id: "page-back"
+    optional: true
+- tapOn:
+    id: "home-alerts"
+    optional: true
+- takeScreenshot: 05_alerts
+- tapOn:
+    id: "alerts-back"
+    optional: true
+- tapOn:
+    id: "page-back"
+    optional: true
+- tapOn:
+    id: "qa-check-in"
+    optional: true
+- takeScreenshot: 06_checkin
+- tapOn:
+    id: "page-back"
+    optional: true
+- tapOn:
+    id: "dock-rbot"
+    optional: true
+- takeScreenshot: 07_rbot
+- tapOn:
+    id: "rbot-close"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- takeScreenshot: 08_schedule
+- tapOn:
+    id: "cal-to-detail"
+    optional: true
+- takeScreenshot: 09_schedule_detail
+- tapOn:
+    id: "cal-to-compact"
+    optional: true
+- takeScreenshot: 10_schedule_compact
+- tapOn:
+    id: "tab-global"
+- takeScreenshot: 11_global
+- tapOn:
+    id: "tab-profile"
+- takeScreenshot: 12_profile
+- tapOn:
+    id: "row-alarms"
+    optional: true
+- takeScreenshot: 13_profile_alarms
+- tapOn:
+    id: "page-back"
+    optional: true
+- tapOn:
+    id: "row-timezone"
+    optional: true
+- takeScreenshot: 14_timezone
+- tapOn:
+    id: "page-back"
+    optional: true
+- tapOn:
+    id: "row-preferences"
+    optional: true
+- takeScreenshot: 15_preferences
+- tapOn:
+    id: "page-back"
+    optional: true
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "dest-.*"
+    optional: true
+- takeScreenshot: 16_destination
+- tapOn:
+    id: "dest-trip-details"
+    optional: true
+- takeScreenshot: 17_trip_details

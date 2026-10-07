@@ -1,0 +1,557 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>crew-app Duo mockups — K1001 roster</title>
+<style>
+:root{--bg:#eef2f0;--ink:#17302a;--mut:#62736e;--card:#fff;--hl:#d9822b;--line:#d3dcd8}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1514;--ink:#e6efec;--mut:#9fb0ab;--card:#19231f;--line:#2b3935}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 -apple-system,system-ui,sans-serif;padding:20px 16px 60px}
+h1{font-size:21px;margin:0 0 4px}.s{color:var(--mut);margin:0 0 14px;max-width:820px;font-size:13px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 18px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:50}
+.bar label{font-size:12px;color:var(--mut)}.bar input,.bar select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+section{margin:0 0 34px}h2{font-size:16px;margin:0 0 2px}.note{color:var(--mut);font-size:12.5px;margin:0 0 10px;max-width:900px}
+.frames{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}figure{margin:0}figcaption{font-size:11.5px;color:var(--mut);margin-top:5px}
+.dev{background:#0b0f0e;border-radius:30px;padding:8px;overflow:hidden}
+.vp{position:relative;overflow:hidden;border-radius:24px}
+.pt{transform-origin:0 0;position:absolute;left:0;top:0;overflow:hidden;color:#fff;font-size:13px;
+ background:linear-gradient(172deg,#264a41,#5f8c7f 55%,#8fb8ac)}
+.hinge{position:absolute;left:50%;top:0;bottom:0;width:0;border-left:2px dashed rgba(255,255,255,.35);z-index:9;pointer-events:none}
+.pad{padding:54px 22px 100px;height:100%;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.wide .pad{padding:26px 36px 80px}
+.cols{display:flex;gap:18px;flex:1;min-height:0}.cols>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+.card{background:#fff;color:#17302a;border-radius:16px;padding:12px 14px}
+.glass{background:rgba(255,255,255,.16);border-radius:16px;padding:10px 12px}
+.h{font-size:19px;font-weight:700}.sm{font-size:11px;opacity:.75}.big{font-size:26px;font-weight:700;letter-spacing:.5px}
+.row{display:flex;gap:8px;align-items:center}.sp{flex:1}.mono{font-variant-numeric:tabular-nums}
+.tag{font-size:10px;padding:1px 7px;border-radius:9px;background:#2f6b5e;color:#fff}.tag.g{background:#8a9894}
+.legs .leg{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #e3e9e6}.legs .leg:first-child{border-top:0}
+.dock{position:absolute;bottom:14px;left:22px;right:22px;height:56px;border-radius:30px;background:rgba(10,20,17,.62);display:flex;justify-content:space-around;align-items:center;font-size:11px}
+.dock.nar{left:50%;right:auto;width:360px;transform:translateX(-50%)}
+.dock b{opacity:1}.dock span{opacity:.7}
+.back{width:34px;height:34px;border-radius:17px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px}
+.day{display:flex;gap:10px;background:#fff;color:#17302a;border-radius:14px;padding:9px 12px;align-items:center}
+.day.sel{outline:3px solid var(--hl)}.day .d{width:42px;text-align:center;line-height:1.1}.day .d b{font-size:18px;display:block}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal div{background:rgba(255,255,255,.14);border-radius:6px;min-height:34px;padding:2px 4px;font-size:10px}
+.cal .f{background:#fff;color:#17302a}.cal .do{background:rgba(255,255,255,.3)}.cal .g{background:#cfe3dc;color:#17302a}.cal .sel{outline:2px solid var(--hl)}
+.bub{max-width:86%;padding:8px 11px;border-radius:14px;font-size:12.5px}.me{align-self:flex-end;background:#2f6b5e}.bot{background:#fff;color:#17302a}
+svg text{fill:#fff;font-size:11px}
+.flag{font-size:11.5px;margin:8px 0 0;padding:7px 10px;border-left:3px solid var(--hl);background:var(--card);max-width:900px}
+
+.acc{border-left:6px solid var(--c,#2f6b5e)}
+.badge{font-size:10px;padding:1px 8px;border-radius:9px;background:var(--t,#dff0ea);color:var(--c,#2f6b5e);font-weight:600}
+.kv{display:flex;gap:8px;padding:5px 0;border-top:1px solid #e6ece9;font-size:12px}.kv:first-child{border-top:0}.kv span:first-child{color:#62736e;width:120px;flex:none}.kv b{font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.stats div{background:rgba(255,255,255,.16);border-radius:10px;padding:6px 8px;font-size:10px}.stats b{display:block;font-size:17px}
+.rest{font-size:11px;text-align:center;color:#62736e;padding:4px 0;border-top:1px dashed #b7c4bf;border-bottom:1px dashed #b7c4bf;margin:2px 0}
+.leg2 .t{font-size:17px;font-weight:700}
+.tl{position:relative;height:16px;background:#e6ece9;border-radius:8px;margin:6px 0;overflow:hidden}.tl i{position:absolute;top:0;bottom:0;background:#2f6b5e}.tl i.r{background:#a9bfb8}
+.cal .do{background:#dfe4ea;color:#334155}.cal .sb{background:#dcf2e4;color:#05692e}.cal .f{background:#fff}.cal .lv{background:#cfe0f3;color:#17302a}
+</style></head><body>
+<h1>crew-app — iPhone Duo mockups with K1001's real October roster</h1>
+<p class="s">Data = <code>k1001-roster-oct2026.json</code> (POST /api/mobile-roster/session, EK, K1001, Fatima Al Zaabi · CA · DXB). Times shown in Dubai local (UTC+4) with UTC where useful. Layouts are wireframes drawn at true point size, then scaled. Orange outline / dashed hinge = proposed wide-layout additions. R'Bot text is illustrative, not real model output. Pick a "today" date to see Home and Schedule follow the real roster.</p>
+<div class="bar"><label>Today <input type="date" id="today" value="2026-10-04" min="2026-10-01" max="2026-10-31"></label>
+<label>Duty <select id="duty"></select></label><label>Screen <select id="scr"></select></label><span class="s" id="hint" style="margin:0"></span></div>
+<div id="app"></div>
+<script id="data" type="application/json">{
+  "code": 200,
+  "data": {
+    "apiVersion": "1",
+    "airline": "EK",
+    "crew": {
+      "crewId": "K1001",
+      "firstName": "Fatima",
+      "lastName": "Al Zaabi",
+      "base": "DXB",
+      "rank": "CA",
+      "nationality": "AE",
+      "carrier": "EK"
+    },
+    "pairings": [
+      {
+        "pairingId": "152690",
+        "label": "EK372/EK371",
+        "checkInUtc": "2026-10-01T03:35:00.000Z",
+        "releaseUtc": "2026-10-01T21:50:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165917",
+            "flightNumber": "EK372",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "BKK",
+            "startUtc": "2026-10-01T05:35:00.000Z",
+            "endUtc": "2026-10-01T11:50:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-01T05:35:00.000Z",
+            "actEndUtc": "2026-10-01T11:50:00.000Z",
+            "blockMinutes": 375
+          },
+          {
+            "flightId": "165918",
+            "flightNumber": "EK371",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "BKK",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-01T15:35:00.000Z",
+            "endUtc": "2026-10-01T21:35:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-01T15:35:00.000Z",
+            "actEndUtc": "2026-10-01T21:35:00.000Z",
+            "blockMinutes": 360
+          }
+        ]
+      },
+      {
+        "pairingId": "152691",
+        "label": "EK001/EK002",
+        "checkInUtc": "2026-10-04T02:35:00.000Z",
+        "releaseUtc": "2026-10-05T21:20:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165700",
+            "flightNumber": "EK001",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "LHR",
+            "startUtc": "2026-10-04T04:35:00.000Z",
+            "endUtc": "2026-10-04T12:05:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-04T04:35:00.000Z",
+            "actEndUtc": "2026-10-04T12:05:00.000Z",
+            "blockMinutes": 450
+          },
+          {
+            "flightId": "165703",
+            "flightNumber": "EK002",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "LHR",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-05T13:20:00.000Z",
+            "endUtc": "2026-10-05T21:05:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-05T13:20:00.000Z",
+            "actEndUtc": "2026-10-05T21:05:00.000Z",
+            "blockMinutes": 465
+          }
+        ]
+      },
+      {
+        "pairingId": "152692",
+        "label": "EK354/EK355",
+        "checkInUtc": "2026-10-09T02:20:00.000Z",
+        "releaseUtc": "2026-10-10T23:30:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165874",
+            "flightNumber": "EK354",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "SIN",
+            "startUtc": "2026-10-09T04:20:00.000Z",
+            "endUtc": "2026-10-09T11:35:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-09T04:20:00.000Z",
+            "actEndUtc": "2026-10-09T11:35:00.000Z",
+            "blockMinutes": 435
+          },
+          {
+            "flightId": "165877",
+            "flightNumber": "EK355",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "SIN",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-10T15:30:00.000Z",
+            "endUtc": "2026-10-10T23:15:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-10T15:30:00.000Z",
+            "actEndUtc": "2026-10-10T23:15:00.000Z",
+            "blockMinutes": 465
+          }
+        ]
+      },
+      {
+        "pairingId": "152693",
+        "label": "EK372/EK371",
+        "checkInUtc": "2026-10-13T03:35:00.000Z",
+        "releaseUtc": "2026-10-13T21:50:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "161254",
+            "flightNumber": "EK372",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "BKK",
+            "startUtc": "2026-10-13T05:35:00.000Z",
+            "endUtc": "2026-10-13T11:50:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-13T05:35:00.000Z",
+            "actEndUtc": "2026-10-13T11:50:00.000Z",
+            "blockMinutes": 375
+          },
+          {
+            "flightId": "165941",
+            "flightNumber": "EK371",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "BKK",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-13T15:35:00.000Z",
+            "endUtc": "2026-10-13T21:35:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-13T15:35:00.000Z",
+            "actEndUtc": "2026-10-13T21:35:00.000Z",
+            "blockMinutes": 360
+          }
+        ]
+      },
+      {
+        "pairingId": "152694",
+        "label": "EK201/EK202",
+        "checkInUtc": "2026-10-15T02:40:00.000Z",
+        "releaseUtc": "2026-10-17T16:00:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165781",
+            "flightNumber": "EK201",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "JFK",
+            "startUtc": "2026-10-15T04:40:00.000Z",
+            "endUtc": "2026-10-15T19:10:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-15T04:40:00.000Z",
+            "actEndUtc": "2026-10-15T19:10:00.000Z",
+            "blockMinutes": 870
+          },
+          {
+            "flightId": "165784",
+            "flightNumber": "EK202",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "JFK",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-17T02:45:00.000Z",
+            "endUtc": "2026-10-17T15:45:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-17T02:45:00.000Z",
+            "actEndUtc": "2026-10-17T15:45:00.000Z",
+            "blockMinutes": 780
+          }
+        ]
+      },
+      {
+        "pairingId": "152698",
+        "label": "EK763/EK764",
+        "checkInUtc": "2026-10-21T02:15:00.000Z",
+        "releaseUtc": "2026-10-23T04:05:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "166016",
+            "flightNumber": "EK763",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "JNB",
+            "startUtc": "2026-10-21T04:15:00.000Z",
+            "endUtc": "2026-10-21T12:30:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-21T04:15:00.000Z",
+            "actEndUtc": "2026-10-21T12:30:00.000Z",
+            "blockMinutes": 495
+          },
+          {
+            "flightId": "166019",
+            "flightNumber": "EK764",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "JNB",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-22T19:35:00.000Z",
+            "endUtc": "2026-10-23T03:50:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-22T19:35:00.000Z",
+            "actEndUtc": "2026-10-23T03:50:00.000Z",
+            "blockMinutes": 495
+          }
+        ]
+      },
+      {
+        "pairingId": "152697",
+        "label": "EK414/EK413",
+        "checkInUtc": "2026-10-28T20:00:00.000Z",
+        "releaseUtc": "2026-10-30T19:00:00.000Z",
+        "assignment": "FLY",
+        "flights": [
+          {
+            "flightId": "165867",
+            "flightNumber": "EK414",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "DXB",
+            "arrivalAirport": "SYD",
+            "startUtc": "2026-10-28T22:00:00.000Z",
+            "endUtc": "2026-10-29T12:00:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-28T22:00:00.000Z",
+            "actEndUtc": "2026-10-29T12:00:00.000Z",
+            "blockMinutes": 840
+          },
+          {
+            "flightId": "165870",
+            "flightNumber": "EK413",
+            "carrier": "EK",
+            "fleet": "A380",
+            "register": null,
+            "departureAirport": "SYD",
+            "arrivalAirport": "DXB",
+            "startUtc": "2026-10-30T05:00:00.000Z",
+            "endUtc": "2026-10-30T18:45:00.000Z",
+            "estStartUtc": null,
+            "estEndUtc": null,
+            "actStartUtc": "2026-10-30T05:00:00.000Z",
+            "actEndUtc": "2026-10-30T18:45:00.000Z",
+            "blockMinutes": 825
+          }
+        ]
+      }
+    ],
+    "groundDuties": [
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-02T20:00:00.000Z",
+        "endUtc": "2026-10-03T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-06T20:00:00.000Z",
+        "endUtc": "2026-10-07T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "PRAM",
+        "label": null,
+        "startUtc": "2026-10-08T00:00:00.000Z",
+        "endUtc": "2026-10-08T12:00:00.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-11T20:00:00.000Z",
+        "endUtc": "2026-10-12T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-18T20:00:00.000Z",
+        "endUtc": "2026-10-19T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "PRPM",
+        "label": null,
+        "startUtc": "2026-10-20T10:00:00.000Z",
+        "endUtc": "2026-10-20T19:59:00.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-23T20:00:00.000Z",
+        "endUtc": "2026-10-24T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-24T20:00:00.000Z",
+        "endUtc": "2026-10-25T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-25T20:00:00.000Z",
+        "endUtc": "2026-10-26T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-26T20:00:00.000Z",
+        "endUtc": "2026-10-27T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      },
+      {
+        "assignment": "DO",
+        "label": null,
+        "startUtc": "2026-10-27T20:00:00.000Z",
+        "endUtc": "2026-10-28T19:59:59.000Z",
+        "departureAirport": "DXB",
+        "arrivalAirport": "DXB"
+      }
+    ]
+  },
+  "message": "ok"
+}</script>
+<script>
+const D=JSON.parse(document.getElementById('data').textContent).data;
+const TZ=4*3600e3, MS={Jan:0};
+const L=(u)=>new Date(new Date(u).getTime()+TZ);            // local-as-UTC
+const p2=n=>String(n).padStart(2,'0');
+const hm=u=>{const d=L(u);return p2(d.getUTCHours())+':'+p2(d.getUTCMinutes())};
+const hmz=u=>{const d=new Date(u);return p2(d.getUTCHours())+':'+p2(d.getUTCMinutes())+'Z'};
+const ymd=u=>{const d=L(u);return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate())};
+const dd=u=>+ymd(u).slice(8);
+const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const wd=u=>WD[L(u).getUTCDay()];
+const dur=(a,b)=>{const m=Math.round((new Date(b)-new Date(a))/60000);return Math.floor(m/60)+'h'+p2(m%60)};
+const CITY={DXB:'Dubai',BKK:'Bangkok',LHR:'London',SIN:'Singapore',JFK:'New York',JNB:'Johannesburg',SYD:'Sydney'};
+const XY={DXB:[330,120],LHR:[190,60],JFK:[40,80],JNB:[270,230],BKK:[420,140],SIN:[430,190],SYD:[520,250]};
+// duties: unified, sorted by start
+const duties=[
+ ...D.pairings.map(p=>({k:'FLY',id:p.pairingId,label:p.label,s:p.checkInUtc,e:p.releaseUtc,fl:p.flights,day:ymd(p.checkInUtc),p})),
+ ...D.groundDuties.map(g=>({k:g.assignment,s:g.startUtc,e:g.endUtc,day:ymd(g.startUtc),label:g.assignment}))
+].sort((a,b)=>new Date(a.s)-new Date(b.s));
+const flying=duties.filter(d=>d.k==='FLY');
+const dutyOn=day=>duties.find(d=>day>=d.day&&day<=ymd(d.k==='FLY'?d.e:d.e));
+const route=p=>{const f=p.fl;return f.map(x=>x.departureAirport).concat(f[f.length-1].arrivalAirport).filter((v,i,a)=>i===0||v!==a[i-1]).join(' → ')};
+const nextTrip=t=>flying.find(d=>ymd(d.e)>=t)||flying[flying.length-1];
+const ticket=(d,mini)=>{const f=d.fl[0],l=d.fl[d.fl.length-1],dest=d.fl.length>1?d.fl[0].arrivalAirport:f.arrivalAirport;
+ return `<div class="card"><div class="row"><span class="tag">${d.p.assignment}</span><span class="sm" style="color:#62736e">${wd(f.startUtc)} ${ymd(f.startUtc)} · ${d.label}</span><span class="sp"></span><span class="sm" style="color:#62736e">${f.fleet}</span></div>
+ <div class="row" style="margin:8px 0"><div><div class="big">${f.departureAirport}</div><div class="sm" style="color:#62736e">${hm(f.startUtc)} <span class="mono">(${hmz(f.startUtc)})</span></div></div><div class="sp" style="text-align:center;color:#62736e;font-size:11px">✈ ${dur(f.startUtc,f.endUtc)}<hr style="border:0;border-top:1px dashed #b7c4bf"></div><div style="text-align:right"><div class="big">${f.arrivalAirport}</div><div class="sm" style="color:#62736e">${hm(f.endUtc)} <span class="mono">(${hmz(f.endUtc)})</span></div></div></div>
+ <div class="row sm" style="color:#17302a"><span>Check-in ${hm(d.s)}</span><span class="sp"></span><span>${CITY[dest]} layover ${d.fl.length>1?dur(f.endUtc,l.startUtc):'—'}</span></div></div>`};
+const legs=d=>`<div class="card legs">${d.fl.map(f=>`<div class="leg"><div style="width:62px"><b>${f.flightNumber}</b><div class="sm" style="color:#62736e">${f.fleet}</div></div><div class="sp"><b>${f.departureAirport} ${hm(f.startUtc)}</b> → <b>${f.arrivalAirport} ${hm(f.endUtc)}</b><div class="sm" style="color:#62736e">${wd(f.startUtc)} ${ymd(f.startUtc)} · UTC ${hmz(f.startUtc)}–${hmz(f.endUtc)}</div></div><div class="sm mono" style="color:#62736e">${dur(f.startUtc,f.endUtc)}</div></div>`).join('')}
+ <div class="row sm" style="color:#17302a;border-top:1px solid #e3e9e6;padding-top:7px"><span>Check-in ${hm(d.s)}</span><span class="sp"></span><span>Release ${hm(d.e)} ${ymd(d.e)}</span></div></div>`;
+const dayRow=(d,sel)=>card(d,sel);
+const dockH=(w)=>`<div class="dock ${w?'nar':''}"><b>Home</b><span>Schedule</span><span>Global</span><span>Profile</span></div>`;
+const dayRow0=(d,sel)=>{const f=d.k==='FLY';const o=f?d.fl[0].startUtc:d.s;return `<div class="day ${sel?'sel':''}"><div class="d"><span class="sm" style="color:#62736e">${wd(o)}</span><b>${dd(o)}</b></div><div class="sp"><b>${f?route(d):d.k}</b><div class="sm" style="color:#62736e">${f?d.label+' · '+d.fl.map(x=>hm(x.startUtc)).join(' / '):(d.k==='DO'?'Day off · DXB':'Ground · '+hm(d.s)+'–'+hm(d.e))}</div></div><span class="tag ${f?'':'g'}">${f?(d.fl.length>1&&ymd(d.fl[1].startUtc)!==ymd(d.fl[0].startUtc)?'LAYOVER':'TURN'):d.k}</span></div>`};
+const cal=(t)=>{let h='';const first=new Date(Date.UTC(2026,9,1)).getUTCDay();for(let i=0;i<first;i++)h+='<div style="background:none"></div>';
+ for(let n=1;n<=31;n++){const day='2026-10-'+p2(n);const du=duties.find(x=>day>=x.day&&day<=(x.k==='FLY'?ymd(x.e):x.day));
+  const c=!du?'':du.k==='FLY'?(ty(du)==='LAY'?'lv':'f'):du.k==='DO'?'do':'sb';h+=`<div class="${c} ${day===t?'sel':''}"><b>${n}</b>${du&&du.k==='FLY'&&(day===du.day)?'<br>'+du.fl[du.fl.length-1].departureAirport:du&&du.k!=='FLY'?'<br>'+du.k:''}</div>`}
+ return `<div class="cal">${WD.map(x=>`<div style="background:none;min-height:0;opacity:.7">${x[0]}</div>`).join('')}${h}</div>`};
+const map=(w,h,d)=>{const pts=new Set(d.fl.flatMap(f=>[f.departureAirport,f.arrivalAirport]));const a=[...pts];
+ const lines=d.fl.map(f=>{const[a1,b1]=XY[f.departureAirport],[a2,b2]=XY[f.arrivalAirport];return `<path d="M${a1} ${b1} Q${(a1+a2)/2} ${Math.min(b1,b2)-40} ${a2} ${b2}" stroke="#ffd27a" fill="none" stroke-width="2" stroke-dasharray="5 4"/>`}).join('');
+ return `<svg viewBox="0 0 560 290" width="${w}" height="${h}" style="background:rgba(0,0,0,.18);border-radius:16px">${Object.entries(XY).map(([k,[x,y]])=>`<circle cx="${x}" cy="${y}" r="${pts.has(k)?6:3}" fill="${pts.has(k)?'#ffd27a':'#cfe3dc'}"/><text x="${x+8}" y="${y+4}">${k}</text>`).join('')}${lines}</svg>`};
+const photo=(c)=>`<div style="flex:1;border-radius:18px;background:linear-gradient(160deg,#1f3a52,#6d8fb0 60%,#d8b88a);display:flex;align-items:flex-end;padding:14px;min-height:150px"><div><div class="big" style="font-size:34px">${CITY[c]}</div><div class="sm">${c}</div></div></div>`;
+const chat=(d)=>{const f=d.fl[0];return `<div class="bub me">When is my next flight?</div><div class="bub bot">Your next flight is ${f.flightNumber}, ${f.departureAirport} → ${f.arrivalAirport}, ${wd(f.startUtc)} ${ymd(f.startUtc)}. Check-in ${hm(d.s)} local, departure ${hm(f.startUtc)} (${hmz(f.startUtc)}).</div><div class="bub me">Show the layover</div><div class="bub bot">${d.fl.length>1?`${CITY[f.arrivalAirport]} layover ${dur(f.endUtc,d.fl[1].startUtc)}; return ${d.fl[1].flightNumber} departs ${wd(d.fl[1].startUtc)} ${hm(d.fl[1].startUtc)} local.`:'Turnaround — no layover.'}</div>`};
+
+const CAT={FLY:{c:'#2f6b5e',t:'#dff0ea',n:'Flying'},LAY:{c:'#3a5fa0',t:'#dbe6f6',n:'Layover'},DO:{c:'#64748B',t:'#EEF1F6',n:'Day Off'},PRAM:{c:'#05A045',t:'#DCF2E4',n:'Standby AM/PM'},PRPM:{c:'#05A045',t:'#DCF2E4',n:'Standby Night'}};
+const ty=d=>d.k==='FLY'?((d.fl.length>1&&ymd(d.fl[1].startUtc)!==ymd(d.fl[0].startUtc))?'LAY':'FLY'):d.k;
+const tyName=d=>d.k==='FLY'?(ty(d)==='LAY'?'Layover':'Turnaround'):CAT[d.k].n;
+const nights=d=>d.k==='FLY'?Math.round((new Date(ymd(d.fl[d.fl.length-1].startUtc))-new Date(ymd(d.fl[0].startUtc)))/864e5):0;
+const blk=d=>d.fl.reduce((a,f)=>a+f.blockMinutes,0);
+const hmm=m=>Math.floor(m/60)+'h'+p2(m%60);
+const stats=()=>{const fl=flying,days=new Set();fl.forEach(x=>{let a=new Date(ymd(x.s)),b=new Date(ymd(x.e));for(;a<=b;a=new Date(+a+864e5))days.add(a.toISOString().slice(0,10))});
+ return `<div class="stats"><div><b>${fl.length}</b>pairings</div><div><b>${days.size}</b>days away/flying</div><div><b>${hmm(fl.reduce((a,x)=>a+blk(x),0))}</b>block (Oct)</div><div><b>${duties.filter(x=>x.k==='DO').length}</b>days off</div><div><b>${duties.filter(x=>x.k==='PRAM'||x.k==='PRPM').length}</b>standby</div><div><b>${fl.filter(x=>ty(x)==='LAY').length}</b>layovers</div></div>`};
+const card=(d,sel)=>{const k=ty(d),c=CAT[k],f=d.k==='FLY';const o=f?d.fl[0].startUtc:d.s;
+ return `<div class="day acc ${sel?'sel':''}" style="--c:${c.c};--t:${c.t}"><div class="d"><span class="sm" style="color:#62736e">${wd(o)}</span><b>${dd(o)}</b></div><div class="sp"><b>${f?route(d):CAT[d.k].n}</b><div class="sm" style="color:#62736e">${f?d.label+' · '+hm(d.s)+' check-in · '+hmm(blk(d))+' block'+(nights(d)?' · '+nights(d)+' night'+(nights(d)>1?'s':''):''):(d.k==='DO'?'All day · DXB':hm(d.s)+'–'+hm(d.e)+' · DXB · '+dur(d.s,d.e))}</div></div><span class="badge">${f?tyName(d).toUpperCase():d.k}</span></div>`};
+const legBlock=(d)=>{let h='';d.fl.forEach((f,i)=>{if(i>0){const p=d.fl[i-1];h+=`<div class="rest">${CITY[p.arrivalAirport]} layover · ${dur(p.endUtc,f.startUtc)} (arr ${hm(p.endUtc)} → dep ${hm(f.startUtc)} local)</div>`}
+ h+=`<div class="leg2"><div class="row"><b>${f.flightNumber}</b><span class="sm" style="color:#62736e">${f.fleet} · ${wd(f.startUtc)} ${ymd(f.startUtc)}</span><span class="sp"></span><span class="sm mono" style="color:#62736e">block ${dur(f.startUtc,f.endUtc)}</span></div>
+ <div class="row" style="margin-top:4px"><div><div class="t">${f.departureAirport} ${hm(f.startUtc)}</div><div class="sm" style="color:#62736e">${hmz(f.startUtc)}</div></div><div class="sp" style="text-align:center;color:#62736e">✈</div><div style="text-align:right"><div class="t">${f.arrivalAirport} ${hm(f.endUtc)}</div><div class="sm" style="color:#62736e">${hmz(f.endUtc)}${ymd(f.endUtc)!==ymd(f.startUtc)?' · +1d':''}</div></div></div></div>`});return h};
+const tline=(d)=>{const a=new Date(d.s).getTime(),b=new Date(d.e).getTime(),T=b-a;return `<div class="tl">${d.fl.map(f=>`<i style="left:${(new Date(f.startUtc)-a)/T*100}%;width:${(new Date(f.endUtc)-new Date(f.startUtc))/T*100}%"></i>`).join('')}</div><div class="sm" style="color:#62736e">Duty span ${dur(d.s,d.e)} (check-in → release) · green = flying</div>`};
+const detail=(d)=>{const k=ty(d),c=CAT[k];
+ if(d.k==='FLY')return `<div class="card acc" style="--c:${c.c};--t:${c.t}"><div class="row"><span class="badge">${tyName(d).toUpperCase()}</span><b>${route(d)}</b><span class="sp"></span><span class="sm" style="color:#62736e">pairing ${d.id}</span></div>
+  <div style="margin:8px 0">${legBlock(d)}</div>${tline(d)}
+  <div class="kv"><span>Check-in</span><b>${hm(d.s)} local · ${hmz(d.s)}</b></div><div class="kv"><span>Release</span><b>${hm(d.e)} local (${ymd(d.e)}) · ${hmz(d.e)}</b></div><div class="kv"><span>Total block</span><b>${hmm(blk(d))}</b></div><div class="kv"><span>Fleet / rank</span><b>${d.fl[0].fleet} · ${D.crew.rank}</b></div><div class="kv"><span>Nights away</span><b>${nights(d)}</b></div></div>`;
+ const all=d.k==='DO';
+ return `<div class="card acc" style="--c:${c.c};--t:${c.t}"><div class="row"><span class="badge">${d.k}</span><b>${CAT[d.k].n}</b><span class="sp"></span><span class="sm" style="color:#62736e">${ymd(d.s)}</span></div>
+  <div style="font-size:24px;font-weight:700;margin:8px 0">${all?'All day':hm(d.s)+' – '+hm(d.e)}</div>
+  <div class="kv"><span>Where</span><b>DXB</b></div><div class="kv"><span>Local window</span><b>${hm(d.s)} ${ymd(d.s)} → ${hm(d.e)} ${ymd(d.e)}</b></div><div class="kv"><span>UTC window</span><b>${hmz(d.s)} → ${hmz(d.e)}</b></div><div class="kv"><span>Duration</span><b>${dur(d.s,d.e)}</b></div>
+  <div class="kv"><span>Meaning</span><b>${all?'Day off — no duties; follows release/rest of the previous trip':d.k==='PRAM'?'Standby (AM/PM window) — on call from DXB':'Standby (night window) — on call from DXB'}</b></div></div>`};
+const pick=(id)=>duties.find(x=>String(x.id)===String(id))||duties.find(x=>x.k===id);
+const TYPES=[['152690','Turnaround'],['152691','Layover (1 night)'],['152694','Layover (2 nights, JFK)'],['152698','Layover (2 nights, JNB)'],['DO','Day off'],['PRAM','Standby AM/PM'],['PRPM','Standby night']];
+
+// screens: [title, note, compact(t,d), wide(t,d)]
+const S={
+types:['Duty types — card + detail','Every duty type in K1001’s real roster: card as shown in the schedule, then the full detail page. Compact = stacked; wide = card list left, detail right (no push).',
+ (t,d)=>`<div class="pad"><div class="h">Duty types</div>${TYPES.map(([i])=>card(pick(i))).join('')}</div>${dockH()}`,
+ (t,d)=>`<div class="pad"><div class="h">Duty types</div><div class="cols"><div style="outline:2px solid var(--hl);outline-offset:4px;border-radius:12px">${TYPES.map(([i])=>card(pick(i))).join('')}</div><div style="outline:2px solid var(--hl);outline-offset:4px;border-radius:12px">${detail(pick('152694'))}</div></div></div>${dockH(1)}`],
+ dtl:['Duty detail pages','One page per type (change “Duty” above). Wide: capped 560 pt column.',
+ (t,d,x)=>`<div class="pad"><div class="row"><div class="back">‹</div><div class="h">${tyName(x)}</div></div>${detail(x)}</div>`,
+ (t,d,x)=>`<div class="pad" style="align-items:center"><div style="width:560px;display:flex;flex-direction:column;gap:12px;outline:2px solid var(--hl);outline-offset:6px;border-radius:12px"><div class="row"><div class="back">‹</div><div class="h">${tyName(x)}</div></div>${detail(x)}</div></div>`],
+ home:['Home','Wide: ticket card left, destinations/quick actions right; narrow centered dock. Compact is today’s single column.',
+ (t,d)=>`<div class="pad"><div class="row"><div><div class="sm">Good morning</div><div class="h">Fatima</div></div><span class="sp"></span><div class="back">🔔</div><div class="back">⏰</div></div>${ticket(d)}<div class="glass"><div class="sm">Destinations</div><div class="row" style="margin-top:6px">${[...new Set(d.fl.flatMap(f=>[f.arrivalAirport]))].map(c=>`<div class="card" style="width:120px;height:90px;display:flex;align-items:flex-end"><b>${CITY[c]}</b></div>`).join('')}</div></div><div class="glass row" style="justify-content:space-around;font-size:11px"><span>Check-in</span><span>Status</span><span>Absence</span><span>Swap</span><span>More</span></div></div>${dockH()}`,
+ (t,d)=>`<div class="pad"><div class="row"><div><div class="sm">Good morning</div><div class="h">Fatima</div></div><span class="sp"></span><div class="back">🔔</div><div class="back">⏰</div></div><div class="cols"><div>${ticket(d)}${legs(d)}</div><div><div class="glass" style="outline:2px solid var(--hl)"><div class="sm">Destinations</div><div class="row" style="margin-top:6px">${[...new Set(d.fl.flatMap(f=>[f.arrivalAirport]))].map(c=>`<div class="card" style="width:150px;height:110px;display:flex;align-items:flex-end"><b>${CITY[c]}</b></div>`).join('')}</div></div><div class="glass" style="outline:2px solid var(--hl)"><div class="sm">Quick actions</div><div class="row" style="justify-content:space-around;margin-top:8px">${['Check-in','Status','Absence','Swap','More'].map(x=>`<span>${x}</span>`).join('')}</div></div></div></div></div>${dockH(1)}`],
+ sched:['Schedule — timeline','Real October duties from the roster. Wide: master/detail so the selected duty’s legs are visible without a push.',
+ (t,d)=>{const i=duties.indexOf(d);const list=duties.slice(Math.max(0,i-1),i+5);return `<div class="pad"><div class="row"><div class="h">Schedule</div><span class="sp"></span><div class="back">⋯</div></div><div class="sm">October 2026 · ${flying.length} pairings · ${duties.filter(x=>x.k==='DO').length} DO</div>${list.map(x=>dayRow(x,x===d)).join('')}</div>${dockH()}`},
+ (t,d)=>{const i=duties.indexOf(d);const list=duties.slice(Math.max(0,i-1),i+6);return `<div class="pad"><div class="row"><div class="h">Schedule</div><span class="sp"></span><div class="back">⋯</div></div><div class="cols"><div style="outline:2px solid var(--hl);outline-offset:4px;border-radius:14px">${list.map(x=>dayRow(x,x===d)).join('')}</div><div style="outline:2px solid var(--hl);outline-offset:4px;border-radius:14px">${ticket(d)}${legs(d)}</div></div></div>${dockH(1)}`}],
+ cal:['Schedule — calendar','Month grid built from all 7 pairings + 11 ground duties. Wide: grid capped, agenda alongside (flat-strip cells avoided).',
+ (t,d)=>`<div class="pad"><div class="row"><div class="h">October 2026</div></div>${cal(t)}${stats()}<div class="glass sm">White = turnaround · blue = layover · grey = day off · green = standby</div>${detail(d)}</div>${dockH()}`,
+ (t,d)=>`<div class="pad"><div class="h">October 2026</div><div class="cols"><div style="max-width:380px;outline:2px solid var(--hl);outline-offset:4px;border-radius:12px">${cal(t)}</div><div style="outline:2px solid var(--hl);outline-offset:4px;border-radius:12px">${duties.filter(x=>x.k==='FLY').slice(0,4).map(x=>dayRow(x)).join('<div style="height:8px"></div>')}</div></div></div>${dockH(1)}`],
+ map:['Schedule — route map','Real routes of the selected pairing. Compact map is a fixed 240 pt tall today; wide uses width-derived height next to stats.',
+ (t,d)=>`<div class="pad"><div class="h">Route map</div>${map(376,200,d)}<div class="glass"><b>${route(d)}</b><div class="sm">${d.fl.map(f=>f.flightNumber+' '+dur(f.startUtc,f.endUtc)).join(' · ')} · block ${d.fl.reduce((a,f)=>a+f.blockMinutes,0)/60|0}h${p2(d.fl.reduce((a,f)=>a+f.blockMinutes,0)%60)}</div></div></div>${dockH()}`,
+ (t,d)=>`<div class="pad"><div class="h">Route map</div><div class="cols"><div style="flex:2">${map(560,290,d)}</div><div class="glass" style="outline:2px solid var(--hl)"><b>${route(d)}</b><div class="sm" style="margin-top:6px">${d.fl.map(f=>f.flightNumber+' '+dur(f.startUtc,f.endUtc)).join('<br>')}</div><div class="sm" style="margin-top:6px">Block ${d.fl.reduce((a,f)=>a+f.blockMinutes,0)/60|0}h${p2(d.fl.reduce((a,f)=>a+f.blockMinutes,0)%60)}</div></div></div></div>${dockH(1)}`],
+ trip:['Trip details','PageShell page — one cap (640 pt) fixes ~10 pages. Real STD/STA, UTC + local, check-in and release.',
+ (t,d)=>`<div class="pad"><div class="row"><div class="back">‹</div><div class="h">Trip details</div></div>${detail(d)}</div>`,
+ (t,d)=>`<div class="pad" style="align-items:center"><div style="width:560px;display:flex;flex-direction:column;gap:12px;outline:2px solid var(--hl);outline-offset:6px;border-radius:12px"><div class="row"><div class="back">‹</div><div class="h">Trip details</div></div>${detail(d)}</div></div>`],
+ dest:['Destination','Real layover city. Wide: info panel becomes a side card over the photo; pager re-syncs on width change.',
+ (t,d)=>{const c=d.fl[0].arrivalAirport;return `<div class="pad" style="padding-bottom:20px"><div class="row"><div class="back">‹</div><span class="sp"></span><span class="tag">Trip details</span></div>${photo(c)}<div class="card" style="height:230px"><b>${CITY[c]} layover</b><div class="sm" style="color:#62736e;margin:4px 0">Arrive ${hm(d.fl[0].endUtc)} · depart ${d.fl.length>1?hm(d.fl[1].startUtc):'—'} (${d.fl.length>1?dur(d.fl[0].endUtc,d.fl[1].startUtc):'—'})</div>Hotel · transfer · weather · tips</div></div>`},
+ (t,d)=>{const c=d.fl[0].arrivalAirport;return `<div class="pad" style="padding-bottom:20px"><div class="row"><div class="back">‹</div><span class="sp"></span><span class="tag">Trip details</span></div><div class="cols">${photo(c)}<div style="max-width:380px"><div class="card" style="outline:3px solid var(--hl);flex:1"><b>${CITY[c]} layover</b><div class="sm" style="color:#62736e;margin:4px 0">Arrive ${hm(d.fl[0].endUtc)} · depart ${d.fl.length>1?hm(d.fl[1].startUtc):'—'} (${d.fl.length>1?dur(d.fl[0].endUtc,d.fl[1].startUtc):'—'})</div>Hotel · transfer · weather · tips</div></div></div></div>`}],
+ rbot:['R’Bot','Back button moved to the LEFT (matches every other page) and kept visible below the status/hinge area; thread capped at 560 pt.',
+ (t,d)=>`<div class="pad"><div class="row"><div class="back">‹</div><div class="h">R’Bot</div></div>${chat(d)}<div class="sp"></div><div class="card" style="border-radius:24px">Ask anything about your roster…</div></div>`,
+ (t,d)=>`<div class="pad" style="align-items:center"><div style="width:560px;flex:1;display:flex;flex-direction:column;gap:12px;outline:2px solid var(--hl);outline-offset:6px;border-radius:12px"><div class="row"><div class="back">‹</div><div class="h">R’Bot</div></div>${chat(d)}<div class="sp"></div><div class="card" style="border-radius:24px">Ask anything about your roster…</div></div></div>`],
+ prof:['Profile','Real crew meta from the session. Wide: capped column.',
+ (t,d)=>`<div class="pad"><div class="row"><div class="back" style="width:64px;height:64px;border-radius:32px">FA</div><div><div class="h">${D.crew.firstName} ${D.crew.lastName}</div><div class="sm">Crew ${D.crew.crewId} · ${D.crew.rank} · ${D.crew.base} · ${D.crew.carrier}</div></div></div><div class="glass">Block hours (Oct): ${Math.floor(flying.reduce((a,x)=>a+x.fl.reduce((b,f)=>b+f.blockMinutes,0),0)/60)}h</div>${['Alarms & Meetings','Time zone','Preferences','Absence history','Log out'].map(x=>`<div class="card">${x}</div>`).join('')}</div>${dockH()}`,
+ (t,d)=>`<div class="pad" style="align-items:center"><div style="width:520px;display:flex;flex-direction:column;gap:10px;outline:2px solid var(--hl);outline-offset:6px;border-radius:12px"><div class="row"><div class="back" style="width:56px;height:56px;border-radius:28px">FA</div><div><div class="h">${D.crew.firstName} ${D.crew.lastName}</div><div class="sm">Crew ${D.crew.crewId} · ${D.crew.rank} · ${D.crew.base} · ${D.crew.carrier}</div></div></div>${['Alarms & Meetings','Time zone','Preferences','Absence history','Log out'].map(x=>`<div class="card" style="padding:8px 14px">${x}</div>`).join('')}</div></div>${dockH(1)}`]
+};
+const FR=[['Air',420,912,.6,0,'iPhone Air · 420×912 pt · unchanged'],['Out',466,678,.6,0,'Duo outer · ~466×678 pt · compact'],['In',951,669,.6,1,'Duo inner · ~951×669 pt · wide (new)']];
+const sel=document.getElementById('scr');sel.innerHTML=Object.entries(S).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('')+'<option value="all">All screens</option>';sel.value='all';
+const dsel=document.getElementById('duty');dsel.innerHTML=TYPES.map(([i,n])=>`<option value="${i}">${n}</option>`).join('');
+const run=()=>{const x=pick(dsel.value);const t=document.getElementById('today').value;const d=nextTrip(t);const cur=sel.value;
+ document.getElementById('hint').textContent=`Next trip from ${t}: ${d.label} (${route(d)}), pairing ${d.id}`;
+ const keys=cur==='all'?Object.keys(S):[cur];
+ document.getElementById('app').innerHTML=keys.map(k=>{const s=S[k];return `<section><h2>${s[0]}</h2><p class="note">${s[1]}</p><div class="frames">${FR.map(([n,w,h,sc,wide,cap])=>`<figure><div class="dev"><div class="vp" style="width:${w*sc}px;height:${h*sc}px"><div class="pt ${wide?'wide':''}" style="width:${w}px;height:${h}px;transform:scale(${sc})">${wide?'<div class="hinge"></div>':''}${wide?s[3](t,d,x):s[2](t,d,x)}</div></div></div><figcaption>${cap}</figcaption></figure>`).join('')}</div></section>`}).join('')};
+document.getElementById('today').oninput=run;sel.onchange=run;dsel.onchange=run;run();
+</script></body></html>

@@ -31,6 +31,21 @@ export function PageShell({
   );
 }
 
+/**
+ * Side-by-side columns on the iPhone Duo inner screen so a page uses the whole
+ * width; each child is one column. Callers only render this when wide — the
+ * compact (regular iPhone) layout keeps its own single-column order.
+ */
+export function Columns({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={s.cols}>
+      {React.Children.toArray(children).map((child, i) => (
+        <View key={i} style={s.col}>{child}</View>
+      ))}
+    </View>
+  );
+}
+
 /** Frosted intro block (mock .page .hero). */
 export function Hero({ h1, h2, palette }: { h1?: string; h2?: string; palette: CarrierPalette }) {
   return (
@@ -77,6 +92,8 @@ const s = StyleSheet.create({
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontSize: 20, fontWeight: '600' },
   body: { paddingHorizontal: 22, paddingTop: 6, paddingBottom: 40 },
+  cols: { flexDirection: 'row', gap: 18, alignItems: 'flex-start' },
+  col: { flex: 1, minWidth: 0 },
   hero: { borderRadius: 18, padding: 18, marginBottom: 16 },
   h1: { fontSize: 22, fontWeight: '600' },
   h2: { fontSize: 13, marginTop: 4, lineHeight: 19 },
