@@ -73,3 +73,12 @@
 - iOS device build is signed via the `/tmp/sign_install.sh` workaround (iCloud
   path adds xattrs that break codesign). Simulator builds use
   `-sdk iphonesimulator ... CODE_SIGNING_ALLOWED=NO`.
+
+## iPhone Duo simulator (fold / rotate / inner-screen automation)
+- `simctl`, `devicectl orientation set`, `XCUIDevice.orientation`, Maestro and mouse
+  taps all silently fail on the unfolded Duo. Use `duoctl` to fold/rotate and XCUITest
+  (`ios/RoyceTravelTemplateUITests/DuoFitUITests.swift`) to drive the inner screen.
+  Full how-to: `docs/modules/crew-app/duo-simulator-control.md`.
+- Layouts are designed per page for three classes (`compact` / `tall` / `wide`, see
+  `src/components/v2/useLayout.ts`); the regular-iPhone layout must stay pixel-identical.
+  Spec: `docs/superpowers/specs/2026-10-07-crew-app-duo-per-page-layouts-design.md`.

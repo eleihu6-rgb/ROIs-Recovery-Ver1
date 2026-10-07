@@ -13,6 +13,7 @@ import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native
 
 import type {CarrierPalette} from '../../theme/carrier';
 import {Icon} from '../../components/v2/icons';
+import {useLayout} from '../../components/v2/useLayout';
 import type {DiscretionRequest} from './notificationsApi';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -130,40 +131,32 @@ export function DiscretionCard({
   // card that only holds ET2681/ET2682.
   const dutyLabel = legs.length > 0 ? legs.map(leg => leg.fltNum).join('/') : duty?.pairingLabel ?? null;
   const terminal = d.state !== 'pending';
-  return (
-    <View style={[s.card, {backgroundColor: p.cardSolid}]} testID="discretion-card">
-      <View style={s.rowBetween}>
-        <View style={s.headLeft}>
-          <View style={[s.chip, {backgroundColor: p.frost}]}>
-            <Icon name="shield" size={16} color={p.cardInk} strokeWidth={1.7} />
-          </View>
-          <Text style={[s.title, {color: p.cardInk}]} testID="disc-title">
-            FDP discretion{dutyLabel ? ` · ${dutyLabel}` : ''} · Duty {d.dutyId}
-          </Text>
-        </View>
-        <Text style={[s.extBadge, {backgroundColor: p.btn}]}>+{requested}m</Text>
+  // iPhone Duo inner screen, landscape: the card's two kinds of content side by
+  // side — the figures (window, FDP, limit, reason) | the legs and the decision.
+  const {wide} = useLayout();
+
+  // Duty-level window: the check-in the crew still reports at, and the release.
+  const windowGrid = (
+    <View style={[s.grid, {borderColor: p.cardLine}]}>
+      <View style={s.gridCol}>
+        <Text style={[s.gridHead, {color: p.cardSoft}]}>Check-in (report)</Text>
+        <Text style={[s.gridVal, {color: p.cardInk}]} testID="disc-report">{fmtUtc(report)}</Text>
       </View>
-
-      {/* Duty-level window: the check-in the crew still reports at, and the release. */}
-      <View style={[s.grid, {borderColor: p.cardLine}]}>
-        <View style={s.gridCol}>
-          <Text style={[s.gridHead, {color: p.cardSoft}]}>Check-in (report)</Text>
-          <Text style={[s.gridVal, {color: p.cardInk}]} testID="disc-report">{fmtUtc(report)}</Text>
-        </View>
-        <View style={s.gridCol}>
-          <Text style={[s.gridHead, {color: p.cardSoft}]}>Release</Text>
-          <Text style={[s.gridVal, {color: p.cardInk}]} testID="disc-release">{fmtUtc(release)}</Text>
-        </View>
+      <View style={s.gridCol}>
+        <Text style={[s.gridHead, {color: p.cardSoft}]}>Release</Text>
+        <Text style={[s.gridVal, {color: p.cardInk}]} testID="disc-release">{fmtUtc(release)}</Text>
       </View>
-
-      {legs.length > 0 && (
-        <View style={[s.legs, {borderColor: p.cardLine}]} testID="disc-legs">
-          <Text style={[s.legsHead, {color: p.cardSoft}]}>FLIGHTS</Text>
-          {legs.map(leg => <LegRow key={`${leg.fltNum}-${leg.depArp}`} leg={leg} palette={p} />)}
-        </View>
-      )}
-
-      {/* FDP is the number the crew is actually agreeing to extend. */}
+    </View>
+  );
+  const legList = legs.length > 0 ? (
+    <View style={[s.legs, {borderColor: p.cardLine}]} testID="disc-legs">
+      <Text style={[s.legsHead, {color: p.cardSoft}]}>FLIGHTS</Text>
+      {legs.map(leg => <LegRow key={`${leg.fltNum}-${leg.depArp}`} leg={leg} palette={p} />)}
+    </View>
+  ) : null;
+  // FDP is the number the crew is actually agreeing to extend.
+  const figures = (
+    <>
       <View style={s.fdpRow}>
         <View>
           <Text style={[s.gridHead, {color: p.cardSoft}]}>FDP current</Text>
@@ -181,9 +174,11 @@ export function DiscretionCard({
           ? 'Regulatory assessment pending'
           : `Plan limit ${fmtHm(d.limitMin)} · exceed by ${Math.max((recalculated ?? current ?? 0) - d.limitMin, 0)}m`}
       </Text>
-
       {d.proposal?.reason && <Text style={[s.body, {color: p.cardSoft}]} testID="disc-reason">{d.proposal.reason}</Text>}
-
+    </>
+  );
+  const decision = (
+    <>
       {showActions && !terminal ? (
         <>
           <Text style={[s.choice, {color: p.cardInk}]}>Do you agree to a {requested} min FDP extension?</Text>
@@ -215,12 +210,44 @@ export function DiscretionCard({
       )}
 
       <Text style={[s.note, {color: p.cardSoft}]}>Agreement does not override regulatory limits.</Text>
+    </>
+  );
+
+  return (
+    <View style={[s.card, {backgroundColor: p.cardSolid}]} testID="discretion-card">
+      <View style={s.rowBetween}>
+        <View style={s.headLeft}>
+          <View style={[s.chip, {backgroundColor: p.frost}]}>
+            <Icon name="shield" size={16} color={p.cardInk} strokeWidth={1.7} />
+          </View>
+          <Text style={[s.title, {color: p.cardInk}]} testID="disc-title">
+            FDP discretion{dutyLabel ? ` · ${dutyLabel}` : ''} · Duty {d.dutyId}
+          </Text>
+        </View>
+        <Text style={[s.extBadge, {backgroundColor: p.btn}]}>+{requested}m</Text>
+      </View>
+
+      {wide ? (
+        <View style={s.wideCols} testID="disc-wide">
+          <View style={s.wideCol}>{windowGrid}{figures}</View>
+          <View style={s.wideCol}>{legList}{decision}</View>
+        </View>
+      ) : (
+        <>
+          {windowGrid}
+          {legList}
+          {figures}
+          {decision}
+        </>
+      )}
     </View>
   );
 }
 
 const s = StyleSheet.create({
   card: {borderRadius: 18, padding: 16, marginBottom: 12, gap: 10},
+  wideCols: {flexDirection: 'row', gap: 16, alignItems: 'flex-start'},
+  wideCol: {flex: 1, minWidth: 0, gap: 10},
   rowBetween: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between'},
   headLeft: {flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1},
   chip: {width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center'},

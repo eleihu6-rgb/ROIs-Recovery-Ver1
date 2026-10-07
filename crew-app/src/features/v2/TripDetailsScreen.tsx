@@ -28,7 +28,7 @@ export function TripDetailsScreen({ route }: Props) {
   // Record view — a rotation that has already flown still lists the wake-up /
   // leave-home it was reportable against.
   const { byTrip } = useDutyAlarms();
-  const { wide } = useLayout();
+  const { wide, tall } = useLayout();
   if (!trip) return <PageShell title="Trip Details"><Text style={{ color: p.ink }}>Trip not found.</Text></PageShell>;
   const legs = trip.legs.map(l => ({
     leg: l,
@@ -135,7 +135,8 @@ export function TripDetailsScreen({ route }: Props) {
     </View>
   ) : null;
   return (
-    <PageShell title="Trip Details" testID="page-trip-details">
+    // The page lays itself out on the Duo (full-width hero over its own columns).
+    <PageShell title="Trip Details" testID="page-trip-details" layout="full">
       <Hero h1={`${first.fltNumber} · ${routing}`} h2={`${window} · ${legs.length} leg${legs.length === 1 ? '' : 's'}${trip.layoverHours ? ` · ${Math.round(trip.layoverHours)}h layover` : ''}`} palette={p} />
       {wide ? (
         // iPhone Duo inner screen: legs left, calendar + layover hotel right.
@@ -143,6 +144,18 @@ export function TripDetailsScreen({ route }: Props) {
           <View>{legSections}</View>
           <View>{calendarSection}{hotelSection}</View>
         </Columns>
+      ) : tall ? (
+        // Rotated Duo: the two short cards (calendar, hotel) side by side under
+        // the hero, then the legs at full width.
+        <>
+          <View testID="trip-tall-cards">
+            <Columns>
+              <View>{calendarSection}</View>
+              {hotelSection ? <View>{hotelSection}</View> : null}
+            </Columns>
+          </View>
+          {legSections}
+        </>
       ) : (
         <>
           {calendarSection}

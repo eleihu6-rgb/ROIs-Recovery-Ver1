@@ -87,7 +87,7 @@ describe('no crew-facing screen brands from the sign-in airline', () => {
   // rule is `selectCrewCarrier` (carrier ?? airline); only portal configuration
   // may read the signed-in airline directly, and it is listed here by name.
   const REPO = path.resolve(__dirname, '..', '..');
-  const SCAN_DIRS = ['src/features/v2', 'src/features/rbot', 'src/features/tripTrade'];
+  const SCAN_DIRS = ['src/features/v2', 'src/features/rbot', 'src/features/tripTrade', 'src/features/dutySwap'];
   const PORTAL_CONFIG_ONLY: Record<string, string> = {
     'src/features/v2/useV2.ts':
       'base airport comes from the signed-in carrier\'s portalConfig',
@@ -95,6 +95,8 @@ describe('no crew-facing screen brands from the sign-in airline', () => {
       'absence submit posts the signed-in airline to the roster service',
     'src/features/v2/AbsenceHistoryScreen.tsx':
       'absence history posts the signed-in airline to the roster service',
+    'src/features/dutySwap/dutySwapActions.ts':
+      'Duty Swap is served by the signed-in airline crew portal (portalConfig.dutySwap)',
   };
 
   const filesUnder = (dir: string): string[] => fs.readdirSync(path.join(REPO, dir))

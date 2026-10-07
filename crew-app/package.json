@@ -26,6 +26,7 @@
     "@reduxjs/toolkit": "^2.3.0",
     "axios": "^1.7.7",
     "date-fns": "^4.1.0",
+    "jsencrypt": "3.3.2",
     "react": "18.2.0",
     "react-native": "0.74.5",
     "react-native-document-picker": "^9.3.1",

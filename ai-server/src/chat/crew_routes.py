@@ -8,13 +8,14 @@ Kept separate from `/ai/chat` on purpose: that route's prompt and tools describe
 a planner's Gantt board (filter panes, build pairings, edit the live roster),
 none of which exists on a crew's phone.
 """
+import json
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from src.chat.crew_tools import CREW_TOOLS, crew_tool_call_to_action
+from src.chat.crew_tools import CREW_TOOLS, SWAP_TOOLS, crew_tool_call_to_action
 from src.llm.client import llm_tools
 
 router = APIRouter(prefix='/ai/crew', tags=['crew-chat'])
@@ -23,6 +24,23 @@ router = APIRouter(prefix='/ai/crew', tags=['crew-chat'])
 # any single message so a runaway paste cannot blow up the request.
 MAX_HISTORY_MESSAGES = 12
 MAX_MESSAGE_CHARS = 4000
+# The Duty Swap snapshot is capped by the phone; this bound protects the prompt.
+MAX_SWAP_SNAPSHOT_CHARS = 16000
+DUTY_SWAP_SCREEN = 'duty_swap'
+
+DUTY_SWAP_PROMPT = (
+    "The crew is on the DUTY SWAP screen: a table with one row per date, their own duties "
+    "('me') and one column per candidate crew ('crews'), shown in the snapshot below. Your job "
+    "here: (1) help them find the crew to swap with, (2) read what is on the screen, (3) turn "
+    "their words into set_swap_search / set_swap_crews / select_swap_duties. Use only dates, "
+    "codes and crew ids that are in the snapshot or that the crew typed. Resolve 'my trip on "
+    "08 Oct' to that duty's start/end dates from me.duties. What they want in return (a standby, "
+    "a flight) goes in wantKind, not taskTypeList (that filter also applies to their own duties); "
+    "'same fleet' means the fleet of the duty they give. Point out "
+    "conflicts you can see (a candidate duty overlapping one of their duties, a different "
+    "fleet). You never send a swap: the crew reviews it and presses 'Check legality & send', "
+    "where the airline's rule check runs."
+)
 
 CREW_SYSTEM_PROMPT = (
     "You are R'Bot, the AI assistant built into a crew member's airline app on their phone. "
@@ -68,6 +86,8 @@ class CrewContext(BaseModel):
     crewName: str | None = None
     today: str | None = None
     screen: str | None = None
+    # Duty Swap only: what the matrix shows (window, filters, my duties, crews).
+    swap: dict[str, Any] | None = None
 
 
 class CrewChatRequest(BaseModel):
@@ -87,7 +107,16 @@ def _system_prompt(context: CrewContext | None) -> str:
         facts.append(f'Airline code {ctx.airline}.')
     if ctx.screen:
         facts.append(f'They are on the {ctx.screen} screen right now.')
-    return f'{CREW_SYSTEM_PROMPT}\n\n== Context ==\n' + ' '.join(facts)
+    prompt = f'{CREW_SYSTEM_PROMPT}\n\n== Context ==\n' + ' '.join(facts)
+    if ctx.screen == DUTY_SWAP_SCREEN:
+        snapshot = json.dumps(ctx.swap or {}, separators=(',', ':'))[:MAX_SWAP_SNAPSHOT_CHARS]
+        prompt += f'\n\n== Duty Swap ==\n{DUTY_SWAP_PROMPT}\nSnapshot: {snapshot}'
+    return prompt
+
+
+def _tools(context: CrewContext | None) -> list[dict[str, Any]]:
+    on_swap = context is not None and context.screen == DUTY_SWAP_SCREEN
+    return CREW_TOOLS + SWAP_TOOLS if on_swap else CREW_TOOLS
 
 
 @router.post('/chat')
@@ -95,7 +124,7 @@ def chat(req: CrewChatRequest) -> dict:
     recent = req.messages[-MAX_HISTORY_MESSAGES:]
     messages = [{'role': m.role, 'content': m.content[:MAX_MESSAGE_CHARS]} for m in recent]
     try:
-        text, calls = llm_tools(messages, CREW_TOOLS, _system_prompt(req.context))
+        text, calls = llm_tools(messages, _tools(req.context), _system_prompt(req.context))
     except Exception as exc:  # noqa: BLE001 - surface a friendly error, never 500 the UI
         return {
             'role': 'assistant',

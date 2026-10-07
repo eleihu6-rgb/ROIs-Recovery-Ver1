@@ -9,7 +9,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../store';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { PageShell, Hero, ListCard, KvRow, PrimaryButton } from './PageShell';
-import { RadioRow, SectionLabel } from '../../components/v2/rows';
+import { NavRow, RadioRow, SectionLabel } from '../../components/v2/rows';
+import { useLayout } from '../../components/v2/useLayout';
 import { Icon } from '../../components/v2/icons';
 import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import { legView, MON } from './model';
@@ -194,10 +195,40 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
     }
   }
 
+  // iPhone Duo inner screen, landscape: the form on the right; on the left the
+  // explainer plus a summary of what will be submitted and the way to the
+  // already-filed requests — the second kind of content this page carries.
+  const { wide } = useLayout();
+  const days = Math.round((toDate.getTime() - fromDate.getTime()) / 86400000) + 1;
+  const summary = wide ? (
+    <>
+      <SectionLabel palette={p}>Summary</SectionLabel>
+      <ListCard palette={p} style={{ marginBottom: 16 }}>
+        <View testID="absence-summary">
+          <KvRow label="Type" value="Sick leave" palette={p} />
+          <KvRow label="Dates" value={ymd(fromDate) === ymd(toDate) ? fmtDisplay(fromDate) : `${fmtDisplay(fromDate)} → ${fmtDisplay(toDate)}`} palette={p} />
+          <KvRow label="Days" value={String(days)} palette={p} />
+          <KvRow label="Affects" value={affected.length === 0 ? 'No duties' : `${affected.length} dut${affected.length === 1 ? 'y' : 'ies'}`} palette={p} />
+        </View>
+        <NavRow icon="history" label="Submitted requests" value="This month" palette={p} onPress={() => navigation.navigate('AbsenceHistory')} testID="absence-history-row" />
+      </ListCard>
+    </>
+  ) : null;
+
   return (
     <PageShell
       title="Absence Request"
       testID="page-absence"
+      hero={
+        <>
+          <Hero
+            h1="Report an absence"
+            h2="Sick leave is recorded. Original duties remain assigned until Crew Control completes recovery."
+            palette={p}
+          />
+          {summary}
+        </>
+      }
       // Submitted history (Ryan, 2026-09-13): the crew checks what they already
       // filed for this month from here instead of leaving the form.
       right={
@@ -211,12 +242,6 @@ export function AbsenceScreen({ navigation, route }: Props): React.JSX.Element {
         </Pressable>
       }
     >
-      <Hero
-        h1="Report an absence"
-        h2="Sick leave is recorded. Original duties remain assigned until Crew Control completes recovery."
-        palette={p}
-      />
-
       <SectionLabel palette={p}>Type</SectionLabel>
       <ListCard palette={p}>
         <RadioRow

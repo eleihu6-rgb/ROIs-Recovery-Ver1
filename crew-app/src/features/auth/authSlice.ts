@@ -2,6 +2,8 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { AppDispatch } from '../../store';
 import { DEFAULT_AIRLINE } from './airlines';
 import { saveSession, loadSession, clearSession } from './sessionStore';
+import { clearDutySwap } from '../dutySwap/dutySwapSlice';
+import { clearPortalTokens } from '../portal/portalClient';
 import { clearTrips } from '../travel/tripsSlice';
 import { clearStoredTrips } from '../travel/tripsPersistence';
 import { setDuties, clearStoredDuties } from '../roster/dutiesSlice';
@@ -267,6 +269,9 @@ export function logout() {
     // The R'Bot conversation names duties and requests — it belongs to this
     // crew's session, so the next login starts with an empty chat.
     await dispatch(clearRbotSession());
+    // Duty Swap holds live portal data (other crews' duties) and a portal token.
+    dispatch(clearDutySwap());
+    clearPortalTokens();
     await clearStoredTrips();
     await clearStoredDuties();
     // Re-sync alarms now that the trips are gone: reconcileAlarms clears every

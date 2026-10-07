@@ -1,0 +1,105 @@
+# Duty Swap (Concept D crew matrix) — PR crew 392923 on the TEST tenant.
+#
+# Login → Home ▸ Duty Swap → disclaimer → matrix → give PR124/PR125 (08–11 Oct),
+# take 421051's 1HB + 4FB → Compare & send → the portal rejects it (swap hour
+# difference over the limit), so NO request is created. Screenshots go to
+# the run output folder (copied to docs/assets/screenshots/crew-app/).
+#
+# Run (from crew-app/): maestro --device <UDID> test .maestro/pr_392923_duty_swap.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "392923"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: "Pier2020"
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "qa-duty-swap"
+# Disclaimer text comes from the portal dictionary (PCAR rules).
+- extendedWaitUntil:
+    visible:
+      id: "swap-disclaimer"
+    timeout: 30000
+- assertVisible:
+    text: ".*PCAR rules.*"
+- takeScreenshot: duty-swap-disclaimer-Ver1
+# AppDialog buttons sit inside the card's single accessibility element; tap by position.
+- tapOn:
+    point: "63%,63%"
+- extendedWaitUntil:
+    visible:
+      id: "crew-matrix"
+    timeout: 60000
+# Real search result: the 6 candidate crews of 07 Oct – 02 Nov.
+- assertVisible:
+    id: "swap-crew-count"
+    text: "6 crew"
+- assertVisible:
+    id: "matrix-crew-421051"
+- assertVisible:
+    id: "duty-392923-PR124/PR125"
+- takeScreenshot: duty-swap-matrix-air-Ver1
+- tapOn:
+    id: "duty-392923-PR124/PR125"
+- tapOn:
+    id: "duty-421051-1HB"
+- tapOn:
+    id: "duty-421051-4FB"
+- extendedWaitUntil:
+    visible:
+      id: "tray-delta"
+    timeout: 30000
+- assertVisible:
+    text: "BLH -25:20 · CRD -26:20"
+- takeScreenshot: duty-swap-selected-air-Ver1
+- tapOn:
+    id: "swap-compare"
+- extendedWaitUntil:
+    visible:
+      id: "compare-sheet"
+    timeout: 20000
+- assertVisible:
+    id: "delta-CREDIT"
+    text: "-26:20"
+- assertVisible:
+    text: "PR124  MNL→SEA"
+- takeScreenshot: duty-swap-compare-air-Ver1
+- tapOn:
+    id: "swap-submit"
+- extendedWaitUntil:
+    visible:
+      id: "swap-result"
+    timeout: 130000
+- assertVisible:
+    text: ".*Swap not allowed.*"
+- assertVisible:
+    text: ".*swap hour difference.*"
+- takeScreenshot: duty-swap-illegal-air-Ver1

@@ -11,6 +11,7 @@
 // The route never 500s on an LLM failure — it answers with content and no
 // actions — so an HTTP error here means the service itself is unreachable.
 import {NativeModules} from 'react-native';
+import { parseSwapAction } from '../dutySwap/swapRbot';
 import type {
   RbotAction,
   RbotAlarmAction,
@@ -204,6 +205,11 @@ export function parseRbotAction(raw: unknown): RbotAction | null {
         ...(label ? {label} : {}),
       };
     }
+    // Duty Swap screen only (spec 2026-10-07 §6); validated by the swap module.
+    case 'set_swap_search':
+    case 'set_swap_crews':
+    case 'select_swap_duties':
+      return parseSwapAction(a);
     default:
       return null;
   }

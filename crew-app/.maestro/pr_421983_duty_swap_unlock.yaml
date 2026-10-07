@@ -1,0 +1,113 @@
+# Duty Swap for a crew with nothing unlocked yet — PR crew 421983 (TEST tenant).
+# The portal refuses to search ("Please publish task.") until the crew unlocks
+# duties. The app explains it and offers My duties; unlocking two duties makes the
+# matrix and R'Bot work. The run locks them again at the end (restores 421983).
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "421983"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: "Pier2020"
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "qa-duty-swap"
+- extendedWaitUntil:
+    visible:
+      id: "swap-disclaimer"
+    timeout: 30000
+- tapOn:
+    point: "63%,63%"
+# Nothing unlocked → explained, with the fix one tap away.
+- extendedWaitUntil:
+    visible:
+      id: "swap-unlock-duties"
+    timeout: 60000
+- assertVisible:
+    text: ".*no unlocked duties.*"
+- takeScreenshot: duty-swap-421983-locked-Ver1
+- tapOn:
+    id: "swap-unlock-duties"
+- extendedWaitUntil:
+    visible:
+      id: "my-duty-PR684/PR685"
+    timeout: 30000
+- takeScreenshot: duty-swap-421983-my-duties-Ver1
+- tapOn:
+    id: "my-duty-PR684/PR685"
+- tapOn:
+    id: "my-duty-1HB"
+    index: 0
+- tapOn:
+    id: "my-duties-save"
+- extendedWaitUntil:
+    visible:
+      id: "my-duties-saved"
+    timeout: 30000
+- assertVisible:
+    text: ".*2 of 5 duties can now be requested.*"
+- takeScreenshot: duty-swap-421983-unlocked-Ver1
+# Dismiss the dialog (tap the dim backdrop), back to the matrix.
+- tapOn:
+    point: "50%,10%"
+- tapOn:
+    id: "page-back"
+- extendedWaitUntil:
+    visible:
+      id: "crew-matrix"
+    timeout: 60000
+- assertVisible:
+    id: "duty-421983-PR684/PR685"
+- takeScreenshot: duty-swap-421983-matrix-Ver1
+- tapOn:
+    id: "swap-rbot-open"
+- tapOn:
+    text: "Swap my trip on 14 Oct for a standby"
+- extendedWaitUntil:
+    visible:
+      text: ".*(in the table now|No crew match).*"
+    timeout: 60000
+- takeScreenshot: duty-swap-421983-rbot-Ver1
+# Restore 421983: lock both duties again.
+- tapOn:
+    id: "swap-my-duties"
+- extendedWaitUntil:
+    visible:
+      id: "my-duty-PR684/PR685"
+    timeout: 30000
+- tapOn:
+    id: "my-duty-PR684/PR685"
+- tapOn:
+    id: "my-duty-1HB"
+    index: 0
+- tapOn:
+    id: "my-duties-save"
+- extendedWaitUntil:
+    visible:
+      text: ".*0 of 5 duties can now be requested.*"
+    timeout: 30000

@@ -31,6 +31,8 @@ import {
 import { WORLD_LAND_PATHS } from './worldLand';
 
 const MAP_HEIGHT = 240;
+/** Rotated Duo: map height as a share of the card width (~400pt on a 669pt window). */
+const TALL_MAP_RATIO = 0.62;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 6;
 
@@ -46,8 +48,11 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
   const home = useMemo(() => positionOf(base), [base]);
   const routes = useMemo(() => monthRoutes(month, base), [month, base]);
   const stats = useMemo(() => monthStats(month, base), [month, base]);
-  // iPhone Duo inner screen: map left half (full height), details right half.
-  const { wide } = useLayout();
+  // iPhone Duo inner screen: landscape = map left half (full height), details
+  // right half; rotated = the map takes the height the width allows, the seven
+  // stats share one row, the routes run in two columns.
+  const { wide, tall, width } = useLayout();
+  const mapHeight = tall ? Math.round((width - 44) * TALL_MAP_RATIO) : MAP_HEIGHT;
 
   if (!home || routes.length === 0) {
     return (
@@ -64,7 +69,7 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
   const selected = routes.find(r => r.code === focused) ?? null;
   const mapCard = (
       <View style={[s.mapCard, { backgroundColor: p.g1, borderColor: p.frostLine }, wide && s.mapCardWide]} testID="route-map">
-        <Svg width="100%" height={wide ? '100%' : MAP_HEIGHT} viewBox={viewBox} testID="route-svg">
+        <Svg width="100%" height={wide ? '100%' : mapHeight} viewBox={viewBox} testID="route-svg">
           <G opacity={0.9}>
             {WORLD_LAND_PATHS.map((d, i) => (
               <Path key={`land-${i}`} d={d} fill={p.g4} fillOpacity={0.34} stroke={p.frostLine} strokeWidth={0.4} />
@@ -111,15 +116,16 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
   );
   const details = (
     <>
-      <StatsCard stats={stats} month={month} palette={p} />
+      <StatsCard stats={stats} month={month} palette={p} oneRow={tall} />
 
       <Text style={[s.listHead, { color: p.inkSoft }]}>Routes</Text>
+      <View style={tall ? s.routeGrid : undefined} testID={tall ? 'route-grid' : undefined}>
       {routes.map(r => (
         <Pressable
           key={r.code}
           onPress={() => setFocused(f => (f === r.code ? null : r.code))}
           testID={`route-${r.code}`}
-          style={[s.routeRow, { backgroundColor: p.card, borderColor: focused === r.code ? p.btn : p.cardLine }]}
+          style={[s.routeRow, tall && s.routeRowTall, { backgroundColor: p.card, borderColor: focused === r.code ? p.btn : p.cardLine }]}
         >
           <View style={[s.routeCode, { backgroundColor: 'rgba(255,255,255,0.72)' }]}>
             <Text style={[s.routeCodeText, { color: p.btn }]}>{r.code}</Text>
@@ -138,6 +144,7 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
           </View>
         </Pressable>
       ))}
+      </View>
     </>
   );
 
@@ -171,7 +178,7 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
  * grid and both edges, and the numbers use tabular figures so a changing count
  * cannot shift a column.
  */
-function StatsCard({ stats, month, palette: p }: { stats: ReturnType<typeof monthStats>; month: MonthModel; palette: CarrierPalette }): React.JSX.Element {
+function StatsCard({ stats, month, palette: p, oneRow }: { stats: ReturnType<typeof monthStats>; month: MonthModel; palette: CarrierPalette; /** Rotated Duo: all seven cells on one row. */ oneRow?: boolean }): React.JSX.Element {
   const totals: Array<{ id: string; value: string; label: string }> = [
     { id: 'flights', value: String(stats.flights), label: 'Flights' },
     // Distances are long; the unit lives in the label so four cells fit one row.
@@ -187,14 +194,15 @@ function StatsCard({ stats, month, palette: p }: { stats: ReturnType<typeof mont
   return (
     <View style={[s.stats, { backgroundColor: p.card, borderColor: p.cardLine }]} testID="route-stats">
       <Text style={[s.statsTitle, { color: p.cardSoft }]}>{`${MON[month.monthIdx]} ${month.year} summary`}</Text>
-      <View style={s.statsGrid} testID="route-stat-totals">
-        {totals.map(cell => (
+      <View style={s.statsGrid} testID={oneRow ? 'route-stat-row' : 'route-stat-totals'}>
+        {(oneRow ? [...totals, ...counts] : totals).map(cell => (
           <View key={cell.id} style={s.statsCell} testID={`route-stat-${cell.id}`}>
             <Text style={[s.statsValue, { color: p.cardInk }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{cell.value}</Text>
             <Text style={[s.statsLabel, { color: p.cardSoft }]}>{cell.label}</Text>
           </View>
         ))}
       </View>
+      {oneRow ? null : (
       <View style={[s.statsCounts, { borderTopColor: p.cardLine }]} testID="route-stat-counts">
         {counts.map(cell => (
           <View key={cell.id} style={s.statsCell} testID={`route-stat-${cell.id}`}>
@@ -203,6 +211,7 @@ function StatsCard({ stats, month, palette: p }: { stats: ReturnType<typeof mont
           </View>
         ))}
       </View>
+      )}
     </View>
   );
 }
@@ -252,6 +261,9 @@ const s = StyleSheet.create({
   statsLabel: { fontSize: 10, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 2 },
   listHead: { fontSize: 12, fontWeight: '700', letterSpacing: 0.7, marginTop: 6 },
   routeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, borderWidth: 1, padding: 10 },
+  // Rotated Duo: two route rows per line.
+  routeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  routeRowTall: { flexBasis: '47%', flexGrow: 1 },
   routeCode: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   routeCodeText: { fontSize: 13, fontWeight: '700' },
   routeTitle: { fontSize: 14, fontWeight: '600' },

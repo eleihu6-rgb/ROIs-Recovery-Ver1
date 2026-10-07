@@ -28,7 +28,8 @@ import { dispatchCrewAction } from './dispatch-crew-action';
 import { answerLocally } from './localAnswers';
 import { appendEntry, markSeen, markUnread, saveRbotThread } from './rbotSlice';
 import type { RbotContext, RbotThreadEntry } from './types';
-import { useBase } from '../v2/useV2';
+import { useBase, useNextTrip, useAlarms } from '../v2/useV2';
+import { legView, MON } from '../v2/model';
 
 /** What R'Bot can honestly do today — the card is the contract with the crew. */
 const CAPABILITIES: { title: string; body: string }[] = [
@@ -158,7 +159,43 @@ export function RBotScreen(): React.JSX.Element {
   const showWelcome = thread.length === 0;
   // iPhone Duo inner screen: the back chevron goes where every other page has it
   // (left), so it reads as "back" on the wide layout; regular iPhones unchanged.
+  // Wide also gets a context panel beside the thread — the next duty and the
+  // "try asking" chips — so the thread is not a lone strip across ~900pt.
   const { wide } = useLayout();
+  const [now] = useState(() => new Date());
+  const nextTrip = useNextTrip(now);
+  const { byTrip } = useAlarms(now);
+  const nextLeg = nextTrip ? legView(nextTrip.legs[0], nextTrip, tzMode, baseTz, byTrip[nextTrip.id]) : null;
+  const chips = (
+    <View style={styles.chips}>
+      {SUGGESTIONS.map(s => (
+        <Pressable
+          key={s}
+          onPress={() => send(s)}
+          style={[styles.chip, {backgroundColor: p.frost, borderColor: p.frostLine}]}
+          testID={`rbot-suggestion-${SUGGESTIONS.indexOf(s)}`}
+        >
+          <Text style={[styles.chipText, {color: p.ink}]}>{s}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+  const contextPanel = wide ? (
+    <ScrollView style={[styles.side, {paddingRight: insets.right}]} contentContainerStyle={styles.sideBody} showsVerticalScrollIndicator={false} testID="rbot-context">
+      <Text style={[styles.sideTitle, {color: p.inkSoft}]}>NEXT DUTY</Text>
+      {nextLeg && nextTrip ? (
+        <Pressable style={[styles.card, styles.sideCard, {backgroundColor: p.card}]} onPress={() => nav.navigate('TripDetails', { tripId: nextTrip.id })} testID="rbot-next-duty">
+          <Text style={[styles.cardTitle, {color: p.cardInk}]}>{`${nextLeg.fltNumber} · ${nextLeg.dep} → ${nextLeg.arv}`}</Text>
+          <Text style={[styles.capBody, {color: p.cardSoft}]}>{`${nextLeg.day} ${MON[nextLeg.monthIdx]} ${nextLeg.year} · ${nextLeg.depTime} – ${nextLeg.arvTime}${nextLeg.arvDayOffset ? ` ${nextLeg.arvDayOffset}` : ''}`}</Text>
+          <Text style={[styles.capBody, {color: p.cardSoft}]}>{`${nextLeg.readyWord} ${nextLeg.ready} · Check-in ${nextLeg.checkIn}`}</Text>
+        </Pressable>
+      ) : (
+        <Text style={[styles.capBody, {color: p.inkSoft}]}>No upcoming duty on your roster.</Text>
+      )}
+      <Text style={[styles.sideTitle, {color: p.inkSoft, marginTop: 18}]}>TRY ASKING</Text>
+      {chips}
+    </ScrollView>
+  ) : null;
   const backButton = (
     <Pressable
       onPress={() => nav.goBack()}
@@ -192,6 +229,8 @@ export function RBotScreen(): React.JSX.Element {
           {wide ? null : backButton}
         </View>
 
+        <View style={[styles.flex, wide ? styles.wideBody : null]}>
+        <View style={styles.flex}>
         <ScrollView
           ref={scroller}
           style={styles.flex}
@@ -216,18 +255,8 @@ export function RBotScreen(): React.JSX.Element {
                   </View>
                 ))}
               </View>
-              <View style={styles.chips}>
-                {SUGGESTIONS.map(s => (
-                  <Pressable
-                    key={s}
-                    onPress={() => send(s)}
-                    style={[styles.chip, {backgroundColor: p.frost, borderColor: p.frostLine}]}
-                    testID={`rbot-suggestion-${SUGGESTIONS.indexOf(s)}`}
-                  >
-                    <Text style={[styles.chipText, {color: p.ink}]}>{s}</Text>
-                  </Pressable>
-                ))}
-              </View>
+              {/* On wide the chips live in the context panel — never twice on one screen. */}
+              {wide ? null : chips}
             </View>
           ) : null}
 
@@ -293,6 +322,9 @@ export function RBotScreen(): React.JSX.Element {
             <Icon name="send" size={20} color="#fff" strokeWidth={1.9} />
           </Pressable>
         </View>
+        </View>
+        {contextPanel}
+        </View>
       </KeyboardAvoidingView>
     </GradientScreen>
   );
@@ -307,13 +339,13 @@ function Bubble({
   testID?: string;
 }) {
   const assistant = from === 'assistant';
-  // Wide (Duo inner): 86% of ~900pt makes unreadably long lines; cap the bubble.
-  const {wide} = useLayout();
+  // Duo inner (wide or rotated): 86% of 600–900pt makes unreadably long lines; cap the bubble.
+  const {wide, tall} = useLayout();
   return (
     <View
       style={[
         assistant ? styles.bubbleLeft : styles.bubbleRight,
-        wide ? styles.bubbleWide : null,
+        wide || tall ? styles.bubbleWide : null,
         {backgroundColor: assistant ? palette.card : palette.btn},
       ]}
       testID={testID}
@@ -348,6 +380,12 @@ const styles = StyleSheet.create({
   close: {width: 40, height: 40, alignItems: 'center', justifyContent: 'center'},
   thread: {paddingHorizontal: 18, paddingBottom: 14, gap: 10},
   bubbleWide: {maxWidth: 560},
+  // Wide (Duo inner): thread (3) | context panel (2).
+  wideBody: {flexDirection: 'row'},
+  side: {flex: 2, minWidth: 0, borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: 'rgba(255,255,255,0.25)'},
+  sideBody: {paddingHorizontal: 18, paddingBottom: 110},
+  sideTitle: {fontSize: 11, fontWeight: '700', letterSpacing: 0.8},
+  sideCard: {marginTop: 8, gap: 4},
   bubbleLeft: {
     alignSelf: 'flex-start',
     maxWidth: '86%',

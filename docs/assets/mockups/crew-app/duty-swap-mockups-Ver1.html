@@ -1,0 +1,921 @@
+<title>Crew App Duty Swap</title>
+<style>
+/* Layout: page chrome = reading column of sections; each mockup frame is drawn at true iOS point size inside .pt, then scaled by --z. */
+:root{
+  --bg:#f2f1f6; --fg:#1d1b2b; --mut:#686579; --line:#dddbe6; --panel:#ffffff; --acc:#3d2b8c; --accSoft:#ece7f8; --warn:#9a3b3b;
+  --bezel:#121018;
+  --f-ui:-apple-system,"SF Pro Text",system-ui,"Segoe UI",sans-serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,monospace;
+  --z:.6;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#14131b;--fg:#ebe9f3;--mut:#a29fb3;--line:#2e2c3a;--panel:#1d1c27;--acc:#b9a6f2;--accSoft:#2a2540;--warn:#f0a0a0;--bezel:#000;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14131b;--fg:#ebe9f3;--mut:#a29fb3;--line:#2e2c3a;--panel:#1d1c27;--acc:#b9a6f2;--accSoft:#2a2540;--warn:#f0a0a0;--bezel:#000;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--f-ui);padding-inline:16px;padding-block:20px 80px}
+.wrap{max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:34px}
+h1{font-size:26px;line-height:1.2;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:19px;margin:0;text-wrap:balance}
+h3{font-size:14px;margin:0;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
+p{margin:0;max-width:72ch}
+.lede{color:var(--mut)}
+code{font-family:var(--f-mono);font-size:12px;background:var(--accSoft);padding:1px 5px;border-radius:4px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:40;background:var(--bg);display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding-block:8px;border-bottom:1px solid var(--line)}
+.bar a{color:var(--acc);text-decoration:none;font-weight:600;font-size:13px}
+.bar label{font-size:12px;color:var(--mut);display:flex;gap:6px;align-items:center;margin-left:auto}
+section{display:flex;flex-direction:column;gap:14px;scroll-margin-top:60px}
+.sechead{display:flex;flex-direction:column;gap:6px}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--acc);background:var(--accSoft);padding:2px 8px;border-radius:999px;width:max-content}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.scroll{overflow-x:auto;padding-bottom:6px}
+.scroll .row{flex-wrap:nowrap;width:max-content}
+figure{margin:0;display:flex;flex-direction:column;gap:6px}
+figcaption{font-size:12px;color:var(--mut);max-width:var(--cw,300px)}
+figcaption b{color:var(--fg)}
+.dev{background:var(--bezel);padding:7px;border-radius:calc(46px * var(--z) + 7px)}
+.vp{position:relative;overflow:hidden;border-radius:calc(46px * var(--z))}
+.dev.duo .vp{border-radius:calc(26px * var(--z))}
+.web{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.web img{width:100%;border:1px solid var(--line);border-radius:6px;display:block}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;counter-reset:s}
+.flow div{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px;min-width:0}
+.flow div b{display:block;font-size:13px;margin-bottom:2px}
+.flow div b::before{counter-increment:s;content:counter(s) "  ";color:var(--acc);font-family:var(--f-mono)}
+table.t{border-collapse:collapse;font-size:12.5px;width:100%;min-width:640px}
+.t th,.t td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.t th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.note{font-size:12.5px;border-left:3px solid var(--acc);background:var(--panel);padding:8px 12px;max-width:100ch}
+.note.w{border-color:var(--warn)}
+.cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.cols2>div{min-width:0}
+ul{margin:0;padding-left:18px}
+
+/* ───────── In-frame app styles (crew-app theme.ts tokens; app is light-only) ───────── */
+.pt{position:absolute;left:0;top:0;transform-origin:0 0;transform:scale(var(--z));overflow:hidden;
+  --p:#3d2b8c;--a:#7b4fb8;--ink:#1a1a2e;--soft:#636b7f;--mu:#8b92a5;--fa:#aeb3c2;--bgA:#f5f5f7;--card:#fff;--hl:#ececf3;
+  --t1:#f3eefb;--t2:#ede8f8;--tb:#d4c9f0;--off:#f0f0f4;--offB:#e3e3eb;--offI:#a7a7b4;--dan:#d94040;
+  background:var(--bgA);color:var(--ink);font:500 15px/1.3 var(--f-ui);display:flex;flex-direction:column}
+.pt *{flex-shrink:0}
+.pt .grow{flex:1 1 auto;min-height:0;overflow:hidden}
+.pt .sb{height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:600 16px var(--f-ui);position:relative}
+.pt .sb.dark{color:#fff}
+.pt .sb{position:absolute;top:0;left:0;right:0;z-index:20}
+.pt.hasSb>.sb+.grad{padding-top:54px}
+.pt .sb.dark.onl{color:var(--ink)}
+.grad .stepper span{color:rgba(255,255,255,.7)}.grad .stepper .dn,.grad .stepper .cur{color:#fff}.grad .stepper .dn i{background:#fff;color:#3d2b8c;border-color:#fff}.grad .stepper .cur i{border-color:#fff;color:#fff}.grad .stepper i{border-color:rgba(255,255,255,.6)}.grad .stepper b{background:rgba(255,255,255,.3)}
+.pt .isl{position:absolute;left:50%;top:11px;width:124px;height:36px;border-radius:20px;background:#000;transform:translateX(-50%)}
+.pt .hole{position:absolute;left:50%;top:14px;width:14px;height:14px;border-radius:7px;background:#000;transform:translateX(-50%)}
+.pt .grad{background:linear-gradient(160deg,#2a1d66,#3d2b8c 45%,#7b4fb8);color:#fff}
+.pt .hdr{display:flex;align-items:center;gap:12px;padding:6px 18px 14px}
+.pt .hdr .tt{font:800 22px var(--f-ui)}
+.pt .hdr .st{font:500 13px var(--f-ui);opacity:.8}
+.pt .back{width:36px;height:36px;border-radius:18px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center}
+.pt .back.l{background:var(--card);border:1px solid var(--hl)}
+.pt .ib{width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.18)}
+.pt .ib.l{background:var(--card);border:1px solid var(--hl);color:var(--p)}
+.pt svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:block}
+.pt svg.s{width:15px;height:15px}
+.pt .pad{padding:0 16px}
+.pt .ov{font:700 11px var(--f-ui);letter-spacing:1.4px;text-transform:uppercase;color:var(--mu)}
+.pt .cap{font:700 11px var(--f-ui);letter-spacing:.4px}
+.pt .sub{font:500 13px var(--f-ui);color:var(--soft)}
+.pt .mono{font-variant-numeric:tabular-nums}
+.pt .card{background:var(--card);border-radius:14px;border:1px solid var(--hl)}
+.pt .seg{display:flex;background:rgba(255,255,255,.16);border-radius:12px;padding:3px;gap:3px}
+.pt .seg span{flex:1;text-align:center;padding:7px 0;border-radius:9px;font:700 13px var(--f-ui);opacity:.8}
+.pt .seg span.on{background:#fff;color:var(--p);opacity:1}
+.pt .seg.l{background:var(--off)}
+.pt .seg.l span.on{background:var(--card);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.pt .chips{display:flex;gap:7px;overflow:hidden;flex-wrap:nowrap}
+.pt .chip{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:20px;background:var(--card);border:1px solid var(--tb);font:600 12.5px var(--f-ui);color:var(--p);white-space:nowrap}
+.pt .chip.f{background:var(--p);color:#fff;border-color:var(--p)}
+.pt .chip.g{border-color:var(--offB);color:var(--soft)}
+.pt .pill{display:flex;align-items:center;justify-content:center;gap:8px;height:48px;border-radius:24px;background:var(--p);color:#fff;font:700 15px var(--f-ui)}
+.pt .pill.o{background:var(--card);color:var(--p);border:1.5px solid var(--p)}
+.pt .pill.sm{height:38px;font-size:13.5px;padding:0 16px}
+.pt .pill.dis{background:var(--tb)}
+.pt .r{display:flex;align-items:center;gap:8px}
+.pt .sp{flex:1 1 auto}
+.pt .hr{height:1px;background:var(--hl)}
+/* duty blocks */
+.pt .d{position:absolute;border-radius:7px;font:700 11px/1 var(--f-ui);display:flex;align-items:center;gap:3px;padding:0 6px;overflow:hidden;white-space:nowrap}
+.pt .k-fly{background:var(--t2);border:1px solid var(--tb);color:var(--p)}
+.pt .k-res{background:var(--card);border:1.5px dashed var(--tb);color:var(--a)}
+.pt .k-off{background:transparent;color:var(--mu);border:1px solid var(--hl)}
+.pt .k-lock{background:var(--off);border:1px solid var(--offB);color:var(--offI)}
+.pt .k-sel{background:var(--p);border:1px solid var(--p);color:#fff}
+.pt .k-want{background:var(--card);border:2px solid var(--p);color:var(--p)}
+.pt .delta{display:flex;justify-content:space-between;background:var(--t1);border-radius:12px;padding:9px 12px}
+.pt .delta div{display:flex;flex-direction:column;gap:2px}
+.pt .delta b{font:800 15px var(--f-ui);font-variant-numeric:tabular-nums;color:var(--p)}
+.pt .delta span{font:700 10px var(--f-ui);letter-spacing:.6px;color:var(--mu)}
+.pt .tog{width:44px;height:26px;border-radius:13px;background:var(--p);position:relative}
+.pt .tog::after{content:"";position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:10px;background:#fff}
+.pt .tog.off{background:var(--neutral,#cccccc)}
+.pt .tog.off::after{left:3px;right:auto}
+.pt .rad{width:20px;height:20px;border-radius:10px;border:2px solid var(--fa)}
+.pt .rad.on{border:6px solid var(--p)}
+.pt .ck{width:20px;height:20px;border-radius:6px;border:2px solid var(--fa)}
+.pt .ck.on{background:var(--p);border-color:var(--p);color:#fff;display:flex;align-items:center;justify-content:center}
+.pt .ck.on svg{width:14px;height:14px;stroke-width:3}
+.pt .scrim{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+.pt .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:22px 22px 0 0;display:flex;flex-direction:column}
+.pt .grab{width:40px;height:5px;border-radius:3px;background:var(--hl);margin:8px auto 4px}
+.pt .dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:340px;background:var(--card);border-radius:20px;overflow:visible}
+.pt .dlg .band{height:58px;border-radius:20px 20px 0 0;background:linear-gradient(160deg,#2a1d66,#3d2b8c 50%,#7b4fb8)}
+.pt .dlg .glyph{width:64px;height:64px;border-radius:32px;margin:-32px auto 0;border:4px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;background:var(--p)}
+.pt .dlg .glyph svg{width:28px;height:28px;stroke-width:2.2}
+.pt .dlg .x{position:absolute;right:-10px;top:-10px;width:30px;height:30px;border-radius:15px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.pt .dlg .x svg{width:14px;height:14px;stroke-width:2.6}
+.pt .dlg .body{padding:12px 22px 22px;display:flex;flex-direction:column;gap:10px;text-align:center}
+.pt .dlg .tt{font:800 19px var(--f-ui)}
+.pt .hinge{position:absolute;z-index:30;pointer-events:none;border:0 dashed rgba(123,79,184,.55)}
+.pt .hinge.v{top:0;bottom:0;left:50%;border-left-width:2px}
+.pt .hinge.h{left:0;right:0;top:50%;border-top-width:2px}
+.pt .pane{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+.pt .lst{display:flex;flex-direction:column;gap:8px}
+.pt .item{display:flex;gap:12px;align-items:center;padding:11px 12px}
+.pt .dt{width:42px;text-align:center;line-height:1.05}
+.pt .dt b{display:block;font:800 19px var(--f-ui)}
+.pt .dt span{font:700 10px var(--f-ui);letter-spacing:.8px;color:var(--mu)}
+.pt .badge{font:700 10.5px var(--f-ui);padding:3px 8px;border-radius:10px;background:var(--t2);color:var(--p);white-space:nowrap}
+.pt .badge.g{background:var(--off);color:var(--soft)}
+.pt .badge.w{background:var(--card);border:1px solid var(--dan);color:var(--dan)}
+.pt .kv{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--hl);font:500 13px var(--f-ui)}
+.pt .kv:first-child{border-top:0}
+.pt .kv span{color:var(--soft)}
+.pt .kv b{font-weight:700;font-variant-numeric:tabular-nums}
+.pt .perf{height:0;border-top:2px dashed var(--tb);margin:0 14px;position:relative}
+.pt .perf::before,.pt .perf::after{content:"";position:absolute;top:-12px;width:22px;height:22px;border-radius:11px;background:var(--bgA)}
+.pt .perf::before{left:-26px}.pt .perf::after{right:-26px}
+.pt .dock{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);width:360px;height:62px;border-radius:31px;background:rgba(26,26,46,.9);display:flex;justify-content:space-around;align-items:center;color:rgba(255,255,255,.65)}
+.pt .dock .on{color:#fff}
+.pt .grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.pt .cell{min-height:52px;border-radius:8px;background:var(--card);padding:3px 3px 4px;display:flex;flex-direction:column;gap:3px;font:600 11px var(--f-ui)}
+.pt .cell.o{background:transparent;color:var(--fa)}
+.pt .cell .n{font:700 11px var(--f-ui);color:var(--soft);padding-left:2px}
+.pt .cell .c{border-radius:5px;padding:3px 3px;font:700 9.5px var(--f-ui);white-space:nowrap;overflow:hidden;text-overflow:clip}
+.pt .stepper{display:flex;gap:6px;align-items:center}
+.pt .stepper span{display:flex;align-items:center;gap:5px;font:700 12px var(--f-ui);color:var(--mu)}
+.pt .stepper i{width:20px;height:20px;border-radius:10px;border:1.5px solid var(--fa);font:700 11px/17px var(--f-ui);text-align:center;font-style:normal}
+.pt .stepper .dn{color:var(--p)}.pt .stepper .dn i{background:var(--p);border-color:var(--p);color:#fff}
+.pt .stepper .cur{color:var(--ink)}.pt .stepper .cur i{border-color:var(--p);color:var(--p)}
+.pt .stepper b{flex:1;height:1.5px;background:var(--hl);min-width:8px}
+.pt .tbl{width:100%;border-collapse:collapse;font:500 12px var(--f-ui);font-variant-numeric:tabular-nums}
+.pt .tbl th{font:700 10px var(--f-ui);letter-spacing:.6px;color:var(--mu);text-align:left;padding:6px 6px;border-bottom:1px solid var(--hl)}
+.pt .tbl td{padding:7px 6px;border-bottom:1px solid var(--hl);vertical-align:top}
+.pt .tbl td.dd{color:var(--soft);font-weight:700;width:46px}
+.pt .inp{flex:none;min-width:0;height:34px;border:1px solid var(--hl);border-radius:9px;display:flex;align-items:center;justify-content:space-between;gap:4px;padding:0 9px;font:700 12.5px var(--f-ui);background:var(--card);color:var(--ink);white-space:nowrap;overflow:hidden}
+.pt .r>.inp{flex:1 1 0}
+.pt .inp.on{border-color:var(--tb);background:var(--t1);color:var(--p)}
+.pt .inp.ph{color:var(--fa);font-weight:500}
+.pt .inp svg{color:var(--mu)}
+</style>
+
+<div class="wrap">
+<header class="sechead">
+  <span class="tag">Design review · Ver1 · no code yet</span>
+  <h1>Duty Swap for the crew app: four layouts for iPhone Air and iPhone Duo</h1>
+  <p class="lede">Built from a live walkthrough of the PR crew portal (<code>/pefg/portal/page/pbs/duty-swap</code>) as crew 392923 on 07 Oct 2026. All duties, crew IDs, ranks and the legality failure below are the real TST-tenant data. Numbers marked <b>illustrative</b> were not returned by the server. Frames are drawn at true point size: iPhone Air 420×912, Duo outer 466×678, Duo inner 951×669. The dashed purple line marks the Duo inner hinge; nothing interactive crosses it.</p>
+</header>
+
+<nav class="bar" aria-label="Sections">
+  <a href="#web">Web today</a><a href="#shared">Shared screens</a><a href="#a">A · Swap Board</a><a href="#b">B · Twin Rail</a><a href="#c">C · Trade Ticket</a><a href="#d">D · Crew Matrix</a><a href="#cmp">Compare</a>
+  <label for="zoom">Zoom <input id="zoom" type="range" min="0.4" max="1" step="0.05" value="0.6"></label>
+</nav>
+
+<section id="web">
+  <div class="sechead"><span class="tag">What the web does</span><h2>The current portal flow, step by step</h2>
+  <p class="lede">The web is a wide two-pane desk tool: a month calendar on the left, a tool panel on the right, and a 3-step Gantt wizard for new swaps. Setup lives on two separate sub-pages that most crews will touch once.</p></div>
+  <div class="flow">
+    <div><b>Friend List</b>Privacy mode: hide from all (default), swappable to all, blocklist, or allowlist. Only applies in Handshake mode. <code>findCrewFriendMode</code></div>
+    <div><b>My Duty</b>Per-duty Unlocked/Locked toggles, plus "Always unlock my new duty". Unlocked duties show yellow in the calendar.</div>
+    <div><b>Add → Disclaimer</b>"This swap will follow PCAR rules… auto-check qualifications, rest, block hour limits." Agree to continue.</div>
+    <div><b>Search Pairing</b>Target (all published crews, <code>NS</code>) or Handshake (friends only, <code>FS</code>). Start/End required; CRD, BLH, report time, layover port/hours, flight, fleet, crew, rank.</div>
+    <div><b>Select Crew</b>Gantt: "Mine" row pinned on top, 6 candidate rows, checkbox per crew, zoom 100–800%.</div>
+    <div><b>Select Duty</b>Click bars on both rows. Side-by-side Pairing Info and Duty Info aligned by date. Delta bar: FDP, BLH, Credit, DO.</div>
+    <div><b>Submit = legality</b>Rule check runs on submit. Fail: "Illegal · Others · 08–12 Oct · Rule 8004036 Basic Competency". Pass: request goes to crew B.</div>
+    <div><b>Records</b>Pending(OTH) → Pending(ADM) → Approved. Also Pending(ME), Withdrawn(OTH/ME), Unsuccess, Chanced, Canceled.</div>
+  </div>
+  <div class="web">
+    <figure><img src="duty-swap-web/02-swap.png" alt="Web duty swap home: month calendar and empty swap table"><figcaption>Home: calendar + swap table</figcaption></figure>
+    <figure><img src="duty-swap-web/10-friends.png" alt="Web friend list privacy options"><figcaption>Friend List: 4 privacy modes</figcaption></figure>
+    <figure><img src="duty-swap-web/11-myduty.png" alt="Web My Duty lock toggles"><figcaption>My Duty: lock/unlock per duty</figcaption></figure>
+    <figure><img src="duty-swap-web/21-results.png" alt="Web select crew Gantt"><figcaption>Select Crew: Gantt with 6 candidates</figcaption></figure>
+    <figure><img src="duty-swap-web/24-duties-picked.png" alt="Web select duty compare tables"><figcaption>Select Duty: side-by-side compare</figcaption></figure>
+    <figure><img src="duty-swap-web/25-after-submit.png" alt="Web illegal toast after submit"><figcaption>Submit: legality failed (real)</figcaption></figure>
+  </div>
+  <p class="note w">Test submit on TST: 392923 gives PR124/PR125 (08–11 Oct, A350, SEA) ↔ 447841 PR684/PR685 (A333, DOH). The server rejected it on crew B's side for Basic Competency (fleet), so no request was created and nothing reached 447841. The web gave no warning before submit, even though the fleet mismatch was visible in the tables. All three concepts below flag this before the crew presses send.</p>
+</section>
+
+<section id="shared">
+  <div class="sechead"><span class="tag">Shared by all three concepts</span><h2>Setup, filters, results and the crew-B side</h2>
+  <p class="lede">These screens behave the same whichever concept wins, so they are drawn once. Pop-ups use the crew-app Status-Card <code>AppDialog</code> (carrier-colour band, tone on the glyph and the primary pill).</p></div>
+  <div class="scroll"><div class="row" id="sharedRow"></div></div>
+</section>
+
+<section id="a">
+  <div class="sechead"><span class="tag">Concept A</span><h2>Swap Board: browse what others offer, then make an offer</h2>
+  <p class="lede">A feed of unlocked duties from other crews, pre-filtered by "swap out of" one of my duties. Tapping a card opens an offer composer. Feels like a marketplace and is the fastest path when the crew already knows which trip they want to drop. On the Duo inner screen it becomes a board on the left and the composer on the right, split at the hinge.</p></div>
+  <h3>iPhone Air · portrait</h3><div class="scroll"><div class="row" id="aAir"></div></div>
+  <h3>iPhone Duo · outer and inner, portrait and landscape</h3><div class="scroll"><div class="row" id="aDuo"></div></div>
+  <h3>Search pairing · nail down the target crew (Air, Duo outer P/L, Duo inner L/P)</h3><div class="scroll"><div class="row" id="aSearch"></div></div>
+</section>
+
+<section id="b">
+  <div class="sechead"><span class="tag">Concept B</span><h2>Twin Rail: the web Gantt rebuilt for touch</h2>
+  <p class="lede">My duties sit on a pinned rail and each candidate crew gets a rail underneath, on the same day scale, so overlaps read at a glance. Tap blocks on both rails to build the swap; a tray at the bottom keeps the running delta. It stays closest to the web, which helps crews who use both. The Duo inner screen shows 7 rails and the review table side by side.</p></div>
+  <h3>iPhone Air · portrait</h3><div class="scroll"><div class="row" id="bAir"></div></div>
+  <h3>iPhone Duo · outer and inner, portrait and landscape</h3><div class="scroll"><div class="row" id="bDuo"></div></div>
+  <h3>Search pairing · nail down the target crew (Air, Duo outer P/L, Duo inner L/P)</h3><div class="scroll"><div class="row" id="bSearch"></div></div>
+</section>
+
+<section id="c">
+  <div class="sechead"><span class="tag">Concept C</span><h2>Trade Ticket: a guided Give → Want → Match → Send flow</h2>
+  <p class="lede">The crew first picks what to give, then what they want, and the app ranks matching crew+duty combos with a pre-check before anything is sent. The swap ends as a ticket with both sides, the KPI stub and the comment. It takes the most steps, but it gives the most guidance and works well one-handed. On the Duo inner screen the steps stay on the left and the live ticket builds on the right.</p></div>
+  <h3>iPhone Air · portrait</h3><div class="scroll"><div class="row" id="cAir"></div></div>
+  <h3>iPhone Duo · outer and inner, portrait and landscape</h3><div class="scroll"><div class="row" id="cDuo"></div></div>
+  <h3>Search pairing · nail down the target crew (Air, Duo outer P/L, Duo inner L/P)</h3><div class="scroll"><div class="row" id="cSearch"></div></div>
+</section>
+
+<section id="d">
+  <div class="sechead"><span class="tag">Concept D · from Ryan's sketch</span><h2>Crew Matrix: dates down, crews across, scroll sideways to compare</h2>
+  <p class="lede">A table with one row per date. <b>Mine</b> and <b>Date</b> stay frozen on the left; each candidate crew is a column on the right that scrolls left and right. Multi-day duties are vertical blocks spanning their rows, so a trip lines up against whatever each crew has on the same days. The rows of the duty I want to give are tinted across every column. Portrait shows 3 crews with a peek of the 4th; landscape shows 5–6. On the Duo inner screen a column border sits exactly on the hinge.</p></div>
+  <h3>iPhone Air · portrait and landscape</h3><div class="scroll"><div class="row" id="dAir"></div></div>
+  <h3>iPhone Duo · outer and inner, portrait and landscape</h3><div class="scroll"><div class="row" id="dDuo"></div></div>
+  <h3>Search pairing · nail down the target crew (Air, Duo outer P/L, Duo inner L/P)</h3><div class="scroll"><div class="row" id="dSearch"></div></div>
+  <h3>R'Bot shares the screen · tell it what you want, it changes the crew columns</h3><div class="scroll"><div class="row" id="dRbot"></div></div>
+</section>
+
+<section id="cmp">
+  <div class="sechead"><span class="tag">Decide</span><h2>How the four compare</h2></div>
+  <div class="scroll"><table class="t">
+    <thead><tr><th></th><th>A · Swap Board</th><th>B · Twin Rail</th><th>C · Trade Ticket</th><th>D · Crew Matrix</th></tr></thead>
+    <tbody>
+      <tr><td>Best for</td><td>"Get me out of PR124 on 08 Oct"</td><td>Crews who know the web Gantt; multi-duty swaps</td><td>First-time and occasional swappers</td><td>Comparing many crews against my duties at once</td></tr>
+      <tr><td>Taps to send (golden path)</td><td>~6</td><td>~7</td><td>~9</td><td>~5 (tap mine, tap theirs, review, send)</td></tr>
+      <tr><td>Overlap visibility</td><td>Implicit (filtered by window)</td><td>Explicit, same time scale</td><td>Summarised as a match reason</td><td>Explicit: same date rows, give-band tinted</td></tr>
+      <tr><td>Fits iPhone Air width</td><td>Very well (list)</td><td>7 days at 52 pt/day; tight but readable</td><td>Very well (one task per screen)</td><td>3 crews × 92 pt + peek; codes fit, details on tap</td></tr>
+      <tr><td>Duo inner use</td><td>Board | composer</td><td>7 rails | review table (most like web)</td><td>Steps + matches | live ticket</td><td>6 crew columns across the hinge + summary rail</td></tr>
+      <tr><td>Pre-check before submit</td><td>Fleet and rank chip on each card</td><td>Warning stripe on the rail</td><td>Ranked match list with reasons</td><td>Warning in the crew column header</td></tr>
+      <tr><td>Search pairing</td><td>Full-height sheet, boxed fields, 2 across</td><td>Full page, settings-style rows + section tabs</td><td>Step 2 "Want": questions, chips, sliders</td><td>Drop-down panel over the matrix + R'Bot bar; live preview on Duo inner</td></tr>
+      <tr><td>R'Bot</td><td>—</td><td>—</td><td>—</td><td>Shares the screen; sets filters, adds/removes crew columns, selects cells; never submits</td></tr>
+      <tr><td>Build cost</td><td>Low: lists + sheet</td><td>High: custom touch timeline</td><td>Medium: 4 screens + ticket</td><td>Medium: frozen-column grid with synced scroll</td></tr>
+    </tbody>
+  </table></div>
+  <div class="cols2">
+    <div class="note"><b>Recommendation:</b> Concept A as the default compact flow, with B's twin rail as the review step's "Timeline" tab on the Duo inner screen. A is the cheapest to build and fits the existing <code>tripTrade/MyDutyScreen</code> list patterns. The rail adds the overlap view where the Duo inner screen has room for it.<br><br><b>With D added:</b> D does the job of B's rail with a far simpler build (a frozen-column table instead of a touch timeline) and scales naturally from 3 to 6 crews with orientation. I would now pair A (find "out of" candidates) with D as the compare/pick screen, and drop B.</div>
+    <div class="note"><b>Open questions before coding</b><ul>
+      <li>Does crew B's Accept re-run the legality check, and can B see the delta from their side? The web data suggests yes (Pending(ADM) follows) but I did not see a B session.</li>
+      <li>Is "Chanced" a typo for "Changed" (roster changed after approval)? The app should show "Changed".</li>
+      <li>Do we have a pre-check endpoint, or only <code>submitTaskSwap</code>? Without one, the fleet/rank warnings are client-side hints from cell data.</li>
+      <li>Push to crew B: is there a notification hook, or does B poll Records?</li>
+    </ul></div>
+  </div>
+</section>
+</div>
+
+<script>
+// ─── Real data: crew 392923 and the 6 candidates returned by selectOtherCrewPublishTask (NS, 07 Oct – 02 Nov 2026) ───
+const D0 = Date.UTC(2026, 9, 7);           // 07 Oct 2026 00:00 (times are local MNL, treated as naive)
+const t = s => (Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10), +s.slice(11,13), +s.slice(14,16)) - D0) / 864e5;
+const K = c => /HB|FB/.test(c) ? 'res' : c === 'XX' ? 'off' : 'fly';
+const mk = (code, s, e, open = 1, x = {}) => ({ code, s: t(s), e: t(e), open, kind: open ? K(code) : 'lock', ...x });
+const ME = { id: '392923', name: 'Ona, Francis M.', rank: 'CP', duties: [
+  mk('EXAM','2026-10-07T10:00','2026-10-07T11:00',0),
+  mk('PR124/PR125','2026-10-08T20:50','2026-10-11T04:30',1,{port:'SEA',fdp:'29:05',blh:'25:20',crd:'26:20',days:4,fleet:'A350',comp:'2/1/1',lo:'25:35',
+     legs:[['08 Oct','124','MNL','SEA','22:35','20:05','12:00'],['10 Oct','125','SEA','MNL','23:10','04:00','13:20']]}),
+  mk('2HB','2026-10-13T12:00','2026-10-13T23:59'),
+  mk('SIM 730/731','2026-10-15T07:55','2026-10-18T18:30',0),
+  mk('PR684/PR685','2026-10-20T17:15','2026-10-23T17:05',1,{port:'DOH',fdp:'22:30',blh:'19:40',crd:'19:45',days:4}),
+  mk('XX','2026-10-24T00:00','2026-10-24T23:59'),
+  mk('PR402/PR403','2026-10-25T12:30','2026-10-26T00:20',1,{fdp:'11:20',blh:'08:15',crd:'08:15',days:2}),
+  mk('PR126/PR127','2026-10-29T18:25','2026-11-02T08:05'),
+]};
+const CREWS = [
+  { id:'402452', duties:[mk('3FB','2026-10-11T17:00','2026-10-11T22:00'),mk('3FB','2026-10-12T17:15','2026-10-12T22:00'),mk('PR112/113','2026-10-14T09:20','2026-10-16T18:30'),mk('PR1863/1864','2026-10-18T17:55','2026-10-19T00:20'),mk('3FB','2026-10-20T17:00','2026-10-20T22:00'),mk('PR124/PR125','2026-10-22T20:50','2026-10-25T04:30'),mk('1HB','2026-10-27T00:00','2026-10-27T11:59'),mk('1HB','2026-10-28T00:00','2026-10-28T11:59')]},
+  { id:'421051', duties:[mk('1HB','2026-10-09T00:00','2026-10-09T11:59'),mk('4FB','2026-10-10T21:30','2026-10-10T23:45'),mk('GTR','2026-10-12T08:00','2026-10-12T16:00',0),mk('LEC','2026-10-13T09:30','2026-10-13T12:30',0),mk('GTR','2026-10-14T08:00','2026-10-14T16:00',0),mk('DG CBTA','2026-10-15T10:00','2026-10-15T17:00',0),mk('LEC','2026-10-16T13:00','2026-10-16T17:00',0),mk('PR358/359','2026-10-18T05:20','2026-10-18T18:45'),mk('PR1805/1806','2026-10-21T10:45','2026-10-21T18:10'),mk('PR100/PR101','2026-10-22T17:00','2026-10-25T18:35'),mk('PR654/PR655','2026-10-27T09:30','2026-10-30T10:05')]},
+  { id:'423003', duties:[mk('CAAP','2026-10-07T09:00','2026-10-07T16:00',0),mk('EXAM','2026-10-08T10:00','2026-10-08T11:00',0),mk('PR104/PR105','2026-10-11T21:30','2026-10-16T06:00'),mk('SIM 730/731','2026-10-18T07:55','2026-10-21T18:30',0),mk('1HB','2026-10-23T00:00','2026-10-23T11:59'),mk('PR118/PR119','2026-10-25T18:25','2026-10-30T06:50')]},
+  { id:'435623', duties:[mk('AVL','2026-10-07T00:00','2026-10-09T23:59',0),mk('LEC','2026-10-10T12:00','2026-10-10T15:00',0),mk('SIM','2026-10-11T08:30','2026-10-11T12:30',0),mk('PR654/PR655','2026-10-13T10:35','2026-10-17T11:15'),mk('XX','2026-10-18T00:00','2026-10-18T23:59'),mk('PR684/PR685','2026-10-19T17:15','2026-10-22T17:05'),mk('PR100/PR101','2026-10-24T17:00','2026-10-28T18:20'),mk('PR507/508','2026-10-30T07:35','2026-10-30T18:40')]},
+  { id:'447841', fleet:'A333', duties:[mk('1HB','2026-10-07T00:00','2026-10-07T11:59'),mk('PR684/PR685','2026-10-08T17:15','2026-10-11T17:05',1,{port:'DOH',fdp:'22:30',blh:'19:40',crd:'19:45',lo:'48:20',fleet:'A333',comp:'1/1/1',
+     legs:[['08 Oct','684','MNL','DOH','19:00','23:40','09:40'],['11 Oct','685','DOH','MNL','01:30','16:35','10:00']]}),mk('PR358/359','2026-10-13T05:20','2026-10-13T18:45'),mk('PR402/PR403','2026-10-15T12:25','2026-10-16T00:10'),mk('2FB','2026-10-18T10:35','2026-10-18T14:40'),mk('PR209/210','2026-10-19T17:05','2026-10-21T14:55'),mk('PR597/598','2026-10-25T10:45','2026-10-25T20:00'),mk('PR1785/1786','2026-10-26T10:20','2026-10-26T16:30'),mk('PR1785/1786','2026-10-28T10:20','2026-10-28T16:30'),mk('2HB','2026-10-29T12:00','2026-10-29T23:59'),mk('PR209/210','2026-10-30T18:35','2026-11-01T14:55')]},
+  { id:'450673', duties:[mk('PR684/PR685','2026-10-07T17:15','2026-10-10T17:05'),mk('1HB','2026-10-12T00:00','2026-10-12T11:59'),mk('1HB','2026-10-13T00:00','2026-10-13T11:59'),mk('2HB','2026-10-16T12:00','2026-10-16T23:59'),mk('PR525/526','2026-10-18T05:50','2026-10-18T17:00'),mk('1FB','2026-10-20T04:15','2026-10-20T10:15'),mk('1HB','2026-10-21T00:00','2026-10-21T11:59'),mk('PR658/659','2026-10-23T11:05','2026-10-25T09:10'),mk('PR402/PR403','2026-10-27T12:30','2026-10-28T00:20'),mk('PR1771/1772','2026-10-30T03:10','2026-10-30T09:25'),mk('3FB','2026-10-31T16:30','2026-10-31T20:50')]},
+];
+const crew = id => CREWS.find(c => c.id === id);
+const GIVE = ME.duties[1];                                  // PR124/PR125 08–11 Oct
+const TAKE = crew('421051').duties.slice(0, 2);             // 1HB 09 Oct + 4FB 10 Oct (golden path)
+const BAD = crew('447841').duties[1];                       // PR684/PR685 08–11 Oct (real Illegal)
+const sel = new Set([GIVE, ...TAKE]);
+const DOW = ['WED','THU','FRI','SAT','SUN','MON','TUE'];
+const day = i => { const d = new Date(D0 + i*864e5); return { n: String(d.getUTCDate()).padStart(2,'0'), w: DOW[i % 7], m: d.getUTCMonth() === 9 ? 'Oct' : 'Nov' }; };
+const hm = f => { const m = Math.round((f - Math.floor(f)) * 1440); return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
+const span = d => { const a = day(Math.floor(d.s)), b = day(Math.floor(d.e)); return a.n === b.n ? `${a.n} ${a.m}` : `${a.n}–${b.n} ${b.m}`; };
+
+// ─── Icons (24-unit outline, nav-bar style) ───
+const P = {
+  back:'<path d="M15 5l-7 7 7 7"/>', fwd:'<path d="M9 5l7 7-7 7"/>', filter:'<path d="M4 6h16M7 12h10M10 18h4"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', unlock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/>',
+  swap:'<path d="M7 7h12l-3-3M17 17H5l3 3"/>', check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>', plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6L6 18"/>',
+  shield:'<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/>', inbox:'<path d="M4 13l2.5-7h11L20 13v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/>',
+  cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>', plane:'<path d="M3 13l7-2 4-7 2 1-2 6 5-1 2 2-6 3-4 5-2-1 2-4-7 1z"/>',
+  warn:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/>', info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+  star:'<path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z"/>', search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+  home:'<path d="M4 11l8-7 8 7v9H4z"/>', user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.3-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c2 .7 3.2 2.6 3.6 5.5"/>',
+  bot:'<rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13v1M15 13v1"/>', send:'<path d="M4 12l16-8-6 16-3-7z"/>', clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  list:'<path d="M8 6h12M8 12h12M8 18h12M4 6h.5M4 12h.5M4 18h.5"/>', rail:'<path d="M3 7h9M8 12h13M3 17h7"/>',
+};
+const I = (n, c = '') => `<svg viewBox="0 0 24 24" class="${c}">${P[n]}</svg>`;
+
+// ─── Frame helpers ───
+const DEV = { air:[420,912,'air'], airL:[912,420,'airL'], oP:[466,678,'outer'], oL:[678,466,'outer'], iL:[951,669,'innerL'], iP:[669,951,'innerP'] };
+function frame(kind, body, cap, opts = {}) {
+  const [w, h, k] = DEV[kind];
+  const duo = kind !== 'air';
+  const statusDark = opts.dark !== false;
+  const sb = k === 'innerL' || k === 'innerP' || kind === 'oL' ? '' :
+    `<div class="sb ${statusDark ? 'dark' : ''}"><span>9:41</span>${k === 'air' ? '<div class="isl"></div>' : '<div class="hole"></div>'}<span>●●● ▮</span></div>`;
+  const hinge = k === 'innerL' ? '<div class="hinge v"></div>' : k === 'innerP' ? '<div class="hinge h"></div>' : '';
+  return `<figure style="--cw:calc(${w}px * var(--z) + 14px)"><div class="dev ${duo ? 'duo' : ''}"><div class="vp" style="width:calc(${w}px * var(--z));height:calc(${h}px * var(--z))">
+    <div class="pt ${sb ? 'hasSb' : ''}" style="width:${w}px;height:${h}px">${opts.noSb ? '' : sb}${body}${hinge}</div></div></div><figcaption>${cap}</figcaption></figure>`;
+}
+// Gradient header block (status bar sits on top of it: frame() renders sb first, so headers here begin under it)
+const gradTop = (inner, kind) => inner;
+const hdr = (title, sub, right = '', back = true) => `<div class="hdr">${back ? `<div class="back">${I('back')}</div>` : ''}<div class="sp"><div class="tt">${title}</div>${sub ? `<div class="st">${sub}</div>` : ''}</div>${right}</div>`;
+const lhdr = (title, sub, right = '') => `<div class="hdr" style="padding-top:8px"><div class="back l">${I('back')}</div><div class="sp"><div style="font:800 19px var(--f-ui)">${title}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>${right}</div>`;
+const delta = (vals = ['−29:05','−25:20','−26:20','0'], ill = true) => `<div class="delta">${['FDP','BLH','CREDIT','DO'].map((k,i)=>`<div><span>${k}</span><b>${vals[i]}</b></div>`).join('')}${ill ? '<div style="justify-content:center"><span style="color:var(--a)">ILLUSTR.</span></div>' : ''}</div>`;
+const realDelta = () => delta(['−06:35','−05:40','−06:35','0'], false);
+const dock = () => `<div class="dock">${I('home')}${I('cal')}<span class="on">${I('swap')}</span>${I('bot')}${I('user')}</div>`;
+
+// Duty block on a rail
+function block(d, x0, dw, top, h, opts = {}) {
+  const left = Math.max(0, (d.s - x0) * dw), right = (d.e - x0) * dw;
+  if (right <= 0) return '';
+  const w = Math.max(right - left, 18);
+  let cls = 'k-' + d.kind;
+  if (opts.sel && opts.sel.has(d)) cls = 'k-sel';
+  const ic = d.kind === 'lock' ? I('lock','s') : '';
+  return `<div class="d ${cls}" style="left:${left}px;width:${w}px;top:${top}px;height:${h}px">${ic}${w > 34 ? d.code : ''}</div>`;
+}
+function rail(duties, x0, days, dw, h, opts = {}) {
+  return `<div style="position:relative;height:${h}px;width:${days*dw}px;overflow:hidden">${
+    Array.from({length: days}, (_, i) => `<div style="position:absolute;left:${i*dw}px;top:0;bottom:0;border-left:1px solid ${opts.grid || 'var(--hl)'}"></div>`).join('')
+  }${duties.map(d => block(d, x0, dw, opts.pad ?? 5, h - 2*(opts.pad ?? 5), opts)).join('')}</div>`;
+}
+const dayHead = (x0, days, dw, lw = 0) => `<div class="r" style="gap:0;padding-left:${lw}px">${Array.from({length:days},(_,i)=>{const d=day(x0+i);return `<div style="width:${dw}px;text-align:center;line-height:1.1"><div style="font:700 9.5px var(--f-ui);letter-spacing:.6px;color:var(--mu)">${d.w}</div><div style="font:800 14px var(--f-ui)" class="mono">${d.n}</div></div>`}).join('')}</div>`;
+
+// Month grid of my duties (Sun-start, 27 Sep – 07 Nov)
+function month(opts = {}) {
+  const cells = [];
+  for (let i = -10; i < 32; i++) {             // i = days from 07 Oct; -10 = Sun 27 Sep
+    const dd = new Date(D0 + i*864e5), n = dd.getUTCDate(), inM = dd.getUTCMonth() === 9;
+    const ds = ME.duties.filter(d => Math.floor(d.s) <= i && d.e > i && !(d.kind==='off' && Math.floor(d.s)!==i));
+    const chips = ds.map(d => {
+      const first = Math.floor(d.s) === i || i === -10;
+      const cls = opts.sel && opts.sel.has(d) ? 'k-sel' : 'k-' + d.kind;
+      return `<div class="c ${cls}" style="${first ? '' : 'opacity:.75'}">${first ? d.code.split(' ')[0] : '&nbsp;'}</div>`;
+    }).join('');
+    cells.push(`<div class="cell ${inM ? '' : 'o'}" style="${opts.ch ? `min-height:${opts.ch}px` : ''}"><span class="n">${n}</span>${i < 0 ? '' : chips}</div>`);
+  }
+  return `<div class="grid7" style="margin-bottom:4px">${['S','M','T','W','T','F','S'].map(x=>`<div class="ov" style="text-align:center;letter-spacing:.5px">${x}</div>`).join('')}</div><div class="grid7">${cells.join('')}</div>`;
+}
+
+// Duty list row
+const dutyRow = (d, right, crewId) => { const a = day(Math.floor(d.s)); return `<div class="card item"><div class="dt"><b class="mono">${a.n}</b><span>${a.w}</span></div><div class="sp" style="min-width:0"><div class="r" style="gap:6px"><b style="font:800 15px var(--f-ui)">${d.code}</b>${d.port ? `<span class="badge g">${d.port}</span>` : ''}</div><div class="sub mono">${span(d)} · ${hm(d.s)}–${hm(d.e)}${crewId ? ' · ' + crewId : ''}</div></div>${right}</div>`; };
+
+// ═════════════ SHARED SCREENS ═════════════
+const shared = [];
+// Disclaimer
+shared.push(frame('air', `<div class="grad" style="height:160px">${hdr('Duty Swap','392923 · CP · MNL','',true)}</div>
+  <div class="pad" style="padding-top:16px;display:flex;flex-direction:column;gap:10px;opacity:.5">${dutyRow(GIVE,'')}${dutyRow(ME.duties[4],'')}</div>
+  <div class="scrim"></div>
+  <div class="dlg"><div class="band"></div><div class="x">${I('x')}</div><div class="glyph">${I('shield')}</div>
+   <div class="body"><div class="tt">Before you swap</div><div class="sub" style="font-size:14px;line-height:1.45">This swap follows PCAR rules. The system checks qualifications, rest and block-hour limits for both crews before the request is sent.</div>
+   <div class="r" style="justify-content:center;gap:10px;margin-top:6px"><div class="pill o sm" style="width:120px">Cancel</div><div class="pill sm" style="width:120px">Agree</div></div>
+   <div class="r sub" style="justify-content:center;gap:6px;font-size:12px"><div class="ck"></div>Don't show again</div></div></div>`,
+  '<b>Disclaimer</b> · text comes from dictionary <code>DUTY_SWAP_DISCLAIMER_INFO</code>; shown once per session like <code>getDisclaimerFlag</code>.'));
+// Privacy (Friend list)
+const radio = (on, t1, t2, extra='') => `<div class="card" style="padding:13px 14px;display:flex;gap:12px;${on ? 'border-color:var(--p);background:var(--t1)' : ''}"><div class="rad ${on?'on':''}"></div><div class="sp" style="display:flex;flex-direction:column;gap:3px"><b style="font:700 15px var(--f-ui)">${t1}</b><span class="sub">${t2}</span>${extra}</div></div>`;
+shared.push(frame('air', `<div class="grad">${hdr('Who can see my duties','Applies in Handshake mode only')}</div>
+  <div class="pad grow" style="padding-top:16px;display:flex;flex-direction:column;gap:10px">
+   <div class="sub" style="padding:0 2px 4px">Your schedule is hidden by default. Choose who may see your unlocked duties and send you swap requests.</div>
+   ${radio(0,'Hidden from everyone','Default. Nobody can request your duties in Handshake mode.')}
+   ${radio(0,'Visible to all crew','Any crew can view and request your unlocked duties.')}
+   ${radio(0,'Everyone except…','Hide from a blocklist.')}
+   ${radio(1,'Only these crew','Your allowlist.', `<div class="r" style="flex-wrap:wrap;gap:6px;margin-top:6px"><span class="chip">421051 ${I('x','s')}</span><span class="chip">402452 ${I('x','s')}</span><span class="chip g">${I('plus','s')} Add crew</span></div>`)}
+  </div>
+  <div class="pad" style="padding-bottom:40px"><div class="pill">Save</div></div>`,
+  '<b>Privacy</b> (web "Friend List") · 4 modes, allowlist editing inline. Saves via the friend-mode API.'));
+// My Duty
+const lockRow = (d, on, note) => { const a = day(Math.floor(d.s)); return `<div class="card item"><div class="dt"><b class="mono">${a.n}</b><span>${a.w}</span></div><div class="sp" style="min-width:0"><b style="font:800 15px var(--f-ui)">${d.code}</b><div class="sub mono">${span(d)}${d.blh ? ' · BLH ' + d.blh : ''}${note ? ' · ' + note : ''}</div></div>${d.open ? `<div class="r" style="gap:6px;color:${on?'var(--p)':'var(--mu)'}">${I(on?'unlock':'lock','s')}<div class="tog ${on?'':'off'}"></div></div>` : `<span class="badge g">Not swappable</span>`}</div>`; };
+shared.push(frame('air', `<div class="grad">${hdr('My swappable duties','5 unlocked · 2 locked by ops')}</div>
+  <div class="pad grow" style="padding-top:14px;display:flex;flex-direction:column;gap:8px">
+   <div class="card" style="padding:12px 14px;display:flex;gap:12px;align-items:center"><div class="sp"><b style="font:700 14px var(--f-ui)">Unlock new duties automatically</b><div class="sub">Existing duties keep their setting.</div></div><div class="tog"></div></div>
+   <div class="ov" style="padding:8px 2px 0">October 2026</div>
+   ${lockRow(ME.duties[0],0,'ground')}${lockRow(GIVE,1)}${lockRow(ME.duties[2],1)}${lockRow(ME.duties[3],0,'training')}${lockRow(ME.duties[4],1)}${lockRow(ME.duties[5],0)}${lockRow(ME.duties[6],1)}
+  </div>`,
+  '<b>My Duty</b> · lock = hidden from swap. Training/ground items show as not swappable (they are <code>Hide</code> in the API).'));
+// Filter sheet (Search Pairing)
+const fld = (l, v, ph) => `<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0"><span class="cap" style="color:var(--mu)">${l}</span><div style="height:40px;border-radius:10px;border:1px solid var(--hl);display:flex;align-items:center;padding:0 10px;font:600 14px var(--f-ui);color:${v?'var(--ink)':'var(--fa)'}" class="mono">${v || ph}</div></div>`;
+const acc = (t, n, open, inner='') => `<div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px"><div class="r"><b style="font:700 15px var(--f-ui)">${t}</b>${n ? `<span class="badge">${n}</span>` : ''}<div class="sp"></div><span style="color:var(--mu);transform:rotate(${open?90:0}deg)">${I('fwd','s')}</span></div>${open ? inner : ''}</div>`;
+shared.push(frame('air', `<div class="grad" style="height:150px;opacity:.6">${hdr('Duty Swap','')}</div><div class="scrim"></div>
+  <div class="sheet" style="top:96px"><div class="grab"></div>
+   <div class="r pad" style="padding-top:4px;padding-bottom:10px"><b style="font:800 19px var(--f-ui)">Find duties</b><div class="sp"></div><span class="ib l">${I('star','s')}</span></div>
+   <div class="pad" style="display:flex;flex-direction:column;gap:10px">
+    <div class="seg l"><span class="on">All crew (Target)</span><span>Friends (Handshake)</span></div>
+    <div class="r" style="gap:10px">${fld('START *','07 Oct 2026')}${fld('END *','02 Nov 2026')}</div>
+    <div class="chips"><span class="chip f">${I('star','s')} SEA layovers</span><span class="chip">Weekends off</span><span class="chip g">${I('plus','s')} Save current</span></div>
+    ${acc('Pairing',2,true,`<div class="r" style="gap:10px">${fld('DURATION (DAYS)','1 – 4')}${fld('CRD','','00:00 – 30:00')}</div><div class="r" style="gap:10px">${fld('BLH','','Any')}${fld('REPORT AFTER','','Any time')}</div>`)}
+    ${acc('Layover',1,false)}${acc('Flight',0,false)}${acc('Crew',0,false)}
+    <div class="r sub" style="gap:8px"><div class="ck on">${I('check')}</div>Hide crew without duties</div>
+   </div>
+   <div class="sp"></div>
+   <div class="r pad" style="gap:10px;padding-bottom:36px;padding-top:10px;border-top:1px solid var(--hl)"><div class="pill o" style="width:110px">Reset</div><div class="pill sp">Show 6 crew</div></div>
+  </div>`,
+  '<b>Filters</b> (web "Search Pairing") · mode + required dates always visible; the 4 web groups become accordions with counts. Saved presets = the web folder/star buttons.'));
+// Illegal result (real)
+shared.push(frame('air', `<div class="grad" style="height:150px">${hdr('Review swap','with 447841')}</div><div class="pad" style="padding-top:14px;opacity:.5;display:flex;flex-direction:column;gap:10px">${dutyRow(GIVE,'')}${dutyRow(BAD,'','447841')}${realDelta()}</div>
+  <div class="scrim"></div>
+  <div class="dlg"><div class="band"></div><div class="x">${I('x')}</div><div class="glyph" style="background:var(--dan)">${I('warn')}</div>
+   <div class="body"><div class="tt">Swap not allowed</div>
+    <div class="card" style="text-align:left;padding:10px 12px;background:var(--bgA)"><div class="kv"><span>Fails for</span><b>447841 (other crew)</b></div><div class="kv"><span>Dates</span><b>08–12 Oct 2026</b></div><div class="kv"><span>Rule</span><b>8004036 · Basic Competency</b></div></div>
+    <div class="sub" style="font-size:13px">447841 is qualified on A333; your PR124/PR125 is A350. Pick a crew rated on A350, or a different duty.</div>
+    <div class="r" style="justify-content:center;gap:10px;margin-top:4px"><div class="pill o sm" style="width:130px">Change crew</div><div class="pill sm" style="width:130px;background:var(--dan)">Edit duties</div></div></div></div>`,
+  '<b>Legality failed</b> · the real response: <code>[RuleCheck]Others 08-Oct-2026~12-Oct-2026, Rule ID:8004036, Basic Competency</code>. The explanation line is ours, derived from fleet.'));
+// Sent
+shared.push(frame('air', `<div class="grad" style="height:150px">${hdr('Review swap','with 421051')}</div><div class="pad" style="padding-top:14px;opacity:.5;display:flex;flex-direction:column;gap:10px">${dutyRow(GIVE,'')}${dutyRow(TAKE[0],'','421051')}</div>
+  <div class="scrim"></div>
+  <div class="dlg"><div class="band"></div><div class="x">${I('x')}</div><div class="glyph">${I('send')}</div>
+   <div class="body"><div class="tt">Request sent to 421051</div><div class="sub" style="font-size:14px">Legality passed. 421051 has to accept, then crew control approves.</div>
+    <div class="r" style="justify-content:center;gap:4px;font:700 12px var(--f-ui);color:var(--p)"><span class="badge">Sent</span><b style="width:14px;height:1.5px;background:var(--tb)"></b><span class="badge g">421051 accepts</span><b style="width:14px;height:1.5px;background:var(--tb)"></b><span class="badge g">Crew control</span></div>
+    <div class="r" style="justify-content:center;gap:10px;margin-top:4px"><div class="pill o sm" style="width:130px">Done</div><div class="pill sm" style="width:130px">View request</div></div></div></div>`,
+  '<b>Legality passed</b> (illustrative) · status becomes <code>Pending(OTH)</code>; the three-stage track replaces the web status codes.'));
+// Crew B incoming
+shared.push(frame('air', `<div class="grad">${hdr('Swap request','From 392923 · Ona, Francis M. · CP')}</div>
+  <div class="pad grow" style="padding-top:14px;display:flex;flex-direction:column;gap:10px">
+   <div class="r"><span class="badge">Waiting for you</span><div class="sp"></div><span class="sub">Sent 07 Oct 17:20</span></div>
+   <div class="ov">You give</div>${dutyRow(TAKE[0],'')}${dutyRow(TAKE[1],'')}
+   <div class="r" style="justify-content:center;color:var(--p)">${I('swap')}</div>
+   <div class="ov">You take</div>${dutyRow(GIVE,'<span class="badge g">4 days</span>')}
+   <div class="card" style="padding:10px 12px"><div class="kv"><span>Legs</span><b>PR124 MNL–SEA · PR125 SEA–MNL</b></div><div class="kv"><span>Layover</span><b>SEA 25:35</b></div><div class="kv"><span>Fleet</span><b>A350</b></div></div>
+   ${delta(['+29:05','+25:20','+26:20','0'])}
+   <div class="card sub" style="padding:10px 12px;font-style:italic">"Family event on the 9th, happy to take your standby."</div>
+  </div>
+  <div class="r pad" style="gap:10px;padding-bottom:36px;padding-top:8px"><div class="pill o" style="width:130px">Decline</div><div class="pill sp">Accept swap</div></div>`,
+  '<b>Crew B</b> (421051) · opens from the push/notification. Accept moves to <code>Pending(ADM)</code>. The delta shown here is from B\'s side.'));
+// Records
+const rec = (st, cls, who, d1, d2, when) => `<div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:6px"><div class="r"><span class="badge ${cls}">${st}</span><div class="sp"></div><span class="sub mono">${when}</span></div><div class="r" style="gap:8px"><b style="font:700 14px var(--f-ui)">${d1}</b><span style="color:var(--p)">${I('swap','s')}</span><b style="font:700 14px var(--f-ui)">${d2}</b></div><div class="sub">${who}</div></div>`;
+shared.push(frame('air', `<div class="grad">${hdr('Swap requests','')}<div class="pad" style="padding-bottom:14px"><div class="seg"><span class="on">Active 2</span><span>History</span></div></div></div>
+  <div class="pad" style="padding-top:12px"><div class="chips"><span class="chip f">All</span><span class="chip">Waiting for me</span><span class="chip">Waiting for them</span><span class="chip">Crew control</span></div></div>
+  <div class="pad grow" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">
+   ${rec('Waiting for 421051','', 'Sent by you · 421051','PR124/PR125 08 Oct','1HB 09 · 4FB 10','07 Oct 17:20')}
+   ${rec('Crew control','', 'Accepted by 402452 · approval pending','PR402/PR403 25 Oct','3FB 20 Oct','05 Oct 09:12')}
+   <div class="ov" style="padding-top:6px">Earlier</div>
+   ${rec('Not allowed','w','Rule 8004036 · Basic Competency','PR124/PR125 08 Oct','PR684/PR685 08 Oct','07 Oct 17:07')}
+   ${rec('Withdrawn by you','g','447841','2HB 13 Oct','PR358/359 13 Oct','02 Oct 11:40')}
+  </div>`,
+  '<b>Records</b> · statuses in crew language: Pending(ME) "Waiting for me", Pending(OTH) "Waiting for them", Pending(ADM) "Crew control". Only the top row is real; the rest show other states (illustrative).'));
+document.getElementById('sharedRow').innerHTML = shared.join('');
+
+// ═════════════ CONCEPT A · SWAP BOARD ═════════════
+const overlap = (d, a, b) => d.s < b && d.e > a && d.open;
+const boardItems = () => CREWS.flatMap(c => c.duties.filter(d => overlap(d, GIVE.s - 1, GIVE.e + 0.5)).map(d => ({ c, d }))).sort((x, y) => x.d.s - y.d.s);
+const fleetOf = c => c.fleet || 'A350';
+const boardCard = ({ c, d }, on) => { const a = day(Math.floor(d.s)); const bad = fleetOf(c) !== 'A350';
+  return `<div class="card item" style="${on ? 'border-color:var(--p);box-shadow:0 0 0 1.5px var(--p)' : ''}"><div class="dt"><b class="mono">${a.n}</b><span>${a.w}</span></div><div class="sp" style="min-width:0;display:flex;flex-direction:column;gap:3px"><div class="r" style="gap:6px"><b style="font:800 15px var(--f-ui)">${d.code}</b>${d.kind==='res' ? '<span class="badge g">Standby</span>' : ''}</div><div class="sub mono">${span(d)} · ${hm(d.s)}–${hm(d.e)}</div><div class="r" style="gap:6px"><span class="sub" style="font-weight:700;color:var(--ink)">${c.id}</span><span class="badge ${bad ? 'w' : ''}">${bad ? 'A333 · fleet differs' : 'CP · A350'}</span></div></div><span style="color:var(--p)">${I(on ? 'check' : 'fwd')}</span></div>`; };
+const aChips = (wrap) => `<div class="chips" style="${wrap ? 'flex-wrap:wrap' : ''}"><span class="chip f">${I('swap','s')} Out of PR124/PR125</span><span class="chip">All crew</span><span class="chip">07 Oct – 02 Nov</span><span class="chip g">${I('filter','s')} Filters</span></div>`;
+const aHub = frame('air', `<div class="grad">${hdr('Duty Swap','392923 · CP · MNL', `<div class="ib">${I('inbox')}</div>`, false)}
+   <div class="pad" style="padding-bottom:14px;display:flex;flex-direction:column;gap:10px"><div class="seg"><span class="on">Board</span><span>My duties 5</span><span>Requests 2</span></div></div></div>
+  <div class="pad" style="padding-top:12px;display:flex;flex-direction:column;gap:10px">
+   <div class="card r" style="padding:10px 12px;gap:10px;background:var(--t1);border-color:var(--tb)"><span style="color:var(--p)">${I('shield')}</span><div class="sp sub" style="color:var(--ink)">Your duties are <b>hidden</b> in Handshake mode.</div><b style="font:700 13px var(--f-ui);color:var(--p)">Change</b></div>
+   ${aChips()}
+   <div class="r"><span class="ov">6 duties overlap 08–11 Oct</span><div class="sp"></div><span class="sub">Sort: date</span></div>
+  </div>
+  <div class="pad grow" style="padding-top:8px"><div class="lst">${boardItems().slice(0,6).map(x => boardCard(x)).join('')}</div></div>${dock()}`,
+  '<b>A1 · Board</b> · "Swap out of" chip is the core filter: pick one of my unlocked duties, see every published duty that overlaps it. Fleet/rank chip pre-warns the 447841 case.');
+const composer = (compact) => `
+  <div class="r"><b style="font:800 18px var(--f-ui)">Offer to 421051</b><div class="sp"></div><span class="badge">CP · A350</span></div>
+  <div class="ov">You take from 421051</div>
+  ${crew('421051').duties.slice(0, compact ? 2 : 3).map((d,i)=>`<div class="card item" style="padding:9px 12px"><div class="ck ${i<2?'on':''}">${i<2?I('check'):''}</div><div class="sp"><b style="font:700 14px var(--f-ui)">${d.code}</b><div class="sub mono">${span(d)} · ${hm(d.s)}–${hm(d.e)}</div></div>${d.open?'':'<span class="badge g">Locked</span>'}</div>`).join('')}
+  <div class="ov">You give</div>
+  ${[GIVE, ME.duties[2]].slice(0, compact ? 1 : 2).map((d,i)=>`<div class="card item" style="padding:9px 12px"><div class="ck ${i<1?'on':''}">${i<1?I('check'):''}</div><div class="sp"><b style="font:700 14px var(--f-ui)">${d.code}</b><div class="sub mono">${span(d)} · ${d.port ? d.port + ' · ' : ''}${d.blh ? 'BLH ' + d.blh : hm(d.s)+'–'+hm(d.e)}</div></div></div>`).join('')}
+  ${delta()}`;
+const aOffer = frame('air', `<div class="grad" style="height:200px;opacity:.55">${hdr('Duty Swap','','',false)}</div><div class="scrim"></div>
+  <div class="sheet" style="top:110px"><div class="grab"></div><div class="pad" style="display:flex;flex-direction:column;gap:9px;padding-top:6px">${composer(false)}
+   <div style="height:56px;border-radius:12px;border:1px solid var(--hl);padding:9px 12px" class="sub">Add a note for 421051 (optional)</div></div>
+   <div class="sp"></div><div class="pad" style="padding-bottom:36px;padding-top:10px"><div class="pill">${I('shield')} Check legality &amp; send</div></div></div>`,
+  '<b>A2 · Offer</b> · a bottom sheet, so the board stays in context. Their nearby duties and my unlocked duties are checklists, so multi-duty swaps work too.');
+const aReview = frame('air', `<div class="grad">${hdr('Review swap','with 421051 · Target mode')}</div>
+  <div class="pad grow" style="padding-top:14px;display:flex;flex-direction:column;gap:10px">
+   <div class="ov">You give</div>
+   <div class="card" style="padding:12px 14px"><div class="r"><b style="font:800 17px var(--f-ui)">PR124/PR125</b><span class="badge g">SEA · 4 days</span></div>
+    <table class="tbl" style="margin-top:6px"><tr><th>DATE</th><th>FLT</th><th>ROUTE</th><th>STD–STA</th><th>BLH</th></tr>${GIVE.legs.map(l=>`<tr><td class="dd">${l[0]}</td><td>PR${l[1]}</td><td>${l[2]}–${l[3]}</td><td>${l[4]}–${l[5]}</td><td>${l[6]}</td></tr>`).join('')}</table></div>
+   <div class="r" style="justify-content:center;color:var(--p)">${I('swap')}</div>
+   <div class="ov">You take</div>
+   ${TAKE.map(d => dutyRow(d, '<span class="badge g">Standby</span>')).join('')}
+   ${delta()}
+   <div style="height:64px;border-radius:12px;border:1px solid var(--hl);padding:9px 12px;background:var(--card)" class="sub">Family event on the 9th, happy to take your standby.</div>
+  </div>
+  <div class="pad" style="padding-bottom:36px;padding-top:8px"><div class="pill">${I('shield')} Check legality &amp; send</div></div>`,
+  '<b>A3 · Review</b> · stacked "give / take" instead of the web\'s 2×2 tables, so it reads top to bottom on a 420 pt screen. Result pop-ups are the shared ones.');
+document.getElementById('aAir').innerHTML = aHub + aOffer + aReview;
+
+const aDuo = [];
+aDuo.push(frame('oP', `<div class="grad">${hdr('Duty Swap','', `<div class="ib">${I('inbox')}</div>`, false)}</div>
+  <div class="pad" style="padding-top:10px;display:flex;flex-direction:column;gap:8px">${aChips()}<span class="ov">6 duties overlap 08–11 Oct</span></div>
+  <div class="pad grow" style="padding-top:6px"><div class="lst">${boardItems().slice(0,3).map((x,i)=>boardCard(x, i===1)).join('')}</div></div>
+  <div class="card" style="position:absolute;left:12px;right:12px;bottom:18px;padding:10px 14px;border-radius:18px;box-shadow:0 6px 18px rgba(0,0,0,.15);display:flex;align-items:center;gap:10px"><div class="sp"><b style="font:700 14px var(--f-ui)">Give PR124/PR125 · take 2</b><div class="sub">421051 · BLH −25:20</div></div><div class="pill sm">Review</div></div>`,
+  '<b>Duo outer · portrait</b> (466×678) · short screen: the offer collapses into a floating summary bar; tap Review for the A3 page.'));
+aDuo.push(frame('oL', `<div class="r" style="height:100%;gap:0;align-items:stretch">
+  <div class="pane" style="width:300px;padding:14px 12px 0 18px;gap:8px;border-right:1px solid var(--hl)"><div class="r"><div class="back l">${I('back')}</div><b style="font:800 18px var(--f-ui)">Board</b></div>${aChips(true)}<div class="lst grow">${boardItems().slice(0,3).map((x,i)=>boardCard(x,i===1)).join('')}</div></div>
+  <div class="pane sp" style="padding:14px 18px 12px 14px;gap:7px">${composer(true)}<div class="pill sm" style="margin-top:2px">${I('shield')} Check legality &amp; send</div></div></div>`,
+  '<b>Duo outer · landscape</b> (678×466) · two columns: board | composer. One "take" and one "give" row are visible; the rest scrolls.'));
+aDuo.push(frame('iL', `<div class="r" style="height:100%;gap:0;align-items:stretch">
+  <div class="pane" style="width:475px;padding:22px 26px 0 28px;gap:10px"><div class="r"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 22px var(--f-ui)">Duty Swap</b><div class="sub">392923 · CP · MNL</div></div><div class="ib l">${I('inbox')}</div></div>
+   <div class="seg l"><span class="on">Board</span><span>My duties 5</span><span>Requests 2</span></div>${aChips(true)}<span class="ov">6 duties overlap 08–11 Oct</span>
+   <div class="lst grow">${boardItems().slice(0,5).map((x,i)=>boardCard(x,i===2)).join('')}</div></div>
+  <div class="pane" style="width:476px;padding:22px 28px 18px 26px;gap:9px;background:var(--card)">${composer(false)}<div style="height:44px;border-radius:12px;border:1px solid var(--hl);padding:9px 12px" class="sub">Add a note for 421051 (optional)</div><div class="sp"></div><div class="pill">${I('shield')} Check legality &amp; send</div></div></div>`,
+  '<b>Duo inner · landscape</b> (951×669) · board on the left, composer on the right, split exactly at the hinge. No sheet needed.'));
+aDuo.push(frame('iP', `<div class="pane" style="height:475px;padding:22px 24px 10px;gap:10px"><div class="r"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 22px var(--f-ui)">Duty Swap</b><div class="sub">Out of PR124/PR125 · 6 overlapping</div></div><div class="ib l">${I('filter')}</div></div>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${boardItems().slice(0,6).map((x,i)=>boardCard(x,i===2)).join('')}</div></div>
+  <div class="pane" style="height:476px;padding:16px 24px 18px;gap:8px;background:var(--card)"><div class="r" style="gap:16px;align-items:flex-start"><div class="sp" style="display:flex;flex-direction:column;gap:8px">${composer(true)}</div></div><div class="sp"></div><div class="pill">${I('shield')} Check legality &amp; send</div></div>`,
+  '<b>Duo inner · portrait</b> (669×951) · top half = 2-column board, bottom half = composer; the horizontal hinge falls between them.'));
+document.getElementById('aDuo').innerHTML = aDuo.join('');
+
+// ═════════════ CONCEPT B · TWIN RAIL ═════════════
+const railRow = (label, sub, duties, x0, days, dw, h, opts = {}) => `<div class="r" style="gap:0;${opts.hl ? 'background:var(--t1);' : ''}border-bottom:1px solid var(--hl)"><div style="width:${opts.lw||64}px;padding-left:10px;line-height:1.15"><b style="font:800 13px var(--f-ui)" class="mono">${label}</b>${sub ? `<div style="font:600 10px var(--f-ui);color:${opts.warn?'var(--dan)':'var(--mu)'}">${sub}</div>` : ''}</div>${rail(duties, x0, days, dw, h, opts)}</div>`;
+const bRails = (x0, days, dw, lw, rows, h = 44) => `${dayHead(x0, days, dw, lw)}
+  <div style="border-top:1px solid var(--hl)">${railRow('Me','CP · A350', ME.duties, x0, days, dw, h, {sel, lw, hl:true})}</div>
+  <div class="ov" style="padding:8px 10px 4px">${CREWS.length} crew · tap a block to take it</div>
+  ${CREWS.slice(0, rows).map(c => railRow(c.id, c.fleet ? 'A333 ✕ fleet' : 'CP · A350', c.duties, x0, days, dw, h, {sel, lw, warn: !!c.fleet, hl: c.id==='421051'})).join('')}`;
+const tray = (w) => `<div class="card" style="margin:0 12px;padding:10px 12px;border-radius:18px;box-shadow:0 6px 18px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:8px">
+  <div class="r" style="gap:8px"><span class="badge">Give 1</span><b style="font:700 13px var(--f-ui)">PR124/PR125</b><span style="color:var(--p)">${I('swap','s')}</span><span class="badge">Take 2</span><b style="font:700 13px var(--f-ui)">1HB, 4FB</b><div class="sp"></div><span class="sub">421051</span></div>
+  ${delta()}<div class="pill">Review swap</div></div>`;
+const bHub = frame('air', `<div class="grad">${hdr('Duty Swap','392923 · CP · MNL', `<div class="ib">${I('shield')}</div><div class="ib">${I('lock')}</div>`, false)}</div>
+  <div class="pad" style="padding-top:12px;display:flex;flex-direction:column;gap:10px">
+   <div class="r"><b style="font:800 18px var(--f-ui)">October 2026</b><div class="sp"></div><span class="ib l">${I('back','s')}</span><span class="ib l">${I('fwd','s')}</span></div>
+   ${month()}
+   <div class="r sub" style="gap:12px;font-size:11.5px"><span class="r" style="gap:4px"><i class="d k-fly" style="position:static;width:14px;height:10px;padding:0"></i>Swappable</span><span class="r" style="gap:4px"><i class="d k-res" style="position:static;width:14px;height:10px;padding:0"></i>Standby</span><span class="r" style="gap:4px"><i class="d k-lock" style="position:static;width:14px;height:10px;padding:0"></i>Locked</span></div>
+   <div class="card r" style="padding:11px 14px;gap:10px"><span style="color:var(--p)">${I('inbox')}</span><div class="sp"><b style="font:700 14px var(--f-ui)">2 active requests</b><div class="sub">1 waiting for 421051 · 1 at crew control</div></div>${I('fwd','s')}</div>
+  </div><div class="sp"></div>
+  <div class="pad" style="padding-bottom:100px"><div class="pill">${I('plus')} New swap</div></div>${dock()}`,
+  '<b>B1 · Calendar</b> · mirrors the web home: my month with swappable/standby/locked states. Lock and privacy settings sit in the header.');
+const bPick = frame('air', `<div class="grad">${hdr('New swap','Tap my block, then theirs', `<div class="ib">${I('filter')}</div>`)}</div>
+  <div class="r pad" style="padding-top:10px;padding-bottom:8px"><span class="ib l">${I('back','s')}</span><div class="sp" style="text-align:center"><b style="font:700 14px var(--f-ui)">07 – 13 Oct</b></div><span class="ib l">${I('fwd','s')}</span></div>
+  <div style="background:var(--card);border-top:1px solid var(--hl)">${bRails(0, 7, 50, 70, 6, 46)}</div>
+  <div class="sp"></div><div style="padding-bottom:36px">${tray()}</div>`,
+  '<b>B2 · Twin rail</b> · 7 days × 50 pt. "Me" is pinned and tinted; 447841\'s rail carries a fleet warning before anything is selected. Pinch zooms to 3 or 14 days.');
+const cmpTbl = (cols) => `<table class="tbl"><tr><th></th><th>ME · GIVE</th><th>421051 · TAKE</th></tr>
+  ${[['08 Oct','PR124 MNL–SEA<br>20:50L report','—'],['09 Oct','layover SEA','1HB 00:00–11:59'],['10 Oct','PR125 SEA–MNL<br>23:10L','4FB 21:30–23:45'],['11 Oct','release 04:30L','—']].map(r=>`<tr><td class="dd">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>`;
+const bReview = frame('air', `<div class="grad">${hdr('Review swap','with 421051')}</div>
+  <div class="pad grow" style="padding-top:12px;display:flex;flex-direction:column;gap:10px">
+   <div class="seg l"><span class="on">By date</span><span>Duty details</span></div>
+   <div class="card" style="padding:6px 10px">${cmpTbl()}</div>
+   <div class="card" style="padding:4px 12px"><div class="kv"><span>My credit after swap</span><b>26:20 → 00:00</b></div><div class="kv"><span>Rest before PR684/PR685 (20 Oct)</span><b>unchanged</b></div><div class="kv"><span>Days off this month</span><b>8 → 8</b></div></div>
+   ${delta()}
+   <div style="height:60px;border-radius:12px;border:1px solid var(--hl);padding:9px 12px;background:var(--card)" class="sub">Add a note for 421051 (optional)</div>
+  </div>
+  <div class="r pad" style="gap:10px;padding-bottom:36px;padding-top:8px"><div class="pill o" style="width:110px">Back</div><div class="pill sp">${I('shield')} Check &amp; send</div></div>`,
+  '<b>B3 · Review</b> · the web\'s date-aligned Pairing/Duty tables merged into one 3-column table; "Duty details" tab holds the full leg list. Credit/rest lines are illustrative.');
+document.getElementById('bAir').innerHTML = bHub + bPick + bReview;
+
+const bDuo = [];
+bDuo.push(frame('oP', `<div class="grad">${hdr('New swap','07 – 13 Oct', `<div class="ib">${I('filter')}</div>`)}</div>
+  <div style="background:var(--card)">${bRails(0, 7, 56, 74, 4, 42)}</div><div class="sp"></div>
+  <div style="padding-bottom:16px"><div class="card" style="margin:0 12px;padding:10px 12px;border-radius:18px;box-shadow:0 6px 18px rgba(0,0,0,.12);display:flex;align-items:center;gap:10px"><div class="sp"><b style="font:700 13px var(--f-ui)">Give 1 · Take 2 · 421051</b><div class="sub mono">BLH −25:20 · CRD −26:20</div></div><div class="pill sm">Review</div></div></div>`,
+  '<b>Duo outer · portrait</b> (466×678) · 4 rails fit; the tray shrinks to one line. Scroll for more crew.'));
+bDuo.push(frame('oL', `<div class="r" style="padding:12px 16px 6px;gap:10px"><div class="back l">${I('back')}</div><b style="font:800 17px var(--f-ui)">New swap</b><span class="sub">07 – 16 Oct</span><div class="sp"></div><span class="ib l">${I('filter','s')}</span></div>
+  <div style="background:var(--card)">${bRails(0, 10, 59, 74, 4, 36)}</div><div class="sp"></div>
+  <div class="r" style="padding:6px 16px 12px;gap:10px"><span class="badge">Give PR124/PR125</span>${I('swap','s')}<span class="badge">Take 1HB, 4FB · 421051</span><div class="sp"></div><span class="sub mono">BLH −25:20</span><div class="pill sm">Review</div></div>`,
+  '<b>Duo outer · landscape</b> (678×466) · 10 days in view; the tray becomes a single row.'));
+bDuo.push(frame('iL', `<div class="r" style="height:100%;gap:0;align-items:stretch">
+  <div class="pane" style="width:475px;padding-top:20px;background:var(--card)"><div class="r" style="padding:0 16px 10px;gap:10px"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 20px var(--f-ui)">New swap</b><div class="sub">07 – 13 Oct · pinch for 14 days</div></div><span class="ib l">${I('filter','s')}</span></div>${bRails(0, 7, 56, 74, 6, 50)}</div>
+  <div class="pane" style="width:476px;padding:20px 26px 18px;gap:10px"><div class="r"><b style="font:800 20px var(--f-ui)">Review with 421051</b><div class="sp"></div><span class="badge">CP · A350</span></div><div class="card" style="padding:6px 10px">${cmpTbl()}</div>${delta()}<div style="height:52px;border-radius:12px;border:1px solid var(--hl);padding:9px 12px;background:var(--card)" class="sub">Add a note for 421051 (optional)</div><div class="sp"></div><div class="pill">${I('shield')} Check legality &amp; send</div></div></div>`,
+  '<b>Duo inner · landscape</b> (951×669) · all 7 rails left, live review right. Closest to the web desk tool.'));
+bDuo.push(frame('iP', `<div class="pane" style="height:475px;padding-top:20px;background:var(--card)"><div class="r" style="padding:0 18px 10px;gap:10px"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 20px var(--f-ui)">New swap</b><div class="sub">07 – 16 Oct</div></div><span class="ib l">${I('filter','s')}</span></div>${bRails(0, 10, 59, 74, 6, 42)}</div>
+  <div class="pane" style="height:476px;padding:16px 22px 18px;gap:9px"><div class="r"><b style="font:800 18px var(--f-ui)">Review with 421051</b><div class="sp"></div><span class="badge">CP · A350</span></div><div class="card" style="padding:6px 10px">${cmpTbl()}</div>${delta()}<div class="sp"></div><div class="pill">${I('shield')} Check legality &amp; send</div></div>`,
+  '<b>Duo inner · portrait</b> (669×951) · 10-day rails on top, review below the hinge.'));
+document.getElementById('bDuo').innerHTML = bDuo.join('');
+
+// ═════════════ CONCEPT C · TRADE TICKET ═════════════
+const steps = (cur) => `<div class="stepper">${['Give','Want','Match','Send'].map((s,i)=>`<span class="${i<cur?'dn':i===cur?'cur':''}"><i>${i<cur?'✓':i+1}</i>${s}</span>${i<3?'<b></b>':''}`).join('')}</div>`;
+const match = (rank, c, ds, reasons, bad) => `<div class="card" style="padding:11px 13px;display:flex;flex-direction:column;gap:6px;${rank===1?'border-color:var(--p);box-shadow:0 0 0 1.5px var(--p)':''}">
+  <div class="r"><span class="badge ${bad?'w':''}">${bad?'Likely to fail':'#'+rank+' match'}</span><b style="font:800 14px var(--f-ui)" class="mono">${c}</b><div class="sp"></div><span style="color:var(--p)">${I(rank===1?'check':'fwd','s')}</span></div>
+  <div class="r" style="gap:6px;flex-wrap:wrap">${ds.map(d=>`<span class="d ${d.kind==='res'?'k-res':'k-fly'}" style="position:static;height:24px">${d.code} · ${span(d)}</span>`).join('')}</div>
+  <div class="sub" style="font-size:12px;color:${bad?'var(--dan)':'var(--soft)'}">${reasons}</div></div>`;
+const matches = (n) => [
+  match(1,'421051',TAKE,'Covers your 08–11 Oct · standby only · CP · A350'),
+  match(2,'450673',[crew('450673').duties[0]],'Same trip type (DOH) one day earlier · overlaps your EXAM 07 Oct'),
+  match(3,'402452',[crew('402452').duties[0]],'Partial: 11 Oct only · leaves 08–10 uncovered'),
+  match(0,'447841',[BAD],'A333 crew · your trip is A350 · rule 8004036 Basic Competency',true),
+].slice(0,n).join('');
+const ticket = (h) => `<div class="card" style="border-radius:18px;overflow:hidden;display:flex;flex-direction:column">
+  <div class="grad" style="padding:12px 16px;display:flex;align-items:center;gap:8px"><b style="font:800 15px var(--f-ui);letter-spacing:1px">SWAP TICKET</b><div class="sp"></div><span style="font:600 12px var(--f-ui);opacity:.85">392923 ⇄ 421051</span></div>
+  <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px"><span class="ov">You give</span>
+   <div class="r" style="align-items:flex-end"><div><div style="font:800 26px var(--f-ui)" class="mono">MNL</div><div class="sub mono">08 Oct 20:50L</div></div><div class="sp" style="text-align:center;color:var(--p)">${I('plane')}<div class="cap" style="color:var(--mu)">PR124/PR125 · SEA 25:35</div></div><div style="text-align:right"><div style="font:800 26px var(--f-ui)" class="mono">MNL</div><div class="sub mono">11 Oct 04:30L</div></div></div></div>
+  <div class="perf"></div>
+  <div style="padding:12px 16px;display:flex;flex-direction:column;gap:6px"><span class="ov">You take from 421051</span>
+   ${TAKE.map(d=>`<div class="r"><span class="d k-res" style="position:static;height:24px">${d.code}</span><span class="sub mono">${span(d)} · ${hm(d.s)}–${hm(d.e)}</span><div class="sp"></div><span class="badge g">Home standby</span></div>`).join('')}</div>
+  <div class="perf"></div>
+  <div style="padding:10px 16px 14px">${delta()}</div></div>`;
+const cHub = frame('air', `<div class="grad">${hdr('Duty Swap','392923 · CP · MNL', `<div class="ib">${I('inbox')}</div>`, false)}</div>
+  <div class="pad grow" style="padding-top:14px;display:flex;flex-direction:column;gap:12px">
+   <div class="ov">Ready to swap</div>
+   <div class="card" style="padding:4px 14px">
+    <div class="r" style="padding:10px 0;gap:12px;border-bottom:1px solid var(--hl)"><div class="ck on">${I('check')}</div><div class="sp"><b style="font:700 14px var(--f-ui)">5 duties unlocked</b><div class="sub">2 locked by crew control</div></div>${I('fwd','s')}</div>
+    <div class="r" style="padding:10px 0;gap:12px"><div class="ck"></div><div class="sp"><b style="font:700 14px var(--f-ui)">Visible to friends</b><div class="sub">Hidden. Needed only for Handshake swaps.</div></div>${I('fwd','s')}</div></div>
+   <div class="ov">Your tickets</div>
+   <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:6px"><div class="r"><span class="badge">Waiting for 421051</span><div class="sp"></div><span class="sub mono">07 Oct</span></div><div class="r" style="gap:8px"><b style="font:700 14px var(--f-ui)">PR124/PR125</b>${I('swap','s')}<b style="font:700 14px var(--f-ui)">1HB · 4FB</b></div></div>
+   <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:6px"><div class="r"><span class="badge g">Draft</span><div class="sp"></div><span class="sub mono">06 Oct</span></div><div class="r" style="gap:8px"><b style="font:700 14px var(--f-ui)">PR402/PR403 25 Oct</b>${I('swap','s')}<b style="font:700 14px var(--f-ui)" class="sub">choose…</b></div></div>
+  </div>
+  <div class="pad" style="padding-bottom:100px"><div class="pill">${I('plus')} New swap ticket</div></div>${dock()}`,
+  '<b>C1 · Tickets</b> · a readiness checklist replaces the separate Friend List / My Duty pages; active and draft tickets below.');
+const cGive = frame('air', `<div class="grad">${hdr('What will you give?','Tap unlocked duties')}<div class="pad" style="padding-bottom:12px">${steps(0)}</div></div>
+  <div class="pad grow" style="padding-top:12px;display:flex;flex-direction:column;gap:10px">${month({sel:new Set([GIVE]), ch:58})}
+   <div class="card item"><div class="ck on">${I('check')}</div><div class="sp"><b style="font:800 15px var(--f-ui)">PR124/PR125</b><div class="sub mono">08–11 Oct · SEA · BLH 25:20 · CRD 26:20</div></div><span class="badge g">A350</span></div></div>
+  <div class="pad" style="padding-bottom:36px"><div class="pill">Next: what you want</div></div>`,
+  '<b>C2 · Give</b> · step 1 uses my month; locked duties cannot be tapped. Step 2 "Want" is the shared filter sheet.');
+const cMatch = frame('air', `<div class="grad">${hdr('Matches','For PR124/PR125 · all crew')}<div class="pad" style="padding-bottom:12px">${steps(2)}</div></div>
+  <div class="pad" style="padding-top:12px"><div class="chips"><span class="chip f">Overlaps 08–11 Oct</span><span class="chip">CP</span><span class="chip">A350</span><span class="chip g">${I('filter','s')} Edit</span></div></div>
+  <div class="pad grow" style="padding-top:10px;display:flex;flex-direction:column;gap:8px">${matches(4)}</div>`,
+  '<b>C3 · Match</b> · ranked crew+duty combos with a plain-language reason. 447841 is shown as "Likely to fail" with the real rule, instead of failing after submit.');
+const cTicket = frame('air', `<div class="grad">${hdr('Your swap ticket','Check, then send')}<div class="pad" style="padding-bottom:12px">${steps(3)}</div></div>
+  <div class="pad grow" style="padding-top:14px;display:flex;flex-direction:column;gap:10px">${ticket()}
+   <div style="height:58px;border-radius:12px;border:1px solid var(--hl);padding:9px 12px;background:var(--card)" class="sub">Family event on the 9th, happy to take your standby.</div></div>
+  <div class="pad" style="padding-bottom:36px"><div class="pill">${I('shield')} Check legality &amp; send</div></div>`,
+  '<b>C4 · Ticket</b> · boarding-pass layout: give on top, take below the perforation, KPI stub at the bottom. The same ticket is what crew B opens.');
+document.getElementById('cAir').innerHTML = cHub + cGive + cMatch + cTicket;
+
+const cDuo = [];
+cDuo.push(frame('oP', `<div class="grad">${hdr('Matches','PR124/PR125')}<div class="pad" style="padding-bottom:10px">${steps(2)}</div></div>
+  <div class="pad grow" style="padding-top:10px;display:flex;flex-direction:column;gap:8px">${matches(3)}</div>`,
+  '<b>Duo outer · portrait</b> (466×678) · same steps as Air; the list shows three matches above the fold.'));
+cDuo.push(frame('oL', `<div class="r" style="height:100%;gap:0;align-items:stretch">
+  <div class="pane" style="width:330px;padding:12px 12px 0 16px;gap:8px;border-right:1px solid var(--hl)"><div class="r"><div class="back l">${I('back')}</div><b style="font:800 17px var(--f-ui)">Matches</b></div>${steps(2)}<div class="grow" style="display:flex;flex-direction:column;gap:8px">${matches(3)}</div></div>
+  <div class="pane sp" style="padding:12px 16px 10px 14px;gap:8px;overflow:hidden"><div style="transform:scale(.8);transform-origin:0 0;width:125%">${ticket()}</div></div></div>`,
+  '<b>Duo outer · landscape</b> (678×466) · matches | ticket preview; tapping a match updates the ticket in place.'));
+cDuo.push(frame('iL', `<div class="r" style="height:100%;gap:0;align-items:stretch">
+  <div class="pane" style="width:475px;padding:22px 26px 0 28px;gap:10px"><div class="r"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 22px var(--f-ui)">New swap</b><div class="sub">Give PR124/PR125 · all crew</div></div><span class="ib l">${I('filter','s')}</span></div>${steps(2)}
+   <div class="chips"><span class="chip f">Overlaps 08–11 Oct</span><span class="chip">CP</span><span class="chip">A350</span></div>
+   <div class="grow" style="display:flex;flex-direction:column;gap:8px">${matches(4)}</div></div>
+  <div class="pane" style="width:476px;padding:22px 28px 18px 26px;gap:10px">${ticket()}<div style="height:48px;border-radius:12px;border:1px solid var(--hl);padding:9px 12px;background:var(--card)" class="sub">Add a note for 421051 (optional)</div><div class="sp"></div><div class="pill">${I('shield')} Check legality &amp; send</div></div></div>`,
+  '<b>Duo inner · landscape</b> (951×669) · steps and matches left of the hinge, the live ticket right. Send is always visible.'));
+cDuo.push(frame('iP', `<div class="pane" style="height:475px;padding:22px 24px 10px;gap:10px"><div class="r"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 22px var(--f-ui)">New swap</b><div class="sub">Give PR124/PR125</div></div></div>${steps(2)}
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${matches(4)}</div></div>
+  <div class="pane" style="height:476px;padding:18px 24px 18px;gap:10px;flex-direction:row;align-items:flex-start"><div style="flex:1;min-width:0">${ticket()}</div><div style="width:170px;display:flex;flex-direction:column;gap:10px;height:100%"><div style="height:120px;border-radius:12px;border:1px solid var(--hl);padding:9px 12px;background:var(--card)" class="sub">Add a note for 421051</div><div class="sp"></div><div class="pill">${I('send')} Check &amp; send</div></div></div>`,
+  '<b>Duo inner · portrait</b> (669×951) · 2×2 match grid on top; ticket plus note and send below the hinge.'));
+document.getElementById('cDuo').innerHTML = cDuo.join('');
+
+// ═════════════ CONCEPT D · CREW MATRIX (Ryan's sketch) ═════════════
+const DCOLS = ['421051','450673','402452','447841','423003','435623'].map(crew);
+const BAND = [Math.floor(GIVE.s), Math.floor(GIVE.e)];            // rows 08–11 Oct
+function vblock(d, x0, days, rh, left, w, top0, opts = {}) {
+  const a = d.s - x0, b = Math.min(days, d.e - x0);
+  if (b <= 0 || a >= days) return '';
+  const top = top0 + Math.max(0, a) * rh + 2, h = Math.max((b - Math.max(0, a)) * rh - 4, 16);
+  let cls = 'k-' + d.kind; if (sel.has(d)) cls = 'k-sel'; if (opts.warn && d === BAD) cls = 'k-want';
+  return `<div class="d ${cls}" style="left:${left + 4}px;width:${w - 8}px;top:${top}px;height:${h}px;align-items:flex-start;padding-top:5px;white-space:normal;line-height:1.15;font-size:${opts.fs || 10.5}px;${opts.warn && d === BAD ? 'border-color:var(--dan);color:var(--dan)' : ''}">${d.kind === 'lock' ? I('lock','s') : ''}${h > 14 ? d.code.replace('/', '/&#8203;') : ''}</div>`;
+}
+function matrix(o) {
+  const { x0 = 0, days, rh, mineW, dateW, colW, cols, vw, hdrH = 56, warn = false, focus = '421051', tags = {}, addSlot = false } = o;
+  const top0 = hdrH, H = hdrH + days * rh, fx = mineW + dateW;
+  let html = '';
+  for (let i = 0; i < days; i++) {                             // row backgrounds + date labels
+    const dd = day(x0 + i), inBand = x0 + i >= BAND[0] && x0 + i <= BAND[1], wk = dd.w === 'SAT' || dd.w === 'SUN';
+    html += `<div style="position:absolute;left:0;width:${vw}px;top:${top0 + i*rh}px;height:${rh}px;border-top:1px solid var(--hl);background:${inBand ? 'var(--t1)' : wk ? '#fafafc' : 'var(--card)'}"></div>`;
+    html += `<div style="position:absolute;left:${mineW}px;width:${dateW}px;top:${top0 + i*rh}px;height:${rh}px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05"><b class="mono" style="font:800 ${rh > 30 ? 14 : 12.5}px var(--f-ui)">${dd.n}</b>${rh > 26 ? `<span style="font:700 8.5px var(--f-ui);letter-spacing:.5px;color:var(--mu)">${dd.w}</span>` : ''}</div>`;
+  }
+  cols.forEach((c, j) => { const l = fx + j * colW; html += `<div style="position:absolute;left:${l}px;top:0;height:${H}px;border-left:1px solid var(--hl)"></div>`; html += c.duties.map(d => vblock(d, x0, days, rh, l, colW, top0, { warn })).join(''); });
+  html += ME.duties.map(d => vblock(d, x0, days, rh, 0, mineW, top0)).join('');
+  // frozen divider + headers
+  html += `<div style="position:absolute;left:${fx}px;top:0;height:${H}px;width:6px;background:linear-gradient(90deg,rgba(26,26,46,.12),transparent)"></div>`;
+  html += `<div style="position:absolute;left:0;top:0;width:${vw}px;height:${hdrH}px;background:var(--card);border-bottom:1.5px solid var(--hl)"></div>`;
+  html += `<div style="position:absolute;left:8px;top:0;width:${mineW-8}px;height:${hdrH}px;display:flex;flex-direction:column;justify-content:center;line-height:1.15"><b style="font:800 13px var(--f-ui)">Mine</b><span style="font:600 9.5px var(--f-ui);color:var(--mu)">CP · A350</span></div>`;
+  html += `<div style="position:absolute;left:${mineW}px;top:0;width:${dateW}px;height:${hdrH}px;display:flex;align-items:center;justify-content:center"><span class="ov" style="letter-spacing:.6px;font-size:10px">Date</span></div>`;
+  cols.forEach((c, j) => { const l = fx + j * colW, bad = !!c.fleet, f = c.id === focus;
+    html += `<div style="position:absolute;left:${l + 1}px;top:0;width:${colW - 1}px;height:${hdrH}px;display:flex;flex-direction:column;justify-content:center;padding:0 8px;line-height:1.2;${f ? 'box-shadow:inset 0 -3px 0 var(--p)' : ''}"><b class="mono" style="font:800 13px var(--f-ui);color:${f ? 'var(--p)' : 'var(--ink)'}">${c.id}${tags[c.id] ? ` <span class="badge" style="font-size:9px;padding:1px 5px">${tags[c.id]}</span>` : ''}</b><span style="font:600 9.5px var(--f-ui);color:${bad ? 'var(--dan)' : 'var(--mu)'}">${bad ? 'A333 · fleet differs' : 'CP · A350'}</span></div>`; });
+  if (addSlot) { const l = fx + cols.length * colW; html += `<div style="position:absolute;left:${l + 6}px;top:6px;width:${colW - 12}px;height:${H - 12}px;border:1.5px dashed var(--tb);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--a);font:700 11px var(--f-ui);text-align:center;padding:6px;background:rgba(255,255,255,.6)">${I('bot')}Ask R'Bot to add crew</div>`; }
+  return `<div style="position:relative;width:${vw}px;height:${H}px;overflow:hidden">${html}</div>`;
+}
+const pager = (a, b, n = 6) => `<div class="r" style="gap:6px"><span class="ib l" style="width:28px;height:28px">${I('back','s')}</span><span class="sub mono" style="font-weight:700">${a}–${b} of ${n}</span><span class="ib l" style="width:28px;height:28px">${I('fwd','s')}</span></div>`;
+const dTray = (oneLine) => oneLine
+  ? `<div class="r" style="padding:8px 14px;gap:8px;background:var(--card);border-top:1px solid var(--hl)"><span class="badge">Give PR124/PR125</span><span style="color:var(--p)">${I('swap','s')}</span><span class="badge">Take 1HB, 4FB · 421051</span><div class="sp"></div><span class="sub mono">BLH −25:20</span><div class="pill sm">Review</div></div>`
+  : `<div class="card" style="margin:0 12px;padding:10px 12px;border-radius:18px;box-shadow:0 6px 18px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:8px"><div class="r" style="gap:8px"><span class="badge">Give 1</span><b style="font:700 13px var(--f-ui)">PR124/PR125</b><span style="color:var(--p)">${I('swap','s')}</span><span class="badge">Take 2</span><b style="font:700 13px var(--f-ui)">1HB, 4FB</b><div class="sp"></div><span class="sub">421051</span></div>${delta()}<div class="pill">Review swap</div></div>`;
+const dTool = (a, b, extra = '') => `<div class="r" style="padding:8px 12px;gap:8px"><span class="chip">${I('cal','s')} 07 Oct – 02 Nov</span><span class="chip g">${I('filter','s')} Filters</span>${extra}<div class="sp"></div>${pager(a, b)}</div>`;
+
+const dAir = [];
+dAir.push(frame('air', `<div class="grad">${hdr('New swap','Tap my duty, then theirs', `<div class="ib">${I('inbox')}</div>`)}</div>
+  ${dTool(1,3)}${matrix({ days:14, rh:33, mineW:80, dateW:46, colW:92, cols:DCOLS, vw:420 })}
+  <div class="sp"></div><div style="padding:10px 0 34px">${dTray()}</div>`,
+  '<b>D1 · Matrix, portrait</b> · exactly the sketch: Mine | Date frozen, 3 crew columns, the 4th peeks at the edge to show it scrolls. PR124/PR125 (give) and 421051\'s 1HB + 4FB (take) are selected; rows 08–11 are tinted across all crews.'));
+dAir.push(frame('air', `<div class="grad">${hdr('New swap','Scrolled to crews 4–6', `<div class="ib">${I('inbox')}</div>`)}</div>
+  ${dTool(4,6)}${matrix({ days:14, rh:33, mineW:80, dateW:46, colW:92, cols:DCOLS.slice(3), vw:420, warn:true, focus:'447841' })}
+  <div class="card" style="position:absolute;left:12px;right:12px;bottom:34px;padding:12px 14px;border-radius:18px;box-shadow:0 6px 18px rgba(0,0,0,.15);display:flex;gap:10px;align-items:flex-start;border-color:var(--dan)"><span style="color:var(--dan)">${I('warn')}</span><div class="sp"><b style="font:700 14px var(--f-ui)">447841 is rated A333</b><div class="sub">Your PR124/PR125 is A350. This swap would fail rule 8004036 Basic Competency.</div></div><div class="pill o sm">OK</div></div>`,
+  '<b>D2 · Scrolled right</b> · swipe the crew area; Mine and Date never move. Tapping 447841\'s PR684/PR685 warns before anything is sent (the real failure from the web test).'));
+dAir.push(frame('airL', `<div class="r" style="padding:10px 30px 6px 62px;gap:10px"><div class="back l">${I('back')}</div><b style="font:800 17px var(--f-ui)">New swap</b><span class="sub">07 – 17 Oct · all 6 crews</span><div class="sp"></div><span class="chip g">${I('filter','s')} Filters</span></div>
+  <div style="padding-left:62px">${matrix({ days:11, rh:24.5, mineW:84, dateW:44, colW:115, cols:DCOLS, vw:818, hdrH:46 })}</div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:0 30px 4px 48px">${dTray(true)}</div>`,
+  '<b>Air · landscape</b> (912×420) · rotating shows all 6 crews with no sideways scroll; rows get shorter and scroll vertically. The left inset clears the Dynamic Island.', { noSb:true }));
+document.getElementById('dAir').innerHTML = dAir.join('');
+
+const dDuo = [];
+dDuo.push(frame('oP', `<div class="grad">${hdr('New swap','Tap my duty, then theirs')}</div>
+  ${dTool(1,3)}${matrix({ days:12, rh:30, mineW:80, dateW:46, colW:104, cols:DCOLS, vw:466, hdrH:52 })}
+  <div class="sp"></div><div style="padding-bottom:16px"><div class="card" style="margin:0 12px;padding:10px 12px;border-radius:18px;box-shadow:0 6px 18px rgba(0,0,0,.12);display:flex;align-items:center;gap:10px"><div class="sp"><b style="font:700 13px var(--f-ui)">Give 1 · Take 2 · 421051</b><div class="sub mono">BLH −25:20 · CRD −26:20</div></div><div class="pill sm">Review</div></div></div>`,
+  '<b>Duo outer · portrait</b> (466×678) · 3 crews at 104 pt with a peek; one-line tray because the screen is short.'));
+dDuo.push(frame('oL', `<div class="r" style="padding:10px 16px 6px;gap:10px"><div class="back l">${I('back')}</div><b style="font:800 17px var(--f-ui)">New swap</b><span class="sub">07 – 17 Oct</span><div class="sp"></div>${pager(1,5)}</div>
+  ${matrix({ days:11, rh:27, mineW:78, dateW:44, colW:111, cols:DCOLS, vw:678, hdrH:48 })}
+  <div style="position:absolute;left:0;right:0;bottom:0">${dTray(true)}</div>`,
+  '<b>Duo outer · landscape</b> (678×466) · 5 crews visible; swipe for the 6th.'));
+const dSummary = `<div class="pane" style="position:absolute;right:0;top:0;bottom:0;width:141px;padding:16px 12px;gap:10px;background:var(--bgA);border-left:1px solid var(--hl)">
+  <span class="ov">You give</span><div class="d k-sel" style="position:static;height:auto;padding:6px 8px;white-space:normal">PR124/PR125<br>08–11 Oct</div>
+  <div style="color:var(--p);align-self:center">${I('swap')}</div>
+  <span class="ov">You take · 421051</span><div class="d k-sel" style="position:static;height:auto;padding:6px 8px">1HB · 09 Oct</div><div class="d k-sel" style="position:static;height:auto;padding:6px 8px">4FB · 10 Oct</div>
+  <div class="card" style="padding:6px 10px">${[['FDP','−29:05'],['BLH','−25:20'],['CREDIT','−26:20'],['DO','0']].map(([k,v])=>`<div class="kv" style="font-size:12px"><span>${k}</span><b>${v}</b></div>`).join('')}</div>
+  <span class="cap" style="color:var(--a)">ILLUSTRATIVE</span><div class="sp"></div><div class="pill sm">${I('shield','s')} Check &amp; send</div></div>`;
+dDuo.push(frame('iL', `<div class="r" style="height:60px;gap:0"><div class="r" style="width:475px;padding:0 20px;gap:10px"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 20px var(--f-ui)">New swap</b><div class="sub">07 – 20 Oct · all 6 crews</div></div><span class="chip g">${I('filter','s')} Filters</span></div><div class="r" style="width:335px;padding:0 16px"><span class="sub">Crews 4–6</span><div class="sp"></div></div></div>
+  ${matrix({ days:14, rh:38, mineW:92, dateW:48, colW:(810-140)/6, cols:DCOLS, vw:810, hdrH:58 })}${dSummary}`,
+  '<b>Duo inner · landscape</b> (951×669) · Mine + Date + 3 crews left of the hinge, 3 crews + the swap summary right of it. Column widths are set so a column border lands on the hinge.', { noSb:true }));
+dDuo.push(frame('iP', `<div class="pane" style="height:475px"><div class="r" style="padding:18px 18px 8px;gap:10px"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 20px var(--f-ui)">New swap</b><div class="sub">07 – 17 Oct</div></div>${pager(1,4)}</div>
+   ${matrix({ days:11, rh:30.5, mineW:88, dateW:46, colW:(669-134)/4, cols:DCOLS, vw:669, hdrH:52 })}</div>
+  <div class="pane" style="height:476px;padding:16px 22px 18px;gap:9px"><div class="r"><b style="font:800 18px var(--f-ui)">Review with 421051</b><div class="sp"></div><span class="badge">CP · A350</span></div><div class="card" style="padding:6px 10px">${cmpTbl()}</div>${delta()}<div class="sp"></div><div class="pill">${I('shield')} Check legality &amp; send</div></div>`,
+  '<b>Duo inner · portrait</b> (669×951) · 4 crews in the top half; the review for the selected crew sits below the hinge and updates as cells are tapped.', { noSb:true }));
+document.getElementById('dDuo').innerHTML = dDuo.join('');
+
+
+// ═════════════ SEARCH PAIRING (all 4 concepts) + R'BOT (concept D) ═════════════
+// Every field of the web "Search Pairing" dialog. Example = nail down crews for my PR124/PR125 (08–11 Oct):
+// standby duties, A350, CP, hide crew without duties → 421051 (1HB, 4FB) and 402452 (3FB 11 Oct).
+const SF = [
+  { sec:'Pairing Info', items:[
+    { l:'Start', req:1, v:'08 Oct 2026', ic:'cal' }, { l:'End', req:1, v:'11 Oct 2026', ic:'cal' },
+    { l:'Duration', r:['1','4'], u:'days' }, { l:'CRD', r:['',''], ph:['hh:mm','hh:mm'] },
+    { l:'BLH', r:['',''], ph:['hh:mm','hh:mm'] }, { l:'Report Time', r:['',''], ph:['Start','End'], ic:'clock' },
+    { l:'Flight End', r:['',''], ph:['Start','End'], ic:'clock' }, { l:'Type', v:'Standby (HB/FB)' } ] },
+  { sec:'Layover', items:[ { l:'Port', ph:'Any port', hint:['SEA','DOH','HND','SIN','LAX'] }, { l:'Layover Hours', r:['',''], ph:['Min','Max'] } ] },
+  { sec:'Flight', items:[ { l:'Flt No.', ph:'Any flight' }, { l:'ARR', ph:'Any station' }, { l:'Fleet', v:'A350' } ] },
+  { sec:'Crew', items:[ { l:'Crew ID', ph:'Any crew' }, { l:'Rank', v:'CP' } ], hide:true },
+];
+const secOf = n => SF.find(s => s.sec === n);
+const inp = (v, ph, ic, on) => `<div class="inp ${v ? (on ? 'on' : '') : 'ph'}"><span>${v || ph}</span>${ic ? I(ic,'s') : ''}</div>`;
+const lab = f => `<span class="cap" style="color:var(--mu)">${f.req ? '<span style="color:var(--p)">* </span>' : ''}${f.l.toUpperCase()}${f.u ? ' (' + f.u.toUpperCase() + ')' : ''}</span>`;
+// box style (A): label above, boxed inputs
+const boxField = f => `<div style="display:flex;flex-direction:column;gap:4px;min-width:0;${f.wide ? 'grid-column:1/-1' : ''}">${lab(f)}${f.r ? `<div class="r" style="gap:6px">${inp(f.r[0], (f.ph||[])[0] || 'Min', f.ic, 1)}<span class="sub">–</span>${inp(f.r[1], (f.ph||[])[1] || 'Max', f.ic, 1)}</div>` : inp(f.v, f.ph, f.ic, 1)}${f.hint ? `<div class="r" style="gap:5px;flex-wrap:wrap">${f.hint.map(h=>`<span class="chip g" style="padding:3px 8px;font-size:11px">${h}</span>`).join('')}</div>` : ''}</div>`;
+const hideRow = () => `<div class="r sub" style="gap:8px;padding-top:2px"><div class="ck on">${I('check')}</div>Hide crew without duties</div>`;
+const boxSec = (s, cols = 2) => `<div class="card" style="padding:11px 12px;display:flex;flex-direction:column;gap:9px"><b style="font:800 14px var(--f-ui)">${s.sec}</b><div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:9px 10px">${s.items.map(boxField).join('')}</div>${s.hide ? hideRow() : ''}</div>`;
+// list style (B): grouped settings rows
+const lval = f => f.r ? (f.r[0] ? `${f.r[0]} – ${f.r[1]}${f.u ? ' ' + f.u : ''}` : '') : (f.v || '');
+const listSec = s => `<div style="display:flex;flex-direction:column;gap:5px"><span class="ov" style="padding-left:6px">${s.sec}</span><div class="card" style="padding:0 14px">${s.items.map((f,i)=>`<div class="r" style="height:42px;${i ? 'border-top:1px solid var(--hl)' : ''}"><span style="font:600 14px var(--f-ui)">${f.l}${f.req ? '<span style="color:var(--p)"> *</span>' : ''}</span><div class="sp"></div><span class="mono" style="font:${lval(f) ? '700' : '500'} 14px var(--f-ui);color:${lval(f) ? 'var(--p)' : 'var(--fa)'}">${lval(f) || 'Any'}</span><span style="color:var(--fa)">${I('fwd','s')}</span></div>`).join('')}${s.hide ? `<div class="r" style="height:42px;border-top:1px solid var(--hl)"><span style="font:600 14px var(--f-ui)">Hide crew without duties</span><div class="sp"></div><div class="tog"></div></div>` : ''}</div></div>`;
+// chips style (C): question cards
+const slider = (l, a, b, lo, hi) => `<div style="display:flex;flex-direction:column;gap:5px"><div class="r"><span style="font:600 13px var(--f-ui)">${l}</span><div class="sp"></div><span class="sub mono">${a}</span></div><div style="position:relative;height:6px;border-radius:3px;background:var(--hl)"><i style="position:absolute;left:${lo}%;right:${100-hi}%;top:0;bottom:0;border-radius:3px;background:var(--p)"></i><i style="position:absolute;left:calc(${lo}% - 9px);top:-6px;width:18px;height:18px;border-radius:9px;background:#fff;border:2px solid var(--p)"></i><i style="position:absolute;left:calc(${hi}% - 9px);top:-6px;width:18px;height:18px;border-radius:9px;background:#fff;border:2px solid var(--p)"></i></div>${b ? `<div class="sub" style="font-size:11px">${b}</div>` : ''}</div>`;
+const chipRow = (xs, on = []) => `<div class="r" style="gap:6px;flex-wrap:wrap">${xs.map(x=>`<span class="chip ${on.includes(x) ? 'f' : ''}">${x}</span>`).join('')}</div>`;
+const q = (t, body) => `<div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:9px"><b style="font:800 15px var(--f-ui)">${t}</b>${body}</div>`;
+const C_Q = {
+  when: q('Which dates?', `<div class="r" style="gap:8px">${inp('08 Oct 2026','', 'cal',1)}<span class="sub">–</span>${inp('11 Oct 2026','','cal',1)}</div>${chipRow(['Same as my trip','Whole roster'],['Same as my trip'])}`),
+  kind: q('What kind of duty?', `${chipRow(['Flying','Standby (HB/FB)','Ground'],['Standby (HB/FB)'])}<span class="cap" style="color:var(--mu)">DURATION</span>${chipRow(['1 day','2','3','4','5+'],['1 day','2','3','4'])}`),
+  hours: q('Hours', `${slider('CRD','Any','',0,100)}${slider('BLH','Any','',0,100)}${slider('Report time','Any time','',0,100)}${slider('Flight end','Any time','',0,100)}`),
+  lay: q('Layover', `<span class="cap" style="color:var(--mu)">PORT</span>${chipRow(['Any','SEA','DOH','HND','SIN','LAX','+ 27 more'],['Any'])}${slider('Layover hours','Any','',0,100)}`),
+  flt: q('Flight', `<div class="r" style="gap:8px">${inp('','Flt No.','search')}${inp('','ARR station','search')}</div><span class="cap" style="color:var(--mu)">FLEET</span>${chipRow(['A333','A350'],['A350'])}`),
+  who: q('Who?', `<span class="cap" style="color:var(--mu)">RANK</span>${chipRow(['CP','FO'],['CP'])}${inp('','Crew ID (optional)','search')}<div class="r"><span class="sub" style="color:var(--ink)">Hide crew without duties</span><div class="sp"></div><div class="tog"></div></div>`),
+};
+// dense style (D): inline label | inputs, matrix-like
+const dField = f => `<div class="r" style="gap:6px;min-width:0;height:34px"><span style="width:74px;font:700 11.5px var(--f-ui);color:var(--soft)">${f.req ? '<span style="color:var(--p)">*</span>' : ''}${f.l}</span>${f.r ? `${inp(f.r[0], (f.ph||[])[0] || 'Min', '', 1)}<span class="sub">–</span>${inp(f.r[1], (f.ph||[])[1] || 'Max', '', 1)}` : inp(f.v, f.ph, f.ic, 1)}</div>`;
+const dSec = (s, cols = 1) => `<div style="display:flex;flex-direction:column;gap:4px"><span class="ov" style="font-size:10px">${s.sec}</span><div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:4px 14px">${s.items.map(dField).join('')}</div>${s.hide ? hideRow() : ''}</div>`;
+
+const modeSeg = (light = true) => `<div class="seg ${light ? 'l' : ''}"><span class="on">Target · all crew</span><span>Handshake · friends</span></div>`;
+const presetBtns = (l = true) => `<div class="r" style="gap:8px"><span class="ib ${l ? 'l' : ''}" title="Saved searches">${I('list','s')}</span><span class="ib ${l ? 'l' : ''}" title="Save this search">${I('star','s')}</span></div>`;
+const sFoot = (pad = '0 16px 34px') => `<div class="r" style="gap:10px;padding:${pad};padding-top:10px;border-top:1px solid var(--hl);background:var(--card)"><div class="pill o" style="width:104px">Reset</div><div class="pill sp">${I('search')} Search · 2 crew</div></div>`;
+const sTitle = (sub = 'Nail down the target crew') => `<div class="r" style="gap:10px"><div class="sp"><b style="font:800 19px var(--f-ui)">Search pairing</b><div class="sub">${sub}</div></div>${presetBtns()}</div>`;
+const savedRow = () => `<div class="chips"><span class="chip f">${I('star','s')} Standby for my trips</span><span class="chip">SEA layovers</span><span class="chip">Weekends off</span></div>`;
+const col = (inner, st = '') => `<div class="pane" style="gap:10px;${st}">${inner}</div>`;
+
+// A · bottom sheet over the board, cards with boxed fields
+const A_search = {
+  air: frame('air', `<div class="grad" style="height:160px;opacity:.55">${hdr('Duty Swap','','',false)}</div><div class="scrim"></div>
+    <div class="sheet" style="top:62px"><div class="grab"></div><div class="pad grow" style="display:flex;flex-direction:column;gap:9px;padding-top:4px">${sTitle()}${modeSeg()}${savedRow()}${boxSec(secOf('Pairing Info'))}${boxSec(secOf('Layover'))}${boxSec(secOf('Flight'))}${boxSec(secOf('Crew'))}</div>${sFoot()}</div>`,
+    '<b>A0 · Search pairing</b> (Air) · the "Filters" chip opens a full-height sheet with every web field. Mode and the required dates come first; saved searches = the web folder/star buttons. Scrolls to Flight and Crew.'),
+  oP: frame('oP', `<div class="scrim"></div><div class="sheet" style="top:40px"><div class="grab"></div><div class="pad grow" style="display:flex;flex-direction:column;gap:9px;padding-top:4px">${sTitle()}${modeSeg()}${boxSec(secOf('Pairing Info'))}${boxSec(secOf('Layover'))}</div>${sFoot('0 16px 18px')}</div>`,
+    '<b>Duo outer · portrait</b> · same sheet; less height, so Flight and Crew are below the fold.'),
+  oL: frame('oL', `<div class="r" style="height:100%;gap:0;align-items:stretch"><div class="pane" style="width:250px;padding:14px;gap:8px;opacity:.45">${boardItems().slice(0,3).map(x=>boardCard(x)).join('')}</div>
+    <div class="pane sp" style="background:var(--card);border-left:1px solid var(--hl)"><div class="pad grow" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">${sTitle()}${modeSeg()}${boxSec(secOf('Pairing Info'),3)}${boxSec(secOf('Layover'),3)}</div>${sFoot('0 14px 12px')}</div></div>`,
+    '<b>Duo outer · landscape</b> · the sheet becomes a right-side panel; fields go 3 across.'),
+  iL: frame('iL', `<div class="r" style="height:100%;gap:0;align-items:stretch">
+    ${col(`<div class="r" style="gap:10px"><div class="back l">${I('x')}</div>${sTitle()}</div>${modeSeg()}${savedRow()}${boxSec(secOf('Pairing Info'))}`, 'width:475px;padding:20px 26px')}
+    ${col(`${boxSec(secOf('Layover'))}${boxSec(secOf('Flight'))}${boxSec(secOf('Crew'))}<div class="sp"></div><div class="r" style="gap:10px"><div class="pill o" style="width:110px">Reset</div><div class="pill sp">${I('search')} Search · 2 crew</div></div>`, 'width:476px;padding:20px 26px 18px')}</div>`,
+    '<b>Duo inner · landscape</b> · the whole form at once: mode + Pairing Info left of the hinge, Layover / Flight / Crew + actions right.'),
+  iP: frame('iP', `${col(`<div class="r" style="gap:10px"><div class="back l">${I('x')}</div>${sTitle()}</div>${modeSeg()}${boxSec(secOf('Pairing Info'),3)}`, 'height:475px;padding:20px 22px')}
+    ${col(`${boxSec(secOf('Layover'),3)}${boxSec(secOf('Flight'),3)}${boxSec(secOf('Crew'),3)}<div class="sp"></div><div class="r" style="gap:10px"><div class="pill o" style="width:110px">Reset</div><div class="pill sp">${I('search')} Search · 2 crew</div></div>`, 'height:476px;padding:16px 22px 18px')}`,
+    '<b>Duo inner · portrait</b> · mode + Pairing Info above the hinge, the other three groups below.'),
+};
+// B · full page, sticky section tabs, grouped list rows
+const bTabs = (on = 0) => `<div class="r" style="gap:6px;padding:0 16px 12px">${['Pairing','Layover','Flight','Crew'].map((x,i)=>`<span class="chip ${i===on?'f':''}" style="${i===on?'background:#fff;color:var(--p);border-color:#fff':'background:rgba(255,255,255,.14);color:#fff;border-color:transparent'}">${x}</span>`).join('')}</div>`;
+const B_search = {
+  air: frame('air', `<div class="grad">${hdr('Search pairing','Target crew for PR124/PR125', presetBtns(false).replace(/ib /g,'ib '))}<div class="pad" style="padding-bottom:10px">${modeSeg(false)}</div>${bTabs(0)}</div>
+    <div class="pad grow" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">${listSec(secOf('Pairing Info'))}${listSec(secOf('Layover'))}${listSec(secOf('Flight'))}</div>${sFoot()}`,
+    '<b>B0 · Search pairing</b> (Air) · a full page in iOS-settings style: one 42 pt row per web field, value on the right, tap to edit. Section tabs jump to Layover / Flight / Crew.'),
+  oP: frame('oP', `<div class="grad">${hdr('Search pairing','', presetBtns(false))}${bTabs(1)}</div>
+    <div class="pad grow" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">${listSec(secOf('Layover'))}${listSec(secOf('Flight'))}</div>${sFoot('0 16px 18px')}`,
+    '<b>Duo outer · portrait</b> · tabs matter most on the short screen; shown scrolled to Layover.'),
+  oL: frame('oL', `<div class="r" style="height:100%;gap:0;align-items:stretch"><div class="pane grad" style="width:190px;padding:14px 12px;gap:8px"><div class="r"><div class="back">${I('back')}</div><b style="font:800 16px var(--f-ui)">Search</b></div>${['Pairing','Layover','Flight','Crew'].map((x,i)=>`<div style="padding:9px 12px;border-radius:10px;font:700 14px var(--f-ui);${i===0?'background:#fff;color:var(--p)':'opacity:.8'}">${x}</div>`).join('')}<div class="sp"></div>${modeSeg(false).replace('Target · all crew','Target').replace('Handshake · friends','Handshake')}</div>
+    <div class="pane sp"><div class="pad grow" style="padding-top:12px;display:flex;flex-direction:column;gap:10px">${listSec(secOf('Pairing Info'))}</div>${sFoot('0 14px 12px')}</div></div>`,
+    '<b>Duo outer · landscape</b> · section tabs turn into a left rail.'),
+  iL: frame('iL', `<div class="r" style="height:100%;gap:0;align-items:stretch">
+    ${col(`<div class="r" style="gap:10px"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 20px var(--f-ui)">Search pairing</b><div class="sub">Target crew for PR124/PR125</div></div>${presetBtns()}</div>${modeSeg()}${listSec(secOf('Pairing Info'))}`, 'width:475px;padding:20px 26px')}
+    ${col(`${listSec(secOf('Layover'))}${listSec(secOf('Flight'))}${listSec(secOf('Crew'))}<div class="sp"></div><div class="r" style="gap:10px"><div class="pill o" style="width:110px">Reset</div><div class="pill sp">${I('search')} Search · 2 crew</div></div>`, 'width:476px;padding:20px 26px 18px')}</div>`,
+    '<b>Duo inner · landscape</b> · no tabs needed: Pairing Info list left, Layover / Flight / Crew right.'),
+  iP: frame('iP', `${col(`<div class="r" style="gap:10px"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 20px var(--f-ui)">Search pairing</b></div>${presetBtns()}</div>${modeSeg()}${listSec(secOf('Pairing Info'))}`, 'height:475px;padding:20px 22px')}
+    ${col(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${listSec(secOf('Layover'))}${listSec(secOf('Flight'))}</div>${listSec(secOf('Crew'))}<div class="sp"></div><div class="r" style="gap:10px"><div class="pill o" style="width:110px">Reset</div><div class="pill sp">${I('search')} Search · 2 crew</div></div>`, 'height:476px;padding:14px 22px 18px')}`,
+    '<b>Duo inner · portrait</b> · Pairing Info above the hinge; Layover and Flight side by side below.'),
+};
+// C · Step 2 "Want" as question cards with chips and sliders
+const C_search = {
+  air: frame('air', `<div class="grad">${hdr('What do you want?','In exchange for PR124/PR125')}<div class="pad" style="padding-bottom:12px">${steps(1)}</div></div>
+    <div class="pad grow" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">${modeSeg()}${C_Q.when}${C_Q.kind}${C_Q.lay}${C_Q.flt}</div>
+    <div class="pad" style="padding-bottom:34px;padding-top:10px"><div class="pill">Find matches · 2 crew</div></div>`,
+    '<b>C2b · Want</b> (Air) · the search page as plain questions with chips and range sliders. Same fields as the web: dates, type + duration, CRD/BLH/report/flight-end (under "Hours"), layover, flight, rank/crew.'),
+  oP: frame('oP', `<div class="grad">${hdr('What do you want?','')}<div class="pad" style="padding-bottom:10px">${steps(1)}</div></div>
+    <div class="pad grow" style="padding-top:10px;display:flex;flex-direction:column;gap:9px">${C_Q.when}${C_Q.kind}${C_Q.hours}</div>
+    <div class="pad" style="padding-bottom:16px;padding-top:8px"><div class="pill">Find matches · 2 crew</div></div>`,
+    '<b>Duo outer · portrait</b> · one question per card; scrolls through Hours, Layover, Flight, Who.'),
+  oL: frame('oL', `<div class="r" style="height:100%;gap:0;align-items:stretch"><div class="pane" style="width:300px;padding:14px 12px 0 16px;gap:9px"><div class="r"><div class="back l">${I('back')}</div><b style="font:800 17px var(--f-ui)">What do you want?</b></div>${steps(1)}${C_Q.when}</div>
+    <div class="pane sp" style="padding:14px 16px 12px 6px;gap:9px">${C_Q.kind}${C_Q.who}<div class="sp"></div><div class="pill sm">Find matches · 2 crew</div></div></div>`,
+    '<b>Duo outer · landscape</b> · two question columns.'),
+  iL: frame('iL', `<div class="r" style="height:100%;gap:0;align-items:stretch">
+    ${col(`<div class="r" style="gap:10px"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 20px var(--f-ui)">What do you want?</b><div class="sub">For PR124/PR125 · 08–11 Oct</div></div></div>${steps(1)}${modeSeg()}${C_Q.when}${C_Q.kind}${C_Q.hours}`, 'width:475px;padding:20px 26px')}
+    ${col(`${C_Q.lay}${C_Q.flt}${C_Q.who}<div class="sp"></div><div class="pill">Find matches · 2 crew</div>`, 'width:476px;padding:20px 26px 18px')}</div>`,
+    '<b>Duo inner · landscape</b> · all six questions visible; "Find matches" leads to C3.'),
+  iP: frame('iP', `${col(`<div class="r" style="gap:10px"><div class="back l">${I('back')}</div><b style="font:800 20px var(--f-ui)">What do you want?</b></div>${steps(1)}<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">${C_Q.when}${C_Q.kind}</div>${C_Q.hours}`, 'height:475px;padding:20px 22px')}
+    ${col(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">${C_Q.lay}${C_Q.flt}</div>${C_Q.who}<div class="sp"></div><div class="pill">Find matches · 2 crew</div>`, 'height:476px;padding:14px 22px 18px')}`,
+    '<b>Duo inner · portrait</b> · question grid above and below the hinge.'),
+};
+// D · dense panel that drops over the matrix + "ask R'Bot" bar
+const rbotBar = (txt = 'Or tell R\'Bot: "swap my 08 Oct trip for a standby"') => `<div class="r" style="gap:8px;padding:8px 10px;border-radius:14px;background:var(--t1);border:1px solid var(--tb)"><span style="color:var(--p)">${I('bot')}</span><span class="sub sp" style="color:var(--ink)">${txt}</span><span style="color:var(--p)">${I('fwd','s')}</span></div>`;
+const dPanel = (cols, extraSt = '') => `<div class="card" style="border-radius:0 0 20px 20px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 24px rgba(0,0,0,.18);${extraSt}">
+  ${rbotBar()}<div class="r">${modeSeg().replace('class="seg l"','class="seg l" style="flex:1"')}${presetBtns()}</div>
+  ${SF.map(s => dSec(s, cols)).join('')}
+  <div class="r" style="gap:10px"><div class="pill o sm" style="width:96px">Reset</div><div class="pill sm sp">${I('search','s')} Search · 2 crew</div></div></div>`;
+const D_search = {
+  air: frame('air', `<div class="grad">${hdr('New swap','Search pairing')}</div><div style="position:relative" class="grow"><div style="opacity:.35">${matrix({ days:14, rh:33, mineW:80, dateW:46, colW:92, cols:DCOLS, vw:420 })}</div><div style="position:absolute;left:0;right:0;top:0">${dPanel(1)}</div></div>`,
+    '<b>D0 · Search pairing</b> (Air) · drops down over the matrix like a table filter; one dense line per web field. The R\'Bot bar on top is the shortcut to typing the same thing in words.'),
+  oP: frame('oP', `<div class="grad">${hdr('New swap','Search pairing')}</div><div style="position:relative" class="grow"><div style="opacity:.35">${matrix({ days:12, rh:30, mineW:80, dateW:46, colW:104, cols:DCOLS, vw:466, hdrH:52 })}</div><div style="position:absolute;left:0;right:0;top:0">${dPanel(1)}</div></div>`,
+    '<b>Duo outer · portrait</b> · same panel; Crew group scrolls.'),
+  oL: frame('oL', `<div style="position:relative;height:100%"><div style="opacity:.35;padding-top:46px">${matrix({ days:11, rh:27, mineW:78, dateW:44, colW:111, cols:DCOLS, vw:678, hdrH:48 })}</div><div style="position:absolute;left:0;right:0;top:0">${dPanel(2)}</div></div>`,
+    '<b>Duo outer · landscape</b> · fields 2 across.'),
+  iL: frame('iL', `<div class="r" style="height:100%;gap:0;align-items:stretch">
+    ${col(`<div class="r" style="gap:10px"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 20px var(--f-ui)">Search pairing</b><div class="sub">Results update the matrix live</div></div>${presetBtns()}</div>${modeSeg()}${SF.map(s => dSec(s, 2)).join('')}<div class="sp"></div><div class="r" style="gap:10px"><div class="pill o sm" style="width:96px">Reset</div><div class="pill sm sp">${I('search','s')} Search · 2 crew</div></div>${rbotBar()}`, 'width:475px;padding:18px 22px 16px')}
+    <div class="pane" style="width:476px;padding-top:18px;background:var(--card)"><div class="r" style="padding:0 16px 10px"><b style="font:800 15px var(--f-ui)">Preview · 2 crew</b><div class="sp"></div><span class="sub">07 – 20 Oct</span></div>${matrix({ days:14, rh:38, mineW:86, dateW:46, colW:172, cols:[crew('421051'),crew('402452')], vw:476, hdrH:50 })}</div></div>`,
+    '<b>Duo inner · landscape</b> · form left of the hinge, live matrix preview right: every change shows which crews survive before pressing Search.'),
+  iP: frame('iP', `${col(`<div class="r" style="gap:10px"><div class="back l">${I('back')}</div><b style="font:800 20px var(--f-ui)" class="sp">Search pairing</b>${presetBtns()}</div>${modeSeg()}${SF.map(s => dSec(s, 2)).join('')}`, 'height:475px;padding:18px 22px 10px;overflow:hidden')}
+    <div class="pane" style="height:476px;background:var(--card)"><div class="r" style="padding:12px 16px 8px;gap:10px"><b style="font:800 15px var(--f-ui)">Preview · 2 crew</b><div class="sp"></div><div class="pill o sm" style="width:90px">Reset</div><div class="pill sm">${I('search','s')} Search</div></div>${matrix({ days:11, rh:32, mineW:88, dateW:46, colW:267, cols:[crew('421051'),crew('402452')], vw:669, hdrH:48 })}</div>`,
+    '<b>Duo inner · portrait</b> · form above the hinge, live preview below.'),
+};
+const putSearch = (id, S) => { const el = document.getElementById(id); if (el) el.innerHTML = [S.air, S.oP, S.oL, S.iL, S.iP].join(''); };
+putSearch('aSearch', A_search); putSearch('bSearch', B_search); putSearch('cSearch', C_search); putSearch('dSearch', D_search);
+
+// ─── R'Bot shares the screen with the matrix (concept D) ───
+const bub = (me, html, wide) => `<div style="align-self:${me ? 'flex-end' : 'flex-start'};max-width:${wide ? 360 : '86%'};padding:9px 12px;border-radius:16px;${me ? 'border-bottom-right-radius:5px;background:var(--p);color:#fff' : 'border-bottom-left-radius:5px;background:var(--card);border:1px solid var(--hl)'};font:500 13.5px/1.4 var(--f-ui)">${html}</div>`;
+const applied = (xs) => `<div class="r" style="gap:5px;flex-wrap:wrap;margin-top:6px">${xs.map(x=>`<span class="chip" style="padding:3px 8px;font-size:11px">${x} ${I('x','s')}</span>`).join('')}</div>`;
+const rbHead = (close = true) => `<div class="r" style="gap:8px"><span style="width:30px;height:30px;border-radius:15px;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center">${I('bot','s')}</span><b style="font:800 15px var(--f-ui)">R'Bot</b><span class="badge g">Filtering this table</span><div class="sp"></div>${close ? `<span class="ib l" style="width:30px;height:30px">${I('x','s')}</span>` : ''}</div>`;
+const rbInput = (ph = 'Message R\'Bot…') => `<div class="r" style="gap:8px;padding:6px 6px 6px 14px;border-radius:24px;background:var(--card);border:1px solid var(--hl)"><span class="sub sp">${ph}</span><span style="color:var(--mu)">${I('bot','s')}</span><span style="width:34px;height:34px;border-radius:17px;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center">${I('send','s')}</span></div>`;
+const T1 = [
+  bub(1, 'Swap my trip on 08 Oct for a standby. Same fleet please.'),
+  bub(0, `Your 08 Oct duty is <b>PR124/PR125</b> (08–11 Oct, A350, SEA). I searched standby duties (HB/FB) on 08–11 Oct for CP crew on A350 and found <b>2 crew</b>. They're in the table now.${applied(['08–11 Oct','Standby','CP','A350'])}`),
+];
+const T2 = [
+  bub(1, 'Also show someone with a DOH layover.'),
+  bub(0, `Added <b>450673</b>: PR684/PR685, DOH, 07–10 Oct. Heads-up: it reports 07 Oct 17:15, the day of your EXAM (10:00–11:00).${applied(['+ DOH layover'])}`),
+  bub(1, 'Pick 421051\'s 1HB and 4FB.'),
+  bub(0, `Selected. You give PR124/PR125, you take 1HB (09 Oct) + 4FB (10 Oct). BLH −25:20. Review when ready. I won't send anything for you.<div class="r" style="gap:6px;margin-top:8px"><span class="chip f">Review swap</span><span class="chip">Undo</span></div>`),
+];
+const quick = `<div class="r" style="gap:6px;overflow:hidden"><span class="chip">Only weekends</span><span class="chip">Layover SEA</span><span class="chip">Remove 402452</span></div>`;
+const tag450 = { '450673':'NEW' };
+const rbPanel = (thread, opts = {}) => `<div class="pane" style="gap:9px;padding:${opts.pad || '10px 14px 14px'};background:var(--bgA);${opts.st || ''}">${opts.grab ? '<div class="grab" style="margin:0 auto"></div>' : ''}${rbHead()}<div class="grow" style="display:flex;flex-direction:column;gap:8px;justify-content:flex-end">${thread.join('')}</div>${opts.quick ? quick : ''}${rbInput()}</div>`;
+const COLS1 = [crew('421051'), crew('402452')], COLS2 = [crew('421051'), crew('402452'), crew('450673')];
+const rAir = [];
+rAir.push(frame('air', `<div class="grad">${hdr('New swap','R\'Bot is filtering', `<div class="ib" style="background:#fff;color:var(--p)">${I('bot')}</div>`)}</div>
+  ${matrix({ days:10, rh:31, mineW:80, dateW:46, colW:98, cols:COLS1, vw:420, hdrH:50, addSlot:true })}
+  ${rbPanel(T1, { grab:true, quick:true, st:'flex:1 1 auto;border-top:1px solid var(--hl);border-radius:20px 20px 0 0;box-shadow:0 -6px 18px rgba(0,0,0,.08);padding-bottom:34px' })}`,
+  '<b>D-R1 · R\'Bot shares the screen</b> (Air) · the matrix stays on top, R\'Bot takes the bottom half (drag the handle to resize). "Swap my trip on 08 Oct for a standby" becomes the search filters shown as removable chips, and the crew columns change to the 2 results.'));
+rAir.push(frame('air', `<div class="grad">${hdr('New swap','R\'Bot is filtering', `<div class="ib" style="background:#fff;color:var(--p)">${I('bot')}</div>`)}</div>
+  ${matrix({ days:10, rh:31, mineW:80, dateW:46, colW:98, cols:COLS2, vw:420, hdrH:50, tags:tag450 })}
+  ${rbPanel(T2, { grab:true, st:'flex:1 1 auto;border-top:1px solid var(--hl);border-radius:20px 20px 0 0;box-shadow:0 -6px 18px rgba(0,0,0,.08);padding-bottom:34px' })}`,
+  '<b>D-R2 · R\'Bot changes the crews</b> · "also show a DOH layover" adds 450673 (tagged NEW) with a real conflict note; "pick 421051\'s 1HB and 4FB" selects the cells. R\'Bot never submits: Review/send stays with the crew.'));
+rAir.push(frame('oP', `<div class="grad">${hdr('New swap','', `<div class="ib" style="background:#fff;color:var(--p)">${I('bot')}</div>`)}</div>
+  ${matrix({ days:8, rh:27, mineW:80, dateW:46, colW:110, cols:COLS1, vw:466, hdrH:46, addSlot:true })}
+  ${rbPanel(T1.slice(1), { grab:true, st:'flex:1 1 auto;border-top:1px solid var(--hl);border-radius:20px 20px 0 0;padding-bottom:16px' })}`,
+  '<b>Duo outer · portrait</b> · shorter: the matrix keeps 8 days, R\'Bot shows the latest reply.'));
+rAir.push(frame('oL', `<div class="r" style="height:100%;gap:0;align-items:stretch"><div class="pane" style="width:400px;padding-top:10px;background:var(--card)"><div class="r" style="padding:0 12px 6px;gap:8px"><div class="back l">${I('back')}</div><b style="font:800 16px var(--f-ui)">New swap</b></div>${matrix({ days:12, rh:29, mineW:76, dateW:44, colW:93, cols:COLS2, vw:400, hdrH:46, tags:tag450 })}</div>
+  ${rbPanel(T2.slice(2), { st:'flex:1 1 auto;border-left:1px solid var(--hl)', pad:'12px 12px 12px' })}</div>`,
+  '<b>Duo outer · landscape</b> · side by side: matrix 400 pt, R\'Bot 278 pt.'));
+rAir.push(frame('iL', `<div class="r" style="height:100%;gap:0;align-items:stretch"><div class="pane" style="width:475px;padding-top:18px;background:var(--card)"><div class="r" style="padding:0 16px 10px;gap:10px"><div class="back l">${I('back')}</div><div class="sp"><b style="font:800 20px var(--f-ui)">New swap</b><div class="sub">07 – 20 Oct · columns set by R'Bot</div></div></div>${matrix({ days:14, rh:38, mineW:92, dateW:48, colW:111.6, cols:COLS2, vw:475, hdrH:52, tags:tag450 })}</div>
+  ${rbPanel([...T1, ...T2], { st:'width:476px', pad:'18px 24px 18px', quick:true })}</div>`,
+  '<b>Duo inner · landscape</b> · matrix left of the hinge, the full R\'Bot conversation right. Each reply that changes filters or columns updates the left pane immediately.', { noSb:true }));
+rAir.push(frame('iP', `<div class="pane" style="height:475px;padding-top:16px;background:var(--card)"><div class="r" style="padding:0 18px 8px;gap:10px"><div class="back l">${I('back')}</div><b style="font:800 20px var(--f-ui)" class="sp">New swap</b><span class="badge">R'Bot filtering</span></div>${matrix({ days:11, rh:32, mineW:88, dateW:46, colW:(669-134)/3, cols:COLS2, vw:669, hdrH:50, tags:tag450 })}</div>
+  ${rbPanel(T2, { st:'height:476px', pad:'14px 22px 18px', quick:true })}`,
+  '<b>Duo inner · portrait</b> · matrix above the hinge, R\'Bot below. The hinge is a natural split for the shared screen.', { noSb:true }));
+document.getElementById('dRbot').innerHTML = rAir.join('');
+
+// Zoom (per-viewer convenience)
+const z = document.getElementById('zoom');
+const setZ = v => document.documentElement.style.setProperty('--z', v);
+try { const s = localStorage.getItem('dsz'); if (s) { z.value = s; setZ(s); } } catch (e) {}
+z.addEventListener('input', () => { setZ(z.value); try { localStorage.setItem('dsz', z.value); } catch (e) {} });
+</script>

@@ -26,6 +26,9 @@ import { AppearanceScreen } from './AppearanceScreen';
 import { PersonalInfoScreen } from './PersonalInfoScreen';
 import { NotificationsScreen } from '../notifications/NotificationsScreen';
 import { RBotScreen } from '../rbot/RBotScreen';
+import { DutySwapScreen } from '../dutySwap/DutySwapScreen';
+import { DutySwapRecordsScreen } from '../dutySwap/DutySwapRecordsScreen';
+import { DutySwapMyDutiesScreen } from '../dutySwap/DutySwapMyDutiesScreen';
 import type { V2StackParamList, V2TabParamList } from './nav';
 
 const Tab = createBottomTabNavigator<V2TabParamList>();
@@ -79,6 +82,9 @@ export function V2Navigator() {
         <Stack.Screen name="Spec" component={SpecPage} />
         <Stack.Screen name="AbsenceHistory" component={AbsenceHistoryScreen} />
         <Stack.Screen name="Discretion" component={DiscretionScreen} />
+        <Stack.Screen name="DutySwap" component={DutySwapScreen} />
+        <Stack.Screen name="DutySwapRecords" component={DutySwapRecordsScreen} />
+        <Stack.Screen name="DutySwapMyDuties" component={DutySwapMyDutiesScreen} />
       </Stack.Navigator>
     </CarrierContext.Provider>
   );

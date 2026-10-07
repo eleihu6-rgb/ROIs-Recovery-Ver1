@@ -78,6 +78,9 @@ export interface PortalConfig {
    *  code here; a PROD tenant would send a real one-time emailed code instead, so
    *  this hardcoded value is test-only and must become real OTP entry for prod. */
   loginOutCaptcha?: string;
+  /** The portal serves the crew Duty Swap APIs (`/api/portal/taskSwap/*`), so the
+   *  app shows its Duty Swap page. PR only for now (verified on the TEST tenant). */
+  dutySwap?: boolean;
 }
 
 export interface Airline {
@@ -123,7 +126,7 @@ const WIRED: Airline[] = [
     portalUrl: 'https://crew-pal-sea-tst.roiscloud.com/pefg/portal/login',
     carrier: 'PR',
     portalKind: 'rois',
-    portalConfig: { baseAirport: 'MNL', baseOffsetMin: 480, loginOutCaptcha: '202604' },
+    portalConfig: { baseAirport: 'MNL', baseOffsetMin: 480, loginOutCaptcha: '202604', dutySwap: true },
   },
   {
     // Emirates is a ROIS mobile-roster carrier (like F8/ET): the crew's REAL

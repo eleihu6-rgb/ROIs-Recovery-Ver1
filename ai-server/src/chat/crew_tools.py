@@ -122,6 +122,89 @@ CREW_TOOLS: list[dict[str, Any]] = [
     },
 ]
 
+# ── Duty Swap screen (crew app spec 2026-10-07 §6) ─────────────────────────
+# Offered only when the crew is on the Duty Swap screen; the phone sends a
+# snapshot of the matrix (its duties + the crews shown) so the model can "see"
+# it. The phone runs the portal search itself; nothing here submits a swap.
+_SWAP_FIELDS: dict[str, Any] = {
+    'type': 'object',
+    'description': "Search Pairing fields. Dates YYYY-MM-DD; crd/blh/layoverTime and duration are "
+                   "whole numbers (hours / days); brief (report time) and debrief (flight end) are HH:mm. "
+                   "Lists are codes from the screen: taskTypeList uses FLY, SBY (standby: HB/FB), "
+                   "DO, RDO, ARD, MVP, MVO, XXX, NO_DUTY_DAY; fltFleetList uses '350', '333' etc.",
+    'properties': {
+        'swapMode': {'type': 'string', 'enum': ['NS', 'FS'], 'description': 'NS=all crew (Target), FS=friends (Handshake).'},
+        'startDate': {'type': 'string'}, 'endDate': {'type': 'string'},
+        'durationStart': {'type': 'number'}, 'durationEnd': {'type': 'number'},
+        'crdStart': {'type': 'number'}, 'crdEnd': {'type': 'number'},
+        'blhStart': {'type': 'number'}, 'blhEnd': {'type': 'number'},
+        'briefStart': {'type': 'string'}, 'briefEnd': {'type': 'string'},
+        'debriefStart': {'type': 'string'}, 'debriefEnd': {'type': 'string'},
+        'layoverTimeStart': {'type': 'number'}, 'layoverTimeEnd': {'type': 'number'},
+        'taskTypeList': {'type': 'array', 'items': {'type': 'string'}},
+        'layoverPortList': {'type': 'array', 'items': {'type': 'string'}},
+        'fltNumList': {'type': 'array', 'items': {'type': 'string'}},
+        'fltArrList': {'type': 'array', 'items': {'type': 'string'}},
+        'fltFleetList': {'type': 'array', 'items': {'type': 'string'}},
+        'activeRankList': {'type': 'array', 'items': {'type': 'string'}},
+        'filterEmptyDutyCrew': {'type': 'boolean'},
+    },
+}
+
+SWAP_TOOLS: list[dict[str, Any]] = [
+    {
+        'name': 'set_swap_search',
+        'description': "Change the Duty Swap search (the phone runs it and the crew columns update). Use it "
+                       "to find target crew from the crew's words, e.g. 'swap my trip on 08 Oct for a "
+                       "standby' -> startDate/endDate = that duty's first/last day from the screen "
+                       "snapshot, reset=true, wantKind='standby'. What the crew WANTS in return goes in "
+                       "wantKind ('standby' or 'fly'), never in taskTypeList: the portal's Type filter "
+                       "also filters the crew's own duties. reset=true clears the optional fields first.",
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'fields': _SWAP_FIELDS, 'reset': {'type': 'boolean'},
+                'wantKind': {'type': 'string', 'enum': ['standby', 'fly']}, 'label': _LABEL,
+            },
+            'required': ['fields'],
+        },
+    },
+    {
+        'name': 'set_swap_crews',
+        'description': "Change which crews the matrix shows: only=[ids], add=[ids], remove=[ids], or "
+                       "addWhere={search fields} to add the crews a search finds (e.g. 'also someone with "
+                       "a DOH layover' -> addWhere {layoverPortList: ['DOH']}). Only use crew ids from "
+                       "the snapshot or that the crew typed.",
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'only': {'type': 'array', 'items': {'type': 'string'}},
+                'add': {'type': 'array', 'items': {'type': 'string'}},
+                'remove': {'type': 'array', 'items': {'type': 'string'}},
+                'addWhere': _SWAP_FIELDS,
+                'label': _LABEL,
+            },
+        },
+    },
+    {
+        'name': 'select_swap_duties',
+        'description': "Pick duties in the matrix: give = the crew's own duties to give away, take = "
+                       "another crew's duties to take ({crewId, code, date}). Codes and dates must come "
+                       "from the snapshot. This never sends the swap; the crew reviews and sends.",
+        'input_schema': {
+            'type': 'object',
+            'properties': {
+                'give': {'type': 'array', 'items': {'type': 'object', 'properties': {
+                    'date': {'type': 'string'}, 'code': {'type': 'string'}}}},
+                'take': {'type': 'array', 'items': {'type': 'object', 'properties': {
+                    'crewId': {'type': 'string'}, 'date': {'type': 'string'}, 'code': {'type': 'string'}},
+                    'required': ['crewId']}},
+                'label': _LABEL,
+            },
+        },
+    },
+]
+
 _ISO_DATE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 _YEAR_MONTH = re.compile(r'^\d{4}-\d{2}$')
 
@@ -154,6 +237,92 @@ def _number(value: Any) -> float | int | None:
 def _label(data: dict[str, Any]) -> dict[str, str]:
     label = data.get('label')
     return {'label': label} if isinstance(label, str) and label.strip() else {}
+
+
+_HHMM = re.compile(r'^([01]\d|2[0-3]):[0-5]\d$')
+_CREW_ID = re.compile(r'^[A-Za-z0-9]{2,10}$')
+_SWAP_NUM = ('durationStart', 'durationEnd', 'crdStart', 'crdEnd', 'blhStart', 'blhEnd',
+             'layoverTimeStart', 'layoverTimeEnd')
+_SWAP_TIME = ('briefStart', 'briefEnd', 'debriefStart', 'debriefEnd')
+_SWAP_LIST = ('taskTypeList', 'layoverPortList', 'fltNumList', 'fltArrList', 'fltFleetList', 'activeRankList')
+
+
+def swap_fields(data: Any) -> dict[str, Any]:
+    """Keeps only valid Search Pairing fields (the phone validates again)."""
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, Any] = {}
+    if data.get('swapMode') in ('NS', 'FS'):
+        out['swapMode'] = data['swapMode']
+    for key in ('startDate', 'endDate'):
+        if is_iso_date(data.get(key)):
+            out[key] = data[key]
+    for key in _SWAP_NUM:
+        value = _number(data.get(key))
+        if value is not None and value >= 0:
+            out[key] = int(value)
+    for key in _SWAP_TIME:
+        if isinstance(data.get(key), str) and _HHMM.match(data[key]):
+            out[key] = data[key]
+    for key in _SWAP_LIST:
+        items = data.get(key)
+        if isinstance(items, list):
+            clean = [str(v).strip().upper() for v in items if isinstance(v, (str, int)) and str(v).strip()]
+            if clean:
+                out[key] = clean
+    if isinstance(data.get('filterEmptyDutyCrew'), bool):
+        out['filterEmptyDutyCrew'] = data['filterEmptyDutyCrew']
+    if 'startDate' in out and 'endDate' in out and out['startDate'] > out['endDate']:
+        out['startDate'], out['endDate'] = out['endDate'], out['startDate']
+    return out
+
+
+def _crew_ids(value: Any) -> list[str]:
+    return [v for v in value if isinstance(v, str) and _CREW_ID.match(v)] if isinstance(value, list) else []
+
+
+def _swap_action(name: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    if name == 'set_swap_search':
+        fields = swap_fields(data.get('fields'))
+        reset = data.get('reset') is True
+        if not fields and not reset:
+            return None
+        want = data.get('wantKind') if data.get('wantKind') in ('standby', 'fly') else None
+        return {'type': 'set_swap_search', 'fields': fields, **({'reset': True} if reset else {}),
+                **({'wantKind': want} if want else {}), **_label(data)}
+    if name == 'set_swap_crews':
+        action: dict[str, Any] = {'type': 'set_swap_crews'}
+        for key in ('only', 'add', 'remove'):
+            ids = _crew_ids(data.get(key))
+            if ids:
+                action[key] = ids
+        where = swap_fields(data.get('addWhere'))
+        if where:
+            action['addWhere'] = where
+        return {**action, **_label(data)} if len(action) > 1 else None
+    if name == 'select_swap_duties':
+        def picks(items: Any, need_crew: bool) -> list[dict[str, str]]:
+            out = []
+            for item in items if isinstance(items, list) else []:
+                if not isinstance(item, dict):
+                    continue
+                pick: dict[str, str] = {}
+                if is_iso_date(item.get('date')):
+                    pick['date'] = item['date']
+                if isinstance(item.get('code'), str) and item['code'].strip():
+                    pick['code'] = item['code'].strip().upper()
+                if need_crew:
+                    if not (isinstance(item.get('crewId'), str) and _CREW_ID.match(item['crewId'])):
+                        continue
+                    pick['crewId'] = item['crewId']
+                if 'date' in pick or 'code' in pick:
+                    out.append(pick)
+            return out
+        give, take = picks(data.get('give'), False), picks(data.get('take'), True)
+        if not give and not take:
+            return None
+        return {'type': 'select_swap_duties', **({'give': give} if give else {}), **({'take': take} if take else {}), **_label(data)}
+    return None
 
 
 def crew_tool_call_to_action(call: dict[str, Any]) -> dict[str, Any] | None:
@@ -229,5 +398,8 @@ def crew_tool_call_to_action(call: dict[str, Any]) -> dict[str, Any] | None:
         else:
             return None
         return {'type': 'change_setting', 'setting': setting, 'value': value, **_label(data)}
+
+    if name in ('set_swap_search', 'set_swap_crews', 'select_swap_duties'):
+        return _swap_action(name, data)
 
     return None

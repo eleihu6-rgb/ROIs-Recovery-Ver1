@@ -509,6 +509,55 @@ export function agendaRows(month: MonthModel, selected: number | null): AgendaRo
   return rows;
 }
 
+// ─── Timeline master list (iPhone Duo wide layout) ───────────────────────────
+export interface DaySummary {
+  /** null = nothing published (the row reads as a blank day). */
+  icon: IconName | null;
+  /** One line: "EK203 +1 · DXB → JFK", "Standby", "Layover · JFK", a meeting title. */
+  text: string;
+  /** "08:15" / "06:00–14:00" / "" — the time the row leads with. */
+  time: string;
+}
+
+/**
+ * The one-line summary a day gets in the Timeline's master list on the Duo's
+ * wide layout, where the whole month is a vertical list and the selected day's
+ * full card(s) sit beside it. Flight days lead; otherwise the ground duty, the
+ * layover, or the first synced calendar event.
+ */
+export function daySummary(day: DayModel): DaySummary {
+  const events = day.meetings.length;
+  const eventNote = events > 0 ? ` · ${events} event${events === 1 ? '' : 's'}` : '';
+  if (day.legs.length) {
+    const first = day.legs[0].leg;
+    const last = day.legs[day.legs.length - 1].leg;
+    const more = day.legs.length > 1 ? ` +${day.legs.length - 1}` : '';
+    return {
+      icon: KIND_ICON.flight,
+      text: `${first.fltNumber}${more} · ${first.dep} → ${last.arv}${eventNote}`,
+      time: stripZone(first.depTime),
+    };
+  }
+  if (day.ground) {
+    const g = day.ground;
+    return {
+      icon: KIND_ICON[day.kind],
+      text: `${g.label || day.kind}${eventNote}`,
+      time: g.allDay ? '' : window(hhmm(g.localStart, g.startRosterUTC), hhmm(g.localEnd, g.endRosterUTC)),
+    };
+  }
+  if (day.kind === 'layover') {
+    const code = day.layoverTrip?.legs[0]?.arvArp ?? '';
+    return { icon: KIND_ICON.layover, text: `Layover${code ? ` · ${code}` : ''}${eventNote}`, time: '' };
+  }
+  if (events > 0) {
+    const m = day.meetings[0];
+    const more = events > 1 ? ` +${events - 1}` : '';
+    return { icon: 'cal', text: `${m.title}${more}`, time: window(m.hhmm, m.endHhmm) };
+  }
+  return { icon: null, text: '', time: '' };
+}
+
 // ─── Calendar: per-day timeline (detail mode) ────────────────────────────────
 export type TimelineKind = 'duty' | 'meeting' | 'ground' | 'layover';
 

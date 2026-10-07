@@ -27,6 +27,7 @@ import {
   type TimelineLane,
 } from './schedView';
 import type { MeetingActions } from './MeetingCard';
+import { useLayout } from '../../components/v2/useLayout';
 
 /** Inner surface (icon disc, chips) — matches the duty cards' translucent inset. */
 const CARD_INSET = 'rgba(255,255,255,0.72)';
@@ -55,6 +56,22 @@ export function CalendarView({
   onBackToCompact,
   actions,
 }: CalendarViewProps): React.JSX.Element {
+  // iPhone Duo inner screen. Landscape (wide): month grid | the selected day's
+  // agenda + hour timeline, one view — tapping a day updates the right pane, so
+  // the compact/detail switch never happens. Rotated (tall): the grid's cells
+  // get real height (square) instead of the phone's flat strips.
+  const { wide, tall } = useLayout();
+  if (wide) {
+    return (
+      <WideCalendar
+        month={month}
+        palette={p}
+        selectedDay={selectedDay}
+        onSelectDay={onSelectDay}
+        actions={actions}
+      />
+    );
+  }
   return mode === 'calendar-compact' ? (
     <CompactMonth
       month={month}
@@ -63,6 +80,7 @@ export function CalendarView({
       onSelectDay={onSelectDay}
       onOpenDetail={onOpenDetail}
       actions={actions}
+      tall={tall}
     />
   ) : (
     <DayTimeline
@@ -76,6 +94,94 @@ export function CalendarView({
   );
 }
 
+/** The month grid card (7 columns, duty glyphs). `tall` = square cells. */
+function MonthGrid({
+  month,
+  palette: p,
+  selectedDay,
+  onSelectDay,
+  tall,
+}: {
+  month: MonthModel;
+  palette: CarrierPalette;
+  selectedDay: number | null;
+  onSelectDay: (day: number | null) => void;
+  tall?: boolean;
+}): React.JSX.Element {
+  const weeks = calendarWeeks(month);
+  return (
+    <View style={[s.grid, { backgroundColor: p.card, borderColor: p.cardLine }]} testID="cal-grid">
+      {WEEKDAY_INITIALS.map((d, i) => (
+        <Text key={`dow-${i}`} style={[s.dow, { color: p.cardSoft }]}>
+          {d}
+        </Text>
+      ))}
+      {weeks.map((week, wi) =>
+        week.map((cell, ci) => {
+          if (!cell) return <View key={`e-${wi}-${ci}`} style={[s.cell, tall && s.cellTall]} />;
+          const on = cell.day === selectedDay;
+          return (
+            <Pressable
+              key={cell.key}
+              testID={`cal-day-${cell.day}`}
+              onPress={() => onSelectDay(cell.day === selectedDay ? null : cell.day)}
+              style={[s.cell, tall && s.cellTall, on ? { backgroundColor: p.btn } : null]}
+              accessibilityLabel={`${cell.day} ${MON[month.monthIdx]}${cell.isFlight ? ', flight duty' : cell.hasContent ? ', duty' : ''}`}
+            >
+              <Text style={[s.cellDay, { color: on ? '#fff' : p.cardInk }, cell.isToday && s.today]}>{cell.day}</Text>
+              {/* One glyph says what the day is: the mock's outline plane =
+                  flight duty, dot = any other published duty, nothing =
+                  nothing published. */}
+              <View style={s.dotSlot}>
+                {cell.isFlight ? (
+                  <Icon name="plane" size={14} color={on ? '#fff' : p.btn} />
+                ) : cell.hasContent ? (
+                  <View style={[s.dot, { backgroundColor: on ? '#fff' : p.btn }]} />
+                ) : null}
+              </View>
+            </Pressable>
+          );
+        }),
+      )}
+    </View>
+  );
+}
+
+/** Agenda header + rows for the selected day (or the whole month). */
+function Agenda({
+  month,
+  palette: p,
+  selectedDay,
+  onRow,
+  actions,
+}: {
+  month: MonthModel;
+  palette: CarrierPalette;
+  selectedDay: number | null;
+  onRow: (day: number) => void;
+  actions: MeetingActions;
+}): React.JSX.Element {
+  const rows = agendaRows(month, selectedDay);
+  const day = selectedDay == null ? null : month.days.find(d => d.day === selectedDay) ?? null;
+  const dayHead = day ? `${day.dow.toUpperCase()} ${day.day} ${MON[month.monthIdx].toUpperCase()}` : 'MONTH';
+  return (
+    <>
+      <Text style={[s.listHead, { color: p.inkSoft }]} testID="cal-agenda-head">
+        {dayHead}
+      </Text>
+      {rows.length === 0 ? (
+        <Text style={[s.empty, { color: p.inkSoft }]}>
+          {selectedDay == null ? 'Nothing published this month' : 'Nothing on this day'}
+        </Text>
+      ) : (
+        rows.map(row => (
+          <AgendaCard key={row.id} row={row} palette={p} onPress={() => onRow(row.day)} actions={actions} meeting={meetingById(month, row.id)} />
+        ))
+      )}
+    </>
+  );
+}
+
 function CompactMonth({
   month,
   palette: p,
@@ -83,12 +189,8 @@ function CompactMonth({
   onSelectDay,
   onOpenDetail,
   actions,
-}: Omit<CalendarViewProps, 'mode' | 'onBackToCompact'>): React.JSX.Element {
-  const weeks = calendarWeeks(month);
-  const rows = agendaRows(month, selectedDay);
-  const day = selectedDay == null ? null : month.days.find(d => d.day === selectedDay) ?? null;
-  const dayHead = day ? `${day.dow.toUpperCase()} ${day.day} ${MON[month.monthIdx].toUpperCase()}` : 'MONTH';
-
+  tall,
+}: Omit<CalendarViewProps, 'mode' | 'onBackToCompact'> & { tall?: boolean }): React.JSX.Element {
   return (
     <ScrollView contentContainerStyle={s.wrap} showsVerticalScrollIndicator={false} testID="cal-compact">
       <View style={s.modeRow}>
@@ -99,54 +201,46 @@ function CompactMonth({
         </Pressable>
       </View>
 
-      <View style={[s.grid, { backgroundColor: p.card, borderColor: p.cardLine }]} testID="cal-grid">
-        {WEEKDAY_INITIALS.map((d, i) => (
-          <Text key={`dow-${i}`} style={[s.dow, { color: p.cardSoft }]}>
-            {d}
-          </Text>
-        ))}
-        {weeks.map((week, wi) =>
-          week.map((cell, ci) => {
-            if (!cell) return <View key={`e-${wi}-${ci}`} style={s.cell} />;
-            const on = cell.day === selectedDay;
-            return (
-              <Pressable
-                key={cell.key}
-                testID={`cal-day-${cell.day}`}
-                onPress={() => onSelectDay(cell.day === selectedDay ? null : cell.day)}
-                style={[s.cell, on ? { backgroundColor: p.btn } : null]}
-                accessibilityLabel={`${cell.day} ${MON[month.monthIdx]}${cell.isFlight ? ', flight duty' : cell.hasContent ? ', duty' : ''}`}
-              >
-                <Text style={[s.cellDay, { color: on ? '#fff' : p.cardInk }, cell.isToday && s.today]}>{cell.day}</Text>
-                {/* One glyph says what the day is: the mock's outline plane =
-                    flight duty, dot = any other published duty, nothing =
-                    nothing published. */}
-                <View style={s.dotSlot}>
-                  {cell.isFlight ? (
-                    <Icon name="plane" size={14} color={on ? '#fff' : p.btn} />
-                  ) : cell.hasContent ? (
-                    <View style={[s.dot, { backgroundColor: on ? '#fff' : p.btn }]} />
-                  ) : null}
-                </View>
-              </Pressable>
-            );
-          }),
-        )}
-      </View>
+      <MonthGrid month={month} palette={p} selectedDay={selectedDay} onSelectDay={onSelectDay} tall={tall} />
 
-      <Text style={[s.listHead, { color: p.inkSoft }]} testID="cal-agenda-head">
-        {dayHead}
-      </Text>
-      {rows.length === 0 ? (
-        <Text style={[s.empty, { color: p.inkSoft }]}>
-          {selectedDay == null ? 'Nothing published this month' : 'Nothing on this day'}
-        </Text>
-      ) : (
-        rows.map(row => (
-          <AgendaCard key={row.id} row={row} palette={p} onPress={() => onOpenDetail(row.day)} actions={actions} meeting={meetingById(month, row.id)} />
-        ))
-      )}
+      <Agenda month={month} palette={p} selectedDay={selectedDay} onRow={onOpenDetail} actions={actions} />
     </ScrollView>
+  );
+}
+
+/**
+ * Duo inner screen, landscape: the month grid on the left (capped at a phone's
+ * width so its cells keep their proportions) and, on the right, the selected
+ * day's agenda followed by its hour timeline. One tap on a day fills the right
+ * pane; tapping an agenda row selects that row's day.
+ */
+function WideCalendar({
+  month,
+  palette: p,
+  selectedDay,
+  onSelectDay,
+  actions,
+}: {
+  month: MonthModel;
+  palette: CarrierPalette;
+  selectedDay: number | null;
+  onSelectDay: (day: number | null) => void;
+  actions: MeetingActions;
+}): React.JSX.Element {
+  const day = selectedDay == null ? null : month.days.find(d => d.day === selectedDay) ?? null;
+  return (
+    <View style={s.wideRow} testID="cal-wide">
+      <ScrollView style={s.wideGridCol} contentContainerStyle={s.wideCol} showsVerticalScrollIndicator={false}>
+        <View style={s.modeRow}>
+          <Text style={[s.modeTitle, { color: p.inkSoft }]}>Month</Text>
+        </View>
+        <MonthGrid month={month} palette={p} selectedDay={selectedDay} onSelectDay={onSelectDay} tall />
+      </ScrollView>
+      <ScrollView style={s.wideDayCol} contentContainerStyle={s.wideCol} showsVerticalScrollIndicator={false} testID="cal-day-pane">
+        <Agenda month={month} palette={p} selectedDay={selectedDay} onRow={onSelectDay} actions={actions} />
+        {day ? <DayHours month={month} day={day} palette={p} actions={actions} /> : null}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -232,17 +326,6 @@ function DayTimeline({
 }: Omit<CalendarViewProps, 'mode' | 'onOpenDetail'>): React.JSX.Element {
   const dayIdx = Math.max(0, month.days.findIndex(d => d.day === selectedDay));
   const day = month.days[dayIdx] ?? month.days[0];
-  const timeline = dayTimeline(day);
-  const hours = Math.max(1, timeline.endHour - timeline.startHour);
-  const height = hours * ROW_HOURS;
-  // A whole-day duty (day off, leave, layover) is not a block on an hour axis —
-  // it gets a chip above the grid, and a day with nothing timed skips the grid.
-  const allDayBlocks = timeline.blocks.filter(b => b.allDay);
-  const timedBlocks = timeline.blocks.filter(b => !b.allDay);
-  // Overlapping meetings get a horizontal lane each. Only meetings are split so
-  // the duty's report→release block keeps the full width; two meetings at the
-  // same time are the case that used to hide one behind the other.
-  const meetingLanes = timelineLaneLayout(timedBlocks.filter(b => b.kind === 'meeting'), MEETING_MIN_MINUTES);
   // Sunday-first week around the selected day, clamped to the month.
   const dow = new Date(month.year, month.monthIdx, day.day).getDay();
   const weekStart = day.day - dow;
@@ -279,6 +362,36 @@ function DayTimeline({
         {`${day.dow.toUpperCase()} ${day.day} ${MON[month.monthIdx].toUpperCase()}${day.isToday ? ' · TODAY' : ''}`}
       </Text>
 
+      <DayHours month={month} day={day} palette={p} actions={actions} />
+    </ScrollView>
+  );
+}
+
+/** One day's hour axis: all-day chips, then the timed blocks on the grid. */
+function DayHours({
+  month,
+  day,
+  palette: p,
+  actions,
+}: {
+  month: MonthModel;
+  day: DayModel;
+  palette: CarrierPalette;
+  actions: MeetingActions;
+}): React.JSX.Element {
+  const timeline = dayTimeline(day);
+  const hours = Math.max(1, timeline.endHour - timeline.startHour);
+  const height = hours * ROW_HOURS;
+  // A whole-day duty (day off, leave, layover) is not a block on an hour axis —
+  // it gets a chip above the grid, and a day with nothing timed skips the grid.
+  const allDayBlocks = timeline.blocks.filter(b => b.allDay);
+  const timedBlocks = timeline.blocks.filter(b => !b.allDay);
+  // Overlapping meetings get a horizontal lane each. Only meetings are split so
+  // the duty's report→release block keeps the full width; two meetings at the
+  // same time are the case that used to hide one behind the other.
+  const meetingLanes = timelineLaneLayout(timedBlocks.filter(b => b.kind === 'meeting'), MEETING_MIN_MINUTES);
+  return (
+    <>
       {allDayBlocks.length > 0 ? (
         <View style={s.allDayRow}>
           {allDayBlocks.map(b => (
@@ -315,7 +428,7 @@ function DayTimeline({
           </View>
         </View>
       )}
-    </ScrollView>
+    </>
   );
 }
 
@@ -423,6 +536,14 @@ const s = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', borderRadius: 16, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 6 },
   dow: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 11, fontWeight: '700', paddingBottom: 6 },
   cell: { width: `${100 / 7}%`, alignItems: 'center', paddingVertical: 6, borderRadius: 12 },
+  // Duo inner screen: a 7-column grid ~600pt wide gets square cells, not the
+  // phone's 34pt strips.
+  cellTall: { aspectRatio: 1, justifyContent: 'center' },
+  // Wide: grid (capped at a phone's width) | selected day's agenda + hours.
+  wideRow: { flex: 1, flexDirection: 'row', paddingHorizontal: 22, gap: 18 },
+  wideGridCol: { flex: 1, maxWidth: 420 },
+  wideDayCol: { flex: 1, minWidth: 0 },
+  wideCol: { paddingTop: 4, paddingBottom: 110, gap: 10 },
   cellDay: { fontSize: 14, fontWeight: '600' },
   today: { textDecorationLine: 'underline' },
   dotSlot: { height: 14, justifyContent: 'center' },

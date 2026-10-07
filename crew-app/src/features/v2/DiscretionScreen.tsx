@@ -92,7 +92,9 @@ export function DiscretionScreen(): React.JSX.Element {
   const past = requests.filter(r => r.state !== 'pending');
 
   return (
-    <PageShell title="Discretion" testID="page-discretion">
+    // The discretion card splits itself on the wide layout, so a page with cards
+    // stays full width; a loading / error / empty state is one centred column.
+    <PageShell title="Discretion" testID="page-discretion" layout={state.kind === 'ready' && requests.length > 0 ? 'full' : 'auto'}>
       {state.kind === 'loading' && (
         <View style={s.state} testID="discretion-loading">
           <ActivityIndicator color={p.btn} />

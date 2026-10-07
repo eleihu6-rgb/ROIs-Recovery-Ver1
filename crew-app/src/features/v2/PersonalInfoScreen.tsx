@@ -27,8 +27,7 @@ export function PersonalInfoScreen() {
 
   if (guest) {
     return (
-      <PageShell title="Personal Information" testID="page-personal">
-        <Hero h1={identityName} h2={`${PROVIDER_LABELS[provider ?? 'guest']} sign-in`} palette={p} />
+      <PageShell title="Personal Information" testID="page-personal" hero={<Hero h1={identityName} h2={`${PROVIDER_LABELS[provider ?? 'guest']} sign-in`} palette={p} />}>
         <SectionLabel palette={p}>Account</SectionLabel>
         <ListCard palette={p}>
           <KvRow label="Name" value={identityName} palette={p} />
@@ -41,8 +40,7 @@ export function PersonalInfoScreen() {
   }
 
   return (
-    <PageShell title="Personal Information" testID="page-personal">
-      <Hero h1={`Crew ${crewId}`} h2={a.name} palette={p} />
+    <PageShell title="Personal Information" testID="page-personal" hero={<Hero h1={`Crew ${crewId}`} h2={a.name} palette={p} />}>
       <SectionLabel palette={p}>Employment</SectionLabel>
       <ListCard palette={p}>
         <KvRow label="Airline" value={`${a.name} (${a.code})`} palette={p} />

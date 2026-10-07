@@ -94,7 +94,9 @@ export function ProfileScreen() {
     ? [email, 'No airline account'].filter(Boolean).join(' · ')
     : [crewId, crewBase, countryName(nationality)].filter(Boolean).join(' · ');
 
-  const { wide } = useLayout();
+  // Duo inner screen: landscape = two columns; rotated = one column capped at a
+  // phone-and-a-half, centred (a settings list reads top-down, it is not split).
+  const { wide, tall } = useLayout();
   const headSection = (
     <>
       <View style={s.titleRow}>
@@ -170,6 +172,11 @@ export function ProfileScreen() {
             <View style={s.wideCol}>{headSection}</View>
             <View style={s.wideCol}>{settingsSection}</View>
           </View>
+        ) : tall ? (
+          <View style={s.tallCol} testID="profile-tall">
+            {headSection}
+            {settingsSection}
+          </View>
         ) : (
           <>
             {headSection}
@@ -224,6 +231,7 @@ const s = StyleSheet.create({
   body: { paddingHorizontal: 22, paddingBottom: 110 },
   wideCols: { flexDirection: 'row', gap: 18, alignItems: 'flex-start' },
   wideCol: { flex: 1, minWidth: 0 },
+  tallCol: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   title: { fontSize: 26, fontWeight: '600' },
   head: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 22 },

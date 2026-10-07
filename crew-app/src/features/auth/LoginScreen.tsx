@@ -352,6 +352,9 @@ function AirlinePicker({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
+  // Duo inner screen, landscape: two columns of airlines so a dozen carriers fit
+  // without scrolling. FlatList needs a new key when numColumns changes.
+  const { wide: twoColumns } = useLayout();
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) {
@@ -366,7 +369,7 @@ function AirlinePicker({
     const active = item.code === selected;
     return (
       <TouchableOpacity
-        style={styles.pickRow}
+        style={[styles.pickRow, twoColumns && styles.pickRowWide]}
         onPress={() => onSelect(item.code)}
         testID={`airline-${item.code}`}>
         <View style={[styles.pickCode, active && styles.pickCodeActive]}>
@@ -419,11 +422,14 @@ function AirlinePicker({
           ) : null}
         </View>
         <FlatList
+          key={twoColumns ? 'airlines-2col' : 'airlines-1col'}
+          numColumns={twoColumns ? 2 : 1}
           data={results}
           keyExtractor={a => a.code}
           renderItem={renderItem}
           keyboardShouldPersistTaps="handled"
           initialNumToRender={20}
+          testID="airline-list"
           ListEmptyComponent={
             <Text style={styles.pickEmpty}>No airline matches “{query}”.</Text>
           }
@@ -526,6 +532,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, paddingVertical: 11, fontSize: 16, color: LOGIN.g1 },
   searchClear: { color: LOGIN.g2, fontSize: 15, fontWeight: '700', paddingHorizontal: 4 },
+  pickRowWide: { flex: 1, maxWidth: '50%' },
   pickRow: {
     flexDirection: 'row',
     alignItems: 'center',

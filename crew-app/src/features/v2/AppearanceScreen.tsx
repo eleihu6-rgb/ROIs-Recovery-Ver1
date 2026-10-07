@@ -101,12 +101,17 @@ export function AppearanceScreen() {
   const active = resolveTheme(chosen, airline);
 
   return (
-    <PageShell title="Appearance" testID="page-appearance">
-      <Hero
-        h1="Colour theme"
-        h2="Applies to every screen — ground, cards, dock and buttons. Defaults to your airline's colour."
-        palette={p}
-      />
+    <PageShell
+      title="Appearance"
+      testID="page-appearance"
+      hero={
+        <Hero
+          h1="Colour theme"
+          h2="Applies to every screen — ground, cards, dock and buttons. Defaults to your airline's colour."
+          palette={p}
+        />
+      }
+    >
       <ListCard palette={p}>
         {THEME_PRESETS.map((preset, i) => (
           <View key={preset}>

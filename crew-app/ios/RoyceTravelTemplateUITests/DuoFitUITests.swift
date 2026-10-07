@@ -25,6 +25,13 @@ final class DuoFitUITests: XCTestCase {
     // which `NativeModules.SettingsManager` reads like any user default.
     let api = ProcessInfo.processInfo.environment["DUO_ROSTER_API"] ?? "https://cr.rois.one/api"
     app.launchArguments += ["-F8RosterApiBaseURL", api]
+    // The Duo inner screen is used both ways: landscape (~951x669pt, wide layout)
+    // and rotated 90° to portrait (~669x951pt). DUO_ORIENTATION picks the run.
+    switch ProcessInfo.processInfo.environment["DUO_ORIENTATION"] {
+    case "portrait": XCUIDevice.shared.orientation = .portrait
+    case "landscape": XCUIDevice.shared.orientation = .landscapeLeft
+    default: break
+    }
     app.launch()
   }
 
@@ -63,6 +70,24 @@ final class DuoFitUITests: XCTestCase {
   }
 
   private var appFrame: CGRect { app.windows.firstMatch.frame }
+
+  /// The layout class the app itself derives from the window width (useLayout.ts).
+  private enum LayoutClass { case compact, tall, wide }
+  private var layoutClass: LayoutClass {
+    let w = appFrame.width
+    return w >= 700 ? .wide : w >= 560 ? .tall : .compact
+  }
+
+  /// Per-page layout check: `id` must exist on the given class, and must NOT exist
+  /// on the others (so the phone layout is proven untouched on the outer screen).
+  private func expectLayout(_ id: String, on cls: LayoutClass, file: StaticString = #filePath, line: UInt = #line) {
+    let present = el(id).waitForExistence(timeout: 5)
+    if layoutClass == cls {
+      XCTAssertTrue(present, "\(id) missing on the \(cls) layout (\(appFrame.size))", file: file, line: line)
+    } else {
+      XCTAssertFalse(present, "\(id) must not render on the \(layoutClass) layout (\(appFrame.size))", file: file, line: line)
+    }
+  }
 
   private func replaceText(_ field: XCUIElement, with value: String) {
     // Tap the field's far right so the caret lands AFTER the existing text — a
@@ -106,6 +131,7 @@ final class DuoFitUITests: XCTestCase {
   // MARK: the walk
 
   func testDuoInnerScreenWideLayoutsWithK1001() throws {
+    try XCTSkipIf(ProcessInfo.processInfo.environment["DUO_ORIENTATION"] == "portrait", "wide-layout assertions are for landscape")
     signInAsK1001()
     let frame = appFrame
     XCTAssertGreaterThanOrEqual(frame.width, 700, "not on the Duo inner (wide) screen: \(frame)")
@@ -131,6 +157,7 @@ final class DuoFitUITests: XCTestCase {
     wait("sched-title")
     sleep(2) // let the date strip finish rendering on the slow simulator
     shot("03_schedule")
+    XCTAssertTrue(el("sched-master").exists, "Schedule should be master/detail on the wide layout")
     wait("sched-view-menu").tap()
     wait("sched-view-route").tap()
     let map = wait("route-map")
@@ -141,12 +168,14 @@ final class DuoFitUITests: XCTestCase {
     wait("sched-view-menu").tap()
     wait("sched-view-calendar").tap()
     wait("cal-grid")
+    XCTAssertTrue(el("cal-wide").exists, "Calendar should be grid | day pane on the wide layout")
     shot("05_calendar")
 
     // R'Bot: back chevron on the LEFT on the wide layout.
     wait("dock-rbot").tap()
     let back = wait("rbot-close")
     XCTAssertLessThan(back.frame.midX, frame.midX, "R'Bot back button should be on the left")
+    XCTAssertTrue(el("rbot-context").exists, "R'Bot should show the context panel on the wide layout")
     shot("06_rbot")
     back.tap()
 
@@ -156,5 +185,87 @@ final class DuoFitUITests: XCTestCase {
     shot("07_profile")
     let logout = wait("profile-logout")
     XCTAssertLessThan(logout.frame.maxY, dockHome.frame.minY, "Log Out is hidden behind the dock")
+  }
+
+  // MARK: full tour — every screen on the inner display, for layout review
+
+  /// Opens `id` (if present), waits for `ready`, captures `name`, then goes back via `back`.
+  private func visit(_ name: String, open id: String, ready: String, back: String = "page-back", check: (() -> Void)? = nil) {
+    let opener = el(id)
+    guard opener.waitForExistence(timeout: 10) else { XCTFail("\(id) missing — skipped \(name)"); return }
+    opener.tap()
+    guard el(ready).waitForExistence(timeout: 20) else { XCTFail("\(ready) did not appear for \(name)"); return }
+    sleep(1)
+    shot(name)
+    check?()
+    if el(back).waitForExistence(timeout: 5) { el(back).tap() }
+  }
+
+  func testDuoTourAllScreens() throws {
+    continueAfterFailure = true
+    signInAsK1001()
+    _ = wait("home-next-trip", 60)
+    sleep(1)
+    shot("t01_home")
+    // The rotation legs render on both Duo classes (a card on wide, inside the
+    // ticket on tall) and never on the phone.
+    XCTAssertEqual(el("home-rotation").waitForExistence(timeout: 5), layoutClass != .compact, "home-rotation vs \(layoutClass) (\(appFrame.size))")
+    expectLayout("home-dest-grid", on: .tall)
+    visit("t02_alerts", open: "home-alerts", ready: "notifications-screen", back: "alerts-back", check: { self.expectLayout("alerts-wide", on: .wide) })
+    visit("t03_upcoming_alarms", open: "home-alarms", ready: "page-upcoming-alarms")
+    let dest = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier MATCHES 'dest-[A-Z]{3}'")).firstMatch
+    if dest.waitForExistence(timeout: 10) {
+      dest.tap()
+      if el("page-destination").waitForExistence(timeout: 20) {
+        sleep(1); shot("t04_destination")
+        expectLayout("dest-photo-pane-wide", on: .wide)
+        expectLayout("dest-photo-pane-tall", on: .tall)
+      }
+      if el("dest-back").waitForExistence(timeout: 5) { el("dest-back").tap() }
+    } else { XCTFail("no destination tile") }
+    visit("t05_trip_details", open: "home-next-trip", ready: "page-trip-details", check: { self.expectLayout("trip-tall-cards", on: .tall) })
+    visit("t06_checkin", open: "qa-check-in", ready: "page-back")
+    visit("t07_absence", open: "qa-absence", ready: "page-absence", check: { self.expectLayout("absence-summary", on: .wide) })
+    visit("t08_discretion", open: "qa-discretion", ready: "page-discretion")
+    visit("t09_duty_swap", open: "qa-duty-swap", ready: "page-back")
+    visit("t10_more", open: "qa-more", ready: "page-back")
+
+    wait("tab-schedule").tap()
+    _ = wait("sched-title")
+    sleep(2)
+    shot("t11_schedule_timeline")
+    expectLayout("sched-master", on: .wide)
+    wait("sched-view-menu").tap(); wait("sched-view-calendar").tap(); _ = wait("cal-grid"); sleep(1)
+    shot("t12_schedule_calendar")
+    expectLayout("cal-wide", on: .wide)
+    wait("sched-view-menu").tap(); wait("sched-view-route").tap(); _ = wait("route-map"); sleep(1)
+    shot("t13_schedule_route")
+    expectLayout("route-grid", on: .tall)
+    wait("sched-view-menu").tap(); wait("sched-view-timeline").tap()
+
+    wait("tab-global").tap()
+    if el("global-screen").waitForExistence(timeout: 10) { shot("t14_global") }
+
+    wait("tab-profile").tap()
+    _ = wait("profile-logout")
+    shot("t15_profile")
+    expectLayout("profile-tall", on: .tall)
+    visit("t16_personal", open: "row-personal", ready: "page-personal")
+    visit("t17_alarms_settings", open: "row-alarms", ready: "page-alarms")
+    visit("t18_timezone", open: "row-timezone", ready: "page-timezone", check: {
+      self.expectLayout("page-columns", on: .wide)
+      self.expectLayout("page-centred", on: .tall)
+    })
+    visit("t19_preferences", open: "row-preferences", ready: "page-preferences")
+    visit("t20_privacy", open: "row-privacy", ready: "page-back")
+    visit("t21_help", open: "row-help", ready: "page-back")
+
+    wait("dock-rbot").tap()
+    if el("rbot-close").waitForExistence(timeout: 10) {
+      sleep(1); shot("t22_rbot")
+      expectLayout("rbot-context", on: .wide)
+      el("rbot-close").tap()
+    }
   }
 }

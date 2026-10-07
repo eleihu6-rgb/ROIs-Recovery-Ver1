@@ -81,11 +81,67 @@ export interface RbotSettingAction {
   label?: string;
 }
 
+/** Duty Swap (Concept D): fields of the portal's Search Pairing form R'Bot may
+ *  set. Dates YYYY-MM-DD; hours are whole numbers; times HH:mm. Spec §6. */
+export interface RbotSwapSearchFields {
+  swapMode?: 'NS' | 'FS';
+  startDate?: string;
+  endDate?: string;
+  durationStart?: string; durationEnd?: string;
+  crdStart?: string; crdEnd?: string;
+  blhStart?: string; blhEnd?: string;
+  briefStart?: string; briefEnd?: string;
+  debriefStart?: string; debriefEnd?: string;
+  layoverTimeStart?: string; layoverTimeEnd?: string;
+  taskTypeList?: string[];
+  layoverPortList?: string[];
+  fltNumList?: string[];
+  fltArrList?: string[];
+  fltFleetList?: string[];
+  activeRankList?: string[];
+  filterEmptyDutyCrew?: boolean;
+}
+
+/** Change the Duty Swap search (the app runs it). `reset` clears optional fields first. */
+export interface RbotSwapSearchAction {
+  type: 'set_swap_search';
+  fields: RbotSwapSearchFields;
+  reset?: boolean;
+  /** What the crew wants in return. Applied on the phone after the search: keep
+   *  crews with a swappable duty of this kind in the window. (The portal's Type
+   *  filter also filters the crew's OWN duties, so it cannot express this.) */
+  wantKind?: 'standby' | 'fly';
+  label?: string;
+}
+
+/** Change which crews the matrix shows. `addWhere` finds crews by a search
+ *  (e.g. a DOH layover) and adds them to the ones already shown. */
+export interface RbotSwapCrewsAction {
+  type: 'set_swap_crews';
+  only?: string[];
+  add?: string[];
+  remove?: string[];
+  addWhere?: RbotSwapSearchFields;
+  label?: string;
+}
+
+/** Pick duties in the matrix (never submits). `code` matches the duty code
+ *  ('PR124/PR125', '1HB'); `date` (YYYY-MM-DD) is any day the duty covers. */
+export interface RbotSwapSelectAction {
+  type: 'select_swap_duties';
+  give?: { date?: string; code?: string }[];
+  take?: { crewId: string; date?: string; code?: string }[];
+  label?: string;
+}
+
+export type RbotSwapAction = RbotSwapSearchAction | RbotSwapCrewsAction | RbotSwapSelectAction;
+
 export type RbotAction =
   | RbotNavigateAction
   | RbotAbsenceAction
   | RbotAlarmAction
-  | RbotSettingAction;
+  | RbotSettingAction
+  | RbotSwapAction;
 
 /** Phone-local facts the model needs but cannot guess. */
 export interface RbotContext {
@@ -96,6 +152,8 @@ export interface RbotContext {
   today: string;
   /** Screen the crew asked from (tone/context only). */
   screen?: string;
+  /** Duty Swap screen snapshot — what R'Bot "sees" (spec §6). Only sent from that screen. */
+  swap?: unknown;
 }
 
 export interface RbotChatResponse {

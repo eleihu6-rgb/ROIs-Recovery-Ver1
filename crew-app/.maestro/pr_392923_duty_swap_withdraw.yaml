@@ -1,0 +1,68 @@
+# Duty Swap ▸ Swap requests ▸ Withdraw — PR crew 392923 (TEST tenant).
+# Needs one "Waiting for the other crew" request (sent by
+# pr_392923_duty_swap_send_withdraw.yaml); withdraws it through the app.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "392923"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: "Pier2020"
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "qa-duty-swap"
+- extendedWaitUntil:
+    visible:
+      id: "swap-disclaimer"
+    timeout: 30000
+- tapOn:
+    point: "63%,63%"
+- tapOn:
+    id: "swap-records"
+- extendedWaitUntil:
+    visible:
+      text: ".*Waiting for the other crew.*"
+    timeout: 30000
+# Withdraw sits inside the record card's single accessibility element.
+- tapOn:
+    point: "79%,27%"
+- extendedWaitUntil:
+    visible:
+      id: "records-dialog"
+    timeout: 10000
+- assertVisible:
+    text: ".*Withdraw this request.*"
+- takeScreenshot: duty-swap-withdraw-confirm-air-Ver1
+# "Withdraw" pill (destructive) inside the dialog card.
+- tapOn:
+    point: "62%,59%"
+- extendedWaitUntil:
+    visible:
+      text: ".*Request withdrawn.*"
+    timeout: 30000
+- takeScreenshot: duty-swap-withdrawn-air-Ver1

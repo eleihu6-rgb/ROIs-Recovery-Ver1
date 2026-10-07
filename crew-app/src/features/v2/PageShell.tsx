@@ -8,13 +8,47 @@ import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon, type IconName } from '../../components/v2/icons';
 import { DashedLine } from '../../components/v2/TicketCard';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
+import { useLayout } from '../../components/v2/useLayout';
+
+/** Widest a single column of settings rows / spec copy is allowed to run. */
+export const SINGLE_COLUMN_MAX = 560;
 
 export function PageShell({
-  title, children, right, testID,
-}: { title: string; children: React.ReactNode; right?: React.ReactNode; testID?: string }) {
+  title, children, right, testID, scroll = true, hero, layout = 'auto',
+}: {
+  title: string; children: React.ReactNode; right?: React.ReactNode; testID?: string;
+  /** false = a fixed body that manages its own scrolling (e.g. the Duty Swap matrix). */
+  scroll?: boolean;
+  /**
+   * The page's explainer (Hero and whatever belongs with it). On a regular iPhone
+   * it sits above the body as always; on the iPhone Duo's landscape inner screen
+   * it becomes the left column, the body the right — the explainer is the second
+   * kind of content these pages already carry, so it earns the column.
+   */
+  hero?: React.ReactNode;
+  /**
+   * 'auto' (default): wide + hero → two columns; wide without hero, or tall →
+   * one column capped at SINGLE_COLUMN_MAX and centred (a list of settings does
+   * not get split in half for symmetry). 'full': the page lays itself out.
+   */
+  layout?: 'auto' | 'full';
+}) {
   const p = useCarrier();
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
+  const { wide, tall } = useLayout();
+  const columns = layout === 'auto' && wide && !!hero;
+  const centred = layout === 'auto' && !columns && (wide || tall);
+  const body = columns ? (
+    <View style={s.cols} testID="page-columns">
+      <View style={s.colAside}>{hero}</View>
+      <View style={s.colMain}>{children}</View>
+    </View>
+  ) : centred ? (
+    <View style={s.centred} testID="page-centred">{hero}{children}</View>
+  ) : (
+    <>{hero}{children}</>
+  );
   return (
     <GradientScreen palette={p} texture={false}>
       <View style={[s.head, { paddingTop: insets.top + 8 }]}>
@@ -24,9 +58,13 @@ export function PageShell({
         <Text style={[s.title, { color: p.ink }]} numberOfLines={1}>{title}</Text>
         <View style={s.iconBtn}>{right}</View>
       </View>
-      <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false} testID={testID}>
-        {children}
-      </ScrollView>
+      {scroll ? (
+        <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false} testID={testID}>
+          {body}
+        </ScrollView>
+      ) : (
+        <View style={[s.fixed, { paddingBottom: insets.bottom }]} testID={testID}>{body}</View>
+      )}
     </GradientScreen>
   );
 }
@@ -92,15 +130,23 @@ const s = StyleSheet.create({
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontSize: 20, fontWeight: '600' },
   body: { paddingHorizontal: 22, paddingTop: 6, paddingBottom: 40 },
+  fixed: { flex: 1 },
   cols: { flexDirection: 'row', gap: 18, alignItems: 'flex-start' },
   col: { flex: 1, minWidth: 0 },
+  // PageShell's own two columns: explainer (2) | body (3); centred single column.
+  colAside: { flex: 2, minWidth: 0 },
+  colMain: { flex: 3, minWidth: 0 },
+  centred: { width: '100%', maxWidth: SINGLE_COLUMN_MAX, alignSelf: 'center' },
   hero: { borderRadius: 18, padding: 18, marginBottom: 16 },
   h1: { fontSize: 22, fontWeight: '600' },
   h2: { fontSize: 13, marginTop: 4, lineHeight: 19 },
   list: { borderRadius: 18, paddingHorizontal: 18, paddingVertical: 6, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
   kv: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16, paddingVertical: 15 },
-  kvLabel: { fontSize: 14, fontWeight: '500', flex: 1 },
-  kvValue: { fontSize: 13, textAlign: 'right' },
+  // The label keeps its own width and the value wraps: in a half-width column
+  // (Duo, rotated: calendar | hotel) the old flex-1 label broke mid-word
+  // ("Loc-atio-n") beside a long value.
+  kvLabel: { fontSize: 14, fontWeight: '500', flexShrink: 0 },
+  kvValue: { fontSize: 13, textAlign: 'right', flex: 1 },
   btn: { marginTop: 22, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });

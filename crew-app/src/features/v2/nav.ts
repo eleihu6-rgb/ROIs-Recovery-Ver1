@@ -40,6 +40,12 @@ export type V2StackParamList = {
   /** The crew's own FDP-discretion requests (pending + history),
    *  from Home ▸ Quick actions ▸ Discretion. */
   Discretion: undefined;
+  /** Duty Swap (Concept D crew matrix) — PR portal crews, Home ▸ Quick actions. */
+  DutySwap: undefined;
+  /** The crew's swap requests (sent and received). */
+  DutySwapRecords: undefined;
+  /** Which of my duties other crew may request (web "My Duty"). */
+  DutySwapMyDuties: undefined;
 };
 
 export type V2Nav = NativeStackNavigationProp<V2StackParamList>;

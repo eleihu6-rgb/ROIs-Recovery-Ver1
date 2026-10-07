@@ -26,33 +26,42 @@ export function TimeZoneScreen() {
   const [tipOpen, setTipOpen] = useState(false);
   const baseLabel = base || baseTz;
   return (
-    <PageShell title="Time Zone" testID="page-timezone">
-      <Hero h2="Choose how flight times are shown across the app. Alarms always ring in the departure airport's local time." palette={p} />
-      {/* Time-convention legend. The letters are the only clue on a duty card that a
-          time is airport-local vs base vs UTC, so they are documented in the same
-          white-list-card language as the options below (not a see-through slab). */}
-      <ListCard palette={p} style={{ marginBottom: 16 }}>
-        <Pressable onPress={() => setTipOpen(v => !v)} style={s.legendHead} testID="timezone-legend-toggle">
-          <View style={[s.legendIcon, { backgroundColor: p.card }]}>
-            <Icon name="clock" size={18} color={p.btn} strokeWidth={1.9} />
-          </View>
-          <Text style={[s.legendTitle, { color: p.cardInk }]}>Time format</Text>
-          <Text style={[s.legendToggle, { color: p.btn }]}>{tipOpen ? 'Hide' : 'What do L / B / Z mean?'}</Text>
-        </Pressable>
-        {tipOpen ? (
-          <View testID="timezone-legend">
-            {LEGEND.map((row, i) => (
-              <View key={row.marker}>
-                {i > 0 && <DashedLine color={p.cardLine} />}
-                <View style={s.legendRow}>
-                  <Text style={[s.legendMarker, { color: p.btn, borderColor: p.cardLine }]}>{row.marker}</Text>
-                  <Text style={[s.legendText, { color: p.cardInk }]}>{row.text(baseLabel)}</Text>
-                </View>
+    // The explainer (and its L / B / Z legend) is the page's `hero`: above the
+    // options on a phone, beside them on the Duo's wide inner screen.
+    <PageShell
+      title="Time Zone"
+      testID="page-timezone"
+      hero={
+        <>
+          <Hero h2="Choose how flight times are shown across the app. Alarms always ring in the departure airport's local time." palette={p} />
+          {/* Time-convention legend. The letters are the only clue on a duty card that a
+              time is airport-local vs base vs UTC, so they are documented in the same
+              white-list-card language as the options below (not a see-through slab). */}
+          <ListCard palette={p} style={{ marginBottom: 16 }}>
+            <Pressable onPress={() => setTipOpen(v => !v)} style={s.legendHead} testID="timezone-legend-toggle">
+              <View style={[s.legendIcon, { backgroundColor: p.card }]}>
+                <Icon name="clock" size={18} color={p.btn} strokeWidth={1.9} />
               </View>
-            ))}
-          </View>
-        ) : null}
-      </ListCard>
+              <Text style={[s.legendTitle, { color: p.cardInk }]}>Time format</Text>
+              <Text style={[s.legendToggle, { color: p.btn }]}>{tipOpen ? 'Hide' : 'What do L / B / Z mean?'}</Text>
+            </Pressable>
+            {tipOpen ? (
+              <View testID="timezone-legend">
+                {LEGEND.map((row, i) => (
+                  <View key={row.marker}>
+                    {i > 0 && <DashedLine color={p.cardLine} />}
+                    <View style={s.legendRow}>
+                      <Text style={[s.legendMarker, { color: p.btn, borderColor: p.cardLine }]}>{row.marker}</Text>
+                      <Text style={[s.legendText, { color: p.cardInk }]}>{row.text(baseLabel)}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </ListCard>
+        </>
+      }
+    >
       <ListCard palette={p}>
         {OPTIONS.map((o, i) => (
           <View key={o.mode} >

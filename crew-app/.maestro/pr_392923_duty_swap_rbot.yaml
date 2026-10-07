@@ -1,0 +1,109 @@
+# Duty Swap ▸ R'Bot sharing the screen — PR crew 392923 (TEST tenant).
+# R'Bot finds the target crew from words, changes the crew columns, and picks
+# duties; it never sends. These phrasings are understood on the phone (local-first),
+# so the run does not depend on the ai-server deployment.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "392923"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: "Pier2020"
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "qa-duty-swap"
+- extendedWaitUntil:
+    visible:
+      id: "swap-disclaimer"
+    timeout: 30000
+- tapOn:
+    point: "63%,63%"
+- extendedWaitUntil:
+    visible:
+      id: "crew-matrix"
+    timeout: 60000
+- tapOn:
+    id: "swap-rbot-open"
+- extendedWaitUntil:
+    visible:
+      id: "swap-rbot-panel"
+    timeout: 10000
+# 1. "Swap my trip on 08 Oct for a standby" (suggestion built from my roster).
+- tapOn:
+    text: "Swap my trip on 08 Oct for a standby"
+- extendedWaitUntil:
+    visible:
+      text: ".*crew on 08 Oct–11 Oct.*in the table now.*"
+    timeout: 60000
+- assertVisible:
+    text: "Searching for PR124/PR125"
+- assertVisible:
+    text: "Giving PR124/PR125"
+- takeScreenshot: duty-swap-rbot-1-search-Ver1
+# 2. R'Bot changes the crews: add someone with a DOH layover (447841, PR684/PR685
+#    08–11 Oct; their header flags the different fleet).
+- tapOn:
+    id: "swap-rbot-input"
+- inputText: "Also show someone with a DOH layover"
+- tapOn:
+    id: "swap-rbot-send"
+- extendedWaitUntil:
+    visible:
+      text: "Added DOH layovers"
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: "matrix-crew-447841"
+    timeout: 20000
+- takeScreenshot: duty-swap-rbot-2-crews-Ver1
+# 3. R'Bot picks crew B's duties; the tray shows the delta.
+- tapOn:
+    id: "swap-rbot-input"
+- inputText: "Pick 421051's 1HB and 4FB"
+- tapOn:
+    id: "swap-rbot-send"
+- extendedWaitUntil:
+    visible:
+      text: "Picked 1HB, 4FB"
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: "tray-delta"
+    timeout: 30000
+- takeScreenshot: duty-swap-rbot-3-picked-Ver1
+# Landscape: matrix and R'Bot side by side.
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil:
+    visible:
+      id: "swap-rbot-panel"
+    timeout: 10000
+# The conversation survives the rotation (thread kept in the store).
+- assertVisible:
+    text: "Picked 1HB, 4FB"
+- takeScreenshot: duty-swap-rbot-landscape-Ver1
+- setOrientation: PORTRAIT

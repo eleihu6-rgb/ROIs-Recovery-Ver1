@@ -1,0 +1,96 @@
+# Duty Swap success path — PR crew 392923 on the TEST tenant (approved by Ryan:
+# a real request is sent, then withdrawn in the same run).
+#
+# Give 2HB (13 Oct) ↔ take 402452's 3FB (12 Oct) — passes the portal legality
+# check → "Request sent" → Swap requests shows "Waiting for the other crew" →
+# Withdraw → "Withdrawn by you". Also rotates to landscape to show 5 crews.
+#
+# Run (from crew-app/): maestro --device <UDID> test .maestro/pr_392923_duty_swap_send_withdraw.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "392923"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: "Pier2020"
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "qa-duty-swap"
+- extendedWaitUntil:
+    visible:
+      id: "swap-disclaimer"
+    timeout: 30000
+# AppDialog buttons sit inside the card's single accessibility element; tap by position.
+- tapOn:
+    point: "63%,63%"
+- extendedWaitUntil:
+    visible:
+      id: "crew-matrix"
+    timeout: 60000
+# Landscape: more crew columns, no sideways scroll needed for 5 crews.
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil:
+    visible:
+      id: "matrix-crew-435623"
+    timeout: 10000
+- takeScreenshot: duty-swap-matrix-air-landscape-Ver1
+- setOrientation: PORTRAIT
+- extendedWaitUntil:
+    visible:
+      id: "duty-392923-2HB"
+    timeout: 10000
+- tapOn:
+    id: "duty-392923-2HB"
+# 402452 has three 3FB standbys (11, 12, 20 Oct); the second is 12 Oct.
+- tapOn:
+    id: "duty-402452-3FB"
+    index: 1
+- extendedWaitUntil:
+    visible:
+      id: "tray-delta"
+    timeout: 30000
+- tapOn:
+    id: "swap-compare"
+- extendedWaitUntil:
+    visible:
+      id: "compare-sheet"
+    timeout: 20000
+- assertVisible:
+    text: "2HB · 3/3/3 · CP"
+- tapOn:
+    id: "swap-comment"
+- inputText: "crew-app dev test - will be withdrawn"
+- tapOn:
+    id: "swap-submit"
+- extendedWaitUntil:
+    visible:
+      id: "swap-result"
+    timeout: 130000
+- assertVisible:
+    text: ".*Request sent to 402452.*"
+- takeScreenshot: duty-swap-sent-air-Ver1

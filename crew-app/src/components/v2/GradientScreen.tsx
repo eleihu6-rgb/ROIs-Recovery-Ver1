@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, type ViewStyle } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, type ViewStyle } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect, Circle, Path, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CarrierPalette } from '../../theme/carrier';
@@ -27,9 +27,14 @@ export function GradientScreen({
   sideInsets = true,
 }: GradientScreenProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
+  // The SVG keeps the size it first laid out at; when the iPhone Duo rotates or
+  // unfolds it stopped short (grey band under the gradient). Re-mount it per window
+  // size, and paint the gradient's last stop underneath as a fallback. A regular
+  // iPhone never changes window size, so nothing changes there.
+  const { width, height } = useWindowDimensions();
   return (
-    <View style={[styles.root, style]}>
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+    <View style={[styles.root, { backgroundColor: palette.g4 }, style]}>
+      <Svg key={`${width}x${height}`} style={StyleSheet.absoluteFill} width="100%" height="100%">
         <Defs>
           <LinearGradient id="screenGradient" x1="0" y1="0" x2="0.14" y2="1">
             <Stop offset="0" stopColor={palette.g1} />

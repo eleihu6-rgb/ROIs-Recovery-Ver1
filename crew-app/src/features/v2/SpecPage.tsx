@@ -98,8 +98,9 @@ export function SpecPage(props: Props) {
     nextFlight: 'Next flight',
   });
   return (
-    <PageShell title={spec.title} testID={`page-${route.params.id}`}>
-      {spec.hero && <Hero h1={spec.hero.h1} h2={spec.hero.h2} palette={p} />}
+    // Hero (when the page has one) beside the lists on the Duo's wide inner screen,
+    // else one centred column — placeholder copy has nothing to split.
+    <PageShell title={spec.title} testID={`page-${route.params.id}`} hero={spec.hero ? <Hero h1={spec.hero.h1} h2={spec.hero.h2} palette={p} /> : undefined}>
       {spec.groups.map((g, gi) => (
         <View key={gi}>
           {g.title && <SectionLabel palette={p}>{g.title}</SectionLabel>}

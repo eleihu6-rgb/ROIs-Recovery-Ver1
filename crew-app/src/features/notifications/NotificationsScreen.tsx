@@ -26,7 +26,8 @@ import {GradientScreen} from '../../components/v2/GradientScreen';
 import {Icon, type IconName} from '../../components/v2/icons';
 import {AppDialog, type AppDialogTone} from '../../components/v2/AppDialog';
 import {SectionLabel} from '../../components/v2/rows';
-import type {DiscretionRequest} from './notificationsApi';
+import {useLayout} from '../../components/v2/useLayout';
+import type {CrewNotification, DiscretionRequest} from './notificationsApi';
 import {decideDiscretion, loadNotifications, markNotificationReadThunk} from './notificationsSlice';
 import {DiscretionCard} from './DiscretionCard';
 import {
@@ -151,6 +152,75 @@ function RosterChangeBlock({
   );
 }
 
+/**
+ * One alert. `summary` = the one-line row of the wide layout's master list
+ * (type, title, time, unread dot); otherwise the full card with the body or the
+ * BEFORE → AFTER block.
+ */
+function NotificationCard({
+  n,
+  palette: p,
+  mode,
+  baseTz,
+  onPress,
+  summary,
+  selected,
+}: {
+  n: CrewNotification;
+  palette: CarrierPalette;
+  mode: Parameters<typeof formatLegWindow>[1];
+  baseTz: string;
+  onPress: () => void;
+  summary?: boolean;
+  selected?: boolean;
+}): React.JSX.Element {
+  const change = parseRosterChange(n.payload);
+  const read = n.status === 'read';
+  // The row is one accessible element, so it needs one sentence: the title
+  // plus the spoken before/after (or the plain body for other alerts).
+  const spoken = change ? describeRosterChange(change, mode, baseTz) : n.body;
+  return (
+    <Pressable
+      style={[
+        styles.card,
+        {backgroundColor: p.cardSolid},
+        read && !selected ? styles.cardRead : null,
+        summary ? styles.cardSummary : null,
+        selected ? {borderColor: p.btn, borderWidth: 2} : null,
+      ]}
+      testID="notif-row"
+      accessibilityRole="button"
+      accessibilityLabel={[n.title, spoken].filter(Boolean).join('. ')}
+      onPress={onPress}>
+      <View style={styles.rowBetween}>
+        <View style={styles.cardHeadLeft}>
+          <View style={[styles.chip, {backgroundColor: p.frost}]}>
+            <Icon
+              name={ICON_BY_TYPE[n.type] ?? 'bell'}
+              size={16}
+              color={p.cardInk}
+              strokeWidth={1.7}
+            />
+          </View>
+          <Text style={[styles.typeTag, {color: p.cardSoft}]}>{typeLabel(n.type)}</Text>
+          {!read ? <View style={[styles.unread, {backgroundColor: p.btn}]} /> : null}
+        </View>
+        <Text style={[styles.cardTime, {color: p.cardSoft}]}>{fmtUtc(n.createdUtc)}</Text>
+      </View>
+
+      <Text style={[styles.cardTitle, summary ? styles.cardTitleSummary : null, {color: p.cardInk}]} numberOfLines={summary ? 1 : undefined}>
+        {n.title}
+      </Text>
+
+      {summary ? null : change ? (
+        <RosterChangeBlock change={change} palette={p} mode={mode} baseTz={baseTz} />
+      ) : (
+        <Text style={[styles.cardBody, {color: p.cardSoft}]}>{n.body}</Text>
+      )}
+    </Pressable>
+  );
+}
+
 export function NotificationsScreen(): React.JSX.Element {
   const p = useCarrier();
   const insets = useSafeAreaInsets();
@@ -159,6 +229,10 @@ export function NotificationsScreen(): React.JSX.Element {
   const {notifications, openDiscretions, status, error, decidingId} = useAppSelector(
     s => s.notifications,
   );
+  // iPhone Duo inner screen, landscape: alert list | the selected alert's detail
+  // (an open FDP decision is read and answered there instead of inline).
+  const {wide} = useLayout();
+  const [picked, setPicked] = useState<string | null>(null);
   const auth = useAppSelector(s => s.auth);
   const credentials = useMemo(() => ({ airline: auth.airline, crewId: auth.crewId ?? '', password: auth.password ?? '' }), [auth.airline, auth.crewId, auth.password]);
   const mode = useAppSelector(s => s.settings.timeZoneMode);
@@ -219,6 +293,114 @@ export function NotificationsScreen(): React.JSX.Element {
   );
 
   const unread = notifications.filter(n => n.status !== 'read').length;
+  const newestFirst = [...notifications].reverse();
+  // Wide: what the right pane shows — the tapped item, else the first thing
+  // that needs the crew (an open decision), else the newest alert.
+  const selectedId = picked
+    ?? (openDiscretions[0] ? `disc:${openDiscretions[0].discretionId}` : newestFirst[0]?.notifId ?? null);
+  const selectedDiscretion = openDiscretions.find(d => `disc:${d.discretionId}` === selectedId) ?? null;
+  const selectedNotification = newestFirst.find(n => n.notifId === selectedId) ?? null;
+  const openNotification = (n: CrewNotification) => {
+    setPicked(n.notifId);
+    if (n.status !== 'read') markNotificationReadThunk(dispatch, {notifId: n.notifId, credentials});
+  };
+
+  const loadingAndError = (
+    <>
+      {status === 'loading' && notifications.length === 0 && openDiscretions.length === 0 && (
+        <ActivityIndicator
+          testID="notifications-loading"
+          color={p.ink}
+          style={styles.spinner}
+        />
+      )}
+
+      {status === 'error' && (
+        <View style={[styles.errorBox, {backgroundColor: p.frost}]} testID="notifications-error">
+          <Icon name="bell" size={20} color={p.ink} strokeWidth={1.7} />
+          <Text style={[styles.errorText, {color: p.ink}]}>{error}</Text>
+          <Pressable onPress={refresh} testID="btn-retry" hitSlop={8}>
+            <Text style={[styles.retry, {color: p.ink}]}>Retry</Text>
+          </Pressable>
+        </View>
+      )}
+    </>
+  );
+  const emptyLine = notifications.length === 0 && status === 'ready' ? (
+    <Text style={[styles.empty, {color: p.inkSoft}]} testID="notifications-empty">
+      No notifications yet.
+    </Text>
+  ) : null;
+
+  const wideBody = (
+    <View style={styles.wideRow} testID="alerts-wide">
+      <ScrollView
+        testID="notifications-screen"
+        style={styles.wideList}
+        contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + 32}]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={p.ink} />}>
+        {loadingAndError}
+        {openDiscretions.length > 0 && (
+          <>
+            <SectionLabel palette={p}>ACTION REQUIRED</SectionLabel>
+            {openDiscretions.map(d => {
+              const on = selectedId === `disc:${d.discretionId}`;
+              return (
+                <Pressable
+                  key={d.discretionId}
+                  style={[styles.card, styles.cardSummary, {backgroundColor: p.cardSolid}, on ? {borderColor: p.btn, borderWidth: 2} : null]}
+                  onPress={() => setPicked(`disc:${d.discretionId}`)}
+                  testID={`alerts-disc-${d.discretionId}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`FDP discretion, duty ${d.dutyId}, ${d.extensionRequestedMin} minute extension`}>
+                  <View style={styles.rowBetween}>
+                    <View style={styles.cardHeadLeft}>
+                      <View style={[styles.chip, {backgroundColor: p.frost}]}>
+                        <Icon name="shield" size={16} color={p.cardInk} strokeWidth={1.7} />
+                      </View>
+                      <Text style={[styles.typeTag, {color: p.cardSoft}]}>FDP</Text>
+                    </View>
+                    <Text style={[styles.extBadge, {backgroundColor: p.btn}]}>+{d.extensionRequestedMin}m</Text>
+                  </View>
+                  <Text style={[styles.cardTitle, styles.cardTitleSummary, {color: p.cardInk}]} numberOfLines={1}>
+                    {`FDP discretion · Duty ${d.dutyId}`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </>
+        )}
+        <SectionLabel palette={p}>NOTIFICATIONS</SectionLabel>
+        {emptyLine}
+        {newestFirst.map(n => (
+          <NotificationCard key={n.notifId} n={n} palette={p} mode={mode} baseTz={baseTz} summary selected={selectedId === n.notifId} onPress={() => openNotification(n)} />
+        ))}
+      </ScrollView>
+      <ScrollView
+        style={styles.wideDetail}
+        contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + 32, paddingRight: 22 + insets.right}]}
+        testID="alerts-detail">
+        {selectedDiscretion ? (
+          <>
+            <SectionLabel palette={p}>ACTION REQUIRED</SectionLabel>
+            <DiscretionCard
+              request={selectedDiscretion}
+              palette={p}
+              deciding={decidingId === selectedDiscretion.discretionId}
+              onDecide={onDecide}
+            />
+          </>
+        ) : selectedNotification ? (
+          <>
+            <SectionLabel palette={p}>{typeLabel(selectedNotification.type)}</SectionLabel>
+            <NotificationCard n={selectedNotification} palette={p} mode={mode} baseTz={baseTz} onPress={() => openNotification(selectedNotification)} />
+          </>
+        ) : status === 'ready' ? (
+          <Text style={[styles.empty, {color: p.inkSoft}]}>Nothing to show.</Text>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <GradientScreen palette={p} texture={false}>
@@ -244,6 +426,7 @@ export function NotificationsScreen(): React.JSX.Element {
         </View>
       </View>
 
+      {wide ? wideBody : (
       <ScrollView
         testID="notifications-screen"
         style={styles.screen}
@@ -255,23 +438,7 @@ export function NotificationsScreen(): React.JSX.Element {
             tintColor={p.ink}
           />
         }>
-        {status === 'loading' && notifications.length === 0 && openDiscretions.length === 0 && (
-          <ActivityIndicator
-            testID="notifications-loading"
-            color={p.ink}
-            style={styles.spinner}
-          />
-        )}
-
-        {status === 'error' && (
-          <View style={[styles.errorBox, {backgroundColor: p.frost}]} testID="notifications-error">
-            <Icon name="bell" size={20} color={p.ink} strokeWidth={1.7} />
-            <Text style={[styles.errorText, {color: p.ink}]}>{error}</Text>
-            <Pressable onPress={refresh} testID="btn-retry" hitSlop={8}>
-              <Text style={[styles.retry, {color: p.ink}]}>Retry</Text>
-            </Pressable>
-          </View>
-        )}
+        {loadingAndError}
 
         {/* ── Open FDP-discretion decisions ── */}
         {openDiscretions.length > 0 && (
@@ -291,60 +458,21 @@ export function NotificationsScreen(): React.JSX.Element {
 
         {/* ── Alert history ── */}
         <SectionLabel palette={p}>NOTIFICATIONS</SectionLabel>
-        {notifications.length === 0 && status === 'ready' && (
-          <Text style={[styles.empty, {color: p.inkSoft}]} testID="notifications-empty">
-            No notifications yet.
-          </Text>
-        )}
-        {[...notifications].reverse().map(n => {
-          const change = parseRosterChange(n.payload);
-          const read = n.status === 'read';
-          // The row is one accessible element, so it needs one sentence: the title
-          // plus the spoken before/after (or the plain body for other alerts).
-          const spoken = change
-            ? describeRosterChange(change, mode, baseTz)
-            : n.body;
-          return (
-            <Pressable
-              key={n.notifId}
-              style={[
-                styles.card,
-                {backgroundColor: p.cardSolid},
-                read ? styles.cardRead : null,
-              ]}
-              testID="notif-row"
-              accessibilityRole="button"
-              accessibilityLabel={[n.title, spoken].filter(Boolean).join('. ')}
-              onPress={() =>
-                !read && markNotificationReadThunk(dispatch, {notifId: n.notifId, credentials})
-              }>
-              <View style={styles.rowBetween}>
-                <View style={styles.cardHeadLeft}>
-                  <View style={[styles.chip, {backgroundColor: p.frost}]}>
-                    <Icon
-                      name={ICON_BY_TYPE[n.type] ?? 'bell'}
-                      size={16}
-                      color={p.cardInk}
-                      strokeWidth={1.7}
-                    />
-                  </View>
-                  <Text style={[styles.typeTag, {color: p.cardSoft}]}>{typeLabel(n.type)}</Text>
-                  {!read ? <View style={[styles.unread, {backgroundColor: p.btn}]} /> : null}
-                </View>
-                <Text style={[styles.cardTime, {color: p.cardSoft}]}>{fmtUtc(n.createdUtc)}</Text>
-              </View>
-
-              <Text style={[styles.cardTitle, {color: p.cardInk}]}>{n.title}</Text>
-
-              {change ? (
-                <RosterChangeBlock change={change} palette={p} mode={mode} baseTz={baseTz} />
-              ) : (
-                <Text style={[styles.cardBody, {color: p.cardSoft}]}>{n.body}</Text>
-              )}
-            </Pressable>
-          );
-        })}
+        {emptyLine}
+        {newestFirst.map(n => (
+          <NotificationCard
+            key={n.notifId}
+            n={n}
+            palette={p}
+            mode={mode}
+            baseTz={baseTz}
+            onPress={() => {
+              if (n.status !== 'read') markNotificationReadThunk(dispatch, {notifId: n.notifId, credentials});
+            }}
+          />
+        ))}
       </ScrollView>
+      )}
 
       <AppDialog
         visible={dialog !== null}
@@ -409,6 +537,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   cardRead: {opacity: 0.68},
+  // Wide (Duo inner): master list rows are shorter cards; the detail pane is wider.
+  cardSummary: {paddingTop: 10, paddingBottom: 12, marginBottom: 8},
+  cardTitleSummary: {fontSize: 15, marginTop: 6},
+  wideRow: {flex: 1, flexDirection: 'row'},
+  wideList: {flex: 2, minWidth: 0},
+  wideDetail: {flex: 3, minWidth: 0},
   rowBetween: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10},
   cardHeadLeft: {flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1},
   chip: {width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center'},

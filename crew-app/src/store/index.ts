@@ -10,6 +10,7 @@ import flightCalendarReducer from '../features/calendar/flightCalendarSlice';
 import tripTradeReducer from '../features/tripTrade/tripTradeSlice';
 import notificationsReducer from '../features/notifications/notificationsSlice';
 import rbotReducer from '../features/rbot/rbotSlice';
+import dutySwapReducer from '../features/dutySwap/dutySwapSlice';
 
 export const store = configureStore({
   reducer: {
@@ -23,6 +24,7 @@ export const store = configureStore({
     tripTrade: tripTradeReducer,
     notifications: notificationsReducer,
     rbot: rbotReducer,
+    dutySwap: dutySwapReducer,
   },
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({

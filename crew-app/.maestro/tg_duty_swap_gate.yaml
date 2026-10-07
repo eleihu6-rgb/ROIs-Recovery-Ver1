@@ -1,0 +1,36 @@
+# Duty Swap is live only where the crew portal serves it (PR). A TG crew taps
+# Home ▸ Duty Swap and gets the preview page — never the PR portal matrix, and
+# no PR crews/duties from an earlier session (account-switch hygiene).
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "qa-duty-swap"
+- extendedWaitUntil:
+    visible:
+      id: "page-swap"
+    timeout: 10000
+- assertNotVisible:
+    id: "crew-matrix"
+- assertNotVisible:
+    text: ".*392923.*"
+- takeScreenshot: duty-swap-tg-preview-Ver1

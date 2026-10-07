@@ -15,6 +15,7 @@ import { daysUntil, greetingFor, legView, tripStartMs, MON } from './model';
 import { useAlarms, useDestinations, useNextTrip } from './useV2';
 import { useV2Nav } from './nav';
 import { useLayout } from '../../components/v2/useLayout';
+import { selectDutySwapLive } from '../dutySwap/dutySwapActions';
 
 // The dock floats over the page, so the scroll content carries its own clearance.
 // 110 (dock height + the bottom inset) left the Quick actions card half-under the
@@ -36,6 +37,8 @@ export function HomeScreen() {
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const guest = useAppSelector(selectIsGuest);
+  // Live Duty Swap where the crew portal serves it (PR); elsewhere the preview page.
+  const dutySwapLive = useAppSelector(selectDutySwapLive);
 
   const [now, setNow] = useState(() => new Date());
   const [holeY, setHoleY] = useState<number | undefined>(undefined); // measured from the dashed line
@@ -50,7 +53,29 @@ export function HomeScreen() {
   // Explore: this month's upcoming rotations, one card per destination. The same
   // list backs the full-screen city viewer, so the tapped card is the page it opens.
   const destinations = useDestinations(now);
-  const { wide } = useLayout();
+  // Duo inner screen: landscape (wide) = two columns; rotated (tall) = one
+  // column with the rotation inside the ticket and the destinations as a grid.
+  const { wide, tall, width } = useLayout();
+  // Tall: three tiles per row inside the page's 22pt gutters, 12pt apart.
+  const tallTile = Math.floor((width - 44 - 24) / 3);
+
+  // Every leg of the next rotation, with its local times and the layover between
+  // legs. Wide: a card of its own under the ticket; tall: inside the ticket.
+  const legRows = trip ? trip.legs.map((l, i) => {
+    const v = legView(l, trip, mode, baseTz, byTrip[trip.id]);
+    return (
+      <View key={i}>
+        {i > 0 && trip.layoverHours ? (
+          <Text style={[s.rotLayover, { color: tall ? p.cardSoft : p.inkSoft }]}>{`${Math.round(trip.layoverHours)}h layover · ${v.dep}`}</Text>
+        ) : null}
+        <View style={s.rotRow}>
+          <Text style={[s.rotFlt, { color: tall ? p.cardInk : p.ink }]}>{v.fltNumber}</Text>
+          <Text style={[s.rotRoute, { color: tall ? p.cardInk : p.ink }]}>{`${v.dep} → ${v.arv}`}</Text>
+          <Text style={[s.rotTime, { color: tall ? p.cardSoft : p.inkSoft }]}>{`${v.day} ${MON[v.monthIdx]} · ${v.depTime} – ${v.arvTime}${v.arvDayOffset ? ` ${v.arvDayOffset}` : ''}`}</Text>
+        </View>
+      </View>
+    );
+  }) : null;
 
   const ticketSection = trip && first ? (
       <TicketCard palette={p} style={s.trip} holeY={holeY} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-next-trip">
@@ -68,31 +93,49 @@ export function HomeScreen() {
           </View>
         </View>
         <View style={{ marginVertical: 16 }} onLayout={e => setHoleY(20 + e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2)}><DashedLine color={p.cardLine} /></View>
+        {tall ? <View style={s.rotInTicket} testID="home-rotation">{legRows}</View> : null}
         <View style={s.btnRow}>
           <View style={[s.btn, { backgroundColor: p.btn }]}><Text style={s.btnText}>View Trip Details</Text></View>
           <View style={[s.btnSq, { backgroundColor: p.btn }]}><Icon name="qr" size={26} color="#fff" strokeWidth={1.8} /></View>
         </View>
       </TicketCard>
     ) : null;
+  // Wide (Duo inner) only: the whole rotation under the ticket — every leg with its
+  // local times — so the left column carries the trip instead of empty space.
+  const rotationSection = wide && trip ? (
+    <Pressable style={[s.rot, { backgroundColor: p.frost }]} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-rotation">
+      <Text style={[s.qaTitle, { color: p.ink }]}>{`Rotation · ${trip.legs.length} leg${trip.legs.length === 1 ? '' : 's'}`}</Text>
+      {legRows}
+    </Pressable>
+  ) : null;
+  const destTiles = destinations.map((d, i) => (
+    <Pressable key={d.city.airport} style={[s.dest, wide && s.destWide, tall && { width: tallTile, height: tallTile }]} onPress={() => nav.navigate('Destination', { index: i })} testID={`dest-${d.city.airport}`}>
+      <ImageBackground source={d.city.image} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: 14 }} />
+      <View style={s.destGrad} />
+      <View style={s.fav}><Icon name="heart" size={16} color="#fff" strokeWidth={1.8} /></View>
+      <View style={s.destBottom}>
+        <Text style={[s.destCo, { color: p.inkSoft }]}>{d.city.name === d.city.airport ? 'Destination' : d.city.airport}</Text>
+        <Text style={s.destCity}>{d.city.name}</Text>
+        <Text style={[s.destFrom, { color: p.inkSoft }]}>FLIGHT</Text>
+        <Text style={s.destFlt}>{d.leg.fltNumber} · {d.leg.day} {MON[d.leg.monthIdx]}</Text>
+      </View>
+    </Pressable>
+  ));
   const exploreSection = (
     <>
       <View style={s.sec}><Text style={[s.secTitle, { color: p.ink }]}>Explore your destinations</Text><Text style={[s.secLink, { color: p.inkSoft }]}>See all</Text></View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.destRow} style={{ marginHorizontal: wide ? 0 : -22 }}>
-        {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
-        {destinations.map((d, i) => (
-          <Pressable key={d.city.airport} style={s.dest} onPress={() => nav.navigate('Destination', { index: i })} testID={`dest-${d.city.airport}`}>
-            <ImageBackground source={d.city.image} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: 14 }} />
-            <View style={s.destGrad} />
-            <View style={s.fav}><Icon name="heart" size={16} color="#fff" strokeWidth={1.8} /></View>
-            <View style={s.destBottom}>
-              <Text style={[s.destCo, { color: p.inkSoft }]}>{d.city.name === d.city.airport ? 'Destination' : d.city.airport}</Text>
-              <Text style={s.destCity}>{d.city.name}</Text>
-              <Text style={[s.destFrom, { color: p.inkSoft }]}>FLIGHT</Text>
-              <Text style={s.destFlt}>{d.leg.fltNumber} · {d.leg.day} {MON[d.leg.monthIdx]}</Text>
-            </View>
-          </Pressable>
-        ))}
-      </ScrollView>
+      {tall ? (
+        // Rotated Duo: the width takes a 3-up grid, not a strip that scrolls off-screen.
+        <View style={s.destGrid} testID="home-dest-grid">
+          {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
+          {destTiles}
+        </View>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.destRow, wide && s.destRowWide]} style={{ marginHorizontal: wide ? 0 : -22 }}>
+          {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
+          {destTiles}
+        </ScrollView>
+      )}
     </>
   );
   const quickSection = (
@@ -102,7 +145,7 @@ export function HomeScreen() {
         <QA icon="checkin" label="Check-In" onPress={() => nav.navigate('Spec', { id: 'checkin' })} palette={p} />
         <QA icon="calcheck" label="Absence" onPress={() => nav.navigate('Spec', { id: 'absence' })} palette={p} />
         <QA icon="shield" label="Discretion" onPress={() => nav.navigate('Discretion')} palette={p} />
-        <QA icon="swap" label="Duty Swap" onPress={() => nav.navigate('Spec', { id: 'swap' })} palette={p} />
+        <QA icon="swap" label="Duty Swap" onPress={() => (dutySwapLive ? nav.navigate('DutySwap') : nav.navigate('Spec', { id: 'swap' }))} palette={p} />
         <QA icon="more" label="More" onPress={() => nav.navigate('Spec', { id: 'more' })} palette={p} />
       </View>
     </View>
@@ -145,7 +188,7 @@ export function HomeScreen() {
         {wide && ticketSection ? (
           // iPhone Duo inner screen: next trip left, destinations + quick actions right.
           <View style={s.wideCols}>
-            <View style={s.wideCol}>{ticketSection}</View>
+            <View style={s.wideCol}>{ticketSection}{rotationSection}</View>
             <View style={s.wideCol}>{exploreSection}{quickSection}</View>
           </View>
         ) : (
@@ -222,6 +265,18 @@ const s = StyleSheet.create({
   // 190 tall (was 215): with the trip card above it the page used to end under the
   // dock, and every destination's own content still fits the shorter tile.
   dest: { width: 165, height: 172, borderRadius: 14, overflow: 'hidden' },
+  // Wide (Duo inner): taller tiles fill the right column's height.
+  destWide: { width: 200, height: 220 },
+  destRowWide: { paddingHorizontal: 0 },
+  rot: { marginTop: 14, borderRadius: 18, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 8 },
+  rotRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  rotFlt: { fontSize: 14, fontWeight: '600', width: 64, fontVariant: ['tabular-nums'] },
+  rotRoute: { fontSize: 14, fontWeight: '500', width: 96 },
+  rotTime: { flex: 1, fontSize: 13, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  rotLayover: { fontSize: 12, paddingLeft: 76, paddingVertical: 2 },
+  // Tall (rotated Duo): the rotation sits inside the ticket, under the perforation.
+  rotInTicket: { marginTop: -6, marginBottom: 12 },
+  destGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   // Neutral black scrim over the destination photo — a tinted scrim would fight
   // whichever theme the crew picked (theme coverage test).
   destGrad: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,.45)' },

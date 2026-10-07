@@ -8,7 +8,7 @@
 //
 // One photo page per city; the scrim, header and info block are single instances
 // that follow the visible page, so a screen reader (and Maestro) sees one of each.
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  useWindowDimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ViewToken,
@@ -32,11 +31,16 @@ import { hotelFor, hotelTransfer, legOps, type HotelInfo, type LegOps } from '..
 import { useBase, useDestinations, type DestinationEntry } from './useV2';
 import { MON } from './model';
 import { useV2Nav, type V2StackParamList } from './nav';
+import { useLayout } from '../../components/v2/useLayout';
 
 type Props = NativeStackScreenProps<V2StackParamList, 'Destination'>;
 
 /** How much of the screen the (compact) type-on-photo block may occupy. */
 const INFO_MAX = '54%';
+/** Duo inner, landscape: the photo's share of the width (the info card takes the rest). */
+const WIDE_PHOTO_SHARE = 0.55;
+/** Duo inner, rotated: the photo's share of the height (the info panel sits below). */
+const TALL_PHOTO_SHARE = 0.5;
 
 /** Dark bottom gradient so white type stays readable on any photo. */
 function Scrim() {
@@ -90,18 +94,49 @@ function InfoBlock({
   entry,
   ops,
   hotel,
+  panel,
+  split,
 }: {
   entry: DestinationEntry;
   ops: LegOps;
   hotel: HotelInfo | null;
+  /** Duo inner screen: the block is its own panel beside/under the photo, not type over it. */
+  panel?: 'side' | 'below';
+  /** Duo inner, rotated: hotel and transfer as two cards side by side. */
+  split?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const leg = entry.leg;
   const transfer = hotel ? hotelTransfer(hotel.airport, leg.fltNumber, hotel) : null;
+  const hotelLines = hotel ? (
+    <>
+      <Line icon="bed" text={hotel.name} extra={hotel.mocked ? 'expected' : 'booked'} />
+      <Line icon="house" text={hotel.address} muted />
+      <Line
+        icon="clock"
+        text={`Check-in ${hotel.checkIn} · out ${hotel.checkOut} · ${hotel.nights} night${hotel.nights === 1 ? '' : 's'}`}
+      />
+    </>
+  ) : null;
+  const transferLines = transfer ? (
+    <>
+      <Line
+        icon="car"
+        text={`${transfer.vehicle} · ${transfer.plate}`}
+        extra="expected"
+      />
+      <Line
+        icon="user"
+        text={`${transfer.driver} · ${transfer.phone}`}
+        extra={`· pick-up ${transfer.pickup} · drop-off ${transfer.dropOff}`}
+      />
+    </>
+  ) : null;
   return (
     <ScrollView
-      style={s.infoWrap}
-      contentContainerStyle={[s.infoBody, { paddingBottom: insets.bottom + 24 }]}
+      style={panel === 'side' ? s.infoSide : panel === 'below' ? s.infoBelow : s.infoWrap}
+      // The side panel ends at the Duo's right-edge status strip, so it keeps clear of it.
+      contentContainerStyle={[s.infoBody, panel === 'side' ? [s.infoPanelBody, { paddingRight: 22 + insets.right }] : null, { paddingBottom: insets.bottom + 24 }]}
       showsVerticalScrollIndicator={false}
       testID="dest-panel"
     >
@@ -140,28 +175,16 @@ function InfoBlock({
         text={[leg.fleet, ops.register, ops.block || leg.duration].filter(Boolean).join(' · ')}
       />
 
-      {hotel ? (
+      {hotel && split ? (
+        // Rotated Duo: the layover's two kinds of info side by side — hotel | transfer.
+        <View style={s.splitRow} testID="dest-split">
+          <View style={s.splitCard}>{hotelLines}</View>
+          {transferLines ? <View style={s.splitCard}>{transferLines}</View> : null}
+        </View>
+      ) : hotel ? (
         <View style={s.groupTop}>
-          <Line icon="bed" text={hotel.name} extra={hotel.mocked ? 'expected' : 'booked'} />
-          <Line icon="house" text={hotel.address} muted />
-          <Line
-            icon="clock"
-            text={`Check-in ${hotel.checkIn} · out ${hotel.checkOut} · ${hotel.nights} night${hotel.nights === 1 ? '' : 's'}`}
-          />
-          {transfer ? (
-            <>
-              <Line
-                icon="car"
-                text={`${transfer.vehicle} · ${transfer.plate}`}
-                extra="expected"
-              />
-              <Line
-                icon="user"
-                text={`${transfer.driver} · ${transfer.phone}`}
-                extra={`· pick-up ${transfer.pickup} · drop-off ${transfer.dropOff}`}
-              />
-            </>
-          ) : null}
+          {hotelLines}
+          {transferLines}
         </View>
       ) : (
         <Line icon="bed" text="Day return — no hotel" muted />
@@ -177,12 +200,24 @@ export function DestinationScreen({ route }: Props) {
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  // iPhone Duo inner screen: landscape = photo (left 55 %) | info card; rotated =
+  // photo (top half) over an info panel. A regular iPhone keeps the type-on-photo
+  // page, so the pager stays full-window there. (Live window size.)
+  const { wide, tall, width, height } = useLayout();
+  const pagerW = wide ? Math.round(width * WIDE_PHOTO_SHARE) : width;
+  const pagerH = tall ? Math.round(height * TALL_PHOTO_SHARE) : height;
   const [now] = useState(() => new Date());
   const destinations = useDestinations(now);
   const list = useRef<FlatList<DestinationEntry>>(null);
   const [page, setPage] = useState(() => Math.max(0, Math.min(route.params.index, destinations.length - 1)));
   const current: DestinationEntry | undefined = destinations[Math.min(page, destinations.length - 1)];
+  // The pager's page width changes when the Duo rotates/unfolds; re-seat the
+  // current page or the photo lands between two cities.
+  const pageRef = useRef(page);
+  pageRef.current = page;
+  useEffect(() => {
+    list.current?.scrollToOffset({ offset: pageRef.current * pagerW, animated: false });
+  }, [pagerW]);
 
   const ops = useMemo(
     () => (current
@@ -200,7 +235,7 @@ export function DestinationScreen({ route }: Props) {
   }).current;
 
   const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setPage(Math.max(0, Math.round(e.nativeEvent.contentOffset.x / width)));
+    setPage(Math.max(0, Math.round(e.nativeEvent.contentOffset.x / pagerW)));
   };
 
   if (!current || !ops) {
@@ -214,38 +249,53 @@ export function DestinationScreen({ route }: Props) {
     );
   }
 
+  const pager = (
+    <FlatList
+      ref={list}
+      data={destinations}
+      keyExtractor={d => d.city.airport}
+      horizontal
+      pagingEnabled
+      showsHorizontalScrollIndicator={false}
+      initialScrollIndex={page}
+      getItemLayout={(_, i) => ({ length: pagerW, offset: pagerW * i, index: i })}
+      onViewableItemsChanged={onViewable}
+      viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
+      onMomentumScrollEnd={onMomentumEnd}
+      style={wide || tall ? { width: pagerW, height: pagerH, flexGrow: 0 } : undefined}
+      renderItem={({ item }) => (
+        <ImageBackground
+          source={item.city.image}
+          style={{ width: pagerW, height: pagerH }}
+          resizeMode="cover"
+          testID={`dest-photo-${item.city.airport}`}
+        >
+          <View style={s.topScrim} />
+        </ImageBackground>
+      )}
+      testID="dest-pager"
+    />
+  );
+
   // Carrier ground shows for the instant before the photo decodes.
   return (
-    <View style={[s.root, { backgroundColor: p.g1 }]} testID="page-destination">
-      <FlatList
-        ref={list}
-        data={destinations}
-        keyExtractor={d => d.city.airport}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        initialScrollIndex={page}
-        getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-        onViewableItemsChanged={onViewable}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-        onMomentumScrollEnd={onMomentumEnd}
-        renderItem={({ item }) => (
-          <ImageBackground
-            source={item.city.image}
-            style={{ width, height }}
-            resizeMode="cover"
-            testID={`dest-photo-${item.city.airport}`}
-          >
-            <View style={s.topScrim} />
-          </ImageBackground>
-        )}
-        testID="dest-pager"
-      />
-
-      <Scrim />
+    <View style={[s.root, wide && s.rootWide, { backgroundColor: p.g1 }]} testID="page-destination">
+      {wide || tall ? (
+        // Duo inner screen: the photo is one pane and the info another — no type
+        // over the picture, so only the photo pane carries the bottom scrim.
+        <View style={{ width: pagerW, height: pagerH }} testID={wide ? 'dest-photo-pane-wide' : 'dest-photo-pane-tall'}>
+          {pager}
+          <Scrim />
+        </View>
+      ) : (
+        <>
+          {pager}
+          <Scrim />
+        </>
+      )}
 
       {/* Header floats over the photo: back, page dots, position, trip details. */}
-      <View style={[s.head, { paddingTop: insets.top + 8 }]}>
+      <View style={[s.head, { paddingTop: insets.top + 8, paddingRight: 14 + insets.right }]}>
         <Pressable onPress={() => nav.goBack()} hitSlop={12} style={s.iconBtn} testID="dest-back" accessibilityLabel="back">
           <Icon name="back" size={24} color="#fff" strokeWidth={1.8} />
         </Pressable>
@@ -270,6 +320,8 @@ export function DestinationScreen({ route }: Props) {
         entry={current}
         ops={ops}
         hotel={hotel}
+        panel={wide ? 'side' : tall ? 'below' : undefined}
+        split={tall}
       />
     </View>
   );
@@ -292,6 +344,13 @@ const s = StyleSheet.create({
   headCtaText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   infoWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: INFO_MAX },
   infoBody: { paddingHorizontal: 22, paddingTop: 6 },
+  // Duo inner screen: the info block as its own pane on the carrier ground.
+  rootWide: { flexDirection: 'row' },
+  infoSide: { flex: 1, minWidth: 0 },
+  infoBelow: { flex: 1 },
+  infoPanelBody: { paddingTop: 64 },
+  splitRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  splitCard: { flex: 1, minWidth: 0, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.08)' },
   airport: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '700', letterSpacing: 2 },
   city: { color: '#fff', fontSize: 34, fontWeight: '700', marginTop: 2 },
   sub: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginTop: 6 },

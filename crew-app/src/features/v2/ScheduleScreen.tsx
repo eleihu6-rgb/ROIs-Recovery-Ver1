@@ -3,7 +3,7 @@
 // date strip and the list stay in sync both ways. Opens on today if it holds a
 // duty, else the next flight.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, FlatList, Linking, Pressable, StyleSheet, type ViewToken } from 'react-native';
+import { View, Text, FlatList, Linking, Pressable, ScrollView, StyleSheet, type ViewToken } from 'react-native';
 import Svg, { Rect, Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch, useAppSelector } from '../../store';
@@ -19,8 +19,9 @@ import { IconButton } from './HomeScreen';
 import { MeetingCard, MeetingRow, type MeetingActions } from './MeetingCard';
 import { CalendarView } from './CalendarView';
 import { RouteMapView } from './RouteMapView';
-import { pickDayArt, SCHED_VIEWS, viewPick, type DayArtName, type SchedViewMode, type SchedViewOption } from './schedView';
+import { daySummary, pickDayArt, SCHED_VIEWS, viewPick, type DayArtName, type SchedViewMode, type SchedViewOption } from './schedView';
 import { useBase } from './useV2';
+import { useLayout } from '../../components/v2/useLayout';
 import { toggleMeetingMute } from '../meetings/meetingsSlice';
 import { codeAddsInfo, type GroundDuty } from '../roster/dutyDisplay';
 import type { TimeZoneMode } from '../settings/settingsSlice';
@@ -75,6 +76,10 @@ export function ScheduleScreen({ route }: Props = {}) {
   const list = useRef<FlatList<DayModel>>(null);
   const strip = useRef<FlatList<DayModel>>(null);
   const lock = useRef(0);
+  // iPhone Duo inner screen, landscape: the Timeline becomes master/detail — the
+  // month as a vertical day list (one line per day) beside the selected day's
+  // full card(s). `strip` then points at that list, so focus() keeps working.
+  const { wide } = useLayout();
 
   // The strip shows every calendar day; the list only carries days that actually
   // have something on them (see hasDutyCard), so the two indexes diverge.
@@ -205,7 +210,7 @@ export function ScheduleScreen({ route }: Props = {}) {
         </View>
         {/* The date strip belongs to the Timeline view only — Calendar and Route
             map carry their own headers (mock Ver11). */}
-        {view === 'timeline' ? (
+        {view === 'timeline' && !wide ? (
           <FlatList
             ref={strip} horizontal data={month.days} keyExtractor={d => String(d.key)} showsHorizontalScrollIndicator={false}
             contentContainerStyle={s.strip} getItemLayout={(_, i) => ({ length: 60, offset: 60 * i, index: i })}
@@ -220,7 +225,31 @@ export function ScheduleScreen({ route }: Props = {}) {
           />
         ) : null}
       </View>
-      {view === 'timeline' ? (
+      {view === 'timeline' && wide ? (
+        <View style={s.master} testID="sched-master">
+          <FlatList
+            ref={strip} data={month.days} keyExtractor={d => String(d.key)} style={s.masterList} contentContainerStyle={s.masterBody}
+            showsVerticalScrollIndicator={false} getItemLayout={(_, i) => ({ length: MASTER_ROW, offset: MASTER_ROW * i, index: i })}
+            onScrollToIndexFailed={info => setTimeout(() => strip.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
+            renderItem={({ item, index }) => (
+              <DayRow day={item} on={index === active} palette={p} onPress={() => focus(index)} />
+            )}
+            testID="sched-master-list"
+          />
+          <ScrollView style={s.detail} contentContainerStyle={s.detailBody} showsVerticalScrollIndicator={false} testID="sched-detail">
+            {month.days[active] && hasDutyCard(month.days[active]) ? (
+              <DayCard day={month.days[active]} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} actions={meetingActions} calendar={calendar} todayKey={todayKey} />
+            ) : (
+              <Text style={[s.empty, { color: p.inkSoft }]}>
+                {month.days.length === 0 || listDays.length === 0
+                  ? `No duties published for ${MON[ym.m]} ${ym.y}.`
+                  : `Nothing published on ${month.days[active]?.dow ?? ''} ${month.days[active]?.day ?? ''} ${MON[ym.m]}.`}
+              </Text>
+            )}
+          </ScrollView>
+        </View>
+      ) : null}
+      {view === 'timeline' && !wide ? (
         <FlatList
           ref={list} data={listDays} keyExtractor={d => String(d.key)} contentContainerStyle={s.list} showsVerticalScrollIndicator={false}
           onViewableItemsChanged={onViewable} viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
@@ -316,6 +345,34 @@ function RosterViewMenu({
         ) : null}
       </Pressable>
     </View>
+  );
+}
+
+/** Fixed master-row height so scrollToIndex can centre the focused day. */
+const MASTER_ROW = 58;
+
+/** One day of the master list (wide layout): date, duty glyph, one-line summary. */
+function DayRow({ day, on, palette: p, onPress }: { day: DayModel; on: boolean; palette: CarrierPalette; onPress: () => void }) {
+  const sum = daySummary(day);
+  const blank = sum.icon === null;
+  return (
+    <Pressable
+      onPress={onPress}
+      testID={`day-${day.day}`}
+      style={[s.mrow, { height: MASTER_ROW, backgroundColor: on ? '#fff' : 'transparent', borderColor: on ? '#fff' : p.frostLine }]}
+    >
+      <View style={s.mdate}>
+        <Text style={[s.dow, { color: on ? p.g2 : p.inkSoft }]}>{day.dow.toUpperCase()}</Text>
+        <Text style={[s.mnum, { color: on ? p.g1 : p.ink }, day.isToday && s.today]}>{day.day}</Text>
+      </View>
+      <View style={[s.micon, { backgroundColor: on ? p.frost : CARD_INSET, opacity: blank ? 0 : 1 }]}>
+        {sum.icon ? <Icon name={sum.icon} size={16} color={on ? p.g1 : p.btn} /> : null}
+      </View>
+      <Text style={[s.mtext, { color: on ? p.g1 : blank ? p.inkSoft : p.ink }]} numberOfLines={1}>
+        {blank ? '—' : sum.text}
+      </Text>
+      {sum.time ? <Text style={[s.mtime, { color: on ? p.g2 : p.inkSoft }]}>{sum.time}</Text> : null}
+    </Pressable>
   );
 }
 
@@ -575,6 +632,18 @@ const s = StyleSheet.create({
   pk: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6 },
   pv: { fontSize: 16, fontWeight: '600', marginTop: 3 },
   empty: { textAlign: 'center', fontSize: 14, marginTop: 60 },
+  // ── Wide (Duo inner, landscape): master day list | selected day's cards ──
+  master: { flex: 1, flexDirection: 'row', paddingHorizontal: 22, gap: 18 },
+  masterList: { flex: 2, minWidth: 0 },
+  masterBody: { paddingTop: 2, paddingBottom: 110, gap: 4 },
+  detail: { flex: 3, minWidth: 0 },
+  detailBody: { paddingTop: 2, paddingBottom: 110 },
+  mrow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, borderRadius: 14, borderWidth: 1 },
+  mdate: { width: 40, alignItems: 'center' },
+  mnum: { fontSize: 17, fontWeight: '600', marginTop: 1 },
+  micon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  mtext: { flex: 1, fontSize: 14, fontWeight: '500' },
+  mtime: { fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
   // ── Ver11 "Roster view" picker (floats under the Schedule header) ──
   menu: { position: 'absolute', top: 42, right: 0, zIndex: 30, elevation: 12, width: 236, borderRadius: 14, borderWidth: 1, padding: 8, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
   menuLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.7, textTransform: 'uppercase', paddingHorizontal: 8, paddingTop: 4, paddingBottom: 6 },

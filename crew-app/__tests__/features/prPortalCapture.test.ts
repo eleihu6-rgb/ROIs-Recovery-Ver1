@@ -43,7 +43,7 @@ describe('PR airline wiring (airlines.ts)', () => {
     expect(pr.portalUrl).toBe('https://crew-pal-sea-tst.roiscloud.com/pefg/portal/login');
     expect(pr.carrier).toBe('PR');
     expect(pr.portalKind).toBe('rois');
-    expect(pr.portalConfig).toEqual({ baseAirport: 'MNL', baseOffsetMin: 480, loginOutCaptcha: '202604' });
+    expect(pr.portalConfig).toEqual({ baseAirport: 'MNL', baseOffsetMin: 480, loginOutCaptcha: '202604', dutySwap: true });
   });
 
   it('does not disturb TG (still Bangkok / UTC+7, no captcha)', () => {
