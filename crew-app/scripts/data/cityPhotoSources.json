@@ -1,0 +1,40 @@
+{
+  "seattle.jpg": {
+    "landmark": "Space Needle",
+    "source": "https://commons.wikimedia.org/wiki/File:Space_Needle,_Seattle,_United_States_(Unsplash).jpg",
+    "credit": "Caleb Ekeroth",
+    "license": "CC0-1.0 (published 2016, before Unsplash license change)",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Space_Needle%2C_Seattle%2C_United_States_%28Unsplash%29.jpg/960px-Space_Needle%2C_Seattle%2C_United_States_%28Unsplash%29.jpg",
+    "changes": "Wikimedia thumbnail; no local image edits"
+  },
+  "doha.jpg": {
+    "landmark": "West Bay waterfront skyline",
+    "source": "https://commons.wikimedia.org/wiki/File:Night_skylines_of_Doha_by_Ahmed_A._Ghaffar.jpg",
+    "credit": "Ahmed A. Ghaffar",
+    "license": "CC0-1.0",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Night_skylines_of_Doha_by_Ahmed_A._Ghaffar.jpg/1280px-Night_skylines_of_Doha_by_Ahmed_A._Ghaffar.jpg",
+    "changes": "Wikimedia thumbnail; no local image edits"
+  },
+  "danang.jpg": {
+    "landmark": "Dragon Bridge",
+    "source": "https://commons.wikimedia.org/wiki/File:Da_nang_dragon_bridge.jpg",
+    "credit": "Thangphan",
+    "license": "CC0-1.0",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Da_nang_dragon_bridge.jpg/1280px-Da_nang_dragon_bridge.jpg",
+    "changes": "Wikimedia thumbnail; no local image edits"
+  },
+  "singapore.jpg": {
+    "landmark": "Merlion and Marina Bay Sands",
+    "source": "User-provided image in 2026-10-08 conversation",
+    "license": "User supplied; external publication rights not independently verified",
+    "changes": "JPEG encoding at original dimensions; no crop or visual retouching"
+  },
+  "riyadh.jpg": {
+    "landmark": "Masmak Fort",
+    "source": "https://commons.wikimedia.org/wiki/File:Masmak_castle.jpg",
+    "credit": "Baptiste Marcel",
+    "license": "Public domain, PD-self",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Masmak_castle.jpg",
+    "changes": "None"
+  }
+}

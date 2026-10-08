@@ -221,8 +221,28 @@ describe('destination viewer · screen', () => {
   };
 
   beforeEach(() => {
+    jest.useFakeTimers({ now: NOW });
     mockNavigate.mockClear();
     mockGoBack.mockClear();
+  });
+
+  afterEach(() => jest.useRealTimers());
+
+  it('resizes the photo scrim paint with the live iPad pane after rotation', () => {
+    const original = Dimensions.get('window');
+    const store = makeStore([turnTrip, layoverTrip, darTrip]);
+    const tree = render(<Provider store={store}><DestinationScreen route={{ params: { index: 0 } } as never} navigation={{} as never} /></Provider>);
+    try {
+      for (const [width, height] of [[1210, 834], [834, 1210], [420, 912]]) {
+        act(() => Dimensions.set({ window: { ...original, width, height } }));
+        const paint = tree.getByTestId('dest-scrim-paint');
+        expect(paint.props.width).toBe(width >= 700 ? Math.round(width * 0.55) : width);
+        expect(paint.props.height).toBe(height);
+      }
+    } finally {
+      tree.unmount();
+      act(() => Dimensions.set({ window: original }));
+    }
   });
 
   it('opens the tapped city almost full screen with its detail rows', () => {

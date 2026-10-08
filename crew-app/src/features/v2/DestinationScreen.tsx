@@ -43,10 +43,10 @@ const WIDE_PHOTO_SHARE = 0.55;
 const TALL_PHOTO_SHARE = 0.5;
 
 /** Dark bottom gradient so white type stays readable on any photo. */
-function Scrim() {
+function Scrim({ width, height }: { width: number; height: number }) {
   return (
     <View style={s.scrimWrap} pointerEvents="none">
-      <Svg width="100%" height="100%">
+      <Svg key={`${width}x${height}`} width={width} height={height}>
         <Defs>
           <LinearGradient id="destScrim" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor="#000" stopOpacity={0} />
@@ -54,7 +54,7 @@ function Scrim() {
             <Stop offset="1" stopColor="#000" stopOpacity={0.88} />
           </LinearGradient>
         </Defs>
-        <Rect x={0} y={0} width="100%" height="100%" fill="url(#destScrim)" />
+        <Rect testID="dest-scrim-paint" x={0} y={0} width={width} height={height} fill="url(#destScrim)" />
       </Svg>
     </View>
   );
@@ -285,17 +285,25 @@ export function DestinationScreen({ route }: Props) {
         // over the picture, so only the photo pane carries the bottom scrim.
         <View style={{ width: pagerW, height: pagerH }} testID={wide ? 'dest-photo-pane-wide' : 'dest-photo-pane-tall'}>
           {pager}
-          <Scrim />
+          <Scrim width={pagerW} height={pagerH} />
         </View>
       ) : (
         <>
           {pager}
-          <Scrim />
+          <Scrim width={pagerW} height={pagerH} />
         </>
       )}
 
-      {/* Header floats over the photo: back, page dots, position, trip details. */}
-      <View style={[s.head, { paddingTop: insets.top + 8, paddingRight: 14 + insets.right }]}>
+      <InfoBlock
+        entry={current}
+        ops={ops}
+        hotel={hotel}
+        panel={wide ? 'side' : tall ? 'below' : undefined}
+        split={tall}
+      />
+
+      {/* Render last so the floating controls receive touches above both panes. */}
+      <View style={[s.head, { paddingTop: insets.top + 8, paddingRight: 14 + insets.right }]} pointerEvents="box-none" testID="dest-header">
         <Pressable onPress={() => nav.goBack()} hitSlop={12} style={s.iconBtn} testID="dest-back" accessibilityLabel="back">
           <Icon name="back" size={24} color="#fff" strokeWidth={1.8} />
         </Pressable>
@@ -316,13 +324,6 @@ export function DestinationScreen({ route }: Props) {
         </Pressable>
       </View>
 
-      <InfoBlock
-        entry={current}
-        ops={ops}
-        hotel={hotel}
-        panel={wide ? 'side' : tall ? 'below' : undefined}
-        split={tall}
-      />
     </View>
   );
 }
@@ -334,7 +335,7 @@ const s = StyleSheet.create({
   emptyBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   topScrim: { position: 'absolute', top: 0, left: 0, right: 0, height: 170, backgroundColor: 'rgba(0,0,0,0.32)' },
   scrimWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '78%' },
-  head: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 8 },
+  head: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 8 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   dots: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)' },

@@ -27,6 +27,8 @@ const IMAGES: Record<string, ImageSourcePropType> = {
   colombo: require("./cityImages/colombo.jpg"),
   copenhagen: require("./cityImages/copenhagen.jpg"),
   davao: require("./cityImages/davao.jpg"),
+  danang: require("./cityImages/danang.jpg"),
+  doha: require("./cityImages/doha.jpg"),
   delhi: require("./cityImages/delhi.jpg"),
   dhaka: require("./cityImages/dhaka.jpg"),
   frankfurt: require("./cityImages/frankfurt.jpg"),
@@ -65,6 +67,8 @@ const IMAGES: Record<string, ImageSourcePropType> = {
   phuket: require("./cityImages/phuket.jpg"),
   portmoresby: require("./cityImages/portmoresby.jpg"),
   saigon: require("./cityImages/saigon.jpg"),
+  riyadh: require("./cityImages/riyadh.jpg"),
+  seattle: require("./cityImages/seattle.jpg"),
   sanfrancisco: require("./cityImages/sanfrancisco.jpg"),
   seoul: require("./cityImages/seoul.jpg"),
   shanghai: require("./cityImages/shanghai.jpg"),
@@ -115,6 +119,7 @@ const AIRPORTS: Record<string, CityInfo> = {
   PEN: { name: "Penang", key: "penang" },
   SGN: { name: "Ho Chi Minh City", key: "saigon" },
   DMK: { name: "Bangkok", key: "bangkok" },
+  BKK: { name: "Bangkok", key: "bangkok" },
   FRA: { name: "Frankfurt", key: "frankfurt" },
   HND: { name: "Tokyo", key: "tokyo" },
   NRT: { name: "Tokyo", key: "tokyo" },
@@ -161,6 +166,11 @@ const AIRPORTS: Record<string, CityInfo> = {
   BNE: { name: "Brisbane", key: "brisbane" },
   AKL: { name: "Auckland", key: "auckland" },
   OSL: { name: "Oslo", key: "oslo" },
+  // October 2026 PR roster coverage; photo provenance: scripts/data/cityPhotoSources.json.
+  SEA: { name: "Seattle", key: "seattle" },
+  DOH: { name: "Doha", key: "doha" },
+  DAD: { name: "Da Nang", key: "danang" },
+  RUH: { name: "Riyadh", key: "riyadh" },
 };
 
 export interface CityCard {
