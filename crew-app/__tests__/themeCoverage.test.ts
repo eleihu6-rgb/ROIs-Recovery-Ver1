@@ -154,4 +154,22 @@ describe('theme coverage', () => {
       expect(contrast(pal.dockLight, pal.dockInk)).toBeGreaterThan(4.5);
     }
   });
+
+  it('keeps Daylight surfaces and secondary text neutral and readable', () => {
+    const pal = PALETTES.light;
+    const neutral = [pal.g1, pal.g2, pal.g3, pal.g4, pal.ink, pal.inkSoft,
+      pal.inkFaint, pal.cardInk, pal.cardSoft, pal.cardLine, pal.dockLight];
+    for (const hex of neutral) {
+      const channels = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+      expect(Math.max(...channels) - Math.min(...channels)).toBeLessThanOrEqual(12);
+    }
+    expect(luminance(pal.g1)).toBeGreaterThan(luminance(pal.g4));
+    expect(contrast(pal.inkSoft, pal.g1)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(pal.cardSoft, pal.g1)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast('#ffffff', pal.btn)).toBeGreaterThanOrEqual(4.5);
+    for (const status of [pal.crit, pal.warn, pal.good]) {
+      expect(contrast('#ffffff', status)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(status, pal.g1)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });

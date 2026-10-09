@@ -97,20 +97,23 @@ function renderTrip(trip: Trip) {
 }
 
 describe('Trip Details · operational row order', () => {
-  it('lists wake up → leave home → check-in, then STD → ETD → ATD', () => {
+  it('one grid card per leg, cells in the order things happen, nothing twice', () => {
     const tree = renderTrip(flownLayover);
     const texts = textsInOrder(tree.toJSON());
     const at = (label: string) => texts.indexOf(label);
-
-    // Duty markers first, in the order the crew lives them.
-    expect(at('Get Ready')).toBeGreaterThanOrEqual(0);
-    expect(at('Get Ready')).toBeLessThan(at('Leave home'));
-    expect(at('Leave home')).toBeLessThan(at('Check-in / report'));
-
-    // Then the flight: schedule, then estimate, then actual.
-    expect(at('STD')).toBeGreaterThan(at('Check-in / report'));
-    expect(at('STD')).toBeLessThan(at('ETD / ETA'));
-    expect(at('ETD / ETA')).toBeLessThan(at('ATD / ATA'));
+    const order = ['GET READY', 'LEAVE HOME', 'REPORT', 'AIRCRAFT', 'STD', 'ETD',
+      'BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'ATD', 'STA', 'ETA', 'ATA', 'BLOCK', 'TERMINAL', 'GATE', 'STAND', 'BELT'];
+    for (let k = 1; k < order.length; k++) {
+      expect(at(order[k - 1])).toBeGreaterThanOrEqual(0);
+      expect(at(order[k])).toBeGreaterThan(at(order[k - 1]));
+    }
+    // One style: no list rows left on the leg card, and no value reads twice.
+    for (const old of ['Leave home', 'Check-in / report', 'STD / STA', 'ETD / ETA', 'ATD / ATA', 'Gate', 'Arrival gate', 'Aircraft', 'CHECK-IN']) {
+      expect(texts).not.toContain(old);
+    }
+    for (const l of order) expect(texts.filter(t => t === l).length).toBe(1);
+    expect(texts).not.toContain('TCD');
+    expect(texts).not.toContain('TSAT');
   });
 
   it('carries the live operational detail and the mocked transfer/hotel blocks', () => {

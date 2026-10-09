@@ -80,6 +80,10 @@ Example `state` output after `rotate portrait`:
   steps: `close`, then `rotate portrait` for the cover, then read `state` back and take a
   display-1 screenshot before driving the cover with Maestro. If the cover stays black,
   `open` → `rotate landscape` → `close` again.
+- **Right after a cold boot, `open` can fail** with "the inner screen did not become
+  active after setting the hinge to 180°" (state shows hinge 180, `activeScreen: cover`).
+  `close` → `open` → `rotate landscape` fixed it (2026-10-08). Before that, `duoctl` reports
+  "no display is active" until the boot finishes, so poll `state` first.
 - `simctl io … screenshot --display=3` is black while folded; the cover is display 1.
 - `rotate` targets the **active** screen only. Set the hinge first, then the rotation.
 

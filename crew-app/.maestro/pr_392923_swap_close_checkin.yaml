@@ -1,0 +1,210 @@
+# Duty Swap ▸ Search pairing: the ✕ left of the star closes the filters back to the
+# matrix; R'Bot's starter suggestions are small pills. Then Home ▸ Check-In as PR
+# 421983 (portal task 14 Oct, 15:15 → 22:44, scheduled 17:15, PR684), and TG on the
+# same phone: no PR check-in data (no PR/TG mixing). Regular iPhone (compact).
+#
+# Run (from crew-app/), password from the environment, never from this file:
+#   maestro --device <UDID> test -e PR_PASSWORD="$PR_PASSWORD" .maestro/pr_392923_swap_close_checkin.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "392923"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: ${PR_PASSWORD}
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+
+# Duty Swap: R'Bot pills, then ✕ closes the filters to the matrix.
+- tapOn:
+    id: "qa-duty-swap"
+- tapOn:
+    id: "swap-disclaimer"
+    point: "66%,86%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "search-close"
+    timeout: 90000
+- assertVisible:
+    id: "search-save"
+- tapOn:
+    id: "search-ask-rbot"
+- extendedWaitUntil:
+    visible:
+      id: "swap-rbot-suggestions"
+    timeout: 10000
+- takeScreenshot: cs_01_rbot_pills
+- tapOn:
+    id: "swap-rbot-close"
+- takeScreenshot: cs_02_search_close_button
+- tapOn:
+    id: "search-close"
+- extendedWaitUntil:
+    visible:
+      id: "crew-matrix"
+    timeout: 60000
+- assertNotVisible:
+    id: "search-form"
+- takeScreenshot: cs_03_closed_to_matrix
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-profile"
+- scrollUntilVisible:
+    element:
+      id: "profile-logout"
+    direction: DOWN
+- tapOn:
+    id: "profile-logout"
+- extendedWaitUntil:
+    visible:
+      id: "profile-dialog"
+    timeout: 10000
+- tapOn:
+    id: "profile-dialog"
+    point: "66%,86%"
+- extendedWaitUntil:
+    visible:
+      id: "login-screen"
+    timeout: 20000
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "421983"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: ${PR_PASSWORD}
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+
+# Check-In: the portal's next task for 421983.
+- scrollUntilVisible:
+    element:
+      id: "qa-check-in"
+    direction: DOWN
+- tapOn:
+    id: "qa-check-in"
+- extendedWaitUntil:
+    visible:
+      id: "checkin-earliest"
+    timeout: 90000
+- assertVisible:
+    id: "checkin-earliest"
+    text: "15:15L"
+- assertVisible:
+    id: "checkin-latest"
+    text: "22:44L"
+- assertVisible:
+    text: ".*Scheduled: 17:15.*"
+- assertVisible:
+    id: "checkin-button"
+    enabled: false
+- takeScreenshot: cs_04_checkin_times
+- scrollUntilVisible:
+    element:
+      id: "checkin-duty-0"
+    direction: DOWN
+- assertVisible:
+    text: "PR684"
+- assertVisible:
+    id: "checkin-map"
+- takeScreenshot: cs_05_checkin_map_duty
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-profile"
+- scrollUntilVisible:
+    element:
+      id: "profile-logout"
+    direction: DOWN
+- tapOn:
+    id: "profile-logout"
+- extendedWaitUntil:
+    visible:
+      id: "profile-dialog"
+    timeout: 10000
+- tapOn:
+    id: "profile-dialog"
+    point: "66%,86%"
+- extendedWaitUntil:
+    visible:
+      id: "login-screen"
+    timeout: 20000
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: "qa-check-in"
+    direction: DOWN
+- tapOn:
+    id: "qa-check-in"
+- extendedWaitUntil:
+    notVisible:
+      id: "checkin-loading"
+    timeout: 60000
+- assertNotVisible:
+    text: "PR684"
+- assertNotVisible:
+    text: ".*Scheduled: 17:15.*"
+- takeScreenshot: cs_06_tg_checkin

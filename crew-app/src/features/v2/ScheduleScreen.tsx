@@ -3,7 +3,7 @@
 // date strip and the list stay in sync both ways. Opens on today if it holds a
 // duty, else the next flight.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, FlatList, Linking, Pressable, ScrollView, StyleSheet, type ViewToken } from 'react-native';
+import { View, Text, FlatList, Linking, Pressable, StyleSheet, type ViewToken } from 'react-native';
 import Svg, { Rect, Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch, useAppSelector } from '../../store';
@@ -19,14 +19,15 @@ import { IconButton } from './HomeScreen';
 import { MeetingCard, MeetingRow, type MeetingActions } from './MeetingCard';
 import { CalendarView } from './CalendarView';
 import { RouteMapView } from './RouteMapView';
-import { daySummary, pickDayArt, SCHED_VIEWS, viewPick, type DayArtName, type SchedViewMode, type SchedViewOption } from './schedView';
+import { pickDayArt, SCHED_VIEWS, viewPick, type DayArtName, type SchedViewMode, type SchedViewOption } from './schedView';
 import { useBase } from './useV2';
-import { useLayout } from '../../components/v2/useLayout';
+import { duoActionStripWidth, useLayout } from '../../components/v2/useLayout';
 import { toggleMeetingMute } from '../meetings/meetingsSlice';
 import { codeAddsInfo, type GroundDuty } from '../roster/dutyDisplay';
 import type { TimeZoneMode } from '../settings/settingsSlice';
 import { hhmmForInstant, parseRosterUTC } from '../settings/timeFormat';
 import { airportZone } from '../settings/airportZones';
+import { setSchedulePosition, setScheduleView } from '../rbot/rbotSlice';
 import type { V2TabParamList } from './nav';
 
 /** Inner surface (icon disc, marker strip, meeting row) — a touch lighter than the
@@ -54,6 +55,7 @@ export function ScheduleScreen({ route }: Props = {}) {
   // the default so nothing about today's screen changes for a crew who never
   // opens the menu.
   const [view, setView] = useState<SchedViewMode>('timeline');
+  useEffect(() => { dispatch(setScheduleView(view)); }, [dispatch, view]);
   const [menuOpen, setMenuOpen] = useState(false);
   const base = useBase();
   // Airline schedule → iOS Calendar: the same per-duty toggle the v1 flight card
@@ -73,13 +75,25 @@ export function ScheduleScreen({ route }: Props = {}) {
   // it holds a duty, else the next one) and re-seats when the month rolls.
   const focusDay = month.days[month.focusIndex]?.day ?? null;
   const [calDay, setCalDay] = useState<number | null>(focusDay);
+  useEffect(() => {
+    dispatch(setSchedulePosition({
+      month: `${ym.y}-${String(ym.m + 1).padStart(2, '0')}`,
+      day: view.startsWith('calendar') ? calDay : (month.days[active]?.day ?? null),
+    }));
+  }, [dispatch, ym.y, ym.m, view, calDay, month.days, active]);
   const list = useRef<FlatList<DayModel>>(null);
   const strip = useRef<FlatList<DayModel>>(null);
   const lock = useRef(0);
-  // iPhone Duo inner screen, landscape: the Timeline becomes master/detail — the
-  // month as a vertical day list (one line per day) beside the selected day's
-  // full card(s). `strip` then points at that list, so focus() keeps working.
-  const { wide } = useLayout();
+  // iPhone Duo inner screen, landscape: the date strip stays on top as on the
+  // phone, the day cards run in two columns under it, and the roster views +
+  // Alerts sit in a toolbar down the right side instead of behind the menu.
+  const { wide, width, height } = useLayout();
+  const cols = wide ? 2 : 1;
+  // Both Duo displays reserve a right-edge status strip wide enough for the
+  // roster actions. The outer portrait screen uses the same one-tap switcher.
+  // A regular iPhone has no such right inset and keeps its compact menu.
+  const railWidth = duoActionStripWidth(width, height, insets.right) || insets.right;
+  const railInStrip = railWidth >= RAIL_W;
 
   // The strip shows every calendar day; the list only carries days that actually
   // have something on them (see hasDutyCard), so the two indexes diverge.
@@ -113,10 +127,11 @@ export function ScheduleScreen({ route }: Props = {}) {
     // index 0 throws, so only scroll when there is something to land on.
     const listIndex = resolveCardIndex(stripToList, i, listDays.length);
     if (listIndex !== null) {
-      list.current?.scrollToIndex({ index: listIndex, animated, viewPosition: 0 });
+      // Two columns on the wide layout: the list scrolls by rows.
+      list.current?.scrollToIndex({ index: Math.floor(listIndex / cols), animated, viewPosition: 0 });
     }
     strip.current?.scrollToIndex({ index: i, animated, viewPosition: 0.5 });
-  }, [stripToList, listDays.length]);
+  }, [stripToList, listDays.length, cols]);
 
   // Calendar-event actions. "Join" opens the organiser's link (Teams, Zoom,
   // Google Meet, Webex) in the browser / the Teams app; the alarm chip silences
@@ -159,8 +174,21 @@ export function ScheduleScreen({ route }: Props = {}) {
   // Month only — the credit figure lives on Profile ▸ Block hours, and repeating
   // it in the title made the header read as a statistic instead of a date.
   const title = `Sched ${MON[ym.m]} ${ym.y}`;
+  const rail = (
+    <RosterViewRail
+      palette={p}
+      current={view}
+      alertCount={alertCount}
+      onPick={setView}
+      onAlerts={() => nav.navigate('Alerts')}
+    />
+  );
   return (
-    <GradientScreen palette={p}>
+    // The screen applies side insets itself when the toolbar occupies the Duo's
+    // status strip, beneath the clock and Wi-Fi glyph.
+    <GradientScreen palette={p} sideInsets={!railInStrip}>
+      <View style={[wide ? s.wideShell : s.fill, railInStrip && { paddingLeft: insets.left, paddingRight: railWidth }]} testID="sched-shell">
+      <View style={s.fill}>
       {/* Tapping anywhere else dismisses the roster-view menu (the floating panel
           has no scrim of its own in the mock). */}
       {menuOpen ? (
@@ -182,8 +210,8 @@ export function ScheduleScreen({ route }: Props = {}) {
           </View>
           {/* Ver11: the tab's own bell becomes the "Roster view" menu. Alerts keep
               their entry point as a row inside that menu (with the same badge),
-              so nothing the bell did is lost. */}
-          <View>
+              so nothing the bell did is lost. Wide: the toolbar on the right. */}
+          {wide || railInStrip ? <View style={s.iconBtn} /> : <View>
             <IconButton
               name="menu3"
               badge={alertCount}
@@ -206,59 +234,41 @@ export function ScheduleScreen({ route }: Props = {}) {
                 }}
               />
             ) : null}
-          </View>
+          </View>}
         </View>
         {/* The date strip belongs to the Timeline view only — Calendar and Route
             map carry their own headers (mock Ver11). */}
-        {view === 'timeline' && !wide ? (
+        {view === 'timeline' ? (
           <FlatList
             ref={strip} horizontal data={month.days} keyExtractor={d => String(d.key)} showsHorizontalScrollIndicator={false}
             contentContainerStyle={s.strip} getItemLayout={(_, i) => ({ length: 60, offset: 60 * i, index: i })}
             renderItem={({ item, index }) => (
               <Pressable onPress={() => focus(index)} testID={`day-${item.day}`}
-                style={[s.chip, { backgroundColor: index === active ? '#fff' : p.frost, borderColor: index === active ? '#fff' : p.frostLine }]}>
-                <Text style={[s.dow, { color: index === active ? p.g2 : p.inkSoft }]}>{item.dow.toUpperCase()}</Text>
-                <Text style={[s.dnum, { color: index === active ? p.g1 : p.ink }, item.isToday && s.today]}>{item.day}</Text>
-                <View style={[s.dot, { backgroundColor: index === active ? p.g2 : '#fff', opacity: item.kind !== 'off' && item.kind !== 'layover' ? 1 : 0 }]} />
+                style={[s.chip, { backgroundColor: index === active ? p.cardInset : p.frost, borderColor: p.frostLine }]}>
+                <Text style={[s.dow, { color: index === active ? p.btn : p.inkSoft }]}>{item.dow.toUpperCase()}</Text>
+                <Text style={[s.dnum, { color: index === active ? p.dockInk : p.ink }, item.isToday && s.today]}>{item.day}</Text>
+                <View style={[s.dot, { backgroundColor: index === active ? p.btn : p.ink, opacity: item.kind !== 'off' && item.kind !== 'layover' ? 1 : 0 }]} />
               </Pressable>
             )}
           />
         ) : null}
       </View>
-      {view === 'timeline' && wide ? (
-        <View style={s.master} testID="sched-master">
-          <FlatList
-            ref={strip} data={month.days} keyExtractor={d => String(d.key)} style={s.masterList} contentContainerStyle={s.masterBody}
-            showsVerticalScrollIndicator={false} getItemLayout={(_, i) => ({ length: MASTER_ROW, offset: MASTER_ROW * i, index: i })}
-            onScrollToIndexFailed={info => setTimeout(() => strip.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
-            renderItem={({ item, index }) => (
-              <DayRow day={item} on={index === active} palette={p} onPress={() => focus(index)} />
-            )}
-            testID="sched-master-list"
-          />
-          <ScrollView style={s.detail} contentContainerStyle={s.detailBody} showsVerticalScrollIndicator={false} testID="sched-detail">
-            {month.days[active] && hasDutyCard(month.days[active]) ? (
-              <DayCard day={month.days[active]} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} actions={meetingActions} calendar={calendar} todayKey={todayKey} />
-            ) : (
-              <Text style={[s.empty, { color: p.inkSoft }]}>
-                {month.days.length === 0 || listDays.length === 0
-                  ? `No duties published for ${MON[ym.m]} ${ym.y}.`
-                  : `Nothing published on ${month.days[active]?.dow ?? ''} ${month.days[active]?.day ?? ''} ${MON[ym.m]}.`}
-              </Text>
-            )}
-          </ScrollView>
-        </View>
-      ) : null}
-      {view === 'timeline' && !wide ? (
+      {view === 'timeline' ? (
         <FlatList
           ref={list} data={listDays} keyExtractor={d => String(d.key)} contentContainerStyle={s.list} showsVerticalScrollIndicator={false}
+          key={`cols-${cols}`} numColumns={cols} columnWrapperStyle={wide ? s.listRow : undefined}
           onViewableItemsChanged={onViewable} viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
           onScrollToIndexFailed={info => setTimeout(() => list.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
           ListEmptyComponent={<Text style={[s.empty, { color: p.inkSoft }]}>No duties published for {MON[ym.m]} {ym.y}.</Text>}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => wide ? (
+            <View style={s.listCol}>
+              <DayCard day={item} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} actions={meetingActions} calendar={calendar} todayKey={todayKey}
+                pairLegs={index === listDays.length - 1 && index % 2 === 0 && item.legs.length === 2} />
+            </View>
+          ) : (
             <DayCard day={item} monthIdx={ym.m} mode={mode} baseTz={baseTz} palette={p} onTrip={id => nav.navigate('TripDetails', { tripId: id })} actions={meetingActions} calendar={calendar} todayKey={todayKey} />
           )}
-          testID="sched-list"
+          testID={wide ? 'sched-grid' : 'sched-list'}
         />
       ) : null}
       {view === 'calendar-compact' || view === 'calendar-detail' ? (
@@ -277,6 +287,10 @@ export function ScheduleScreen({ route }: Props = {}) {
         />
       ) : null}
       {view === 'route' ? <RouteMapView month={month} base={base} palette={p} /> : null}
+      </View>
+      {wide && !railInStrip ? <View style={{ paddingTop: insets.top }} testID="sched-view-rail-safe">{rail}</View> : null}
+      </View>
+      {railInStrip ? <View style={[s.railEdge, { width: railWidth, top: wide ? RAIL_TOP : RAIL_TOP_COMPACT }]} testID="sched-view-rail-edge">{rail}</View> : null}
 
       {/* Airline schedule → iOS Calendar outcome (pop-up standard). */}
       <AppDialog
@@ -314,7 +328,7 @@ function RosterViewMenu({
   const lit = viewPick(current);
   const icons: Record<SchedViewOption['picks'], 'list' | 'cal' | 'map'> = { timeline: 'list', calendar: 'cal', route: 'map' };
   return (
-    <View style={[s.menu, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]} testID="sched-view-menu-panel">
+    <View style={[s.menu, { backgroundColor: p.cardOverlay, borderColor: p.cardLine }]} testID="sched-view-menu-panel">
       <Text style={[s.menuLabel, { color: p.cardSoft }]}>Roster view</Text>
       {SCHED_VIEWS.map(v => {
         const on = v.picks === lit;
@@ -348,37 +362,84 @@ function RosterViewMenu({
   );
 }
 
-/** Fixed master-row height so scrollToIndex can centre the focused day. */
-const MASTER_ROW = 58;
+/** Toolbar column width, and its top in the Duo's right-edge status strip
+ *  (clear of the clock and Wi-Fi glyph). */
+const RAIL_W = 56;
+const RAIL_TOP = 116;
+// On the shorter Duo cover this ends above the four-tab navigation group.
+const RAIL_TOP_COMPACT = 165;
 
-/** One day of the master list (wide layout): date, duty glyph, one-line summary. */
-function DayRow({ day, on, palette: p, onPress }: { day: DayModel; on: boolean; palette: CarrierPalette; onPress: () => void }) {
-  const sum = daySummary(day);
-  const blank = sum.icon === null;
+/**
+ * Wide layout (Duo inner, landscape): the roster-view picker as a toolbar down
+ * the right edge — one tap per view, the current one lit — with Alerts (and its
+ * badge) under a divider, exactly the entries the phone keeps behind the menu.
+ */
+function RosterViewRail({
+  palette: p,
+  current,
+  alertCount,
+  onPick,
+  onAlerts,
+}: {
+  palette: CarrierPalette;
+  current: SchedViewMode;
+  alertCount: number;
+  onPick: (mode: SchedViewMode) => void;
+  onAlerts: () => void;
+}): React.JSX.Element {
+  const lit = viewPick(current);
+  const icons: Record<SchedViewOption['picks'], 'list' | 'cal' | 'map'> = { timeline: 'list', calendar: 'cal', route: 'map' };
   return (
-    <Pressable
-      onPress={onPress}
-      testID={`day-${day.day}`}
-      style={[s.mrow, { height: MASTER_ROW, backgroundColor: on ? '#fff' : 'transparent', borderColor: on ? '#fff' : p.frostLine }]}
-    >
-      <View style={s.mdate}>
-        <Text style={[s.dow, { color: on ? p.g2 : p.inkSoft }]}>{day.dow.toUpperCase()}</Text>
-        <Text style={[s.mnum, { color: on ? p.g1 : p.ink }, day.isToday && s.today]}>{day.day}</Text>
+    <View style={s.rail} testID="sched-view-rail">
+      <View style={[s.railPill, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
+        {SCHED_VIEWS.map(v => {
+          const on = v.picks === lit;
+          return (
+            <Pressable
+              key={v.picks}
+              onPress={() => onPick(v.mode)}
+              testID={`sched-view-${v.picks}`}
+              accessibilityLabel={v.label}
+              accessibilityState={{ selected: on }}
+              hitSlop={4}
+              style={[s.railBtn, on && { backgroundColor: p.cardInset }]}
+            >
+              <Icon name={icons[v.picks]} size={20} color={on ? p.dockInk : p.ink} />
+            </Pressable>
+          );
+        })}
       </View>
-      <View style={[s.micon, { backgroundColor: on ? p.frost : CARD_INSET, opacity: blank ? 0 : 1 }]}>
-        {sum.icon ? <Icon name={sum.icon} size={16} color={on ? p.g1 : p.btn} /> : null}
-      </View>
-      <Text style={[s.mtext, { color: on ? p.g1 : blank ? p.inkSoft : p.ink }]} numberOfLines={1}>
-        {blank ? '—' : sum.text}
-      </Text>
-      {sum.time ? <Text style={[s.mtime, { color: on ? p.g2 : p.inkSoft }]}>{sum.time}</Text> : null}
-    </Pressable>
+      <Pressable onPress={onAlerts} testID="sched-alerts" accessibilityLabel="Alerts" hitSlop={4}
+        style={[s.railPill, s.railBtn, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
+        <Icon name="bell" size={20} color={p.ink} />
+        {alertCount > 0 ? (
+          <View style={[s.menuBadge, s.railBadge, { backgroundColor: p.crit }]}>
+            <Text style={s.menuBadgeText}>{alertCount}</Text>
+          </View>
+        ) : null}
+      </Pressable>
+    </View>
   );
 }
 
-function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions, calendar, todayKey }: { day: DayModel; monthIdx: number; mode: TimeZoneMode; baseTz: string; palette: CarrierPalette; onTrip: (tripId: string) => void; actions: MeetingActions; calendar: DutyCalendar; todayKey: number }) {
+function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions, calendar, todayKey, pairLegs = false }: { day: DayModel; monthIdx: number; mode: TimeZoneMode; baseTz: string; palette: CarrierPalette; onTrip: (tripId: string) => void; actions: MeetingActions; calendar: DutyCalendar; todayKey: number; pairLegs?: boolean }) {
   const head = `${day.dow.toUpperCase()} ${day.day} ${MON[monthIdx].toUpperCase()}${day.isToday ? ' · TODAY' : ''}`;
   if (day.kind === 'flight') {
+    const cards = day.legs.map(({ leg, trip }, i) => (
+      <FlightCard
+        key={`${trip.id}-${i}`}
+        leg={leg}
+        tripId={trip.id}
+        palette={p}
+        onPress={() => onTrip(trip.id)}
+        last={pairLegs || i === day.legs.length - 1}
+        head={head}
+        showCalendar={leg.firstLeg && day.key >= todayKey}
+        calendarAdded={calendar.isAdded(trip.id)}
+        calendarBusy={calendar.isBusy(trip.id)}
+        onToggleCalendar={() => calendar.toggle(trip)}
+      />
+    ));
     return (
       <View style={s.card}>
         {/* A briefing on a flying day must not read as part of the rotation, so
@@ -388,21 +449,11 @@ function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions, cal
             <MeetingCard head={head} meetings={day.meetings} palette={p} onJoin={actions.onJoin} onToggleAlarm={actions.onToggleAlarm} />
           </View>
         ) : null}
-        {day.legs.map(({ leg, trip }, i) => (
-          <FlightCard
-            key={`${trip.id}-${i}`}
-            leg={leg}
-            tripId={trip.id}
-            palette={p}
-            onPress={() => onTrip(trip.id)}
-            last={i === day.legs.length - 1}
-            head={head}
-            showCalendar={leg.firstLeg && day.key >= todayKey}
-            calendarAdded={calendar.isAdded(trip.id)}
-            calendarBusy={calendar.isBusy(trip.id)}
-            onToggleCalendar={() => calendar.toggle(trip)}
-          />
-        ))}
+        {pairLegs ? (
+          <View style={s.twoLegRow} testID="sched-two-leg-row">
+            {cards.map((card, i) => <View key={i} style={s.twoLegCol}>{card}</View>)}
+          </View>
+        ) : cards}
       </View>
     );
   }
@@ -431,7 +482,7 @@ function DayCard({ day, monthIdx, mode, baseTz, palette: p, onTrip, actions, cal
         <Art kind={day.kind} seed={day.key} />
         <View style={{ padding: 18, paddingTop: 10 }}>
           <View style={s.dhead}>
-            <View style={[s.logo, { backgroundColor: CARD_INSET }]}><Icon name={info.icon} size={24} color={p.btn} /></View>
+            <View style={[s.logo, { backgroundColor: p.isLight ? p.cardInset : CARD_INSET }]}><Icon name={info.icon} size={24} color={p.btn} /></View>
             <View><Text style={[s.ac, { color: p.cardInk }]}>{info.title}</Text><Text style={{ color: p.cardSoft, fontSize: 12, marginTop: 2 }}>{info.sub}</Text></View>
           </View>
           {!!info.note && <Text style={{ color: p.cardSoft, fontSize: 13, marginTop: 10, lineHeight: 19 }}>{info.note}</Text>}
@@ -478,7 +529,7 @@ function FlightCard({
     <TicketCard palette={p} holeY={holeY} onPress={onPress} testID={`duty-${leg.fltNumber}`} style={{ padding: CARD_PAD, marginBottom: last ? 0 : 12 }}>
       <Text style={[s.dayHead, { color: p.cardSoft }]}>{head}</Text>
       <View style={s.dhead}>
-        <View style={[s.logo, { backgroundColor: CARD_INSET }]}><Icon name="jet" size={24} color={p.btn} /></View>
+        <View style={[s.logo, { backgroundColor: p.isLight ? p.cardInset : CARD_INSET }]}><Icon name="jet" size={24} color={p.btn} /></View>
         {/* The jet glyph already says "flight", so the word is dropped; the fleet
             code sits beside the flight number. */}
         <View style={s.fltRow}>
@@ -632,18 +683,19 @@ const s = StyleSheet.create({
   pk: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6 },
   pv: { fontSize: 16, fontWeight: '600', marginTop: 3 },
   empty: { textAlign: 'center', fontSize: 14, marginTop: 60 },
-  // ── Wide (Duo inner, landscape): master day list | selected day's cards ──
-  master: { flex: 1, flexDirection: 'row', paddingHorizontal: 22, gap: 18 },
-  masterList: { flex: 2, minWidth: 0 },
-  masterBody: { paddingTop: 2, paddingBottom: 110, gap: 4 },
-  detail: { flex: 3, minWidth: 0 },
-  detailBody: { paddingTop: 2, paddingBottom: 110 },
-  mrow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, borderRadius: 14, borderWidth: 1 },
-  mdate: { width: 40, alignItems: 'center' },
-  mnum: { fontSize: 17, fontWeight: '600', marginTop: 1 },
-  micon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  mtext: { flex: 1, fontSize: 14, fontWeight: '500' },
-  mtime: { fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  // ── Wide (Duo inner, landscape): strip on top, cards in two columns, view toolbar on the right ──
+  fill: { flex: 1 },
+  wideShell: { flex: 1, flexDirection: 'row' },
+  listRow: { gap: 14 },
+  listCol: { flex: 1, minWidth: 0 },
+  twoLegRow: { flexDirection: 'row', gap: 14 },
+  twoLegCol: { flex: 1, minWidth: 0 },
+  rail: { width: RAIL_W, alignItems: 'center', gap: 12 },
+  // In the status strip, below the clock and Wi-Fi (≈100pt on the Duo).
+  railEdge: { position: 'absolute', right: 0, top: RAIL_TOP, alignItems: 'center' },
+  railPill: { borderRadius: 26, borderWidth: 1, padding: 4, gap: 4, alignItems: 'center' },
+  railBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  railBadge: { position: 'absolute', top: -6, right: -6 },
   // ── Ver11 "Roster view" picker (floats under the Schedule header) ──
   menu: { position: 'absolute', top: 42, right: 0, zIndex: 30, elevation: 12, width: 236, borderRadius: 14, borderWidth: 1, padding: 8, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
   menuLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.7, textTransform: 'uppercase', paddingHorizontal: 8, paddingTop: 4, paddingBottom: 6 },

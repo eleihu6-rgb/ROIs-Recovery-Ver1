@@ -49,6 +49,10 @@ export type IconName =
   | 'send'
   | 'zoomIn'
   | 'zoomOut'
+  | 'meal'
+  | 'grid'
+  | 'market'
+  | 'ticket'
   // Pop-up standard glyphs (docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md)
   | 'close'
   | 'info'
@@ -411,6 +415,39 @@ export function Icon({ name, size = 24, color = '#fff', strokeWidth }: IconProps
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.9} strokeLinecap="round" strokeLinejoin="round">
           <Path d="M4.2 11.6 19.4 4.6c.5-.2 1 .3.8.8l-6.9 15.1c-.2.5-1 .5-1.2 0l-2.2-5.2-5.2-2.2c-.5-.2-.5-.9 0-1.1Z" />
+        </Svg>
+      );
+    // Fork + knife: Home ▸ Quick actions ▸ Meal. Same 24-unit outline style.
+    case 'meal':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.9} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M5 3v6a2.5 2.5 0 0 0 5 0V3" />
+          <Path d="M7.5 3v18" />
+          <Path d="M18.5 21V3c-2.2 1-3.5 3.4-3.5 6.5V13a1 1 0 0 0 1 1h2.5" />
+        </Svg>
+      );
+    // Duty Swap approaches: a 2×2 grid = the crew Matrix, a shop awning = the Market.
+    case 'grid':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.9} strokeLinecap="round" strokeLinejoin="round">
+          <Rect x={4} y={4} width={16} height={16} rx={2.5} />
+          <Path d="M12 4v16M4 12h16" />
+        </Svg>
+      );
+    case 'market':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.9} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M4.5 4h15l1.5 5a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z" />
+          <Path d="M5 11.5V20h14v-8.5" />
+          <Path d="M10 20v-5h4v5" />
+        </Svg>
+      );
+    // Boarding pass: the guided duty-swap Ticket approach.
+    case 'ticket':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.9} strokeLinecap="round" strokeLinejoin="round">
+          <Rect x={4} y={5} width={16} height={14} rx={2.5} />
+          <Path d="M8 5v14M11 9h5M11 13h3M6 9h.01M6 13h.01M6 16h.01" />
         </Svg>
       );
     default:

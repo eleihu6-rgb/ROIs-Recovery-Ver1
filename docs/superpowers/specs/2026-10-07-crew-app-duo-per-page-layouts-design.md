@@ -68,9 +68,14 @@ gate/aircraft/transfer); layover hotel.
 ### Schedule — timeline
 Content: month header + roster-view menu; date strip; day cards (flight legs with
 wake/leave/check-in; ground duties; meetings).
-- L (done): **master/detail** — left (40 %) the month as a vertical day list with
-  one-line duty summaries (`daySummary`, `sched-master`); right (60 %) the selected
-  day's full card(s) (`sched-detail`); a blank day says "Nothing published".
+- L (done, revised 2026-10-08 on Ryan's feedback): the **date strip stays on top** as
+  on the phone; the day cards run in **two columns** (`sched-grid`, strip ⇄ list
+  stay in sync by rows). The earlier master/detail (vertical day list | selected
+  day) is replaced — it dropped the date picker the crew expects.
+- L, all three views: the roster-view menu becomes a **toolbar on the right edge**
+  (`sched-view-rail`): Timeline / Calendar / Map in one glass pill, Alerts (badge)
+  below, sitting in the Duo's 84 pt status strip under the clock
+  (`sched-view-rail-edge`), as iOS 27's own apps do. Phone and T keep the menu.
 - T: compact timeline; the date strip shows ~10 days at this width by itself. The
   fourth "release" cell is NOT built: the leg model carries no release time, and a
   figure the roster does not publish is not invented for a layout.
@@ -87,6 +92,10 @@ Content: month grid (7 × 5–6, duty markers); selected-day agenda; day timelin
 ### Schedule — route map
 Content: world map with routes; stats (flights/km/block/duty; routes/airports/
 countries); route list.
+- All classes: the map is **framed on the crew's base** — centred on it, sized for
+  the farthest destination either side, longitudes unwrapped around the base so a
+  trans-Pacific route (MNL → JFK) is one line on the base's side; the world outline
+  repeats past ±180. The wide card frames at its own measured ratio (no empty band).
 - L (done): map | stats + routes. Tapping a route highlights it on the map (the
   per-route leg list under the stats is NOT built: the route model carries legs as
   a count, not as flights).

@@ -37,16 +37,19 @@ function makeStore() {
       alarms: alarmsReducer,
       trips: tripsReducer,
       rbot: rbotReducer,
+      flightCalendar: (state = {syncAll: false}) => state,
+      notifications: (state = {notifications: []}) => state,
+      dutySwap: (state = {step: 'search', status: 'idle', filters: null, crews: [], crewB: null}) => state,
     },
     middleware: getDefaultMiddleware => getDefaultMiddleware({serializableCheck: false}),
   });
 }
 
-function renderScreen() {
+function renderScreen(source?: {route: string; view?: string}) {
   const store = makeStore();
   return render(
     <Provider store={store}>
-      <RBotScreen />
+      <RBotScreen route={{params: {source}}} />
     </Provider>,
   );
 }
@@ -96,6 +99,11 @@ describe("R'Bot chat screen", () => {
     expect(body.context.crewId).toBe('35459');
     expect(body.context.crewName).toBe('Kim');
     expect(body.context.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(body.context.screen).toBe('Home');
+    expect(body.context.page).toMatchObject({
+      route: 'Home', upcomingTrip: null, alertCount: 0,
+      controls: expect.arrayContaining(['Duty Swap']),
+    });
 
     await waitFor(() => expect(getByText('Opening your route map.')).toBeTruthy());
     expect(getByTestId('rbot-applied')).toBeTruthy();
@@ -103,6 +111,21 @@ describe("R'Bot chat screen", () => {
     expect(mockNavigate).toHaveBeenCalledWith('Tabs', {
       screen: 'Schedule',
       params: {view: 'route', viewAt: expect.any(Number)},
+    });
+  });
+
+  it('sends the originating roster view and can answer which screen is open', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(okJson({content: 'I can help with that.', actions: []}));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const {getByTestId, getByText} = renderScreen({route: 'Schedule', view: 'route'});
+    fireEvent.changeText(getByTestId('rbot-input'), 'Which screen am I on?');
+    await act(async () => { fireEvent.press(getByTestId('rbot-send')); });
+    expect(getByText("You're on Schedule · Route Map.")).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.changeText(getByTestId('rbot-input'), 'Help me understand this view');
+    await act(async () => { fireEvent.press(getByTestId('rbot-send')); });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).context).toMatchObject({
+      screen: 'Schedule · Route Map', page: {route: 'Schedule', view: 'route'},
     });
   });
 

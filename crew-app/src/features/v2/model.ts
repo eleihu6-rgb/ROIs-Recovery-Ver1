@@ -251,6 +251,14 @@ function ymd(d: Date): number {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
 
+function ymdInZone(d: Date, zone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: zone, year: 'numeric', month: 'numeric', day: 'numeric',
+  }).formatToParts(d);
+  const value = (kind: string) => Number(parts.find(p => p.type === kind)?.value ?? 0);
+  return value('year') * 10000 + value('month') * 100 + value('day');
+}
+
 /**
  * The clock a synced iOS Calendar event is shown on. Meetings deliberately do
  * NOT follow the duty Time-Zone setting: iOS Calendar itself always renders the
@@ -391,9 +399,9 @@ export function buildMonth(
     if (m.allDay || m.cancelled) continue;
     const startMs = Date.parse(m.startISO);
     if (Number.isNaN(startMs)) continue;
-    const dm = byKey.get(ymd(new Date(startMs)));
-    if (!dm) continue;
     const zone = meetingDisplayZone(meetingPrefs.deviceTz);
+    const dm = byKey.get(ymdInZone(new Date(startMs), zone));
+    if (!dm) continue;
     const endMs = Date.parse(m.endISO);
     const safeEndMs = Number.isNaN(endMs) ? startMs + DEFAULT_MEETING_MINUTES * 60_000 : endMs;
     dm.meetings.push({

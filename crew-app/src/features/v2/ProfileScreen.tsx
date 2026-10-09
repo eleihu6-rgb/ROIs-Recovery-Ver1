@@ -8,7 +8,7 @@ import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { useCarrier } from '../../theme/carrier';
 import { GradientScreen } from '../../components/v2/GradientScreen';
-import { ALL_ORIENTATIONS, useLayout } from '../../components/v2/useLayout';
+import { ALL_ORIENTATIONS, WIDE_MIN_WIDTH, useLayout } from '../../components/v2/useLayout';
 import { Icon, type IconName } from '../../components/v2/icons';
 import { NavRow } from '../../components/v2/rows';
 import { CrewAvatar, AVATAR_COUNT, avatarForCrew } from '../settings/avatars';
@@ -17,12 +17,18 @@ import { logout, selectCrewCarrier, selectIsGuest } from '../auth/authSlice';
 import { PROVIDER_LABELS, sessionDisplayName } from '../auth/identity';
 import { setAvatarIndex } from '../settings/settingsSlice';
 import { countryName } from '../settings/countries';
-import { ListCard } from './PageShell';
+import { EmbeddedPageContext, ListCard } from './PageShell';
+import { PersonalInfoScreen } from './PersonalInfoScreen';
+import { AlarmsSettingsScreen } from './AlarmsSettingsScreen';
+import { TimeZoneScreen } from './TimeZoneScreen';
+import { PreferencesScreen } from './PreferencesScreen';
+import { SpecPage } from './SpecPage';
 import { IconButton } from './HomeScreen';
 import { useMonth } from './useV2';
 import { useV2Nav } from './nav';
 
 const TZ_LABEL = { airport: 'Airport local', base: 'Base time', utc: 'UTC', device: 'Phone local' } as const;
+type ProfileSection = 'personal' | 'alarms' | 'timezone' | 'preferences' | 'privacy' | 'help';
 
 export function ProfileScreen() {
   const p = useCarrier();
@@ -47,6 +53,7 @@ export function ProfileScreen() {
   const nationality = useAppSelector(s => s.auth.nationality);
   const avatarIndex = useAppSelector(s => s.settings.avatarIndex);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<ProfileSection>('personal');
   const avatar = avatarIndex ?? avatarForCrew(crewId);
   const [now] = useState(() => new Date());
   const month = useMonth(now.getFullYear(), now.getMonth(), now);
@@ -64,7 +71,6 @@ export function ProfileScreen() {
     setDialog(null);
     handler?.();
   }
-  const divider = {};
 
   const onLogout = () => setDialog({
     tone: 'destructive',
@@ -96,9 +102,48 @@ export function ProfileScreen() {
 
   // Duo inner screen: landscape = two columns; rotated = one column capped at a
   // phone-and-a-half, centred (a settings list reads top-down, it is not split).
-  const { wide, tall } = useLayout();
-  const headSection = (
-    <>
+  const { wide, tall, width, height } = useLayout();
+  // A large window in both axes (iPad): keep settings at reading density.
+  // The Duo's 669pt landscape height retains its existing edge-to-edge layout.
+  const tablet = wide && height >= WIDE_MIN_WIDTH;
+  const tabletLandscape = tablet && width > height;
+  const stretch = wide && !tablet;
+  // The Duo cover is short enough that the last action otherwise rests under
+  // the floating dock. Tighten only its vertical gaps; full-height phones keep
+  // their established spacing.
+  const shortCompact = !wide && !tall && height < 700;
+  const avatarSize = stretch ? 48 : tablet ? 64 : 80;
+  const railWidth = Math.max(insets.right, 64);
+  const openSection = (section: ProfileSection) => {
+    if (stretch) { setSelectedSection(section); return; }
+    switch (section) {
+      case 'personal': nav.navigate('PersonalInfo'); break;
+      case 'alarms': nav.navigate('AlarmsSettings'); break;
+      case 'timezone': nav.navigate('TimeZone'); break;
+      case 'preferences': nav.navigate('Preferences'); break;
+      case 'privacy': nav.navigate('Spec', { id: 'privacy' }); break;
+      case 'help': nav.navigate('Spec', { id: 'help' }); break;
+    }
+  };
+  const detailPage = () => {
+    switch (selectedSection) {
+      case 'personal': return <PersonalInfoScreen />;
+      case 'alarms': return <AlarmsSettingsScreen />;
+      case 'timezone': return <TimeZoneScreen />;
+      case 'preferences': return <PreferencesScreen />;
+      case 'privacy':
+      case 'help': return <SpecPage route={{ params: { id: selectedSection } } as never} navigation={nav as never} />;
+    }
+  };
+  // Wide: each settings row takes an equal share of the stretched card, centred
+  // above its dashed line; elsewhere the rows stack at their natural height.
+  const settingRow = (row: React.ReactNode, last = false) => (
+    <View style={stretch ? s.rowFill : undefined}>
+      {stretch ? <View style={s.rowCenter}>{row}</View> : row}
+      {last ? null : <DashedLine color={p.cardLine} />}
+    </View>
+  );
+  const titleRow = (
       <View style={s.titleRow}>
         <Text style={[s.title, { color: p.ink }]}>My Profile</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -106,29 +151,32 @@ export function ProfileScreen() {
           <IconButton name="gear" palette={p} onPress={() => nav.navigate('Spec', { id: 'settings' })} testID="profile-settings" />
         </View>
       </View>
-      <View style={s.head}>
+  );
+  const avatarEl = (
         <Pressable onPress={() => setAvatarOpen(true)} testID="profile-avatar" accessibilityLabel="Change avatar">
-          <View style={s.avatar}>
-            <CrewAvatar index={avatar} size={80} bare />
-            <View style={s.cam}><Icon name="cam" size={14} color={p.g1} strokeWidth={2} /></View>
+          <View style={[s.avatar, (tablet || stretch) && { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }, p.isLight && { backgroundColor: p.dockInk, borderColor: p.cardLine }]}>
+            <CrewAvatar index={avatar} size={avatarSize} bare />
+            <View style={s.cam}><Icon name="cam" size={14} color={p.dockInk} strokeWidth={2} /></View>
           </View>
         </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.name, { color: p.ink }]} testID="profile-crew-name">
+  );
+  const identityEls = (
+        <>
+          <Text style={[s.name, stretch && s.center, { color: p.ink }]} testID="profile-crew-name">
             {guest ? identityName : crewName || crewId}
           </Text>
-          <Text style={[s.meta, { color: p.inkSoft }]} testID="profile-crew-meta">{meta}</Text>
-          <View style={[s.chip, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
+          <Text style={[s.meta, stretch && s.center, { color: p.inkSoft }]} testID="profile-crew-meta">{meta}</Text>
+          <View style={[s.chip, stretch && s.chipCenter, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
             <Text style={[s.chipText, { color: p.ink }]} testID="profile-provider-chip">
               {guest ? PROVIDER_LABELS[provider ?? 'guest'] : airlineByCode(airline).name}
             </Text>
             {guest ? null : <Icon name="star" size={12} color="#f2c14e" />}
           </View>
-        </View>
-      </View>
-
-      {guest ? (
-        <Pressable style={[s.status, { backgroundColor: p.frost }]} onPress={onAddAirline} testID="profile-add-airline">
+        </>
+  );
+  const statusSection = (
+      guest ? (
+        <Pressable style={[s.status, wide && s.statusWide, shortCompact && s.statusShort, { backgroundColor: p.frost }]} onPress={onAddAirline} testID="profile-add-airline">
           <View style={s.statusIc}><Icon name="globe" size={22} color={p.ink} /></View>
           <View style={{ flex: 1 }}>
             <Text style={[s.statusT, { color: p.ink }]}>Sign in with your airline</Text>
@@ -139,38 +187,75 @@ export function ProfileScreen() {
           <Icon name="chev" size={20} color={p.inkSoft} />
         </Pressable>
       ) : (
-      <Pressable style={[s.status, { backgroundColor: p.frost }]} onPress={() => nav.navigate('Spec', { id: 'limits' })} testID="profile-block-hours">
-        <View style={s.statusIc}><Icon name="crown" size={22} color="#e9a53a" /></View>
+      <Pressable style={[s.status, wide && s.statusWide, shortCompact && s.statusShort, { backgroundColor: p.frost }]} onPress={() => nav.navigate('Spec', { id: 'limits' })} testID="profile-block-hours">
+        <View style={s.statusIc}><Icon name="crown" size={22} color={p.isLight ? p.warn : '#e9a53a'} /></View>
         <View style={{ flex: 1 }}><Text style={[s.statusT, { color: p.ink }]}>Block hours this month</Text><Text style={[s.statusS, { color: p.inkSoft }]}>{month.flightCount} flights · rolling 28-day limit 100h</Text></View>
-        <View style={{ alignItems: 'flex-end' }}><Text style={s.num}>{hours}</Text><Text style={[s.numS, { color: p.inkSoft }]}>OF 100 H</Text></View>
+        <View style={{ alignItems: 'flex-end' }}><Text style={[s.num, p.isLight && { color: p.cardInk }]}>{hours}</Text><Text style={[s.numS, { color: p.inkSoft }]}>OF 100 H</Text></View>
       </Pressable>
-      )}
+      )
+  );
+  const headSection = (
+    <>
+      {titleRow}
+      <View style={s.head}>
+        {avatarEl}
+        <View style={{ flex: 1 }}>{identityEls}</View>
+      </View>
+
+      {statusSection}
     </>
+  );
+  const settingsCard = (
+      <ListCard palette={p} style={stretch ? s.listFill : wide ? undefined : { marginTop: shortCompact ? 12 : 22 }}>
+        {settingRow(<NavRow icon="user" label="Personal Information" palette={p} onPress={() => openSection('personal')} testID="row-personal" />)}
+        {settingRow(<NavRow icon="bell" label="Alarms & Meetings" value={alarmsEnabled ? 'On' : 'Off'} palette={p} onPress={() => openSection('alarms')} testID="row-alarms" />)}
+        {settingRow(<NavRow icon="clock" label="Time Zone" value={TZ_LABEL[tz]} palette={p} onPress={() => openSection('timezone')} testID="row-timezone" />)}
+        {settingRow(<NavRow icon="sliders" label="Preferences" palette={p} onPress={() => openSection('preferences')} testID="row-preferences" />)}
+        {settingRow(<NavRow icon="shield" label="Privacy & Security" palette={p} onPress={() => openSection('privacy')} testID="row-privacy" />)}
+        {settingRow(<NavRow icon="headset" label="Help & Support" palette={p} onPress={() => openSection('help')} testID="row-help" />, true)}
+      </ListCard>
+  );
+  const logoutButton = (
+      <Pressable style={[s.logout, shortCompact && s.logoutShort, wide && [s.logoutWide, { backgroundColor: p.frost }]]} onPress={onLogout} testID="profile-logout"><Icon name="logout" size={20} color={p.ink} /><Text style={[s.logoutText, { color: p.ink }]}>Log Out</Text></Pressable>
   );
   const settingsSection = (
     <>
-      <ListCard palette={p} style={{ marginTop: 22 }}>
-        <View style={divider}><NavRow icon="user" label="Personal Information" palette={p} onPress={() => nav.navigate('PersonalInfo')} testID="row-personal" /><DashedLine color={p.cardLine} /></View>
-        <View style={divider}><NavRow icon="bell" label="Alarms & Meetings" value={alarmsEnabled ? 'On' : 'Off'} palette={p} onPress={() => nav.navigate('AlarmsSettings')} testID="row-alarms" /><DashedLine color={p.cardLine} /></View>
-        <View style={divider}><NavRow icon="clock" label="Time Zone" value={TZ_LABEL[tz]} palette={p} onPress={() => nav.navigate('TimeZone')} testID="row-timezone" /><DashedLine color={p.cardLine} /></View>
-        <View style={divider}><NavRow icon="sliders" label="Preferences" palette={p} onPress={() => nav.navigate('Preferences')} testID="row-preferences" /><DashedLine color={p.cardLine} /></View>
-        <View style={divider}><NavRow icon="shield" label="Privacy & Security" palette={p} onPress={() => nav.navigate('Spec', { id: 'privacy' })} testID="row-privacy" /><DashedLine color={p.cardLine} /></View>
-        <NavRow icon="headset" label="Help & Support" palette={p} onPress={() => nav.navigate('Spec', { id: 'help' })} testID="row-help" />
-      </ListCard>
+      {settingsCard}
 
-      <Pressable style={s.logout} onPress={onLogout} testID="profile-logout"><Icon name="logout" size={20} color={p.ink} /><Text style={[s.logoutText, { color: p.ink }]}>Log Out</Text></Pressable>
+      {logoutButton}
     </>
   );
 
   return (
-    <GradientScreen palette={p}>
-      <ScrollView contentContainerStyle={[s.body, { paddingTop: insets.top + 8 }]} showsVerticalScrollIndicator={false} testID="profile-screen">
-        {wide ? (
-          // iPhone Duo inner screen: identity + block hours left, settings + Log Out right,
-          // so Log Out is never pushed under the dock on the ~669pt-tall screen.
-          <View style={s.wideCols}>
-            <View style={s.wideCol}>{headSection}</View>
-            <View style={s.wideCol}>{settingsSection}</View>
+    <GradientScreen palette={p} sideInsets={!stretch}>
+      <ScrollView contentContainerStyle={[s.body, wide && s.bodyFill, { paddingTop: insets.top + 8 }, stretch && { paddingLeft: insets.left + 22, paddingRight: railWidth + 22 }]} showsVerticalScrollIndicator={false} testID="profile-screen">
+        {stretch ? (
+          <View style={s.wideFill} testID="profile-wide">
+            {titleRow}
+            <View style={[s.duoCols, { height: Math.max(360, height - insets.top - 185) }]}>
+              <View style={s.duoMenu} testID="profile-menu">{settingsCard}</View>
+              <View style={s.duoDetail} testID="profile-detail">
+                <EmbeddedPageContext.Provider value>{detailPage()}</EmbeddedPageContext.Provider>
+              </View>
+            </View>
+          </View>
+        ) : wide ? (
+          // iPhone Duo inner screen: the page fills the screen down to the dock — title
+          // across the top; identity, block hours and Log Out left; the settings card
+          // right, stretched to the same height so both columns end level.
+          <View style={[s.wideFill, tablet && s.tabletPage, tabletLandscape && s.tabletLandscapePage]} testID="profile-wide">
+            {titleRow}
+            <View style={[s.wideCols, tablet && s.tabletCols]}>
+              <View style={s.wideCol}>
+                <View style={[s.idCard, tablet && s.tabletId, { backgroundColor: p.frost }]} testID="profile-id-card">
+                  {avatarEl}
+                  {tablet ? <View style={s.tabletIdentity}>{identityEls}</View> : identityEls}
+                </View>
+                {statusSection}
+                {logoutButton}
+              </View>
+              <View style={s.wideCol}>{settingsCard}</View>
+            </View>
           </View>
         ) : tall ? (
           <View style={s.tallCol} testID="profile-tall">
@@ -184,11 +269,22 @@ export function ProfileScreen() {
           </>
         )}
       </ScrollView>
+      {stretch ? (
+        <View style={[s.profileRailEdge, { width: railWidth }]} testID="profile-rail">
+          {avatarEl}
+          <Pressable style={[s.railIcon, { backgroundColor: p.frost, borderColor: p.frostLine }]} onPress={guest ? onAddAirline : () => nav.navigate('Spec', { id: 'limits' })} testID={guest ? 'profile-add-airline' : 'profile-block-hours'} accessibilityLabel={guest ? 'Sign in with your airline' : 'Block hours'}>
+            <Icon name={guest ? 'globe' : 'clock'} size={22} color={p.ink} />
+          </Pressable>
+          <Pressable style={[s.railIcon, { backgroundColor: p.frost, borderColor: p.frostLine }]} onPress={onLogout} testID="profile-logout" accessibilityLabel="Log out">
+            <Icon name="logout" size={22} color={p.ink} />
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* Avatar picker — tap the profile picture to swap the cartoon character. */}
       <Modal visible={avatarOpen} transparent animationType="fade" onRequestClose={() => setAvatarOpen(false)} supportedOrientations={ALL_ORIENTATIONS}>
         <Pressable style={s.backdrop} onPress={() => setAvatarOpen(false)}>
-          <Pressable style={[s.sheet, { backgroundColor: p.g1 }]} onPress={() => {}}>
+          <Pressable style={[s.sheet, tablet && s.tabletSheet, { backgroundColor: p.g1 }]} onPress={() => {}} testID="profile-avatar-picker">
             <Text style={[s.sheetTitle, { color: p.ink }]}>Choose your avatar</Text>
             <Text style={[s.sheetSub, { color: p.inkSoft }]}>Tap a character — it is stored on this phone.</Text>
             <ScrollView contentContainerStyle={s.grid} showsVerticalScrollIndicator={false}>
@@ -229,8 +325,33 @@ export function ProfileScreen() {
 
 const s = StyleSheet.create({
   body: { paddingHorizontal: 22, paddingBottom: 110 },
-  wideCols: { flexDirection: 'row', gap: 18, alignItems: 'flex-start' },
+  bodyFill: { flexGrow: 1 },
+  wideFill: { flex: 1 },
+  tabletPage: { flex: 0, width: '100%', maxWidth: 1040, alignSelf: 'center' },
+  // The iPad landscape dashboard has much more vertical room than a Duo. Centre
+  // its bounded profile composition in that work area instead of pinning a
+  // small settings card to the top edge.
+  tabletLandscapePage: { minHeight: 630, justifyContent: 'center' },
+  tabletCols: { flex: 0, alignItems: 'flex-start' },
+  tabletId: { flex: 0, minHeight: 160, flexDirection: 'row', gap: 16, justifyContent: 'flex-start' },
+  tabletIdentity: { flex: 1, minWidth: 0 },
+  tabletSheet: { maxWidth: 520 },
+  wideCols: { flex: 1, flexDirection: 'row', gap: 18, marginTop: 14 },
   wideCol: { flex: 1, minWidth: 0 },
+  duoCols: { flex: 1, flexDirection: 'row', gap: 12, marginTop: 14 },
+  duoMenu: { flex: 0.92, minWidth: 0 },
+  duoDetail: { flex: 1, minWidth: 0 },
+  profileRailEdge: { position: 'absolute', right: 0, top: 116, alignItems: 'center', gap: 12 },
+  railIcon: { width: 48, height: 48, borderRadius: 24, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  idCard: { flex: 1, borderRadius: 16, padding: 18, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  center: { textAlign: 'center' },
+  chipCenter: { alignSelf: 'center' },
+  listFill: { flex: 1 },
+  rowFill: { flex: 1 },
+  rowCenter: { flex: 1, justifyContent: 'center' },
+  statusWide: { marginTop: 14 },
+  statusShort: { marginTop: 12 },
+  logoutWide: { marginTop: 14, borderRadius: 16, paddingVertical: 14 },
   tallCol: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   title: { fontSize: 26, fontWeight: '600' },
@@ -248,6 +369,7 @@ const s = StyleSheet.create({
   num: { fontSize: 20, fontWeight: '600', color: '#f2c14e' },
   numS: { fontSize: 10 },
   logout: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 26 },
+  logoutShort: { marginTop: 4 },
   logoutText: { fontSize: 16, fontWeight: '500' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 22 },
   sheet: { width: '100%', borderRadius: 22, padding: 18, maxHeight: '72%' },

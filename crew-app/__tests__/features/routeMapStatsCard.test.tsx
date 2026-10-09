@@ -100,6 +100,35 @@ function ancestorIds(node: any, maxDepth = 6): string[] {
 const renderCard = () => render(<RouteMapView month={month()} base={BASE} palette={PALETTES.sia} />);
 
 describe('route map · month summary card', () => {
+  it('places the summary inside each map with text suited to its background', () => {
+    for (const palette of [PALETTES.sia, PALETTES.light]) {
+      const { getByTestId, unmount } = render(<RouteMapView month={month()} base={BASE} palette={palette} />);
+      const map = getByTestId('route-map');
+      const card = getByTestId('route-stats');
+      expect(within(map).getByTestId('route-stats')).toBeTruthy();
+      expect(style(map).backgroundColor).toBe(palette.mapBg);
+      expect(style(card).backgroundColor).toBe(palette.mapPanel);
+      expect(style(getByTestId('route-stat-flights')).flex).toBe(1);
+      expect(style(within(getByTestId('route-stat-flights')).getByText('4')).color).toBe(palette.isLight ? palette.cardInk : '#fff');
+      unmount();
+    }
+  });
+
+  it('uses a neutral grey map and a blue route in Daylight', () => {
+    const p = PALETTES.light;
+    const channels = [1, 3, 5].map(i => parseInt(p.mapBg.slice(i, i + 2), 16));
+    expect(Math.max(...channels) - Math.min(...channels)).toBeLessThanOrEqual(8);
+    expect(p.mapRoute).toBe(p.btn);
+    expect(p.mapPanel).toMatch(/^rgba\(255,255,255,/);
+  });
+
+  it('maps guest demo flights from their first departure without a crew base', () => {
+    const { getByTestId, getByText } = render(<RouteMapView month={month()} base="" palette={PALETTES.light} />);
+    expect(getByTestId('route-map')).toBeTruthy();
+    expect(getByTestId('route-stats')).toBeTruthy();
+    expect(getByText('BKK · START')).toBeTruthy();
+  });
+
   it('renders both tiers as equal-column rows inside the same padded card', () => {
     const { getByTestId } = renderCard();
     const card = getByTestId('route-stats');

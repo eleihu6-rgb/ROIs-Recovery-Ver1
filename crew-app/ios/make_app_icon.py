@@ -92,6 +92,8 @@ SIZES = {
     'AppIcon-29@2x.png': 58, 'AppIcon-29@3x.png': 87,
     'AppIcon-40@2x.png': 80, 'AppIcon-40@3x.png': 120,
     'AppIcon-60@2x.png': 120, 'AppIcon-60@3x.png': 180,
+    # iPad (the 20/29/40 @2x files are shared with iPhone in Contents.json)
+    'AppIcon-76@2x.png': 152, 'AppIcon-83.5@2x.png': 167,
 }
 
 def main():

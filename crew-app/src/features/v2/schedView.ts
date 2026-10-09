@@ -88,6 +88,12 @@ const EARTH_RADIUS_KM = 6371;
 export const MAP_ASPECT = 1.35;
 const MAP_PADDING = 60;
 
+/** `lon` moved by whole turns into `centerLon ± 180`, so a map framed on the base
+ *  draws every destination on the base's side instead of across the antimeridian. */
+export function unwrapLon(lon: number, centerLon: number): number {
+  return lon - 360 * Math.round((lon - centerLon) / 360);
+}
+
 export function mercatorX(lon: number): number {
   return ((lon + 180) / 360) * MERCATOR_GRID;
 }
@@ -130,7 +136,7 @@ const GREAT_CIRCLE_SAMPLES = 48;
  * line a flat map would draw. The path restarts ("M") when a step jumps the
  * antimeridian, so a trans-Pacific route never shoots back across the whole map.
  */
-export function greatCirclePath(a: LatLon, b: LatLon, samples = GREAT_CIRCLE_SAMPLES): string {
+export function greatCirclePath(a: LatLon, b: LatLon, samples = GREAT_CIRCLE_SAMPLES, centerLon?: number): string {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const toDeg = (r: number) => (r * 180) / Math.PI;
   const phi1 = toRad(a.lat);
@@ -143,7 +149,9 @@ export function greatCirclePath(a: LatLon, b: LatLon, samples = GREAT_CIRCLE_SAM
     ),
   );
   if (!Number.isFinite(d) || d === 0) {
-    return `M${round1(mercatorX(a.lon))} ${round1(mercatorY(a.lat))}L${round1(mercatorX(b.lon))} ${round1(mercatorY(b.lat))}`;
+    const ax = centerLon === undefined ? a.lon : unwrapLon(a.lon, centerLon);
+    const bx = centerLon === undefined ? b.lon : unwrapLon(b.lon, centerLon);
+    return `M${round1(mercatorX(ax))} ${round1(mercatorY(a.lat))}L${round1(mercatorX(bx))} ${round1(mercatorY(b.lat))}`;
   }
   let out = '';
   let prevX = Number.NaN;
@@ -156,7 +164,8 @@ export function greatCirclePath(a: LatLon, b: LatLon, samples = GREAT_CIRCLE_SAM
     const z = A * Math.sin(phi1) + B * Math.sin(phi2);
     const lat = toDeg(Math.atan2(z, Math.sqrt(x * x + y * y)));
     const lon = toDeg(Math.atan2(y, x));
-    const px = mercatorX(lon);
+    // Framed on a centre (the base): unwrap instead of breaking — one unbroken line.
+    const px = mercatorX(centerLon === undefined ? lon : unwrapLon(lon, centerLon));
     const py = mercatorY(lat);
     const jump = Number.isFinite(prevX) && Math.abs(px - prevX) > MERCATOR_GRID / 3;
     out += `${out === '' || jump ? 'M' : 'L'}${round1(px)} ${round1(py)}`;
@@ -170,32 +179,27 @@ function round1(n: number): number {
 }
 
 /**
- * The map's view box: everything the month touched, padded, at the card's aspect
- * ratio, then narrowed by `zoom` around its centre. Coordinates are the same
- * 0…1000 web-Mercator space the generated world outline lives in.
+ * The map's view box, centred on the crew's base: wide and tall enough for the
+ * farthest destination on either side (longitudes unwrapped around the base, so a
+ * trans-Pacific route stays on the base's side), padded, at the card's aspect
+ * ratio, then narrowed by `zoom` around the base. Longitude alone never asks for
+ * more than one world.
+ * Coordinates are the same 0…1000 web-Mercator space the world outline lives in.
  */
-export function routeViewBox(home: LatLon, points: LatLon[], zoom: number): string {
-  const xs = [mercatorX(home.lon), ...points.map(p => mercatorX(p.lon))];
-  const ys = [mercatorY(home.lat), ...points.map(p => mercatorY(p.lat))];
-  let minX = Math.min(...xs) - MAP_PADDING;
-  let maxX = Math.max(...xs) + MAP_PADDING;
-  let minY = Math.min(...ys) - MAP_PADDING;
-  let maxY = Math.max(...ys) + MAP_PADDING;
-  let w = Math.max(1, maxX - minX);
-  let h = Math.max(1, maxY - minY);
-  if (w / h < MAP_ASPECT) {
-    const target = h * MAP_ASPECT;
-    minX -= (target - w) / 2;
-    w = target;
-  } else {
-    const target = w / MAP_ASPECT;
-    minY -= (target - h) / 2;
-    h = target;
+export function routeViewBox(home: LatLon, points: LatLon[], zoom: number, aspect = MAP_ASPECT): string {
+  const cx = mercatorX(home.lon);
+  const cy = mercatorY(home.lat);
+  let halfW = MAP_PADDING;
+  let halfH = MAP_PADDING;
+  for (const p of points) {
+    halfW = Math.max(halfW, Math.abs(mercatorX(unwrapLon(p.lon, home.lon)) - cx) + MAP_PADDING);
+    halfH = Math.max(halfH, Math.abs(mercatorY(p.lat) - cy) + MAP_PADDING);
   }
-  const cx = minX + w / 2;
-  const cy = minY + h / 2;
-  w /= Math.max(1, zoom);
-  h /= Math.max(1, zoom);
+  if (halfW > MERCATOR_GRID / 2) halfW = MERCATOR_GRID / 2;
+  halfH = Math.max(halfH, halfW / aspect);
+  halfW = halfH * aspect;
+  const w = (2 * halfW) / Math.max(1, zoom);
+  const h = (2 * halfH) / Math.max(1, zoom);
   return `${round1(cx - w / 2)} ${round1(cy - h / 2)} ${round1(w)} ${round1(h)}`;
 }
 
@@ -470,7 +474,7 @@ export function agendaRows(month: MonthModel, selected: number | null): AgendaRo
         icon: KIND_ICON.flight,
         title: `${leg.fltNumber} ${leg.dep} → ${leg.arv}`,
         sub: sub(),
-        time: window(leg.depTime, leg.arvTime),
+        time: window(leg.depTime, `${leg.arvTime}${leg.arvDayOffset ? ` ${leg.arvDayOffset}` : ''}`),
       });
     }
     if (d.legs.length === 0 && d.kind === 'layover') {

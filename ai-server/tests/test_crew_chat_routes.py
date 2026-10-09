@@ -72,6 +72,22 @@ def test_chat_passes_the_crew_context_and_today_into_the_prompt(monkeypatch):
     assert 'request_absence' in system
 
 
+def test_chat_includes_the_page_the_crew_opened_rbot_from(monkeypatch):
+    captured: list[str] = []
+
+    def fake_llm(messages, tools, system):
+        captured.append(system)
+        return 'This is your route map.', []
+
+    monkeypatch.setattr(crew_routes, 'llm_tools', fake_llm)
+    client.post('/ai/crew/chat', json={
+        'messages': [{'role': 'user', 'content': 'what am I looking at?'}],
+        'context': {**CONTEXT, 'screen': 'Schedule · Route Map', 'page': {'route': 'Schedule', 'view': 'route'}},
+    })
+    assert 'Schedule · Route Map' in captured[0]
+    assert '"view":"route"' in captured[0]
+
+
 def test_chat_uses_the_crew_tool_set_not_the_board_tool_set(monkeypatch):
     captured: list = []
 

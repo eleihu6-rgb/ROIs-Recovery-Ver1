@@ -6,13 +6,15 @@
 // jest.setup.js, so each case mocks `useLayout` for the class under test, and
 // the compact cases prove the phone layout is untouched.
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { FlatList, StyleSheet } from 'react-native';
+import { render, fireEvent, act, within } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 
 import { ScheduleScreen } from '../../src/features/v2/ScheduleScreen';
 import { HomeScreen } from '../../src/features/v2/HomeScreen';
 import { DestinationScreen } from '../../src/features/v2/DestinationScreen';
+import { cityForAirport } from '../../src/features/home/cities';
 import { buildMonth, MON } from '../../src/features/v2/model';
 import { daySummary } from '../../src/features/v2/schedView';
 import { layoutFor } from '../../src/components/v2/useLayout';
@@ -26,8 +28,9 @@ import flightCalendarReducer from '../../src/features/calendar/flightCalendarSli
 import type { Trip } from '../../src/features/travel/tripCsv';
 import type { PortalDuty } from '../../src/features/travel/portalCapture';
 
+const mockInsets = { current: { top: 0, right: 0, bottom: 0, left: 0 } };
 jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+  useSafeAreaInsets: () => mockInsets.current,
 }));
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
@@ -123,10 +126,11 @@ async function openNextMonth(tree: ReturnType<typeof render>) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockInsets.current = { top: 0, right: 0, bottom: 0, left: 0 };
   asPhone();
 });
 
-describe('daySummary — one line per day for the master list', () => {
+describe('daySummary — one line per day', () => {
   const month = buildMonth(Y, M, [lhrTrip, sinTrip], [standby], [], 'airport', 'Asia/Bangkok', {}, NOW, { minutesBefore: 8, mutedIds: [] });
   const on = (d: number) => month.days[d - 1];
 
@@ -142,30 +146,106 @@ describe('daySummary — one line per day for the master list', () => {
   });
 });
 
+/** The day-card FlatList itself (the testID lands on its inner scroll view). */
+const dayList = (tree: ReturnType<typeof render>, id: string) =>
+  tree.UNSAFE_getAllByType(FlatList).find(l => l.props.testID === id)!;
+
 describe('Schedule ▸ Timeline', () => {
-  it('wide: master day list beside the selected day’s card, no horizontal strip', async () => {
+  it('iPad: keeps the view toolbar below the top status-bar safe area', () => {
+    mockLayout.current = layoutFor(834, 1210);
+    mockInsets.current = { top: 24, right: 0, bottom: 20, left: 0 };
+    const tree = withStore(<ScheduleScreen />);
+    const safeRail = tree.getByTestId('sched-view-rail-safe');
+    expect(StyleSheet.flatten(safeRail.props.style).paddingTop).toBe(24);
+    expect(within(safeRail).getByTestId('sched-view-calendar')).toBeTruthy();
+  });
+
+  it('wide: the date strip on top, the day cards in two columns, the roster views in a right-side toolbar', async () => {
     asWide();
     const tree = withStore(<ScheduleScreen />);
     await openNextMonth(tree);
-    expect(tree.getByTestId('sched-master')).toBeTruthy();
+    // The same date strip the phone has — the picker is back on top.
+    expect(tree.getByTestId('day-7')).toBeTruthy();
+    expect(dayList(tree, 'sched-grid').props.numColumns).toBe(2);
     expect(tree.queryByTestId('sched-list')).toBeNull();
-    // A month with no "today" opens on the 1st — a blank day, which says so
-    // instead of showing some other day's card.
-    expect(tree.getByText(/^Nothing published on/)).toBeTruthy();
-    // Tapping a day in the master list fills the detail pane with its card(s) …
-    fireEvent.press(tree.getByTestId('day-5'));
-    expect(tree.getByTestId('day-card-5')).toBeTruthy();
-    // … and another day swaps it.
-    fireEvent.press(tree.getByTestId('day-7'));
+    expect(tree.queryByTestId('sched-master')).toBeNull();
     expect(tree.getByTestId('duty-TG920')).toBeTruthy();
-    expect(tree.queryByTestId('day-card-5')).toBeNull();
+    // No hamburger: each view is one tap on the toolbar, the current one lit.
+    expect(tree.queryByTestId('sched-view-menu')).toBeNull();
+    const rail = tree.getByTestId('sched-view-rail');
+    expect(within(rail).getByTestId('sched-view-timeline').props.accessibilityState).toMatchObject({ selected: true });
+    fireEvent.press(within(rail).getByTestId('sched-view-route'));
+    expect(tree.getByTestId('route-map')).toBeTruthy();
+    expect(tree.queryByTestId('sched-grid')).toBeNull();
+    expect(within(rail).getByTestId('sched-view-route').props.accessibilityState).toMatchObject({ selected: true });
+    fireEvent.press(within(rail).getByTestId('sched-alerts'));
+    expect(mockNavigate).toHaveBeenCalledWith('Alerts');
+    fireEvent.press(within(rail).getByTestId('sched-view-timeline'));
+    expect(tree.getByTestId('sched-grid')).toBeTruthy();
+  });
+
+  it('wide: two flights on the final unpaired day share one row of normal-width tickets', async () => {
+    asWide();
+    const store = makeStore();
+    store.dispatch(setDuties([]));
+    store.dispatch(setTrips([{ ...sinTrip, legs: [
+      sinTrip.legs[0],
+      { ...sinTrip.legs[0], fltNumber: 'TG404', flightDateUTC: roster(26, '2100'),
+        depArp: 'SIN', arvArp: 'BKK', arvDateUTC: roster(26, '2330'),
+        localDepTime: local(27, '0400'), localArvTime: local(27, '0630') },
+    ] }]));
+    const tree = render(<Provider store={store}><ScheduleScreen /></Provider>);
+    await openNextMonth(tree);
+    const row = tree.getByTestId('sched-two-leg-row');
+    expect(StyleSheet.flatten(row.props.style).flexDirection).toBe('row');
+    expect(within(row).getByTestId('duty-TG403')).toBeTruthy();
+    expect(within(row).getByTestId('duty-TG404')).toBeTruthy();
+
+    asPhone();
+    const compact = render(<Provider store={store}><ScheduleScreen /></Provider>);
+    await openNextMonth(compact);
+    expect(compact.queryByTestId('sched-two-leg-row')).toBeNull();
+  });
+
+  it('wide on the Duo: the toolbar sits in the right-edge status strip, under the clock', async () => {
+    asWide();
+    // The Duo inner screen in landscape: an 84pt status strip down the right edge.
+    mockInsets.current = { top: 0, right: 84, bottom: 21, left: 0 };
+    const tree = withStore(<ScheduleScreen />);
+    await openNextMonth(tree);
+    const edge = tree.getByTestId('sched-view-rail-edge');
+    const rail = within(edge).getByTestId('sched-view-rail');
+    expect(StyleSheet.flatten(edge.props.style)).toMatchObject({ position: 'absolute', right: 0, width: 84 });
+    expect(StyleSheet.flatten(edge.props.style).top).toBeGreaterThan(90); // clear of the clock + Wi-Fi
+    // The cards keep out of the strip: the screen pads by the inset itself.
+    expect(StyleSheet.flatten(tree.getByTestId('sched-shell').props.style)).toMatchObject({ paddingRight: 84 });
+    expect(within(tree.getByTestId('sched-shell')).queryByTestId('sched-view-rail')).toBeNull();
+    fireEvent.press(within(rail).getByTestId('sched-view-calendar'));
+    expect(tree.getByTestId('cal-wide')).toBeTruthy();
+  });
+
+  it('compact on the Duo outer screen: the same right-edge switcher replaces the menu', async () => {
+    mockLayout.current = layoutFor(466, 678);
+    mockInsets.current = { top: 0, right: 84, bottom: 21, left: 0 };
+    const tree = withStore(<ScheduleScreen />);
+    await openNextMonth(tree);
+    expect(tree.queryByTestId('sched-view-menu')).toBeNull();
+    expect(dayList(tree, 'sched-list').props.numColumns).toBe(1);
+    const edge = tree.getByTestId('sched-view-rail-edge');
+    expect(StyleSheet.flatten(edge.props.style).top).toBe(165);
+    const rail = within(edge).getByTestId('sched-view-rail');
+    fireEvent.press(within(rail).getByTestId('sched-view-route'));
+    expect(tree.getByTestId('route-map')).toBeTruthy();
+    fireEvent.press(within(rail).getByTestId('sched-alerts'));
+    expect(mockNavigate).toHaveBeenCalledWith('Alerts');
   });
 
   it('compact (phone): the date strip and the scrolling list, unchanged', async () => {
     const tree = withStore(<ScheduleScreen />);
     await openNextMonth(tree);
-    expect(tree.getByTestId('sched-list')).toBeTruthy();
-    expect(tree.queryByTestId('sched-master')).toBeNull();
+    expect(dayList(tree, 'sched-list').props.numColumns).toBe(1);
+    expect(tree.queryByTestId('sched-view-rail')).toBeNull();
+    expect(tree.getByTestId('sched-view-menu')).toBeTruthy();
     expect(tree.getByTestId('day-7')).toBeTruthy();
   });
 });
@@ -173,7 +253,8 @@ describe('Schedule ▸ Timeline', () => {
 describe('Schedule ▸ Calendar', () => {
   const openCalendar = async (tree: ReturnType<typeof render>) => {
     await openNextMonth(tree);
-    fireEvent.press(tree.getByTestId('sched-view-menu'));
+    // Phone / tall: through the menu; wide: straight from the toolbar.
+    if (tree.queryByTestId('sched-view-menu')) fireEvent.press(tree.getByTestId('sched-view-menu'));
     fireEvent.press(tree.getByTestId('sched-view-calendar'));
   };
 
@@ -187,6 +268,7 @@ describe('Schedule ▸ Calendar', () => {
     fireEvent.press(tree.getByTestId('cal-day-7'));
     expect(tree.getByTestId('cal-agenda-head').props.children).toMatch(/ 7 /);
     expect(tree.getByTestId('cal-day-pane')).toBeTruthy();
+    fireEvent.press(tree.getByTestId('cal-toggle-hours'));
     expect(tree.getByTestId('cal-timeline')).toBeTruthy();
     expect(tree.getByTestId('cal-block-duty-pair-lhr')).toBeTruthy();
     // An agenda row selects its day (the layover) — still the same view.
@@ -196,12 +278,21 @@ describe('Schedule ▸ Calendar', () => {
     expect(tree.getByTestId('cal-wide')).toBeTruthy();
   });
 
-  it('tall: the grid’s cells are square; compact keeps the flat cells', async () => {
+  it('iPad: opens the selected-day hourly workspace without making the crew toggle away from a sparse agenda', async () => {
+    mockLayout.current = layoutFor(834, 1210);
+    const tree = withStore(<ScheduleScreen />);
+    await openCalendar(tree);
+    expect(tree.getByTestId('cal-wide')).toBeTruthy();
+    fireEvent.press(tree.getByTestId('cal-day-7'));
+    expect(tree.getByTestId('cal-timeline')).toBeTruthy();
+  });
+
+  it('tall and compact: stacked cells stay compact to leave room for the agenda', async () => {
     asTall();
     const tall = withStore(<ScheduleScreen />);
     await openCalendar(tall);
     const flat = (style: unknown) => [style].flat(3).some(s => s && (s as { aspectRatio?: number }).aspectRatio === 1);
-    expect(flat(tall.getByTestId('cal-day-7').props.style)).toBe(true);
+    expect(flat(tall.getByTestId('cal-day-7').props.style)).toBe(false);
     expect(tall.queryByTestId('cal-wide')).toBeNull();
 
     asPhone();
@@ -213,20 +304,89 @@ describe('Schedule ▸ Calendar', () => {
 });
 
 describe('Home', () => {
-  it('tall: the rotation sits inside the ticket and destinations form a grid', () => {
+  it('leaves ordinary scroll padding when the Duo cover navigation moves to the right rail', () => {
+    mockLayout.current = layoutFor(466, 678);
+    const tree = withStore(<HomeScreen />);
+    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).paddingBottom).toBe(24);
+  });
+
+  it('tall portrait: trip details owns the rotation and destinations stay in one horizontal row', () => {
     asTall();
     const tree = withStore(<HomeScreen />);
     expect(tree.getByTestId('home-next-trip')).toBeTruthy();
-    expect(tree.getByTestId('home-rotation')).toBeTruthy();
-    expect(tree.getByText('LHR → BKK')).toBeTruthy(); // the return leg, not just the first
-    expect(tree.getByTestId('home-dest-grid')).toBeTruthy();
+    expect(tree.queryByTestId('home-rotation')).toBeNull();
+    expect(tree.queryByText('LHR → BKK')).toBeNull();
+    expect(tree.queryByText('View Trip Details')).toBeNull();
+    expect(tree.getByText('Trip details')).toBeTruthy();
+    const strip = tree.getByTestId('home-explore-strip');
+    expect(strip.props.horizontal).toBe(true);
+    fireEvent.press(tree.getByTestId('home-trip-details-link'));
+    expect(mockNavigate).toHaveBeenCalledWith('TripDetails', { tripId: lhrTrip.id });
+    fireEvent.press(tree.getByTestId('home-trip-qr'));
+    expect(mockNavigate).toHaveBeenCalledWith('TripDetails', { tripId: lhrTrip.id });
+    expect(StyleSheet.flatten(tree.getByTestId('home-trip-qr').props.style).width).toBe(44);
   });
 
-  it('wide: the rotation is its own card under the ticket', () => {
+  it('wide landscape: Explore fills the right side and shows multiple destination rows', () => {
     asWide();
     const tree = withStore(<HomeScreen />);
-    expect(tree.getByTestId('home-rotation')).toBeTruthy();
-    expect(tree.queryByTestId('home-dest-grid')).toBeNull();
+    expect(tree.queryByTestId('home-rotation')).toBeNull();
+    expect(tree.getByTestId('home-wide-row-1')).toBeTruthy();
+    expect(tree.queryByTestId('home-wide-row-2')).toBeNull();
+    expect(tree.getByTestId('home-explore-strip').props.horizontal).toBe(false);
+    expect(StyleSheet.flatten(tree.getByTestId('home-explore-strip').props.contentContainerStyle).flexWrap).toBe('wrap');
+  });
+
+  it('wide: ticket and Quick actions stack beside the full-height Explore grid', () => {
+    asWide();
+    const tree = withStore(<HomeScreen />);
+    const top = (id: string) => [tree.getByTestId(id).props.style].flat(3).reduce((m, s) => (s && (s as { marginTop?: number }).marginTop !== undefined ? (s as { marginTop: number }).marginTop : m), undefined as number | undefined);
+    expect(top('home-explore')).toBe(0);
+    expect(top('home-next-trip')).toBeUndefined();
+    const row1 = within(tree.getByTestId('home-wide-row-1'));
+    expect(row1.getByTestId('home-next-trip')).toBeTruthy();
+    expect(row1.getByTestId('home-explore')).toBeTruthy();
+    expect(row1.getByText('Quick actions')).toBeTruthy();
+    fireEvent(tree.getByTestId('home-left-stack'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 365, height: 332 } } });
+    expect(StyleSheet.flatten(tree.getByTestId('home-explore').props.style).height).toBe(332);
+
+    // Two destination tiles fit each grid row without clipping.
+    fireEvent(tree.getByTestId('home-explore-strip'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 365, height: 176 } } });
+    const tiles = tree.getAllByTestId(/^dest-/);
+    expect(tiles.length).toBeGreaterThan(0);
+    const w = [tiles[0].props.style].flat(3).reduce((m, s) => (s && (s as { width?: number }).width !== undefined ? (s as { width: number }).width : m), 0);
+    expect(w * 2 + 12).toBeLessThanOrEqual(365);
+    expect(w).toBe(176);
+    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).minHeight).toBeUndefined();
+    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).paddingBottom).toBe(100);
+    expect(StyleSheet.flatten(tiles[0].props.style).height).toBe(128);
+  });
+
+  it.each([[1194, 834], [834, 1194]])('iPad %ix%i: no rotation duplicate; Explore follows orientation', (width, height) => {
+    mockLayout.current = layoutFor(width, height);
+    const tree = withStore(<HomeScreen />);
+    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).minHeight).toBe(height);
+    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).paddingBottom).toBe(130);
+    expect(StyleSheet.flatten(tree.getByTestId('home-wide-row-1').props.style).flexGrow).toBe(width > height ? 1 : undefined);
+    expect(tree.queryByTestId('home-wide-row-2')).toBeNull();
+    expect(tree.queryByTestId('home-rotation')).toBeNull();
+    expect(tree.getByText('Quick actions')).toBeTruthy();
+    // The inner scroll view stays flexible in both orientations; only the
+    // portrait iPad's outer columns stop stretching to viewport height.
+    expect(StyleSheet.flatten(tree.getByTestId('home-explore-strip').props.style).flex).toBe(1);
+    expect(tree.getByTestId('home-explore-strip').props.horizontal).toBe(width < height);
+    fireEvent(tree.getByTestId('home-explore-strip'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 500 } } });
+    expect(StyleSheet.flatten(tree.getAllByTestId(/^dest-/)[0].props.style).width).toBe(width > height ? 112 : 174);
+  });
+
+  it('iPad portrait: keeps the Duo-style columns content-sized instead of stretching the cards to the viewport', () => {
+    mockLayout.current = layoutFor(834, 1194);
+    const tree = withStore(<HomeScreen />);
+    const row = tree.getByTestId('home-wide-row-1');
+    expect(StyleSheet.flatten(row.props.style).flexGrow).toBeUndefined();
+    expect(StyleSheet.flatten(tree.getByTestId('home-explore').props.style).flexGrow).toBeUndefined();
+    expect(StyleSheet.flatten(tree.getByTestId('home-next-trip').props.style).flex).toBeUndefined();
+    expect(tree.getByTestId('home-ipad-quick-row')).toBeTruthy();
   });
 
   it('compact (phone): no rotation list, destinations as the horizontal strip', () => {
@@ -234,11 +394,21 @@ describe('Home', () => {
     expect(tree.getByTestId('home-next-trip')).toBeTruthy();
     expect(tree.queryByTestId('home-rotation')).toBeNull();
     expect(tree.queryByTestId('home-dest-grid')).toBeNull();
+    expect(tree.getByTestId('home-trip-details-link')).toBeTruthy();
+    expect(tree.getByTestId('home-trip-qr')).toBeTruthy();
   });
 });
 
 describe('Destination', () => {
   const screen = () => withStore(<DestinationScreen route={{ key: 'd', name: 'Destination', params: { index: 0 } }} navigation={{} as never} />);
+
+  it('iPad: keeps the trip-details action above the scrolling information panel', () => {
+    mockLayout.current = layoutFor(834, 1210);
+    const tree = screen();
+    expect(StyleSheet.flatten(tree.getByTestId('dest-header').props.style).zIndex).toBeGreaterThan(0);
+    fireEvent.press(tree.getByTestId('dest-trip-details'));
+    expect(mockNavigate).toHaveBeenCalledWith('TripDetails', { tripId: lhrTrip.id });
+  });
 
   it('wide: photo pane (55 %) | info card; nothing written over the picture', () => {
     asWide();
@@ -246,23 +416,31 @@ describe('Destination', () => {
     const pane = tree.getByTestId('dest-photo-pane-wide');
     expect(pane.props.style.width).toBe(Math.round(951 * 0.55));
     expect(pane.props.style.height).toBe(669);
+    expect(StyleSheet.flatten(tree.getByTestId('page-destination').props.style).backgroundColor).toBe(cityForAirport('LHR').panelColor);
+    expect(tree.getByTestId('dest-photo-blend-paint')).toBeTruthy();
+    expect(tree.queryByTestId('dest-scrim-paint')).toBeNull();
     expect(tree.getByTestId('dest-city')).toBeTruthy();
     expect(tree.queryByTestId('dest-split')).toBeNull();
   });
 
-  it('tall: photo on the top half, hotel and transfer side by side below', () => {
+  it('tall: photo on the top half, with only available details below', () => {
     asTall();
     const tree = screen();
     const pane = tree.getByTestId('dest-photo-pane-tall');
     expect(pane.props.style.width).toBe(669);
     expect(pane.props.style.height).toBe(Math.round(951 * 0.5));
-    expect(tree.getByTestId('dest-split')).toBeTruthy();
+    expect(StyleSheet.flatten(tree.getByTestId('page-destination').props.style).backgroundColor).toBe(cityForAirport('LHR').panelColor);
+    expect(tree.getByTestId('dest-photo-blend-paint')).toBeTruthy();
+    expect(tree.queryByTestId('dest-scrim-paint')).toBeNull();
+    expect(tree.queryByTestId('dest-split')).toBeNull();
   });
 
   it('compact (phone): the full-window pager with the type on the photo', () => {
     const tree = screen();
     expect(tree.queryByTestId('dest-photo-pane-wide')).toBeNull();
     expect(tree.queryByTestId('dest-photo-pane-tall')).toBeNull();
+    expect(tree.getByTestId('dest-scrim-paint')).toBeTruthy();
+    expect(tree.queryByTestId('dest-photo-blend-paint')).toBeNull();
     expect(tree.queryByTestId('dest-split')).toBeNull();
     expect(tree.getByTestId('dest-city')).toBeTruthy();
   });
@@ -289,6 +467,7 @@ import authReducer from '../../src/features/auth/authSlice';
 import { TimeZoneScreen } from '../../src/features/v2/TimeZoneScreen';
 // eslint-disable-next-line import/first
 import { ProfileScreen } from '../../src/features/v2/ProfileScreen';
+import { CrewAvatar } from '../../src/features/settings/avatars';
 // eslint-disable-next-line import/first
 import { RouteMapView } from '../../src/features/v2/RouteMapView';
 // eslint-disable-next-line import/first
@@ -322,6 +501,7 @@ function makeFullStore() {
       notifications: notificationsReducer,
       flightCalendar: flightCalendarReducer,
       rbot: rbotReducer,
+      dutySwap: (state = {step: 'search', status: 'idle', filters: null, crews: [], crewB: null}) => state,
     },
     middleware: getDefaultMiddleware => getDefaultMiddleware({ serializableCheck: false }),
   });
@@ -438,6 +618,55 @@ describe('Login airline picker', () => {
 });
 
 describe('Profile', () => {
+  it('short Duo cover keeps compact account spacing beside the right rail', () => {
+    mockLayout.current = layoutFor(466, 678);
+    const cover = withFull(<ProfileScreen />);
+    expect(StyleSheet.flatten(cover.getByTestId('profile-block-hours').props.style).marginTop).toBe(12);
+    expect(StyleSheet.flatten(cover.getByTestId('profile-logout').props.style).marginTop).toBe(4);
+    mockLayout.current = layoutFor(420, 912);
+    const phone = withFull(<ProfileScreen />);
+    expect(StyleSheet.flatten(phone.getByTestId('profile-block-hours').props.style).marginTop).toBe(26);
+    expect(StyleSheet.flatten(phone.getByTestId('profile-logout').props.style).marginTop).toBe(26);
+  });
+
+  it.each([[834, 1210], [1210, 834], [1032, 1376]])('iPad %ix%i: smaller avatar and bounded settings panel', (width, height) => {
+    mockLayout.current = layoutFor(width, height);
+    const tree = withFull(<ProfileScreen />);
+    expect(tree.UNSAFE_getAllByType(CrewAvatar)[0].props.size).toBe(64);
+    expect(StyleSheet.flatten(tree.getByTestId('profile-wide').props.style)).toMatchObject({ flex: 0, maxWidth: 1040 });
+    expect(StyleSheet.flatten(tree.getByTestId('profile-id-card').props.style)).toMatchObject({ flex: 0, flexDirection: 'row' });
+    fireEvent.press(tree.getByTestId('profile-avatar'));
+    expect(StyleSheet.flatten(tree.getByTestId('profile-avatar-picker').props.style).maxWidth).toBe(520);
+  });
+
+  it('wide Duo: menu stays left, selected settings open right, account actions live on the edge rail', () => {
+    asWide();
+    const tree = withFull(<ProfileScreen />);
+    expect(tree.UNSAFE_getAllByType(CrewAvatar)[0].props.size).toBe(48);
+    const wide = within(tree.getByTestId('profile-wide'));
+    expect(wide.getByTestId('profile-menu')).toBeTruthy();
+    expect(wide.getByTestId('profile-detail')).toBeTruthy();
+    const rail = within(tree.getByTestId('profile-rail'));
+    expect(StyleSheet.flatten(tree.getByTestId('profile-rail').props.style).position).toBe('absolute');
+    expect(rail.getByTestId('profile-avatar')).toBeTruthy();
+    expect(rail.getByTestId('profile-logout')).toBeTruthy();
+    expect(rail.getByTestId('profile-block-hours')).toBeTruthy();
+    expect(within(wide.getByTestId('profile-menu')).getByTestId('row-help')).toBeTruthy();
+    expect(within(wide.getByTestId('profile-detail')).getByTestId('page-personal')).toBeTruthy();
+    fireEvent.press(wide.getByTestId('row-timezone'));
+    expect(within(wide.getByTestId('profile-detail')).getByTestId('page-timezone')).toBeTruthy();
+    expect(mockNavigate).not.toHaveBeenCalledWith('TimeZone');
+    const grows = (style: unknown) => [style].flat(3).some(st => st && ((st as { flex?: number; flexGrow?: number }).flex === 1 || (st as { flexGrow?: number }).flexGrow === 1));
+    // The page grows to the screen, while the selected detail owns its column.
+    expect(grows(tree.getByTestId('profile-screen').props.contentContainerStyle)).toBe(true);
+    expect(tree.queryByTestId('profile-id-card')).toBeNull();
+    asPhone();
+    const phone = withFull(<ProfileScreen />);
+    expect(phone.UNSAFE_getAllByType(CrewAvatar)[0].props.size).toBe(80);
+    expect(phone.queryByTestId('profile-wide')).toBeNull();
+    expect(phone.queryByTestId('profile-id-card')).toBeNull();
+    expect(grows(phone.getByTestId('profile-screen').props.contentContainerStyle)).toBe(false);
+  });
   it('tall: one centred column; phone: plain', () => {
     asTall();
     expect(withFull(<ProfileScreen />).getByTestId('profile-tall')).toBeTruthy();
@@ -448,6 +677,19 @@ describe('Profile', () => {
 
 describe('Route map', () => {
   const month = buildMonth(Y, M, [lhrTrip, sinTrip], [], [], 'airport', 'Asia/Bangkok', {}, NOW, { minutesBefore: 8, mutedIds: [] });
+  it('wide: keeps the summary low and translucent so routes remain visible on the map', () => {
+    asWide();
+    const tree = render(<RouteMapView month={month} base="BKK" palette={PALETTES.light} />);
+    const stats = tree.getByTestId('route-stats');
+    const flat = (value: unknown) => StyleSheet.flatten(value as never) as Record<string, unknown>;
+    expect(flat(stats.props.style).paddingVertical).toBe(8);
+    expect(flat(stats.props.style).backgroundColor).toBe(PALETTES.light.mapPanel);
+    expect(tree.queryByText(`${MON[M]} ${Y} summary`)).toBeNull();
+    expect(flat(tree.getByTestId('route-stat-totals').props.style).marginTop).toBe(0);
+    expect(flat(tree.getByTestId('route-stat-counts').props.style).marginTop).toBe(7);
+    expect(tree.getByTestId('route-details')).toBeTruthy();
+    asPhone();
+  });
   it('tall: seven stats on one row, routes in two columns, a taller map', () => {
     asTall();
     const tree = render(<RouteMapView month={month} base="BKK" palette={PALETTES.thai} />);
@@ -456,12 +698,12 @@ describe('Route map', () => {
     expect(tree.getByTestId('route-grid')).toBeTruthy();
     expect(tree.getByTestId('route-svg').props.height).toBe(Math.round((669 - 44) * 0.62));
   });
-  it('phone: the two-tier stats and the single-column routes, 240pt map', () => {
+  it('phone: the two-tier summary overlays a 340pt map above single-column routes', () => {
     const tree = render(<RouteMapView month={month} base="BKK" palette={PALETTES.thai} />);
     expect(tree.getByTestId('route-stat-totals')).toBeTruthy();
     expect(tree.getByTestId('route-stat-counts')).toBeTruthy();
     expect(tree.queryByTestId('route-grid')).toBeNull();
-    expect(tree.getByTestId('route-svg').props.height).toBe(240);
+    expect(tree.getByTestId('route-svg').props.height).toBe(340);
   });
 });
 

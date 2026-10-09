@@ -10,17 +10,18 @@ import { Icon } from '../../../components/v2/icons';
 import { CrewAvatar } from '../../settings/avatars';
 import { RBOT_AVATAR_INDEX } from '../../rbot/RBotEntry';
 import { sendCrewChat } from '../../rbot/crewChatApi';
-import type { RbotChatMessage } from '../../rbot/types';
+import type { RbotChatMessage, RbotThreadEntry } from '../../rbot/types';
+import { appendEntry, saveRbotThread } from '../../rbot/rbotSlice';
 import { useAppDispatch, useAppSelector, type RootState } from '../../../store';
 import type { CarrierPalette } from '../../../theme/carrier';
 import type { DutySwapApi } from '../dutySwapApi';
 import { ensureDetails, runSearch } from '../dutySwapActions';
 import { dayLabel } from '../dutySwapModel';
-import { rbotAppend, setGive, setTake, type SwapRbotEntry } from '../dutySwapSlice';
+import { setGive, setStep, setTake } from '../dutySwapSlice';
 import { applySwapActions, buildSwapSnapshot, describeResult, interpretSwapLocally, toCrews } from '../swapRbot';
 import { tint } from './CrewMatrix';
 
-type Entry = SwapRbotEntry;
+type Entry = RbotThreadEntry;
 
 export function SwapRbotPanel({ palette: p, api, onClose, side }: {
   palette: CarrierPalette; api: DutySwapApi; onClose: () => void; side: boolean;
@@ -28,8 +29,11 @@ export function SwapRbotPanel({ palette: p, api, onClose, side }: {
   const store = useStore<RootState>();
   const dispatch = useAppDispatch();
   // The thread lives in the store: rotating / folding remounts this panel.
-  const entries = useAppSelector(st => st.dutySwap.rbot);
-  const push = (e: Entry) => dispatch(rbotAppend(e));
+  const entries = useAppSelector(st => st.rbot.entries);
+  const push = (e: Entry) => {
+    dispatch(appendEntry({ entry: e, seen: true }));
+    void dispatch(saveRbotThread());
+  };
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const scroll = useRef<ScrollView>(null);
@@ -44,12 +48,14 @@ export function SwapRbotPanel({ palette: p, api, onClose, side }: {
     'Reset the filters',
   ].filter((x): x is string => !!x);
 
+  // Whatever R'Bot finds or picks lands in the matrix (design D0 → D1).
   const deps = {
     getState: () => swap(),
-    search: (f: Parameters<typeof runSearch>[2]) => runSearch(dispatch, api, f),
+    search: (f: Parameters<typeof runSearch>[2]) => { dispatch(setStep('pick')); return runSearch(dispatch, api, f); },
     peek: async (f: Parameters<typeof runSearch>[2]) => toCrews(await api.search(f)).slice(1).map(c => c.crewId),
-    setGive: (keys: string[]) => dispatch(setGive(keys)),
+    setGive: (keys: string[]) => { dispatch(setStep('pick')); dispatch(setGive(keys)); },
     setTake: (crewId: string, keys: string[]) => {
+      dispatch(setStep('pick'));
       dispatch(setTake({ crewId, keys }));
       void ensureDetails(dispatch, store.getState, api, [crewId]);
     },
@@ -68,7 +74,7 @@ export function SwapRbotPanel({ palette: p, api, onClose, side }: {
       if (local) {
         const chips = await applySwapActions(local.actions, deps);
         const searched = local.actions.some(a => a.type !== 'select_swap_duties');
-        reply = { role: 'assistant', local: true, chips,
+        reply = { role: 'assistant', local: true, applied: chips,
           content: [local.note, searched ? describeResult(swap()) : chips.length ? 'Done. Review when you are ready — I won\'t send anything for you.' : null].filter(Boolean).join(' ') };
       } else {
         const auth = store.getState().auth;
@@ -78,7 +84,7 @@ export function SwapRbotPanel({ palette: p, api, onClose, side }: {
           today: new Date().toISOString().slice(0, 10), screen: 'duty_swap', swap: buildSwapSnapshot(swap()),
         });
         const chips = await applySwapActions(res.actions, deps);
-        reply = { role: 'assistant', content: res.content, chips };
+        reply = { role: 'assistant', content: res.content, applied: chips };
       }
       push(reply);
     } catch (e) {
@@ -89,7 +95,7 @@ export function SwapRbotPanel({ palette: p, api, onClose, side }: {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[s.panel, side ? s.side : s.bottom, { backgroundColor: p.cardSolid }]}
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[s.panel, side ? s.side : s.bottom, { backgroundColor: p.cardOverlay }]}
       testID="swap-rbot-panel">
       <View style={[s.head, { borderBottomColor: p.cardLine }]}>
         <CrewAvatar index={RBOT_AVATAR_INDEX} size={28} bare />
@@ -112,9 +118,9 @@ export function SwapRbotPanel({ palette: p, api, onClose, side }: {
           <View key={i} style={[s.entry, e.role === 'user' ? s.right : s.left]}>
             <Text style={[s.bubble, e.role === 'user' ? { backgroundColor: p.btn, color: '#fff' } : { backgroundColor: tint(p.btn, 0.08), color: p.cardInk }]}
               testID={`swap-rbot-${e.role}-${i}`}>{e.content}</Text>
-            {e.chips?.length ? (
+            {e.applied?.length ? (
               <View style={s.chips}>
-                {e.chips.map(c => (
+                {e.applied.map(c => (
                   <View key={c} style={[s.chip, { borderColor: tint(p.btn, 0.4) }]}>
                     <Icon name="check" size={11} color={p.btn} strokeWidth={2.4} />
                     <Text style={[s.chipText, { color: p.btn }]}>{c}</Text>
@@ -128,13 +134,15 @@ export function SwapRbotPanel({ palette: p, api, onClose, side }: {
         {busy ? <ActivityIndicator color={p.btn} style={s.left} /> : null}
       </ScrollView>
       {entries.length === 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.suggest} keyboardShouldPersistTaps="handled">
+        // Plain wrapping pills: a ScrollView here grows (flexGrow 1) and split the
+        // panel's height with the thread — card-sized buttons on the Duo.
+        <View style={s.suggest} testID="swap-rbot-suggestions">
           {suggestions.map(x => (
-            <Pressable key={x} onPress={() => send(x)} style={[s.chip, { borderColor: tint(p.btn, 0.4) }]} testID="swap-rbot-suggestion">
-              <Text style={[s.chipText, { color: p.btn }]}>{x}</Text>
+            <Pressable key={x} onPress={() => send(x)} style={[s.chip, s.pill, { borderColor: tint(p.btn, 0.4) }]} testID="swap-rbot-suggestion">
+              <Text style={[s.chipText, s.pillText, { color: p.btn }]} numberOfLines={1}>{x}</Text>
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
       ) : null}
       <View style={[s.inputRow, { borderColor: p.cardLine }]}>
         <TextInput value={input} onChangeText={setInput} placeholder="Tell R'Bot what you want…" placeholderTextColor={p.cardSoft}
@@ -167,8 +175,10 @@ const s = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, alignItems: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 13, paddingHorizontal: 9, paddingVertical: 4 },
   chipText: { fontSize: 11.5, fontWeight: '700' },
+  pill: { maxWidth: '100%' },
+  pillText: { flexShrink: 1 },
   local: { fontSize: 10.5, fontWeight: '600' },
-  suggest: { gap: 6, paddingHorizontal: 12, paddingBottom: 8 },
+  suggest: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 12, paddingBottom: 8 },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, margin: 10, marginTop: 0, borderWidth: 1, borderRadius: 22, paddingLeft: 14, paddingRight: 5, height: 44 },
   input: { flex: 1, fontSize: 14 },
   sendBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },

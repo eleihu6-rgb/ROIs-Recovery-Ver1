@@ -313,9 +313,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sectionLabel: {
-    fontSize: 11,
+    // iOS grouped-list headers use the 13 pt footnote tier.
+    fontSize: 13,
     textTransform: 'uppercase',
-    letterSpacing: 1.3,
+    letterSpacing: 0.8,
     fontWeight: '600',
     marginTop: 18,
     marginBottom: 8,

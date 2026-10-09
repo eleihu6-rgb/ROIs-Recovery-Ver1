@@ -49,8 +49,8 @@ describe('carrier-branded theme', () => {
     expect(PALETTES.emirates.g1).not.toBe(PALETTES.emerald.g1);
   });
 
-  it('keeps Emirates as a carrier default only — the crew still picks the same four', () => {
-    expect(THEME_PRESETS).toEqual(['sia', 'thai', 'emerald', 'graphite']);
+  it('keeps Emirates as a carrier default outside the selectable themes', () => {
+    expect(THEME_PRESETS).toEqual(['sia', 'thai', 'emerald', 'graphite', 'light']);
   });
 
   it('lets an explicit crew choice still win over the carrier ground', () => {

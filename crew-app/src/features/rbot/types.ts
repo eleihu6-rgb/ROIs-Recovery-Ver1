@@ -152,6 +152,8 @@ export interface RbotContext {
   today: string;
   /** Screen the crew asked from (tone/context only). */
   screen?: string;
+  /** Active page and its visible identifiers when this turn was sent. */
+  page?: Record<string, unknown>;
   /** Duty Swap screen snapshot — what R'Bot "sees" (spec §6). Only sent from that screen. */
   swap?: unknown;
 }

@@ -1,0 +1,144 @@
+# Duty Swap · Market (design Concept A "Swap Board") on a regular iPhone —
+# PR cabin crew 487424 on the TEST tenant. Read-only: nothing is sent here (the
+# four real requests are sent on the Duo inner screen, DuoFitUITests
+# testDuoDutySwapMarketPR487424).
+#
+# Matrix → Market through the header switch → swap out of the 22 Oct trip →
+# the board → an offer's composer (bottom sheet) → close → the 29 Oct duty →
+# back to Matrix (Search pairing) → Market again (remembered on re-entry).
+#
+# Run (from crew-app/), password from the environment, never from this file:
+#   maestro --device <UDID> test -e PR_PASSWORD=... .maestro/pr_487424_duty_swap_market.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "487424"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: ${PR_PASSWORD}
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "qa-duty-swap"
+- runFlow:
+    when:
+      visible:
+        id: "swap-disclaimer"
+    commands:
+      # AppDialog buttons sit inside the card's single accessibility element; tap by position.
+      - tapOn:
+          point: "63%,63%"
+# Matrix by default (fresh install): the switch sits in the header, in place of the title.
+- extendedWaitUntil:
+    visible:
+      id: "swap-approach-header"
+    timeout: 60000
+- assertVisible:
+    id: "search-form"
+- assertNotVisible:
+    id: "swap-approach-rail-edge"
+- tapOn:
+    id: "approach-market"
+- extendedWaitUntil:
+    visible:
+      id: "market-headline"
+    timeout: 120000
+- tapOn:
+    id: "market-out-2026-10-22"
+- extendedWaitUntil:
+    visible:
+      text: ".*offers? overlaps? 22–26 Oct.*"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "offer-.*"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: air-swap-market-Ver1-01_board
+- tapOn:
+    id: "offer-.*"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: "market-composer"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "market-delta"
+    timeout: 60000
+- assertVisible:
+    text: "YOU GIVE"
+- assertVisible:
+    text: "Check legality & send"
+- takeScreenshot: air-swap-market-Ver1-02_composer
+- tapOn:
+    id: "market-composer-close"
+- extendedWaitUntil:
+    notVisible:
+      id: "market-composer"
+    timeout: 10000
+- tapOn:
+    id: "market-out-2026-10-29"
+- extendedWaitUntil:
+    visible:
+      text: ".*offers? overlaps? 29 Oct.*"
+    timeout: 10000
+- takeScreenshot: air-swap-market-Ver1-03_board_29oct
+# Back to the Matrix: Search pairing, the switch still in the header.
+- tapOn:
+    id: "approach-matrix"
+- extendedWaitUntil:
+    visible:
+      id: "search-form"
+    timeout: 30000
+- assertNotVisible:
+    id: "market-screen"
+- takeScreenshot: air-swap-market-Ver1-04_matrix
+# Market again, then leave and come back: the choice is remembered.
+- tapOn:
+    id: "approach-market"
+- extendedWaitUntil:
+    visible:
+      id: "market-headline"
+    timeout: 120000
+- tapOn:
+    id: "page-back"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 10000
+- tapOn:
+    id: "qa-duty-swap"
+- extendedWaitUntil:
+    visible:
+      id: "market-screen"
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: "market-headline"
+    timeout: 120000
+- takeScreenshot: air-swap-market-Ver1-05_remembered

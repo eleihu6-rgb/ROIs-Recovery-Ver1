@@ -22,6 +22,12 @@ PEK
 BWN
 GES
 HNL
+# HND was missing in PR 473006's October 2026 map. Supplemental ARP from
+# Japan AIP RJTT AD 2.24.1 (Civil Aviation Bureau chart hosted by ANA):
+# https://www.anaas.ana-g.com/img/business/general_aviation/pdf/hnd-rjtt.pdf
+# 35d33m12s N, 139d46m52s E -> 35.5533, 139.7811; Tokyo Haneda, JP.
+# Used for the 2026-10-08 generation because this checkout has no live DB .env.
+HND
 KUL
 SGN
 TPE

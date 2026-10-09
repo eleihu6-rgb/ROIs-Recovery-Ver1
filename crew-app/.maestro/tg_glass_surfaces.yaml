@@ -1,0 +1,70 @@
+# Visual regression for translucent Home and Schedule cards on an iPhone.
+# Bundle .maestro/destination_qa_entry.js first to view the September TG roster.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- assertVisible:
+    id: "home-next-trip"
+- takeScreenshot: glass-surfaces-home-tg-Ver2
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-view-menu"
+    timeout: 30000
+- tapOn:
+    id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-calendar"
+- assertVisible:
+    id: "cal-grid"
+- tapOn:
+    id: "cal-mode-month-detail"
+- assertVisible:
+    id: "cal-month-detail"
+- takeScreenshot: glass-surfaces-calendar-tg-Ver2
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "row-preferences"
+- tapOn:
+    id: "row-appearance"
+- assertVisible:
+    id: "page-appearance"
+- tapOn:
+    id: "theme-graphite"
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-home"
+- assertVisible:
+    id: "home-next-trip"
+- takeScreenshot: glass-surfaces-home-graphite-Ver2
+- tapOn:
+    id: "tab-schedule"
+- assertVisible:
+    id: "cal-month-detail"
+- takeScreenshot: glass-surfaces-calendar-graphite-Ver2

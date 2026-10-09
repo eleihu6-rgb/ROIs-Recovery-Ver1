@@ -82,3 +82,8 @@
 - Layouts are designed per page for three classes (`compact` / `tall` / `wide`, see
   `src/components/v2/useLayout.ts`); the regular-iPhone layout must stay pixel-identical.
   Spec: `docs/superpowers/specs/2026-10-07-crew-app-duo-per-page-layouts-design.md`.
+
+## Login hang diagnosis (mandatory)
+- If login shows no progress for 30 seconds, or a credential rejection is returned, stop automatic retries and inspect the failure before running another attempt. A rising captured-response count is not authentication progress.
+- Check the exact crew ID after keyboard dismissal and at the capture/API boundary; a prior automation bug appended digits to a prefilled ID. Verify password presence/source without printing its value, the airline/portal, required email/CAPTCHA fields, and the portal's HTTP/business response.
+- Save a sanitized response excerpt and screenshot. Never store passwords, tokens or cookies in reports. Wrong-password feedback must end the attempt and return control to the user; skip that crew when instructed. Do not cycle simulator runs or extend waits to conceal a credential rejection.

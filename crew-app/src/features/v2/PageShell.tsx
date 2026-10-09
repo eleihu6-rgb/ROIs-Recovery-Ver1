@@ -1,6 +1,6 @@
 // Full-screen page pushed from the tabs (mock #600): gradient ground, back
 // chevron, centred title, scrolling body. Shared by every v2 detail page.
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -13,10 +13,16 @@ import { useLayout } from '../../components/v2/useLayout';
 /** Widest a single column of settings rows / spec copy is allowed to run. */
 export const SINGLE_COLUMN_MAX = 560;
 
+/** A settings page can fill Profile's right pane on a wide Duo. */
+export const EmbeddedPageContext = createContext(false);
+
 export function PageShell({
-  title, children, right, testID, scroll = true, hero, layout = 'auto',
+  title, children, right, testID, scroll = true, hero, layout = 'auto', titleNode,
 }: {
   title: string; children: React.ReactNode; right?: React.ReactNode; testID?: string;
+  /** Replaces the title text with a control in the same place (e.g. the Duty
+   *  Swap Matrix | Market switch); `title` stays the page's name. */
+  titleNode?: React.ReactNode;
   /** false = a fixed body that manages its own scrolling (e.g. the Duty Swap matrix). */
   scroll?: boolean;
   /**
@@ -37,6 +43,15 @@ export function PageShell({
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
   const { wide, tall } = useLayout();
+  const embedded = useContext(EmbeddedPageContext);
+  if (embedded) {
+    return (
+      <ScrollView style={s.embeddedScroll} contentContainerStyle={s.embeddedBody} showsVerticalScrollIndicator={false} testID={testID}>
+        <Text style={[s.embeddedTitle, { color: p.ink }]}>{title}</Text>
+        {hero}{children}
+      </ScrollView>
+    );
+  }
   const columns = layout === 'auto' && wide && !!hero;
   const centred = layout === 'auto' && !columns && (wide || tall);
   const body = columns ? (
@@ -55,7 +70,9 @@ export function PageShell({
         <Pressable onPress={() => nav.goBack()} hitSlop={12} style={s.iconBtn} accessibilityLabel="back" testID="page-back">
           <Icon name="back" size={24} color={p.ink} strokeWidth={1.8} />
         </Pressable>
-        <Text style={[s.title, { color: p.ink }]} numberOfLines={1}>{title}</Text>
+        {titleNode ? <View style={s.titleNode}>{titleNode}</View> : (
+          <Text style={[s.title, { color: p.ink }]} numberOfLines={1}>{title}</Text>
+        )}
         <View style={s.iconBtn}>{right}</View>
       </View>
       {scroll ? (
@@ -128,8 +145,14 @@ export function PrimaryButton({ label, onPress, palette, testID, style }: { labe
 const s = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 10 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, textAlign: 'center', fontSize: 20, fontWeight: '600' },
+  // iOS navigation bars use a 17 pt title. Keeping this separate from the
+  // identity in the hero prevents a crew number from competing with the page.
+  title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
+  titleNode: { flex: 1, alignItems: 'center' },
   body: { paddingHorizontal: 22, paddingTop: 6, paddingBottom: 40 },
+  embeddedScroll: { flex: 1 },
+  embeddedBody: { paddingHorizontal: 4, paddingBottom: 24 },
+  embeddedTitle: { fontSize: 21, fontWeight: '600', marginBottom: 8 },
   fixed: { flex: 1 },
   cols: { flexDirection: 'row', gap: 18, alignItems: 'flex-start' },
   col: { flex: 1, minWidth: 0 },
@@ -138,15 +161,19 @@ const s = StyleSheet.create({
   colMain: { flex: 3, minWidth: 0 },
   centred: { width: '100%', maxWidth: SINGLE_COLUMN_MAX, alignSelf: 'center' },
   hero: { borderRadius: 18, padding: 18, marginBottom: 16 },
-  h1: { fontSize: 22, fontWeight: '600' },
-  h2: { fontSize: 13, marginTop: 4, lineHeight: 19 },
+  // Identity is a title3, not a large-title: the page title already establishes
+  // the screen and the crew number is one value in its settings context.
+  h1: { fontSize: 20, fontWeight: '600' },
+  h2: { fontSize: 15, marginTop: 4, lineHeight: 20 },
   list: { borderRadius: 18, paddingHorizontal: 18, paddingVertical: 6, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
-  kv: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16, paddingVertical: 15 },
+  kv: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16, paddingVertical: 12 },
   // The label keeps its own width and the value wraps: in a half-width column
   // (Duo, rotated: calendar | hotel) the old flex-1 label broke mid-word
   // ("Loc-atio-n") beside a long value.
-  kvLabel: { fontSize: 14, fontWeight: '500', flexShrink: 0 },
-  kvValue: { fontSize: 13, textAlign: 'right', flex: 1 },
+  // Native Settings presents both sides of an informational row at the body
+  // size; colour, not a smaller font, establishes the secondary value.
+  kvLabel: { fontSize: 17, fontWeight: '400', flexShrink: 0 },
+  kvValue: { fontSize: 17, textAlign: 'right', flex: 1 },
   btn: { marginTop: 22, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });

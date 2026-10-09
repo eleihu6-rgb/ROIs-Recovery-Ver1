@@ -86,6 +86,37 @@ const IMAGES: Record<string, ImageSourcePropType> = {
   default: require("./cityImages/default.jpg"),
 };
 
+// Dark photo hues for the Duo destination information pane. Each hue comes from
+// the corresponding landmark JPG's average RGB, with a fixed 19% lightness so
+// white flight text remains readable. Keep this keyed with IMAGES when adding a
+// city; the default covers any image without a sampled tone.
+const PANEL_TONES: Record<string, string> = {
+  ahmedabad: '#442f1d', auckland: '#38223f', bali: '#1b2646',
+  bangkok: '#1b3146', beijing: '#461b21', bengaluru: '#1c1b46',
+  brisbane: '#1a3147', cebu: '#1c3945', chennai: '#461b1e',
+  chiangmai: '#192947', chiangrai: '#1a2147', colombo: '#461b32',
+  copenhagen: '#1b2246', danang: '#183249', davao: '#1b2646',
+  default: '#1b2546', delhi: '#472f1a', dhaka: '#3c3f22',
+  doha: '#3f2231', frankfurt: '#1b3146', fukuoka: '#461b2c',
+  guam: '#1b3646', guangzhou: '#1d1b46', hanoi: '#364021',
+  hatyai: '#461b38', hongkong: '#1c1b46', honolulu: '#1a2b47',
+  hyderabad: '#443b1d', islamabad: '#1b2846', istanbul: '#1c4045',
+  jakarta: '#192447', karachi: '#182649', kathmandu: '#231948',
+  khonkaen: '#1b2f46', kolkata: '#2d223f', krabi: '#1a2e47',
+  kualalumpur: '#1b3346', lahore: '#1b2546', london: '#1a2f47',
+  losangeles: '#181e49', manila: '#1b2b46', melbourne: '#1b2346',
+  milan: '#1b2e46', mumbai: '#1b3146', munich: '#1c1b46',
+  nagoya: '#46201b', newyork: '#1c3a45', osaka: '#1c4540',
+  oslo: '#1b2c46', paris: '#33451c', penang: '#1c4522',
+  perth: '#402139', phuket: '#1a3047', portmoresby: '#1f2f42',
+  riyadh: '#492418', saigon: '#1a3147', sanfrancisco: '#192a48',
+  seattle: '#183449', seoul: '#212041', shanghai: '#18492f',
+  singapore: '#1a3447', stockholm: '#1b3646', sydney: '#202241',
+  taipei: '#1b4533', tokyo: '#202f41', ubon: '#452d1c',
+  udonthani: '#45301c', vancouver: '#1b3146', vientiane: '#2e451c',
+  yangon: '#1d3f44', zurich: '#1c3a45',
+};
+
 // Default home base — never the "destination" of a rotation. The active airline's
 // real base (TG=BKK, PR=MNL) is passed into tripDestination so a PR return-to-MNL
 // leg is not mistaken for a "Manila" destination on the Home postcard.
@@ -177,6 +208,7 @@ export interface CityCard {
   name: string;
   airport: string;
   image: ImageSourcePropType;
+  panelColor: string;
 }
 
 /** Resolve an airport code to a display city + landmark image (default fallback). */
@@ -187,6 +219,7 @@ export function cityForAirport(code: string): CityCard {
     name: info ? info.name : c || "Trip",
     airport: c,
     image: info ? IMAGES[info.key] : IMAGES.default,
+    panelColor: PANEL_TONES[info?.key ?? 'default'] ?? PANEL_TONES.default,
   };
 }
 

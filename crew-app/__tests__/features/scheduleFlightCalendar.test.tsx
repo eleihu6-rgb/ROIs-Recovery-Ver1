@@ -99,8 +99,10 @@ const renderSchedule = () =>
   );
 
 beforeEach(() => {
+  jest.useFakeTimers({ now: new Date('2026-09-12T09:00:00+07:00'), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'nextTick'] });
   jest.clearAllMocks();
 });
+afterEach(() => jest.useRealTimers());
 
 describe('Schedule ▸ flight card → iOS Calendar', () => {
   it('offers the icon once per duty, on the first leg only', () => {

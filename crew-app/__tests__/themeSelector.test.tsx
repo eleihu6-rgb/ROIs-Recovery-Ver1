@@ -1,11 +1,11 @@
 // Colour-theme selector — Profile ▸ Preferences ▸ Appearance.
 //
 // Proves the three things the review asked for:
-//   1. four selectable themes, exactly the sign-off mock's swatch set;
+//   1. four airline swatches and the Daylight theme;
 //   2. the crew's choice is remembered (persisted, rehydrated on relaunch,
 //      and reversible back to the airline default);
 //   3. every themed element repaints — the shared themed kit is rendered under
-//      all four palettes and each palette colour is asserted on a real element,
+//      all selectable palettes and each palette colour is asserted on a real element,
 //      including the theme-tinted dock on the Schedule tab.
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
@@ -27,6 +27,7 @@ import { KvRow, ListCard, PrimaryButton } from '../src/features/v2/PageShell';
 import {
   CarrierContext,
   PALETTES,
+  glassTint,
   THEME_LABELS,
   THEME_PRESETS,
   paletteFor,
@@ -160,13 +161,14 @@ describe('colour theme selector', () => {
     jest.clearAllMocks();
   });
 
-  it('offers exactly the four themes of the sign-off mock', () => {
-    expect(THEME_PRESETS).toEqual(['sia', 'thai', 'emerald', 'graphite']);
+  it('offers the four airline themes and Daylight', () => {
+    expect(THEME_PRESETS).toEqual(['sia', 'thai', 'emerald', 'graphite', 'light']);
     expect(THEME_PRESETS.map(preset => THEME_LABELS[preset])).toEqual([
       'Reference blue',
       'Thai violet',
       'Emerald',
       'Graphite',
+      'Daylight',
     ]);
   });
 
@@ -190,6 +192,15 @@ describe('colour theme selector', () => {
     expect(relaunched.getState().settings.themePreset).toBeNull();
     await runThunk(relaunched, loadSettings());
     expect(relaunched.getState().settings.themePreset).toBe('thai');
+  });
+
+  it('persists Daylight and restores its light palette', async () => {
+    const store = makeStore();
+    await runThunk(store, setThemePreset('light'));
+    const relaunched = makeStore();
+    await runThunk(relaunched, loadSettings());
+    expect(relaunched.getState().settings.themePreset).toBe('light');
+    expect(PALETTES[resolveTheme(relaunched.getState().settings.themePreset, 'ET')].isLight).toBe(true);
   });
 
   it('clears back to the airline default', async () => {
@@ -261,7 +272,7 @@ describe('colour theme selector', () => {
     expect(tree.getByText('Thai violet')).toBeTruthy();
   });
 
-  it('repaints every themed element for each of the four palettes', () => {
+  it('repaints every themed element for each selectable palette', () => {
     for (const preset of THEME_PRESETS) {
       const pal = PALETTES[preset];
       const tree = render(
@@ -289,7 +300,7 @@ describe('colour theme selector', () => {
       for (const expected of [pal.g1, pal.g2, pal.g3, pal.g4]) {
         expect(stops).toContain(expected);
       }
-      for (const expected of [pal.card, pal.btn, pal.dockLight, pal.dockInk]) {
+      for (const expected of [pal.card, pal.btn, glassTint(pal.dockLight), pal.dockInk]) {
         expect(colours).toContain(expected);
       }
       expect(tree.getByTestId('ctx-probe').props.style.backgroundColor).toBe(pal.btn);

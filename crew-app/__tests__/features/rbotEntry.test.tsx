@@ -41,7 +41,7 @@ describe("R'Bot dock entry", () => {
   function renderDock(activeIndex: number, unread = false) {
     const store = configureStore({
       reducer: {rbot: rbotReducer},
-      preloadedState: {rbot: {entries: [], unread}},
+      preloadedState: {rbot: {entries: [], unread, scheduleView: 'timeline', scheduleMonth: null, scheduleDay: null, dutySwapApproach: 'matrix'}},
     });
     return render(
       <Provider store={store}>
@@ -70,7 +70,7 @@ describe("R'Bot dock entry", () => {
   it('opens the R\'Bot screen when tapped', () => {
     const {getByTestId} = renderDock(0);
     fireEvent.press(getByTestId('dock-rbot'));
-    expect(mockNavigate).toHaveBeenCalledWith('RBot');
+    expect(mockNavigate).toHaveBeenCalledWith('RBot', {source: {route: 'Home'}});
   });
 
   it('flips the AI tag to the theme ink on the light Schedule dock', () => {

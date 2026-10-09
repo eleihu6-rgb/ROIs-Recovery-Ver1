@@ -84,6 +84,8 @@ function makeStore() {
 
 /** Pin "now" inside September 2026 so the month under test is the open one. */
 const NOW = new Date('2026-09-12T09:00:00Z');
+beforeEach(() => { jest.useFakeTimers(); jest.setSystemTime(NOW); });
+afterEach(() => { act(() => { jest.runOnlyPendingTimers(); }); jest.useRealTimers(); });
 
 function renderSchedule() {
   const store = makeStore();

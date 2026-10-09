@@ -1,0 +1,117 @@
+# iPad (iPad Pro 11-inch M5, 1210x834 / 834x1210 pt) — PR crew 473006.
+# The iPad reuses the Duo inner-screen "wide" layouts (window width >= 700 pt in
+# both orientations). Landscape: Home two-row wide layout → Schedule timeline →
+# Calendar → Route map → Profile (crew id) → Duty Swap. Then portrait: Home and
+# Schedule must still be on the wide layout.
+#
+# Run (from crew-app/), password from the environment, never from this file:
+#   maestro --device <iPad sim UDID> test -e PR_PASSWORD=... .maestro/pr_473006_ipad.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: LANDSCAPE_LEFT
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "473006"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: ${PR_PASSWORD}
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+# Wide Home: the two side-by-side rows the Duo inner screen uses.
+- assertVisible:
+    id: "home-wide-row-1"
+- assertVisible:
+    id: "home-wide-row-2"
+- takeScreenshot: ../docs/assets/screenshots/crew-app/ipad-home-landscape-Ver1
+
+# Schedule → timeline (wide shell), then Calendar and Route map.
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-shell"
+    timeout: 60000
+- assertVisible:
+    id: "sched-title"
+- takeScreenshot: ../docs/assets/screenshots/crew-app/ipad-schedule-landscape-Ver1
+- tapOn:
+    id: "sched-view-calendar"
+- waitForAnimationToEnd
+- takeScreenshot: ../docs/assets/screenshots/crew-app/ipad-calendar-landscape-Ver1
+- tapOn:
+    id: "sched-view-route"
+- extendedWaitUntil:
+    visible:
+      id: "route-svg"
+    timeout: 30000
+- takeScreenshot: ../docs/assets/screenshots/crew-app/ipad-route-landscape-Ver1
+- tapOn:
+    id: "sched-view-timeline"
+
+# Profile shows the signed-in PR crew.
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 30000
+- assertVisible:
+    text: ".*473006.*"
+- takeScreenshot: ../docs/assets/screenshots/crew-app/ipad-profile-landscape-Ver1
+
+# Duty Swap from Home's quick actions (read-only: nothing is sent).
+- tapOn:
+    id: "tab-home"
+- tapOn:
+    id: "qa-duty-swap"
+- runFlow:
+    when:
+      visible:
+        id: "swap-disclaimer"
+    commands:
+      # AppDialog buttons sit inside the card's single accessibility element; tap by position.
+      - tapOn:
+          point: "60%,60%"
+- extendedWaitUntil:
+    visible:
+      id: "duty-swap-screen"
+    timeout: 60000
+- takeScreenshot: ../docs/assets/screenshots/crew-app/ipad-duty-swap-landscape-Ver1
+- tapOn:
+    id: "page-back"
+
+# Portrait iPad (834 pt) is still wide.
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- tapOn:
+    id: "tab-home"
+- assertVisible:
+    id: "home-wide-row-1"
+- takeScreenshot: ../docs/assets/screenshots/crew-app/ipad-home-portrait-Ver1
+- tapOn:
+    id: "tab-schedule"
+- assertVisible:
+    id: "sched-shell"
+- takeScreenshot: ../docs/assets/screenshots/crew-app/ipad-schedule-portrait-Ver1

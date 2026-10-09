@@ -41,8 +41,8 @@ describe('buildInjectedJS', () => {
     expect(js).toContain('function setToken(');
     expect(js).toContain('function getToken(');
     expect(js).toContain('function extractToken(');
-    // getToken prefers the explicitly-set token, falling back to findJwt().
-    expect(js).toContain('window.__royce.token || findJwt()');
+    // Native authentication must never reuse a previous WebView session.
+    expect(js).toContain('window.__royce.token || (NATIVE_AUTH ? null : findJwt())');
   });
 
   it('never posts the full token — only its source and length', () => {
@@ -78,5 +78,12 @@ describe('buildInjectedJS', () => {
       expect(noCdn).not.toContain('cdn.jsdelivr.net');
       expect(noCdn).toContain('directAuthUnavailable');
     });
+  });
+});
+
+describe('native token hand-off', () => {
+  it('exposes window.__royceSetToken so the app can pass the natively obtained session token', () => {
+    const js = buildInjectedJS('392923', 'pw', true, { outCaptcha: '202604' });
+    expect(js).toContain("window.__royceSetToken = function(t){ try{ setToken(String(t), 'native'); }catch(e){} };");
   });
 });

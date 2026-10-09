@@ -531,7 +531,10 @@ function buildAirportIndex(captures: PortalCapture[]): Record<string, AirportInf
     // (this is the selectCrewRosterReport shape: {fltOorder, fltNum, dep, arv}).
     const fk = flightKey(pick(o, ['fltnumber', 'flightnumber', 'flightno', 'fltno', 'flightnum', 'fltnbr', 'fltnum', 'flt', 'flight']));
     const dep = pick(o, ['deparp', 'depstn', 'depairport', 'departure', 'fromairport', 'depport', 'origin', 'dep', 'from']);
-    const arv = pick(o, ['arvarp', 'arrstn', 'arrairport', 'arrival', 'toairport', 'arrport', 'destination', 'arr', 'arv', 'to']);
+    // PR detailAll calls the arrival airport `arp`. Prefer that exact key:
+    // fuzzy "arp" also matches depArp/arpIntervalHour, and "to" can match a
+    // flightBookingLocator before it ever reaches an airport field.
+    const arv = o.arp ?? pick(o, ['arvarp', 'arrstn', 'arrairport', 'arrival', 'toairport', 'arrport', 'destination', 'arr', 'arv', 'to']);
     const depOk = typeof dep === 'string' && IATA_RE.test(dep.trim().toUpperCase());
     const arvOk = typeof arv === 'string' && IATA_RE.test(arv.trim().toUpperCase());
     if (fk && (depOk || arvOk)) {

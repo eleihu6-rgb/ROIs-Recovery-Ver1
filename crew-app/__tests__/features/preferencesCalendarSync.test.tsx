@@ -68,8 +68,10 @@ function renderPrefs() {
 }
 
 beforeEach(() => {
+  jest.useFakeTimers({ now: new Date('2026-09-12T09:00:00+07:00'), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'nextTick'] });
   jest.clearAllMocks();
 });
+afterEach(() => jest.useRealTimers());
 
 describe('Preferences ▸ iOS Calendar sync', () => {
   it('offers the switch with an honest explanation', () => {

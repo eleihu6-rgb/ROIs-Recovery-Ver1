@@ -15,6 +15,8 @@ import {
   dayLabel, detailFor, emptyFilters, fleetsOf, routeOf, toCrews,
   type ApiCompare, type SwapCrew, type SwapDuty, type SwapFilters,
 } from './dutySwapModel';
+import { AIRPORT_COORDS } from '../settings/airportCoords';
+import { countryName } from '../settings/countries';
 
 // ── Parsing (whitelist, like parseRbotAction) ──────────────────────────────
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -85,6 +87,8 @@ export const isSwapAction = (a: RbotAction): a is RbotSwapAction =>
 
 // ── What R'Bot sees (snapshot sent as context.swap) ────────────────────────
 export interface SwapSnapshot {
+  view: 'search' | 'pick';
+  status: string;
   window: { start: string; end: string };
   mode: string;
   filters: Record<string, unknown>;
@@ -98,8 +102,9 @@ const MAX_CREWS = 8;
 export function buildSwapSnapshot(s: {
   filters: SwapFilters | null; crews: SwapCrew[]; details: Record<string, ApiCompare>;
   give: string[]; take: string[]; crewB: string | null;
+  step?: 'search' | 'pick'; status?: string;
 }): SwapSnapshot | null {
-  if (!s.filters || !s.crews.length) return null;
+  if (!s.filters) return null;
   const me = s.crews[0];
   const mine = Object.values(s.details)[0]?.mineTaskDetailList;
   const snap = (d: SwapDuty, list?: ApiCompare['mineTaskDetailList']): SnapDuty => {
@@ -117,10 +122,12 @@ export function buildSwapSnapshot(s: {
   }
   const keyCode = (k: string) => s.crews.flatMap(c => c.duties).find(d => d.key === k);
   return {
+    view: s.step ?? 'search',
+    status: s.status ?? 'ready',
     window: { start: s.filters.startDate, end: s.filters.endDate },
     mode: s.filters.swapMode,
     filters,
-    me: { crewId: me.crewId, fleets: fleetsOf(mine ?? []), duties: me.duties.map(d => snap(d, mine)) },
+    me: { crewId: me?.crewId ?? '', fleets: fleetsOf(mine ?? []), duties: me?.duties.map(d => snap(d, mine)) ?? [] },
     crews: s.crews.slice(1, 1 + MAX_CREWS).map(c => {
       const list = s.details[c.crewId]?.othersTaskDetailList;
       return { crewId: c.crewId, fleets: fleetsOf(list ?? []), duties: c.duties.map(d => snap(d, list)) };
@@ -154,17 +161,46 @@ export function dateIn(text: string, windowStart: string): string | null {
 const covers = (d: Pick<SwapDuty, 'startDt' | 'endDt'>, day: string) => d.startDt.slice(0, 10) <= day && day <= d.endDt.slice(0, 10);
 const crewIdsIn = (text: string, crews: SwapCrew[]) => crews.slice(1).map(c => c.crewId).filter(id => new RegExp(`\\b${id}\\b`).test(text));
 
+/** A country named in the text ("US", "the United States", "Japan"), as ISO alpha-2
+ *  of an airport we know; null when none. "US" must be upper case ("show us…"). */
+function countryIn(text: string): string | null {
+  if (/\b(US|USA|U\.S\.)(?![A-Za-z])/.test(text) || /\b(united states|america)\b/i.test(text)) return 'US';
+  const low = text.toLowerCase();
+  const codes = [...new Set(Object.values(AIRPORT_COORDS).map(a => a.country).filter((c): c is string => !!c))];
+  for (const code of codes) {
+    const name = countryName(code).toLowerCase();
+    if (name && name !== code.toLowerCase() && new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(low)) return code;
+  }
+  return null;
+}
+
 export interface LocalSwapPlan { actions: RbotSwapAction[]; note?: string }
 
 /** Understand a request on the phone, or null to ask the server. Conservative:
  *  only clear phrasings are handled here. */
-export function interpretSwapLocally(text: string, s: { filters: SwapFilters | null; crews: SwapCrew[]; details: Record<string, ApiCompare> }): LocalSwapPlan | null {
-  if (!s.filters || !s.crews.length) return null;
+export function interpretSwapLocally(text: string, s: {
+  filters: SwapFilters | null; crews: SwapCrew[]; details: Record<string, ApiCompare>; options?: { ports: string[] } | null;
+  step?: 'search' | 'pick';
+}): LocalSwapPlan | null {
+  if (!s.filters) return null;
   const t = text.trim();
   const low = t.toLowerCase();
   const me = s.crews[0];
   const mine = Object.values(s.details)[0]?.mineTaskDetailList;
   const actions: RbotSwapAction[] = [];
+
+  // A short date is a common follow-up after asking about a duty. Ground it in
+  // the visible search window, even while the portal has not returned rows yet.
+  const bareDate = /^(?:on\s+)?(?:\d{1,2}(?:st|nd|rd|th)?\s+[a-z]{3,9}|[a-z]{3,9}\s+\d{1,2}|\d{4}-\d{2}-\d{2})$/i.test(t);
+  const mentionedDay = bareDate ? dateIn(t, s.filters.startDate) : null;
+  if (mentionedDay && (mentionedDay < s.filters.startDate || mentionedDay > s.filters.endDate || !me)) {
+    const window = `${dayLabel(s.filters.startDate).day} ${dayLabel(s.filters.startDate).month}–${dayLabel(s.filters.endDate).day} ${dayLabel(s.filters.endDate).month}`;
+    const page = s.step === 'pick' ? 'duty table' : 'Search pairing';
+    const reason = mentionedDay < s.filters.startDate || mentionedDay > s.filters.endDate
+      ? `${dayLabel(mentionedDay).day} ${dayLabel(mentionedDay).month} is outside the current ${window} search window. Set the Start date to include it, then search to load your duty.`
+      : `Your duties are still loading for ${window}. Please try again when the search finishes.`;
+    return { actions: [], note: `You're on Duty Swap · ${page}. ${reason}` };
+  }
 
   // "reset" / "clear the filters"
   if (/\b(reset|clear)\b.*\b(filter|search)s?\b|^reset$/.test(low)) {
@@ -175,6 +211,7 @@ export function interpretSwapLocally(text: string, s: { filters: SwapFilters | n
   const swapMine = /\b(swap|trade|give( away)?|get rid of)\b.*\bmy\b/.test(low);
   const day = dateIn(t, s.filters.startDate);
   if (swapMine && day) {
+    if (!me) return { actions: [], note: `You're on Duty Swap · Search pairing. Your duties are still loading; please try again when the search finishes.` };
     const duty = me.duties.find(d => covers(d, day) && d.swappable && d.kind !== 'off');
     if (!duty) return { actions: [], note: `I can't find a swappable duty of yours on ${dayLabel(day).day} ${dayLabel(day).month}.` };
     const fields: RbotSwapSearchFields = { startDate: duty.startDt.slice(0, 10), endDate: duty.endDt.slice(0, 10) };
@@ -192,6 +229,17 @@ export function interpretSwapLocally(text: string, s: { filters: SwapFilters | n
   const fleet = /\b(?:only\s+|fleet\s+|a)(3[0-9]{2}|7[0-9]{2})\b/i.exec(t);
   if (fleet && /\b(only|fleet|same)\b/.test(low)) {
     return { actions: [{ type: 'set_swap_search', fields: { fltFleetList: [fleet[1]] }, label: `Fleet ${fleet[1]} only` }] };
+  }
+
+  // "crew with US duties" / "flights to the United States": every port of that
+  // country the window flies to, as arriving flights.
+  const country = countryIn(t);
+  if (country && /\b(dut(y|ies)|flights?|flying|trips?|pairings?|routes?)\b/.test(low)) {
+    const known = s.options?.ports?.length ? s.options.ports : Object.keys(AIRPORT_COORDS);
+    const ports = known.filter(p => AIRPORT_COORDS[p]?.country === country).sort();
+    const name = country === 'US' ? 'US' : countryName(country);
+    if (!ports.length) return { actions: [], note: `No flights to ${name} in this window.` };
+    return { actions: [{ type: 'set_swap_search', fields: { fltArrList: ports }, label: `${name} duties · ${ports.join(', ')}` }] };
   }
 
   // "also show someone with a DOH layover" / "layover in SEA"
@@ -293,12 +341,15 @@ export async function applySwapActions(actions: RbotAction[], deps: SwapActionDe
 }
 
 /** One-line summary of the screen after R'Bot acted (the reply under the chips). */
+const NAMED_MAX = 6;
 export function describeResult(s: { crews: SwapCrew[]; filters: SwapFilters | null }): string {
   const others = s.crews.slice(1).map(c => c.crewId);
   if (!s.filters) return '';
   const w = `${dayLabel(s.filters.startDate).day} ${dayLabel(s.filters.startDate).month}–${dayLabel(s.filters.endDate).day} ${dayLabel(s.filters.endDate).month}`;
   if (!others.length) return `No crew match on ${w}. Try widening the dates or removing a filter.`;
-  return `${others.length} crew on ${w}: ${others.join(', ')}. They're in the table now.`;
+  // A cabin crew search finds 50+ crews: name a few, count the rest.
+  const named = others.length > NAMED_MAX ? `${others.slice(0, NAMED_MAX).join(', ')} and ${others.length - NAMED_MAX} more` : others.join(', ');
+  return `${others.length} crew on ${w}: ${named}. They're in the table now.`;
 }
 
 /** Re-export so the screen can turn a raw search into crews for `peek`. */

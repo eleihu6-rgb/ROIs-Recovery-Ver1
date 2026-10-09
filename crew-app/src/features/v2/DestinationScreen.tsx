@@ -3,7 +3,7 @@
 // Ver1 style (mock `.dest .grad`): the landmark photo carries the whole page and
 // the detail is WRITTEN ON THE PICTURE over a bottom gradient — no white panel:
 //   city + flight line, then FLIGHT (STD/STA → ETD/ETA → ATD/ATA, gate, tail,
-//   block), LAYOVER HOTEL and TRANSFER blocks, all in white type.
+//   block), then booked hotel detail when available, all in white type.
 // Swiping left/right pages through the other upcoming cities.
 //
 // One photo page per city; the scrim, header and info block are single instances
@@ -17,6 +17,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  StatusBar,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ViewToken,
@@ -27,7 +28,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../store';
 import { useCarrier } from '../../theme/carrier';
 import { Icon, type IconName } from '../../components/v2/icons';
-import { hotelFor, hotelTransfer, legOps, type HotelInfo, type LegOps } from '../travel/opsInfo';
+import { hotelFor, legOps, type HotelInfo, type LegOps } from '../travel/opsInfo';
 import { useBase, useDestinations, type DestinationEntry } from './useV2';
 import { MON } from './model';
 import { useV2Nav, type V2StackParamList } from './nav';
@@ -55,6 +56,23 @@ function Scrim({ width, height }: { width: number; height: number }) {
           </LinearGradient>
         </Defs>
         <Rect testID="dest-scrim-paint" x={0} y={0} width={width} height={height} fill="url(#destScrim)" />
+      </Svg>
+    </View>
+  );
+}
+
+/** Fade only the Duo photo edge into its photo-derived information pane. */
+function PhotoBlend({ width, height, color, wide }: { width: number; height: number; color: string; wide: boolean }) {
+  return (
+    <View style={s.photoBlend} pointerEvents="none">
+      <Svg width={width} height={height}>
+        <Defs>
+          <LinearGradient id="destPhotoBlend" x1="0" y1="0" x2={wide ? '1' : '0'} y2={wide ? '0' : '1'}>
+            <Stop offset="0.72" stopColor={color} stopOpacity={0} />
+            <Stop offset="1" stopColor={color} stopOpacity={1} />
+          </LinearGradient>
+        </Defs>
+        <Rect testID="dest-photo-blend-paint" x={0} y={0} width={width} height={height} fill="url(#destPhotoBlend)" />
       </Svg>
     </View>
   );
@@ -95,40 +113,23 @@ function InfoBlock({
   ops,
   hotel,
   panel,
-  split,
 }: {
   entry: DestinationEntry;
   ops: LegOps;
   hotel: HotelInfo | null;
   /** Duo inner screen: the block is its own panel beside/under the photo, not type over it. */
   panel?: 'side' | 'below';
-  /** Duo inner, rotated: hotel and transfer as two cards side by side. */
-  split?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const leg = entry.leg;
-  const transfer = hotel ? hotelTransfer(hotel.airport, leg.fltNumber, hotel) : null;
-  const hotelLines = hotel ? (
+  const bookedHotel = hotel && !hotel.mocked ? hotel : null;
+  const hotelLines = bookedHotel ? (
     <>
-      <Line icon="bed" text={hotel.name} extra={hotel.mocked ? 'expected' : 'booked'} />
-      <Line icon="house" text={hotel.address} muted />
+      <Line icon="bed" text={bookedHotel.name} extra="booked" />
+      <Line icon="house" text={bookedHotel.address} muted />
       <Line
         icon="clock"
-        text={`Check-in ${hotel.checkIn} · out ${hotel.checkOut} · ${hotel.nights} night${hotel.nights === 1 ? '' : 's'}`}
-      />
-    </>
-  ) : null;
-  const transferLines = transfer ? (
-    <>
-      <Line
-        icon="car"
-        text={`${transfer.vehicle} · ${transfer.plate}`}
-        extra="expected"
-      />
-      <Line
-        icon="user"
-        text={`${transfer.driver} · ${transfer.phone}`}
-        extra={`· pick-up ${transfer.pickup} · drop-off ${transfer.dropOff}`}
+        text={`Check-in ${bookedHotel.checkIn} · out ${bookedHotel.checkOut} · ${bookedHotel.nights} night${bookedHotel.nights === 1 ? '' : 's'}`}
       />
     </>
   ) : null;
@@ -152,15 +153,7 @@ function InfoBlock({
         icon="plane"
         text={`STD ${leg.depTime} → ${leg.arvTime}${leg.arvDayOffset ? ` ${leg.arvDayOffset}` : ''}`}
       />
-      <Line
-        icon="clock"
-        text={
-          ops.estimated
-            ? `ETD ${ops.etd || '—'} · ETA ${ops.eta || '—'}`
-            : 'ETD / ETA · no update yet'
-        }
-        muted={!ops.estimated}
-      />
+      {ops.estimated ? <Line icon="clock" text={`ETD ${ops.etd || '—'} · ETA ${ops.eta || '—'}`} /> : null}
       <Line
         icon="clock"
         text={ops.atd || ops.ata ? `ATD ${ops.atd || '—'} · ATA ${ops.ata || '—'}` : ''}
@@ -172,23 +165,32 @@ function InfoBlock({
       />
       <Line
         icon="jet"
-        text={[leg.fleet, ops.register, ops.block || leg.duration].filter(Boolean).join(' · ')}
+        text={[ops.register, ops.block || leg.duration].filter(Boolean).join(' · ')}
       />
 
-      {hotel && split ? (
-        // Rotated Duo: the layover's two kinds of info side by side — hotel | transfer.
-        <View style={s.splitRow} testID="dest-split">
-          <View style={s.splitCard}>{hotelLines}</View>
-          {transferLines ? <View style={s.splitCard}>{transferLines}</View> : null}
-        </View>
-      ) : hotel ? (
+      {bookedHotel ? (
         <View style={s.groupTop}>
           {hotelLines}
-          {transferLines}
         </View>
-      ) : (
-        <Line icon="bed" text="Day return — no hotel" muted />
-      )}
+      ) : null}
+
+      {panel === 'side' ? (
+        <View style={s.groupTop} testID="dest-trip-extra">
+          <Text style={s.groupLabel}>TRIP · {entry.trip.legs.length} {entry.trip.legs.length === 1 ? 'LEG' : 'LEGS'}</Text>
+          <Line icon="plane" text={[entry.trip.legs[0].depArp, ...entry.trip.legs.map(next => next.arvArp)].join(' → ')} />
+          {leg.ready !== '—' ? <Line icon="clock" text={`${leg.readyWord} ${leg.ready}`} /> : null}
+          {leg.leaveHome !== '—' ? <Line icon="house" text={`Leave home ${leg.leaveHome}`} /> : null}
+          {leg.checkIn !== '—' ? <Line icon="checkin" text={`Crew report ${leg.checkIn}`} /> : null}
+          {entry.trip.legs.length > 1 ? (
+            <View style={s.groupTop}>
+              <Text style={s.groupLabel}>NEXT FLIGHTS</Text>
+              {entry.trip.legs.slice(1).map((next, index) => (
+                <Line key={`${next.fltNumber}-${index}`} icon="plane" text={`${next.fltNumber} · ${next.depArp} → ${next.arvArp}`} />
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -269,23 +271,23 @@ export function DestinationScreen({ route }: Props) {
           style={{ width: pagerW, height: pagerH }}
           resizeMode="cover"
           testID={`dest-photo-${item.city.airport}`}
-        >
-          <View style={s.topScrim} />
-        </ImageBackground>
+        />
       )}
       testID="dest-pager"
     />
   );
 
-  // Carrier ground shows for the instant before the photo decodes.
+  // On the Duo, the information pane takes a dark hue from this landmark photo.
+  // Compact iPhones keep the carrier ground behind their full-window image.
   return (
-    <View style={[s.root, wide && s.rootWide, { backgroundColor: p.g1 }]} testID="page-destination">
+    <View style={[s.root, wide && s.rootWide, { backgroundColor: wide || tall ? current.city.panelColor : p.g1 }]} testID="page-destination">
+      <StatusBar barStyle="light-content" />
       {wide || tall ? (
-        // Duo inner screen: the photo is one pane and the info another — no type
-        // over the picture, so only the photo pane carries the bottom scrim.
+        // Duo: details have their own pane, so the black text scrim is unnecessary.
+        // The short edge fade joins the photo to its sampled pane color instead.
         <View style={{ width: pagerW, height: pagerH }} testID={wide ? 'dest-photo-pane-wide' : 'dest-photo-pane-tall'}>
           {pager}
-          <Scrim width={pagerW} height={pagerH} />
+          <PhotoBlend width={pagerW} height={pagerH} color={current.city.panelColor} wide={wide} />
         </View>
       ) : (
         <>
@@ -299,7 +301,6 @@ export function DestinationScreen({ route }: Props) {
         ops={ops}
         hotel={hotel}
         panel={wide ? 'side' : tall ? 'below' : undefined}
-        split={tall}
       />
 
       {/* Render last so the floating controls receive touches above both panes. */}
@@ -308,20 +309,22 @@ export function DestinationScreen({ route }: Props) {
           <Icon name="back" size={24} color="#fff" strokeWidth={1.8} />
         </Pressable>
         <View style={{ flex: 1 }} />
-        <View style={s.dots} pointerEvents="none">
+        <Pressable
+          onPress={() => nav.navigate('TripDetails', { tripId: current.trip.id })}
+          style={s.headCta}
+          testID="dest-trip-details"
+          accessibilityLabel="Trip details"
+        >
+          <Icon name="chev" size={24} color="#fff" strokeWidth={1.8} />
+        </Pressable>
+      </View>
+      <View style={[s.pageIndicator, { bottom: insets.bottom + 14 }]} pointerEvents="none" testID="dest-page-indicator">
+        <View style={s.dots}>
           {destinations.map((d, i) => (
             <View key={d.city.airport} style={[s.dot, i === page ? s.dotOn : null]} />
           ))}
         </View>
         <Text style={s.position} testID="dest-position">{`${page + 1} / ${destinations.length}`}</Text>
-        <Pressable
-          onPress={() => nav.navigate('TripDetails', { tripId: current.trip.id })}
-          style={s.headCta}
-          testID="dest-trip-details"
-        >
-          <Text style={s.headCtaText}>Trip details</Text>
-          <Icon name="chev" size={14} color="#fff" strokeWidth={2} />
-        </Pressable>
       </View>
 
     </View>
@@ -333,25 +336,23 @@ const s = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyBtn: { borderRadius: 14, paddingHorizontal: 22, paddingVertical: 12, marginTop: 16 },
   emptyBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  topScrim: { position: 'absolute', top: 0, left: 0, right: 0, height: 170, backgroundColor: 'rgba(0,0,0,0.32)' },
   scrimWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '78%' },
+  photoBlend: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   head: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 8 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  pageIndicator: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   dots: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)' },
   dotOn: { backgroundColor: '#fff', width: 16 },
   position: { color: '#fff', fontSize: 13, fontWeight: '600', opacity: 0.92 },
-  headCta: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.22)' },
-  headCtaText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  infoWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: INFO_MAX },
+  headCta: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  infoWrap: { position: 'absolute', left: 0, right: 0, bottom: 42, maxHeight: INFO_MAX },
   infoBody: { paddingHorizontal: 22, paddingTop: 6 },
   // Duo inner screen: the info block as its own pane on the carrier ground.
   rootWide: { flexDirection: 'row' },
   infoSide: { flex: 1, minWidth: 0 },
   infoBelow: { flex: 1 },
   infoPanelBody: { paddingTop: 64 },
-  splitRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
-  splitCard: { flex: 1, minWidth: 0, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.08)' },
   airport: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '700', letterSpacing: 2 },
   city: { color: '#fff', fontSize: 34, fontWeight: '700', marginTop: 2 },
   sub: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginTop: 6 },
@@ -361,4 +362,5 @@ const s = StyleSheet.create({
   lineTextMuted: { fontWeight: '500', color: 'rgba(255,255,255,0.68)' },
   lineExtra: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '400' },
   groupTop: { marginTop: 10, paddingTop: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
+  groupLabel: { color: 'rgba(255,255,255,0.68)', fontSize: 11, fontWeight: '700', letterSpacing: 1.4, marginBottom: 4 },
 });

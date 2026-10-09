@@ -1,7 +1,6 @@
 // Profile ▸ Preferences ▸ Appearance — colour-theme selector.
 //
-// The four swatches are the sign-off mock's "Airline background" set (Ver9):
-// Reference blue (sia) · Thai violet · Emerald · Graphite. Tapping one stores
+// The original four airline swatches plus Daylight. Tapping one stores
 // the choice (settings.themePreset, persisted as @royce_theme) and V2Navigator
 // immediately re-provides it through CarrierContext, so every screen — ground
 // gradient, cards, dock, chips, buttons — repaints in the new colour without a

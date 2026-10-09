@@ -76,11 +76,13 @@ function makeStore() {
 }
 
 beforeEach(async () => {
+  jest.useFakeTimers({ now: new Date('2026-09-12T09:00:00+07:00'), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'nextTick'] });
   seq = 0;
   jest.clearAllMocks();
   // The AsyncStorage mock is one in-memory store shared by the whole file.
   await AsyncStorage.clear();
 });
+afterEach(() => jest.useRealTimers());
 
 describe('setCalendarSyncAll — on', () => {
   it('writes every upcoming duty inside the horizon, and nothing else', async () => {

@@ -19,6 +19,8 @@ export const ROSTER_MONTH_OFFSETS = [-1, 0, 1] as const;
 
 /** Per-airline login knobs threaded into the injected script. */
 export interface InjectedJSOptions {
+  /** Native portalClient owns authentication; do not race it with web submissions. */
+  nativeAuth?: boolean;
   /** Value for the portal's `outCaptcha` (email-code) login field. When set, it's
    *  added to the /login body — PR's TEST tenant needs a fixed code here. Omit for
    *  TG (no captcha): the login body then stays byte-identical to the original. */
@@ -58,6 +60,7 @@ export function buildInjectedJS(
   var CREW = ${CREW_JSON};
   var PW = ${PW_JSON};
   var MONTH_OFFSETS = ${OFFSETS_JSON};
+  var NATIVE_AUTH = ${opts.nativeAuth === true};
   function post(o){ try{ window.ReactNativeWebView.postMessage(JSON.stringify(o)); }catch(e){} }
   // ── Token helpers (enhance-Ver3 #5) ──────────────────────────────────────────
   // A single source of truth for the auth token. We PREFER an explicit token from
@@ -69,7 +72,11 @@ export function buildInjectedJS(
     post({ type:'token', src:src, len:String(t).length });
     try{ fetchRosters(); }catch(e){}                 // fetch immediately (enhance-Ver3 #6)
   }
-  function getToken(){ return window.__royce.token || findJwt(); }
+  // The app signs in natively (bundled RSA, portalClient) and hands the token in
+  // here — the portal's CSP blocks the JSEncrypt CDN that directAuth relies on,
+  // which left PR crews stuck behind the "rotate your device" splash.
+  window.__royceSetToken = function(t){ try{ setToken(String(t), 'native'); }catch(e){} };
+  function getToken(){ return window.__royce.token || (NATIVE_AUTH ? null : findJwt()); }
   function cap(url, text){
     if(!text) return;
     var t = String(text).trim();
@@ -130,6 +137,7 @@ export function buildInjectedJS(
     });
   }
   function tryLogin(){
+    if(NATIVE_AUTH || window.__royce.loginTried || window.__royce.token) return false;
     var pw = document.querySelector('#form_item_passwords') || document.querySelector('input[type=password]');
     if(!pw) return false;
     var user = document.querySelector('#form_item_userCode');
@@ -141,6 +149,7 @@ export function buildInjectedJS(
       }
     }
     if(!user) return false;
+    window.__royce.loginTried = true;
     setVal(user, CREW);
     setVal(pw, PW);
     // The primary "Sign In" submit (not "SSO Sign In"): a submit button whose
@@ -164,9 +173,11 @@ export function buildInjectedJS(
       var fired = { submit:false, click:false };
       try{ if(f) f.addEventListener('submit', function(){ fired.submit = true; }, { once:true }); }catch(e){}
       try{ if(btn) btn.addEventListener('click', function(){ fired.click = true; }, { once:true }); }catch(e){}
-      try{ if(f && f.requestSubmit){ f.requestSubmit(btn || undefined); } }catch(e){}
-      try{ if(btn) btn.click(); }catch(e){}
-      try{ pressEnter(pw); }catch(e){}
+      try{
+        if(btn) btn.click();
+        else if(f && f.requestSubmit) f.requestSubmit();
+        else pressEnter(pw);
+      }catch(e){}
       setTimeout(function(){
         try{
           var errs = [].slice.call(document.querySelectorAll('.ant-form-item-explain-error, .ant-form-item-explain, .ant-message, [role=alert]'))
@@ -196,7 +207,9 @@ export function buildInjectedJS(
   // hook then captures that JSON. More reliable than crafting the API call (the
   // portal auths via a token header, not just cookies). (ROIS-specific for now.)
   function gotoRoster(){
-    if (window.__royce.rosterNav) return;
+    // A native token authenticates our API requests, not the portal SPA session.
+    // Navigating that SPA would bounce roster → login and restart capture forever.
+    if (NATIVE_AUTH || window.__royce.rosterNav) return;
     if (!/roiscloud/i.test(location.host)) return;
     if (document.querySelector('input[type=password]')) return; // still on login
     if (/\\/page\\/roster/.test(location.href)) { window.__royce.rosterNav = true; return; }
@@ -308,7 +321,7 @@ export function buildInjectedJS(
   // exchange, NOT password login — it requires a pre-auth JWT and is the wrong
   // endpoint; /login is the ID+PW endpoint that works on the test portal.)
   function directAuth(){
-    if (window.__royce.authTried) return;
+    if (NATIVE_AUTH || window.__royce.authTried) return;
     if (!/roiscloud/i.test(location.host)) return;
     // Login-page detection. TG shows the username/password form immediately (a
     // password input is in the DOM). PR's CrewSE portal instead gates the form

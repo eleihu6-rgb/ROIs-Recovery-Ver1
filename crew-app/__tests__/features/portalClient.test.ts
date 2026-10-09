@@ -123,3 +123,15 @@ it('explains a wrong password (real portal reply: code 0, loginSuccess false)', 
   });
   await expect(createPortalClient(creds, { fetchImpl, encrypt: () => 'e' }).get('/api/z')).rejects.toThrow('The crew portal did not accept your password.');
 });
+
+it('token() returns the session token for the roster capture WebView (one login, cached after)', async () => {
+  let logins = 0;
+  const { fetchImpl } = fakePortal({
+    '/system/getPublicKey': () => ({ body: { code: 0, data: 'PUBKEY' } }),
+    '/login': () => { logins++; return { body: { code: 0, data: { token: 'T9' } } }; },
+  });
+  const client = createPortalClient({ ...creds, crewId: '392923-token' }, { fetchImpl, encrypt: () => 'enc' });
+  await expect(client.token()).resolves.toBe('T9');
+  await expect(client.token()).resolves.toBe('T9');
+  expect(logins).toBe(1);
+});

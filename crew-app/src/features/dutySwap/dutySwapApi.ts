@@ -8,6 +8,7 @@ import {
 } from './dutySwapModel';
 
 const P = '/api/portal/taskSwap';
+export const SEARCH_TIMEOUT_MS = 90_000;
 
 export interface SearchOptions {
   modes: SwapMode[];
@@ -54,7 +55,11 @@ export function createDutySwapApi(creds: PortalCredentials, client: PortalClient
       return { startDate: day(w.startDt), endDate: day(w.endDt) };
     },
     async search(f) {
-      return (await client.get<ApiCrewRow[]>(`${P}/selectOtherCrewPublishTask`, searchQuery(f))) ?? [];
+      // A cabin crew's search is ~1 MB (120+ crews) and waits behind any other
+      // call of the same crew on the portal: allow 90 s, not the client's 30 s.
+      const env = await client.raw<ApiCrewRow[]>('GET', `${P}/selectOtherCrewPublishTask`, { query: searchQuery(f), timeoutMs: SEARCH_TIMEOUT_MS });
+      if (env.code !== 0) throw new Error(env.message || 'The portal rejected the search.');
+      return env.data ?? [];
     },
     async compare(f, othersCrewId) {
       return client.get<ApiCompare>(`${P}/selectTaskCompareList`, searchQuery(f, [othersCrewId]));

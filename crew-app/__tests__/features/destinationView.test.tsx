@@ -228,16 +228,22 @@ describe('destination viewer · screen', () => {
 
   afterEach(() => jest.useRealTimers());
 
-  it('resizes the photo scrim paint with the live iPad pane after rotation', () => {
+  it('blends the Duo photo into its pane and keeps the black scrim only on compact phones', () => {
     const original = Dimensions.get('window');
     const store = makeStore([turnTrip, layoverTrip, darTrip]);
     const tree = render(<Provider store={store}><DestinationScreen route={{ params: { index: 0 } } as never} navigation={{} as never} /></Provider>);
     try {
-      for (const [width, height] of [[1210, 834], [834, 1210], [420, 912]]) {
+      for (const [width, height, photoWidth, photoHeight] of [
+        [1210, 834, Math.round(1210 * 0.55), 834],
+        [669, 951, 669, Math.round(951 * 0.5)],
+        [420, 912, 420, 912],
+      ]) {
         act(() => Dimensions.set({ window: { ...original, width, height } }));
-        const paint = tree.getByTestId('dest-scrim-paint');
-        expect(paint.props.width).toBe(width >= 700 ? Math.round(width * 0.55) : width);
-        expect(paint.props.height).toBe(height);
+        const duo = width >= 560;
+        const paint = tree.getByTestId(duo ? 'dest-photo-blend-paint' : 'dest-scrim-paint');
+        expect(paint.props.width).toBe(photoWidth);
+        expect(paint.props.height).toBe(photoHeight);
+        expect(tree.queryByTestId(duo ? 'dest-scrim-paint' : 'dest-photo-blend-paint')).toBeNull();
       }
     } finally {
       tree.unmount();
@@ -250,12 +256,13 @@ describe('destination viewer · screen', () => {
     expect(tree.getByTestId('page-destination')).toBeTruthy();
     expect(tree.getByTestId('dest-city')).toBeTruthy();
     expect(tree.getByTestId('dest-position')).toBeTruthy();
-    // Flight + layover detail, including the mocked gate/hotel marked as expected.
+    // Flight details stay visible while unavailable hotel/transfer data stays hidden.
     const texts = textsInOrder(tree.toJSON()).join(' | ');
     expect(texts).toContain('STD ');
     expect(texts).toContain('ETD');
     expect(texts).toContain('Gate ');
-    expect(texts).toContain('Sheraton Dammam');  // mocked layover hotel
+    expect(texts).not.toContain('Sheraton Dammam');
+    expect(texts).not.toContain('crew van');
     expect(texts).toContain('expected');
   });
 
@@ -275,14 +282,61 @@ describe('destination viewer · screen', () => {
     const at = (needle: string) => texts.findIndex(t => t.startsWith(needle));
     expect(at('STD ')).toBeGreaterThanOrEqual(0);
     expect(at('STD ')).toBeLessThan(at('ETD'));
-    // The mocked transfer detail travels with the hotel block.
-    expect(texts.join(' | ')).toMatch(/Toyota|Ford|Mercedes/);
+    expect(texts.join(' | ')).not.toMatch(/Toyota|Ford|Mercedes/);
+  });
+
+  it('shows booked hotel data, but omits missing estimates and hotel placeholders', () => {
+    const booked: Trip = {
+      ...layoverTrip,
+      legs: [{ ...layoverTrip.legs[0], estDepUtc: undefined, estArvUtc: undefined,
+        hotelBooking: { hotelName: 'Crew Inn', location: 'Airport Road', nights: 2, airport: 'DMM' } }],
+    };
+    const store = makeStore([booked, turnTrip]);
+    const tree = render(<Provider store={store}><DestinationScreen route={{ params: { index: 0 } } as never} navigation={{} as never} /></Provider>);
+    const texts = textsInOrder(tree.toJSON()).join(' | ');
+    expect(texts).toContain('Crew Inn');
+    expect(texts).not.toContain('ETD');
+    expect(texts).not.toContain('no update yet');
+    expect(texts).not.toContain('crew van');
+    expect(tree.getByTestId('dest-page-indicator')).toBeTruthy();
+    expect(tree.getByTestId('dest-trip-details').props.accessibilityLabel).toBe('Trip details');
+  });
+
+  it('leaves out the hotel row on a same-day return', () => {
+    jest.setSystemTime(new Date('2026-09-10T09:00:00Z'));
+    const store = makeStore([turnTrip]);
+    const tree = render(<Provider store={store}><DestinationScreen route={{ params: { index: 0 } } as never} navigation={{} as never} /></Provider>);
+    const texts = textsInOrder(tree.toJSON()).join(' | ');
+    expect(texts).toContain('STD ');
+    expect(texts).not.toContain('Day return — no hotel');
+    expect(texts).not.toContain('Sheraton Dammam');
   });
 
   it('hands off to the full trip details page', () => {
     const { tree } = renderScreen(0);
     fireEvent.press(tree.getByTestId('dest-trip-details'));
     expect(mockNavigate).toHaveBeenCalledWith('TripDetails', { tripId: 'pair-dmm' });
+  });
+
+  it('uses the wide side pane for real crew markers and onward legs only', () => {
+    jest.setSystemTime(new Date('2026-09-10T09:00:00Z'));
+    const original = Dimensions.get('window');
+    act(() => Dimensions.set({ window: { ...original, width: 1210, height: 834 } }));
+    try {
+      const store = makeStore([turnTrip]);
+      const tree = render(<Provider store={store}><DestinationScreen route={{ params: { index: 0 } } as never} navigation={{} as never} /></Provider>);
+      expect(tree.getByTestId('dest-trip-extra')).toBeTruthy();
+      const extra = textsInOrder(tree.toJSON()).join(' | ');
+      expect(extra).toContain('ADD → BJM → ADD');
+      expect(extra).toContain('Crew report');
+      expect(extra).toContain('ET894 · BJM → ADD');
+      expect(extra).not.toContain('Sheraton');
+      tree.unmount();
+    } finally {
+      act(() => Dimensions.set({ window: original }));
+    }
+    const compact = render(<Provider store={makeStore([turnTrip])}><DestinationScreen route={{ params: { index: 0 } } as never} navigation={{} as never} /></Provider>);
+    expect(compact.queryByTestId('dest-trip-extra')).toBeNull();
   });
 
   it('is themed by the carrier palette it is given', () => {

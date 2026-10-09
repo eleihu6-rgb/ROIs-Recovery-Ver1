@@ -48,6 +48,13 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
 # AppDialog buttons sit inside the card's single accessibility element; tap by position.
 - tapOn:
     point: "63%,63%"
+# Duty Swap opens on Search pairing (design D0): find the crew first.
+- extendedWaitUntil:
+    visible:
+      id: "search-form"
+    timeout: 60000
+- tapOn:
+    id: "search-submit"
 - extendedWaitUntil:
     visible:
       id: "crew-matrix"

@@ -47,7 +47,7 @@ import { Icon } from '../../components/v2/icons';
 import type { IconName } from '../../components/v2/icons';
 import { PALETTES } from '../../theme/carrier';
 
-// v2 login palette: Altair sage/teal ground, white card, teal button.
+// v2 login palette: Altair sage/teal ground, glass card, teal button.
 const LOGIN = PALETTES.altair;
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
 
   cardWide: { flex: 1, maxWidth: 460, marginHorizontal: 0 },
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: LOGIN.cardSolid,
     marginHorizontal: 18,
     borderRadius: radius.pill,
     padding: 22,
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,.9)',
+    backgroundColor: LOGIN.cardSolid,
     borderRadius: radius.md,
     paddingHorizontal: space.md12,
     marginHorizontal: space.lg16,
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     backgroundColor: LOGIN.frost,
     alignItems: 'center',
   },
-  pickCodeActive: { backgroundColor: '#fff' },
+  pickCodeActive: { backgroundColor: LOGIN.cardInset },
   pickCodeText: { fontSize: 13, fontWeight: '800', color: LOGIN.ink },
   pickCodeTextActive: { color: LOGIN.g1 },
   pickName: { flex: 1, fontSize: 16, color: LOGIN.ink, fontWeight: '500' },

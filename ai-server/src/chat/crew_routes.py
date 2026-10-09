@@ -26,6 +26,7 @@ MAX_HISTORY_MESSAGES = 12
 MAX_MESSAGE_CHARS = 4000
 # The Duty Swap snapshot is capped by the phone; this bound protects the prompt.
 MAX_SWAP_SNAPSHOT_CHARS = 16000
+MAX_PAGE_CONTEXT_CHARS = 6000
 DUTY_SWAP_SCREEN = 'duty_swap'
 
 DUTY_SWAP_PROMPT = (
@@ -86,6 +87,7 @@ class CrewContext(BaseModel):
     crewName: str | None = None
     today: str | None = None
     screen: str | None = None
+    page: dict[str, Any] | None = None
     # Duty Swap only: what the matrix shows (window, filters, my duties, crews).
     swap: dict[str, Any] | None = None
 
@@ -108,6 +110,12 @@ def _system_prompt(context: CrewContext | None) -> str:
     if ctx.screen:
         facts.append(f'They are on the {ctx.screen} screen right now.')
     prompt = f'{CREW_SYSTEM_PROMPT}\n\n== Context ==\n' + ' '.join(facts)
+    if ctx.page:
+        page = json.dumps(ctx.page, separators=(',', ':'))[:MAX_PAGE_CONTEXT_CHARS]
+        prompt += (f'\nCurrent page facts: {page}. Answer about this page using only these facts; '
+                   'do not claim to see other content. The controls list describes buttons the crew can use; '
+                   'it does not mean you can operate every control. Only call a tool for supported actions. '
+                   'If a requested control has no tool, explain how the crew can use it on this page.')
     if ctx.screen == DUTY_SWAP_SCREEN:
         snapshot = json.dumps(ctx.swap or {}, separators=(',', ':'))[:MAX_SWAP_SNAPSHOT_CHARS]
         prompt += f'\n\n== Duty Swap ==\n{DUTY_SWAP_PROMPT}\nSnapshot: {snapshot}'

@@ -1,14 +1,16 @@
-// Search pairing — every field of the web form (spec §4): mode, Start*/End*,
-// Duration, CRD, BLH, Report time, Flight end, Type, Layover port + hours,
-// Flt No., ARR, Fleet, Crew ID, Rank, hide crew without duties; Reset/Search;
-// saved searches (the web folder/star buttons) stored on this phone per crew.
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// Search pairing (design D0) — the first step of a new swap: find the target
+// crew, then pick duties in the matrix. Every field of the web form (spec §4):
+// mode, Start*/End*, Duration, CRD, BLH, Report time, Flight end, Type, Layover
+// port + hours, Flt No., ARR, Fleet, Crew ID, Rank, hide crew without duties;
+// Reset/Search; saved searches (the web folder/star buttons) stored on this phone
+// per crew. The R'Bot bar on top is the shortcut to asking for the same in words.
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Icon } from '../../../components/v2/icons';
-import { ALL_ORIENTATIONS, useLayout } from '../../../components/v2/useLayout';
+import { CrewAvatar } from '../../settings/avatars';
+import { RBOT_AVATAR_INDEX } from '../../rbot/RBotEntry';
 import type { CarrierPalette } from '../../../theme/carrier';
 import type { SearchOptions } from '../dutySwapApi';
 import {
@@ -18,27 +20,41 @@ import {
 import { tint } from './CrewMatrix';
 
 interface Props {
-  visible: boolean;
   palette: CarrierPalette;
   crewId: string;
   initial: SwapFilters;
   /** The portal's default window, used by Reset. */
   defaults: { startDate: string; endDate: string };
   options: SearchOptions | null;
-  onClose: () => void;
+  /** Fields side by side (Duo inner screen / landscape). */
+  twoColumns: boolean;
+  /** Search button suffix, e.g. "6 crew" from the live preview. */
+  resultLabel?: string;
   onSearch: (f: SwapFilters) => void;
+  /** Every edit, for the live preview on the Duo inner screen. */
+  onChange?: (f: SwapFilters) => void;
+  /** The R'Bot bar; hidden while R'Bot is already open. */
+  onAskRbot?: () => void;
+  /** Close the form and show the matrix, when there is a result to show. */
+  onClose?: () => void;
 }
 
 interface Saved { name: string; filters: SwapFilters }
 const savedKey = (crewId: string) => `@duty_swap_saved_${crewId}`;
 
-export function SearchSheet(props: Props): React.JSX.Element {
-  const { palette: p, options } = props;
-  const insets = useSafeAreaInsets();
-  const { wide } = useLayout();
+export function SearchForm(props: Props): React.JSX.Element {
+  const { palette: p, options, onChange } = props;
   const [f, setF] = useState<SwapFilters>(props.initial);
   const [saved, setSaved] = useState<Saved[]>([]);
-  useEffect(() => { if (props.visible) setF(props.initial); }, [props.visible, props.initial]);
+  // R'Bot or a finished search can change the filters underneath the form.
+  useEffect(() => {
+    setF(prev => (JSON.stringify(prev) === JSON.stringify(props.initial) ? prev : props.initial));
+  }, [props.initial]);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    onChange?.(f);
+  }, [f, onChange]);
   useEffect(() => {
     AsyncStorage.getItem(savedKey(props.crewId)).then(v => setSaved(v ? JSON.parse(v) : [])).catch(() => setSaved([]));
   }, [props.crewId]);
@@ -92,62 +108,72 @@ export function SearchSheet(props: Props): React.JSX.Element {
   );
 
   return (
-    <Modal visible={props.visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={props.onClose} supportedOrientations={ALL_ORIENTATIONS}>
-      <View style={[s.page, { backgroundColor: p.cardSolid, paddingBottom: insets.bottom + 8 }]} testID="search-sheet">
-        <View style={[s.head, { borderBottomColor: p.cardLine }]}>
-          <View style={s.flex}>
-            <Text style={[s.title, { color: p.cardInk }]}>Search pairing</Text>
-            <Text style={[s.sub, { color: p.cardSoft }]}>Nail down the crew to swap with</Text>
-          </View>
-          <Pressable onPress={() => persist([{ name: label(f), filters: f }, ...saved.filter(x => x.name !== label(f))].slice(0, 6))}
-            accessibilityLabel="save search" testID="search-save" style={[s.iconBtn, { borderColor: p.cardLine }]}>
-            <Icon name="star" size={16} color={p.btn} strokeWidth={2} />
-          </Pressable>
-          <Pressable onPress={props.onClose} accessibilityLabel="close" testID="search-close" style={[s.iconBtn, { borderColor: p.cardLine }]}>
-            <Icon name="close" size={16} color={p.cardInk} strokeWidth={2.2} />
-          </Pressable>
+    <View style={[s.page, { backgroundColor: p.cardSolid }]} testID="search-form">
+      <View style={[s.head, { borderBottomColor: p.cardLine }]}>
+        <View style={s.flex}>
+          <Text style={[s.title, { color: p.cardInk }]}>Search pairing</Text>
+          <Text style={[s.sub, { color: p.cardSoft }]}>Find the crew to swap with, then pick duties</Text>
         </View>
+        {props.onClose ? (
+          <Pressable onPress={props.onClose} accessibilityLabel="close filters" testID="search-close" style={[s.iconBtn, { borderColor: p.cardLine }]}>
+            <Icon name="close" size={15} color={p.cardInk} strokeWidth={2.2} />
+          </Pressable>
+        ) : null}
+        <Pressable onPress={() => persist([{ name: label(f), filters: f }, ...saved.filter(x => x.name !== label(f))].slice(0, 6))}
+          accessibilityLabel="save search" testID="search-save" style={[s.iconBtn, { borderColor: p.cardLine }]}>
+          <Icon name="star" size={16} color={p.btn} strokeWidth={2} />
+        </Pressable>
+      </View>
 
-        <ScrollView style={s.flex} contentContainerStyle={s.body} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-          <View style={[s.seg, { backgroundColor: tint(p.cardSoft, 0.15) }]}>
-            {(options?.modes ?? ['NS' as SwapMode]).map(m => (
-              <Pressable key={m} onPress={() => set('swapMode', m)} testID={`search-mode-${m}`}
-                style={[s.segItem, f.swapMode === m && { backgroundColor: p.cardSolid }]}>
-                <Text style={[s.segText, { color: f.swapMode === m ? p.btn : p.cardSoft }]}>
-                  {SWAP_MODE_LABEL[m]} · {m === 'FS' ? 'friends' : 'all crew'}
-                </Text>
+      <ScrollView style={s.flex} contentContainerStyle={s.body} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        {props.onAskRbot ? (
+          <Pressable onPress={props.onAskRbot} testID="search-ask-rbot"
+            style={[s.rbotBar, { backgroundColor: tint(p.btn, 0.08), borderColor: tint(p.btn, 0.3) }]}>
+            <CrewAvatar index={RBOT_AVATAR_INDEX} size={24} bare />
+            <Text style={[s.rbotText, { color: p.cardInk }]} numberOfLines={2}>Or tell R'Bot: "swap my trip for a standby"</Text>
+            <Icon name="chev" size={15} color={p.btn} strokeWidth={2} />
+          </Pressable>
+        ) : null}
+        <View style={[s.seg, { backgroundColor: tint(p.cardSoft, 0.15) }]}>
+          {(options?.modes ?? ['NS' as SwapMode]).map(m => (
+            <Pressable key={m} onPress={() => set('swapMode', m)} testID={`search-mode-${m}`}
+              style={[s.segItem, f.swapMode === m && { backgroundColor: p.cardSolid }]}>
+              <Text style={[s.segText, { color: f.swapMode === m ? p.btn : p.cardSoft }]}>
+                {SWAP_MODE_LABEL[m]} · {m === 'FS' ? 'friends' : 'all crew'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {saved.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.savedRow}>
+            {saved.map(x => (
+              <Pressable key={x.name} onPress={() => setF(x.filters)} onLongPress={() => persist(saved.filter(y => y !== x))}
+                style={[s.chip, { borderColor: tint(p.btn, 0.5) }]}>
+                <Icon name="star" size={12} color={p.btn} strokeWidth={2} />
+                <Text style={[s.chipText, { color: p.btn }]}>{x.name}</Text>
               </Pressable>
             ))}
-          </View>
-          {saved.length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.savedRow}>
-              {saved.map(x => (
-                <Pressable key={x.name} onPress={() => setF(x.filters)} onLongPress={() => persist(saved.filter(y => y !== x))}
-                  style={[s.chip, { borderColor: tint(p.btn, 0.5) }]}>
-                  <Icon name="star" size={12} color={p.btn} strokeWidth={2} />
-                  <Text style={[s.chipText, { color: p.btn }]}>{x.name}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          ) : null}
-          {!options ? <View style={s.loadingRow}><ActivityIndicator color={p.btn} size="small" /><Text style={[s.sub, { color: p.cardSoft }]}>Loading choices…</Text></View> : null}
-          {wide ? <View style={s.cols}><View style={s.flex}>{pairing}</View><View style={s.flex}>{rest}</View></View> : <>{pairing}{rest}</>}
-        </ScrollView>
+          </ScrollView>
+        ) : null}
+        {!options ? <View style={s.loadingRow}><ActivityIndicator color={p.btn} size="small" /><Text style={[s.sub, { color: p.cardSoft }]}>Loading choices…</Text></View> : null}
+        {props.twoColumns ? <View style={s.cols}><View style={s.flex}>{pairing}</View><View style={s.flex}>{rest}</View></View> : <>{pairing}{rest}</>}
+      </ScrollView>
 
-        {error ? <Text style={[s.error, { color: p.crit }]}>{error}</Text> : null}
-        <View style={s.footer}>
-          <Pressable onPress={() => setF({ ...emptyLike(f), startDate: props.defaults.startDate, endDate: props.defaults.endDate })}
-            testID="search-reset" style={[s.btn, s.btnOutline, { borderColor: p.btn }]}>
-            <Text style={[s.btnText, { color: p.btn }]}>Reset</Text>
-          </Pressable>
-          <Pressable disabled={!!error} onPress={() => props.onSearch(f)} testID="search-submit"
-            style={[s.btn, s.flex, { backgroundColor: p.btn, opacity: error ? 0.45 : 1 }]}>
-            <Icon name="zoomIn" size={17} color="#fff" strokeWidth={2} />
-            <Text style={[s.btnText, { color: '#fff' }]}>Search{activeFilterCount(f) ? ` · ${activeFilterCount(f)} filters` : ''}</Text>
-          </Pressable>
-        </View>
+      {error ? <Text style={[s.error, { color: p.crit }]}>{error}</Text> : null}
+      <View style={s.footer}>
+        <Pressable onPress={() => setF({ ...emptyLike(f), startDate: props.defaults.startDate, endDate: props.defaults.endDate })}
+          testID="search-reset" style={[s.btn, s.btnOutline, { borderColor: p.btn }]}>
+          <Text style={[s.btnText, { color: p.btn }]}>Reset</Text>
+        </Pressable>
+        <Pressable disabled={!!error} onPress={() => props.onSearch(f)} testID="search-submit"
+          style={[s.btn, s.flex, { backgroundColor: p.btn, opacity: error ? 0.45 : 1 }]}>
+          <Icon name="zoomIn" size={17} color="#fff" strokeWidth={2} />
+          <Text style={[s.btnText, { color: '#fff' }]} numberOfLines={1}>
+            {['Search', activeFilterCount(f) ? `${activeFilterCount(f)} filters` : null, props.resultLabel].filter(Boolean).join(' · ')}
+          </Text>
+        </Pressable>
       </View>
-    </Modal>
+    </View>
   );
 }
 
@@ -236,9 +262,11 @@ function Chips({ label, options, value, onChange, p, testID }: {
 }
 
 const s = StyleSheet.create({
-  page: { flex: 1 },
+  page: { flex: 1, borderRadius: 16, overflow: 'hidden', paddingBottom: 10 },
   flex: { flex: 1 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  rbotBar: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8 },
+  rbotText: { flex: 1, fontSize: 13, fontWeight: '600' },
   title: { fontSize: 18, fontWeight: '800' },
   sub: { fontSize: 13, fontWeight: '500' },
   iconBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

@@ -18,6 +18,13 @@ const renderDialog = (props: Partial<React.ComponentProps<typeof AppDialog>>) =>
     </CarrierContext.Provider>,
   );
 
+const renderDaylightDialog = (props: Partial<React.ComponentProps<typeof AppDialog>>) =>
+  render(
+    <CarrierContext.Provider value={PALETTES.light}>
+      <AppDialog visible onClose={() => {}} title="Log out" {...props} />
+    </CarrierContext.Provider>,
+  );
+
 const flatten = (style: unknown): Record<string, unknown> =>
   Object.assign({}, ...(Array.isArray(style) ? style : [style]).filter(Boolean));
 
@@ -53,5 +60,16 @@ describe('AppDialog polish', () => {
     // The header badge shows the caution triangle, never the bare close X.
     expect(badge.UNSAFE_queryAllByProps({ d: TRIANGLE_PATH }).length).toBeGreaterThan(0);
     expect(badge.UNSAFE_queryAllByProps({ d: CLOSE_PATH })).toHaveLength(0);
+  });
+
+  it('uses a neutral compact header and red action with white text in Daylight', () => {
+    const light = PALETTES.light;
+    const { getByTestId } = renderDaylightDialog({ tone: 'destructive', icon: 'logout', message: 'Return to the login screen?', confirmLabel: 'Log out', cancelLabel: 'Cancel' });
+    expect(flatten(getByTestId('app-dialog').props.style)).toMatchObject({ backgroundColor: light.cardOverlay, borderColor: light.cardLine });
+    expect(flatten(getByTestId('app-dialog-band').props.style)).toMatchObject({ backgroundColor: light.cardOverlay, height: 80 });
+    expect(flatten(getByTestId('app-dialog-glyph').props.style)).toMatchObject({ backgroundColor: light.g3, borderColor: light.cardLine });
+    expect(flatten(getByTestId('app-dialog-confirm').props.style).backgroundColor).toBe(light.crit);
+    expect(flatten(within(getByTestId('app-dialog-confirm')).getByText('Log out').props.style).color).toBe(light.dockLight);
+    expect(flatten(getByTestId('app-dialog-message').props.style).color).toBe(light.cardSoft);
   });
 });

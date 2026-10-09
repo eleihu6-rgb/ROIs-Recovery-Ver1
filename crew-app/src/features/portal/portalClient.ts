@@ -32,7 +32,7 @@ export interface Envelope<T> {
 }
 
 export class PortalError extends Error {
-  constructor(message: string, readonly code: number, readonly status: number) {
+  constructor(message: string, readonly code: number, readonly status: number, readonly failureCode: string | null = null) {
     super(message);
     this.name = 'PortalError';
   }
@@ -73,6 +73,9 @@ export function isAuthFailure(status: number, message: string | null | undefined
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 export interface PortalClient {
+  /** The session token (cached, else a fresh login). The roster capture WebView
+   *  needs it: the portal's CSP blocks the JSEncrypt CDN the in-page login used. */
+  token(): Promise<string>;
   get<T>(path: string, query?: Query): Promise<T>;
   send<T>(method: 'POST' | 'PUT', path: string, opts?: { query?: Query; body?: unknown; timeoutMs?: number }): Promise<T>;
   /** Raw envelope, for callers that must read a business error (`code 1`) themselves. */
@@ -96,31 +99,40 @@ export function createPortalClient(
   const key = `${site.apiBase}|${creds.crewId}`;
 
   async function login(): Promise<string> {
-    const pkRes = await doFetch(`${site!.apiBase}/system/getPublicKey`);
-    const pk = (await pkRes.json()) as Envelope<string>;
-    if (pk.code !== 0 || !pk.data) throw new PortalError(pk.message || 'Portal key unavailable.', pk.code, pkRes.status);
-    const user: Record<string, string> = {
-      passwords: encrypt(pk.data, creds.password),
-      userCode: creds.crewId,
-      captcha: '',
-      uniqueCode: '',
-    };
-    if (site!.outCaptcha != null) user.outCaptcha = site!.outCaptcha;
-    const res = await doFetch(`${site!.apiBase}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer null' },
-      body: JSON.stringify({ user }),
-    });
-    const env = (await res.json()) as Envelope<{ token?: string; failMessage?: string | null } | string | null>;
-    const data = env.data;
-    const token = typeof data === 'string' ? data : data?.token;
-    if (env.code !== 0 || !token) {
-      const fail = typeof data === 'object' && data ? data.failMessage : null;
-      const reason = fail === 'ERROR_WRONG_PASSWORD' ? 'The crew portal did not accept your password.' : fail || env.message;
-      throw new PortalError(reason || 'Portal sign-in failed.', env.code, res.status);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const pkRes = await doFetch(`${site!.apiBase}/system/getPublicKey`, { signal: ctrl.signal });
+      const pk = (await pkRes.json()) as Envelope<string>;
+      if (pk.code !== 0 || !pk.data) throw new PortalError(pk.message || 'Portal key unavailable.', pk.code, pkRes.status);
+      const user: Record<string, string> = {
+        passwords: encrypt(pk.data, creds.password),
+        userCode: creds.crewId,
+        captcha: '',
+        uniqueCode: '',
+      };
+      if (site!.outCaptcha != null) user.outCaptcha = site!.outCaptcha;
+      const res = await doFetch(`${site!.apiBase}/login`, {
+        method: 'POST', signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer null' },
+        body: JSON.stringify({ user }),
+      });
+      const env = (await res.json()) as Envelope<{ token?: string; failMessage?: string | null } | string | null>;
+      const data = env.data;
+      const token = typeof data === 'string' ? data : data?.token;
+      if (env.code !== 0 || !token) {
+        const fail = typeof data === 'object' && data ? data.failMessage : null;
+        const reason = fail === 'ERROR_WRONG_PASSWORD' ? 'The crew portal did not accept your password.' : fail || env.message;
+        throw new PortalError(reason || 'Portal sign-in failed.', env.code, res.status, fail ?? null);
+      }
+      tokens.set(key, token);
+      return token;
+    } catch (error) {
+      if (ctrl.signal.aborted) throw new PortalError('Portal sign-in timed out.', -1, 0);
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
-    tokens.set(key, token);
-    return token;
   }
 
   async function call<T>(
@@ -160,6 +172,7 @@ export function createPortalClient(
   };
 
   return {
+    token: async () => tokens.get(key) ?? login(),
     get: async <T>(path: string, query?: Query) => unwrap(await call<T>('GET', path, { query })),
     send: async <T>(method: 'POST' | 'PUT', path: string, opts?: { query?: Query; body?: unknown; timeoutMs?: number }) =>
       unwrap(await call<T>(method, path, opts)),

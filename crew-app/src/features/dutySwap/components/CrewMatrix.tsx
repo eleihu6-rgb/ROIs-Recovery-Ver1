@@ -2,7 +2,7 @@
 // column per candidate crew scrolling sideways. Multi-day duties are a single
 // block spanning their rows; cell text grows with the block (code → route →
 // report/release + layover → BLH/CRD + fleet). Spec §5.
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { Icon } from '../../../components/v2/icons';
@@ -61,12 +61,36 @@ interface Props {
   onPressDuty: (d: SwapDuty) => void;
   onPressCrew: (crewId: string) => void;
   onVisibleCrews: (crewIds: string[]) => void;
+  /** The crew columns in view (1-based first, last), for "1–6 of 123". */
+  onRange?: (first: number, last: number) => void;
+}
+
+/** Columns drawn either side of the view. A cabin crew search returns 120+ crews
+ *  (spec §5.4): drawing every column's duty blocks made the first paint and each
+ *  scroll slow, so only the columns in view (± this) are mounted. */
+export const COL_OVERSCAN = 3;
+
+/** The column window to mount for a horizontal offset. */
+export function columnWindow(x: number, colW: number, viewW: number, count: number): { from: number; to: number } {
+  const first = Math.max(0, Math.floor(x / colW));
+  const inView = Math.ceil(viewW / colW) + 1;
+  return { from: Math.max(0, first - COL_OVERSCAN), to: Math.min(count, first + inView + COL_OVERSCAN) };
 }
 
 export function CrewMatrix(props: Props): React.JSX.Element {
   const { palette: p, me, others, days, geometry: g, width, details, give, take, crewB } = props;
   const headScroll = useRef<ScrollView>(null);
+  const bodyScroll = useRef<ScrollView>(null);
   const frozenW = g.mineW + g.dateW;
+  const viewW = width - frozenW;
+  const [scrollX, setScrollX] = useState(0);
+  const win = columnWindow(scrollX, g.colW, viewW, others.length);
+  // A new search starts at the first crew again.
+  useEffect(() => {
+    setScrollX(0);
+    bodyScroll.current?.scrollTo({ x: 0, animated: false });
+    headScroll.current?.scrollTo({ x: 0, animated: false });
+  }, [others]);
   const bodyH = days.length * g.rowH;
   const windowStart = days[0];
 
@@ -89,15 +113,22 @@ export function CrewMatrix(props: Props): React.JSX.Element {
   }, [me.duties, give, windowStart, days.length]);
 
   const reportVisible = useCallback((x: number) => {
-    const first = Math.max(0, Math.floor(x / g.colW));
+    const first = Math.max(0, Math.round(x / g.colW));
     props.onVisibleCrews(others.slice(first, first + g.visibleCols + 1).map(c => c.crewId));
+    const fit = Math.max(1, Math.floor((viewW + 1) / g.colW));
+    props.onRange?.(Math.min(others.length, first + 1), Math.min(others.length, first + fit));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [others, g.colW, g.visibleCols, props.onVisibleCrews]);
+  }, [others, g.colW, g.visibleCols, viewW, props.onVisibleCrews, props.onRange]);
   useEffect(() => { reportVisible(0); }, [reportVisible]);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    headScroll.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
+    const x = e.nativeEvent.contentOffset.x;
+    headScroll.current?.scrollTo({ x, animated: false });
+    // Re-render only when the mounted column window would change.
+    const next = columnWindow(x, g.colW, viewW, others.length);
+    if (next.from !== win.from || next.to !== win.to) setScrollX(x);
   };
+  const shown = others.slice(win.from, win.to);
 
   const rowsBg = (w: number) => days.map((d, i) => {
     const dl = dayLabel(d);
@@ -136,8 +167,9 @@ export function CrewMatrix(props: Props): React.JSX.Element {
         <View style={[s.headCell, s.center, { width: g.dateW }]}>
           <Text style={[s.dateHead, { color: p.cardSoft }]}>DATE</Text>
         </View>
-        <ScrollView ref={headScroll} horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} style={{ width: width - frozenW }}>
-          {others.map(c => {
+        <ScrollView ref={headScroll} horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} style={{ width: viewW }}
+          contentContainerStyle={{ width: others.length * g.colW, paddingLeft: win.from * g.colW }}>
+          {shown.map(c => {
             const fleets = fleetsOf(flying(details[c.crewId]?.othersTaskDetailList));
             const differs = myFleets.length > 0 && fleets.length > 0 && !fleets.some(f => myFleets.includes(f));
             const on = c.crewId === crewB;
@@ -173,13 +205,13 @@ export function CrewMatrix(props: Props): React.JSX.Element {
             <View style={[s.frozenEdge, { left: frozenW - 1, height: bodyH, backgroundColor: p.cardLine }]} />
           </View>
           {/* Crews: horizontal scroll */}
-          <ScrollView horizontal onScroll={onScroll} scrollEventThrottle={16} snapToInterval={g.colW} decelerationRate="fast"
+          <ScrollView ref={bodyScroll} horizontal onScroll={onScroll} scrollEventThrottle={16} snapToInterval={g.colW} decelerationRate="fast"
             onMomentumScrollEnd={e => reportVisible(e.nativeEvent.contentOffset.x)} showsHorizontalScrollIndicator={false}
-            style={{ width: width - frozenW }} testID="crew-matrix-scroll">
+            style={{ width: viewW }} testID="crew-matrix-scroll">
             <View style={{ width: others.length * g.colW, height: bodyH }}>
               {rowsBg(others.length * g.colW)}
-              {others.map((c, j) => (
-                <View key={c.crewId} style={{ position: 'absolute', left: j * g.colW, top: 0, width: g.colW, height: bodyH,
+              {shown.map((c, k) => (
+                <View key={c.crewId} style={{ position: 'absolute', left: (win.from + k) * g.colW, top: 0, width: g.colW, height: bodyH,
                   borderLeftColor: p.cardLine, borderLeftWidth: StyleSheet.hairlineWidth }}>
                   {column(c, g.colW, false)}
                 </View>

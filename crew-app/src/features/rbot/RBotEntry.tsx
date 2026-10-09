@@ -9,8 +9,9 @@ import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { CrewAvatar } from '../settings/avatars';
 import { useAppSelector } from '../../store';
-import type { CarrierPalette } from '../../theme/carrier';
+import { glassTint, type CarrierPalette } from '../../theme/carrier';
 import type { V2Nav } from '../v2/nav';
+import type { RbotSource } from './pageContext';
 
 /** Width of R'Bot's own box. The dock keeps its own box to the left of it. */
 export const RBOT_ENTRY_WIDTH = 60;
@@ -21,11 +22,17 @@ export const RBOT_AVATAR_INDEX = 5;
 export function RBotEntry({
   palette,
   onLight,
+  variant = 'dock',
+  source,
+  onPress,
 }: {
   palette: CarrierPalette;
   /** True while the dock sits on near-white content (Schedule): the tag flips to
    *  the theme ink so it stays readable on the light dock. */
   onLight: boolean;
+  variant?: 'dock' | 'rail';
+  source?: RbotSource;
+  onPress?: () => void;
 }): React.JSX.Element {
   // The entry is rendered by the tab bar, but R'Bot is a stack screen — the
   // action bubbles to the parent navigator, which owns 'RBot'.
@@ -33,16 +40,19 @@ export function RBotEntry({
   // R'Bot keeps working after the crew leaves the chat (an action navigated
   // them): the dot says "I replied, come back and carry on".
   const unread = useAppSelector(s => s.rbot.unread);
-  const boxColor = onLight ? palette.dockLight : 'rgba(255,255,255,.2)';
+  const rail = variant === 'rail';
+  const boxColor = onLight ? glassTint(palette.dockLight) : 'rgba(255,255,255,.2)';
   return (
     <Pressable
-      onPress={() => nav.navigate('RBot')}
+      onPress={onPress ?? (() => nav.navigate('RBot', { source }))}
       hitSlop={6}
       style={[
-        styles.box,
-        {backgroundColor: boxColor, borderColor: onLight ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.14)'},
+        rail ? styles.railBox : styles.box,
+        rail
+          ? { backgroundColor: palette.isLight ? glassTint(palette.dockLight) : palette.frost, borderColor: palette.frostLine }
+          : {backgroundColor: boxColor, borderColor: onLight ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.14)'},
       ]}
-      testID="dock-rbot"
+      testID={rail ? 'rail-rbot' : 'dock-rbot'}
       // The dot itself is inside an accessible container, so iOS folds it into
       // this label: "new reply" is what a screen reader (and Maestro) can see.
       accessibilityLabel={unread ? "R'Bot AI assistant, new reply" : "R'Bot AI assistant"}
@@ -50,8 +60,8 @@ export function RBotEntry({
     >
       {/* The panda sits straight on the box: no theme-coloured disc behind it
           (Ryan, 2026-09-11) — it already reads as R'Bot in the bar. */}
-      <View style={styles.avatar}>
-        <CrewAvatar index={RBOT_AVATAR_INDEX} size={34} bare />
+      <View style={rail ? styles.railAvatar : styles.avatar}>
+        <CrewAvatar index={RBOT_AVATAR_INDEX} size={rail ? 25 : 34} bare />
         {unread ? (
           <View
             style={[styles.dot, {borderColor: boxColor, backgroundColor: palette.crit}]}
@@ -59,7 +69,7 @@ export function RBotEntry({
           />
         ) : null}
       </View>
-      <Text style={[styles.tag, { color: onLight ? palette.dockInk : '#fff' }]}>AI</Text>
+      <Text style={[rail ? styles.railTag : styles.tag, { color: rail ? palette.ink : onLight ? palette.dockInk : '#fff' }]}>AI</Text>
     </Pressable>
   );
 }
@@ -80,6 +90,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
+  railBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 0,
+  },
+  railAvatar: { width: 25, height: 25, alignItems: 'center', justifyContent: 'center' },
+  railTag: { fontSize: 8, fontWeight: '700', letterSpacing: 0.2 },
   avatar: {
     width: 34,
     height: 34,

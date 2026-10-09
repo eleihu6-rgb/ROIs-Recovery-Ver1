@@ -18,6 +18,9 @@ import { debugSetJson } from './portalDebug';
 import type { Trip } from './tripCsv';
 import { parsePortalCaptures, type PortalCapture, type PortalDuty } from './portalCapture';
 import { buildInjectedJS, ROSTER_MONTH_OFFSETS } from './portalInjectedJs';
+import { createPortalClient } from '../portal/portalClient';
+import { colors, font, space, radius } from '../../theme';
+import { useCarrier } from '../../theme/carrier';
 import type { PortalConfig } from '../auth/airlines';
 
 // Crew-portal roster capture (doc/Add Trip Ver2). Loads the portal in a WebView,
@@ -45,6 +48,10 @@ export function PortalCaptureScreen({
   // defaults, so the historic THAI capture behaviour is unchanged.
   portalConfig?: PortalConfig | null;
 }) {
+  const palette = useCarrier();
+  const nativeAuth = /roiscloud/i.test(portalUrl) && !!crewId && !!password;
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [authenticated, setAuthenticated] = useState(false);
   const [urlText, setUrlText] = useState(portalUrl);
   const [currentUrl, setCurrentUrl] = useState(portalUrl);
   const [legCount, setLegCount] = useState(0);
@@ -57,7 +64,60 @@ export function PortalCaptureScreen({
   const captures = useRef<PortalCapture[]>([]);
   const reqLog = useRef<string[]>([]);
   const buildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const buildAt = useRef<number | null>(null);
   const built = useRef(false);
+  const webRef = useRef<React.ElementRef<typeof WebView>>(null);
+  // Token from the NATIVE portal login, handed to the page script. The in-page
+  // directAuth needs JSEncrypt from a CDN, which the portal's CSP blocks ("JSEncrypt
+  // CDN blocked (CSP)"), and PR's login form sits behind a splash the script
+  // cannot dismiss — so a PR crew sat at "Auto-logging in…" forever. The app
+  // already logs in natively for Duty Swap (bundled RSA); reuse that session.
+  const nativeToken = useRef<string | null>(null);
+  const loginFailed = useRef(false);
+  const handToken = () => {
+    const t = nativeToken.current;
+    if (!t) return;
+    webRef.current?.injectJavaScript(`window.__royceSetToken && window.__royceSetToken(${JSON.stringify(t)}); true;`);
+  };
+  useEffect(() => {
+    if (!nativeAuth) return;
+    let cancelled = false;
+    const site = {
+      apiBase: portalUrl.replace(/^(https?:\/\/[^/]+)(\/.*?)\/portal.*$/, '$1$2/apiPortal'),
+      outCaptcha: portalConfig?.loginOutCaptcha,
+    };
+    createPortalClient({ airline: carrier, crewId, password }, { site })
+      .token()
+      .then(t => {
+        if (cancelled) return;
+        nativeToken.current = t;
+        setAuthenticated(true);
+        debugSetJson('@royce_debug_token', { type: 'token', src: 'native', len: t.length });
+        handToken();
+      })
+      .catch(e => {
+        if (cancelled) return;
+        const reason = e instanceof Error ? e.message : '';
+        const message = /password/i.test(reason)
+          ? 'The crew portal did not accept your password. Check your credentials before trying again.'
+          : /timeout|timed out|abort/i.test(reason)
+            ? 'Portal sign-in timed out. Check your connection before trying again.'
+            : 'Portal sign-in failed. Check your crew ID, password and required email code.';
+        debugSetJson('@royce_debug_authresp', {
+          type: 'authresp', source: 'native', crewId,
+          status: e?.status, code: e?.code, failureCode: e?.failureCode, message,
+        });
+        loginFailed.current = true;
+        if (buildTimer.current) clearTimeout(buildTimer.current);
+        setLoginError(message);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // The portal, crew and password are fixed for the life of this screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Cancel a pending debounced auto-build if the screen unmounts before it fires,
   // so onCaptured() can't run against a torn-down navigator (enhance-Ver3 impl #8).
@@ -71,6 +131,7 @@ export function PortalCaptureScreen({
 
   const injectedJS = buildInjectedJS(crewId, password, true, {
     outCaptcha: portalConfig?.loginOutCaptcha,
+    nativeAuth,
   });
 
   const classify = (url: string): PortalCapture['source'] => {
@@ -94,6 +155,7 @@ export function PortalCaptureScreen({
   };
 
   const onMessage = (e: WebViewMessageEvent) => {
+    if (loginFailed.current || built.current) return;
     let msg: any;
     try {
       msg = JSON.parse(e.nativeEvent.data);
@@ -139,7 +201,7 @@ export function PortalCaptureScreen({
       debugSetJson('@royce_debug_storage', msg);
       return;
     }
-    if (msg.type !== 'capture') {
+    if (msg.type !== 'capture' || (nativeAuth && !nativeToken.current)) {
       return;
     }
     let body: unknown;
@@ -168,15 +230,21 @@ export function PortalCaptureScreen({
     // fallback still builds a partial roster if some month returns nothing.
     // (Note: the regex's selectPortalCalendar also matches the longer
     // selectPortalCalendarDetailAll, so all three per-month URLs are counted.)
+    const rosterUrl = /selectPortalCalendar|selectCrewRosterReport/i;
+    // Unrelated portal chatter cannot postpone an already usable roster.
+    if (nativeAuth && !rosterUrl.test(url)) return;
     const EXPECTED_ROSTER_PAYLOADS = ROSTER_MONTH_OFFSETS.length * 3;
-    const rosterCount = captures.current.filter(c =>
-      /selectPortalCalendar|selectCrewRosterReport/i.test(c.url || ''),
-    ).length;
+    const rosterCount = new Set(captures.current.filter(c => rosterUrl.test(c.url || '')).map(c => c.url)).size;
     const haveAll = rosterCount >= EXPECTED_ROSTER_PAYLOADS;
-    if (buildTimer.current) {
-      clearTimeout(buildTimer.current);
-    }
+    const delay = haveAll ? 600 : 4000;
+    const deadline = Date.now() + delay;
+    // Completion may accelerate when all payloads arrive, but never slide
+    // indefinitely as duplicate/updated portal responses keep arriving.
+    if (buildAt.current !== null && buildAt.current <= deadline) return;
+    if (buildTimer.current) clearTimeout(buildTimer.current);
+    buildAt.current = deadline;
     buildTimer.current = setTimeout(() => {
+      buildAt.current = null;
       if (built.current) {
         return;
       }
@@ -185,10 +253,11 @@ export function PortalCaptureScreen({
         built.current = true;
         onCaptured(trips, duties);
       }
-    }, haveAll ? 600 : 4000);
+    }, delay);
   };
 
   const handleUse = () => {
+    if (built.current) return;
     const { trips, duties } = reparse();
     if (trips.length === 0) {
       setDialog({
@@ -197,18 +266,38 @@ export function PortalCaptureScreen({
       });
       return;
     }
+    built.current = true;
+    if (buildTimer.current) clearTimeout(buildTimer.current);
     onCaptured(trips, duties);
   };
 
+  if (loginError) {
+    // Unmount the WebView on rejection: its timers and form submissions stop.
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: palette.cardSolid }]}>
+        <View style={styles.loginFailure}>
+          <Text style={[font.h1, { color: palette.cardInk }]}>Sign-in failed</Text>
+          <Text style={[font.body, { color: palette.cardSoft }]}>{carrier} crew</Text>
+          <Text testID="portal-login-identity" style={[font.title, { color: palette.cardInk }]}>{crewId}</Text>
+          <Text testID="portal-login-error" style={[font.body, { color: palette.cardInk }]}>{loginError}</Text>
+          <TouchableOpacity testID="portal-login-back" accessibilityRole="button" onPress={onClose}
+            style={[styles.loginBack, { backgroundColor: palette.btn }]}>
+            <Text style={[font.title, { color: colors.white }]}>Back to login</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, palette.isLight && { backgroundColor: palette.g1 }]}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.bar}>
+      <View style={[styles.bar, palette.isLight && { borderBottomColor: palette.cardLine, backgroundColor: palette.card }]}>
         <TouchableOpacity onPress={onClose} hitSlop={10}>
-          <Text style={styles.cancel}>Cancel</Text>
+          <Text style={[styles.cancel, palette.isLight && { color: palette.btn }]}>Cancel</Text>
         </TouchableOpacity>
         <TextInput
-          style={styles.urlInput}
+          style={[styles.urlInput, palette.isLight && { backgroundColor: palette.cardInset, color: palette.cardInk }]}
           value={urlText}
           onChangeText={setUrlText}
           autoCapitalize="none"
@@ -219,16 +308,20 @@ export function PortalCaptureScreen({
           onSubmitEditing={() => setCurrentUrl(urlText.trim())}
         />
         <TouchableOpacity onPress={() => setCurrentUrl(urlText.trim())} hitSlop={10}>
-          <Text style={styles.go}>Go</Text>
+          <Text style={[styles.go, palette.isLight && { color: palette.btn }]}>Go</Text>
         </TouchableOpacity>
       </View>
 
       <WebView
+        testID="portal-capture-web"
+        ref={webRef}
         source={{ uri: currentUrl }}
         injectedJavaScriptBeforeContentLoaded={injectedJS}
         onMessage={onMessage}
         onLoadStart={() => setLoading(true)}
-        onLoadEnd={() => setLoading(false)}
+        // Re-hand the token after every page load: the SPA navigates (login →
+        // roster) and each new document starts with an empty page state.
+        onLoadEnd={() => { setLoading(false); handToken(); }}
         originWhitelist={['*']}
         javaScriptEnabled
         domStorageEnabled
@@ -242,43 +335,44 @@ export function PortalCaptureScreen({
       />
 
       {loading && (
-        <View style={styles.loadingBar}>
-          <ActivityIndicator color="#7b4fb8" size="small" />
+        <View style={[styles.loadingBar, palette.isLight && { backgroundColor: palette.cardOverlay }]}>
+          <ActivityIndicator color={palette.isLight ? palette.btn : '#7b4fb8'} size="small" />
         </View>
       )}
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, palette.isLight && { backgroundColor: palette.card, borderTopColor: palette.cardLine }]}>
         <View style={styles.statusWrap}>
-          <Text style={styles.status} numberOfLines={1}>
+          <Text testID="portal-login-identity" style={[styles.pageInfo, palette.isLight && { color: palette.cardSoft }]}>{crewId}</Text>
+          <Text style={[styles.status, palette.isLight && { color: palette.cardInk }]} numberOfLines={1}>
             {tripCount > 0
               ? `Found ${tripCount} trip${tripCount === 1 ? '' : 's'} · ${legCount} flight${legCount === 1 ? '' : 's'}`
-              : `Auto-logging in… ${captures.current.length} captured`}
+              : authenticated ? 'Loading roster…' : 'Signing in…'}
           </Text>
           {!!pageInfo && (
-            <Text style={styles.pageInfo} numberOfLines={1}>
+            <Text style={[styles.pageInfo, palette.isLight && { color: palette.cardSoft }]} numberOfLines={1}>
               {pageInfo}
             </Text>
           )}
         </View>
-        <TouchableOpacity style={styles.dataBtn} onPress={() => setShowData(true)}>
-          <Text style={styles.dataBtnText}>View data ({captures.current.length})</Text>
+        <TouchableOpacity style={[styles.dataBtn, palette.isLight && { backgroundColor: palette.cardInset }]} onPress={() => setShowData(true)}>
+          <Text style={[styles.dataBtnText, palette.isLight && { color: palette.cardInk }]}>View data ({captures.current.length})</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.useBtn, tripCount === 0 && styles.useBtnDisabled]}
+          style={[styles.useBtn, tripCount === 0 && styles.useBtnDisabled, palette.isLight && { backgroundColor: tripCount === 0 ? palette.cardLine : palette.btn }]}
           onPress={handleUse}
           disabled={tripCount === 0}
           testID="use-captured-roster">
-          <Text style={styles.useBtnText}>Use roster</Text>
+          <Text style={[styles.useBtnText, palette.isLight && tripCount === 0 && { color: palette.cardSoft }]}>Use roster</Text>
         </TouchableOpacity>
       </View>
 
       {/* Captured-data inspector — lets us see the real portal JSON to tune the parser. */}
       <Modal visible={showData} animationType="slide" onRequestClose={() => setShowData(false)} supportedOrientations={ALL_ORIENTATIONS}>
-        <SafeAreaView style={styles.dataModal}>
-          <View style={styles.dataHeader}>
-            <Text style={styles.dataTitle}>Captured payloads ({captures.current.length})</Text>
+        <SafeAreaView style={[styles.dataModal, palette.isLight && { backgroundColor: palette.g1 }]}>
+          <View style={[styles.dataHeader, palette.isLight && { borderBottomColor: palette.cardLine }]}>
+            <Text style={[styles.dataTitle, palette.isLight && { color: palette.cardInk }]}>Captured payloads ({captures.current.length})</Text>
             <TouchableOpacity onPress={() => setShowData(false)} hitSlop={10}>
-              <Text style={styles.go}>Done</Text>
+              <Text style={[styles.go, palette.isLight && { color: palette.btn }]}>Done</Text>
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.dataScroll} contentContainerStyle={{ padding: 12 }}>
@@ -326,6 +420,8 @@ export function PortalCaptureScreen({
 }
 
 const styles = StyleSheet.create({
+  loginFailure: { flex: 1, justifyContent: 'center', alignSelf: 'center', width: '100%', maxWidth: 560, padding: space.xl24, gap: space.md12 },
+  loginBack: { minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, paddingHorizontal: space.lg16 },
   container: { flex: 1, backgroundColor: '#fff' },
   bar: {
     flexDirection: 'row',

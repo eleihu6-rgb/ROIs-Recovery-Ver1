@@ -17,6 +17,8 @@ export interface TicketCardProps {
   style?: ViewStyle;
   onPress?: () => void;
   testID?: string;
+  /** Grow to the parent's height (a row of equal-height cards). */
+  fill?: boolean;
 }
 
 export function TicketCard({
@@ -26,6 +28,7 @@ export function TicketCard({
   style,
   onPress,
   testID,
+  fill,
 }: TicketCardProps): React.JSX.Element {
   const [size, setSize] = React.useState<{ width: number; height: number } | null>(null);
   const hasHoles = typeof holeY === 'number';
@@ -42,6 +45,7 @@ export function TicketCard({
       style={[
         styles.card,
         { backgroundColor: hasHoles ? 'transparent' : palette.card },
+        fill && styles.fill,
         style,
       ]}
     >
@@ -74,7 +78,7 @@ export function TicketCard({
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} testID={testID ? `${testID}-pressable` : undefined}>
+      <Pressable onPress={onPress} style={fill && styles.fill} testID={testID ? `${testID}-pressable` : undefined}>
         {content}
       </Pressable>
     );
@@ -110,6 +114,7 @@ export function DashedLine({ color }: { color: string }): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   card: {
     borderRadius: 16,
     overflow: 'hidden',

@@ -18,6 +18,7 @@ import {
   pickDayArt,
   positionOf,
   routeViewBox,
+  unwrapLon,
   timelineBlockLabel,
   timelineHourLabel,
   timelineLaneLayout,
@@ -170,14 +171,17 @@ describe('route map · projections and distance', () => {
     expect((pacific.match(/M/g) || []).length).toBeGreaterThan(1);
   });
 
-  it('fits the month at the card’s aspect ratio and zooms around the same centre', () => {
+  it('frames the map on the base, sized for the farthest destination, and zooms around the base', () => {
     const home = positionOf('ADD')!;
     const points = [positionOf('LHR')!, positionOf('MPM')!, positionOf('DMM')!];
     const [x, y, w, h] = routeViewBox(home, points, 1).split(' ').map(Number);
     // A stretched Mercator is a wrong map, so the box keeps the card's ratio.
     expect(w / h).toBeCloseTo(1.35, 1);
-    // The crew's base and every destination sit inside the box.
-    for (const p of [home, ...points]) {
+    // The crew's base is the centre of the map …
+    expect(x + w / 2).toBeCloseTo(mercatorX(home.lon), 0);
+    expect(y + h / 2).toBeCloseTo(mercatorY(home.lat), 0);
+    // … and every destination sits inside the box.
+    for (const p of points) {
       expect(mercatorX(p.lon)).toBeGreaterThanOrEqual(x);
       expect(mercatorX(p.lon)).toBeLessThanOrEqual(x + w);
       expect(mercatorY(p.lat)).toBeGreaterThanOrEqual(y);
@@ -186,8 +190,32 @@ describe('route map · projections and distance', () => {
     const [x2, y2, w2, h2] = routeViewBox(home, points, 2).split(' ').map(Number);
     expect(w2).toBeLessThan(w);
     expect(h2).toBeLessThan(h);
-    expect(x2 + w2 / 2).toBeCloseTo(x + w / 2, 0);
-    expect(y2 + h2 / 2).toBeCloseTo(y + h / 2, 0);
+    expect(x2 + w2 / 2).toBeCloseTo(mercatorX(home.lon), 0);
+    expect(y2 + h2 / 2).toBeCloseTo(mercatorY(home.lat), 0);
+    // A taller card (the Duo's wide map) gets a box at its own ratio.
+    const [, , w3, h3] = routeViewBox(home, points, 1, 0.8).split(' ').map(Number);
+    expect(w3 / h3).toBeCloseTo(0.8, 1);
+  });
+
+  it('keeps a trans-Pacific base in the middle: MNL with HNL, SEA, JFK east and DOH west', () => {
+    // PR 392923's October: the screenshot had Manila on the right edge and the
+    // US routes leaving the map, coming back in from the left.
+    const home = positionOf('MNL')!;
+    const points = ['ICN', 'DOH', 'HNL', 'SEA', 'JFK'].map(c => positionOf(c)!);
+    const [x, y, w, h] = routeViewBox(home, points, 1).split(' ').map(Number);
+    expect(x + w / 2).toBeCloseTo(mercatorX(home.lon), 0);
+    expect(y + h / 2).toBeCloseTo(mercatorY(home.lat), 0);
+    // East of the date line, unwrapped onto Manila's side: inside the box, right of the base.
+    for (const p of points) {
+      const px = mercatorX(unwrapLon(p.lon, home.lon));
+      expect(px).toBeGreaterThanOrEqual(x);
+      expect(px).toBeLessThanOrEqual(x + w);
+    }
+    expect(mercatorX(unwrapLon(positionOf('JFK')!.lon, home.lon))).toBeGreaterThan(mercatorX(home.lon));
+    expect(mercatorX(unwrapLon(positionOf('DOH')!.lon, home.lon))).toBeLessThan(mercatorX(home.lon));
+    // Framed on Manila, MNL → JFK is one unbroken line.
+    const jfk = greatCirclePath(home, positionOf('JFK')!, 32, home.lon);
+    expect((jfk.match(/M/g) || []).length).toBe(1);
   });
 });
 
@@ -286,7 +314,7 @@ describe('calendar · agenda', () => {
     expect(rows[3].icon).toBe('plane');
     expect(rows[3].icon).toBe(rows[0].icon);
     // Times carry the app's own clock marker (L = airport local).
-    expect(rows[3].time).toBe('22:45L–05:45L');
+    expect(rows[3].time).toBe('22:45L–05:45L +1');
     expect(rows[4].time).toBe('15:00–15:45');
     expect(rows[4].sub).toContain('iOS Cal');
     // Duty rows never restate the icon in words.
@@ -295,7 +323,7 @@ describe('calendar · agenda', () => {
 
   it('scopes to a single day when the grid has a selection', () => {
     expect(agendaRows(month(), 20).map(r => r.title)).toEqual(['Layover · LHR']);
-    expect(agendaRows(month(), 19).map(r => r.time)).toEqual(['22:45L–05:45L', '15:00–15:45']);
+    expect(agendaRows(month(), 19).map(r => r.time)).toEqual(['22:45L–05:45L +1', '15:00–15:45']);
     expect(agendaRows(month(), 12)).toEqual([]);
   });
 });

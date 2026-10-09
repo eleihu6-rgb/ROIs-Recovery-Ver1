@@ -206,3 +206,28 @@ Duo outer portrait. Maestro flows: `crew-app/.maestro/pr_392923_duty_swap*.yaml`
 Open: Duo inner screen captures (needs duoctl on the shared "Duo — Test" sim); ai-server deploy to
 `cr.rois.one` (until then free-form R'Bot requests outside the local phrasings reach the old
 tools); overlapping duties in one crew column draw on top of each other.
+
+## 11. Search pairing is the first step (2026-10-08)
+
+Ryan's review: opening Duty Swap went straight to a matrix of other crews' duties. The mockups'
+step D0 ("New swap · Search pairing") had been dropped. Restored:
+
+- Every visit is a new swap: it starts at **Search pairing** (`dutySwap.step = 'search'`)
+  with nothing picked. A give duty left from an earlier visit stayed off screen and went into
+  Compare & send unnoticed (Ryan, 2026-10-08). The matrix (`'pick'`)
+  appears only after **Search**, or after R'Bot searches or picks duties for the crew. The
+  matrix toolbar's date and filter chips go back to the search step.
+- The R'Bot bar sits on top of the form ("Or tell R'Bot…"). It opens R'Bot next to the
+  form: side by side in landscape, stacked in portrait.
+- On the Duo inner screen the form sits on one side of the hinge and a live **Preview · N crew**
+  matrix on the other (right on `wide`, below on `tall`). Edits re-run the search after 700 ms,
+  so the crew sees who still matches before pressing Search. The phone and the Duo cover show
+  the form alone.
+- First paint stays as in §7: the background default search still runs on open. It supplies
+  my duties for R'Bot and the Duo preview, but other crews' duties are not shown on the phone
+  until the crew searches.
+- `SearchSheet` (a modal) became `SearchForm` (inline). Tests:
+  `__tests__/features/dutySwapSearchFirst.test.tsx`; Maestro `pr_392923_duty_swap*.yaml`;
+  XCUITest `DuoFitUITests.testDuoDutySwapPR392923`.
+- Compare & send lists only dates where a picked duty starts or flies. Days inside a
+  trip with nothing new were left out, because they pushed the swapped duties below the fold.

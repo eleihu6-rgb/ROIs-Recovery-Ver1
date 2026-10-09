@@ -1,7 +1,8 @@
 // ─── IATA airport → coordinate + label ───────────────────────────────────────
 // GENERATED FILE — do not edit by hand: node scripts/genAirportCoords.mjs <tsv>
-// Source: the live `airport` table (latitude / longitude / airport_name / country)
-// for every airport in `flight` ∪ `roster_flight`. 190 airports.
+// Base source: the live `airport` table (latitude / longitude / airport_name / country).
+// Includes portal-only airports; supplemental sources: scripts/data/extraAirports.txt.
+// 191 airports.
 //
 // Consumers: the Schedule tab's Route-map view (great-circle lines, distance
 // stat, route list). A null lat/lon means the airline's own reference table has
@@ -91,6 +92,7 @@ export const AIRPORT_COORDS: Record<string, AirportCoord> = {
   HAN: { label: "Noi Bai", country: "VN", lat: 21.2142, lon: 105.8028 },
   HGA: { label: "Egal", country: "SO", lat: 9.5158, lon: 44.0917 },
   HKG: { label: "Hong Kong", country: "HK", lat: 22.3152, lon: 113.9365 },
+  HND: { label: "Tokyo Haneda", country: "JP", lat: 35.5533, lon: 139.7811 },
   HNL: { label: "Daniel K. Inouye", country: "US", lat: 21.3258, lon: -157.9217 },
   HRE: { label: "Robert Gabriel Mugabe", country: "ZW", lat: -17.9186, lon: 31.0992 },
   HYD: { label: "Rajiv Gandhi", country: "IN", lat: 17.24, lon: 78.4281 },

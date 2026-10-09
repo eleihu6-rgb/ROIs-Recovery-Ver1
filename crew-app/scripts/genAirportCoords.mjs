@@ -90,8 +90,9 @@ const body = rows
 
 const file = `// ─── IATA airport → coordinate + label ───────────────────────────────────────
 // GENERATED FILE — do not edit by hand: node scripts/genAirportCoords.mjs <tsv>
-// Source: the live \`airport\` table (latitude / longitude / airport_name / country)
-// for every airport in \`flight\` ∪ \`roster_flight\`. ${rows.length} airports.
+// Base source: the live \`airport\` table (latitude / longitude / airport_name / country).
+// Includes portal-only airports; supplemental sources: scripts/data/extraAirports.txt.
+// ${rows.length} airports.
 //
 // Consumers: the Schedule tab's Route-map view (great-circle lines, distance
 // stat, route list). A null lat/lon means the airline's own reference table has

@@ -40,7 +40,7 @@ function fmtDisplay(d: Date): string {
   return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-function DateStepRow({
+export function DateStepRow({
   label, value, onDec, onInc, palette, testID,
 }: {
   label: string; value: Date; onDec: () => void; onInc: () => void;

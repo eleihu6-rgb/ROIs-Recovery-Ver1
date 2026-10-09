@@ -149,12 +149,27 @@ describe('compare rows (web Pairing Info + Duty Info, aligned by date)', () => {
     const mine = cmp421051.data.mineTaskDetailList.filter(t => t.pairingId === 625688);
     const others = cmp421051.data.othersTaskDetailList.filter(t => t.pairingId === 674390 || t.pairingId === 675736);
     const rows = compareRows(mine, others);
-    expect(rows.map(r => r.date)).toEqual(['2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11']);
+    // 11 Oct is inside the trip but nothing starts or flies that day: no row.
+    expect(rows.map(r => r.date)).toEqual(['2026-10-08', '2026-10-09', '2026-10-10']);
     expect(rows[0].mine.task?.pairingId).toBe(625688);
     expect(rows[0].mine.legs.map(l => `${l.fltNo} ${l.dep}-${l.arr}`)).toEqual(['124 MNL-SEA']);
     expect(rows[1].others.task?.assignment).toBe('1HB');
     expect(rows[2].others.task?.assignment).toBe('4FB');
     expect(rows[1].mine.legs.map(l => l.fltNo)).toEqual(['125']);
+  });
+
+  it('shows only dates with a picked duty or leg, so the swap is in view without scrolling past empty days', () => {
+    // Ryan's case: give PR684/PR685 (20–23 Oct) for 421051's PR100/PR101 (22–25 Oct).
+    const mine = cmp421051.data.mineTaskDetailList.filter(t => t.pairingId === 625791);
+    const others = cmp421051.data.othersTaskDetailList.filter(t => t.pairingId === 625769);
+    const rows = compareRows(mine, others);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) expect(!!r.mine.task || r.mine.legs.length || !!r.others.task || r.others.legs.length).toBeTruthy();
+    expect(rows[0]).toMatchObject({ date: '2026-10-20', mine: { task: { pairingId: 625791 } } });
+    expect(rows.find(r => r.others.task)?.date).toBe('2026-10-22');
+    expect(rows.map(r => r.date)).not.toContain('2026-10-21');
+    // Nothing outside the picked duties (e.g. my 08 Oct trip) appears.
+    expect(rows.every(r => r.date >= '2026-10-20' && r.date <= '2026-10-25')).toBe(true);
   });
 
   it('parses portal dates', () => {

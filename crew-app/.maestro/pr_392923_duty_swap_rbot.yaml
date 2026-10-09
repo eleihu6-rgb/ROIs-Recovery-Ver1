@@ -43,12 +43,14 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     timeout: 30000
 - tapOn:
     point: "63%,63%"
+# Duty Swap opens on Search pairing (design D0); R'Bot is the other way to
+# find the target crew.
 - extendedWaitUntil:
     visible:
-      id: "crew-matrix"
+      id: "search-form"
     timeout: 60000
 - tapOn:
-    id: "swap-rbot-open"
+    id: "search-ask-rbot"
 - extendedWaitUntil:
     visible:
       id: "swap-rbot-panel"
@@ -64,7 +66,11 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     text: "Searching for PR124/PR125"
 - assertVisible:
     text: "Giving PR124/PR125"
-- takeScreenshot: duty-swap-rbot-1-search-Ver1
+- extendedWaitUntil:
+    visible:
+      id: "crew-matrix"
+    timeout: 30000
+- takeScreenshot: duty-swap-rbot-1-search-Ver2
 # 2. R'Bot changes the crews: add someone with a DOH layover (447841, PR684/PR685
 #    08–11 Oct; their header flags the different fleet).
 - tapOn:
@@ -80,7 +86,7 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     visible:
       id: "matrix-crew-447841"
     timeout: 20000
-- takeScreenshot: duty-swap-rbot-2-crews-Ver1
+- takeScreenshot: duty-swap-rbot-2-crews-Ver2
 # 3. R'Bot picks crew B's duties; the tray shows the delta.
 - tapOn:
     id: "swap-rbot-input"
@@ -95,7 +101,7 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     visible:
       id: "tray-delta"
     timeout: 30000
-- takeScreenshot: duty-swap-rbot-3-picked-Ver1
+- takeScreenshot: duty-swap-rbot-3-picked-Ver2
 # Landscape: matrix and R'Bot side by side.
 - setOrientation: LANDSCAPE_LEFT
 - extendedWaitUntil:
@@ -105,5 +111,5 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
 # The conversation survives the rotation (thread kept in the store).
 - assertVisible:
     text: "Picked 1HB, 4FB"
-- takeScreenshot: duty-swap-rbot-landscape-Ver1
+- takeScreenshot: duty-swap-rbot-landscape-Ver2
 - setOrientation: PORTRAIT

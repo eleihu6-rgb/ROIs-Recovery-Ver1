@@ -1,0 +1,45 @@
+# Destination photo on the iPhone Air simulator with the September TG roster.
+# Bundle .maestro/destination_qa_entry.js to fix the simulator clock to 12 Sep 2026.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: "dest-.*"
+    direction: DOWN
+- tapOn:
+    id: "dest-.*"
+- assertVisible:
+    id: "page-destination"
+- assertVisible:
+    id: "dest-page-indicator"
+- assertVisible:
+    id: "dest-trip-details"
+- assertNotVisible: "ETD / ETA · no update yet"
+- assertNotVisible: "Day return — no hotel"
+- takeScreenshot: destination-polish-tg-Ver1
+- tapOn:
+    id: "dest-trip-details"
+- assertVisible:
+    id: "page-trip-details"

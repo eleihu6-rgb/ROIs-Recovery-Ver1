@@ -35,7 +35,7 @@ export function MeetingRow({
 }: { meeting: DayMeeting; palette: CarrierPalette } & MeetingActions): React.JSX.Element {
   const hasJoin = !!meeting.joinUrl;
   return (
-    <View style={[s.meet, { backgroundColor: CARD_INSET }]} testID={`meeting-${meeting.id}`}>
+    <View style={[s.meet, { backgroundColor: p.isLight ? p.cardInset : CARD_INSET }]} testID={`meeting-${meeting.id}`}>
       <View style={s.head}>
         <Text style={[s.time, { color: p.cardInk }]} numberOfLines={1}>
           {meeting.hhmm}

@@ -1,0 +1,194 @@
+# Home ▸ Meal (demo preference, stored on the phone) and Trip details ▸ ops grid
+# — PR crew 392923 on the TEST tenant, then TG 35459 on the same phone: the PR
+# meal must not show for TG (no PR/TG mixing). Regular iPhone (compact layout).
+#
+# Run (from crew-app/), password from the environment, never from this file:
+#   maestro --device <UDID> test -e PR_PASSWORD="$PR_PASSWORD" .maestro/pr_392923_meal_trip_ops.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "392923"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: ${PR_PASSWORD}
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+# Six quick actions in one row: every label still on one line.
+- scrollUntilVisible:
+    element:
+      id: "qa-meal"
+    direction: DOWN
+- assertVisible:
+    id: "qa-discretion"
+- takeScreenshot: meal_01_home_quick_actions
+
+# Meal: Halal for the next 8 days, saved, confirmed, listed.
+- tapOn:
+    id: "qa-meal"
+- assertVisible:
+    id: "page-meal"
+- tapOn:
+    id: "meal-type"
+- scrollUntilVisible:
+    element:
+      id: "meal-option-MOML"
+    direction: DOWN
+- tapOn:
+    id: "meal-option-MOML"
+- assertVisible:
+    text: ".*Muslim.*"
+- tapOn:
+    id: "meal-to-inc"
+- scrollUntilVisible:
+    element:
+      id: "meal-save"
+    direction: DOWN
+- tapOn:
+    id: "meal-save"
+# The dialog card is one accessibility element (its text is not exposed).
+- extendedWaitUntil:
+    visible:
+      id: "meal-dialog"
+    timeout: 5000
+- takeScreenshot: meal_02_saved_dialog
+# The dialog card is one accessibility element: tap its confirm pill by position.
+- tapOn:
+    id: "meal-dialog"
+    point: "50%,85%"
+- assertNotVisible:
+    id: "meal-dialog"
+- scrollUntilVisible:
+    element:
+      id: "meal-saved-0"
+    direction: DOWN
+- assertVisible:
+    text: ".*MOML.*"
+- takeScreenshot: meal_03_saved_row
+- tapOn:
+    id: "page-back"
+
+# Trip details: the ops grid under the first leg's times.
+- scrollUntilVisible:
+    element:
+      id: "home-next-trip"
+    direction: UP
+- tapOn:
+    id: "home-next-trip"
+- assertVisible:
+    id: "page-trip-details"
+- scrollUntilVisible:
+    element:
+      id: "ops-belt-0"
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    text: "BOARDING"
+- assertVisible:
+    text: "DOOR CLOSE"
+- assertVisible:
+    text: "TSAT"
+- takeScreenshot: meal_04_trip_ops_grid
+
+# Switch to TG on the same phone: PR's meal must not leak into TG.
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-profile"
+- scrollUntilVisible:
+    element:
+      id: "profile-logout"
+    direction: DOWN
+- tapOn:
+    id: "profile-logout"
+- extendedWaitUntil:
+    visible:
+      id: "profile-dialog"
+    timeout: 10000
+- tapOn:
+    id: "profile-dialog"
+    point: "66%,86%"
+- extendedWaitUntil:
+    visible:
+      id: "login-screen"
+    timeout: 20000
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: "qa-meal"
+    direction: DOWN
+- tapOn:
+    id: "qa-meal"
+- scrollUntilVisible:
+    element:
+      id: "meal-saved-empty"
+    direction: DOWN
+- assertNotVisible:
+    text: ".*MOML.*"
+- takeScreenshot: meal_05_tg_no_pr_meal
+- tapOn:
+    id: "page-back"
+# TG's test crew has no trip left this month: open a September flight from Schedule.
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    id: "sched-prev-month"
+- scrollUntilVisible:
+    element:
+      id: "duty-TG.*"
+    direction: DOWN
+- tapOn:
+    id: "duty-TG.*"
+- assertVisible:
+    id: "page-trip-details"
+- scrollUntilVisible:
+    element:
+      id: "ops-belt-0"
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    text: "BOARDING"
+- assertNotVisible:
+    text: ".*PR\\d+.*"
+- takeScreenshot: meal_06_tg_trip_ops_grid

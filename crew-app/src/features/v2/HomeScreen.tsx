@@ -1,7 +1,7 @@
 // Home tab — mirrors mock Ver9: brand row (white carrier logo · alerts bell ·
 // upcoming-alarms icon), time-of-day greeting, crew status line, Upcoming Trip
 // ticket card (or the no-duty placeholder), Explore destinations, Quick actions.
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, ImageBackground } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '../../store';
@@ -24,6 +24,10 @@ import { selectDutySwapLive } from '../dutySwap/dutySwapActions';
 const DOCK_CLEAR = 150;
 // Duo inner screen is only ~669pt tall; the centred dock needs less clearance.
 const WIDE_DOCK_CLEAR = 100;
+const IPAD_DOCK_CLEAR = 130;
+// The Duo cover uses the right-edge rail, so its Home content needs only scroll
+// breathing room rather than a bottom dock clearance.
+const COVER_RAIL_CLEAR = 24;
 
 export function HomeScreen() {
   const p = useCarrier();
@@ -53,32 +57,26 @@ export function HomeScreen() {
   // Explore: this month's upcoming rotations, one card per destination. The same
   // list backs the full-screen city viewer, so the tapped card is the page it opens.
   const destinations = useDestinations(now);
-  // Duo inner screen: landscape (wide) = two columns; rotated (tall) = one
-  // column with the rotation inside the ticket and the destinations as a grid.
-  const { wide, tall, width } = useLayout();
-  // Tall: three tiles per row inside the page's 22pt gutters, 12pt apart.
+  // Landscape uses a two-column page; portrait keeps destination cards in one row.
+  const { wide, tall, width, height } = useLayout();
+  const duoCover = width >= 450 && !tall && !wide && height < 760;
+  // The Duo's landscape inner screen is short; an iPad has room to let the
+  // existing cards occupy the page down to the floating dock.
+  const ipad = wide && height >= 700;
+  const ipadPortrait = ipad && height > width;
+  const landscapeGrid = wide && width > height;
+  const landscapeColumns = ipad ? 3 : 2;
+  // Tall: three tiles visible in the portrait strip, with more offscreen.
   const tallTile = Math.floor((width - 44 - 24) / 3);
-
-  // Every leg of the next rotation, with its local times and the layover between
-  // legs. Wide: a card of its own under the ticket; tall: inside the ticket.
-  const legRows = trip ? trip.legs.map((l, i) => {
-    const v = legView(l, trip, mode, baseTz, byTrip[trip.id]);
-    return (
-      <View key={i}>
-        {i > 0 && trip.layoverHours ? (
-          <Text style={[s.rotLayover, { color: tall ? p.cardSoft : p.inkSoft }]}>{`${Math.round(trip.layoverHours)}h layover · ${v.dep}`}</Text>
-        ) : null}
-        <View style={s.rotRow}>
-          <Text style={[s.rotFlt, { color: tall ? p.cardInk : p.ink }]}>{v.fltNumber}</Text>
-          <Text style={[s.rotRoute, { color: tall ? p.cardInk : p.ink }]}>{`${v.dep} → ${v.arv}`}</Text>
-          <Text style={[s.rotTime, { color: tall ? p.cardSoft : p.inkSoft }]}>{`${v.day} ${MON[v.monthIdx]} · ${v.depTime} – ${v.arvTime}${v.arvDayOffset ? ` ${v.arvDayOffset}` : ''}`}</Text>
-        </View>
-      </View>
-    );
-  }) : null;
+  // Measure the Explore viewport, including the Duo's landscape safe-area inset.
+  const [stripW, setStripW] = useState(0);
+  const [leftStackH, setLeftStackH] = useState(0);
+  const wideTile = stripW > 0
+    ? Math.floor((stripW - 12 * (landscapeGrid ? landscapeColumns - 1 : 1)) / (landscapeGrid ? landscapeColumns : 2))
+    : landscapeGrid && ipad ? 150 : 180;
 
   const ticketSection = trip && first ? (
-      <TicketCard palette={p} style={s.trip} holeY={holeY} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-next-trip">
+      <TicketCard palette={p} style={wide ? s.tripWide : s.trip} holeY={holeY} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-next-trip">
         <View style={s.uh}><Icon name="trip" size={22} color={p.cardInk} /><Text style={[s.uhText, { color: p.cardInk }]}>Upcoming Trip</Text></View>
         <Text style={[s.sub, { color: p.cardSoft }]}>{first.fltNumber} · {first.day} {MON[first.monthIdx]} {first.year} · {inDays === 0 ? 'Reports today' : `Reports in ${inDays} day${inDays === 1 ? '' : 's'}`}</Text>
         <View style={s.legRow}>
@@ -93,59 +91,58 @@ export function HomeScreen() {
           </View>
         </View>
         <View style={{ marginVertical: 16 }} onLayout={e => setHoleY(20 + e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2)}><DashedLine color={p.cardLine} /></View>
-        {tall ? <View style={s.rotInTicket} testID="home-rotation">{legRows}</View> : null}
         <View style={s.btnRow}>
-          <View style={[s.btn, { backgroundColor: p.btn }]}><Text style={s.btnText}>View Trip Details</Text></View>
-          <View style={[s.btnSq, { backgroundColor: p.btn }]}><Icon name="qr" size={26} color="#fff" strokeWidth={1.8} /></View>
+          <Pressable style={s.detailsLink} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-trip-details-link" accessibilityLabel="Trip details">
+            <Text style={[s.detailsLinkText, { color: p.cardInk }]}>Trip details</Text>
+            <Icon name="chev" size={18} color={p.cardInk} />
+          </Pressable>
+          <Pressable style={[s.btnSq, { backgroundColor: p.btn }]} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-trip-qr" accessibilityLabel="Open trip QR and details">
+            <Icon name="qr" size={22} color="#fff" strokeWidth={1.8} />
+          </Pressable>
         </View>
       </TicketCard>
     ) : null;
-  // Wide (Duo inner) only: the whole rotation under the ticket — every leg with its
-  // local times — so the left column carries the trip instead of empty space.
-  const rotationSection = wide && trip ? (
-    <Pressable style={[s.rot, { backgroundColor: p.frost }]} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-rotation">
-      <Text style={[s.qaTitle, { color: p.ink }]}>{`Rotation · ${trip.legs.length} leg${trip.legs.length === 1 ? '' : 's'}`}</Text>
-      {legRows}
-    </Pressable>
-  ) : null;
   const destTiles = destinations.map((d, i) => (
-    <Pressable key={d.city.airport} style={[s.dest, wide && s.destWide, tall && { width: tallTile, height: tallTile }]} onPress={() => nav.navigate('Destination', { index: i })} testID={`dest-${d.city.airport}`}>
+    <Pressable key={d.city.airport} style={[s.dest, wide && { width: wideTile, height: landscapeGrid ? ipad ? 150 : 128 : 190 }, tall && { width: tallTile, height: tallTile }]} onPress={() => nav.navigate('Destination', { index: i })} testID={`dest-${d.city.airport}`}>
       <ImageBackground source={d.city.image} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: 14 }} />
       <View style={s.destGrad} />
       <View style={s.fav}><Icon name="heart" size={16} color="#fff" strokeWidth={1.8} /></View>
       <View style={s.destBottom}>
-        <Text style={[s.destCo, { color: p.inkSoft }]}>{d.city.name === d.city.airport ? 'Destination' : d.city.airport}</Text>
+        <Text style={[s.destCo, { color: '#fff' }]}>{d.city.name === d.city.airport ? 'Destination' : d.city.airport}</Text>
         <Text style={s.destCity}>{d.city.name}</Text>
-        <Text style={[s.destFrom, { color: p.inkSoft }]}>FLIGHT</Text>
+        <Text style={[s.destFrom, { color: '#fff' }]}>FLIGHT</Text>
         <Text style={s.destFlt}>{d.leg.fltNumber} · {d.leg.day} {MON[d.leg.monthIdx]}</Text>
       </View>
     </Pressable>
   ));
-  const exploreSection = (
+  // Landscape Explore fills the right column, with a vertically scrolling grid.
+  // Portrait Explore stays one horizontal row, even on the iPad.
+  const exploreSection = wide ? (
+    <View style={[s.qa, s.flush, landscapeGrid && leftStackH > 0 && { height: leftStackH }, { backgroundColor: p.frost }]} testID="home-explore">
+      <View style={s.secCard}><Text style={[s.secTitle, { color: p.ink }]}>Explore your destinations</Text><Text style={[s.secLink, { color: p.inkSoft }]}>See all</Text></View>
+      <ScrollView horizontal={!landscapeGrid} showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false} style={s.exploreScroll} contentContainerStyle={landscapeGrid ? s.destGridWide : s.destRowWide} testID="home-explore-strip" onLayout={e => setStripW(e.nativeEvent.layout.width)}>
+        {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
+        {destTiles}
+      </ScrollView>
+    </View>
+  ) : (
     <>
       <View style={s.sec}><Text style={[s.secTitle, { color: p.ink }]}>Explore your destinations</Text><Text style={[s.secLink, { color: p.inkSoft }]}>See all</Text></View>
-      {tall ? (
-        // Rotated Duo: the width takes a 3-up grid, not a strip that scrolls off-screen.
-        <View style={s.destGrid} testID="home-dest-grid">
-          {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
-          {destTiles}
-        </View>
-      ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.destRow, wide && s.destRowWide]} style={{ marginHorizontal: wide ? 0 : -22 }}>
-          {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
-          {destTiles}
-        </ScrollView>
-      )}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.destRow} style={{ marginHorizontal: -22 }} testID="home-explore-strip">
+        {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
+        {destTiles}
+      </ScrollView>
     </>
   );
   const quickSection = (
     <View style={[s.qa, { backgroundColor: p.frost }]}>
       <Text style={[s.qaTitle, { color: p.ink }]}>Quick actions</Text>
       <View style={s.qaGrid}>
-        <QA icon="checkin" label="Check-In" onPress={() => nav.navigate('Spec', { id: 'checkin' })} palette={p} />
+        <QA icon="checkin" label="Check-In" onPress={() => nav.navigate('CheckIn')} palette={p} />
         <QA icon="calcheck" label="Absence" onPress={() => nav.navigate('Spec', { id: 'absence' })} palette={p} />
         <QA icon="shield" label="Discretion" onPress={() => nav.navigate('Discretion')} palette={p} />
         <QA icon="swap" label="Duty Swap" onPress={() => (dutySwapLive ? nav.navigate('DutySwap') : nav.navigate('Spec', { id: 'swap' }))} palette={p} />
+        <QA icon="meal" label="Meal" onPress={() => nav.navigate('Meal')} palette={p} />
         <QA icon="more" label="More" onPress={() => nav.navigate('Spec', { id: 'more' })} palette={p} />
       </View>
     </View>
@@ -153,9 +150,11 @@ export function HomeScreen() {
 
   return (
     <GradientScreen palette={p}>
-      <ScrollView contentContainerStyle={[s.body, { paddingTop: insets.top + 10, paddingBottom: wide ? WIDE_DOCK_CLEAR : DOCK_CLEAR }]} showsVerticalScrollIndicator={false} testID="home-screen">
+      <ScrollView contentContainerStyle={[s.body, ipad && { minHeight: height }, { paddingTop: insets.top + 10, paddingBottom: duoCover ? COVER_RAIL_CLEAR : ipad ? IPAD_DOCK_CLEAR : wide ? WIDE_DOCK_CLEAR : DOCK_CLEAR }]} showsVerticalScrollIndicator={false} testID="home-screen">
         <View style={s.brandRow}>
-          <BrandLogo airline={airline} height={34} />
+          <View style={p.isLight ? [s.brandLight, { backgroundColor: p.btn }] : undefined}>
+            <BrandLogo airline={airline} height={34} />
+          </View>
           <View style={{ flexDirection: 'row', gap: 2 }}>
             <IconButton name="bell" badge={alertCount} palette={p} onPress={() => nav.navigate('Alerts')} testID="home-alerts" />
             <IconButton name="alarm" badge={alarmCount} palette={p} onPress={() => nav.navigate('UpcomingAlarms')} testID="home-alarms" />
@@ -186,11 +185,18 @@ export function HomeScreen() {
             nothing is published). */}
 
         {wide && ticketSection ? (
-          // iPhone Duo inner screen: next trip left, destinations + quick actions right.
-          <View style={s.wideCols}>
-            <View style={s.wideCol}>{ticketSection}{rotationSection}</View>
-            <View style={s.wideCol}>{exploreSection}{quickSection}</View>
-          </View>
+          <>
+            <View style={[s.wideRow, s.wideRowFirst, ipad && !ipadPortrait && s.ipadRow]} testID="home-wide-row-1">
+              <View style={[s.wideCol, landscapeGrid && s.stackTop]} testID="home-left-stack" onLayout={e => setLeftStackH(e.nativeEvent.layout.height)}>
+                {ticketSection}
+                {!ipadPortrait ? quickSection : null}
+              </View>
+              <View style={s.wideCol}>{exploreSection}</View>
+            </View>
+            {ipadPortrait ? (
+              <View style={s.ipadQuickRow} testID="home-ipad-quick-row">{quickSection}</View>
+            ) : null}
+          </>
         ) : (
           <>
             {ticketSection}
@@ -208,7 +214,7 @@ export function IconButton({ name, badge, palette, onPress, testID }: { name: Ic
   return (
     <Pressable onPress={onPress} style={s.iconBtn} hitSlop={6} testID={testID} accessibilityLabel={testID}>
       <Icon name={name} size={24} color={palette.ink} />
-      {!!badge && <View style={s.badge}><Text style={[s.badgeText, { color: palette.g1 }]}>{badge}</Text></View>}
+      {!!badge && <View style={s.badge}><Text style={[s.badgeText, { color: palette.dockInk }]}>{badge}</Text></View>}
     </Pressable>
   );
 }
@@ -217,16 +223,26 @@ function QA({ icon, label, onPress, palette }: { icon: IconName; label: string; 
   return (
     <Pressable onPress={onPress} style={s.qaItem} testID={`qa-${label.toLowerCase().replace(/\s/g, '-')}`}>
       <Icon name={icon} size={28} color={palette.ink} />
-      <Text style={[s.qaLabel, { color: palette.ink }]}>{label}</Text>
+      {/* Six tiles on a phone row: a long label ("Discretion") shrinks to fit
+          instead of breaking mid-word. */}
+      <Text style={[s.qaLabel, { color: palette.ink }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{label}</Text>
     </Pressable>
   );
 }
 
 const s = StyleSheet.create({
-  wideCols: { flexDirection: 'row', gap: 18, alignItems: 'flex-start' },
+  // Wide: the rows carry the vertical gaps so the cards side by side start level.
+  wideRow: { flexDirection: 'row', gap: 18, marginTop: 14 },
+  wideRowFirst: { marginTop: 16 },
+  ipadRow: { flexGrow: 1 },
+  ipadQuickRow: { marginTop: 14 },
+  flush: { marginTop: 0 },
   wideCol: { flex: 1, minWidth: 0 },
+  stackTop: { alignSelf: 'flex-start' },
+  fill: { flex: 1 },
   body: { paddingHorizontal: 22 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
+  brandLight: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 999, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   badgeText: { fontSize: 10, fontWeight: '700' },
@@ -244,6 +260,7 @@ const s = StyleSheet.create({
   },
   guestStripText: { flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 18 },
   trip: { marginTop: 16, padding: 16 },
+  tripWide: { padding: 16 },
   uh: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   uhText: { fontSize: 19, fontWeight: '600' },
   sub: { fontSize: 13 },
@@ -254,29 +271,21 @@ const s = StyleSheet.create({
   kv: { marginLeft: 'auto', gap: 4 },
   kvk: { fontSize: 13 },
   kvv: { fontSize: 15, fontWeight: '600' },
-  btnRow: { flexDirection: 'row', gap: 10 },
-  btn: { flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
-  btnSq: { width: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  btnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  detailsLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 2 },
+  detailsLinkText: { fontSize: 15, fontWeight: '600' },
+  btnSq: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   sec: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 8 },
+  secCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   secTitle: { fontSize: 17, fontWeight: '500' },
   secLink: { fontSize: 14, fontWeight: '500' },
   destRow: { paddingHorizontal: 22, gap: 12 },
   // 190 tall (was 215): with the trip card above it the page used to end under the
   // dock, and every destination's own content still fits the shorter tile.
   dest: { width: 165, height: 172, borderRadius: 14, overflow: 'hidden' },
-  // Wide (Duo inner): taller tiles fill the right column's height.
-  destWide: { width: 200, height: 220 },
-  destRowWide: { paddingHorizontal: 0 },
-  rot: { marginTop: 14, borderRadius: 18, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 8 },
-  rotRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  rotFlt: { fontSize: 14, fontWeight: '600', width: 64, fontVariant: ['tabular-nums'] },
-  rotRoute: { fontSize: 14, fontWeight: '500', width: 96 },
-  rotTime: { flex: 1, fontSize: 13, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  rotLayover: { fontSize: 12, paddingLeft: 76, paddingVertical: 2 },
-  // Tall (rotated Duo): the rotation sits inside the ticket, under the perforation.
-  rotInTicket: { marginTop: -6, marginBottom: 12 },
-  destGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  destRowWide: { gap: 12 },
+  destGridWide: { flexDirection: 'row', flexWrap: 'wrap', alignContent: 'flex-start', gap: 12 },
+  exploreScroll: { flex: 1 },
   // Neutral black scrim over the destination photo — a tinted scrim would fight
   // whichever theme the crew picked (theme coverage test).
   destGrad: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,.45)' },

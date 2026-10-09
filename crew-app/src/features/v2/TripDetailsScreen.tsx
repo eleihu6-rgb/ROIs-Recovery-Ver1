@@ -1,18 +1,21 @@
 // Trip Details — full page for a rotation: timeline per leg (leave home / ready /
 // check-in / STD / STA), hotel booking when the roster carries one.
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../store';
 import { useCarrier } from '../../theme/carrier';
 import { NavRow, SectionLabel } from '../../components/v2/rows';
 import { AppDialog } from '../../components/v2/AppDialog';
+import { DashedLine } from '../../components/v2/TicketCard';
 import { PageShell, Hero, ListCard, KvRow, Columns } from './PageShell';
 import { useLayout } from '../../components/v2/useLayout';
 import { legView, MON } from './model';
 import { useBase, useDutyAlarms, useDutyCalendar } from './useV2';
+import { flightOpsDemo } from './flightOpsDemo';
 import { hotelFor, hotelTransfer, legOps } from '../travel/opsInfo';
 import type { V2StackParamList } from './nav';
+import type { TripLeg } from '../travel/tripCsv';
 
 type Props = NativeStackScreenProps<V2StackParamList, 'TripDetails'>;
 
@@ -64,54 +67,54 @@ export function TripDetailsScreen({ route }: Props) {
       </ListCard>
     </>
   );
-  const legSections = legs.map(({ v, ops }, i) => (
+  const legSections = legs.map(({ leg, v, ops }, i) => (
     <View key={i}>
       {/* A single-leg trip already names the flight, route and date in the hero —
           repeating them as a section header is pure duplication. */}
       {legs.length > 1 && (
         <SectionLabel palette={p}>{v.fltNumber} · {v.dep} → {v.arv} · {v.day} {MON[v.monthIdx]}</SectionLabel>
       )}
+      {/* One leg = one grid card (Ryan 2026-10-08: one style, not list rows + a
+          grid). Cells run in the order things happen: the crew's own markers,
+          departure (STD/ETD … off-block, ATD), arrival (STA/ETA/ATA, block),
+          then where (terminal / gate / stand, the arrival's belt). Same marker
+          style as the Schedule card's wake-up / leave-home / check-in cells.
+          Ops values other than STD / ETD / STA / ETA / actuals are DEMO
+          (flightOpsDemo.ts); its passenger check-in time is not shown — it read
+          as a second "check-in" next to the crew's report. */}
       <ListCard palette={p}>
-        {/* Order = the order the events actually happen (Ryan 2026-09-11):
-            wake up → leave home → check in / report, then the flight itself
-            schedule (STD/STA) → estimate (ETD/ETA) → actual (ATD/ATA).
-            Every row carries a thin line icon, like the city page. */}
-        <KvRow icon="alarm" label={v.readyWord} value={v.ready} palette={p} />
-        <KvRow icon="run" label="Leave home" value={v.leaveHome} palette={p} />
-        <KvRow icon="checkin" label="Check-in / report" value={v.checkIn} palette={p} />
-        <KvRow icon="plane" label="STD" value={`${v.depTime} ${v.dep}`} palette={p} />
-        <KvRow icon="plane" label="STA" value={`${v.arvTime}${v.arvDayOffset ? ' ' + v.arvDayOffset : ''} ${v.arv}${v.duration ? ` (${v.duration})` : ''}`} palette={p} />
-        {ops.etd || ops.eta ? (
-          <KvRow icon="clock" label="ETD / ETA" value={`${ops.etd || '—'} → ${ops.eta || '—'}${ops.estimated ? ' · est' : ''}`} palette={p} />
-        ) : null}
-        {ops.atd || ops.ata ? (
-          <KvRow icon="clock" label="ATD / ATA" value={`${ops.atd || '—'} → ${ops.ata || '—'}`} palette={p} />
-        ) : null}
-        {/* One gate line and one aircraft line — same information, two rows fewer. */}
-        <KvRow
-          icon="checkin"
-          label="Gate"
-          value={`${v.dep} ${ops.dep.terminal}·${ops.dep.gate} → ${v.arv} ${ops.arv.terminal}·${ops.arv.gate} (expected)`}
-          palette={p}
-        />
-        <KvRow
-          icon="jet"
-          label="Aircraft"
-          value={[v.fleet, ops.register, `Block ${ops.block || v.duration}`].filter(Boolean).join(' · ')}
-          palette={p}
-          last={!ops.transfer}
-        />
-        {/* Departing from a layover: the crew's own hotel transfer, mocked
-            (vehicle/plate/driver/contact) until the transport feed exists. */}
-        {ops.transfer ? (
-          <>
+        <View style={s.ops} testID={`flight-ops-grid-${i}`}>
+          {legGrid(leg, v, ops).map((row, r) => (
+            <View key={r}>
+              {r > 0 && <DashedLine color={p.cardLine} />}
+              <View style={s.opsRow}>
+                {row.map((c, j) => {
+                  const align = j === 0 ? s.left : j === row.length - 1 ? s.right : s.center;
+                  return (
+                    <View key={c.key} style={s.opsCell}>
+                      <Text style={[s.pk, align, { color: p.cardSoft }]} numberOfLines={1}>{c.label.toUpperCase()}</Text>
+                      <Text style={[s.pv, align, { color: p.cardInk }]} numberOfLines={1} adjustsFontSizeToFit testID={`ops-${c.key}-${i}`}>{c.value}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+        </View>
+      </ListCard>
+      {/* Departing from a layover: the crew's own hotel transfer, mocked
+          (vehicle/plate/driver/contact) until the transport feed exists. */}
+      {ops.transfer ? (
+        <>
+          <SectionLabel palette={p}>Hotel transfer</SectionLabel>
+          <ListCard palette={p}>
             <KvRow icon="car" label="Hotel pick-up" value={`${ops.transfer.pickup} (expected)`} palette={p} />
             <KvRow icon="car" label="Airport drop-off" value={`${ops.transfer.dropOff} (expected)`} palette={p} />
             <KvRow icon="car" label="Transfer" value={`${ops.transfer.vehicle} · ${ops.transfer.plate}`} palette={p} />
             <KvRow icon="user" label="Driver" value={`${ops.transfer.driver} · ${ops.transfer.phone}`} palette={p} last />
-          </>
-        ) : null}
-      </ListCard>
+          </ListCard>
+        </>
+      ) : null}
     </View>
   ));
   const hotelSection = hotel ? (
@@ -178,3 +181,49 @@ export function TripDetailsScreen({ route }: Props) {
     </PageShell>
   );
 }
+
+type Cell = { key: string; label: string; value: string };
+
+/** The leg card's chronological rows (see the comment where it renders). */
+function legGrid(leg: TripLeg, v: ReturnType<typeof legView>, ops: ReturnType<typeof legOps>): Cell[][] {
+  const demo = new Map(flightOpsDemo({
+    fltNumber: v.fltNumber,
+    dep: v.dep,
+    arv: v.arv,
+    fleet: v.fleet,
+    stdUtc: leg.flightDateUTC,
+    etdUtc: leg.estDepUtc || leg.actDepUtc,
+    stdClock: v.depTime,
+  }).flat().map(c => [c.key, c] as const));
+  const d = (key: string): Cell => demo.get(key) ?? { key, label: key, value: '—' };
+  return [
+    [
+      { key: 'ready', label: v.readyWord, value: v.ready },
+      { key: 'leave', label: 'Leave home', value: v.leaveHome },
+      { key: 'report', label: 'Report', value: v.checkIn },
+      { key: 'aircraft', label: 'Aircraft', value: [v.fleet, ops.register].filter(Boolean).join(' · ') || '—' },
+    ],
+    [d('std'), d('etd')],
+    [d('boarding'), d('door'), d('offblock'), { key: 'atd', label: 'ATD', value: ops.atd || '—' }],
+    [
+      { key: 'sta', label: 'STA', value: `${v.arvTime}${v.arvDayOffset ? ' ' + v.arvDayOffset : ''}` },
+      { key: 'eta', label: 'ETA', value: ops.eta || '—' },
+      { key: 'ata', label: 'ATA', value: ops.ata || '—' },
+      { key: 'block', label: 'Block', value: ops.block || v.duration || '—' },
+    ],
+    [d('terminal'), d('gate'), d('stand'), d('belt')],
+  ];
+}
+
+// Marker typography shared with the Schedule card's wake-up / leave-home / check-in
+// cells: small spaced label over a semibold value.
+const s = StyleSheet.create({
+  ops: { paddingVertical: 6 },
+  opsRow: { flexDirection: 'row', paddingVertical: 9, gap: 6 },
+  opsCell: { flex: 1, minWidth: 0 },
+  pk: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6 },
+  pv: { fontSize: 16, fontWeight: '600', marginTop: 3 },
+  left: { textAlign: 'left' },
+  center: { textAlign: 'center' },
+  right: { textAlign: 'right' },
+});

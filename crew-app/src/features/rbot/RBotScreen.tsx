@@ -9,7 +9,7 @@
 // form the crew confirms (see dispatch-crew-action.ts).
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +21,7 @@ import { CrewAvatar } from '../settings/avatars';
 import { RBOT_AVATAR_INDEX } from './RBotEntry';
 import { store, useAppDispatch, useAppSelector } from '../../store';
 import { selectCrewCarrier } from '../auth/authSlice';
-import { useCarrier, type CarrierPalette } from '../../theme/carrier';
+import { resolveTheme, useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { useV2Nav } from '../v2/nav';
 import { sendCrewChat } from './crewChatApi';
 import { dispatchCrewAction } from './dispatch-crew-action';
@@ -30,6 +30,7 @@ import { appendEntry, markSeen, markUnread, saveRbotThread } from './rbotSlice';
 import type { RbotContext, RbotThreadEntry } from './types';
 import { useBase, useNextTrip, useAlarms } from '../v2/useV2';
 import { legView, MON } from '../v2/model';
+import { answerPageQuestion, pageContext, type RbotSource } from './pageContext';
 
 /** What R'Bot can honestly do today — the card is the contract with the crew. */
 const CAPABILITIES: { title: string; body: string }[] = [
@@ -52,7 +53,7 @@ function toIsoDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function RBotScreen(): React.JSX.Element {
+export function RBotScreen({ route }: { route?: { params?: { source?: RbotSource } } } = {}): React.JSX.Element {
   const p = useCarrier();
   const insets = useSafeAreaInsets();
   const nav = useV2Nav();
@@ -65,11 +66,39 @@ export function RBotScreen(): React.JSX.Element {
   const trips = useAppSelector(s => s.trips.trips);
   const tzMode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
+  const themePreset = useAppSelector(s => s.settings.themePreset);
+  const explorePrefs = useAppSelector(s => s.settings.explorePrefs);
+  const calendarSync = useAppSelector(s => s.flightCalendar.syncAll);
+  const alertCount = useAppSelector(s => s.notifications.notifications.length);
+  const alarmsEnabled = useAppSelector(s => s.alarms.enabled);
+  const scheduleMonth = useAppSelector(s => s.rbot.scheduleMonth);
+  const scheduleDay = useAppSelector(s => s.rbot.scheduleDay);
+  const dutySwapApproach = useAppSelector(s => s.rbot.dutySwapApproach);
+  const swap = useAppSelector(s => s.dutySwap);
   const base = useBase();
+  const source = route?.params?.source;
+  const currentPage = useMemo(() => pageContext(source, trips, {
+    scheduleMonth: scheduleMonth ?? undefined, scheduleDay,
+    timeZoneMode: tzMode, baseTimeZone: baseTz,
+    theme: resolveTheme(themePreset, airline), explorePrefs, calendarSync,
+    alertCount, alarmsEnabled,
+    dutySwap: {
+      approach: dutySwapApproach, step: swap.step, status: swap.status,
+      ...(swap.filters ? {window: {start: swap.filters.startDate, end: swap.filters.endDate}} : {}),
+      crewCount: Math.max(0, swap.crews.length - 1), selectedCrew: swap.crewB,
+    },
+  }), [source, trips, scheduleMonth, scheduleDay, tzMode, baseTz, themePreset, airline,
+    explorePrefs, calendarSync, alertCount, alarmsEnabled, dutySwapApproach, swap]);
 
   const thread = useAppSelector(s => s.rbot.entries);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', e => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const scroller = useRef<ScrollView>(null);
   // The reply lands after an action may have navigated away, so read focus
   // through a ref rather than the value captured when `send` was created.
@@ -91,18 +120,21 @@ export function RBotScreen(): React.JSX.Element {
     crewId,
     ...(firstName ? {crewName: firstName} : {}),
     today: toIsoDate(new Date()),
-    screen: 'RBot',
-  }), [airline, crewId, firstName]);
+    screen: currentPage.screen,
+    page: currentPage.page,
+  }), [airline, crewId, firstName, currentPage]);
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
+    Keyboard.dismiss();
     setInput('');
     const history: RbotThreadEntry[] = [...thread, {role: 'user', content: trimmed}];
     dispatch(appendEntry({entry: {role: 'user', content: trimmed}, seen: true}));
     // Local-first: a roster fact ("what's my next duty?") is answered from the
     // phone, so the schedule never leaves the device for those questions.
-    const local = answerLocally(trimmed, {now: new Date(), trips, mode: tzMode, baseTz, base});
+    const pageAnswer = answerPageQuestion(trimmed, currentPage.screen, currentPage.page);
+    const local = pageAnswer ? {content: pageAnswer} : answerLocally(trimmed, {now: new Date(), trips, mode: tzMode, baseTz, base});
     if (local) {
       dispatch(appendEntry({entry: {role: 'assistant', content: local.content, local: true}, seen: true}));
       void dispatch(saveRbotThread());
@@ -149,7 +181,7 @@ export function RBotScreen(): React.JSX.Element {
     } finally {
       setBusy(false);
     }
-  }, [base, baseTz, busy, context, dispatch, nav, thread, trips, tzMode]);
+  }, [base, baseTz, busy, context, currentPage.screen, dispatch, nav, thread, trips, tzMode]);
 
   useEffect(() => {
     const id = setTimeout(() => scroller.current?.scrollToEnd({animated: true}), 50);
@@ -161,7 +193,7 @@ export function RBotScreen(): React.JSX.Element {
   // (left), so it reads as "back" on the wide layout; regular iPhones unchanged.
   // Wide also gets a context panel beside the thread — the next duty and the
   // "try asking" chips — so the thread is not a lone strip across ~900pt.
-  const { wide } = useLayout();
+  const { wide, height } = useLayout();
   const [now] = useState(() => new Date());
   const nextTrip = useNextTrip(now);
   const { byTrip } = useAlarms(now);
@@ -209,13 +241,20 @@ export function RBotScreen(): React.JSX.Element {
   );
 
   return (
-    <GradientScreen palette={p} texture={false}>
+    <View style={styles.overlay} pointerEvents="box-none" testID="rbot-overlay">
+    <Pressable style={StyleSheet.absoluteFill} onPress={() => nav.goBack()} testID="rbot-backdrop" accessibilityLabel="close R'Bot" />
+    <View style={[styles.panel, wide ? styles.sidePanel : styles.bottomPanel, {
+      backgroundColor: p.g4,
+      bottom: keyboardHeight,
+      ...(!wide ? { height: Math.min(height * 0.62, height - keyboardHeight - Math.max(insets.top, 12)) } : {}),
+    }]} testID="rbot-panel">
+    <GradientScreen palette={p} texture={false} sideInsets={false}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={undefined}
         keyboardVerticalOffset={0}
       >
-        <View style={[styles.head, {paddingTop: insets.top + 8}]}>
+        <View style={[styles.head, {paddingTop: wide ? insets.top + 8 : 12}]}>
           {wide ? backButton : null}
           {/* Same R'Bot avatar as the dock entry — the panda, straight on the
               surface (no theme-coloured disc behind it). */}
@@ -327,6 +366,8 @@ export function RBotScreen(): React.JSX.Element {
         </View>
       </KeyboardAvoidingView>
     </GradientScreen>
+    </View>
+    </View>
   );
 }
 
@@ -358,6 +399,10 @@ function Bubble({
 }
 
 const styles = StyleSheet.create({
+  overlay: {flex: 1},
+  panel: {position: 'absolute', overflow: 'hidden', borderRadius: 20},
+  sidePanel: {right: 0, top: 0, bottom: 0, width: '68%'},
+  bottomPanel: {left: 0, right: 0, bottom: 0, height: '62%'},
   flex: {flex: 1},
   head: {
     flexDirection: 'row',

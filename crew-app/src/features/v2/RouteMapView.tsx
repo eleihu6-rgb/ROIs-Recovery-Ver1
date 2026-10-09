@@ -2,7 +2,7 @@
 //
 // Where the month's flying went: every destination reached from the crew's base
 // drawn as a great-circle line over a light-on-dark world outline, with the
-// month's numbers underneath (flights / distance / block / duty, plus routes /
+// month's numbers inside the map (flights / distance / block / duty, plus routes /
 // airports / countries).
 //
 // The map is drawn from `worldLand.ts` (generated Natural Earth 110m outline,
@@ -24,9 +24,13 @@ import {
   mercatorX,
   mercatorY,
   monthRoutes,
+  monthLegs,
   monthStats,
   positionOf,
   routeViewBox,
+  unwrapLon,
+  MAP_ASPECT,
+  MERCATOR_GRID,
 } from './schedView';
 import { WORLD_LAND_PATHS } from './worldLand';
 
@@ -45,14 +49,21 @@ export interface RouteMapViewProps {
 export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): React.JSX.Element {
   const [zoom, setZoom] = useState(1);
   const [focused, setFocused] = useState<string | null>(null);
-  const home = useMemo(() => positionOf(base), [base]);
-  const routes = useMemo(() => monthRoutes(month, base), [month, base]);
-  const stats = useMemo(() => monthStats(month, base), [month, base]);
+  // The wide card is as tall as the screen allows: frame the map at its real
+  // ratio so it fills the card instead of floating in a band.
+  const [cardAspect, setCardAspect] = useState(MAP_ASPECT);
+  // Guest demo trips have a real departure airport but no assigned crew base.
+  // Use their first departure for this map only; do not claim it as their base
+  // elsewhere in the app.
+  const mapBase = useMemo(() => base || monthLegs(month)[0]?.dep || '', [base, month]);
+  const home = useMemo(() => positionOf(mapBase), [mapBase]);
+  const routes = useMemo(() => monthRoutes(month, mapBase), [month, mapBase]);
+  const stats = useMemo(() => monthStats(month, mapBase), [month, mapBase]);
   // iPhone Duo inner screen: landscape = map left half (full height), details
   // right half; rotated = the map takes the height the width allows, the seven
   // stats share one row, the routes run in two columns.
   const { wide, tall, width } = useLayout();
-  const mapHeight = tall ? Math.round((width - 44) * TALL_MAP_RATIO) : MAP_HEIGHT;
+  const mapHeight = tall ? Math.round((width - 44) * TALL_MAP_RATIO) : MAP_HEIGHT + 100;
 
   if (!home || routes.length === 0) {
     return (
@@ -65,59 +76,73 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
     );
   }
 
-  const viewBox = routeViewBox(home, routes.map(r => r.position), zoom);
+  // Framed on the base: destinations unwrapped around its longitude, so the base
+  // sits in the middle and a trans-Pacific route stays one line on its side.
+  const viewBox = routeViewBox(home, routes.map(r => r.position), zoom, wide ? cardAspect : MAP_ASPECT);
+  const [vbX, , vbW] = viewBox.split(' ').map(Number);
+  // The world outline is one 0…1000 strip; repeat it wherever the box runs past.
+  const landShifts: number[] = [];
+  for (let k = Math.floor(vbX / MERCATOR_GRID); k * MERCATOR_GRID < vbX + vbW; k++) landShifts.push(k * MERCATOR_GRID);
+  const xOf = (lon: number) => mercatorX(unwrapLon(lon, home.lon));
   const selected = routes.find(r => r.code === focused) ?? null;
   const mapCard = (
-      <View style={[s.mapCard, { backgroundColor: p.g1, borderColor: p.frostLine }, wide && s.mapCardWide]} testID="route-map">
+      <View style={[s.mapCard, { backgroundColor: p.mapBg, borderColor: p.frostLine }, wide && s.mapCardWide]} testID="route-map"
+        onLayout={e => {
+          const { width: w, height: h } = e.nativeEvent.layout;
+          if (wide && w > 0 && h > 0) setCardAspect(w / h);
+        }}>
         <Svg width="100%" height={wide ? '100%' : mapHeight} viewBox={viewBox} testID="route-svg">
-          <G opacity={0.9}>
-            {WORLD_LAND_PATHS.map((d, i) => (
-              <Path key={`land-${i}`} d={d} fill={p.g4} fillOpacity={0.34} stroke={p.frostLine} strokeWidth={0.4} />
-            ))}
-          </G>
-          {graticule(viewBox, p.inkFaint)}
+          {landShifts.map(dx => (
+            <G key={`world-${dx}`} opacity={0.9} transform={`translate(${dx} 0)`}>
+              {WORLD_LAND_PATHS.map((d, i) => (
+                <Path key={`land-${i}`} d={d} fill={p.isLight ? p.mapLand : p.g4} fillOpacity={p.isLight ? 0.72 : 0.34} stroke={p.isLight ? p.cardLine : 'rgba(255,255,255,0.2)'} strokeWidth={0.4} />
+              ))}
+            </G>
+          ))}
+          {graticule(viewBox, p.mapRoute)}
           {routes.map(r => (
             <Path
               key={`line-${r.code}`}
-              d={greatCirclePath(home, r.position)}
+              d={greatCirclePath(home, r.position, undefined, home.lon)}
               fill="none"
-              stroke={selected && selected.code !== r.code ? p.g4 : p.dockLight}
+              stroke={selected && selected.code !== r.code ? p.mapMutedRoute : p.mapRoute}
               strokeOpacity={selected && selected.code !== r.code ? 0.45 : 0.95}
               strokeWidth={selected?.code === r.code ? 2.6 : 1.6}
             />
           ))}
           {routes.map(r => (
             <G key={`mark-${r.code}`}>
-              <Circle cx={mercatorX(r.position.lon)} cy={mercatorY(r.position.lat)} r={selected?.code === r.code ? 5 : 3.4} fill={p.dockLight} />
-              <Circle cx={mercatorX(r.position.lon)} cy={mercatorY(r.position.lat)} r={9} fill="none" stroke={p.dockLight} strokeOpacity={selected?.code === r.code ? 0.9 : 0} strokeWidth={1} />
+              <Circle cx={xOf(r.position.lon)} cy={mercatorY(r.position.lat)} r={selected?.code === r.code ? 5 : 3.4} fill={p.mapRoute} />
+              <Circle cx={xOf(r.position.lon)} cy={mercatorY(r.position.lat)} r={9} fill="none" stroke={p.mapRoute} strokeOpacity={selected?.code === r.code ? 0.9 : 0} strokeWidth={1} />
             </G>
           ))}
           {/* The crew's own base is the one filled hub every line starts from. */}
-          <Circle cx={mercatorX(home.lon)} cy={mercatorY(home.lat)} r={6} fill={p.dockInk} stroke={p.dockLight} strokeWidth={2} />
+          <Circle cx={mercatorX(home.lon)} cy={mercatorY(home.lat)} r={6} fill={p.mapBg} stroke={p.mapRoute} strokeWidth={2} />
         </Svg>
         {/* Base + selected-airport labels ride on the map, not in a legend. */}
         <View style={s.mapBadge} pointerEvents="none">
-          <Text style={s.mapBadgeText}>{`${base.toUpperCase()} · BASE`}</Text>
+          <Text style={s.mapBadgeText}>{`${mapBase.toUpperCase()} · ${base ? 'BASE' : 'START'}`}</Text>
         </View>
         {selected ? (
-          <View style={[s.mapBadge, s.mapBadgeBottom]} pointerEvents="none">
+          <View style={[s.mapBadge, s.mapBadgeBottom, { bottom: tall ? 105 : 174 }]} pointerEvents="none">
             <Text style={s.mapBadgeText}>{`${selected.code} · ${formatKm(selected.km)} · ${selected.legs} leg${selected.legs > 1 ? 's' : ''}`}</Text>
           </View>
         ) : null}
-        <View style={s.zoomCol}>
-          <Pressable onPress={() => setZoom(z => Math.min(MAX_ZOOM, z + 1))} testID="route-zoom-in" style={[s.zoomBtn, { backgroundColor: p.card }]} accessibilityLabel="Zoom in">
+        <View style={[s.zoomCol, { bottom: tall ? 105 : 174 }]}>
+          <Pressable onPress={() => setZoom(z => Math.min(MAX_ZOOM, z + 1))} testID="route-zoom-in" style={[s.zoomBtn, { backgroundColor: p.isLight ? p.cardSolid : p.card }]} accessibilityLabel="Zoom in">
             <Icon name="zoomIn" size={18} color={p.cardInk} />
           </Pressable>
-          <Pressable onPress={() => setZoom(z => Math.max(MIN_ZOOM, z - 1))} testID="route-zoom-out" style={[s.zoomBtn, { backgroundColor: p.card }]} accessibilityLabel="Zoom out">
+          <Pressable onPress={() => setZoom(z => Math.max(MIN_ZOOM, z - 1))} testID="route-zoom-out" style={[s.zoomBtn, { backgroundColor: p.isLight ? p.cardSolid : p.card }]} accessibilityLabel="Zoom out">
             <Icon name="zoomOut" size={18} color={p.cardInk} />
           </Pressable>
+        </View>
+        <View style={s.statsOverlay}>
+          <StatsCard stats={stats} month={month} palette={p} oneRow={tall} compactWide={wide} inMap />
         </View>
       </View>
   );
   const details = (
     <>
-      <StatsCard stats={stats} month={month} palette={p} oneRow={tall} />
-
       <Text style={[s.listHead, { color: p.inkSoft }]}>Routes</Text>
       <View style={tall ? s.routeGrid : undefined} testID={tall ? 'route-grid' : undefined}>
       {routes.map(r => (
@@ -132,7 +157,7 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[s.routeTitle, { color: p.cardInk }]} numberOfLines={1}>
-              {`${base.toUpperCase()} → ${r.code}`}
+              {`${mapBase.toUpperCase()} → ${r.code}`}
             </Text>
             <Text style={[s.routeSub, { color: p.cardSoft }]} numberOfLines={1}>
               {r.label}
@@ -178,7 +203,9 @@ export function RouteMapView({ month, base, palette: p }: RouteMapViewProps): Re
  * grid and both edges, and the numbers use tabular figures so a changing count
  * cannot shift a column.
  */
-function StatsCard({ stats, month, palette: p, oneRow }: { stats: ReturnType<typeof monthStats>; month: MonthModel; palette: CarrierPalette; /** Rotated Duo: all seven cells on one row. */ oneRow?: boolean }): React.JSX.Element {
+function StatsCard({ stats, month, palette: p, oneRow, compactWide = false, inMap = false }: { stats: ReturnType<typeof monthStats>; month: MonthModel; palette: CarrierPalette; /** Rotated Duo: all seven cells on one row. */ oneRow?: boolean; /** Landscape Duo: a short strip leaves the map visible. */ compactWide?: boolean; inMap?: boolean }): React.JSX.Element {
+  const valueColor = inMap && !p.isLight ? '#fff' : p.cardInk;
+  const labelColor = inMap ? p.mapLabel : p.cardSoft;
   const totals: Array<{ id: string; value: string; label: string }> = [
     { id: 'flights', value: String(stats.flights), label: 'Flights' },
     // Distances are long; the unit lives in the label so four cells fit one row.
@@ -192,22 +219,22 @@ function StatsCard({ stats, month, palette: p, oneRow }: { stats: ReturnType<typ
     { id: 'countries', value: String(stats.countries), label: 'Countries' },
   ];
   return (
-    <View style={[s.stats, { backgroundColor: p.card, borderColor: p.cardLine }]} testID="route-stats">
-      <Text style={[s.statsTitle, { color: p.cardSoft }]}>{`${MON[month.monthIdx]} ${month.year} summary`}</Text>
-      <View style={s.statsGrid} testID={oneRow ? 'route-stat-row' : 'route-stat-totals'}>
+    <View style={[s.stats, inMap && s.statsInMap, compactWide && s.statsWide, { backgroundColor: inMap ? p.mapPanel : p.card, borderColor: inMap && !p.isLight ? 'rgba(255,255,255,0.38)' : p.cardLine }]} testID="route-stats">
+      {compactWide ? null : <Text style={[s.statsTitle, { color: labelColor }]}>{`${MON[month.monthIdx]} ${month.year} summary`}</Text>}
+      <View style={[s.statsGrid, compactWide && s.statsGridWide]} testID={oneRow ? 'route-stat-row' : 'route-stat-totals'}>
         {(oneRow ? [...totals, ...counts] : totals).map(cell => (
           <View key={cell.id} style={s.statsCell} testID={`route-stat-${cell.id}`}>
-            <Text style={[s.statsValue, { color: p.cardInk }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{cell.value}</Text>
-            <Text style={[s.statsLabel, { color: p.cardSoft }]}>{cell.label}</Text>
+            <Text style={[s.statsValue, { color: valueColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{cell.value}</Text>
+            <Text style={[s.statsLabel, { color: labelColor }]}>{cell.label}</Text>
           </View>
         ))}
       </View>
       {oneRow ? null : (
-      <View style={[s.statsCounts, { borderTopColor: p.cardLine }]} testID="route-stat-counts">
+      <View style={[s.statsCounts, compactWide && s.statsCountsWide, { borderTopColor: inMap && !p.isLight ? 'rgba(255,255,255,0.28)' : p.cardLine }]} testID="route-stat-counts">
         {counts.map(cell => (
-          <View key={cell.id} style={s.statsCell} testID={`route-stat-${cell.id}`}>
-            <Text style={[s.statsCountValue, { color: p.cardInk }]} numberOfLines={1}>{cell.value}</Text>
-            <Text style={[s.statsLabel, { color: p.cardSoft }]}>{cell.label}</Text>
+          <View key={cell.id} style={[s.statsCell, compactWide && s.statsCountInline]} testID={`route-stat-${cell.id}`}>
+            <Text style={[s.statsCountValue, { color: valueColor }]} numberOfLines={1}>{cell.value}</Text>
+            <Text style={[s.statsLabel, compactWide && s.statsCountLabelInline, { color: labelColor }]}>{cell.label}</Text>
           </View>
         ))}
       </View>
@@ -220,11 +247,10 @@ function StatsCard({ stats, month, palette: p, oneRow }: { stats: ReturnType<typ
 function graticule(viewBox: string, color: string): React.JSX.Element[] {
   const [x, y, w, h] = viewBox.split(' ').map(Number);
   const lines: React.JSX.Element[] = [];
-  for (let lon = -180; lon <= 180; lon += 30) {
-    const gx = mercatorX(lon);
-    if (gx >= x && gx <= x + w) {
-      lines.push(<Line key={`gx-${lon}`} x1={gx} y1={y} x2={gx} y2={y + h} stroke={color} strokeWidth={0.4} strokeOpacity={0.35} />);
-    }
+  // Every 30° meridian across the box, also past ±180 when the map is framed on a base.
+  const step = mercatorX(30) - mercatorX(0);
+  for (let gx = Math.ceil(x / step) * step; gx <= x + w; gx += step) {
+    lines.push(<Line key={`gx-${Math.round(gx)}`} x1={gx} y1={y} x2={gx} y2={y + h} stroke={color} strokeWidth={0.4} strokeOpacity={0.35} />);
   }
   for (let lat = -60; lat <= 75; lat += 15) {
     const gy = mercatorY(lat);
@@ -243,6 +269,7 @@ const s = StyleSheet.create({
   wideRow: { flex: 1, flexDirection: 'row', gap: 14, paddingHorizontal: 22, paddingTop: 4, paddingBottom: 110 },
   wideHalf: { flex: 1, minWidth: 0 },
   mapCardWide: { flex: 1 },
+  statsOverlay: { position: 'absolute', left: 10, right: 10, bottom: 10 },
   wideDetails: { gap: 10, paddingBottom: 12 },
   mapBadge: { position: 'absolute', left: 10, top: 10, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginTop: 0 },
   mapBadgeBottom: { top: undefined, bottom: 10 },
@@ -250,11 +277,17 @@ const s = StyleSheet.create({
   zoomCol: { position: 'absolute', right: 8, bottom: 8, gap: 8 },
   zoomBtn: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   stats: { borderRadius: 16, borderWidth: 1, padding: 14 },
+  statsInMap: { padding: 12 },
+  statsWide: { paddingHorizontal: 10, paddingVertical: 8 },
   statsTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' },
   statsGrid: { flexDirection: 'row', marginTop: 10, gap: 8 },
+  statsGridWide: { marginTop: 0 },
   // The second tier of the same grid: one hairline between the tiers, no rule
   // after the last one (the card used to end on a border).
   statsCounts: { flexDirection: 'row', marginTop: 12, paddingTop: 12, gap: 8, borderTopWidth: 1 },
+  statsCountsWide: { marginTop: 7, paddingTop: 6 },
+  statsCountInline: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  statsCountLabelInline: { marginTop: 0 },
   statsCell: { flex: 1, minWidth: 0 },
   statsValue: { fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
   statsCountValue: { fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },

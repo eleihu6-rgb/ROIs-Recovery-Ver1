@@ -9,6 +9,9 @@ import type { ApiCompare, SwapCrew, SwapFilters } from './dutySwapModel';
 export interface SwapRbotEntry { role: 'user' | 'assistant'; content: string; chips?: string[]; local?: boolean }
 
 export interface DutySwapState {
+  /** Design D0 → D1: "search" = Search pairing (find the target crew), "pick" =
+   *  the matrix where duties are picked. Each visit starts at "search". */
+  step: 'search' | 'pick';
   status: 'idle' | 'loading' | 'ready' | 'error';
   error: string | null;
   filters: SwapFilters | null;
@@ -26,7 +29,7 @@ export interface DutySwapState {
 }
 
 const initialState: DutySwapState = {
-  status: 'idle', error: null, filters: null, crews: [], details: {},
+  step: 'search', status: 'idle', error: null, filters: null, crews: [], details: {},
   give: [], take: [], crewB: null, disclaimerAccepted: false, options: null, rbot: [],
 };
 
@@ -80,6 +83,9 @@ const slice = createSlice({
       if (state.crewB !== a.payload) state.take = [];
       state.crewB = a.payload;
     },
+    setStep(state, a: PayloadAction<DutySwapState['step']>) {
+      state.step = a.payload;
+    },
     clearSelection(state) {
       state.give = []; state.take = []; state.crewB = null;
     },
@@ -100,6 +106,6 @@ const slice = createSlice({
 
 export const {
   searchStarted, searchSucceeded, searchFailed, detailLoaded, toggleGive, toggleTake, setGive, setTake, selectCrewB, clearSelection,
-  acceptDisclaimer, optionsLoaded, rbotAppend, clearDutySwap,
+  setStep, acceptDisclaimer, optionsLoaded, rbotAppend, clearDutySwap,
 } = slice.actions;
 export default slice.reducer;

@@ -310,6 +310,8 @@ describe('Schedule meetings — actions', () => {
 // event on a blank day still rendered a "Day Off" card with the house icon.
 // A day off may only come from an explicit roster row the airline published.
 describe('Schedule meetings — blank roster days are not days off', () => {
+  beforeEach(() => jest.useFakeTimers({ now: new Date('2026-09-12T09:00:00-07:00'), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'nextTick'] }));
+  afterEach(() => jest.useRealTimers());
   const guestCall = meeting({
     id: 'ev-sia-cps',
     title: 'SIA-CPS Technical call',

@@ -1,0 +1,45 @@
+# Check the shared stronger glass surface in the Schedule view menu.
+# Signs in as TG, then selects Graphite in Appearance settings.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- takeScreenshot: glass-surfaces-login-Ver1
+- tapOn:
+    id: "airline-dropdown"
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- tapOn:
+    id: "row-preferences"
+- tapOn:
+    id: "row-appearance"
+- tapOn:
+    id: "theme-graphite"
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-view-menu"
+    timeout: 30000
+- tapOn:
+    id: "sched-view-menu"
+- assertVisible:
+    id: "sched-view-menu-panel"
+- takeScreenshot: glass-surfaces-menu-graphite-Ver3

@@ -2,6 +2,7 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import type { RbotSource } from '../rbot/pageContext';
 
 export type V2TabParamList = {
   Home: undefined;
@@ -20,7 +21,7 @@ export type SpecPageId =
 export type V2StackParamList = {
   Tabs: NavigatorScreenParams<V2TabParamList> | undefined;
   /** R'Bot — the in-app AI assistant (dock entry, right of the tabs). */
-  RBot: undefined;
+  RBot: { source?: RbotSource } | undefined;
   Alerts: undefined;
   /** Full-screen city viewer; `index` picks the page inside the destination list. */
   Destination: { index: number };
@@ -46,6 +47,10 @@ export type V2StackParamList = {
   DutySwapRecords: undefined;
   /** Which of my duties other crew may request (web "My Duty"). */
   DutySwapMyDuties: undefined;
+  /** Meal preference for a date range (demo, local only), Home ▸ Quick actions. */
+  Meal: undefined;
+  /** Check-In for the next duty (portal task or roster rule), Home ▸ Quick actions. */
+  CheckIn: undefined;
 };
 
 export type V2Nav = NativeStackNavigationProp<V2StackParamList>;

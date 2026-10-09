@@ -2,7 +2,7 @@
 //
 // Same anatomy as the web `@rois/ui` AppDialog (see
 // docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md):
-// a tone band carrying an outline circle glyph, the title/message centred in the
+// a header carrying an outline circle glyph, the title/message centred in the
 // body, pill actions in the body, and a circular close disc overhanging the
 // top-right corner. Colours come from the crew's carrier palette, so the pop-up
 // is theme-matched like every other v2 surface.
@@ -90,13 +90,12 @@ export function AppDialog({
       >
         {/* The testID lives on the card, not the Modal: RN does not expose a
             Modal's own testID to the accessibility tree (Maestro could not see it). */}
-        <Pressable style={[s.card, { backgroundColor: p.cardSolid }]} onPress={() => {}} testID={testID}>
-          {/* Header band in the crew's carrier colour so the pop-up sits in the
-              app theme, not against it. The semantic tone is carried by the
-              glyph badge (and the primary pill), not by flooding the band. */}
-          <View style={[s.band, { backgroundColor: p.btn }]} testID={`${testID}-band`}>
-            <View style={[s.glyph, { backgroundColor: accent, borderColor: p.ink }]} testID={`${testID}-glyph`}>
-              <Icon name={icon ?? TONE_GLYPH[tone]} size={30} color={p.ink} strokeWidth={2} />
+        <Pressable style={[s.card, p.isLight && s.lightCard, { backgroundColor: p.cardOverlay, borderColor: p.isLight ? p.cardLine : undefined }]} onPress={() => {}} testID={testID}>
+          {/* Carrier themes use their brand header; Daylight uses a quiet grouped
+              surface. The glyph and primary action carry the semantic tone. */}
+          <View style={[s.band, p.isLight && s.lightBand, { backgroundColor: p.isLight ? p.cardOverlay : p.btn }]} testID={`${testID}-band`}>
+            <View style={[s.glyph, p.isLight && s.lightGlyph, { backgroundColor: p.isLight ? p.g3 : accent, borderColor: p.isLight ? p.cardLine : p.ink }]} testID={`${testID}-glyph`}>
+              <Icon name={icon ?? TONE_GLYPH[tone]} size={p.isLight ? 26 : 30} color={p.isLight ? accent : p.ink} strokeWidth={2} />
             </View>
           </View>
 
@@ -124,7 +123,7 @@ export function AppDialog({
                     style={[s.pill, { backgroundColor: accent }]}
                     testID={`${testID}-confirm`}
                   >
-                    <Text style={[s.pillText, { color: p.ink }]}>{confirmLabel}</Text>
+                    <Text style={[s.pillText, { color: p.isLight ? p.dockLight : p.ink }]}>{confirmLabel}</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -135,7 +134,7 @@ export function AppDialog({
           <Pressable
             onPress={onClose}
             hitSlop={12}
-            style={[s.closeDisc, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]}
+            style={[s.closeDisc, { backgroundColor: p.isLight ? p.g3 : p.cardOverlay, borderColor: p.cardLine }]}
             accessibilityLabel="close"
             testID={`${testID}-close`}
           >
@@ -150,10 +149,13 @@ export function AppDialog({
 const s = StyleSheet.create({
   overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.35)', padding: 24 },
   card: { width: '100%', maxWidth: 340, borderRadius: 18, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 12 },
+  lightCard: { borderWidth: 1, shadowOpacity: 0.16 },
   // The band is opaque and clipped to the top corners; the close disc is a
   // sibling so it can overhang the card edge.
   band: { height: 112, alignItems: 'center', justifyContent: 'center', borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' },
+  lightBand: { height: 80 },
   glyph: { width: 58, height: 58, borderRadius: 29, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  lightGlyph: { width: 50, height: 50, borderRadius: 25, borderWidth: 1 },
   body: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20, alignItems: 'center' },
   title: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
   message: { fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 6 },

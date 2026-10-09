@@ -480,5 +480,9 @@ export function compareRows(mine: ApiTaskDetail[], others: ApiTaskDetail[]): Com
     const legs = list.flatMap(t => realLegs(t).filter(s => portalToIso(s.fltDt) === date));
     return { task, legs };
   };
-  return [...days].sort().map(date => ({ date, mine: side(mine, date), others: side(others, date) }));
+  // Only dates where something starts or flies: the days inside a trip carry
+  // nothing new and pushed the swapped duties out of view.
+  const has = (x: CompareSide) => !!x.task || x.legs.length > 0;
+  return [...days].sort().map(date => ({ date, mine: side(mine, date), others: side(others, date) }))
+    .filter(r => has(r.mine) || has(r.others));
 }

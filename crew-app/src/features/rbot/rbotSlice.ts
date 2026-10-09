@@ -23,11 +23,19 @@ export interface RbotState {
   entries: RbotThreadEntry[];
   /** The crew left the chat while R'Bot was still answering. */
   unread: boolean;
+  scheduleView: string;
+  scheduleMonth: string | null;
+  scheduleDay: number | null;
+  dutySwapApproach: string;
 }
 
 const initialState: RbotState = {
   entries: [],
   unread: false,
+  scheduleView: 'timeline',
+  scheduleMonth: null,
+  scheduleDay: null,
+  dutySwapApproach: 'matrix',
 };
 
 const rbotSlice = createSlice({
@@ -52,6 +60,16 @@ const rbotSlice = createSlice({
     markUnread(state) {
       state.unread = true;
     },
+    setScheduleView(state, action: PayloadAction<string>) {
+      state.scheduleView = action.payload;
+    },
+    setSchedulePosition(state, action: PayloadAction<{month: string; day: number | null}>) {
+      state.scheduleMonth = action.payload.month;
+      state.scheduleDay = action.payload.day;
+    },
+    setDutySwapApproach(state, action: PayloadAction<string>) {
+      state.dutySwapApproach = action.payload;
+    },
     _clear(state) {
       state.entries = [];
       state.unread = false;
@@ -59,7 +77,7 @@ const rbotSlice = createSlice({
   },
 });
 
-export const { appendEntry, markSeen, markUnread } = rbotSlice.actions;
+export const { appendEntry, markSeen, markUnread, setScheduleView, setSchedulePosition, setDutySwapApproach } = rbotSlice.actions;
 
 /** Drops anything older than the session window, so a phone left overnight
  *  starts the next duty with a clean chat. */

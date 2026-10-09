@@ -37,6 +37,13 @@ describe('what R\'Bot sees', () => {
     expect(snap.selected.give).toEqual(['PR124/PR125']);
     expect(JSON.stringify(snap).length).toBeLessThan(12000);
   });
+
+  it('still tells the AI which Duty Swap view and dates are open before rows load', () => {
+    const snap = buildSwapSnapshot({ filters: emptyFilters('2026-10-09', '2026-10-31'), crews: [], details: {},
+      give: [], take: [], crewB: null, step: 'search', status: 'loading' })!;
+    expect(snap).toMatchObject({ view: 'search', status: 'loading',
+      window: { start: '2026-10-09', end: '2026-10-31' }, me: { duties: [] }, crews: [] });
+  });
 });
 
 describe('local understanding (the mockup conversation)', () => {
@@ -66,6 +73,20 @@ describe('local understanding (the mockup conversation)', () => {
   it('says so when I have no swappable duty that day, and leaves unclear text to the server', () => {
     expect(interpretSwapLocally('swap my duty on 15 Oct', screen)!.note).toMatch(/can't find a swappable duty/);
     expect(interpretSwapLocally('what is a good swap for me?', screen)).toBeNull();
+  });
+
+  it('grounds a short date follow-up in the open Search pairing window', () => {
+    const searching = { filters: emptyFilters('2026-10-09', '2026-10-31'), crews: [], details: {}, step: 'search' as const };
+    const reply = interpretSwapLocally('08 Oct', searching)!;
+    expect(reply.actions).toEqual([]);
+    expect(reply.note).toMatch(/Duty Swap.*Search pairing/);
+    expect(reply.note).toMatch(/08 Oct.*outside.*09 Oct.*31 Oct/);
+  });
+
+  it('can search for US flights before crew rows are available', () => {
+    const searching = { filters: emptyFilters('2026-10-09', '2026-10-31'), crews: [], details: {}, options: { ports: ['BKK', 'LAX', 'SEA'] } };
+    const plan = interpretSwapLocally('find crew with US flights', searching)!;
+    expect(plan.actions[0]).toMatchObject({ type: 'set_swap_search', fields: { fltArrList: ['LAX', 'SEA'] } });
   });
 });
 

@@ -1,8 +1,10 @@
 // Home ▸ Quick actions ▸ Duty Swap — Concept D (Crew Matrix).
 // Spec: docs/superpowers/specs/2026-10-07-crew-app-duty-swap-concept-d-design.md
-// Flow: disclaimer → matrix (my duties + searched crews) → tap my duty (give) and
-// crew B's duties (take) → Compare & send (portal legality check on submit) →
-// result. Records (top-right) lists requests: withdraw / accept / reject.
+// Flow: disclaimer → Search pairing (design D0: filters or R'Bot find the target
+// crew; on the Duo inner screen with a live preview) → matrix (my duties + the
+// crews found) → tap my duty (give) and crew B's duties (take) → Compare & send
+// (portal legality check on submit) → result. Records (top-right) lists
+// requests: withdraw / accept / reject.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useStore } from 'react-redux';
@@ -17,35 +19,40 @@ import { PageShell } from '../v2/PageShell';
 import { useV2Nav } from '../v2/nav';
 import { dutySwapApiFor, ensureDetails, loadOptions, openDutySwap, runSearch } from './dutySwapActions';
 import {
-  activeFilterCount, dayLabel, daysBetween, detailFor, kpiDelta, parseRuleMessage, signedHhmm, submitBody, SWAP_MODE_LABEL,
+  activeFilterCount, dayLabel, daysBetween, detailFor, kpiDelta, parseRuleMessage, signedHhmm, submitBody, SWAP_MODE_LABEL, validateFilters,
   type RuleResult, type SwapDuty, type SwapFilters,
 } from './dutySwapModel';
-import { acceptDisclaimer, clearSelection, selectCrewB, toggleGive, toggleTake } from './dutySwapSlice';
+import { acceptDisclaimer, clearSelection, selectCrewB, setStep, toggleGive, toggleTake } from './dutySwapSlice';
 import { CompareSheet } from './components/CompareSheet';
 import { CrewMatrix, matrixGeometry, tint } from './components/CrewMatrix';
-import { SearchSheet } from './components/SearchSheet';
+import { SearchForm } from './components/SearchForm';
 import { SwapRbotPanel } from './components/SwapRbotPanel';
 import { CrewAvatar } from '../settings/avatars';
 import { RBOT_AVATAR_INDEX } from '../rbot/RBotEntry';
 
 type Result = { kind: 'sent'; crewB: string } | { kind: 'illegal'; rule: RuleResult } | { kind: 'error'; message: string };
 
-export function DutySwapScreen(): React.JSX.Element {
+/** `switcher`: the Matrix | Market switch (DutySwapHost), shown in place of the title. */
+export function DutySwapScreen({ switcher, rbot }: {
+  switcher?: React.ReactNode;
+  rbot?: { open: boolean; setOpen: React.Dispatch<React.SetStateAction<boolean>>; inRail: boolean };
+} = {}): React.JSX.Element {
   const p = useCarrier();
   const nav = useV2Nav();
   const dispatch = useAppDispatch();
   const store = useStore<RootState>();
   const auth = useAppSelector(s => s.auth);
   const st = useAppSelector(s => s.dutySwap);
-  const { width, height, wide } = useLayout();
+  const { width, height, wide, tall } = useLayout();
   const api = useMemo(() => dutySwapApiFor(auth), [auth]);
   const carrier = airlineByCode(auth.airline).carrier;
 
   const [disclaimer, setDisclaimer] = useState<string | null>(null);
   const [defaults, setDefaults] = useState<{ startDate: string; endDate: string } | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
   // R'Bot shares the screen with the matrix (spec §6).
-  const [rbotOpen, setRbotOpen] = useState(false);
+  const [localRbotOpen, setLocalRbotOpen] = useState(false);
+  const rbotOpen = rbot?.open ?? localRbotOpen;
+  const setRbotOpen = rbot?.setOpen ?? setLocalRbotOpen;
   const [compareOpen, setCompareOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
@@ -60,7 +67,15 @@ export function DutySwapScreen(): React.JSX.Element {
     setTimeout(() => setCompareOpen(false), 350);
   };
 
-  // First paint: default window + one search. The disclaimer loads alongside.
+  // Every visit is a new swap: Search pairing, nothing picked. A pick left over
+  // from an earlier visit sat off screen and was sent along unnoticed.
+  useEffect(() => {
+    dispatch(clearSelection());
+    dispatch(setStep('search'));
+  }, [dispatch]);
+
+  // First paint: default window + one search in the background (my own duties
+  // for R'Bot, and the Duo preview). The disclaimer loads alongside.
   useEffect(() => {
     if (!api) return;
     void openDutySwap(dispatch, store.getState, api);
@@ -90,6 +105,9 @@ export function DutySwapScreen(): React.JSX.Element {
   const matrixW = railMode ? geometry.mineW + geometry.dateW + 6 * geometry.colW : rbotSide ? areaW / 2 - 4 : areaW;
   const railW = areaW - matrixW - 8;
 
+  // "1–6 of 123 crew" once the crews do not fit (cabin crew: 120+ candidates).
+  const [range, setRange] = useState<[number, number] | null>(null);
+  const onRange = useCallback((a: number, b: number) => setRange([a, b]), []);
   const onVisibleCrews = useCallback((ids: string[]) => {
     if (api) void ensureDetails(dispatch, store.getState, api, ids);
   }, [api, dispatch, store]);
@@ -134,13 +152,33 @@ export function DutySwapScreen(): React.JSX.Element {
   };
 
   const onSearch = (f: SwapFilters) => {
-    setSearchOpen(false);
+    dispatch(setStep('pick'));
     if (api) void runSearch(dispatch, api, f);
   };
-  const openSearch = () => {
-    setSearchOpen(true);
-    if (api) loadOptions(dispatch, store.getState, api).catch(() => undefined);
-  };
+  const openSearch = () => dispatch(setStep('search'));
+  // The form's choice lists (ports, flights, fleets…) for the current window —
+  // after the first search lands: the portal queues a crew's calls, and seven
+  // lookups in front of a cabin crew's 1 MB search pushed it past its timeout.
+  const hasFilters = !!st.filters;
+  const searched = st.status === 'ready' || st.status === 'error';
+  useEffect(() => {
+    if (api && hasFilters && searched && st.step === 'search') loadOptions(dispatch, store.getState, api).catch(() => undefined);
+  }, [api, hasFilters, searched, st.step, dispatch, store]);
+
+  // Duo inner screen: the preview follows the form (debounced), so the crew sees
+  // who is left before pressing Search.
+  const preview = wide || tall;
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (previewTimer.current) clearTimeout(previewTimer.current); }, []);
+  const onFormChange = useCallback((f: SwapFilters) => {
+    if (!preview || !api) return;
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    previewTimer.current = setTimeout(() => {
+      if (validateFilters(f) || JSON.stringify(f) === JSON.stringify(store.getState().dutySwap.filters)) return;
+      void runSearch(dispatch, api, f);
+    }, 700);
+  }, [preview, api, dispatch, store]);
+  const [previewArea, setPreviewArea] = useState<{ w: number; h: number } | null>(null);
 
   const windowLabel = st.filters
     ? `${dayLabel(st.filters.startDate).day} ${dayLabel(st.filters.startDate).month} – ${dayLabel(st.filters.endDate).day} ${dayLabel(st.filters.endDate).month}`
@@ -201,14 +239,60 @@ export function DutySwapScreen(): React.JSX.Element {
       </View>
     </View>
   );
+  const searching = st.step === 'search';
+  const previewPane = (
+    <View style={[s.flex, s.preview, { backgroundColor: p.cardSolid }]} testID="search-preview">
+      <View style={[s.previewHead, { borderBottomColor: p.cardLine }]}>
+        <Text style={[s.previewTitle, { color: p.cardInk }]}>Preview · {others.length} crew</Text>
+        <View style={s.flex} />
+        {st.status === 'loading' ? <ActivityIndicator color={p.btn} size="small" /> : <Text style={[s.count, { color: p.cardSoft }]}>{windowLabel}</Text>}
+      </View>
+      <View style={s.flex} testID="search-preview-body" onLayout={e => {
+        const { width: w, height: h } = e.nativeEvent.layout;
+        setPreviewArea(prev => (prev && prev.w === w && prev.h === h ? prev : { w, h }));
+      }}>
+        {st.status === 'error' ? (
+          <Text style={[s.msg, s.previewMsg, { color: p.cardSoft }]}>{st.error}</Text>
+        ) : me && previewArea ? (
+          <CrewMatrix palette={p} me={me} others={others} days={days} geometry={matrixGeometry(previewArea.w, previewArea.h, others.length)}
+            width={previewArea.w} details={st.details} give={give} take={take} crewB={st.crewB}
+            onPressDuty={() => undefined} onPressCrew={() => undefined} onVisibleCrews={() => undefined} />
+        ) : (
+          <ActivityIndicator color={p.btn} style={s.previewMsg} />
+        )}
+      </View>
+    </View>
+  );
+  // Design D0: the form, plus R'Bot or (Duo inner screen) the live preview —
+  // side by side in landscape, stacked in portrait.
+  const searchBody = st.filters ? (
+    <View style={[s.flex, s.searchGap, wide && s.rowLayout]}>
+      <View style={wide ? s.half : s.flex}>
+        <SearchForm palette={p} crewId={auth.crewId ?? ''} initial={st.filters} options={st.options}
+          defaults={defaults ?? { startDate: st.filters.startDate, endDate: st.filters.endDate }}
+          twoColumns={tall || (!wide && width > height)} resultLabel={preview && st.status === 'ready' ? `${others.length} crew` : undefined}
+          onSearch={onSearch} onChange={onFormChange} onAskRbot={rbotOpen ? undefined : () => setRbotOpen(true)}
+          onClose={st.crews.length ? () => dispatch(setStep('pick')) : undefined} />
+      </View>
+      {rbotOpen ? (
+        <View style={wide ? s.half : s.rbotBottom}>
+          <SwapRbotPanel palette={p} api={api} side={wide} onClose={() => setRbotOpen(false)} />
+        </View>
+      ) : preview ? <View style={wide ? s.half : s.flex}>{previewPane}</View> : null}
+    </View>
+  ) : st.status === 'error' ? errorCard : (
+    <View style={s.center}><ActivityIndicator color={p.ink} /><Text style={[s.msg, { color: p.inkSoft }]}>Loading duties…</Text></View>
+  );
+
   return (
-    <PageShell title="Duty Swap" scroll={false} layout="full" testID="duty-swap-screen"
-      right={
+    <PageShell title={searching ? 'New swap' : 'Duty Swap'} titleNode={switcher} scroll={false} layout="full" testID="duty-swap-screen"
+      right={rbot?.inRail ? undefined : (
         <Pressable onPress={() => nav.navigate('DutySwapRecords')} hitSlop={10} accessibilityLabel="swap requests" testID="swap-records">
           <Icon name="history" size={22} color={p.ink} strokeWidth={1.8} />
         </Pressable>
-      }>
-      <View style={s.toolbar}>
+      )}>
+      {searching && rbot?.inRail ? null : <View style={s.toolbar}>
+        {searching ? <View style={s.flex} /> : (<>
         <Pressable onPress={openSearch} style={[s.chip, { backgroundColor: p.frost, borderColor: p.frostLine }]} testID="swap-open-search">
           <Icon name="cal" size={14} color={p.ink} strokeWidth={2} />
           <Text style={[s.chipText, { color: p.ink }]}>{windowLabel}</Text>
@@ -220,23 +304,30 @@ export function DutySwapScreen(): React.JSX.Element {
           </Text>
         </Pressable>
         <View style={s.flex} />
-        <Text style={[s.count, { color: p.inkSoft }]} testID="swap-crew-count">{others.length} crew</Text>
-        <Pressable onPress={() => nav.navigate('DutySwapMyDuties')} accessibilityLabel="my duties" testID="swap-my-duties"
-          style={[s.iconChip, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
-          <Icon name="lock" size={15} color={p.ink} strokeWidth={2} />
-        </Pressable>
-        <Pressable onPress={() => setRbotOpen(o => !o)} accessibilityLabel="R'Bot" testID="swap-rbot-open"
-          style={[s.rbotBtn, { backgroundColor: rbotOpen ? p.ink : p.frost, borderColor: p.frostLine }]}>
-          <CrewAvatar index={RBOT_AVATAR_INDEX} size={22} bare />
-        </Pressable>
-      </View>
+        <Text style={[s.count, { color: p.inkSoft }]} testID="swap-crew-count">
+          {range && range[1] - range[0] + 1 < others.length ? `${range[0]}–${range[1]} of ${others.length} crew` : `${others.length} crew`}
+        </Text>
+        </>)}
+        {!rbot?.inRail ? (
+          <>
+            <Pressable onPress={() => nav.navigate('DutySwapMyDuties')} accessibilityLabel="my duties" testID="swap-my-duties"
+              style={[s.iconChip, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
+              <Icon name="lock" size={15} color={p.ink} strokeWidth={2} />
+            </Pressable>
+            <Pressable onPress={() => setRbotOpen(o => !o)} accessibilityLabel="R'Bot" testID="swap-rbot-open"
+              style={[s.rbotBtn, { backgroundColor: rbotOpen ? p.ink : p.frost, borderColor: p.frostLine }]}>
+              <CrewAvatar index={RBOT_AVATAR_INDEX} size={22} bare />
+            </Pressable>
+          </>
+        ) : null}
+      </View>}
 
-      <View style={s.area} onLayout={e => {
+      <View style={s.area} testID="swap-area" onLayout={e => {
         const { width: w, height: h } = e.nativeEvent.layout;
         // The area has 10 pt side padding on each side.
         setArea(prev => (prev && prev.w === w - 20 && prev.h === h ? prev : { w: w - 20, h }));
       }}>
-        {st.status === 'loading' && !me ? (
+        {searching ? searchBody : st.status === 'loading' && !me ? (
           <View style={s.center}><ActivityIndicator color={p.ink} /><Text style={[s.msg, { color: p.inkSoft }]}>Loading duties…</Text></View>
         ) : st.status === 'error' && !me ? (
           errorCard
@@ -245,7 +336,7 @@ export function DutySwapScreen(): React.JSX.Element {
             <View style={railMode || rbotSide ? { width: matrixW } : s.flex}>
               <CrewMatrix palette={p} me={me} others={others} days={days} geometry={geometry} width={matrixW}
                 details={st.details} give={give} take={take} crewB={st.crewB}
-                onPressDuty={onPressDuty} onPressCrew={onPressCrew} onVisibleCrews={onVisibleCrews} />
+                onPressDuty={onPressDuty} onPressCrew={onPressCrew} onVisibleCrews={onVisibleCrews} onRange={onRange} />
               {st.status === 'error' ? <View style={s.overlay}>{errorCard}</View> : others.length === 0 ? (
                 <Text style={[s.empty, { color: p.cardSoft, backgroundColor: p.cardSolid }]} testID="swap-empty">
                   No crew match this search. Widen the dates or remove a filter.
@@ -265,12 +356,6 @@ export function DutySwapScreen(): React.JSX.Element {
           </View>
         ) : null}
       </View>
-
-      {st.filters && me ? (
-        <SearchSheet visible={searchOpen} palette={p} crewId={me.crewId} initial={st.filters}
-          defaults={defaults ?? { startDate: st.filters.startDate, endDate: st.filters.endDate }}
-          options={st.options} onClose={() => setSearchOpen(false)} onSearch={onSearch} />
-      ) : null}
 
       {me && st.crewB ? (
         <CompareSheet visible={compareOpen} onClose={() => setCompareOpen(false)} palette={p} carrier={carrier}
@@ -301,7 +386,7 @@ export function DutySwapScreen(): React.JSX.Element {
   );
 }
 
-function RuleList({ rule }: { rule: RuleResult }) {
+export function RuleList({ rule }: { rule: RuleResult }) {
   const p = useCarrier();
   return (
     <View style={[s.rules, { backgroundColor: tint(p.cardSoft, 0.12) }]} testID="swap-rule-list">
@@ -342,6 +427,12 @@ const s = StyleSheet.create({
   busy: { position: 'absolute', right: 12, top: 12 },
   overlay: { position: 'absolute', left: 12, right: 12, top: 60 },
   hint: { fontSize: 12.5, textAlign: 'center', paddingVertical: 10 },
+  searchGap: { gap: 8 },
+  half: { flex: 1, minWidth: 0 },
+  preview: { borderRadius: 16, overflow: 'hidden' },
+  previewHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, height: 40, borderBottomWidth: StyleSheet.hairlineWidth },
+  previewTitle: { fontSize: 14, fontWeight: '800' },
+  previewMsg: { padding: 16, marginTop: 20 },
   tray: { marginTop: 8, borderRadius: 16, padding: 10, gap: 8 },
   trayLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   trayLabel: { fontSize: 9.5, fontWeight: '700', letterSpacing: 0.8 },

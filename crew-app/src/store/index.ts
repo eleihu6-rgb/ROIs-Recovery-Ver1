@@ -11,6 +11,8 @@ import tripTradeReducer from '../features/tripTrade/tripTradeSlice';
 import notificationsReducer from '../features/notifications/notificationsSlice';
 import rbotReducer from '../features/rbot/rbotSlice';
 import dutySwapReducer from '../features/dutySwap/dutySwapSlice';
+import mealReducer from '../features/meal/mealSlice';
+import checkInReducer from '../features/checkIn/checkInSlice';
 
 export const store = configureStore({
   reducer: {
@@ -25,6 +27,8 @@ export const store = configureStore({
     notifications: notificationsReducer,
     rbot: rbotReducer,
     dutySwap: dutySwapReducer,
+    meal: mealReducer,
+    checkIn: checkInReducer,
   },
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({

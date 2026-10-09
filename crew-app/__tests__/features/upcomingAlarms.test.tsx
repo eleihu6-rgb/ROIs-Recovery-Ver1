@@ -26,6 +26,9 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn(),
 }));
 
+beforeEach(() => jest.useFakeTimers({ now: new Date('2026-09-12T09:00:00+07:00'), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'nextTick'] }));
+afterEach(() => jest.useRealTimers());
+
 function alarm(over: Partial<EffectiveAlarm> & { dutyId: string }): EffectiveAlarm {
   return {
     fltNumber: 'TG662',
