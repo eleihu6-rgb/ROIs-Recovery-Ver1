@@ -30,7 +30,7 @@ import SwiftUI
 @objc(MeetingBackgroundSync)
 class MeetingBackgroundSync: NSObject {
 
-  static let taskId = "com.eleihuus.roycetravel.meetingrefresh"
+  static let taskId = "com.eleihu6.roycetravel.meetingrefresh"
   private static let store = EKEventStore()
 
   // Entries the app itself wrote for a duty ("add this duty to Calendar") carry

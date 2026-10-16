@@ -231,15 +231,15 @@ export function interpretSwapLocally(text: string, s: {
     return { actions: [{ type: 'set_swap_search', fields: { fltFleetList: [fleet[1]] }, label: `Fleet ${fleet[1]} only` }] };
   }
 
-  // "crew with US duties" / "flights to the United States": every port of that
-  // country the window flies to, as arriving flights.
+  // "crew with US duties" / "flights to the United States": search the
+  // portal for arrivals in that country. Its airport choices are suggestions,
+  // not evidence that no matching published duty exists.
   const country = countryIn(t);
   if (country && /\b(dut(y|ies)|flights?|flying|trips?|pairings?|routes?)\b/.test(low)) {
-    const known = s.options?.ports?.length ? s.options.ports : Object.keys(AIRPORT_COORDS);
-    const ports = known.filter(p => AIRPORT_COORDS[p]?.country === country).sort();
+    const ports = Object.keys(AIRPORT_COORDS).filter(p => AIRPORT_COORDS[p]?.country === country).sort();
     const name = country === 'US' ? 'US' : countryName(country);
-    if (!ports.length) return { actions: [], note: `No flights to ${name} in this window.` };
-    return { actions: [{ type: 'set_swap_search', fields: { fltArrList: ports }, label: `${name} duties · ${ports.join(', ')}` }] };
+    if (!ports.length) return { actions: [], note: `I don't have airport data for ${name}.` };
+    return { actions: [{ type: 'set_swap_search', fields: { fltArrList: ports }, reset: true, label: `${name} flights` }] };
   }
 
   // "also show someone with a DOH layover" / "layover in SEA"

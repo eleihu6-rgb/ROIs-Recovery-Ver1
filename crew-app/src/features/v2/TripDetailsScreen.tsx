@@ -87,7 +87,7 @@ export function TripDetailsScreen({ route }: Props) {
           {legGrid(leg, v, ops).map((row, r) => (
             <View key={r}>
               {r > 0 && <DashedLine color={p.cardLine} />}
-              <View style={s.opsRow}>
+              <View style={s.opsRow} testID={`flight-ops-row-${i}-${r}`}>
                 {row.map((c, j) => {
                   const align = j === 0 ? s.left : j === row.length - 1 ? s.right : s.center;
                   return (
@@ -203,8 +203,8 @@ function legGrid(leg: TripLeg, v: ReturnType<typeof legView>, ops: ReturnType<ty
       { key: 'report', label: 'Report', value: v.checkIn },
       { key: 'aircraft', label: 'Aircraft', value: [v.fleet, ops.register].filter(Boolean).join(' · ') || '—' },
     ],
-    [d('std'), d('etd')],
-    [d('boarding'), d('door'), d('offblock'), { key: 'atd', label: 'ATD', value: ops.atd || '—' }],
+    [d('std'), d('etd'), d('boarding')],
+    [d('door'), d('offblock'), { key: 'atd', label: 'ATD', value: ops.atd || '—' }],
     [
       { key: 'sta', label: 'STA', value: `${v.arvTime}${v.arvDayOffset ? ' ' + v.arvDayOffset : ''}` },
       { key: 'eta', label: 'ETA', value: ops.eta || '—' },

@@ -488,6 +488,15 @@ final class DuoFitUITests: XCTestCase {
     for id in ["ops-std-0", "ops-etd-0", "ops-boarding-0", "ops-door-0", "ops-gate-0", "ops-belt-0"] {
       XCTAssertFalse(el(id).label.isEmpty, "\(id) has no value")
     }
+    // Six departure events fill two rows of three, without the former empty
+    // middle slots between STD and ETD.
+    let firstDeparture = ["ops-std-0", "ops-etd-0", "ops-boarding-0"].map { el($0) }
+    let secondDeparture = ["ops-door-0", "ops-offblock-0", "ops-atd-0"].map { el($0) }
+    for row in [firstDeparture, secondDeparture] {
+      XCTAssertLessThan(abs(row[2].frame.midY - row[0].frame.midY), 12, "departure events should share one row")
+      XCTAssertLessThan(row[0].frame.midX, row[1].frame.midX)
+      XCTAssertLessThan(row[1].frame.midX, row[2].frame.midX)
+    }
     // No duplicates: STD and the gate read only in the grid.
     XCTAssertFalse(app.staticTexts["Arrival gate"].exists, "old gate row still shown")
     // Per leg: each leg card shows STD once (a two-leg trip shows two cards).

@@ -13,7 +13,7 @@ import dutySwapReducer, { acceptDisclaimer, searchSucceeded, setStep, toggleGive
 import rbotReducer from '../../src/features/rbot/rbotSlice';
 import { DutySwapScreen } from '../../src/features/dutySwap/DutySwapScreen';
 import { layoutFor } from '../../src/components/v2/useLayout';
-import { toCrews, type ApiCrewRow } from '../../src/features/dutySwap/dutySwapModel';
+import { toCrews, type ApiCrewRow, type SwapFilters } from '../../src/features/dutySwap/dutySwapModel';
 
 const search: { data: ApiCrewRow[] } = require('../fixtures/dutySwap/search.json');
 
@@ -96,6 +96,28 @@ it('the R\'Bot bar opens R\'Bot next to the form; its search lands in the matrix
   await waitFor(() => expect(ui.getByTestId('crew-matrix')).toBeTruthy());
   expect(ui.getByTestId('swap-rbot-panel')).toBeTruthy();
   expect(store.getState().dutySwap.filters).toMatchObject({ startDate: '2026-10-08', endDate: '2026-10-11' });
+});
+
+it('R\'Bot applies a US flight filter and leaves matching crew duties for the user to choose', async () => {
+  mockApi.options.mockResolvedValueOnce({ modes: ['NS'], taskTypes: [], ranks: [], crews: [], ports: ['MNL', 'BKK'], flights: [], fleets: [] });
+  (mockApi.search as jest.Mock).mockImplementation(async (f: SwapFilters) => f.fltArrList.length
+    ? search.data.filter(row => ['392923', '402452'].includes(row.crewId))
+    : search.data);
+  const { store, ui } = await open();
+  await waitFor(() => expect(store.getState().dutySwap.options?.ports).toEqual(['MNL', 'BKK']));
+  fireEvent.press(ui.getByTestId('search-ask-rbot'));
+  fireEvent.changeText(ui.getByTestId('swap-rbot-input'), 'Find crew with US flight to swap');
+  fireEvent.press(ui.getByTestId('swap-rbot-send'));
+
+  await waitFor(() => expect(store.getState().dutySwap.step).toBe('pick'));
+  await waitFor(() => expect(ui.getByTestId('matrix-crew-402452')).toBeTruthy());
+  expect(mockApi.search).toHaveBeenLastCalledWith(expect.objectContaining({
+    fltArrList: expect.arrayContaining(['LAX', 'SEA']), fltFleetList: [],
+  }));
+  expect(store.getState().dutySwap.take).toEqual([]);
+  fireEvent.press(ui.getByTestId('duty-402452-PR124/PR125'));
+  expect(store.getState().dutySwap.crewB).toBe('402452');
+  expect(store.getState().dutySwap.take).toHaveLength(1);
 });
 
 it('Duo inner screen: the form sits beside a live preview of the matching crews', async () => {

@@ -97,6 +97,15 @@ function renderTrip(trip: Trip) {
 }
 
 describe('Trip Details · operational row order', () => {
+  it('fills both departure rows with three departure metrics', () => {
+    const tree = renderTrip(flownLayover);
+    const labels = (row: number) => textsInOrder(tree.getByTestId(`flight-ops-row-0-${row}`))
+      .filter(text => ['STD', 'ETD', 'BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'ATD'].includes(text));
+
+    expect(labels(1)).toEqual(['STD', 'ETD', 'BOARDING']);
+    expect(labels(2)).toEqual(['DOOR CLOSE', 'OFF-BLOCK', 'ATD']);
+  });
+
   it('one grid card per leg, cells in the order things happen, nothing twice', () => {
     const tree = renderTrip(flownLayover);
     const texts = textsInOrder(tree.toJSON());

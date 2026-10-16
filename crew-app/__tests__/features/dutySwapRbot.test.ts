@@ -86,7 +86,16 @@ describe('local understanding (the mockup conversation)', () => {
   it('can search for US flights before crew rows are available', () => {
     const searching = { filters: emptyFilters('2026-10-09', '2026-10-31'), crews: [], details: {}, options: { ports: ['BKK', 'LAX', 'SEA'] } };
     const plan = interpretSwapLocally('find crew with US flights', searching)!;
-    expect(plan.actions[0]).toMatchObject({ type: 'set_swap_search', fields: { fltArrList: ['LAX', 'SEA'] } });
+    expect(plan.actions[0]).toMatchObject({ type: 'set_swap_search', fields: { fltArrList: expect.arrayContaining(['LAX', 'SEA']) }, reset: true });
+  });
+
+  it('runs the US filter even when the airport choice list has no US airport', () => {
+    const searching = { filters: { ...filters, fltFleetList: ['333'] }, crews, details: {}, options: { ports: ['BKK', 'MNL'] } };
+    const plan = interpretSwapLocally('Find crew with US flight to swap', searching)!;
+    expect(plan.note).toBeUndefined();
+    expect(plan.actions[0]).toMatchObject({ type: 'set_swap_search', reset: true,
+      fields: { fltArrList: expect.arrayContaining(['LAX', 'SEA']) } });
+    expect((plan.actions[0] as { fields: { fltArrList: string[] } }).fields.fltArrList).not.toContain('MNL');
   });
 });
 
