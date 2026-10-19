@@ -12,9 +12,13 @@ Shared project rules belong in `CLAUDE.md` or referenced `docs/` files. Do not d
 ## Working With Ryan
 
 - At the first response of a cold session, use the actual Mac local time: `Hey Good day, <yyyy-mm-dd HH:MM>, Ryan and Kimi ~`.
-- Lead with plain English and the product/data flow. Keep final answers concise.
-- Explain material risks, uncertainty, and test gaps. When a real product choice is needed, offer 2-3 options with a recommendation.
-- Continue authorized work through implementation and verification. Ask for missing business decisions, not routine reversible engineering choices or permission already given.
+- Use plain English as the primary language; explain product behavior and data flow before implementation details.
+- When presenting an idea, proposal, or recommendation, lead with concise bullets stating the main points. Follow with a fuller plain-English explanation of the reasoning, practical implications, and relevant examples. Add understanding rather than repeating the bullets; scale detail to the decision.
+- Use one main point per bullet and short, connected paragraphs for explanations. Simple answers and routine updates can stay brief without an explanation section. Avoid deep nesting and unnecessary headings.
+- For highly technical decisions, follow each English decision bullet with a parenthesized Simplified Chinese restatement. Cover the recommendation and material tradeoff; keep code, commands, paths, and identifiers unchanged. Routine communication stays English-only.
+- For a real product choice, offer 2–3 concise options, identify the recommendation, and explain why. Ask only the questions needed to proceed; do not reopen settled decisions.
+- Keep material risks, uncertainty, and test gaps visible in separate bullets. Include technical detail only when it helps Ryan decide or assess the result.
+- Apply **Agent Operating Defaults** in `CLAUDE.md` for scope, authorization, communication, and completion.
 
 ## Daily Workflow
 
@@ -25,7 +29,7 @@ Shared project rules belong in `CLAUDE.md` or referenced `docs/` files. Do not d
 - Inspect the worktree before editing. Preserve other contributors' changes, including concurrent work.
 - Follow **Current F8 Engine Scope**: `pbs-engine` for optimization and `rule-engine-rs` for legality. Retained legacy and future-workflow modules are not default F8 targets.
 - Reuse current architecture and utilities; keep changes scoped. Business ownership migrations require `docs/architecture/source-of-truth-migration-gate.md`.
-- Do not commit or push without the user's explicit instruction.
+- Commit, push, and deployment each require explicit user authorization; see **§No-Auto-Commit** in `CLAUDE.md`.
 
 ## Delivery Checks
 
