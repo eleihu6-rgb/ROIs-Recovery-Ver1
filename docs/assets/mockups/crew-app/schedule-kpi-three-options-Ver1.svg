@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1440" viewBox="0 0 1440 1440"><defs><linearGradient id="bg" x2=".3" y2="1"><stop stop-color="#23313b"/><stop offset="1" stop-color="#728b9f"/></linearGradient></defs><rect width="1440" height="1440" fill="#f1f4f6"/><g font-family="Arial, sans-serif">
+<text x="48" y="55" font-size="32" fill="#142b3a" font-weight="700">Your limits, anchored to your day.</text>
+<text x="48" y="85" font-size="16" fill="#526b7d" font-weight="400">Three design options · 19 October 2026 · illustrative data · planned + completed hours through selected day</text>
+<text x="48" y="137" font-size="23" fill="#142b3a" font-weight="700">01 · Calendar summary</text>
+<text x="48" y="165" font-size="12" fill="#526b7d" font-weight="700">RECOMMENDED · balanced &amp; expandable</text>
+<rect x="48" y="188" width="388" height="848" fill="#21343f" rx="35"/>
+<rect x="54" y="194" width="376" height="836" rx="30" fill="url(#bg)"/>
+<text x="70" y="225" font-size="12" fill="#ffffff" font-weight="700">19:23</text>
+<text x="322" y="225" font-size="11" fill="#ffffff" font-weight="400">5G  •  100%</text>
+<text x="106" y="268" font-size="23" fill="#ffffff" font-weight="700">‹   Sched Oct 2026   ›</text>
+<rect x="64" y="289" width="66" height="73" fill="#d7e4ed" rx="15"/>
+<text x="81" y="311" font-size="10" fill="#25465b" font-weight="400">MON</text>
+<text x="84" y="342" font-size="23" fill="#25465b" font-weight="700">19</text>
+<rect x="136" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="153" y="311" font-size="10" fill="#ffffff" font-weight="400">TUE</text>
+<text x="156" y="342" font-size="23" fill="#ffffff" font-weight="700">20</text>
+<rect x="208" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="225" y="311" font-size="10" fill="#ffffff" font-weight="400">WED</text>
+<text x="228" y="342" font-size="23" fill="#ffffff" font-weight="700">21</text>
+<rect x="280" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="297" y="311" font-size="10" fill="#ffffff" font-weight="400">THU</text>
+<text x="300" y="342" font-size="23" fill="#ffffff" font-weight="700">22</text>
+<rect x="352" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="369" y="311" font-size="10" fill="#ffffff" font-weight="400">FRI</text>
+<text x="372" y="342" font-size="23" fill="#ffffff" font-weight="700">23</text>
+<rect x="64" y="377" width="356" height="267" fill="#eff5f9" rx="20"/>
+<text x="80" y="402" font-size="11" fill="#526879" font-weight="400">Through 19 Oct · base time</text>
+<text x="315" y="402" font-size="10" fill="#526879" font-weight="700">PROJECTED</text>
+<text x="80" y="434" font-size="12" fill="#526879" font-weight="400">Flight · 28 days</text><text x="277" y="434" font-size="17" fill="#152e40" font-weight="700">64.0h left</text><text x="80" y="454" font-size="11" fill="#526879" font-weight="400">36.0h used / 100h limit</text><rect x="80" y="464" width="320" height="4" fill="#c8d6df" rx="2"/><rect x="80" y="464" width="115.2" height="4" fill="#587f9b" rx="2"/>
+<text x="80" y="498" font-size="12" fill="#526879" font-weight="400">Duty · 7 days</text><text x="277" y="498" font-size="17" fill="#152e40" font-weight="700">49.2h left</text><text x="80" y="518" font-size="11" fill="#526879" font-weight="400">10.8h used / 60h limit</text><rect x="80" y="528" width="320" height="4" fill="#c8d6df" rx="2"/><rect x="80" y="528" width="57.6" height="4" fill="#587f9b" rx="2"/>
+<text x="80" y="565" font-size="12" fill="#526879" font-weight="400">90-day recency</text>
+<text x="271" y="565" font-size="17" fill="#142b3a" font-weight="700">4 TO / 4 LDG</text>
+<text x="80" y="586" font-size="10" fill="#526879" font-weight="400">Minimum 3 each · assumed from flights</text>
+<text x="80" y="623" font-size="12" fill="#315b78" font-weight="700">All six limits &amp; window dates   ˅</text>
+<rect x="66" y="658" width="352" height="228" fill="#cbd9e4" rx="20"/><text x="84" y="685" font-size="12" fill="#274556" font-weight="700">MON 19 OCT</text><text x="84" y="722" font-size="22" fill="#152e40" font-weight="700">PR209</text><text x="341" y="722" font-size="13" fill="#526879" font-weight="400">A330</text><text x="84" y="770" font-size="34" fill="#152e40" font-weight="700">MNL</text><text x="313" y="770" font-size="34" fill="#152e40" font-weight="700">MEL</text><text x="84" y="798" font-size="13" fill="#142b3a" font-weight="400">19:30B</text><text x="278" y="798" font-size="13" fill="#142b3a" font-weight="400">03:30B +1</text><text x="84" y="852" font-size="11" fill="#526879" font-weight="400">CHECK-IN 19:00B  ·  BLOCK 8h 00m</text>
+<rect x="66" y="902" width="352" height="55" fill="#cbd9e4" rx="18"/>
+<text x="84" y="934" font-size="12" fill="#526879" font-weight="700">TUE 20 OCT  ·  NEXT DUTY</text>
+<rect x="74" y="973" width="336" height="45" fill="#e1ebf1" rx="20"/>
+<text x="97" y="1001" font-size="12" fill="#526879" font-weight="400">Home</text>
+<rect x="168" y="979" width="128" height="33" fill="#3b586c" rx="15"/>
+<text x="201" y="1001" font-size="13" fill="#ffffff" font-weight="700">Schedule</text>
+<text x="332" y="1001" font-size="12" fill="#526879" font-weight="400">Profile</text>
+<text x="48" y="1070" font-size="15" fill="#142b3a" font-weight="700">Date + compact KPIs stay visible.</text>
+<text x="48" y="1096" font-size="13" fill="#526879" font-weight="400">Tap for details; swipe duties to change date.</text>
+<text x="508" y="137" font-size="23" fill="#142b3a" font-weight="700">02 · Floating summary</text>
+<text x="508" y="165" font-size="12" fill="#526b7d" font-weight="700">MOST SPACE · summary opens a sheet</text>
+<rect x="508" y="188" width="388" height="848" fill="#21343f" rx="35"/>
+<rect x="514" y="194" width="376" height="836" rx="30" fill="url(#bg)"/>
+<text x="530" y="225" font-size="12" fill="#ffffff" font-weight="700">19:23</text>
+<text x="782" y="225" font-size="11" fill="#ffffff" font-weight="400">5G  •  100%</text>
+<text x="566" y="268" font-size="23" fill="#ffffff" font-weight="700">‹   Sched Oct 2026   ›</text>
+<rect x="524" y="289" width="66" height="73" fill="#d7e4ed" rx="15"/>
+<text x="541" y="311" font-size="10" fill="#25465b" font-weight="400">MON</text>
+<text x="544" y="342" font-size="23" fill="#25465b" font-weight="700">19</text>
+<rect x="596" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="613" y="311" font-size="10" fill="#ffffff" font-weight="400">TUE</text>
+<text x="616" y="342" font-size="23" fill="#ffffff" font-weight="700">20</text>
+<rect x="668" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="685" y="311" font-size="10" fill="#ffffff" font-weight="400">WED</text>
+<text x="688" y="342" font-size="23" fill="#ffffff" font-weight="700">21</text>
+<rect x="740" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="757" y="311" font-size="10" fill="#ffffff" font-weight="400">THU</text>
+<text x="760" y="342" font-size="23" fill="#ffffff" font-weight="700">22</text>
+<rect x="812" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="829" y="311" font-size="10" fill="#ffffff" font-weight="400">FRI</text>
+<text x="832" y="342" font-size="23" fill="#ffffff" font-weight="700">23</text>
+<rect x="526" y="377" width="352" height="228" fill="#cbd9e4" rx="20"/><text x="544" y="404" font-size="12" fill="#274556" font-weight="700">MON 19 OCT</text><text x="544" y="441" font-size="22" fill="#152e40" font-weight="700">PR209</text><text x="801" y="441" font-size="13" fill="#526879" font-weight="400">A330</text><text x="544" y="489" font-size="34" fill="#152e40" font-weight="700">MNL</text><text x="773" y="489" font-size="34" fill="#152e40" font-weight="700">MEL</text><text x="544" y="517" font-size="13" fill="#142b3a" font-weight="400">19:30B</text><text x="738" y="517" font-size="13" fill="#142b3a" font-weight="400">03:30B +1</text><text x="544" y="571" font-size="11" fill="#526879" font-weight="400">CHECK-IN 19:00B  ·  BLOCK 8h 00m</text>
+<rect x="526" y="621" width="352" height="228" fill="#cbd9e4" rx="20"/><text x="544" y="648" font-size="12" fill="#274556" font-weight="700">MON 19 OCT</text><text x="544" y="685" font-size="22" fill="#152e40" font-weight="700">PR209</text><text x="801" y="685" font-size="13" fill="#526879" font-weight="400">A330</text><text x="544" y="733" font-size="34" fill="#152e40" font-weight="700">MNL</text><text x="773" y="733" font-size="34" fill="#152e40" font-weight="700">MEL</text><text x="544" y="761" font-size="13" fill="#142b3a" font-weight="400">19:30B</text><text x="738" y="761" font-size="13" fill="#142b3a" font-weight="400">03:30B +1</text><text x="544" y="815" font-size="11" fill="#526879" font-weight="400">CHECK-IN 19:00B  ·  BLOCK 8h 00m</text>
+<rect x="526" y="870" width="352" height="91" fill="#eff5f9" rx="20"/>
+<text x="540" y="893" font-size="11" fill="#526879" font-weight="400">19 Oct · projected</text>
+<text x="786" y="893" font-size="11" fill="#315b78" font-weight="700">All limits ↗</text>
+<text x="540" y="916" font-size="10" fill="#526879" font-weight="400">28d flight left</text>
+<text x="540" y="944" font-size="23" fill="#142b3a" font-weight="700">64.0h</text>
+<text x="654" y="916" font-size="10" fill="#526879" font-weight="400">7d duty left</text>
+<text x="654" y="944" font-size="23" fill="#142b3a" font-weight="700">49.2h</text>
+<text x="768" y="916" font-size="10" fill="#526879" font-weight="400">90d TO / LDG</text>
+<text x="768" y="944" font-size="23" fill="#142b3a" font-weight="700">4 / 4</text>
+<rect x="534" y="973" width="336" height="45" fill="#e1ebf1" rx="20"/>
+<text x="557" y="1001" font-size="12" fill="#526879" font-weight="400">Home</text>
+<rect x="628" y="979" width="128" height="33" fill="#3b586c" rx="15"/>
+<text x="661" y="1001" font-size="13" fill="#ffffff" font-weight="700">Schedule</text>
+<text x="792" y="1001" font-size="12" fill="#526879" font-weight="400">Profile</text>
+<text x="508" y="1070" font-size="15" fill="#142b3a" font-weight="700">Summary stays above navigation.</text>
+<text x="508" y="1096" font-size="13" fill="#526879" font-weight="400">Tap for all six limits and recency details.</text>
+<text x="968" y="137" font-size="23" fill="#142b3a" font-weight="700">03 · Full KPI panel</text>
+<text x="968" y="165" font-size="12" fill="#526b7d" font-weight="700">MOST DETAIL · sidebar on tablet</text>
+<rect x="968" y="188" width="388" height="848" fill="#21343f" rx="35"/>
+<rect x="974" y="194" width="376" height="836" rx="30" fill="url(#bg)"/>
+<text x="990" y="225" font-size="12" fill="#ffffff" font-weight="700">19:23</text>
+<text x="1242" y="225" font-size="11" fill="#ffffff" font-weight="400">5G  •  100%</text>
+<text x="1026" y="268" font-size="23" fill="#ffffff" font-weight="700">‹   Sched Oct 2026   ›</text>
+<rect x="984" y="289" width="66" height="73" fill="#d7e4ed" rx="15"/>
+<text x="1001" y="311" font-size="10" fill="#25465b" font-weight="400">MON</text>
+<text x="1004" y="342" font-size="23" fill="#25465b" font-weight="700">19</text>
+<rect x="1056" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="1073" y="311" font-size="10" fill="#ffffff" font-weight="400">TUE</text>
+<text x="1076" y="342" font-size="23" fill="#ffffff" font-weight="700">20</text>
+<rect x="1128" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="1145" y="311" font-size="10" fill="#ffffff" font-weight="400">WED</text>
+<text x="1148" y="342" font-size="23" fill="#ffffff" font-weight="700">21</text>
+<rect x="1200" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="1217" y="311" font-size="10" fill="#ffffff" font-weight="400">THU</text>
+<text x="1220" y="342" font-size="23" fill="#ffffff" font-weight="700">22</text>
+<rect x="1272" y="289" width="66" height="73" fill="#ffffff25" rx="15"/>
+<text x="1289" y="311" font-size="10" fill="#ffffff" font-weight="400">FRI</text>
+<text x="1292" y="342" font-size="23" fill="#ffffff" font-weight="700">23</text>
+<rect x="984" y="377" width="356" height="487" fill="#eff5f9" rx="20"/>
+<text x="1000" y="402" font-size="11" fill="#526879" font-weight="400">Through 19 Oct · base time</text>
+<text x="1237" y="402" font-size="10" fill="#526879" font-weight="700">PROJECTED</text>
+<text x="1000" y="433" font-size="12" fill="#526879" font-weight="400">Flight · 28 days</text><text x="1197" y="433" font-size="17" fill="#152e40" font-weight="700">64.0h left</text><text x="1000" y="453" font-size="11" fill="#526879" font-weight="400">36.0h used / 100h limit</text><rect x="1000" y="463" width="320" height="4" fill="#c8d6df" rx="2"/><rect x="1000" y="463" width="115.2" height="4" fill="#587f9b" rx="2"/>
+<text x="1000" y="492" font-size="12" fill="#526879" font-weight="400">Flight · calendar year</text><text x="1197" y="492" font-size="17" fill="#152e40" font-weight="700">264.0h left</text><text x="1000" y="512" font-size="11" fill="#526879" font-weight="400">636.0h used / 900h limit</text><rect x="1000" y="522" width="320" height="4" fill="#c8d6df" rx="2"/><rect x="1000" y="522" width="226.13333333333333" height="4" fill="#587f9b" rx="2"/>
+<text x="1000" y="551" font-size="12" fill="#526879" font-weight="400">Flight · 12 calendar months</text><text x="1197" y="551" font-size="17" fill="#152e40" font-weight="700">264.0h left</text><text x="1000" y="571" font-size="11" fill="#526879" font-weight="400">736.0h used / 1000h limit</text><rect x="1000" y="581" width="320" height="4" fill="#c8d6df" rx="2"/><rect x="1000" y="581" width="235.52" height="4" fill="#587f9b" rx="2"/>
+<text x="1000" y="610" font-size="12" fill="#526879" font-weight="400">Duty · 7 days</text><text x="1197" y="610" font-size="17" fill="#152e40" font-weight="700">49.2h left</text><text x="1000" y="630" font-size="11" fill="#526879" font-weight="400">10.8h used / 60h limit</text><rect x="1000" y="640" width="320" height="4" fill="#c8d6df" rx="2"/><rect x="1000" y="640" width="57.6" height="4" fill="#587f9b" rx="2"/>
+<text x="1000" y="669" font-size="12" fill="#526879" font-weight="400">Duty · 14 days</text><text x="1197" y="669" font-size="17" fill="#152e40" font-weight="700">24.0h left</text><text x="1000" y="689" font-size="11" fill="#526879" font-weight="400">86.0h used / 110h limit</text><rect x="1000" y="699" width="320" height="4" fill="#c8d6df" rx="2"/><rect x="1000" y="699" width="250.1818181818182" height="4" fill="#587f9b" rx="2"/>
+<text x="1000" y="728" font-size="12" fill="#526879" font-weight="400">Duty · 28 days</text><text x="1197" y="728" font-size="17" fill="#152e40" font-weight="700">42.0h left</text><text x="1000" y="748" font-size="11" fill="#526879" font-weight="400">148.0h used / 190h limit</text><rect x="1000" y="758" width="320" height="4" fill="#c8d6df" rx="2"/><rect x="1000" y="758" width="249.26315789473685" height="4" fill="#587f9b" rx="2"/>
+<text x="1000" y="806" font-size="11" fill="#526879" font-weight="400">90-day recency · minimum 3 each</text>
+<text x="1000" y="834" font-size="20" fill="#142b3a" font-weight="700">4 take-offs  /  4 landings</text>
+<rect x="986" y="880" width="352" height="82" fill="#cbd9e4" rx="20"/><text x="1004" y="907" font-size="12" fill="#274556" font-weight="700">MON 19 OCT · SCHEDULE</text><text x="1004" y="944" font-size="22" fill="#152e40" font-weight="700">PR209 · MNL → MEL</text>
+<rect x="994" y="973" width="336" height="45" fill="#e1ebf1" rx="20"/>
+<text x="1017" y="1001" font-size="12" fill="#526879" font-weight="400">Home</text>
+<rect x="1088" y="979" width="128" height="33" fill="#3b586c" rx="15"/>
+<text x="1121" y="1001" font-size="13" fill="#ffffff" font-weight="700">Schedule</text>
+<text x="1252" y="1001" font-size="12" fill="#526879" font-weight="400">Profile</text>
+<text x="968" y="1070" font-size="15" fill="#142b3a" font-weight="700">Full list stays under the calendar.</text>
+<text x="968" y="1096" font-size="13" fill="#526879" font-weight="400">In landscape, move KPIs beside duties.</text>
+<text x="48" y="1150" font-size="14" fill="#526879" font-weight="400">Every operating flight = 1 take-off + 1 landing. Recency counts are roster estimates. Dates and all figures are illustrative.</text>
+</g></svg>

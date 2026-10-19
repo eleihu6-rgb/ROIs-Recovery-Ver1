@@ -15,6 +15,10 @@
     "test:e2e:android": "detox test --configuration android.emu.debug",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
+    "testflight:preflight": "node scripts/testflight-preflight.cjs",
+    "testflight:validate": "ASC_TELEMETRY_DISABLED=1 asc workflow validate",
+    "testflight:plan": "ASC_TELEMETRY_DISABLED=1 asc workflow run --dry-run testflight_external",
+    "testflight:release": "ASC_TELEMETRY_DISABLED=1 asc workflow run testflight_external",
     "check:assets": "node scripts/cityImageReport.mjs",
     "postinstall": "node scripts/fixRnSpacePaths.js"
   },

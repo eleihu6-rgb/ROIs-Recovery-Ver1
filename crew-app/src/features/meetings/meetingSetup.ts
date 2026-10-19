@@ -41,6 +41,9 @@ export interface Meeting {
   location?: string;
   /** Invite body (capped) — a join link may sit inside it. */
   notes?: string;
+  /** Event written by Crew App itself. It belongs in the daily Calendar plan,
+   *  but must never create a second alarm / trip card / Live Activity. */
+  appOwned?: boolean;
 }
 
 // Online-meeting join links we recognise. Teams is the primary target (the user
@@ -108,7 +111,7 @@ export function nextImminentMeeting(
   let best: { m: Meeting; start: number } | null = null;
   const cutoff = now.getTime() + leadMinutes * 60_000;
   for (const m of meetings) {
-    if (m.allDay || m.cancelled) {
+    if (m.allDay || m.cancelled || m.appOwned) {
       continue;
     }
     const start = meetingStart(m);
@@ -218,7 +221,7 @@ export function computeMeetingAlarms(
   const out: EffectiveAlarm[] = [];
   for (const m of meetings) {
     try {
-      if (m.allDay || m.cancelled || mutedIds.has(m.id)) {
+      if (m.allDay || m.cancelled || m.appOwned || mutedIds.has(m.id)) {
         continue;
       }
       const start = meetingStart(m);
@@ -294,7 +297,7 @@ export function classifyMeetings(meetings: Meeting[], now: Date, displayTz?: str
   const past: GroundDuty[] = [];
   for (const m of meetings) {
     try {
-      if (m.cancelled || m.allDay) {
+      if (m.cancelled || m.allDay || m.appOwned) {
         continue;
       }
       const end = meetingEnd(m) ?? meetingStart(m);

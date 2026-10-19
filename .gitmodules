@@ -4,3 +4,7 @@
 [submodule "pbs-engine"]
 	path = pbs-engine
 	url = git@github.com:yuapply/PBS_column_based_algorithm.git
+[submodule "crewrule"]
+	path = crewrule
+	url = http://192.168.199.112/crew/rule/crewrule.git
+	shallow = true

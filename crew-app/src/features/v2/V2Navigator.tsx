@@ -1,4 +1,4 @@
-// v2 (mock-mirror) navigation: 4-tab pill dock + full-screen pages pushed on
+// v2 (mock-mirror) navigation: 3 visible tabs + full-screen pages pushed on
 // a native stack (slide in from the right). The carrier palette is provided
 // once here — the crew's Appearance choice if they made one, otherwise the
 // logged-in airline's own colour (carrier.resolveTheme).

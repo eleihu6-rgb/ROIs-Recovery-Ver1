@@ -1,7 +1,7 @@
 // R'Bot's entry next to the nav bar (mock: Alipay's "阿宝" ball).
 //
-// Its OWN box, beside the four tabs — the same glass treatment, the same height
-// and corner radius, but a separate box so it never reads as a fifth tab
+// Its OWN box, beside the visible tabs — the same glass treatment, the same height
+// and corner radius, but a separate box so it never reads as another tab
 // (Ryan, 2026-09-11). Inside: the panda crew avatar on the theme accent disc
 // plus the "AI" tag, so it is recognisably the assistant.
 import React from 'react';

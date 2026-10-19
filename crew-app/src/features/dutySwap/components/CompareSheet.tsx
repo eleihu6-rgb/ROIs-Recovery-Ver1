@@ -7,13 +7,14 @@ import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, Sc
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '../../../components/v2/icons';
-import { ALL_ORIENTATIONS, useLayout } from '../../../components/v2/useLayout';
+import { ALL_ORIENTATIONS } from '../../../components/v2/useLayout';
 import type { CarrierPalette } from '../../../theme/carrier';
 import {
-  compareRows, dayLabel, hhmmOf, kpiDelta, portalToIso, signedHhmm,
-  type ApiSegment, type ApiTaskDetail, type CompareSide,
+  compareRows, dayLabel, kpiDelta, signedHhmm,
+  type ApiTaskDetail, type CompareSide,
 } from '../dutySwapModel';
 import { tint } from './CrewMatrix';
+import { ReviewDutyDetails, ReviewFlightDetails } from './ReviewDetails';
 
 interface Props {
   visible: boolean;
@@ -43,7 +44,6 @@ interface Props {
 export function CompareSheet(props: Props): React.JSX.Element {
   const { palette: p, mine, others, picked } = props;
   const insets = useSafeAreaInsets();
-  const { wide } = useLayout();
   const [comment, setComment] = useState('');
   const rows = compareRows(mine, others);
   const d = kpiDelta(mine, others);
@@ -88,8 +88,8 @@ export function CompareSheet(props: Props): React.JSX.Element {
                     <Text style={[s.dateNum, { color: p.cardInk }]}>{dl.day}</Text>
                     <Text style={[s.dateSub, { color: p.cardSoft }]}>{dl.dow}</Text>
                   </View>
-                  <Side side={r.mine} p={p} flt={flt} wide={wide} />
-                  <Side side={r.others} p={p} flt={flt} wide={wide} />
+                  <Side side={r.mine} p={p} flt={flt} />
+                  <Side side={r.others} p={p} flt={flt} />
                 </View>
               );
             })}
@@ -128,32 +128,12 @@ export function CompareSheet(props: Props): React.JSX.Element {
   );
 }
 
-function Side({ side, p, flt, wide }: { side: CompareSide; p: CarrierPalette; flt: (n: string) => string; wide: boolean }) {
-  const t = side.task;
-  if (!t && side.legs.length === 0) return <View style={s.side} />;
-  const end = portalToIso(t?.endDateTimeLocal ?? t?.endDateTime);
-  const start = portalToIso(t?.startDateTimeLocal ?? t?.startDateTime);
-  const endLabel = end ? (start && end.slice(0, 10) !== start.slice(0, 10) ? `${dayLabel(end.slice(0, 10)).day} ${dayLabel(end.slice(0, 10)).month} ${hhmmOf(end)}` : hhmmOf(end)) : '';
-  return (
-    <View style={[s.side, { backgroundColor: tint(p.btn, 0.06) }]}>
-      {t ? (
-        <>
-          <Text style={[s.taskHead, { color: p.cardInk }]} numberOfLines={1}>
-            {[t.assignment, t.comp, t.actingRank].filter(x => x && x !== '-').join(' · ')}
-          </Text>
-          {start ? <Text style={[s.line, { color: p.cardSoft }]}>RPT {hhmmOf(start)} · End {endLabel}</Text> : null}
-          <Text style={[s.line, { color: p.cardSoft }]}>BLH {t.blh} · CRD {t.crd}{wide ? ` · FDP ${t.fdp}` : ''}</Text>
-          {t.layoverPort && t.layoverPort !== '-' ? <Text style={[s.line, { color: p.cardSoft }]}>Layover {t.layoverPort} {t.layoverTime}</Text> : null}
-        </>
-      ) : null}
-      {side.legs.map((l: ApiSegment, i: number) => (
-        <View key={`${l.fltNo}-${i}`} style={[s.leg, { borderTopColor: p.cardLine }]}>
-          <Text style={[s.legMain, { color: p.cardInk }]} numberOfLines={1}>{flt(l.fltNo)}  {l.dep}→{l.arr}</Text>
-          <Text style={[s.line, { color: p.cardSoft }]} numberOfLines={1}>{l.std}–{l.sta} · {l.ac} · BLH {l.blh}</Text>
-        </View>
-      ))}
-    </View>
-  );
+function Side({ side, p, flt }: { side: CompareSide; p: CarrierPalette; flt: (n: string) => string }) {
+  if (!side.task && side.legs.length === 0) return <View style={s.side} />;
+  return <View style={[s.side, { backgroundColor: tint(p.btn, 0.06) }]}>
+    {side.task ? <ReviewDutyDetails task={side.task} p={p} /> : null}
+    {side.legs.map((leg, i) => <ReviewFlightDetails key={`${leg.fltNo}-${i}`} leg={leg} p={p} flightNumber={flt(leg.fltNo)} />)}
+  </View>;
 }
 
 const s = StyleSheet.create({
@@ -173,10 +153,6 @@ const s = StyleSheet.create({
   dateNum: { fontSize: 16, fontWeight: '800', fontVariant: ['tabular-nums'] },
   dateSub: { fontSize: 9, fontWeight: '700', letterSpacing: 0.6 },
   side: { flex: 1, minWidth: 0, borderRadius: 10, padding: 8, gap: 2 },
-  taskHead: { fontSize: 13, fontWeight: '800' },
-  line: { fontSize: 11.5, fontWeight: '500', fontVariant: ['tabular-nums'] },
-  leg: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 4, marginTop: 4 },
-  legMain: { fontSize: 12.5, fontWeight: '700', fontVariant: ['tabular-nums'] },
   note: { fontSize: 13, fontStyle: 'italic', borderWidth: 1, borderRadius: 10, padding: 10, marginTop: 12 },
   delta: { flexDirection: 'row', marginHorizontal: 12, marginTop: 8, borderRadius: 12, paddingVertical: 8 },
   deltaCell: { flex: 1, alignItems: 'center' },

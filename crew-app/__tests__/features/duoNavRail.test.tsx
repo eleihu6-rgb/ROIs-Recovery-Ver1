@@ -29,6 +29,7 @@ const routes = [
   { key: 'global', name: 'Global' },
   { key: 'profile', name: 'Profile' },
 ];
+const visibleRoutes = routes.filter(route => route.name !== 'Global');
 const mockTabNavigate = jest.fn();
 const mockEmit = jest.fn(() => ({ defaultPrevented: false }));
 const props = {
@@ -56,9 +57,10 @@ describe('Duo inner-screen right-edge navigation', () => {
     const tree = mount();
     const rail = tree.getByTestId('duo-nav-rail');
     expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ right: 14, bottom: 82, width: 56 });
-    for (const route of routes) {
+    for (const route of visibleRoutes) {
       expect(within(rail).getByTestId(`tab-${route.name.toLowerCase()}`)).toBeTruthy();
     }
+    expect(within(rail).queryByTestId('tab-global')).toBeNull();
     expect(within(rail).queryByTestId('rail-rbot')).toBeNull();
     expect(tree.getByTestId('rail-rbot')).toBeTruthy();
     expect(tree.queryByTestId('dock-rbot')).toBeNull();
@@ -70,22 +72,24 @@ describe('Duo inner-screen right-edge navigation', () => {
     const tree = mount();
     const rail = tree.getByTestId('duo-nav-rail');
     expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ right: 14, bottom: 82, width: 56 });
-    for (const route of routes) expect(within(rail).getByTestId(`tab-${route.name.toLowerCase()}`)).toBeTruthy();
+    for (const route of visibleRoutes) expect(within(rail).getByTestId(`tab-${route.name.toLowerCase()}`)).toBeTruthy();
+    expect(within(rail).queryByTestId('tab-global')).toBeNull();
     expect(within(rail).queryByTestId('rail-rbot')).toBeNull();
     expect(tree.getByTestId('rail-rbot')).toBeTruthy();
     expect(tree.queryByTestId('duo-cover-dock')).toBeNull();
     expect(tree.queryByTestId('dock-rbot')).toBeNull();
   });
 
-  it('groups four tabs below page actions while AI remains separate, with working navigation', () => {
+  it('groups three visible tabs below page actions while AI remains separate, with working navigation', () => {
     mockInsets.current = { top: 0, right: 84, bottom: 20, left: 0 };
     mockLayout.current = layoutFor(951, 669);
     const tree = mount();
     const rail = tree.getByTestId('duo-nav-rail');
     expect(StyleSheet.flatten(rail.props.style)).toMatchObject({ right: 14, bottom: 82, width: 56 });
-    for (const route of routes) {
+    for (const route of visibleRoutes) {
       expect(within(rail).getByTestId(`tab-${route.name.toLowerCase()}`)).toBeTruthy();
     }
+    expect(within(rail).queryByTestId('tab-global')).toBeNull();
     expect(within(rail).queryByTestId('rail-rbot')).toBeNull();
     expect(tree.getByTestId('rail-rbot')).toBeTruthy();
     expect(tree.queryByTestId('dock-rbot')).toBeNull();
@@ -108,6 +112,23 @@ describe('Duo inner-screen right-edge navigation', () => {
     expect(tree.queryByTestId('duo-nav-rail')).toBeNull();
     expect(tree.getByTestId('dock-rbot')).toBeTruthy();
     expect(tree.queryByTestId('rail-rbot')).toBeNull();
+  });
+
+  it.each([
+    [420, 912, 0, 'Air portrait'],
+    [912, 420, 0, 'Air landscape'],
+    [669, 951, 0, 'Duo portrait'],
+    [951, 669, 84, 'Duo landscape'],
+    [834, 1210, 0, 'iPad portrait'],
+    [1210, 834, 0, 'iPad landscape'],
+  ])('hides Global at %i × %i (%s)', (width, height, right, _label) => {
+    mockInsets.current = { top: 0, right, bottom: 20, left: 0 };
+    mockLayout.current = layoutFor(width, height);
+    const tree = mount();
+    expect(tree.queryByTestId('tab-global')).toBeNull();
+    for (const route of visibleRoutes) {
+      expect(tree.getByTestId(`tab-${route.name.toLowerCase()}`)).toBeTruthy();
+    }
   });
 
   it('keeps the bottom dock for a wide window without the Duo right status strip', () => {

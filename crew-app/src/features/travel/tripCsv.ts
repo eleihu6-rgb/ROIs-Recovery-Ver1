@@ -33,6 +33,18 @@ export interface TripLeg {
   actArvUtc?: string;
   /** Filed block time, minutes. */
   blockMinutes?: number;
+  // ── Duty grouping & published duty totals (crew portal) ───────────────────
+  /** Report/brief UTC instant of the duty this leg belongs to (portal
+   *  `briefStart`). A rotation can contain several duties across a layover, so
+   *  this is the duty key — not the trip key (`Trip.checkInDateUTC` is the
+   *  rotation's first report). */
+  dutyReportUTC?: string;
+  /** Duty totals as published by the portal report, minutes. */
+  dutyFdpMinutes?: number;
+  dutyDpMinutes?: number;
+  dutyBlockMinutes?: number;
+  /** Rest before this duty, hours (portal report; absent when not published). */
+  dutyRestHours?: number;
 }
 
 export interface Trip {
@@ -169,6 +181,11 @@ export function groupIntoTrips(rows: RawRow[]): Trip[] {
       ...(r.localDepTime !== undefined ? { localDepTime: r.localDepTime } : {}),
       ...(r.localArvTime !== undefined ? { localArvTime: r.localArvTime } : {}),
       ...(r.assignment !== undefined ? { assignment: r.assignment } : {}),
+      ...(r.dutyReportUTC !== undefined ? { dutyReportUTC: r.dutyReportUTC } : {}),
+      ...(r.dutyFdpMinutes !== undefined ? { dutyFdpMinutes: r.dutyFdpMinutes } : {}),
+      ...(r.dutyDpMinutes !== undefined ? { dutyDpMinutes: r.dutyDpMinutes } : {}),
+      ...(r.dutyBlockMinutes !== undefined ? { dutyBlockMinutes: r.dutyBlockMinutes } : {}),
+      ...(r.dutyRestHours !== undefined ? { dutyRestHours: r.dutyRestHours } : {}),
     };
 
     if (r.checkInDateUTC.trim() !== '') {

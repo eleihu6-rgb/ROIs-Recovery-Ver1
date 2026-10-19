@@ -133,16 +133,20 @@ function renderTrip(t: Trip) {
 }
 
 describe('Trip Details · airport-ops grid', () => {
-  it('shows the departure / arrival / airport cells with their values on the leg card', () => {
+  it('shows the departure / arrival / airport cells with their values on the sector pass', () => {
     const screen = renderTrip(trip);
     const val = (id: string) => String(screen.getByTestId(id).props.children);
-    expect(screen.getByTestId('flight-ops-grid-0')).toBeTruthy();
-    const labels = ['STD', 'ETD', 'BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'STA', 'ETA', 'BLOCK', 'TERMINAL', 'GATE', 'STAND', 'BELT'];
+    expect(screen.getByTestId('flight-pass-0')).toBeTruthy();
+    const labels = ['STD', 'STA', 'ETD', 'ETA', 'BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'BLK'];
     for (const l of labels) expect(screen.getAllByText(l).length).toBeGreaterThan(0);
     // The passenger check-in time is not shown: it read as a second check-in.
     expect(screen.queryByText('CHECK-IN')).toBeNull();
     expect(val('ops-std-0')).toBe('20:00L');
+    expect(val('ops-sta-0')).toBe('16:30L');
     expect(val('ops-etd-0')).toBe('20:00L');
+    expect(val('ops-atd-0')).toBe('—');            // no actual on a planned row
+    expect(val('ops-eta-0')).toBe('16:30L');      // filed schedule when no estimate
+    expect(val('ops-ata-0')).toBe('—');
     expect(val('ops-boarding-0')).toBe('19:30L');
     expect(val('ops-door-0')).toBe('19:50L');
     expect(val('ops-terminal-0')).toMatch(/^T[13]$/);

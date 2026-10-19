@@ -70,7 +70,7 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     id: "sched-view-calendar"
 - extendedWaitUntil:
     visible:
-      id: "cal-grid"
+      id: "cal-month-detail"
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: r05_calendar

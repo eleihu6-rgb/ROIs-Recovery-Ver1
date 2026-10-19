@@ -1,0 +1,36 @@
+{
+  "env": { "ASC_TELEMETRY_DISABLED": "1", "DO_NOT_TRACK": "1" },
+  "workflows": {
+    "testflight_external": {
+      "description": "Archive, upload and submit Crew App to its existing external TestFlight group; preserve the public link.",
+      "steps": [
+        {
+          "name": "preflight",
+          "run": "node scripts/testflight-preflight.cjs --publish",
+          "outputs": { "VERSION": "$.VERSION", "BUILD_NUMBER": "$.BUILD_NUMBER", "TEAM_ID": "$.TEAM_ID", "ARTIFACT_DIR": "$.ARTIFACT_DIR", "PUBLIC_LINK": "$.PUBLIC_LINK" }
+        },
+        {
+          "name": "archive",
+          "run": "asc xcode archive --workspace ios/RoyceTravelTemplate.xcworkspace --scheme RoyceTravelTemplate --configuration Release --archive-path '${steps.preflight.ARTIFACT_DIR}/CrewApp.xcarchive' --xcodebuild-flag=-destination --xcodebuild-flag=generic/platform=iOS --xcodebuild-flag=-derivedDataPath --xcodebuild-flag='${steps.preflight.ARTIFACT_DIR}/DerivedData' --xcodebuild-flag=-allowProvisioningUpdates --xcodebuild-flag=CURRENT_PROJECT_VERSION=${steps.preflight.BUILD_NUMBER} --xcodebuild-flag=MARKETING_VERSION=${steps.preflight.VERSION} --output json",
+          "outputs": { "ARCHIVE_PATH": "$.archive_path" }
+        },
+        {
+          "name": "export",
+          "run": "asc xcode export --archive-path '${steps.archive.ARCHIVE_PATH}' --ipa-path '${steps.preflight.ARTIFACT_DIR}/CrewApp.ipa' --method app-store-connect --signing-style automatic --team-id '${steps.preflight.TEAM_ID}' --timeout 10m --xcodebuild-flag=-allowProvisioningUpdates --output json",
+          "outputs": { "IPA_PATH": "$.ipa_path" }
+        },
+        {
+          "name": "upload",
+          "run": "asc publish testflight --app \"$ASC_APP_ID\" --ipa '${steps.export.IPA_PATH}' --upload-only --output json",
+          "outputs": { "BUILD_ID": "$.buildId" }
+        },
+        { "name": "processing", "run": "asc builds wait --build-id '${steps.upload.BUILD_ID}' --fail-on-invalid --output json" },
+        { "name": "distribute", "run": "asc builds add-groups --build-id '${steps.upload.BUILD_ID}' --group \"$ASC_GROUP_ID\" --submit --confirm --output json" },
+        { "name": "group_receipt", "run": "asc testflight groups view --id \"$ASC_GROUP_ID\" --output json" },
+        { "name": "build_receipt", "run": "asc builds info --build-id '${steps.upload.BUILD_ID}' --output json" },
+        { "name": "membership_receipt", "run": "asc testflight groups list --build-id '${steps.upload.BUILD_ID}' --output json" },
+        { "name": "review_receipt", "run": "asc testflight review submissions list --build-id '${steps.upload.BUILD_ID}' --output json" }
+      ]
+    }
+  }
+}

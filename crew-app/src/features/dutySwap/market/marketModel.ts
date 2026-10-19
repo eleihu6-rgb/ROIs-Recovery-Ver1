@@ -5,17 +5,19 @@
 // imports so it stays unit-testable (__tests__/features/dutySwapMarket.test.tsx).
 // Spec: docs/superpowers/specs/2026-10-08-crew-app-duty-swap-market-design.md
 import {
-  dayLabel, DAY_MS, fleetsOf, hhmmOf, naiveMs, type ApiTaskDetail, type SwapCrew, type SwapDuty,
+  activeFilterCount, dayLabel, DAY_MS, fleetsOf, hhmmOf, naiveMs,
+  type ApiTaskDetail, type SwapCrew, type SwapDuty, type SwapFilters,
 } from '../dutySwapModel';
 
 // ── Approach switch (Matrix = Concept D, Market = Concept A) ────────────────
-export type SwapApproach = 'matrix' | 'market' | 'ticket';
-export const APPROACHES: SwapApproach[] = ['matrix', 'market', 'ticket'];
-export const APPROACH_LABEL: Record<SwapApproach, string> = { matrix: 'Matrix', market: 'Market', ticket: 'Ticket' };
+export type SwapApproach = 'matrix' | 'market' | 'ticket' | 'twin';
+export const APPROACHES: SwapApproach[] = ['matrix', 'market', 'ticket', 'twin'];
+// The id stays `ticket` for the choices already remembered on crew phones.
+export const APPROACH_LABEL: Record<SwapApproach, string> = { matrix: 'Matrix', market: 'Market', ticket: 'Match', twin: 'Twin Rail' };
 /** Remembered per crew on this phone (airline + crew ID, so PR/TG never mix). */
 export const approachKey = (airline: string, crewId: string): string => `@duty_swap_approach_${airline}_${crewId}`;
 export function parseApproach(v: string | null | undefined): SwapApproach | null {
-  return v === 'matrix' || v === 'market' || v === 'ticket' ? v : null;
+  return v === 'matrix' || v === 'market' || v === 'ticket' || v === 'twin' ? v : null;
 }
 
 // ── The board ───────────────────────────────────────────────────────────────
@@ -82,6 +84,98 @@ export function giveChoices(me: SwapCrew, give: SwapDuty, tapped: SwapDuty): Swa
 export function defaultGive(me: SwapCrew, give: SwapDuty, tapped: SwapDuty): string[] {
   const span = dutySpan(tapped);
   return giveChoices(me, give, tapped).filter(d => d.key === give.key || overlaps(d, span)).map(d => d.key);
+}
+
+// ── Saved wants (Match mode: one per give duty) ─────────────────────────────
+export type SavedWants = Record<string, SwapFilters>;
+
+/** Per crew on this phone; airline in the key so PR and TG never mix. */
+export const wantStoreKey = (airline: string, crewId: string): string => `@duty_swap_want_${airline}_${crewId}`;
+
+export function parseWants(raw: string | null | undefined): SavedWants {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: SavedWants = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) out[key] = value as SwapFilters;
+    }
+    return out;
+  } catch { return {}; }
+}
+
+/** The want to apply in step 2: the most recently selected duty that has one. */
+export function savedWantFor(give: SwapDuty[], wants: SavedWants): SwapFilters | null {
+  for (let i = give.length - 1; i >= 0; i--) {
+    const want = wants[give[i].key];
+    if (want) return want;
+  }
+  return null;
+}
+
+/** The untouched portal window is not a want yet. Anything the crew changed is. */
+export function hasWantCriteria(f: SwapFilters, defaults: { startDate: string; endDate: string }): boolean {
+  return f.startDate !== defaults.startDate || f.endDate !== defaults.endDate
+    || f.swapMode !== 'NS' || activeFilterCount(f) > 0;
+}
+
+export interface WantCriteria {
+  /** Mandatory and always first in step 2. */
+  start: string;
+  /** Mandatory and always second in step 2. */
+  end: string;
+  /** '19–31 Oct', for the one-line step-1 chip. */
+  range: string;
+  /** Every other selected criterion, in scan order. */
+  others: string[];
+}
+
+/** What the crew actually selected. Start/End are mandatory; the rest is
+ *  everything they filled in, so step 2 can put the used criteria on top. */
+export function wantCriteria(f: SwapFilters): WantCriteria {
+  const a = dayLabel(f.startDate), b = dayLabel(f.endDate);
+  const range = f.startDate === f.endDate ? `${a.day} ${a.month}`
+    : a.month === b.month ? `${a.day}–${b.day} ${a.month}` : `${a.day} ${a.month} → ${b.day} ${b.month}`;
+  return {
+    start: `${a.day} ${a.month}`,
+    end: `${b.day} ${b.month}`,
+    range,
+    others: [
+      ...(f.swapMode === 'FS' ? ['Handshake · friends'] : []),
+      ...f.taskTypeList,
+      ...f.fltFleetList,
+      ...f.layoverPortList,
+      ...f.fltNumList.map(x => `Flt ${x}`),
+      ...f.fltArrList.map(x => `ARR ${x}`),
+      ...f.activeRankList,
+      ...f.crewIdList.map(x => `Crew ${x}`),
+      ...rangeBits(f),
+    ],
+  };
+}
+
+/** Briefest readable want for the step-1 chip: dates, then at most three criteria. */
+export function wantLabel(f: SwapFilters): string {
+  const { range, others } = wantCriteria(f);
+  const shown = others.slice(0, 3);
+  const rest = others.length - shown.length;
+  return [range, ...shown, ...(rest > 0 ? [`+${rest}`] : [])].join(' · ');
+}
+
+function rangeBits(f: SwapFilters): string[] {
+  const bits: string[] = [];
+  const range = (label: string, a: string, b: string, suffix = '') => {
+    if (a.trim() || b.trim()) bits.push(`${label} ${a.trim() || '–'}–${b.trim() || '–'}${suffix}`);
+  };
+  range('Dur', f.durationStart, f.durationEnd, 'd');
+  range('CRD', f.crdStart, f.crdEnd, 'h');
+  range('BLH', f.blhStart, f.blhEnd, 'h');
+  range('Lay', f.layoverTimeStart, f.layoverTimeEnd, 'h');
+  if (f.briefStart.trim() || f.briefEnd.trim()) bits.push(`Rpt ${f.briefStart.trim() || '–'}–${f.briefEnd.trim() || '–'}`);
+  if (f.debriefStart.trim() || f.debriefEnd.trim()) bits.push(`End ${f.debriefStart.trim() || '–'}–${f.debriefEnd.trim() || '–'}`);
+  if (f.filterEmptyDutyCrew) bits.push('Duties only');
+  return bits;
 }
 
 // ── Labels ──────────────────────────────────────────────────────────────────

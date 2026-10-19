@@ -1,0 +1,75 @@
+# Schedule ▸ Route map ▸ endpoint-block flight info on the map.
+#
+# Focused real-UI check for the on-map destination labels (Option C: accent rule,
+# no surface). Run for each carrier so the label layer is exercised on both
+# datasets and the cross-airline base is correct.
+#
+# Run: maestro test crew-app/.maestro/route_map_labels.yaml --env AIRLINE=TG \
+#        --debug-output /tmp/route-labels-tg
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-${AIRLINE}"
+    timeout: 10000
+- tapOn:
+    id: "airline-${AIRLINE}"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-shell"
+    timeout: 20000
+# Phone/portrait keeps the roster-view menu; the wide layout (iPad, unfolded
+# Duo) shows the same choices as a right-side toolbar.
+- runFlow:
+    when:
+      visible:
+        id: "sched-view-menu"
+    commands:
+      - tapOn:
+          id: "sched-view-menu"
+      - assertVisible: "Roster view"
+- tapOn:
+    id: "sched-view-route"
+# Some test rosters have no flying in the current month; step back to the last
+# month with published flights when the flow is told to (PREV_MONTHS).
+- repeat:
+    times: ${PREV_MONTHS}
+    commands:
+      - tapOn:
+          id: "sched-prev-month"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 10000
+# The label overlay is the layer this change adds: it only appears once the card
+# has measured itself, and it carries one block per destination.
+- extendedWaitUntil:
+    visible:
+      id: "route-map-labels"
+    timeout: 10000
+- takeScreenshot: route_map_labels_${AIRLINE}

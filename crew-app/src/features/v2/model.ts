@@ -94,9 +94,13 @@ export function legView(
   mode: TimeZoneMode,
   baseTz: string,
   alarm: EffectiveAlarm | undefined,
+  /** Report instant of the DUTY this leg starts, when the rotation spans several
+   *  duties. Defaults to the rotation's own check-in on its first leg. */
+  dutyReportUTC?: string,
 ): LegView {
   // Report / leave-home / ready belong to the trip's first leg (check-in at base);
-  // later legs of the same rotation don't repeat them.
+  // later duties of the same rotation report again at the layover airport, so a
+  // duty-start leg gets its own report (alarms still only exist for the first).
   const isFirst = trip.legs[0] === leg;
   const depZone = airportZone(leg.depArp);
   const arvZone = airportZone(leg.arvArp);
@@ -105,7 +109,8 @@ export function legView(
   const dk = depD ? depD.year * 10000 + (depD.monthIdx + 1) * 100 + depD.day : 0;
   const ak = arvD ? arvD.year * 10000 + (arvD.monthIdx + 1) * 100 + arvD.day : dk;
   // Report (check-in) instant: the roster string is UTC; render it in the mode's zone.
-  const checkInUtc = parseRosterUTC(trip.checkInDateUTC);
+  const reportSource = dutyReportUTC || (isFirst ? trip.checkInDateUTC : '');
+  const checkInUtc = parseRosterUTC(reportSource);
   return {
     fltNumber: (leg.fltNumber || '').trim(),
     fleet: shortFleet(leg.fleet),
@@ -123,10 +128,10 @@ export function legView(
       ? hhmmForInstant(alarm.wakeUp.instant, mode, baseTz, depZone)
       : '—',
     readyWord: alarm?.wakeWord ?? 'Get Ready',
-    checkIn: isFirst && trip.checkInDateUTC
+    checkIn: reportSource
       ? (checkInUtc
         ? hhmmForInstant(checkInUtc, mode, baseTz, depZone)
-        : withZoneSuffix(checkInHhmm(trip.checkInDateUTC), mode))
+        : withZoneSuffix(checkInHhmm(reportSource), mode))
       : '—',
     dateKey: dk,
     day: depD?.day ?? 0,
@@ -208,6 +213,8 @@ export interface DayMeeting {
   title: string;
   hhmm: string;
   where: string;
+  /** First useful line from the iOS Calendar event body. */
+  note?: string;
   /** Start instant (ms) — used to order several meetings on one day. */
   startMs: number;
   /** End instant (ms) — the day timeline draws the event as a real block, so it
@@ -223,6 +230,10 @@ export interface DayMeeting {
   alarmHhmm: string;
   /** The crew silenced this meeting's reminder by tapping its alarm chip. */
   muted: boolean;
+  /** All-day events lead the daily plan and do not draw a timed rail span. */
+  allDay?: boolean;
+  /** Crew App wrote this event to iOS Calendar from the roster duty. */
+  appOwned?: boolean;
 }
 
 /** Meeting reminder settings the Schedule tab needs to render a card. */
@@ -394,9 +405,9 @@ export function buildMonth(
     }
   }
   for (const m of meetings) {
-    // All-day events have no meaningful start, and a cancelled event is gone —
-    // same rule the reminder scheduler uses (computeMeetingAlarms).
-    if (m.allDay || m.cancelled) continue;
+    // Cancelled events are gone. All-day events remain visible at the head of
+    // the selected-day plan, matching iOS Calendar / Finalist.
+    if (m.cancelled) continue;
     const startMs = Date.parse(m.startISO);
     if (Number.isNaN(startMs)) continue;
     const zone = meetingDisplayZone(meetingPrefs.deviceTz);
@@ -408,18 +419,21 @@ export function buildMonth(
       id: m.id,
       title: m.title,
       where: meetingWhere(m),
+      note: String(m.notes ?? '').split(/\r?\n/).map(line => line.trim()).find(Boolean) ?? '',
       startMs,
       // A meeting with no parsable end still gets a block: the calendar's own
       // default length, so the timeline never draws a zero-height event.
       endMs: safeEndMs,
       hhmm: hhmmInZone(new Date(startMs), zone),
-      endHhmm: hhmmInZone(new Date(safeEndMs), zone),
+      endHhmm: m.allDay ? '' : hhmmInZone(new Date(safeEndMs), zone),
       joinUrl: meetingJoinUrl(m),
-      alarmHhmm: hhmmInZone(
+      alarmHhmm: m.allDay || m.appOwned ? '' : hhmmInZone(
         new Date(startMs - meetingPrefs.minutesBefore * 60_000),
         zone,
       ),
       muted: meetingPrefs.mutedIds.includes(m.id),
+      allDay: m.allDay,
+      appOwned: !!m.appOwned,
     });
   }
   for (const dm of days) dm.legs.sort((a, b) => a.leg.depTime.localeCompare(b.leg.depTime));

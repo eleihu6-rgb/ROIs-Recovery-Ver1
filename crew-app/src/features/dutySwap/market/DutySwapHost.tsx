@@ -18,6 +18,7 @@ import { DutySwapScreen } from '../DutySwapScreen';
 import { ApproachSwitch, RAIL_TOP, RAIL_W, SwapRailActions, useSwapApproach } from './ApproachSwitch';
 import { MarketScreen } from './MarketScreen';
 import { TicketScreen } from './TicketScreen';
+import { TwinRailScreen } from '../twinRail/TwinRailScreen';
 
 export function DutySwapHost(): React.JSX.Element {
   const p = useCarrier();
@@ -37,7 +38,7 @@ export function DutySwapHost(): React.JSX.Element {
   const header = railInStrip ? undefined : <ApproachSwitch palette={p} value={approach} onChange={choose} variant="header" />;
   return (
     <View style={s.fill} testID="duty-swap-host">
-      {approach === 'market' ? <MarketScreen switcher={header} actionsInRail={railInStrip} /> : approach === 'ticket' ? (
+      {approach === 'twin' ? <TwinRailScreen switcher={header} actionsInRail={railInStrip} /> : approach === 'market' ? <MarketScreen switcher={header} actionsInRail={railInStrip} /> : approach === 'ticket' ? (
         <TicketScreen switcher={header} actionsInRail={railInStrip} />
       ) : <DutySwapScreen switcher={header} rbot={{ open: rbotOpen, setOpen: setRbotOpen, inRail: railInStrip }} />}
       {railInStrip ? (

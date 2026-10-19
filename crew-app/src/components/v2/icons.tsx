@@ -56,7 +56,11 @@ export type IconName =
   // Pop-up standard glyphs (docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md)
   | 'close'
   | 'info'
-  | 'warning';
+  | 'warning'
+  | 'phone'
+  | 'users'
+  | 'dumbbell'
+  | 'briefcase';
 
 export interface IconProps {
   name: IconName;
@@ -448,6 +452,31 @@ export function Icon({ name, size = 24, color = '#fff', strokeWidth }: IconProps
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.9} strokeLinecap="round" strokeLinejoin="round">
           <Rect x={4} y={5} width={16} height={14} rx={2.5} />
           <Path d="M8 5v14M11 9h5M11 13h3M6 9h.01M6 13h.01M6 16h.01" />
+        </Svg>
+      );
+    case 'phone':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.8} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M7.2 3.5 10 8 7.8 10c1.3 2.8 3.5 5 6.2 6.2l2-2.2 4.5 2.8-1 3c-.3.8-1.1 1.3-2 1.2C9.7 20.1 3.9 14.3 3 6.5c-.1-.9.4-1.7 1.2-2z" />
+        </Svg>
+      );
+    case 'users':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round">
+          <Circle cx={8} cy={8} r={3} /><Circle cx={16} cy={8} r={3} />
+          <Path d="M2.5 19a5.5 5.5 0 0 1 11 0M10.5 19a5.5 5.5 0 0 1 11 0" />
+        </Svg>
+      );
+    case 'dumbbell':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.9} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M6 8v8M3.5 9.5v5M18 8v8M20.5 9.5v5M6 12h12" />
+        </Svg>
+      );
+    case 'briefcase':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.7} strokeLinecap="round" strokeLinejoin="round">
+          <Rect x={3} y={7} width={18} height={13} rx={2.5} /><Path d="M9 7V5h6v2M3 12h18M10 12v2h4v-2" />
         </Svg>
       );
     default:

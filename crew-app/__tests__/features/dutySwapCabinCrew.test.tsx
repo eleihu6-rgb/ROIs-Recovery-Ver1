@@ -73,16 +73,16 @@ describe("R'Bot: crew with US duties", () => {
   const options = { ports: ['DOH', 'GUM', 'HNL', 'JFK', 'LAX', 'MNL', 'NRT', 'SEA', 'SFO', 'YVR'] };
   const screen = { filters, crews, details: {}, options };
 
-  it('searches flights arriving at every US port of the window', () => {
+  it('searches the full US airport catalog, including ports outside the window', () => {
     for (const ask of ['Find crew with US duties', 'who has flights to the United States?', 'show crew with duties in the USA']) {
       expect(interpretSwapLocally(ask, screen)!.actions).toEqual([
-        { type: 'set_swap_search', fields: { fltArrList: ['HNL', 'JFK', 'LAX', 'SEA', 'SFO'] }, label: 'US duties · HNL, JFK, LAX, SEA, SFO' },
+        { type: 'set_swap_search', fields: { fltArrList: ['ATL', 'AUS', 'BOS', 'CLT', 'DEN', 'DFW', 'EWR', 'FLL', 'HNL', 'IAD', 'IAH', 'JFK', 'LAS', 'LAX', 'MCI', 'MCO', 'MKE', 'ORD', 'PIT', 'SEA', 'SFO', 'SJC'] }, reset: true, label: 'US flights' },
       ]);
     }
   });
 
   it('other countries by name; "us" the pronoun is not the US', () => {
-    expect(interpretSwapLocally('crew with trips to Japan', screen)!.actions[0]).toMatchObject({ fields: { fltArrList: ['NRT'] } });
+    expect(interpretSwapLocally('crew with trips to Japan', screen)!.actions[0]).toMatchObject({ fields: { fltArrList: ['HND', 'NGO', 'NRT'] } });
     expect(interpretSwapLocally('show us crew with a DOH layover', screen)!.actions[0]).toMatchObject({ fields: { layoverPortList: ['DOH'] } });
   });
 });

@@ -9,3 +9,12 @@ android/.gradle/
 android/local.properties
 .env
 *.log
+
+# ASC credentials, signing material and local release receipts are never committed.
+.asc/*
+!.asc/workflow.json
+*.p8
+*.p12
+*.mobileprovision
+*.ipa
+*.xcarchive/

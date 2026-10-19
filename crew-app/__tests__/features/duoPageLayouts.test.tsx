@@ -213,6 +213,7 @@ describe('Schedule ▸ Timeline', () => {
     mockInsets.current = { top: 0, right: 84, bottom: 21, left: 0 };
     const tree = withStore(<ScheduleScreen />);
     await openNextMonth(tree);
+    expect(StyleSheet.flatten(tree.getByTestId('sched-header').props.style).paddingTop).toBe(8);
     const edge = tree.getByTestId('sched-view-rail-edge');
     const rail = within(edge).getByTestId('sched-view-rail');
     expect(StyleSheet.flatten(edge.props.style)).toMatchObject({ position: 'absolute', right: 0, width: 84 });
@@ -221,7 +222,10 @@ describe('Schedule ▸ Timeline', () => {
     expect(StyleSheet.flatten(tree.getByTestId('sched-shell').props.style)).toMatchObject({ paddingRight: 84 });
     expect(within(tree.getByTestId('sched-shell')).queryByTestId('sched-view-rail')).toBeNull();
     fireEvent.press(within(rail).getByTestId('sched-view-calendar'));
-    expect(tree.getByTestId('cal-wide')).toBeTruthy();
+    expect(tree.getByTestId('cal-month-detail')).toBeTruthy();
+    fireEvent.press(tree.getByTestId('cal-mode-toggle'));
+    expect(tree.getByTestId('cal-grid')).toBeTruthy();
+    expect(tree.getByTestId('cal-agenda-head')).toBeTruthy();
   });
 
   it('compact on the Duo outer screen: the same right-edge switcher replaces the menu', async () => {
@@ -229,6 +233,7 @@ describe('Schedule ▸ Timeline', () => {
     mockInsets.current = { top: 0, right: 84, bottom: 21, left: 0 };
     const tree = withStore(<ScheduleScreen />);
     await openNextMonth(tree);
+    expect(StyleSheet.flatten(tree.getByTestId('sched-header').props.style).paddingTop).toBe(8);
     expect(tree.queryByTestId('sched-view-menu')).toBeNull();
     expect(dayList(tree, 'sched-list').props.numColumns).toBe(1);
     const edge = tree.getByTestId('sched-view-rail-edge');
@@ -248,6 +253,22 @@ describe('Schedule ▸ Timeline', () => {
     expect(tree.getByTestId('sched-view-menu')).toBeTruthy();
     expect(tree.getByTestId('day-7')).toBeTruthy();
   });
+
+  it('Duo: the day list ends at the screen edge instead of reserving the phone dock band', async () => {
+    asWide();
+    mockInsets.current = { top: 0, right: 84, bottom: 21, left: 0 };
+    const tree = withStore(<ScheduleScreen />);
+    await openNextMonth(tree);
+    // No bottom dock on the Duo — navigation is the right-edge rail — so only
+    // the home-indicator inset remains under the last card.
+    expect(StyleSheet.flatten(dayList(tree, 'sched-grid').props.contentContainerStyle).paddingBottom).toBe(21);
+
+    asPhone();
+    mockInsets.current = { top: 0, right: 0, bottom: 0, left: 0 };
+    const phone = withStore(<ScheduleScreen />);
+    await openNextMonth(phone);
+    expect(StyleSheet.flatten(dayList(phone, 'sched-list').props.contentContainerStyle).paddingBottom).toBe(120);
+  });
 });
 
 describe('Schedule ▸ Calendar', () => {
@@ -258,32 +279,40 @@ describe('Schedule ▸ Calendar', () => {
     fireEvent.press(tree.getByTestId('sched-view-calendar'));
   };
 
-  it('wide: month grid | the tapped day’s agenda and hour timeline, in one view', async () => {
+  it('wide: progresses from full month to month + day to selected week + day', async () => {
     asWide();
     const tree = withStore(<ScheduleScreen />);
     await openCalendar(tree);
-    expect(tree.getByTestId('cal-wide')).toBeTruthy();
+    expect(within(tree.getByTestId('sched-header')).getByTestId('cal-header-actions')).toBeTruthy();
+    expect(within(tree.getByTestId('sched-header')).getByTestId('cal-mode-toggle')).toBeTruthy();
+    expect(within(tree.getByTestId('sched-header')).getByTestId('cal-to-detail')).toBeTruthy();
+    fireEvent.press(tree.getByTestId('cal-mode-toggle'));
     expect(tree.getByTestId('cal-grid')).toBeTruthy();
-    expect(tree.queryByTestId('cal-to-detail')).toBeNull(); // no grid⇄timeline switch to make
+    expect(tree.getByTestId('cal-to-detail')).toBeTruthy();
     fireEvent.press(tree.getByTestId('cal-day-7'));
     expect(tree.getByTestId('cal-agenda-head').props.children).toMatch(/ 7 /);
-    expect(tree.getByTestId('cal-day-pane')).toBeTruthy();
-    fireEvent.press(tree.getByTestId('cal-toggle-hours'));
-    expect(tree.getByTestId('cal-timeline')).toBeTruthy();
-    expect(tree.getByTestId('cal-block-duty-pair-lhr')).toBeTruthy();
-    // An agenda row selects its day (the layover) — still the same view.
     fireEvent.press(tree.getByTestId('cal-day-8'));
-    expect(tree.getByTestId('cal-allday-layover-' + `${Y}${String(M + 1).padStart(2, '0')}08`)).toBeTruthy();
+    expect(tree.getByTestId('cal-row-layover-' + `${Y}${String(M + 1).padStart(2, '0')}08`)).toBeTruthy();
+    fireEvent.press(tree.getByTestId('cal-mode-toggle'));
+    expect(tree.getByTestId('cal-week-grid')).toBeTruthy();
+    expect(tree.getAllByTestId(/^cal-grid-week-/)).toHaveLength(1);
     expect(tree.queryByTestId('cal-timeline')).toBeNull();
-    expect(tree.getByTestId('cal-wide')).toBeTruthy();
+    fireEvent.press(tree.getByTestId('cal-to-detail'));
+    expect(tree.getByTestId('cal-detail')).toBeTruthy();
+    expect(tree.getByTestId('cal-allday-layover-' + `${Y}${String(M + 1).padStart(2, '0')}08`)).toBeTruthy();
   });
 
-  it('iPad: opens the selected-day hourly workspace without making the crew toggle away from a sparse agenda', async () => {
+  it('iPad: uses the same progressive calendar and opens hours explicitly', async () => {
     mockLayout.current = layoutFor(834, 1210);
     const tree = withStore(<ScheduleScreen />);
     await openCalendar(tree);
-    expect(tree.getByTestId('cal-wide')).toBeTruthy();
+    expect(within(tree.getByTestId('sched-header')).getByTestId('cal-header-actions')).toBeTruthy();
+    expect(tree.getByTestId('cal-month-detail')).toBeTruthy();
+    fireEvent.press(tree.getByTestId('cal-mode-toggle'));
+    expect(tree.getByTestId('cal-grid')).toBeTruthy();
     fireEvent.press(tree.getByTestId('cal-day-7'));
+    expect(tree.getByTestId('cal-agenda-head').props.children).toMatch(/ 7 /);
+    fireEvent.press(tree.getByTestId('cal-to-detail'));
     expect(tree.getByTestId('cal-timeline')).toBeTruthy();
   });
 
@@ -293,13 +322,42 @@ describe('Schedule ▸ Calendar', () => {
     await openCalendar(tall);
     const flat = (style: unknown) => [style].flat(3).some(s => s && (s as { aspectRatio?: number }).aspectRatio === 1);
     expect(flat(tall.getByTestId('cal-day-7').props.style)).toBe(false);
-    expect(tall.queryByTestId('cal-wide')).toBeNull();
+    expect(tall.getByTestId('cal-month-detail')).toBeTruthy();
 
     asPhone();
     const phone = withStore(<ScheduleScreen />);
     await openCalendar(phone);
+    expect(within(phone.getByTestId('sched-header')).getByTestId('cal-header-actions')).toBeTruthy();
+    expect(within(phone.getByTestId('sched-header')).getByTestId('cal-mode-toggle')).toBeTruthy();
+    expect(within(phone.getByTestId('sched-header')).getByTestId('cal-to-detail')).toBeTruthy();
+    expect(within(phone.getByTestId('cal-compact')).queryByTestId('cal-mode-toggle')).toBeNull();
+    expect(StyleSheet.flatten(phone.getByTestId('sched-header').props.style).paddingHorizontal).toBe(8);
+    expect(phone.getByTestId('sched-prev-month').props.hitSlop).toBe(7);
+    expect(phone.getByTestId('sched-next-month').props.hitSlop).toBe(7);
+    expect(phone.getByTestId('cal-mode-toggle').props.hitSlop).toBe(5);
     expect(flat(phone.getByTestId('cal-day-7').props.style)).toBe(false);
     expect(phone.getByTestId('cal-to-detail')).toBeTruthy();
+  });
+
+  it('Duo: the month and day agenda fill the height below the header instead of a dock band', async () => {
+    asWide();
+    mockInsets.current = { top: 0, right: 84, bottom: 21, left: 0 };
+    const duo = withStore(<ScheduleScreen />);
+    await openCalendar(duo);
+    // Month-detail: the whole calendar column scrolls, so the reserve lives on
+    // the content container.
+    expect(StyleSheet.flatten(duo.getByTestId('cal-compact').props.contentContainerStyle).paddingBottom).toBe(21);
+    // Month + day: the selected day's agenda is a fixed pane; the same edge applies.
+    fireEvent.press(duo.getByTestId('cal-mode-toggle'));
+    expect(StyleSheet.flatten(duo.getByTestId('cal-compact').props.style).paddingBottom).toBe(21);
+
+    asPhone();
+    mockInsets.current = { top: 0, right: 0, bottom: 0, left: 0 };
+    const phone = withStore(<ScheduleScreen />);
+    await openCalendar(phone);
+    expect(StyleSheet.flatten(phone.getByTestId('cal-compact').props.contentContainerStyle).paddingBottom).toBe(130);
+    fireEvent.press(phone.getByTestId('cal-mode-toggle'));
+    expect(StyleSheet.flatten(phone.getByTestId('cal-compact').props.style).paddingBottom).toBe(100);
   });
 });
 
@@ -527,6 +585,17 @@ function makeFullStore() {
 const withFull = (ui: React.ReactElement) => render(<Provider store={makeFullStore()}>{ui}</Provider>);
 
 describe('PageShell — explainer beside the body (wide), one centred column (tall)', () => {
+  it('uses the Duo side status strip without pushing the whole page downward', () => {
+    asTall();
+    mockInsets.current = { top: 96, right: 84, bottom: 21, left: 0 };
+    const duo = withFull(<TimeZoneScreen />);
+    expect(StyleSheet.flatten(duo.getByTestId('page-header').props.style).paddingTop).toBe(8);
+
+    mockLayout.current = layoutFor(834, 1210);
+    mockInsets.current = { top: 24, right: 0, bottom: 20, left: 0 };
+    const ipad = withFull(<TimeZoneScreen />);
+    expect(StyleSheet.flatten(ipad.getByTestId('page-header').props.style).paddingTop).toBe(32);
+  });
   it('wide: the Time Zone explainer is the left column, the options the right', () => {
     asWide();
     const tree = withFull(<TimeZoneScreen />);
@@ -687,34 +756,58 @@ describe('Route map', () => {
     expect(tree.queryByText(`${MON[M]} ${Y} summary`)).toBeNull();
     expect(flat(tree.getByTestId('route-stat-totals').props.style).marginTop).toBe(0);
     expect(flat(tree.getByTestId('route-stat-counts').props.style).marginTop).toBe(7);
-    expect(tree.getByTestId('route-details')).toBeTruthy();
+    // The map now owns the whole content area: no separate destinations panel.
+    expect(flat(tree.getByTestId('route-view').props.style).flex).toBe(1);
+    expect(tree.queryByTestId('route-details')).toBeNull();
     asPhone();
   });
-  it('tall: seven stats on one row, routes in two columns, a taller map', () => {
+  it('Duo: the map fills the height the right rail frees; the phone keeps its dock clearance', () => {
+    asWide();
+    mockInsets.current = { top: 0, right: 84, bottom: 21, left: 0 };
+    const duo = render(<RouteMapView month={month} base="BKK" palette={PALETTES.light} />);
+    expect(StyleSheet.flatten(duo.getByTestId('route-view').props.style).paddingBottom).toBe(21);
+
+    asPhone();
+    mockInsets.current = { top: 0, right: 0, bottom: 0, left: 0 };
+    const phone = render(<RouteMapView month={month} base="BKK" palette={PALETTES.light} />);
+    expect(StyleSheet.flatten(phone.getByTestId('route-view').props.style).paddingBottom).toBe(110);
+  });
+  it('tall: seven stats on one row, and the map fills the available height', () => {
     asTall();
     const tree = render(<RouteMapView month={month} base="BKK" palette={PALETTES.thai} />);
     expect(tree.getByTestId('route-stat-row')).toBeTruthy();
     expect(tree.queryByTestId('route-stat-counts')).toBeNull();
-    expect(tree.getByTestId('route-grid')).toBeTruthy();
-    expect(tree.getByTestId('route-svg').props.height).toBe(Math.round((669 - 44) * 0.62));
+    expect(tree.queryByTestId('route-grid')).toBeNull();
+    expect(tree.getByTestId('route-svg').props.height).toBe('100%');
   });
-  it('phone: the two-tier summary overlays a 340pt map above single-column routes', () => {
+  it('phone: the two-tier summary overlays the full-height map', () => {
     const tree = render(<RouteMapView month={month} base="BKK" palette={PALETTES.thai} />);
     expect(tree.getByTestId('route-stat-totals')).toBeTruthy();
     expect(tree.getByTestId('route-stat-counts')).toBeTruthy();
     expect(tree.queryByTestId('route-grid')).toBeNull();
-    expect(tree.getByTestId('route-svg').props.height).toBe(340);
+    expect(tree.queryByTestId('route-details')).toBeNull();
+    expect(tree.getByTestId('route-svg').props.height).toBe('100%');
   });
 });
 
 describe('Trip details', () => {
   const screen = () => withFull(<TripDetailsScreen route={{ key: 't', name: 'TripDetails', params: { tripId: 'pair-lhr' } } as never} navigation={{} as never} />);
-  it('tall: calendar and hotel cards side by side under the hero; phone: stacked', () => {
+  it('one timeline on tall, wide and phone; the calendar action stays reachable', () => {
     asTall();
     const tall = screen();
-    expect(tall.getByTestId('trip-tall-cards')).toBeTruthy();
+    expect(tall.getByTestId('trip-timeline')).toBeTruthy();
     expect(tall.getByTestId('trip-calendar-toggle')).toBeTruthy();
+    expect(tall.queryByTestId('trip-tall-cards')).toBeNull();
+
+    asWide();
+    const wide = screen();
+    expect(wide.getByTestId('trip-timeline')).toBeTruthy();
+    expect(wide.getByTestId('trip-calendar-toggle')).toBeTruthy();
+
     asPhone();
-    expect(screen().queryByTestId('trip-tall-cards')).toBeNull();
+    const phone = screen();
+    expect(phone.getByTestId('trip-timeline')).toBeTruthy();
+    expect(phone.getByTestId('trip-calendar-toggle')).toBeTruthy();
+    expect(phone.queryByTestId('trip-tall-cards')).toBeNull();
   });
 });

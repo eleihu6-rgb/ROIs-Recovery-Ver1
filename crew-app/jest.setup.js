@@ -4,6 +4,10 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
+// Calendar month scaling uses the real gesture-handler surface on device. Its
+// official Jest shim keeps that surface pressable/fireable in component tests.
+require('react-native-gesture-handler/jestSetup');
+
 // Pin the window to a regular iPhone (iPhone Air, 420x912pt). The preset's
 // 750x1334 reads as the iPhone Duo's wide inner screen to `useLayout`, and every
 // component test was written against the compact phone layout. A Duo test mocks

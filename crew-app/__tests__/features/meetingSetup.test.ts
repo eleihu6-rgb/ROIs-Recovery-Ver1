@@ -111,6 +111,11 @@ describe('computeMeetingAlarms', () => {
     expect(computeMeetingAlarms([mtg({ allDay: true })], 8, NOW)).toHaveLength(0);
   });
 
+  it('skips Crew App calendar markers so a synced duty never gets a second alarm', () => {
+    expect(computeMeetingAlarms([mtg({ appOwned: true })], 8, NOW)).toHaveLength(0);
+    expect(nextImminentMeeting([mtg({ appOwned: true })], 60 * 24, NOW)).toBeNull();
+  });
+
   it('skips meetings that have already started', () => {
     const past = mtg({ startISO: '2026-05-01T09:00:00+07:00' });
     expect(computeMeetingAlarms([past], 8, NOW)).toHaveLength(0);
@@ -187,6 +192,12 @@ describe('meetingToGroundDuty / classifyMeetings', () => {
     const pastAllDay = mtg({ id: 'past-allday', allDay: true, startISO: '2026-05-01T00:00:00Z', endISO: '2026-05-01T23:59:59Z' });
     const { upcoming, past } = classifyMeetings([timed, allDay, pastAllDay], NOW, DEVICE_TZ);
     expect(upcoming.map(g => g.id)).toEqual(['meeting:timed']);
+    expect(past).toHaveLength(0);
+  });
+
+  it('excludes Crew App calendar markers from duplicate My Trips cards', () => {
+    const { upcoming, past } = classifyMeetings([mtg({ appOwned: true })], NOW, DEVICE_TZ);
+    expect(upcoming).toHaveLength(0);
     expect(past).toHaveLength(0);
   });
 });

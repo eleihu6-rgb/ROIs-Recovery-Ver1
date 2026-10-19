@@ -130,13 +130,17 @@ export function positionOf(code: string | null | undefined): LatLon | null {
 
 const GREAT_CIRCLE_SAMPLES = 48;
 
+export interface MapPoint {
+  x: number;
+  y: number;
+}
+
 /**
- * Great-circle (orthodrome) between two airports, sampled and projected into the
- * world outline's space — the curved line a crew actually flies, not the straight
- * line a flat map would draw. The path restarts ("M") when a step jumps the
- * antimeridian, so a trans-Pacific route never shoots back across the whole map.
+ * The sampled great-circle (orthodrome) in the world outline's space. Shared by
+ * the drawn line and the route-label placement, so a label is kept clear of the
+ * exact points the map renders.
  */
-export function greatCirclePath(a: LatLon, b: LatLon, samples = GREAT_CIRCLE_SAMPLES, centerLon?: number): string {
+export function greatCirclePoints(a: LatLon, b: LatLon, samples = GREAT_CIRCLE_SAMPLES, centerLon?: number): MapPoint[] {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const toDeg = (r: number) => (r * 180) / Math.PI;
   const phi1 = toRad(a.lat);
@@ -151,10 +155,12 @@ export function greatCirclePath(a: LatLon, b: LatLon, samples = GREAT_CIRCLE_SAM
   if (!Number.isFinite(d) || d === 0) {
     const ax = centerLon === undefined ? a.lon : unwrapLon(a.lon, centerLon);
     const bx = centerLon === undefined ? b.lon : unwrapLon(b.lon, centerLon);
-    return `M${round1(mercatorX(ax))} ${round1(mercatorY(a.lat))}L${round1(mercatorX(bx))} ${round1(mercatorY(b.lat))}`;
+    return [
+      { x: mercatorX(ax), y: mercatorY(a.lat) },
+      { x: mercatorX(bx), y: mercatorY(b.lat) },
+    ];
   }
-  let out = '';
-  let prevX = Number.NaN;
+  const points: MapPoint[] = [];
   for (let i = 0; i <= samples; i++) {
     const t = i / samples;
     const A = Math.sin((1 - t) * d) / Math.sin(d);
@@ -165,11 +171,27 @@ export function greatCirclePath(a: LatLon, b: LatLon, samples = GREAT_CIRCLE_SAM
     const lat = toDeg(Math.atan2(z, Math.sqrt(x * x + y * y)));
     const lon = toDeg(Math.atan2(y, x));
     // Framed on a centre (the base): unwrap instead of breaking — one unbroken line.
-    const px = mercatorX(centerLon === undefined ? lon : unwrapLon(lon, centerLon));
-    const py = mercatorY(lat);
-    const jump = Number.isFinite(prevX) && Math.abs(px - prevX) > MERCATOR_GRID / 3;
-    out += `${out === '' || jump ? 'M' : 'L'}${round1(px)} ${round1(py)}`;
-    prevX = px;
+    points.push({
+      x: mercatorX(centerLon === undefined ? lon : unwrapLon(lon, centerLon)),
+      y: mercatorY(lat),
+    });
+  }
+  return points;
+}
+
+/**
+ * Great-circle (orthodrome) between two airports, sampled and projected into the
+ * world outline's space — the curved line a crew actually flies, not the straight
+ * line a flat map would draw. The path restarts ("M") when a step jumps the
+ * antimeridian, so a trans-Pacific route never shoots back across the whole map.
+ */
+export function greatCirclePath(a: LatLon, b: LatLon, samples = GREAT_CIRCLE_SAMPLES, centerLon?: number): string {
+  let out = '';
+  let prevX = Number.NaN;
+  for (const point of greatCirclePoints(a, b, samples, centerLon)) {
+    const jump = Number.isFinite(prevX) && Math.abs(point.x - prevX) > MERCATOR_GRID / 3;
+    out += `${out === '' || jump ? 'M' : 'L'}${round1(point.x)} ${round1(point.y)}`;
+    prevX = point.x;
   }
   return out;
 }
@@ -422,6 +444,8 @@ export interface AgendaRow {
   sub: string;
   /** "07:15–08:35", or "" when the event has no window (layover). */
   time: string;
+  /** Calendar/event detail, kept to one readable line in the daily planner. */
+  note?: string;
 }
 
 const KIND_ICON: Record<DayKind, IconName> = {
@@ -435,6 +459,18 @@ const KIND_ICON: Record<DayKind, IconName> = {
   ground: 'house',
   off: 'house',
 };
+
+/** Stable Finalist-style glyph by calendar-event meaning. The same classifier
+ * feeds both the daily row and its matching rail span. */
+export function calendarEventIcon(title: string): IconName {
+  const value = title.toLowerCase();
+  if (/\b(training|workout|exercise|session)\b/.test(value)) return 'dumbbell';
+  if (/\b(call|phone|dial[- ]?in)\b/.test(value)) return 'phone';
+  if (/\b(sync|standup|team huddle)\b/.test(value)) return 'users';
+  if (/\b(meeting|review|briefing|workshop|conference)\b/.test(value)) return 'briefcase';
+  if (/\b(leave home|depart home)\b/.test(value)) return 'house';
+  return 'cal';
+}
 
 function hhmm(local: string, fallbackRoster?: string): string {
   const m = String(local || '').match(/(\d{1,2}):(\d{2})/);
@@ -467,7 +503,16 @@ export function agendaRows(month: MonthModel, selected: number | null): AgendaRo
     // The agenda header already names the day when one is selected, so the row
     // only repeats the date on the whole-month agenda.
     const sub = (extra?: string) => [selected === null ? dateLine : '', extra].filter(Boolean).join(' · ');
-    for (const { leg } of d.legs) {
+    // When the roster duty has already been written to EventKit, its Calendar
+    // entries are the source of truth for the Finalist-style daily plan. Do not
+    // repeat the same flight from the roster model beside that event.
+    const calendarFlightCodes = new Set(
+      d.meetings
+        .filter(m => m.appOwned && /(?:→|->)/.test(m.title))
+        .map(m => m.title.match(/\b[A-Z]{2,3}\d{2,4}\b/i)?.[0]?.toUpperCase())
+        .filter((code): code is string => !!code),
+    );
+    for (const { leg } of d.legs.filter(item => !calendarFlightCodes.has(item.leg.fltNumber.toUpperCase()))) {
       rows.push({
         id: `flight-${d.key}-${leg.fltNumber}`,
         day: d.day,
@@ -503,14 +548,26 @@ export function agendaRows(month: MonthModel, selected: number | null): AgendaRo
       rows.push({
         id: `meet-${m.id}`,
         day: d.day,
-        icon: 'cal',
+        icon: calendarEventIcon(m.title),
         title: m.title,
         sub: sub(m.where ? `${m.where} · iOS Cal` : 'iOS Cal'),
-        time: window(m.hhmm, m.endHhmm),
+        time: m.allDay ? '' : window(m.hhmm, m.endHhmm),
+        note: m.note,
       });
     }
   }
-  return rows;
+  // Finalist's day is a chronological plan. Keep whole-month rows grouped by
+  // date, while ordering every day's flights, duties and iOS Calendar events by
+  // their real start time. All-day items lead the timed plan.
+  return rows.sort((a, b) => {
+    if (a.day !== b.day) return a.day - b.day;
+    const am = minutesOfDay(a.time);
+    const bm = minutesOfDay(b.time);
+    if (!Number.isFinite(am) && !Number.isFinite(bm)) return 0;
+    if (!Number.isFinite(am)) return -1;
+    if (!Number.isFinite(bm)) return 1;
+    return am - bm;
+  });
 }
 
 // ─── Timeline master list (iPhone Duo wide layout) ───────────────────────────

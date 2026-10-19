@@ -1,4 +1,4 @@
-// R'Bot's nav-bar entry: its OWN box beside the four tabs (never a fifth tab),
+// R'Bot's nav-bar entry: its OWN box beside the visible tabs (never another tab),
 // panda avatar, and it opens the R'Bot screen.
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
@@ -50,12 +50,12 @@ describe("R'Bot dock entry", () => {
     );
   }
 
-  it('renders as its own box beside the four tabs', () => {
+  it('renders as its own box beside the three visible tabs', () => {
     const {getByTestId, queryByTestId} = renderDock(0);
-    // The four tabs are still there, and R'Bot is a separate control.
-    for (const tab of ['home', 'schedule', 'global', 'profile']) {
+    for (const tab of ['home', 'schedule', 'profile']) {
       expect(getByTestId(`tab-${tab}`)).toBeTruthy();
     }
+    expect(queryByTestId('tab-global')).toBeNull();
     expect(getByTestId('dock-rbot')).toBeTruthy();
     // It is NOT a tab: there is no `tab-rbot` route in the dock.
     expect(queryByTestId('tab-rbot')).toBeNull();

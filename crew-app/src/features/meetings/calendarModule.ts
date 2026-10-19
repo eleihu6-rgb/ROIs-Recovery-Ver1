@@ -79,15 +79,13 @@ export async function fetchMeetings(
   // Strip milliseconds — toISOString() emits "...00.000Z", which a plain native
   // ISO8601DateFormatter rejects. "...00Z" parses everywhere.
   const noMs = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
-  const startISO = noMs(now);
+  // The Schedule calendar is browsable backward. Keep recent EventKit history
+  // so selecting an earlier day still matches iOS Calendar / Finalist instead
+  // of becoming empty as soon as midnight passes.
+  const startISO = noMs(new Date(now.getTime() - 45 * 86_400_000));
   const endISO = noMs(new Date(now.getTime() + daysAhead * 86_400_000));
   const raw = await native.getEvents(startISO, endISO);
-  return raw
-    // The device calendar is both the meetings source AND where "add this duty
-    // to Calendar" writes. Our own flight entries must not come back as
-    // Outlook/Exchange meetings (or arm a meeting alarm) — see flightCalendar.
-    .filter(e => !isFlightCalendarEvent(e.url))
-    .map(e => ({
+  return raw.map(e => ({
       id: e.id,
       title: e.title ?? '',
       startISO: e.startISO,
@@ -98,6 +96,10 @@ export async function fetchMeetings(
       url: e.url ?? '',
       location: e.location ?? '',
       notes: e.notes ?? '',
+      // Keep Crew App's own EventKit rows in the shared Calendar model so the
+      // selected-day planner mirrors iOS Calendar exactly. Alarm/trip surfaces
+      // use this marker to avoid creating duplicate reminders or cards.
+      appOwned: isFlightCalendarEvent(e.url),
     }));
 }
 

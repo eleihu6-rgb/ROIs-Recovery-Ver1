@@ -17,9 +17,13 @@ import {
   activeFilterCount, dayLabel, isoDay, naiveMs, DAY_MS, SWAP_MODE_LABEL, validateFilters,
   type SwapFilters, type SwapMode,
 } from '../dutySwapModel';
+import { hasWantCriteria, wantCriteria } from '../market/marketModel';
 import { tint } from './CrewMatrix';
 
 interface Props {
+  leadingContent?: React.ReactNode;
+  /** Ticket provides its own persistent Back/Find matches navigation. */
+  externalNavigation?: boolean;
   palette: CarrierPalette;
   crewId: string;
   initial: SwapFilters;
@@ -37,6 +41,10 @@ interface Props {
   onAskRbot?: () => void;
   /** Close the form and show the matrix, when there is a result to show. */
   onClose?: () => void;
+  /** Match mode: the star saves the want for the selected give duties. */
+  onSaveWant?: (f: SwapFilters) => void;
+  /** Match mode: the saved want of the give duty currently in context. */
+  savedWant?: SwapFilters | null;
 }
 
 interface Saved { name: string; filters: SwapFilters }
@@ -62,6 +70,11 @@ export function SearchForm(props: Props): React.JSX.Element {
 
   const set = <K extends keyof SwapFilters>(k: K, v: SwapFilters[K]) => setF(prev => ({ ...prev, [k]: v }));
   const error = validateFilters(f);
+  const saveWant = props.onSaveWant;
+  const wantSaved = !!saveWant && !!props.savedWant && sameFilters(f, props.savedWant);
+  const saveEnabled = !saveWant || wantSaved || hasWantCriteria(f, props.defaults);
+  const want = saveWant ? wantCriteria(f) : null;
+  const reset = () => setF({ ...emptyLike(f), startDate: props.defaults.startDate, endDate: props.defaults.endDate });
   const label = (x: SwapFilters) => {
     const a = dayLabel(x.startDate), b = dayLabel(x.endDate);
     return [`${a.day}–${b.day} ${b.month}`, ...x.taskTypeList, ...x.fltFleetList, ...x.layoverPortList].slice(0, 4).join(' · ');
@@ -114,18 +127,40 @@ export function SearchForm(props: Props): React.JSX.Element {
           <Text style={[s.title, { color: p.cardInk }]}>Search pairing</Text>
           <Text style={[s.sub, { color: p.cardSoft }]}>Find the crew to swap with, then pick duties</Text>
         </View>
+        {props.externalNavigation ? <Pressable onPress={reset} testID="search-reset" style={[s.chip, { borderColor: p.cardLine }]} accessibilityLabel="Reset filters"><Text style={[s.chipText, { color: p.btn }]}>Reset</Text></Pressable> : null}
         {props.onClose ? (
           <Pressable onPress={props.onClose} accessibilityLabel="close filters" testID="search-close" style={[s.iconBtn, { borderColor: p.cardLine }]}>
             <Icon name="close" size={15} color={p.cardInk} strokeWidth={2.2} />
           </Pressable>
         ) : null}
-        <Pressable onPress={() => persist([{ name: label(f), filters: f }, ...saved.filter(x => x.name !== label(f))].slice(0, 6))}
-          accessibilityLabel="save search" testID="search-save" style={[s.iconBtn, { borderColor: p.cardLine }]}>
-          <Icon name="star" size={16} color={p.btn} strokeWidth={2} />
+        <Pressable
+          disabled={!!saveWant && !saveEnabled}
+          onPress={() => saveWant
+            ? saveWant(f)
+            : persist([{ name: label(f), filters: f }, ...saved.filter(x => x.name !== label(f))].slice(0, 6))}
+          accessibilityLabel={saveWant ? (wantSaved ? 'want saved' : 'save want') : 'save search'}
+          accessibilityState={saveWant ? { disabled: !saveEnabled, selected: wantSaved } : undefined}
+          testID={saveWant ? 'search-save-want' : 'search-save'}
+          style={[s.iconBtn, { borderColor: wantSaved ? p.btn : p.cardLine, backgroundColor: wantSaved ? tint(p.btn, 0.12) : undefined, opacity: saveWant && !saveEnabled ? 0.35 : 1 }]}>
+          <Icon name="star" size={16} color={saveWant && !saveEnabled ? p.cardSoft : p.btn} strokeWidth={2} />
         </Pressable>
       </View>
 
       <ScrollView style={s.flex} contentContainerStyle={s.body} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        {props.leadingContent}
+        {want ? (
+          <View testID="search-want-summary" style={[s.wantSummary, { borderColor: tint(p.btn, 0.3), backgroundColor: tint(p.btn, 0.06) }]}>
+            <View style={s.wantHead}>
+              <Icon name="star" size={13} color={p.btn} />
+              <Text style={[s.wantTitle, { color: p.cardInk }]}>Your want</Text>
+            </View>
+            <View style={s.wantChips}>
+              <WantChip label={`Start ${want.start}`} p={p} testID="want-start" />
+              <WantChip label={`End ${want.end}`} p={p} testID="want-end" />
+              {want.others.map((x, i) => <WantChip key={`${x}-${i}`} label={x} p={p} />)}
+            </View>
+          </View>
+        ) : null}
         {props.onAskRbot ? (
           <Pressable onPress={props.onAskRbot} testID="search-ask-rbot"
             style={[s.rbotBar, { backgroundColor: tint(p.btn, 0.08), borderColor: tint(p.btn, 0.3) }]}>
@@ -160,8 +195,8 @@ export function SearchForm(props: Props): React.JSX.Element {
       </ScrollView>
 
       {error ? <Text style={[s.error, { color: p.crit }]}>{error}</Text> : null}
-      <View style={s.footer}>
-        <Pressable onPress={() => setF({ ...emptyLike(f), startDate: props.defaults.startDate, endDate: props.defaults.endDate })}
+      {!props.externalNavigation ? <View style={s.footer}>
+        <Pressable onPress={reset}
           testID="search-reset" style={[s.btn, s.btnOutline, { borderColor: p.btn }]}>
           <Text style={[s.btnText, { color: p.btn }]}>Reset</Text>
         </Pressable>
@@ -172,7 +207,20 @@ export function SearchForm(props: Props): React.JSX.Element {
             {['Search', activeFilterCount(f) ? `${activeFilterCount(f)} filters` : null, props.resultLabel].filter(Boolean).join(' · ')}
           </Text>
         </Pressable>
-      </View>
+      </View> : null}
+    </View>
+  );
+}
+
+function sameFilters(a: SwapFilters, b: SwapFilters): boolean {
+  const keys = Object.keys(a) as (keyof SwapFilters)[];
+  return keys.length === Object.keys(b).length && keys.every(k => JSON.stringify(a[k]) === JSON.stringify(b[k]));
+}
+
+function WantChip({ label, p, testID }: { label: string; p: CarrierPalette; testID?: string }) {
+  return (
+    <View testID={testID} style={[s.wantChip, { borderColor: tint(p.btn, 0.45), backgroundColor: p.cardSolid }]}>
+      <Text style={[s.wantChipText, { color: p.btn }]} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -276,6 +324,12 @@ const s = StyleSheet.create({
   segItem: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: 'center' },
   segText: { fontSize: 13, fontWeight: '700' },
   savedRow: { gap: 8 },
+  wantSummary: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 8 },
+  wantHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  wantTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  wantChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  wantChip: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 9, paddingVertical: 4 },
+  wantChipText: { fontSize: 12, fontWeight: '700' },
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   section: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 10, marginBottom: 12 },
   sectionTitle: { fontSize: 14, fontWeight: '800' },

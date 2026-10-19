@@ -19,7 +19,7 @@ import { EkRosterLoginScreen } from '../features/auth/EkRosterLoginScreen';
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
 import { V2Navigator } from '../features/v2/V2Navigator';
 
-// v2 redesign (mock-mirror, Sep 2026): the 4-tab pill dock replaces the legacy
+// v2 redesign (mock-mirror, Sep 2026): the 3-tab pill dock replaces the legacy
 // 6-tab bar. The legacy MainTabs below is retained until the v2 rollout is
 // signed off, then removed.
 const USE_V2 = true;

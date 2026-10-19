@@ -8,7 +8,7 @@ import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon, type IconName } from '../../components/v2/icons';
 import { DashedLine } from '../../components/v2/TicketCard';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
-import { useLayout } from '../../components/v2/useLayout';
+import { duoActionStripWidth, useLayout } from '../../components/v2/useLayout';
 
 /** Widest a single column of settings rows / spec copy is allowed to run. */
 export const SINGLE_COLUMN_MAX = 560;
@@ -17,12 +17,14 @@ export const SINGLE_COLUMN_MAX = 560;
 export const EmbeddedPageContext = createContext(false);
 
 export function PageShell({
-  title, children, right, testID, scroll = true, hero, layout = 'auto', titleNode,
+  title, children, right, testID, scroll = true, hero, layout = 'auto', titleNode, headerAccessory,
 }: {
   title: string; children: React.ReactNode; right?: React.ReactNode; testID?: string;
   /** Replaces the title text with a control in the same place (e.g. the Duty
    *  Swap Matrix | Market switch); `title` stays the page's name. */
   titleNode?: React.ReactNode;
+  /** Wide, single-row controls that belong beside the page title. */
+  headerAccessory?: React.ReactNode;
   /** false = a fixed body that manages its own scrolling (e.g. the Duty Swap matrix). */
   scroll?: boolean;
   /**
@@ -42,7 +44,13 @@ export function PageShell({
   const p = useCarrier();
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
-  const { wide, tall } = useLayout();
+  const { wide, tall, width, height } = useLayout();
+  // Duo cover/inner displays report the right-side status strip as a large top
+  // safe area. The page content is clear on the left, so keep only a compact
+  // navigation-bar inset there. Regular phones and iPads retain the native safe
+  // area around the island/status bar.
+  const sideStatusStrip = duoActionStripWidth(width, height, insets.right) > 0;
+  const headerTop = sideStatusStrip ? 8 : insets.top + 8;
   const embedded = useContext(EmbeddedPageContext);
   if (embedded) {
     return (
@@ -66,13 +74,14 @@ export function PageShell({
   );
   return (
     <GradientScreen palette={p} texture={false}>
-      <View style={[s.head, { paddingTop: insets.top + 8 }]}>
+      <View style={[s.head, { paddingTop: headerTop }]} testID="page-header">
         <Pressable onPress={() => nav.goBack()} hitSlop={12} style={s.iconBtn} accessibilityLabel="back" testID="page-back">
           <Icon name="back" size={24} color={p.ink} strokeWidth={1.8} />
         </Pressable>
         {titleNode ? <View style={s.titleNode}>{titleNode}</View> : (
-          <Text style={[s.title, { color: p.ink }]} numberOfLines={1}>{title}</Text>
+          <Text style={[s.title, headerAccessory ? s.titleWithAccessory : null, { color: p.ink }]} numberOfLines={1}>{title}</Text>
         )}
+        {headerAccessory ? <View style={s.headerAccessory} testID="page-header-accessory">{headerAccessory}</View> : null}
         <View style={s.iconBtn}>{right}</View>
       </View>
       {scroll ? (
@@ -148,7 +157,9 @@ const s = StyleSheet.create({
   // iOS navigation bars use a 17 pt title. Keeping this separate from the
   // identity in the hero prevents a crew number from competing with the page.
   title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
+  titleWithAccessory: { flexGrow: 0, flexBasis: 110 },
   titleNode: { flex: 1, alignItems: 'center' },
+  headerAccessory: { flex: 1, minWidth: 0, alignItems: 'stretch' },
   body: { paddingHorizontal: 22, paddingTop: 6, paddingBottom: 40 },
   embeddedScroll: { flex: 1 },
   embeddedBody: { paddingHorizontal: 4, paddingBottom: 24 },

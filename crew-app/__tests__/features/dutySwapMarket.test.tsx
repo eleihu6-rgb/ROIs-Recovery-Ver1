@@ -3,7 +3,7 @@
 // Fixtures: the PR TEST portal's answers for 392923 (search + 421051's compare).
 import React from 'react';
 import { act, fireEvent, render, waitFor, within } from '@testing-library/react-native';
-import { FlatList } from 'react-native';
+import { FlatList, ScrollView, StyleSheet } from 'react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +16,7 @@ import { MarketScreen } from '../../src/features/dutySwap/market/MarketScreen';
 import { ticketMatches } from '../../src/features/dutySwap/market/TicketScreen';
 import { ApproachSwitch } from '../../src/features/dutySwap/market/ApproachSwitch';
 import { PALETTES } from '../../src/theme/carrier';
+import { Icon } from '../../src/components/v2/icons';
 import { layoutFor } from '../../src/components/v2/useLayout';
 import { toCrews, type ApiCompare, type ApiCrewRow } from '../../src/features/dutySwap/dutySwapModel';
 import {
@@ -157,6 +158,30 @@ async function mount(ui: React.ReactElement): Promise<{ store: Store; r: ReturnT
 }
 
 describe('Matrix | Market switch', () => {
+  it('fits all four modes in a narrow header and restores icons when the header widens', () => {
+    const onChange = jest.fn();
+    const r = render(<ApproachSwitch palette={PALETTES.graphite} value="twin" onChange={onChange} variant="header" />);
+    const header = r.getByTestId('swap-approach-header');
+    fireEvent(header, 'layout', { nativeEvent: { layout: { width: 240, height: 48, x: 0, y: 0 } } });
+    expect(StyleSheet.flatten(header.props.style)).toMatchObject({ width: '100%', maxWidth: 440, flexDirection: 'row' });
+    expect(r.UNSAFE_queryAllByType(ScrollView)).toHaveLength(0);
+    expect(r.UNSAFE_queryAllByType(Icon)).toHaveLength(0);
+    for (const mode of ['matrix', 'market', 'ticket', 'twin']) {
+      const button = r.getByTestId(`approach-${mode}`);
+      expect(StyleSheet.flatten(button.props.style)).toMatchObject({ flex: 1, minWidth: 0, minHeight: 40 });
+      expect(within(button).getByText(button.props.accessibilityLabel)).toBeTruthy();
+      fireEvent.press(button);
+      expect(onChange).toHaveBeenLastCalledWith(mode);
+    }
+    expect(r.getByTestId('approach-twin').props.accessibilityState.selected).toBe(true);
+    fireEvent(header, 'layout', { nativeEvent: { layout: { width: 400, height: 48, x: 0, y: 0 } } });
+    expect(r.UNSAFE_getAllByType(Icon)).toHaveLength(4);
+    for (const mode of ['matrix', 'market', 'ticket', 'twin']) {
+      const button = r.getByTestId(`approach-${mode}`);
+      expect(within(button).getByText(button.props.accessibilityLabel)).toBeTruthy();
+    }
+  });
+
   it('keeps the selected mode readable in Daylight and the existing dark palette', () => {
     for (const palette of [PALETTES.light, PALETTES.sia]) {
       const view = render(<ApproachSwitch palette={palette} value="matrix" onChange={() => {}} variant="header" />);

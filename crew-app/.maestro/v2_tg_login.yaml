@@ -39,10 +39,8 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     visible: "LEAVE HOME"
     timeout: 10000
 - takeScreenshot: v2_tg_05_schedule
-- tapOn:
+- assertNotVisible:
     id: "tab-global"
-- assertVisible: "Global view is on the way"
-- takeScreenshot: v2_tg_06_global
 - tapOn:
     id: "tab-profile"
 - assertVisible:

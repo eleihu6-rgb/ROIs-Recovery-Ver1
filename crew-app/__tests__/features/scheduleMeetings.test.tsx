@@ -21,6 +21,7 @@ import flightCalendarReducer from '../../src/features/calendar/flightCalendarSli
 import { ScheduleScreen } from '../../src/features/v2/ScheduleScreen';
 import { MeetingCard, MeetingRow } from '../../src/features/v2/MeetingCard';
 import { buildMonth, type DayMeeting } from '../../src/features/v2/model';
+import { agendaRows } from '../../src/features/v2/schedView';
 import { PALETTES } from '../../src/theme/carrier';
 import type { Meeting } from '../../src/features/meetings/meetingSetup';
 import type { Trip } from '../../src/features/travel/tripCsv';
@@ -176,6 +177,37 @@ describe('Schedule meetings — model', () => {
     expect(day.meetings[0].hhmm).toBe('19:00');
     expect(day.meetings[0].endHhmm).toBe('20:00');
     expect(day.meetings[0].alarmHhmm).toBe('18:52');
+  });
+
+  it('keeps all-day events and app-owned duty markers in the daily Calendar model', () => {
+    const allDay = meeting({
+      id: 'rbc-credit',
+      title: 'RBC Credit Due',
+      startISO: '2026-09-10T00:00:00+03:00',
+      endISO: '2026-09-11T00:00:00+03:00',
+      allDay: true,
+    });
+    const owned = meeting({
+      id: 'pr740-calendar',
+      title: 'PR740 · MNL → BKK',
+      startISO: '2026-09-10T05:35:00+03:00',
+      endISO: '2026-09-10T08:55:00+03:00',
+      appOwned: true,
+      url: 'royce://flight/pr740',
+    });
+    const month = buildMonth(
+      2026, 8, [FLIGHT_TRIP], [], [allDay, owned], 'airport', 'Africa/Addis_Ababa', {}, now,
+      { minutesBefore: 8, mutedIds: [], deviceTz: 'Africa/Addis_Ababa' },
+    );
+    const day = month.days.find(d => d.day === 10)!;
+
+    expect(day.meetings.map(m => [m.title, m.allDay, m.appOwned, m.alarmHhmm])).toEqual([
+      ['RBC Credit Due', true, false, ''],
+      ['PR740 · MNL → BKK', false, true, ''],
+    ]);
+    const rows = agendaRows(month, 10);
+    expect(rows.filter(row => row.title.includes('PR740'))).toHaveLength(1);
+    expect(rows.some(row => row.title.includes('ET805'))).toBe(true);
   });
 });
 

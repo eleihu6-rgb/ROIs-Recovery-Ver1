@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en" data-theme="sia">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crew App · Trip Details — shared duty title (Ver3)</title>
+<style>
+/* ── Review page ─────────────────────────────────────────────────────────── */
+:root{
+  --bg:#eef2f5; --panel:#ffffff; --ink:#10212b; --mut:#5a6b76; --line:#d6e0e6;
+  --hl:#d9822b; --hl-soft:#fbe9d5; --ok:#2f7a55;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0d1418;--panel:#162126;--ink:#e8f0f3;--mut:#9aadb7;--line:#2a3a42;--hl-soft:#3a2915}
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{
+  margin:0;background:var(--bg);color:var(--ink);padding:26px 18px 80px;
+  font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+}
+.wrap{max-width:1420px;margin:0 auto}
+h1{font-size:23px;line-height:1.2;margin:0 0 6px;letter-spacing:-.2px}
+h2{font-size:17px;margin:0 0 3px}
+.lede{color:var(--mut);font-size:13px;max-width:980px;margin:0 0 16px}
+.note{color:var(--mut);font-size:12.5px;max-width:1000px;margin:0 0 12px}
+section{margin:0 0 38px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 18px}
+.bar span{font-size:12px;color:var(--mut)}
+.btn{
+  font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink);cursor:pointer
+}
+.btn.on{border-color:var(--hl);background:var(--hl-soft);color:var(--ink);font-weight:600}
+.reqs{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:0 0 34px}
+.req{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.req b{display:block;font-size:13px;margin:0 0 4px}
+.req p{margin:0;color:var(--mut);font-size:12px}
+.req em{font-style:normal;color:var(--hl);font-weight:700}
+.frames{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+figure{margin:0}
+figcaption{font-size:11.5px;color:var(--mut);margin-top:7px;max-width:660px}
+.dev{background:#05090c;border-radius:34px;padding:10px;box-shadow:0 22px 44px rgba(0,0,0,.28)}
+.vp{position:relative;overflow:hidden;border-radius:26px;background:#000}
+.pt{
+  position:absolute;top:0;left:0;transform-origin:0 0;overflow:hidden;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+}
+.app{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  background:linear-gradient(158deg,var(--g1) 0%,var(--g2) 46%,var(--g3) 100%);
+}
+.pt[data-theme="sia"]{--g1:#1e4a76;--g2:#2b6191;--g3:#4c82b2;--g4:#77a3cb;--btn:#2f6ba6}
+.pt[data-theme="thai"]{--g1:#4a1670;--g2:#5e2a86;--g3:#8a4aa8;--g4:#b989cf;--btn:#7a3aa0}
+.status{display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:12px;font-weight:600;flex:none}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:40px;flex:none}
+.nav .back{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:300;line-height:1}
+.nav .title{font-size:17px;font-weight:600;letter-spacing:-.2px}
+.nav .side{width:34px;height:34px}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:4px 20px 26px;overflow:hidden}
+.pt.wide .body{padding:2px 106px 20px 34px;gap:8px}
+.strip{
+  position:absolute;right:9px;top:20px;width:64px;height:116px;border-radius:32px;
+  background:rgba(255,255,255,.10);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:7px;z-index:4;
+}
+.strip svg{opacity:.85}
+.strip i{width:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.6);display:block}
+.card{position:relative;background:rgba(241,245,249,.66);color:#061624;border-radius:18px;padding:11px 15px;box-shadow:0 10px 24px rgba(0,0,0,.13)}
+.frost{position:relative;background:rgba(255,255,255,.14);color:#fff;border-radius:18px;padding:14px 17px;flex:none}
+.hero h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.2px}
+.hero p{margin:3px 0 0;font-size:14px;color:rgba(255,255,255,.84)}
+.kicker{font-size:9px;font-weight:700;letter-spacing:.75px;text-transform:uppercase;color:#4f606c}
+.lbl{display:block;font-size:8.6px;font-weight:700;letter-spacing:.55px;text-transform:uppercase;color:#5c6d78}
+.val{display:block;font-size:16px;font-weight:600;line-height:1.08;margin-top:1px;font-variant-numeric:tabular-nums}
+.sm{font-size:10.5px;color:#4c5d68}
+.dash{border-top:1px dashed #b9c8d3;margin:8px 0}
+/* Calendar strip */
+.calstrip{display:flex;align-items:center;gap:11px;padding:9px 13px;flex:none}
+.calicon{width:31px;height:31px;border-radius:16px;background:rgba(47,107,166,.14);display:flex;align-items:center;justify-content:center;flex:none}
+.caltext{flex:1;min-width:0}
+.caltext b{display:block;font-size:14px;font-weight:600;line-height:1.15}
+.caltext small{display:block;font-size:10.2px;color:#4f606c;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chev{font-size:21px;color:#4f606c;font-weight:300;line-height:1}
+/* Shared duty title card */
+.duty{flex:none;padding:10px 15px}
+.dhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.report{font-size:11.5px;color:#3f515d;white-space:nowrap}
+.report b{font-weight:600;color:#061624}
+.dtitle{font-size:16px;font-weight:700;letter-spacing:-.15px;margin-top:5px;line-height:1.18}
+.droute{font-size:11.5px;font-weight:600;color:#324956;margin-top:1px;line-height:1.2}
+.dmeta{font-size:9px;color:#5c6d78;margin-top:2px}
+.markers{display:flex;gap:0;margin-top:6px;position:relative}
+.marker{flex:1;min-width:0}
+.marker .val{font-size:15px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:6px;position:relative}
+.kpi{background:rgba(255,255,255,.45);border-radius:9px;padding:5px 7px;min-width:0}
+.kpi .val{font-size:14.5px}
+/* Wide segment table */
+.segtable{padding:9px 14px;flex:none}
+.seghead,.segmain{display:grid;grid-template-columns:22px 62px 82px 1.08fr 1.08fr .95fr 46px;align-items:center;gap:8px}
+.seghead{font-size:7.4px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#647580;padding-bottom:4px}
+.seg{padding:4px 0;border-top:1px dashed #b9c8d3}
+.seg:first-of-type{border-top:0}
+.segmain .idx{font-size:12px;font-weight:700;color:#38505e;font-variant-numeric:tabular-nums}
+.segmain .flt{font-size:12.5px;font-weight:700;white-space:nowrap}
+.segmain .rt{font-size:11px;font-weight:600;color:#324956;white-space:nowrap}
+.pair{display:flex;align-items:baseline;gap:4px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pair b{font-size:12.5px;font-weight:600}
+.pair i{font-style:normal;font-size:10px;color:#7c8d98}
+.segmain .blk{font-size:11px;font-weight:600;color:#2d4c5e;text-align:right}
+.segops{font-size:8.9px;color:#546671;margin-top:1px;padding-left:30px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.segops b{font-weight:600;color:#061624}
+/* Compact segment cards under the shared title */
+.segcards{display:flex;flex-direction:column;gap:7px;flex:none}
+.segc{padding:8px 12px}
+.segch{display:flex;align-items:baseline;gap:6px;min-width:0}
+.segch .idx{font-size:11px;font-weight:800;color:#38505e;font-variant-numeric:tabular-nums;width:13px;flex:none}
+.segch b{font-size:13px;font-weight:700;white-space:nowrap}
+.segch .rt{font-size:10.5px;font-weight:600;color:#324956;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.segch .blk{margin-left:auto;font-size:9px;font-weight:700;color:#2d4c5e;background:rgba(47,107,166,.10);border-radius:5px;padding:1px 5px;white-space:nowrap}
+.times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:4px;position:relative}
+.tcol{background:rgba(255,255,255,.42);border-radius:7px;padding:3px 6px;min-width:0}
+.th{font-size:7px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;color:#647580;margin-bottom:1px;white-space:nowrap}
+.tr{display:flex;align-items:baseline;gap:4px;line-height:1.13;min-width:0}
+.tl{font-size:7.2px;font-weight:800;letter-spacing:.3px;color:#5c6d78;width:16px;flex:none}
+.tv{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.opsline{font-size:9.2px;color:#546671;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opsline b{font-weight:600;color:#061624}
+/* Annotation badges */
+.anno{
+  position:absolute;z-index:6;width:17px;height:17px;border-radius:9px;background:var(--hl);
+  color:#fff;font-size:10px;font-weight:800;line-height:17px;text-align:center;
+  box-shadow:0 2px 7px rgba(0,0,0,.3);pointer-events:none
+}
+.anno.r{right:-7px;top:-7px}
+.anno.l{left:-9px;top:50%;transform:translateY(-50%)}
+body.no-anno .anno{display:none}
+/* Legend */
+.legend{display:flex;flex-direction:column;gap:9px;max-width:400px}
+.leg{display:flex;gap:9px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.leg .n{width:20px;height:20px;border-radius:10px;background:var(--hl);color:#fff;flex:none;font-size:11px;font-weight:800;line-height:20px;text-align:center}
+.leg b{display:block;font-size:12.5px;margin:0 0 1px}
+.leg p{margin:0;font-size:11.5px;color:var(--mut)}
+/* Before / after */
+.ba{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.wire{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.wire h3{font-size:12.5px;margin:0 0 8px}
+.wcol{display:flex;flex-direction:column;gap:6px}
+.ph{background:#dfe8ee;border-radius:7px;height:30px}
+.ph.hero{height:46px}
+.ph.title{height:20px;background:#b9c9d5}
+.ph.row{height:34px}
+.ph.cal{height:34px;border:2px dashed var(--hl);background:var(--hl-soft)}
+.ph.dim{opacity:.55}
+.wire .tagline{font-size:11px;color:var(--mut);margin:8px 0 0}
+@media (prefers-color-scheme:dark){.wire{color:#e8f0f3}.ph{background:#2a3b44}.ph.title{background:#3d5460}.ph.cal{background:#3a2915}}
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:var(--panel);border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;padding:1px 6px;border-radius:6px;background:#e6f2ea;color:#256b45}
+.tag.warn{background:#fbe9d5;color:#8a5518}
+.tag.none{background:#e6eaed;color:#51616c}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Crew App · Trip Details — shared duty title (Ver3)</h1>
+<p class="lede">
+  One title per <b>duty</b>, shared by every segment in it. On a single-duty trip the hero is the
+  shared title; on a multi-duty trip each duty card carries its own. Each segment below identifies
+  itself only by index, flight number, route and block. Times stay in the compact 3-pair matrix —
+  so a six-sector duty reads as one unit, not six repeated cards.
+</p>
+
+<div class="bar">
+  <span>Theme</span>
+  <button class="btn on" data-theme-set="sia">Reference blue</button>
+  <button class="btn" data-theme-set="thai">Thai violet</button>
+  <span style="width:10px"></span>
+  <button class="btn on" id="annoBtn">Annotations: on</button>
+</div>
+
+<div class="reqs">
+  <div class="req"><b>1 · One title per duty</b><p><em>PR1811 · 1812 · 1863 · 1864 · 1885 · 1886</em> and the full routing live once — in the hero for a single-duty trip, or on each duty card when a trip has several duties. Segment rows never repeat a trip/flight title.</p></div>
+  <div class="req"><b>2 · Two-row time matrix</b><p>Scheduled / Estimated / Actual are three columns; STD↔STA, ETD↔ETA, ATD↔ATA stack inside each. Two text rows per segment instead of three full-width rows.</p></div>
+  <div class="req"><b>3 · Duty totals once</b><p>FDP · DP · Block · Rest are reported on the shared duty card, so they never grow with the sector count.</p></div>
+  <div class="req"><b>4 · Calendar strip</b><p>The iPhone Calendar action stays a full-width strip under the hero — not a right-hand card.</p></div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>1 · iPhone — compact (420 × 912)</h2>
+  <p class="note">Six-sector duty, one shared title. Each segment card carries only: index + flight + route + block, the 3-pair matrix, and one ops line. No date, fleet or trip title repeats on the segment cards.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:252px;height:547px">
+        <div class="pt" data-layout="shared-compact" data-theme="sia" style="width:420px;height:912px;transform:scale(.6)"></div>
+      </div></div>
+      <figcaption>Compact: 0.6×. The shared title is the only large type below the hero.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">1</span><div><b>Shared duty title</b><p>The hero names all six flights and the full routing once. Every segment below shares that title; the duty card adds only the report/markers/totals.</p></div></div>
+      <div class="leg"><span class="n">2</span><div><b>Segment rows, not cards</b><p>Each sector is a compact block under the title: <code>1 · PR1811 · MNL → TAC · 1h15m</code> + its own time matrix.</p></div></div>
+      <div class="leg"><span class="n">3</span><div><b>No repeated context</b><p>Date, fleet, trip route and crew markers appear once on the duty card — not six times.</p></div></div>
+      <div class="leg"><span class="n">4</span><div><b>Calendar strip</b><p>Full width under the hero; the right column stays free of the calendar card.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>2 · iPhone Duo inner screen — wide (951 × 669)</h2>
+  <p class="note">Same duty on the Duo inner screen. The shared title card is full width, and the six sectors become six table rows. The table fits without scrolling, so the whole duty is visible at once.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:589.6px;height:414.8px">
+        <div class="pt wide" data-layout="shared-wide" data-theme="sia" style="width:951px;height:669px;transform:scale(.62)"></div>
+      </div></div>
+      <figcaption>Wide: 809 pt content width after the Duo strip. One duty title + six rows; every row shares the title above it.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">1</span><div><b>Title once, rows many</b><p>The hero is the shared title for this single-duty trip. The six rows only identify the sector; no row repeats the routing.</p></div></div>
+      <div class="leg"><span class="n">2</span><div><b>Pairs stay aligned</b><p>Scheduled / Estimated / Actual columns keep STD↔STA, ETD↔ETA, ATD↔ATA on the same row, so a delayed sector is read across, not up and down.</p></div></div>
+      <div class="leg"><span class="n">3</span><div><b>Ops on the second line</b><p>Boarding · door close · off-block and the gate/stand→belt path sit under each sector, still inside the same row.</p></div></div>
+      <div class="leg"><span class="n">4</span><div><b>Scales to six</b><p>Six rows cost the same height as one row on a long list; the duty card height does not grow with the sector count.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>3 · Why shared title works better for a 6-sector duty</h2>
+  <p class="note">The comparison is about repetition, not about hiding information: every time and every segment stays visible.</p>
+  <div class="ba">
+    <div class="wire" style="width:460px">
+      <h3>Ver1 — title on every flight card</h3>
+      <div class="wcol">
+        <div class="ph hero"></div>
+        <div class="ph cal"></div>
+        <div class="ph title" style="width:78%"></div><div class="ph row"></div>
+        <div class="ph title" style="width:78%"></div><div class="ph row"></div>
+        <div class="ph title" style="width:78%"></div><div class="ph row"></div>
+        <div class="ph title" style="width:78%"></div><div class="ph row"></div>
+        <div class="ph title" style="width:78%"></div><div class="ph row"></div>
+        <div class="ph title" style="width:78%"></div><div class="ph row"></div>
+      </div>
+      <p class="tagline">Six repeated headers: flight number, route, fleet and date appear six times.</p>
+    </div>
+    <div class="wire" style="width:460px">
+      <h3>Ver3 — one shared duty title</h3>
+      <div class="wcol">
+        <div class="ph hero"></div>
+        <div class="ph cal"></div>
+        <div class="ph" style="height:86px"></div>
+        <div class="ph row"></div><div class="ph row"></div><div class="ph row"></div>
+        <div class="ph row"></div><div class="ph row"></div><div class="ph row"></div>
+      </div>
+      <p class="tagline">The hero states the title once; the duty card adds only report, markers and totals, then six compact rows.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>4 · Data and behavior notes</h2>
+  <p class="note">The design does not change where values come from; it changes where the title lives.</p>
+  <table>
+    <thead><tr><th>Item</th><th>Behavior</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td><b>Shared title</b></td><td>All flight numbers in the duty + full routing, e.g. <code>PR1811 · 1812 · 1863 · 1864 · 1885 · 1886</code> / <code>MNL → TAC → MNL → ILO → MNL → DVO → MNL</code>. Single-duty trip: the hero. Multi-duty trip: one title per duty card.</td><td>duty legs (portal <code>briefStart</code> group; live API <code>pairingId</code>)</td></tr>
+      <tr><td><b>Sector index</b></td><td>Restarts at 1 inside every duty; the same number is used in R’Bot answers and notifications.</td><td>leg order within the duty</td></tr>
+      <tr><td><b>FDP / DP / Rest</b></td><td>Shown once on the duty card; values are the portal’s own strings.</td><td><code>detailAll.dutyFdp</code> / <code>dutyDp</code> / <code>dutyRestHours</code>; <code>report.fdpHours</code> / <code>dpHours</code></td></tr>
+      <tr><td><b>Block</b></td><td>Duty total on the duty card, per-sector block on each row.</td><td><code>report.blhHours</code>, or sum of <code>detailAll.blockHours</code>; fallback leg <code>blockMinutes</code></td></tr>
+      <tr><td><b>Missing metrics</b></td><td>If a carrier feed has no FDP/DP/Rest (current F8/ET/EK mobile-roster API), the cells are omitted — no demo numbers.</td><td>carrier capability</td></tr>
+      <tr><td><b>Trip with several duties</b></td><td>Each duty gets its own shared title; the rest strip separates them. Sector numbering restarts per duty.</td><td>duty grouping</td></tr>
+      <tr><td><b>Single-flight duty</b></td><td>Same structure: shared title (one flight number) + one segment row. No special case.</td><td>—</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</div>
+
+<script>
+/* ── Data shaped like the real roster / portal feed ─────────────────────── */
+const PR_SIX = {
+  hero1: 'PR1811 · MNL → TAC → MNL → ILO → MNL → DVO → MNL',
+  hero2: '6 Sep 2026 · 6 flights · 1 duty',
+  duty: {
+    label: 'DUTY 1 OF 1 · 6 SEP 2026', report: '04:10L',
+    title: 'PR1811 · 1812 · 1863 · 1864 · 1885 · 1886',
+    route: 'MNL → TAC → MNL → ILO → MNL → DVO → MNL',
+    meta: 'A321 · 6 sectors',
+    markers: [['Wake-up','02:40L'],['Leave home','03:20L'],['Report','04:10L']],
+    kpis: [['FDP','13:10'],['DP','13:40'],['Block','08:15'],['Rest','14:00']],
+  },
+  flights: [
+    { n:1, num:'PR1811', route:'MNL → TAC', fleet:'A321',
+      sched:['05:10L','06:25L'], est:['05:10L','06:25L'], act:['—','—'], block:'1h 15m',
+      ops:'Board 04:40 · Door close 05:00 · Off-block 05:15',
+      where:'T2 · Gate 108 · Stand 112 → Belt 03' },
+    { n:2, num:'PR1812', route:'TAC → MNL', fleet:'A321',
+      sched:['07:00L','08:15L'], est:['07:00L','08:15L'], act:['—','—'], block:'1h 15m',
+      ops:'Board 06:30 · Door close 06:50 · Off-block 07:05',
+      where:'T1 · Gate 04 · Stand 205 → Belt 11' },
+    { n:3, num:'PR1863', route:'MNL → ILO', fleet:'A321',
+      sched:['09:15L','10:30L'], est:['09:15L','10:30L'], act:['—','—'], block:'1h 15m',
+      ops:'Board 08:45 · Door close 09:05 · Off-block 09:20',
+      where:'T2 · Gate 115 · Stand 118 → Belt 02' },
+    { n:4, num:'PR1864', route:'ILO → MNL', fleet:'A321',
+      sched:['11:05L','12:20L'], est:['11:05L','12:20L'], act:['—','—'], block:'1h 15m',
+      ops:'Board 10:35 · Door close 10:55 · Off-block 11:10',
+      where:'T1 · Gate 06 · Stand 207 → Belt 14' },
+    { n:5, num:'PR1885', route:'MNL → DVO', fleet:'A321',
+      sched:['13:20L','15:00L'], est:['13:20L','15:00L'], act:['—','—'], block:'1h 40m',
+      ops:'Board 12:50 · Door close 13:10 · Off-block 13:25',
+      where:'T2 · Gate 121 · Stand 126 → Belt 05' },
+    { n:6, num:'PR1886', route:'DVO → MNL', fleet:'A321',
+      sched:['15:45L','17:20L'], est:['15:45L','17:20L'], act:['—','—'], block:'1h 35m',
+      ops:'Board 15:15 · Door close 15:35 · Off-block 15:50',
+      where:'T1 · Gate 08 · Stand 210 → Belt 16' },
+  ],
+};
+
+/* ── Icons ──────────────────────────────────────────────────────────────── */
+const calIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f6ba6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>`;
+const wifi = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M4 9.5a12 12 0 0 1 16 0M7 13a8 8 0 0 1 10 0M10 16.4a3.6 3.6 0 0 1 4 0"/><circle cx="12" cy="19.2" r=".9" fill="#fff" stroke="none"/></svg>`;
+const statusIcons = `<svg width="52" height="11" viewBox="0 0 52 11" fill="none" aria-hidden="true">
+  <rect x="0" y="6" width="3" height="5" rx="1" fill="#fff"/><rect x="5" y="4.5" width="3" height="6.5" rx="1" fill="#fff"/>
+  <rect x="10" y="3" width="3" height="8" rx="1" fill="#fff"/><rect x="15" y="1.5" width="3" height="9.5" rx="1" fill="#fff" opacity=".55"/>
+  <path d="M23 4.6a7.5 7.5 0 0 1 9 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M25 7a4.5 4.5 0 0 1 5 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+  <circle cx="27.5" cy="9.3" r=".8" fill="#fff"/>
+  <rect x="36" y="2.5" width="13" height="6.5" rx="2" stroke="#fff" stroke-width="1" opacity=".55"/>
+  <rect x="37.5" y="4" width="8" height="3.5" rx="1" fill="#fff"/>
+  <path d="M50 5v2" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity=".55"/>
+</svg>`;
+
+/* ── Pieces ─────────────────────────────────────────────────────────────── */
+function calendarStrip() {
+  return `<div class="card calstrip">
+    <div class="calicon">${calIcon}</div>
+    <div class="caltext"><b>Add to iPhone Calendar</b><small>Wake-up · leave home · report · flights</small></div>
+    <div class="chev">›</div>
+    <span class="anno r" data-n="4">4</span>
+  </div>`;
+}
+
+function dutyTitle(d, showTitle) {
+  const markers = d.markers.map(([l, v]) => `<div class="marker"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join('');
+  const kpis = d.kpis.map(([l, v]) => `<div class="kpi"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join('');
+  /* Single-duty trip: the hero is the shared title, so the duty card must not
+     repeat it (no duplicated info). Multi-duty trip: each duty card carries its
+     own shared title because the hero can only name one routing. */
+  return `<div class="card duty">
+    <div class="dhead"><span class="kicker">${d.label}</span><span class="report">Report <b>${d.report}</b></span></div>
+    ${showTitle ? `<div class="dtitle">${d.title}</div><div class="droute">${d.route}</div>` : ''}
+    <div class="dmeta">${d.meta}</div>
+    <div class="markers">${markers}<span class="anno r" data-n="3">3</span></div>
+    <div class="kpis">${kpis}</div>
+  </div>`;
+}
+
+function pair(a, b) {
+  return `<span class="pair"><b>${a}</b><i>→</i><b>${b}</b></span>`;
+}
+
+/* Wide: one shared title card + a six-row table. */
+function sharedWide(trip) {
+  const rows = trip.flights.map(f => `<div class="seg">
+    <div class="segmain">
+      <span class="idx">${f.n}</span>
+      <span class="flt">${f.num}</span>
+      <span class="rt">${f.route}</span>
+      ${pair(f.sched[0], f.sched[1])}
+      ${pair(f.est[0], f.est[1])}
+      ${pair(f.act[0], f.act[1])}
+      <span class="blk">${f.block}</span>
+    </div>
+    <div class="segops">${f.ops} · ${f.where}</div>
+  </div>`).join('');
+  return `<div class="app">
+    <div class="strip">${wifi}<i></i><i></i><i></i></div>
+    <div class="status"><span>9:41</span><span>${statusIcons}</span></div>
+    <div class="nav"><div class="back">‹</div><div class="title">Trip Details</div><div class="side"></div></div>
+    <div class="body">
+      <div class="frost hero"><h1>${trip.hero1}</h1><p>${trip.hero2}</p><span class="anno r" data-n="1">1</span></div>
+      ${calendarStrip()}
+      ${dutyTitle(trip.duty, false)}
+      <div class="card segtable">
+        <div class="seghead"><span>#</span><span>FLIGHT</span><span>ROUTE</span><span>SCHEDULED</span><span>ESTIMATED</span><span>ACTUAL</span><span>BLOCK</span></div>
+        ${rows}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* Compact: shared title card + six compact segment blocks. */
+function sharedCompact(trip) {
+  const cards = trip.flights.map(f => `<div class="card segc">
+    <div class="segch"><span class="idx">${f.n}</span><b>${f.num}</b><span class="rt">${f.route}</span><span class="blk">${f.block}</span></div>
+    <div class="times">
+      <div class="tcol"><div class="th">Scheduled</div><div class="tr"><span class="tl">STD</span><span class="tv">${f.sched[0]}</span></div><div class="tr"><span class="tl">STA</span><span class="tv">${f.sched[1]}</span></div></div>
+      <div class="tcol"><div class="th">Estimated</div><div class="tr"><span class="tl">ETD</span><span class="tv">${f.est[0]}</span></div><div class="tr"><span class="tl">ETA</span><span class="tv">${f.est[1]}</span></div></div>
+      <div class="tcol"><div class="th">Actual</div><div class="tr"><span class="tl">ATD</span><span class="tv">${f.act[0]}</span></div><div class="tr"><span class="tl">ATA</span><span class="tv">${f.act[1]}</span></div></div>
+      <span class="anno r" data-n="2">2</span>
+    </div>
+    <div class="opsline">${f.ops} · ${f.where}</div>
+  </div>`).join('');
+  return `<div class="app">
+    <div class="status"><span>9:41</span><span>${statusIcons}</span></div>
+    <div class="nav"><div class="back">‹</div><div class="title">Trip Details</div><div class="side"></div></div>
+    <div class="body">
+      <div class="frost hero"><h1>${trip.hero1}</h1><p>${trip.hero2}</p><span class="anno r" data-n="1">1</span></div>
+      ${calendarStrip()}
+      ${dutyTitle(trip.duty, false)}
+      <div class="segcards">${cards}</div>
+    </div>
+  </div>`;
+}
+
+/* ── Mount ──────────────────────────────────────────────────────────────── */
+document.querySelector('.pt[data-layout="shared-compact"]').innerHTML = sharedCompact(PR_SIX);
+document.querySelector('.pt[data-layout="shared-wide"]').innerHTML = sharedWide(PR_SIX);
+
+document.querySelectorAll('[data-theme-set]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.documentElement.dataset.theme = btn.dataset.themeSet;
+    document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('on', b === btn));
+    document.querySelectorAll('.pt').forEach(pt => pt.dataset.theme = btn.dataset.themeSet);
+  });
+});
+const annoBtn = document.getElementById('annoBtn');
+annoBtn.addEventListener('click', () => {
+  const off = document.body.classList.toggle('no-anno');
+  annoBtn.textContent = off ? 'Annotations: off' : 'Annotations: on';
+  annoBtn.classList.toggle('on', !off);
+});
+</script>
+</body>
+</html>

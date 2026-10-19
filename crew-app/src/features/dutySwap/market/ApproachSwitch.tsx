@@ -1,9 +1,9 @@
-// Duty Swap · the Matrix | Market switch. Two looks of one control:
+// Duty Swap · all four approaches. Two looks of one control:
 // - `rail`: a glass pill of 44×44 icon buttons for the Duo inner screen's
 //   right-edge status strip, under the clock (the Schedule roster-view rail).
-// - `header`: a two-segment pill in the page header (compact / tall), where the
+// - `header`: an equal-width four-segment pill (compact / tall), where the
 //   page title sits — the page already says Duty Swap on Home, and the switch
-//   names both ways of swapping, so the header gains no extra row.
+//   names every approach without horizontal scrolling or clipping.
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,6 +12,7 @@ import { Icon, type IconName } from '../../../components/v2/icons';
 import { CrewAvatar } from '../../settings/avatars';
 import { RBOT_AVATAR_INDEX } from '../../rbot/RBotEntry';
 import type { CarrierPalette } from '../../../theme/carrier';
+import { font } from '../../../theme';
 import { APPROACHES, APPROACH_LABEL, approachKey, parseApproach, type SwapApproach } from './marketModel';
 
 /** Toolbar column width and its top in the Duo's right-edge status strip —
@@ -19,7 +20,7 @@ import { APPROACHES, APPROACH_LABEL, approachKey, parseApproach, type SwapApproa
 export const RAIL_W = 56;
 export const RAIL_TOP = 116;
 
-const ICON: Record<SwapApproach, IconName> = { matrix: 'grid', market: 'market', ticket: 'ticket' };
+const ICON: Record<SwapApproach, IconName> = { matrix: 'grid', market: 'market', ticket: 'ticket', twin: 'swap' };
 
 /** The crew's last choice (default Matrix). `null` while it is being read. */
 export function useSwapApproach(airline: string, crewId: string | null): [SwapApproach | null, (a: SwapApproach) => void] {
@@ -55,6 +56,7 @@ export function ApproachSwitch({ palette: p, value, onChange, variant }: {
   onChange: (a: SwapApproach) => void;
   variant: 'rail' | 'header';
 }): React.JSX.Element {
+  const [headerWidth, setHeaderWidth] = useState(0);
   if (variant === 'rail') {
     return (
       <View style={s.rail} testID="swap-approach-rail">
@@ -73,13 +75,13 @@ export function ApproachSwitch({ palette: p, value, onChange, variant }: {
     );
   }
   return (
-    <View style={[s.seg, { backgroundColor: p.frost, borderColor: p.frostLine }]} testID="swap-approach-header">
+    <View onLayout={event => setHeaderWidth(event.nativeEvent.layout.width)} style={[s.seg, { backgroundColor: p.frost, borderColor: p.frostLine }]} testID="swap-approach-header">
       {APPROACHES.map(a => {
         const on = a === value;
         return (
           <Pressable key={a} onPress={() => onChange(a)} testID={`approach-${a}`} accessibilityLabel={APPROACH_LABEL[a]}
             accessibilityState={{ selected: on }} hitSlop={4} style={[s.segBtn, on && { backgroundColor: p.cardInset }]}>
-            <Icon name={ICON[a]} size={15} color={on ? (p.isLight ? p.btn : p.g1) : p.ink} strokeWidth={2} />
+            {headerWidth >= 360 ? <Icon name={ICON[a]} size={15} color={on ? (p.isLight ? p.btn : p.g1) : p.ink} strokeWidth={2} /> : null}
             <Text style={[s.segText, { color: on ? (p.isLight ? p.btn : p.g1) : p.ink }]}>{APPROACH_LABEL[a]}</Text>
           </Pressable>
         );
@@ -120,7 +122,7 @@ const s = StyleSheet.create({
   railPill: { borderRadius: 26, borderWidth: 1, padding: 4, gap: 4, alignItems: 'center' },
   railBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   railActions: { borderRadius: 26, borderWidth: 1, padding: 4, gap: 4, alignItems: 'center', marginTop: 16 },
-  seg: { flexDirection: 'row', alignSelf: 'center', borderRadius: 18, borderWidth: 1, padding: 3, gap: 2 },
-  segBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 30, paddingHorizontal: 8, borderRadius: 15 },
-  segText: { fontSize: 13, fontWeight: '700' },
+  seg: { width: '100%', maxWidth: 440, flexDirection: 'row', alignSelf: 'center', borderRadius: 18, borderWidth: 1, padding: 3, gap: 2 },
+  segBtn: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 40, paddingHorizontal: 4, borderRadius: 15 },
+  segText: { ...font.sub, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
 });

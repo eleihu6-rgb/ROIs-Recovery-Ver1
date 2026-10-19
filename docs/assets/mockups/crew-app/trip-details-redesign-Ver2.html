@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trip Details Ver2</title>
+<style>
+/* Journey sheet: itinerary rail + open duty sections + aligned flight tables.
+   Purple and neutral colors follow crew-app/src/theme.ts; type uses the shared scale. */
+:root{
+  --bg:#f5f5f7;--surface:#ffffff;--ink:#1a1a2e;--muted:#636b7f;--line:#ececf3;--accent:#3d2b8c;--tint:#f3eefb;--tint-border:#d4c9f0;--on-accent:#ffffff;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --text-2xs:.625rem;--text-xs:.75rem;--text-sm:.875rem;--text-base:1rem;--text-lg:1.125rem;--text-xl:1.25rem;--text-2xl:1.5rem;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;
+  --radius-sm:4px;--radius-md:8px;--radius-lg:16px;--radius-pill:999px;
+  color-scheme:light;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15141c;--surface:#1d1c27;--ink:#f1eff8;--muted:#b6b1c7;--line:#353241;--accent:#c7b6fa;--tint:#302940;--tint-border:#64547f;--on-accent:#21153b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15141c;--surface:#1d1c27;--ink:#f1eff8;--muted:#b6b1c7;--line:#353241;--accent:#c7b6fa;--tint:#302940;--tint-border:#64547f;--on-accent:#21153b;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:var(--space-4)}body{margin:0;background:var(--bg);color:var(--ink);font:var(--text-sm)/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:var(--space-6)}button,a{-webkit-tap-highlight-color:transparent}button{font:inherit;color:inherit;cursor:pointer}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}button{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-md);min-height:44px;padding:var(--space-2) var(--space-3)}button:hover{background:var(--tint)}a{color:var(--accent)}h1,h2,h3,p,dl,dd{margin:0}h1,h2,h3{text-wrap:balance}h1{font-size:var(--text-lg);font-weight:600}h2{font-size:var(--text-base);font-weight:600}h3{font-size:var(--text-base);font-weight:600}svg{width:18px;height:18px;flex-shrink:0}button svg{pointer-events:none}small{font-size:var(--text-xs)}[hidden]{display:none!important}.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}.muted{color:var(--muted)}.eyebrow{font-size:var(--text-2xs);font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}.inline{display:flex;align-items:center;gap:var(--space-2)}.shell{max-width:1280px;margin:auto;min-width:0}
+.review-bar{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)}.review-title{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-xs);color:var(--muted)}.version{color:var(--accent);background:var(--tint);border:1px solid var(--tint-border);border-radius:var(--radius-sm);padding:var(--space-1) var(--space-2);font-weight:600}.review-controls{display:flex;gap:var(--space-2);align-items:center}.trip-picker{display:flex;gap:var(--space-1)}.trip-picker button{font-size:var(--text-xs);min-height:36px}.trip-picker button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}#theme{width:36px;min-height:36px;display:grid;place-items:center;padding:var(--space-2)}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:clip}.app-header{display:flex;justify-content:space-between;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-6);border-bottom:1px solid var(--line)}.app-heading{display:flex;align-items:center;gap:var(--space-2)}.app-heading svg{color:var(--accent)}#calendar{display:flex;gap:var(--space-2);align-items:center;font-size:var(--text-xs);border-color:var(--tint-border);color:var(--accent);background:var(--tint)}.trip-overview{padding:var(--space-6);display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);border-bottom:1px solid var(--line)}.trip-route{display:flex;align-items:center;gap:var(--space-3);font-size:var(--text-2xl);font-weight:600;letter-spacing:-.04em;line-height:1.2}.trip-route svg{color:var(--muted);width:20px;height:20px}.trip-description{margin-top:var(--space-2);font-size:var(--text-xs);color:var(--muted)}.reference{display:flex;flex-direction:column;align-items:flex-end;gap:var(--space-1);font-size:var(--text-xs);color:var(--muted)}.reference strong{font:600 var(--text-sm) var(--mono);color:var(--ink)}
+.workspace{display:grid;grid-template-columns:168px minmax(0,1fr)}.journey{border-right:1px solid var(--line);padding:var(--space-6) var(--space-3);background:var(--bg)}.journey-inner{position:sticky;top:var(--space-6)}.journey .eyebrow{padding-inline:var(--space-3);margin-bottom:var(--space-3)}#journey-nav{display:flex;flex-direction:column;gap:var(--space-2)}#journey-nav a{display:flex;align-items:center;gap:var(--space-2);color:var(--muted);text-decoration:none;border-radius:var(--radius-md);padding:var(--space-3);border:1px solid transparent;min-height:44px;font-size:var(--text-xs)}#journey-nav a:hover{color:var(--accent);background:var(--tint)}#journey-nav a[aria-current="location"]{background:var(--surface);border-color:var(--tint-border);color:var(--accent)}.nav-number{width:24px;height:24px;border:1px solid var(--tint-border);border-radius:var(--radius-pill);display:grid;place-items:center;flex-shrink:0;font-family:var(--mono);font-size:var(--text-xs)}.nav-copy{display:flex;flex-direction:column}.nav-copy strong{font-weight:600}.nav-copy small{font-size:var(--text-2xs);color:var(--muted)}.rail-note{font-size:var(--text-2xs);color:var(--muted);margin:var(--space-6) var(--space-3) 0;line-height:1.65}.trip-content{min-width:0;padding:0 var(--space-6)}.duty{padding-block:var(--space-6);scroll-margin-top:var(--space-4)}.duty+.duty{border-top:1px solid var(--line)}.duty-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);margin-bottom:var(--space-4)}.duty-heading h2{display:flex;align-items:center;gap:var(--space-2)}.duty-index{color:var(--accent);font-family:var(--mono);font-weight:500}.duty-heading small{color:var(--muted);font-size:var(--text-xs)}.duty-body{display:grid;grid-template-columns:172px minmax(0,1fr);gap:var(--space-6)}.duty-brief{min-width:0}.markers{display:flex;flex-direction:column;gap:var(--space-3)}.marker{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);font-size:var(--text-xs)}.marker dt{color:var(--muted)}.marker dd{font-family:var(--mono);font-size:var(--text-sm);font-weight:500;white-space:nowrap}.marker.report{background:var(--tint);padding:var(--space-3);border-radius:var(--radius-md);color:var(--accent);margin-top:var(--space-1)}.marker.report dt{color:inherit;font-weight:600}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3) var(--space-4);margin-top:var(--space-4);padding-top:var(--space-4);border-top:1px solid var(--line)}.metric dt{color:var(--muted);font-size:var(--text-2xs);letter-spacing:.05em}.metric dd{font:500 var(--text-base)/1.6 var(--mono)}.flights{min-width:0;display:flex;flex-direction:column;gap:var(--space-6)}.flight{min-width:0}.flight+.flight{border-top:1px solid var(--line);padding-top:var(--space-6)}.flight-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-2);margin-bottom:var(--space-3)}.flight-identity{display:flex;align-items:center;gap:var(--space-2)}.flight-identity h3{font-family:var(--mono);font-size:var(--text-lg)}.flight-index{font-size:var(--text-2xs);color:var(--muted);font-weight:500}.flight-meta{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-xs);color:var(--muted);white-space:nowrap}.fleet{border:1px solid var(--line);border-radius:var(--radius-sm);padding:0 var(--space-1);font-family:var(--mono)}.time-table{width:100%;border-collapse:collapse;table-layout:fixed}.time-table th,.time-table td{padding:var(--space-2) 0;text-align:left}.time-table thead th{font-size:var(--text-xs);font-weight:500;color:var(--muted);border-bottom:1px solid var(--line)}.time-table thead .airport{font:600 var(--text-base) var(--mono);color:var(--ink)}.time-table th:first-child{width:24%}.time-table th:nth-child(2){width:27%}.time-table th:nth-child(3){width:22%;text-align:center}.time-table th:last-child{width:27%;text-align:right}.time-table td:last-child{text-align:right}.time-table td:nth-child(3){text-align:center;color:var(--muted);font-size:var(--text-2xs)}.time-table tbody th{font-weight:500;font-size:var(--text-xs);color:var(--muted)}.time-table td .time{font:500 var(--text-base)/1.4 var(--mono);white-space:nowrap}.time-table td .time small{font-size:var(--text-2xs)}.time-table td .abbr{font-size:var(--text-2xs);color:var(--muted);display:block}.time-table tbody tr:first-child .time{font-weight:600}.time-table tbody tr:last-child{border-bottom:1px solid var(--line)}.time-table .block{white-space:nowrap;font-family:var(--mono)}.time-table .pending{color:var(--muted)}.ops{padding-top:var(--space-3)}.ops-heading{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);font-size:var(--text-2xs);color:var(--muted)}.demo{border:1px solid var(--line);border-radius:var(--radius-sm);padding-inline:var(--space-1);font-size:var(--text-2xs)}.milestones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-2)}.milestone dt{font-size:var(--text-2xs);color:var(--muted)}.milestone dd{font:500 var(--text-xs)/1.8 var(--mono);white-space:nowrap}.locations{margin-top:var(--space-2);display:flex;justify-content:space-between;gap:var(--space-3);font-size:var(--text-xs)}.locations div{min-width:0}.locations dt{font-size:var(--text-2xs);color:var(--muted)}.locations dd{font-size:var(--text-xs)}.locations div:last-child{text-align:right}
+.layover{background:var(--tint);border:1px solid var(--tint-border);border-radius:var(--radius-md);padding:var(--space-4);display:grid;grid-template-columns:172px minmax(0,1fr);gap:var(--space-6);scroll-margin-top:var(--space-4)}.layover-title{display:flex;align-items:center;gap:var(--space-2);color:var(--accent);font-size:var(--text-xs);font-weight:600}.rest-value{font:600 var(--text-xl)/1.6 var(--mono);margin-top:var(--space-1)}.rest-range{color:var(--muted);font-size:var(--text-2xs);line-height:1.7}.hotel-name{font-size:var(--text-sm);font-weight:600;margin:var(--space-1) 0 var(--space-2)}.hotel-stay{display:flex;flex-wrap:wrap;gap:var(--space-4);font-size:var(--text-xs)}.hotel-stay dt{color:var(--muted);font-size:var(--text-2xs)}.hotel-stay dd{font-family:var(--mono)}.trip-footer{border-top:1px solid var(--line);padding-block:var(--space-4);display:flex;gap:var(--space-2);font-size:var(--text-2xs);color:var(--muted)}
+#calendar-preview{border-bottom:1px solid var(--line);background:var(--tint);padding:var(--space-4) var(--space-6)}.calendar-heading{display:flex;justify-content:space-between;align-items:center;gap:var(--space-2)}.calendar-heading h2{font-size:var(--text-sm)}#close-calendar{min-height:36px;font-size:var(--text-xs)}.preview-notice{font-size:var(--text-xs);color:var(--muted);margin-top:var(--space-2)}.calendar-events{padding:0;margin:var(--space-3) 0 0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-2)}.calendar-event{background:var(--surface);border:1px solid var(--tint-border);border-radius:var(--radius-sm);padding:var(--space-2) var(--space-3);font-size:var(--text-xs);display:flex;flex-direction:column;gap:var(--space-1)}.calendar-event span{color:var(--muted);font:var(--text-xs) var(--mono)}
+.design-footer{margin-top:var(--space-4);color:var(--muted);font-size:var(--text-xs)}.design-footer>p{max-width:90ch}#source-notes{margin-top:var(--space-4);border-top:1px solid var(--line);padding-block:var(--space-3)}summary{cursor:pointer;color:var(--ink);min-height:44px;display:flex;align-items:center;gap:var(--space-2);font-weight:500}summary::before{content:"+";font-size:var(--text-lg);color:var(--accent)}details[open] summary::before{content:"−"}.table-scroll{overflow-x:auto;margin-block:var(--space-3)}.sources{width:100%;border-collapse:collapse;background:var(--surface);font-size:var(--text-xs)}.sources th,.sources td{padding:var(--space-3);border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.sources th{color:var(--muted);font-size:var(--text-2xs);font-weight:600}.sources code{font-family:var(--mono);overflow-wrap:anywhere;font-size:var(--text-2xs)}.source-copy{max-width:100ch}.source-copy p+p{margin-top:var(--space-2)}
+@media(min-width:1100px){.trip-content{padding-inline:var(--space-8)}.duty-body,.layover{grid-template-columns:208px minmax(0,1fr);gap:var(--space-8)}.time-table td .time{font-size:var(--text-lg)}.time-table td .abbr{display:inline-block;margin-right:var(--space-2)}.time-table td:last-child .abbr{margin-right:var(--space-2)}}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}.journey{border-right:0;border-bottom:1px solid var(--line);padding:var(--space-2) var(--space-6)}.journey-inner{position:static;display:flex;align-items:center;gap:var(--space-3)}.journey .eyebrow{padding:0;margin:0}#journey-nav{flex-direction:row;flex:1;gap:var(--space-2)}#journey-nav a{padding:var(--space-2) var(--space-3);flex:1}.nav-copy small,.rail-note{display:none}.duty-body,.layover{grid-template-columns:168px minmax(0,1fr);gap:var(--space-4)}.calendar-events{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){body{padding-block:var(--space-3)}.review-bar{gap:var(--space-2);align-items:center}.review-title{gap:var(--space-1)}.review-title .review-label{display:none}.review-controls{gap:var(--space-1)}.trip-picker button{padding-inline:var(--space-2)}.sheet{border-radius:var(--radius-md)}.app-header{padding:var(--space-2) var(--space-4)}.app-heading svg{display:none}h1{font-size:var(--text-base)}#calendar{min-height:44px;padding-inline:var(--space-2)}.trip-overview{padding:var(--space-4);align-items:flex-start}.trip-route{font-size:var(--text-xl);gap:var(--space-2)}.trip-route svg{width:16px;height:16px}.trip-description{font-size:var(--text-2xs)}.reference{display:none}.journey{padding:var(--space-2) var(--space-3)}.journey .eyebrow{display:none}.journey-inner{gap:0}#journey-nav{gap:var(--space-1)}#journey-nav a{padding:var(--space-2);justify-content:center;gap:var(--space-1)}.nav-number{width:20px;height:20px;font-size:var(--text-2xs)}.trip-content{padding-inline:var(--space-4)}.duty{padding-block:var(--space-4)}.duty-heading{margin-bottom:var(--space-3)}.duty-body{grid-template-columns:1fr;gap:var(--space-4)}.markers{flex-direction:row;gap:var(--space-3)}.marker{flex:1;flex-direction:column;align-items:flex-start;justify-content:center;gap:var(--space-1)}.marker.report{margin:0;padding:var(--space-2);flex:.85}.marker dd{font-size:var(--text-sm)}.marker dt{font-size:var(--text-2xs)}.metrics{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:var(--space-3);padding-top:var(--space-3);gap:var(--space-2)}.metric dd{font-size:var(--text-sm)}.duty-brief{padding-bottom:var(--space-4);border-bottom:1px solid var(--line)}.flight-identity h3{font-size:var(--text-base)}.flight-meta{font-size:var(--text-2xs);gap:var(--space-1)}.time-table td .time{font-size:var(--text-sm)}.time-table tbody th{font-size:var(--text-2xs)}.locations dd{font-size:var(--text-2xs)}.layover{grid-template-columns:1fr;gap:var(--space-3);padding:var(--space-3)}.layover-rest{display:grid;grid-template-columns:1fr auto;align-items:center;gap:var(--space-1) var(--space-2)}.rest-value{margin:0;font-size:var(--text-lg)}.rest-range{grid-column:1/-1}.hotel{border-top:1px solid var(--tint-border);padding-top:var(--space-3)}#calendar-preview{padding:var(--space-3) var(--space-4)}.calendar-events{grid-template-columns:1fr 1fr}.design-footer{font-size:var(--text-2xs)}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="review-bar">
+    <div class="review-title"><span class="version">Ver2</span><span class="review-label">Design prototype · sample data</span></div>
+    <div class="review-controls">
+      <div class="trip-picker" role="group" aria-label="Sample trip">
+        <button id="sample-tg" aria-pressed="true">TG layover</button>
+        <button id="sample-pr" aria-pressed="false">PR turnaround</button>
+      </div>
+      <button id="theme" aria-label="Switch to dark appearance" title="Switch appearance"></button>
+    </div>
+  </div>
+  <main class="sheet">
+    <header class="app-header">
+      <div class="app-heading"><span id="title-icon" aria-hidden="true"></span><h1>Trip Details</h1></div>
+      <button id="calendar" aria-expanded="false" aria-controls="calendar-preview"><span id="calendar-icon" aria-hidden="true"></span><span>iPhone Calendar</span></button>
+    </header>
+    <section id="calendar-preview" aria-label="Calendar preview" hidden></section>
+    <section id="overview" class="trip-overview" aria-label="Trip overview"></section>
+    <div class="workspace">
+      <aside class="journey" aria-label="Journey navigation"><div class="journey-inner"><p class="eyebrow">Journey</p><nav id="journey-nav" aria-label="Jump to trip section"></nav><p class="rail-note">L = airport local time<br>−1 = previous day<br>— = not available</p></div></aside>
+      <div class="trip-content"><div id="trip"></div><p class="trip-footer">L = airport local time · −1 = previous day · — = not available. Durations and dates are shown as supplied in the sample.</p></div>
+    </div>
+  </main>
+  <footer class="design-footer">
+    <p><strong>Design prototype · illustrative data.</strong> Ver1’s sample values are preserved for comparison. Airport operations are demo values; the hotel is expected, not confirmed. This page does not connect to a crew portal or save calendar events.</p>
+    <details id="source-notes"><summary>Design notes &amp; data sources</summary>
+      <div class="source-copy"><p><strong>A continuous journey sheet.</strong> The itinerary provides navigation. Duty preparation and totals sit alongside the flight tables on wide screens and above them on phones. All flights remain expanded; the layover stays between duties. The calendar action sits in the header.</p><p>The original examples contain local-time, duty-date and duration inconsistencies. These are retained for design comparison, not validated operational schedules. The rest interval is a sample portal value, not a legality determination.</p></div>
+      <div class="table-scroll" id="source-table"></div>
+      <div class="source-copy"><p>Portal totals must be mapped from the captured payload into PortalDuty / Trip and persisted. Raw report/detailAll payloads are not stored. Where the F8/ET/EK mobile-roster feed supplies only check-in, release and blockMinutes, show Block and the duty span; omit unavailable FDP, DP and Rest rather than inventing values.</p><p>Boarding, door close, off-block, gate, stand and belt remain demo values until an A-CDM/AODB feed exists. Estimated-time fallbacks must be identified as filed schedule values. Calendar preview is illustrative and does not resolve the sample’s date inconsistencies.</p></div>
+    </details>
+  </footer>
+</div>
+<script>
+const PR_TURN = {
+  hero1: 'PR501 · MNL → SIN → MNL',
+  hero2: '6 Sep 2026 · 2 flights · 1 duty',
+  duties: [{
+    label: 'DUTY 1 OF 1 · 6 SEP', report: '13:25L',
+    markers: [['Wake-up','03:32L'],['Leave home','04:32L'],['Report','13:25L']],
+    kpis: [['FDP','10:15'],['DP','10:45'],['Block','06:56'],['Rest','14:00']],
+    flights: [
+      { n:1, num:'PR501', route:'MNL → SIN', date:'6 Sep', fleet:'A321',
+        sched:['15:32L','18:56L'], est:['15:32L','18:56L'], act:['—','—'], block:'3h 24m',
+        miles:[['Boarding','15:02L'],['Door close','15:22L'],['Off-block','15:34L']],
+        dep:'T1 · Gate 124 · Stand 135', arr:'Belt 01' },
+      { n:2, num:'PR512', route:'SIN → MNL', date:'6 Sep', fleet:'A321',
+        sched:['20:08L','23:40L'], est:['20:08L','23:40L'], act:['—','—'], block:'3h 32m',
+        miles:[['Boarding','19:38L'],['Door close','19:58L'],['Off-block','20:12L']],
+        dep:'T2 · Gate B4 · Stand 208', arr:'Belt 12' },
+    ],
+  }],
+};
+
+const TG_TRIP = {
+  hero1: 'TG662 · BKK → PVG → BKK',
+  hero2: '16–17 Sep 2026 · 2 flights · 2 duties · 1 night',
+  duties: [
+    {
+      label: 'DUTY 1 OF 2 · 16 SEP', report: '22:45L',
+      markers: [['Wake-up','20:30L'],['Leave home','21:30L'],['Report','22:45L']],
+      kpis: [['FDP','07:00'],['DP','07:30'],['Block','05:15'],['Rest','14:00']],
+      flights: [{
+        n:1, num:'TG662', route:'BKK → PVG', date:'16 Sep', fleet:'A350',
+        sched:['00:30L','05:45L'], est:['00:30L','05:45L'], act:['00:37L','05:49L'], block:'5h 15m',
+        miles:[['Boarding','23:55L -1'],['Door close','00:20L'],['Off-block','00:35L']],
+        dep:'T1 · Gate D9 · Stand 135', arr:'Belt 08',
+      }],
+    },
+    {
+      label: 'DUTY 2 OF 2 · 17 SEP', report: '23:50L',
+      markers: [['Hotel pick-up','22:30L'],['Report','23:50L']],
+      kpis: [['FDP','06:35'],['DP','07:05'],['Block','05:15'],['Rest','18:01']],
+      flights: [{
+        n:2, num:'TG663', route:'PVG → BKK', date:'17 Sep', fleet:'A350',
+        sched:['01:10L','06:25L'], est:['01:10L','06:25L'], act:['—','—'], block:'5h 15m',
+        miles:[['Boarding','00:35L'],['Door close','01:00L'],['Off-block','01:15L']],
+        dep:'T2 · Gate D12 · Stand 220', arr:'Belt 14',
+      }],
+    },
+  ],
+  rest: ['REST 18h 01m', '16 Sep 05:49 → 16 Sep 23:50'],
+  hotel: ['LAYOVER · SHANGHAI PUDONG', 'Crowne Plaza PVG (expected)', 'in 07:00 → out 21:00 · 1 night'],
+};
+
+const icons = {
+  flight:'<path d="m3 15 7-3V4a2 2 0 0 1 4 0v8l7 3v2l-7-1v4l2 1v1l-4-1-4 1v-1l2-1v-4l-7 1Z"/>',
+  arrow:'<path d="M4 12h16m-5-5 5 5-5 5"/>',
+  calendar:'<path d="M4.5 7.5A1.5 1.5 0 0 1 6 6h12a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 18 20H6a1.5 1.5 0 0 1-1.5-1.5ZM4.5 10.5h15M8.5 4v4m7-4v4M12 13.5v4M10 15.5h4"/>',
+  hotel:'<path d="M3 18v-7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v7M3 14h18M7 10V7a1 1 0 0 1 1-1h3M3 18v2m18-2v2"/><circle cx="8.5" cy="11.5" r="1.4"/>',
+  moon:'<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>'
+};
+const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
+const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+let currentTrip = TG_TRIP;
+let currentSample = 'tg';
+const time = value => value === '—' ? '<span class="time pending" aria-label="Not available">—</span>' : `<span class="time">${escapeHtml(value).replace('L','<small>L</small>')}</span>`;
+function renderFlight(f){
+  const [dep,arr]=f.route.split(' → ');
+  const row=(name,values,abbr,block='')=>`<tr><th scope="row">${name}</th><td><span class="abbr">${abbr[0]}</span>${time(values[0])}</td><td>${block?`<span class="block">${block}</span>`:'·'}</td><td><span class="abbr">${abbr[1]}</span>${time(values[1])}</td></tr>`;
+  return `<article class="flight" data-flight="${f.num}" aria-label="Flight ${f.n} ${f.num}">
+    <header class="flight-heading"><div class="flight-identity"><span class="flight-index">Flight ${f.n}</span><h3>${f.num}</h3></div><div class="flight-meta"><span>${f.date}</span><span class="fleet">${f.fleet}</span></div></header>
+    <table class="time-table" aria-label="${f.num} ${dep} to ${arr} flight times"><thead><tr><th scope="col">Flight times</th><th scope="col" class="airport">${dep}</th><th scope="col">Block</th><th scope="col" class="airport">${arr}</th></tr></thead><tbody>${row('Scheduled',f.sched,['STD','STA'],f.block)}${row('Estimated',f.est,['ETD','ETA'])}${row('Actual',f.act,['ATD','ATA'])}</tbody></table>
+    <div class="ops"><div class="ops-heading">Airport operations <span class="demo">Demo</span></div><dl class="milestones">${f.miles.map(([label,value])=>`<div class="milestone"><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl><dl class="locations"><div><dt>Departure</dt><dd>${f.dep}</dd></div><div><dt>Arrival</dt><dd>${f.arr}</dd></div></dl></div>
+  </article>`;
+}
+function renderDuty(d,index){
+  return `<section class="duty" id="duty-${index+1}" aria-label="Duty ${index+1}"><header class="duty-heading"><h2><span class="duty-index">${String(index+1).padStart(2,'0')}</span>Duty ${index+1} of ${currentTrip.duties.length}</h2><small>${d.label.split(' · ')[1]} · ${d.flights.length} ${d.flights.length===1?'flight':'flights'}</small></header><div class="duty-body"><aside class="duty-brief" aria-label="Duty ${index+1} preparation and totals"><dl class="markers">${d.markers.map(([label,value])=>`<div class="marker ${label==='Report'?'report':''}"><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl><dl class="metrics">${d.kpis.map(([label,value])=>`<div class="metric"><dt title="${({FDP:'Flight duty period',DP:'Duty period',Block:'Total block time',Rest:'Portal rest hours'})[label]}">${label}</dt><dd>${value}</dd></div>`).join('')}</dl></aside><div class="flights">${d.flights.map(renderFlight).join('')}</div></div></section>`;
+}
+function renderLayover(){
+  return `<section class="layover" id="layover" aria-label="Shanghai layover"><div class="layover-rest"><h2 class="layover-title">${icon('hotel')}Rest between duties</h2><p class="rest-value">${currentTrip.rest[0].replace('REST ','')}</p><p class="rest-range">${currentTrip.rest[1]}<br>Sample portal interval</p></div><div class="hotel"><p class="eyebrow">${currentTrip.hotel[0]}</p><h3 class="hotel-name">${currentTrip.hotel[1]}</h3><dl class="hotel-stay"><div><dt>Check-in</dt><dd>07:00</dd></div><div><dt>Check-out</dt><dd>21:00</dd></div><div><dt>Stay</dt><dd>1 night</dd></div></dl></div></section>`;
+}
+function closeCalendar(){document.getElementById('calendar-preview').hidden=true;document.getElementById('calendar').setAttribute('aria-expanded','false')}
+function renderTrip(sample){
+  currentSample=sample; currentTrip=sample==='tg'?TG_TRIP:PR_TURN;
+  closeCalendar();
+  document.querySelectorAll('.trip-picker button').forEach(button=>button.setAttribute('aria-pressed',String(button.id===`sample-${sample}`)));
+  const route=currentTrip.hero1.split(' · ')[1].split(' → ');
+  document.getElementById('overview').innerHTML=`<div><div class="trip-route" aria-label="${route.join(' to ')}">${route.map(airport=>`<span class="mono">${airport}</span>`).join(icon('arrow'))}</div><p class="trip-description">${currentTrip.hero2}</p></div><div class="reference"><span class="eyebrow">Trip reference</span><strong>${currentTrip.hero1.split(' · ')[0]}</strong><span>Local times · ${sample==='tg'?'Layover':'Turnaround'}</span></div>`;
+  document.getElementById('trip').innerHTML=currentTrip.duties.map((d,index)=>(index&&currentTrip.hotel?renderLayover():'')+renderDuty(d,index)).join('');
+  document.getElementById('journey-nav').innerHTML=currentTrip.duties.map((d,index)=>(index&&currentTrip.hotel?`<a href="#layover">${icon('hotel')}<span class="nav-copy"><strong>Layover</strong><small>Shanghai Pudong</small></span></a>`:'')+`<a href="#duty-${index+1}" ${index===0?'aria-current="location"':''}><span class="nav-number">${index+1}</span><span class="nav-copy"><strong>Duty ${index+1}</strong><small>${d.label.split(' · ')[1]}</small></span></a>`).join('');
+  if(location.hash)history.replaceState(null,'',location.pathname+location.search);
+}
+document.getElementById('journey-nav').addEventListener('click',event=>{const link=event.target.closest('a');if(!link)return;document.querySelectorAll('#journey-nav a').forEach(a=>a.removeAttribute('aria-current'));link.setAttribute('aria-current','location')});
+document.getElementById('sample-tg').addEventListener('click',()=>renderTrip('tg'));
+document.getElementById('sample-pr').addEventListener('click',()=>renderTrip('pr'));
+document.getElementById('calendar').addEventListener('click',()=>{
+  const preview=document.getElementById('calendar-preview');
+  if(!preview.hidden){closeCalendar();return}
+  const events=currentTrip.duties.flatMap((d,index)=>[...d.markers.map(([label,value])=>({label:`Duty ${index+1} · ${label}`,value})),...d.flights.map(f=>({label:`${f.num} · ${f.route}`,value:`${f.date} · ${f.sched.join(' → ')}`}))]);
+  preview.innerHTML=`<div class="calendar-heading"><h2>Add to iPhone Calendar</h2><button id="close-calendar">Close preview</button></div><p class="preview-notice">Wake-up, leave home, report and flights, plus hotel pick-up when supplied. Preview only; nothing has been added to your calendar.</p><ul class="calendar-events">${events.map(event=>`<li class="calendar-event"><strong>${escapeHtml(event.label)}</strong><span>${escapeHtml(event.value)}</span></li>`).join('')}</ul>`;
+  preview.hidden=false;document.getElementById('calendar').setAttribute('aria-expanded','true');
+  document.getElementById('close-calendar').addEventListener('click',()=>{closeCalendar();document.getElementById('calendar').focus()});
+});
+function setTheme(theme){document.documentElement.dataset.theme=theme;const button=document.getElementById('theme');button.innerHTML=icon(theme==='light'?'moon':'sun');button.setAttribute('aria-label',`Switch to ${theme==='light'?'dark':'light'} appearance`)}
+document.getElementById('theme').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light'));
+document.getElementById('title-icon').innerHTML=icon('flight');document.getElementById('calendar-icon').innerHTML=icon('calendar');
+setTheme('light');renderTrip('tg');
+
+document.getElementById("source-table").innerHTML = "  <table class=\"sources\">\n    <thead><tr><th>Metric</th><th>Primary source</th><th>Fallback</th><th>Availability</th></tr></thead>\n    <tbody>\n      <tr><td><b>FDP</b></td><td><code>detailAll \u2192 portalCalendarDetailRosterInfoVoList[].dutyFdp</code>; also <code>report \u2192 fdpHours</code></td><td>\u2014</td><td><span class=\"tag\">Portal</span></td></tr>\n      <tr><td><b>DP</b></td><td><code>detailAll \u2192 dutyDp</code>; also <code>report \u2192 dpHours</code></td><td><code>deBriefEnd \u2212 briefStart</code> (calendar)</td><td><span class=\"tag\">Portal</span></td></tr>\n      <tr><td><b>Block</b></td><td><code>report \u2192 blhHours</code>, or sum of <code>detailAll.blockHours</code></td><td>sum of leg <code>blockMinutes</code></td><td><span class=\"tag\">Portal</span> <span class=\"tag warn\">Live API: block only</span></td></tr>\n      <tr><td><b>Rest</b></td><td><code>detailAll \u2192 dutyRestHours</code></td><td>previous <code>deBriefEnd</code> \u2192 next <code>briefStart</code></td><td><span class=\"tag\">Portal</span> <span class=\"tag none\">Live API: none</span></td></tr>\n      <tr><td><b>STD / STA</b></td><td>roster leg schedule (<code>flightDateUTC</code> / <code>arvDateUTC</code>, or portal local times)</td><td>\u2014</td><td><span class=\"tag\">Both</span></td></tr>\n      <tr><td><b>ETD / ETA</b></td><td>roster estimate (<code>estDepUtc</code> / <code>estArvUtc</code>)</td><td>repeat STD / STA (clearly the filed time)</td><td><span class=\"tag\">Both</span></td></tr>\n      <tr><td><b>ATD / ATA</b></td><td>roster actual (<code>actDepUtc</code> / <code>actArvUtc</code>)</td><td>\u201c\u2014\u201d</td><td><span class=\"tag\">Both</span></td></tr>\n      <tr><td><b>Duty identity</b></td><td>portal <code>briefStart</code>; live API <code>pairingId</code></td><td>first leg\u2019s <code>checkInDateUTC</code></td><td><span class=\"tag\">Both</span></td></tr>\n    </tbody>\n  </table>";
+</script>
+</body>
+</html>

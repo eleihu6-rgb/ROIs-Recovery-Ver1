@@ -3,12 +3,14 @@
 // block spanning their rows; cell text grows with the block (code → route →
 // report/release + layover → BLH/CRD + fleet). Spec §5.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { PanResponder, Pressable, ScrollView, useWindowDimensions, StyleSheet, Text, View, type GestureResponderEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import Svg, { Line } from 'react-native-svg';
 
+import { colors, font, radius } from '../../../theme';
 import { Icon } from '../../../components/v2/icons';
 import type { CarrierPalette } from '../../../theme/carrier';
 import {
-  cellLevel, cellLines, dayLabel, detailFor, dutyRows, fleetsOf,
+  cellLines, dayLabel, detailFor, dutyRows, fleetsOf,
   type ApiCompare, type ApiTaskDetail, type SwapCrew, type SwapDuty,
 } from '../dutySwapModel';
 
@@ -78,7 +80,43 @@ export function columnWindow(x: number, colW: number, viewW: number, count: numb
 }
 
 export function CrewMatrix(props: Props): React.JSX.Element {
-  const { palette: p, me, others, days, geometry: g, width, details, give, take, crewB } = props;
+  const { palette: p, me, others, days, geometry, width, details, give, take, crewB } = props;
+  const { fontScale } = useWindowDimensions();
+  const [rowHeight, setRowHeight] = useState(geometry.rowH);
+  const [pinching, setPinching] = useState(false);
+  const g = { ...geometry, rowH: rowHeight };
+  const verticalScroll = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const pinch = useRef({ distance: 0, height: rowHeight, y: 0 });
+  const currentHeight = useRef(rowHeight);
+  currentHeight.current = rowHeight;
+  const distance = (e: GestureResponderEvent) => {
+    const [a, b] = e.nativeEvent.touches;
+    return a && b ? Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY) : 0;
+  };
+  const finishPinch = () => { pinch.current.distance = 0; setPinching(false); };
+  const pan = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponderCapture: e => e.nativeEvent.touches.length === 2,
+    onMoveShouldSetPanResponderCapture: e => e.nativeEvent.touches.length === 2,
+    onPanResponderGrant: e => {
+      pinch.current = { distance: distance(e), height: currentHeight.current, y: scrollY.current };
+      setPinching(true);
+    },
+    onPanResponderMove: e => {
+      const d = distance(e);
+      const start = pinch.current;
+      if (!d || !start.distance) return;
+      const next = Math.max(geometry.rowH, Math.min(160, start.height * d / start.distance));
+      setRowHeight(next);
+      scrollY.current = start.y * next / start.height;
+    },
+    onPanResponderRelease: finishPinch,
+    onPanResponderTerminate: finishPinch,
+    onPanResponderTerminationRequest: () => false,
+  }), [geometry.rowH]);
+  useEffect(() => {
+    verticalScroll.current?.scrollTo({ y: scrollY.current, animated: false });
+  }, [rowHeight]);
   const headScroll = useRef<ScrollView>(null);
   const bodyScroll = useRef<ScrollView>(null);
   const frozenW = g.mineW + g.dateW;
@@ -93,6 +131,25 @@ export function CrewMatrix(props: Props): React.JSX.Element {
   }, [others]);
   const bodyH = days.length * g.rowH;
   const windowStart = days[0];
+
+  const blockFrame = useCallback((d: SwapDuty) => {
+    const pos = dutyRows(d, windowStart, days.length);
+    if (!pos) return null;
+    const height = Math.max(pos.span * g.rowH - 4, 14 * fontScale + 8);
+    return { top: pos.top * g.rowH + 2, height };
+  }, [windowStart, days.length, g.rowH, fontScale]);
+
+  // Matrix time flows down rather than across. The Twin Rail's vertical start /
+  // end guides therefore become horizontal here, following the outer visual
+  // edges of all selected Mine duties through the candidate viewport.
+  const guides = useMemo(() => {
+    const frames = me.duties.filter(d => give.has(d.key)).map(blockFrame).filter((frame): frame is NonNullable<typeof frame> => !!frame);
+    if (!frames.length) return [];
+    return [
+      { id: 'start', y: Math.min(...frames.map(frame => frame.top)) },
+      { id: 'end', y: Math.max(...frames.map(frame => frame.top + frame.height)) },
+    ];
+  }, [me.duties, give, blockFrame]);
 
   // My task details: any loaded compare carries my side.
   const myDetails: ApiTaskDetail[] | undefined = useMemo(() => Object.values(details)[0]?.mineTaskDetailList, [details]);
@@ -142,16 +199,15 @@ export function CrewMatrix(props: Props): React.JSX.Element {
   const column = (crew: SwapCrew, colW: number, isMe: boolean) => {
     const list = isMe ? myDetails : details[crew.crewId]?.othersTaskDetailList;
     return crew.duties.map(d => {
-      const pos = dutyRows(d, windowStart, days.length);
-      if (!pos) return null;
-      const h = Math.max(pos.span * g.rowH - 4, 18);
+      const frame = blockFrame(d);
+      if (!frame) return null;
       const w = colW - 8;
-      const lines = cellLines(d, detailFor(d, list), cellLevel(h, w));
+      const lines = cellLines(d, detailFor(d, list), 3);
       const selected = isMe ? give.has(d.key) : take.has(d.key);
       return (
         <DutyBlock key={d.key} duty={d} lines={lines} palette={p} selected={selected}
-          top={pos.top * g.rowH + 2} left={4} width={w} height={h}
-          onPress={() => props.onPressDuty(d)} />
+          top={frame.top} left={4} width={w} height={frame.height}
+          onPress={() => { if (!pinching) props.onPressDuty(d); }} />
       );
     });
   };
@@ -187,39 +243,49 @@ export function CrewMatrix(props: Props): React.JSX.Element {
         </ScrollView>
       </View>
 
-      <ScrollView style={s.flex} contentContainerStyle={{ height: bodyH }} showsVerticalScrollIndicator={false}>
-        <View style={[s.row, { height: bodyH }]}>
-          {/* Frozen: Mine + Date */}
-          <View style={{ width: frozenW, height: bodyH }}>
-            {rowsBg(frozenW)}
-            <View style={{ position: 'absolute', left: 0, top: 0, width: g.mineW, height: bodyH }}>{column(me, g.mineW, true)}</View>
-            {days.map((d, i) => {
-              const dl = dayLabel(d);
-              return (
-                <View key={d} style={[s.dateCell, { left: g.mineW, top: i * g.rowH, width: g.dateW, height: g.rowH }]}>
-                  <Text style={[s.dateNum, { color: p.cardInk }]}>{dl.day}</Text>
-                  <Text style={[s.dateDow, { color: p.cardSoft }]}>{dl.dow}</Text>
-                </View>
-              );
-            })}
-            <View style={[s.frozenEdge, { left: frozenW - 1, height: bodyH, backgroundColor: p.cardLine }]} />
-          </View>
-          {/* Crews: horizontal scroll */}
-          <ScrollView ref={bodyScroll} horizontal onScroll={onScroll} scrollEventThrottle={16} snapToInterval={g.colW} decelerationRate="fast"
-            onMomentumScrollEnd={e => reportVisible(e.nativeEvent.contentOffset.x)} showsHorizontalScrollIndicator={false}
-            style={{ width: viewW }} testID="crew-matrix-scroll">
-            <View style={{ width: others.length * g.colW, height: bodyH }}>
-              {rowsBg(others.length * g.colW)}
-              {shown.map((c, k) => (
-                <View key={c.crewId} style={{ position: 'absolute', left: (win.from + k) * g.colW, top: 0, width: g.colW, height: bodyH,
-                  borderLeftColor: p.cardLine, borderLeftWidth: StyleSheet.hairlineWidth }}>
-                  {column(c, g.colW, false)}
-                </View>
-              ))}
+      <View style={s.flex} {...pan.panHandlers} testID="crew-matrix-zoom">
+        <ScrollView ref={verticalScroll} style={s.flex} scrollEnabled={!pinching}
+          onScroll={e => { if (!pinching) scrollY.current = e.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
+          contentContainerStyle={{ height: bodyH }} showsVerticalScrollIndicator testID="crew-matrix-days">
+          <View style={[s.row, { height: bodyH }]}>
+            {/* Frozen: Mine + Date */}
+            <View style={{ width: frozenW, height: bodyH }}>
+              {rowsBg(frozenW)}
+              <View style={{ position: 'absolute', left: 0, top: 0, width: g.mineW, height: bodyH }}>{column(me, g.mineW, true)}</View>
+              {days.map((d, i) => {
+                const dl = dayLabel(d);
+                return (
+                  <View key={d} style={[s.dateCell, { left: g.mineW, top: i * g.rowH, width: g.dateW, height: g.rowH }]}>
+                    <Text style={[s.dateNum, { color: p.cardInk }]}>{dl.day}</Text>
+                    <Text style={[s.dateDow, { color: p.cardSoft }]}>{dl.dow}</Text>
+                  </View>
+                );
+              })}
+              <View style={[s.frozenEdge, { left: frozenW - 1, height: bodyH, backgroundColor: p.cardLine }]} />
             </View>
-          </ScrollView>
-        </View>
-      </ScrollView>
+            {/* Crews: horizontal scroll */}
+            <ScrollView ref={bodyScroll} horizontal scrollEnabled={!pinching} onScroll={onScroll} scrollEventThrottle={16} snapToInterval={g.colW} decelerationRate="fast"
+              onMomentumScrollEnd={e => reportVisible(e.nativeEvent.contentOffset.x)} showsHorizontalScrollIndicator={false}
+              style={{ width: viewW }} testID="crew-matrix-scroll">
+              <View style={{ width: others.length * g.colW, height: bodyH }}>
+                {rowsBg(others.length * g.colW)}
+                {shown.map((c, k) => (
+                  <View key={c.crewId} style={{ position: 'absolute', left: (win.from + k) * g.colW, top: 0, width: g.colW, height: bodyH,
+                    borderLeftColor: p.cardLine, borderLeftWidth: StyleSheet.hairlineWidth }}>
+                    {column(c, g.colW, false)}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+            {guides.length ? <View pointerEvents="none" testID="matrix-guides" style={StyleSheet.absoluteFill}>
+              {guides.map(guide => <View key={guide.id} testID={`matrix-guide-${guide.id}`}
+                style={{ position: 'absolute', left: g.mineW - 4, right: 0, top: guide.y, height: 2, marginTop: -1 }}>
+                <Svg width="100%" height="2"><Line x1="0" x2="100%" y1="1" y2="1" stroke={colors.primary} strokeOpacity={0.9} strokeWidth={1.5} strokeDasharray="4 4" /></Svg>
+              </View>)}
+            </View> : null}
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -238,15 +304,25 @@ function DutyBlock({ duty, lines, palette: p, selected, top, left, width, height
         : duty.kind === 'off'
           ? { backgroundColor: 'transparent', borderColor: p.cardLine, color: p.cardSoft }
           : { backgroundColor: p.cardSolid, borderColor: tint(p.btn, 0.6), color: p.cardInk };
-  const maxLines = Math.max(1, Math.floor((height - 6) / 13));
-  // Narrow cells: a long pairing code may wrap at its "/" when the block is tall
-  // enough, and an out-and-back route reads MNL⇄SEA instead of MNL–SEA–MNL.
+  const { fontScale } = useWindowDimensions();
+  const lineHeight = 14;
+  const maxLines = Math.max(1, Math.floor((height - 8) / (lineHeight * fontScale)));
   const narrow = width < 100;
   const codeLines = narrow && maxLines >= 3 && lines[0].includes('/') ? 2 : 1;
   const code = codeLines === 2 ? lines[0].replace('/', '/\n') : lines[0];
   const rest = lines.slice(1).map(l => {
     const m = narrow ? /^([A-Z]{3})–([A-Z]{3})–([A-Z]{3})$/.exec(l) : null;
     return m && m[1] === m[3] ? `${m[1]}⇄${m[2]}` : l;
+  });
+  // Allocate complete lines. Expanded narrow pucks wrap detail instead of
+  // remaining permanently ellipsized even when there is spare vertical room.
+  let remaining = maxLines - codeLines;
+  const detailLines = rest.flatMap((text, i) => {
+    if (remaining <= 0) return [];
+    const reserve = rest.length - i - 1;
+    const count = remaining > reserve + 1 ? 2 : 1;
+    remaining -= count;
+    return [{ text, count }];
   });
   return (
     <Pressable onPress={onPress} disabled={locked} testID={`duty-${duty.crewId}-${duty.code}`}
@@ -257,8 +333,8 @@ function DutyBlock({ duty, lines, palette: p, selected, top, left, width, height
         {locked ? <Icon name="lock" size={10} color={look.color} strokeWidth={2} /> : null}
         <Text style={[s.code, { color: look.color }]} numberOfLines={codeLines}>{code}</Text>
       </View>
-      {rest.slice(0, maxLines - codeLines).map((l, i) => (
-        <Text key={i} style={[s.sub, { color: selected ? 'rgba(255,255,255,0.85)' : p.cardSoft }]} numberOfLines={1}>{l}</Text>
+      {detailLines.map(({ text, count }, i) => (
+        <Text key={i} style={[s.sub, { color: selected ? 'rgba(255,255,255,0.85)' : p.cardSoft }]} numberOfLines={count}>{text}</Text>
       ))}
     </Pressable>
   );
@@ -279,8 +355,8 @@ const s = StyleSheet.create({
   dateNum: { fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
   dateDow: { fontSize: 8, fontWeight: '700', letterSpacing: 0.5 },
   frozenEdge: { position: 'absolute', top: 0, width: 1 },
-  block: { position: 'absolute', borderRadius: 6, borderWidth: 1, paddingHorizontal: 5, paddingVertical: 3, overflow: 'hidden' },
+  block: { position: 'absolute', borderRadius: radius.op, borderWidth: 1, paddingHorizontal: 5, paddingVertical: 3, overflow: 'hidden' },
   blockHead: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  code: { fontSize: 11, fontWeight: '800', flexShrink: 1 },
-  sub: { fontSize: 10, fontWeight: '600', marginTop: 1 },
+  code: { ...font.caption, lineHeight: 14, flexShrink: 1 },
+  sub: { ...font.caption, fontWeight: '500', letterSpacing: 0, lineHeight: 14 },
 });

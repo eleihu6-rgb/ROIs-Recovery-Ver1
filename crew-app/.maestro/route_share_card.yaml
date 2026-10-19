@@ -1,0 +1,96 @@
+# Schedule ▸ Route map ▸ share card.
+#
+# Real-UI check for the share feature: open the preview, confirm it carries the
+# month/year, then hand the rendered PNG to the iOS share sheet. The sheet is
+# left open on purpose — the flow asserts that "Save Image" is offered (proof
+# the item reached UIKit as an image, which is what Instagram needs) and the
+# generated temp PNG can be copied out for visual inspection.
+#
+# Run: maestro test crew-app/.maestro/route_share_card.yaml --env AIRLINE=TG \
+#        --env PREV_MONTHS=1 --debug-output /tmp/route-share-tg
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+# No clearState: on iOS Maestro's clearState reinstalls the app, and the
+# reinstall can relaunch it mid-flow and wipe the login it just performed.
+- launchApp
+# A previous attempt (or Maestro's own retry) can leave the carrier sheet open.
+- runFlow:
+    when:
+      visible:
+        id: "airline-picker-close"
+    commands:
+      - tapOn:
+          id: "airline-picker-close"
+- runFlow:
+    when:
+      visible:
+        id: "login-screen"
+    commands:
+      - tapOn:
+          id: "airline-dropdown"
+      - extendedWaitUntil:
+          visible:
+            id: "airline-${AIRLINE}"
+          timeout: 10000
+      - tapOn:
+          id: "airline-${AIRLINE}"
+      # The sheet animates out and the login form re-renders with that carrier's
+      # prefilled test crew. Tapping Login before the picker closes sends an
+      # empty form ("Missing details"), so wait for the picker to be gone first.
+      - extendedWaitUntil:
+          notVisible:
+            id: "airline-list"
+          timeout: 10000
+      - tapOn:
+          id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+    # The first tap after login can land while the home screen is still
+    # settling; retry until the tab actually switches.
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: "sched-shell"
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: "sched-view-menu"
+    commands:
+      - tapOn:
+          id: "sched-view-menu"
+      - assertVisible: "Roster view"
+- tapOn:
+    id: "sched-view-route"
+- repeat:
+    times: ${PREV_MONTHS}
+    commands:
+      - tapOn:
+          id: "sched-prev-month"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 30000
+- tapOn:
+    id: "route-share"
+- extendedWaitUntil:
+    visible:
+      id: "route-share-dialog"
+    timeout: 10000
+# The preview is a rendered SVG inside the dialog; its accessibility label
+# merges into the dialog element, so the screenshot is the visual assertion.
+- takeScreenshot: route_share_preview_${AIRLINE}
+- tapOn:
+    id: "route-share-dialog-confirm"
+# "Save Image" is the proof the PNG arrived as an image item, not opaque data.
+- extendedWaitUntil:
+    visible: "Save Image"
+    timeout: 20000
+- takeScreenshot: route_share_sheet_${AIRLINE}

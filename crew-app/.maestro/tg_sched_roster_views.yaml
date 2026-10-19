@@ -68,9 +68,28 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     id: "sched-view-calendar"
 - extendedWaitUntil:
     visible:
-      id: "cal-grid"
+      id: "cal-month-detail"
     timeout: 10000
 - takeScreenshot: sched_02_calendar
+- tapOn:
+    id: "cal-mode-toggle"
+- extendedWaitUntil:
+    visible:
+      id: "cal-grid"
+    timeout: 10000
+- takeScreenshot: sched_02b_calendar_stacked
+- tapOn:
+    id: "cal-mode-toggle"
+- extendedWaitUntil:
+    visible:
+      id: "cal-week-grid"
+    timeout: 10000
+- tapOn:
+    id: "cal-mode-toggle"
+- extendedWaitUntil:
+    visible:
+      id: "cal-month-detail"
+    timeout: 10000
 # Day timeline for the day the calendar opens on (a flying day: the report ->
 # release block on the hour axis).
 - tapOn:

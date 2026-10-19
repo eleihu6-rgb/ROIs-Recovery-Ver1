@@ -38,10 +38,6 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
 - tapOn:
     id: "sched-view-calendar"
 - assertVisible:
-    id: "cal-grid"
-- tapOn:
-    id: "cal-mode-month-detail"
-- assertVisible:
     id: "cal-month-detail"
 - takeScreenshot: glass-surfaces-calendar-tg-Ver2
 - tapOn:

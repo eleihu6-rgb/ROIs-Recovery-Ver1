@@ -75,9 +75,8 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     id: "cal-to-compact"
     optional: true
 - takeScreenshot: 10_schedule_compact
-- tapOn:
+- assertNotVisible:
     id: "tab-global"
-- takeScreenshot: 11_global
 - tapOn:
     id: "tab-profile"
 - takeScreenshot: 12_profile

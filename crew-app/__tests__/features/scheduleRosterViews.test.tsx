@@ -2,7 +2,8 @@
 // Timeline list, the Calendar (grid + day timeline) and the Route map, and the
 // Alerts entry point that used to live on the bell survives inside that menu.
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, within } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 
@@ -148,7 +149,7 @@ describe('Schedule tab · roster-view menu', () => {
     fireEvent.press(tree.getByTestId('sched-view-menu'));
     fireEvent.press(tree.getByTestId('sched-view-calendar'));
 
-    expect(tree.getByTestId('cal-grid')).toBeTruthy();
+    expect(tree.getByTestId('cal-month-detail')).toBeTruthy();
     expect(tree.queryByTestId('sched-list')).toBeNull();
     // No date strip left underneath the calendar (the mock calls this out).
     expect(tree.queryByTestId('day-19')).toBeNull();
@@ -158,10 +159,17 @@ describe('Schedule tab · roster-view menu', () => {
     const tree = renderSchedule();
     fireEvent.press(tree.getByTestId('sched-view-menu'));
     fireEvent.press(tree.getByTestId('sched-view-calendar'));
+    fireEvent.press(tree.getByTestId('cal-mode-toggle'));
     // Opens on the day the Timeline list would open on (12 Sep is a blank roster
     // day here, so the focus is the next duty: 19 Sep).
     expect(tree.getByTestId('cal-agenda-head').props.children).toBe('SAT 19 SEP');
     expect(tree.getByTestId('cal-row-flight-20260919-TG920')).toBeTruthy();
+    expect(tree.getByTestId('cal-daily-planner')).toBeTruthy();
+    expect(tree.getByTestId('cal-day-rail')).toBeTruthy();
+    // Every timed row has its own matching rail span; the rail does not replace
+    // flight/calendar events with a broader aggregate duty block.
+    expect(tree.getByTestId('cal-rail-flight-20260919-TG920')).toBeTruthy();
+    expect(tree.getByTestId('cal-rail-continuation-flight-20260919-TG920')).toBeTruthy();
     expect(tree.queryByTestId('cal-row-flight-20260927-TG403')).toBeNull();
 
     // Another day scopes to that day…
@@ -169,9 +177,10 @@ describe('Schedule tab · roster-view menu', () => {
     expect(tree.getByTestId('cal-agenda-head').props.children).toBe('SUN 27 SEP');
     expect(tree.getByTestId('cal-row-flight-20260927-TG403')).toBeTruthy();
     expect(tree.queryByTestId('cal-row-flight-20260919-TG920')).toBeNull();
-    // …and tapping the selected day clears back to the whole month.
+    // Tapping the selected day clears the filter and restores all month duties.
     fireEvent.press(tree.getByTestId('cal-day-27'));
-    expect(tree.getByTestId('cal-agenda-head').props.children).toBe('MONTH');
+    expect(tree.getByTestId('cal-agenda-head').props.children).toMatch(/^MONTH · \d+ duties$/);
+    expect(tree.getByTestId('cal-row-flight-20260927-TG403')).toBeTruthy();
     expect(tree.getByTestId('cal-row-flight-20260919-TG920')).toBeTruthy();
 
     fireEvent.press(tree.getByTestId('cal-day-19'));
@@ -179,12 +188,12 @@ describe('Schedule tab · roster-view menu', () => {
     expect(tree.getByTestId('cal-timeline')).toBeTruthy();
     expect(tree.getByTestId('cal-block-duty-pair-lhr')).toBeTruthy();
 
-    // A rest day inside the layover is a chip, not a full-height block on an
-    // empty hour grid — reached the way a crew would: grid → agenda row.
+    // A rest day inside the layover remains selected when its agenda row is tapped.
     fireEvent.press(tree.getByTestId('cal-to-compact'));
     fireEvent.press(tree.getByTestId('cal-day-20'));
     fireEvent.press(tree.getByTestId('cal-row-layover-20260920'));
-    expect(tree.getByTestId('cal-allday-layover-20260920')).toBeTruthy();
+    expect(tree.getByTestId('cal-agenda-head').props.children).toBe('SUN 20 SEP');
+    expect(tree.getByTestId('cal-row-layover-20260920')).toBeTruthy();
     expect(tree.queryByTestId('cal-timeline')).toBeNull();
   });
 
@@ -196,7 +205,9 @@ describe('Schedule tab · roster-view menu', () => {
     expect(tree.getByTestId('route-map')).toBeTruthy();
     expect(tree.getByTestId('route-stats')).toBeTruthy();
     expect(tree.queryByTestId('sched-list')).toBeNull();
-    expect(tree.getByTestId('route-LHR')).toBeTruthy();
+    expect(tree.getByTestId('route-svg')).toBeTruthy();
+    // The destination rows panel is gone — the map labels carry that information.
+    expect(tree.queryByText('BKK → LHR')).toBeNull();
   });
 
   it('dismisses the menu on an outside tap', () => {
@@ -213,25 +224,32 @@ describe('Route map view', () => {
     'airport', 'Asia/Bangkok', {}, NOW, { minutesBefore: 8, mutedIds: [] },
   );
 
-  it('summarises the month and lists every destination reached from base', () => {
+  it('summarises the month and prints each destination from base on the map', () => {
     const tree = render(
       <RouteMapView month={month} base="BKK" palette={PALETTES.thai} />,
     );
+    fireEvent(tree.getByTestId('route-map'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 520 } },
+    });
     expect(tree.getByText('Sep 2026 summary')).toBeTruthy();
     expect(tree.getAllByText('Routes').length).toBeGreaterThan(0);
     expect(tree.getByText('Airports')).toBeTruthy();
     expect(tree.getByText('Countries')).toBeTruthy();
-    expect(tree.getByTestId('route-LHR')).toBeTruthy();
-    expect(tree.getByTestId('route-SIN')).toBeTruthy();
-    // One line per destination from base — the return leg does not add a second
-    // London row.
-    expect(tree.getAllByText('BKK → LHR')).toHaveLength(1);
+    expect(tree.getByTestId('route-map-label-LHR')).toBeTruthy();
+    expect(tree.getByTestId('route-map-label-SIN')).toBeTruthy();
+    // The return leg does not add a second London block.
+    expect(tree.getAllByTestId('route-map-label-LHR')).toHaveLength(1);
   });
 
-  it('zooms the map and highlights a selected destination', () => {
+  it('prints each destination on an endpoint-block label and highlights it on focus', () => {
     const tree = render(
       <RouteMapView month={month} base="BKK" palette={PALETTES.thai} />,
     );
+    // The label layer is positioned from the rendered card size: onLayout is
+    // what supplies it on device and in the test.
+    fireEvent(tree.getByTestId('route-map'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 340 } },
+    });
     // Zoom controls are live (the maths behind them is unit-tested in
     // schedRosterViews.test.ts) …
     act(() => {
@@ -239,10 +257,44 @@ describe('Route map view', () => {
       fireEvent.press(tree.getByTestId('route-zoom-in'));
       fireEvent.press(tree.getByTestId('route-zoom-out'));
     });
-    // … and tapping a route names that city on the map.
-    expect(tree.queryByText(/^LHR ·/)).toBeNull();
-    fireEvent.press(tree.getByTestId('route-LHR'));
-    expect(tree.getByText(/^LHR · .* km · \d leg/)).toBeTruthy();
+
+    // Every destination prints code + distance/legs on the map itself.
+    const flat = (value: unknown) => StyleSheet.flatten(value as never) as Record<string, unknown>;
+    const label = tree.getByTestId('route-map-label-LHR');
+    expect(within(label).getByText('LHR')).toBeTruthy();
+    expect(within(label).getByText(/km · 2 legs/)).toBeTruthy();
+    expect(tree.getByTestId('route-map-label-SIN')).toBeTruthy();
+
+    // Option C: an accent rule and open type — no background surface.
+    expect(flat(label.props.style).backgroundColor).toBeUndefined();
+    expect(flat(tree.getByTestId('route-map-label-rule-LHR').props.style).width).toBe(2);
+    expect(flat(tree.getByTestId('route-map-label-rule-LHR').props.style).backgroundColor).toBe(PALETTES.thai.mapRoute);
+
+    // Tapping a label toggles the focus treatment.
+    fireEvent.press(tree.getByTestId('route-map-label-LHR'));
+    expect(flat(tree.getByTestId('route-map-label-rule-LHR').props.style).backgroundColor).toBe(PALETTES.thai.mapLabel);
+    fireEvent.press(tree.getByTestId('route-map-label-LHR'));
+    expect(flat(tree.getByTestId('route-map-label-rule-LHR').props.style).backgroundColor).toBe(PALETTES.thai.mapRoute);
+  });
+
+  it('re-frames the map when the card it is given changes shape', () => {
+    const tree = render(
+      <RouteMapView month={month} base="BKK" palette={PALETTES.thai} />,
+    );
+    const place = () => {
+      const style = StyleSheet.flatten(
+        tree.getByTestId('route-map-label-LHR').props.style,
+      ) as { left: number; top: number };
+      return { left: Math.round(style.left), top: Math.round(style.top) };
+    };
+    fireEvent(tree.getByTestId('route-map'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 520 } },
+    });
+    const portrait = place();
+    fireEvent(tree.getByTestId('route-map'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 520, height: 360 } },
+    });
+    expect(place()).not.toEqual(portrait);
   });
 
   it('says so plainly when the month has nothing to map', () => {

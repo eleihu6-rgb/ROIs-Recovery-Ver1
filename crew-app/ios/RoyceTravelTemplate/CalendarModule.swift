@@ -1,6 +1,8 @@
 import Foundation
 import EventKit
 import React
+import CoreLocation
+import WeatherKit
 
 // ─── EventKit bridge (Meeting integration) ───────────────────────────────────
 // Reads the meetings already synced onto the device (the crew's Outlook/Exchange
@@ -193,5 +195,65 @@ class CalendarModule: NSObject {
     defaults.set((config["enabled"] as? Bool) ?? false, forKey: CalendarModule.kEnabled)
     defaults.set((config["minutesBefore"] as? Int) ?? 8, forKey: CalendarModule.kMinutes)
     resolve(nil)
+  }
+}
+
+// Apple Weather bridge. Uses the roster base coordinates supplied by JS, so it
+// does not request the crew's precise device location.
+@objc(WeatherModule)
+class WeatherModule: NSObject {
+  @objc static func requiresMainQueueSetup() -> Bool { false }
+
+  @objc(getDailyWeather:longitude:timeZone:resolver:rejecter:)
+  func getDailyWeather(_ latitude: Double,
+                       longitude: Double,
+                       timeZone timeZoneIdentifier: String,
+                       resolver resolve: @escaping RCTPromiseResolveBlock,
+                       rejecter reject: @escaping RCTPromiseRejectBlock) {
+    Task {
+      do {
+        let location = CLLocation(latitude: latitude, longitude: longitude)
+        async let dailyRequest = WeatherService.shared.weather(for: location, including: .daily)
+        async let attributionRequest = WeatherService.shared.attribution
+        async let hourlyRequest = WeatherService.shared.weather(for: location, including: .hourly)
+        let (daily, attribution, hourly) = try await (dailyRequest, attributionRequest, hourlyRequest)
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        // DayWeather.date is an absolute instant. Format it in the roster base's
+        // zone so the yyyy-MM-dd key matches the day cell the crew selected.
+        formatter.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        let rows: [[String: Any]] = daily.forecast.map { day in
+          [
+            "date": formatter.string(from: day.date),
+            "symbolName": day.symbolName,
+            "condition": String(describing: day.condition).replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression).capitalized,
+            "highC": day.highTemperature.converted(to: .celsius).value,
+            "lowC": day.lowTemperature.converted(to: .celsius).value,
+          ]
+        }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = formatter.timeZone
+        let hours: [[String: Any]] = hourly.forecast.map { hour in
+          ["date": formatter.string(from: hour.date),
+           "hour": calendar.component(.hour, from: hour.date),
+           "symbolName": hour.symbolName,
+           "temperatureC": hour.temperature.converted(to: .celsius).value]
+        }
+        resolve([
+          "days": rows,
+          "hours": hours,
+          "attribution": [
+            "serviceName": attribution.serviceName,
+            "legalPageURL": attribution.legalPageURL.absoluteString,
+            "combinedMarkDarkURL": attribution.combinedMarkDarkURL.absoluteString,
+            "combinedMarkLightURL": attribution.combinedMarkLightURL.absoluteString,
+          ],
+        ])
+      } catch {
+        reject("weather_unavailable", error.localizedDescription, error)
+      }
+    }
   }
 }

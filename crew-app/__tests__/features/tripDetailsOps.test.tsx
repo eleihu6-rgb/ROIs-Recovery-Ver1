@@ -1,6 +1,8 @@
-// Trip Details · operational rows, in the order the events actually happen.
+// Trip Details · the duty timeline, in the order the events actually happen.
 // Ryan 2026-09-11: "recheck the seq of these info … std first, then etd, then atd.
 // first wake up, then leave home, to check in."
+// Redesigned 2026-10-19 (trip timeline): the duty band carries the report and
+// markers, each sector pass carries STD/STA then the ops matrix.
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
@@ -51,6 +53,27 @@ const flownLayover: Trip = {
   }],
 };
 
+/** Real TG HND rotation (report/calendar fixtures): TG660 out, hotel, TG661 back. */
+const hndRotation: Trip = {
+  id: 'pair-hnd',
+  crewId: '35459',
+  checkInDateUTC: '12 May 2026 0415',
+  legs: [
+    {
+      crewId: '35459', fltNumber: 'TG660', flightDateUTC: '12 May 2026 0610',
+      depArp: 'BKK', arvDateUTC: '12 May 2026 1200', arvArp: 'HND', fleet: 'B777',
+      hotel: '', assignment: 'FLY', dutyReportUTC: '12 May 2026 0415',
+      dutyFdpMinutes: 495, dutyDpMinutes: 495, dutyBlockMinutes: 350,
+    },
+    {
+      crewId: '35459', fltNumber: 'TG661', flightDateUTC: '13 May 2026 1501',
+      depArp: 'HND', arvDateUTC: '13 May 2026 2134', arvArp: 'BKK', fleet: 'B777',
+      hotel: 'Hilton Tokyo', assignment: 'FLY', dutyReportUTC: '13 May 2026 1420',
+      dutyFdpMinutes: 464, dutyDpMinutes: 464, dutyBlockMinutes: 393, dutyRestHours: 26.33,
+    },
+  ],
+};
+
 /** Every string in the rendered tree, in render order. */
 function textsInOrder(node: unknown, out: string[] = []): string[] {
   if (Array.isArray(node)) {
@@ -96,36 +119,52 @@ function renderTrip(trip: Trip) {
   );
 }
 
-describe('Trip Details · operational row order', () => {
-  it('fills both departure rows with three departure metrics', () => {
+describe('Trip Details · operational timeline', () => {
+  it('groups the pass ops matrix into departure-first, then progress, then block', () => {
     const tree = renderTrip(flownLayover);
     const labels = (row: number) => textsInOrder(tree.getByTestId(`flight-ops-row-0-${row}`))
-      .filter(text => ['STD', 'ETD', 'BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'ATD'].includes(text));
+      .filter(text => ['ETD', 'ATD', 'ETA', 'ATA', 'BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'BLK'].includes(text));
 
-    expect(labels(1)).toEqual(['STD', 'ETD', 'BOARDING']);
-    expect(labels(2)).toEqual(['DOOR CLOSE', 'OFF-BLOCK', 'ATD']);
+    // Times first (departure, then arrival), then the ground sequence + block.
+    expect(labels(0)).toEqual(['ETD', 'ATD', 'ETA', 'ATA']);
+    expect(labels(1)).toEqual(['BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'BLK']);
   });
 
-  it('one grid card per leg, cells in the order things happen, nothing twice', () => {
+  it('runs duty markers, then STD/STA, then the sector matrix, each value once', () => {
     const tree = renderTrip(flownLayover);
     const texts = textsInOrder(tree.toJSON());
     const at = (label: string) => texts.indexOf(label);
-    const order = ['GET READY', 'LEAVE HOME', 'REPORT', 'AIRCRAFT', 'STD', 'ETD',
-      'BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'ATD', 'STA', 'ETA', 'ATA', 'BLOCK', 'TERMINAL', 'GATE', 'STAND', 'BELT'];
-    for (let k = 1; k < order.length; k++) {
-      expect(at(order[k - 1])).toBeGreaterThanOrEqual(0);
-      expect(at(order[k])).toBeGreaterThan(at(order[k - 1]));
+
+    // Duty level: wake-up, leave home, report — before the first sector.
+    expect(at('GET READY')).toBeGreaterThanOrEqual(0);
+    expect(at('LEAVE')).toBeGreaterThan(at('GET READY'));
+    expect(at('REPORT')).toBeGreaterThan(at('LEAVE'));
+    expect(at('ET422')).toBeGreaterThan(at('REPORT'));
+    // Route block: STD then STA; the matrix then starts with ETD.
+    expect(at('STD')).toBeGreaterThan(at('ET422'));
+    expect(at('STA')).toBeGreaterThan(at('STD'));
+    expect(at('ETD')).toBeGreaterThan(at('STA'));
+    expect(at('ATD')).toBeGreaterThan(at('ETD'));
+    expect(at('ETA')).toBeGreaterThan(at('ATD'));
+    expect(at('ATA')).toBeGreaterThan(at('ETA'));
+    expect(at('BOARDING')).toBeGreaterThan(at('ATA'));
+    expect(at('DOOR CLOSE')).toBeGreaterThan(at('BOARDING'));
+    expect(at('OFF-BLOCK')).toBeGreaterThan(at('DOOR CLOSE'));
+    expect(at('BLK')).toBeGreaterThan(at('OFF-BLOCK'));
+    // Where: departure terminal/gate, then the arrival belt.
+    expect(at('Terminal ')).toBeGreaterThan(at('BLK'));
+    expect(at('Belt ')).toBeGreaterThan(at('Terminal '));
+
+    // No value reads twice; obsolete row labels are gone.
+    for (const label of ['GET READY', 'LEAVE', 'REPORT', 'STD', 'STA', 'ETD', 'ATD', 'ETA', 'ATA', 'BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'BLK']) {
+      expect(texts.filter(t => t === label).length).toBe(1);
     }
-    // One style: no list rows left on the leg card, and no value reads twice.
-    for (const old of ['Leave home', 'Check-in / report', 'STD / STA', 'ETD / ETA', 'ATD / ATA', 'Gate', 'Arrival gate', 'Aircraft', 'CHECK-IN']) {
+    for (const old of ['Leave home', 'Check-in / report', 'STD / STA', 'ETD / ETA', 'ATD / ATA', 'Gate', 'Arrival gate', 'Aircraft', 'CHECK-IN', 'TCD', 'TSAT']) {
       expect(texts).not.toContain(old);
     }
-    for (const l of order) expect(texts.filter(t => t === l).length).toBe(1);
-    expect(texts).not.toContain('TCD');
-    expect(texts).not.toContain('TSAT');
   });
 
-  it('carries the live operational detail and the mocked transfer/hotel blocks', () => {
+  it('carries the live operational detail and the mocked hotel/transfer on the rail', () => {
     const tree = renderTrip(flownLayover);
     const texts = textsInOrder(tree.toJSON()).join(' | ');
 
@@ -134,9 +173,35 @@ describe('Trip Details · operational row order', () => {
     expect(texts).toContain('4h 00m');           // real block time
     expect(texts).toContain('Dammam');           // mocked hotel for the layover
     expect(texts).toContain('expected');
+    // The layover sits on the timeline rail, after the duty.
+    expect(tree.getByTestId('rest-stop-after-duty')).toBeTruthy();
     // Mocked transfer block: times plus vehicle, plate, driver and contact.
     expect(texts).toMatch(/Toyota|Ford|Mercedes/);
     expect(texts).toMatch(/[A-Z]{2} \d{3}-\d{4}/);
     expect(texts).toMatch(/\+966 \d{2} \d{3} \d{4}/);
+  });
+
+  it('marks duty level vs sectors on the rail and shows the published duty totals', () => {
+    const tree = renderTrip(hndRotation);
+
+    // Rail hierarchy: square duty nodes, round sector nodes inside each duty.
+    expect(tree.getByTestId('duty-node-0')).toBeTruthy();
+    expect(tree.getByTestId('duty-node-1')).toBeTruthy();
+    expect(tree.getByTestId('segment-node-0-0')).toBeTruthy();
+    expect(tree.getByTestId('segment-node-1-0')).toBeTruthy();
+    expect(tree.getByTestId('rest-stop-1')).toBeTruthy();
+    // The off-duty spine is an SVG dash, not `borderStyle: 'dashed'` (RN warns
+    // "Unsupported dashed / dotted border style" for single-side dashed borders).
+    expect(tree.getByTestId('rest-rail-dashed')).toBeTruthy();
+
+    const texts = textsInOrder(tree.toJSON());
+    // Published FDP / DP / Block and the rest between the two duties.
+    expect(texts.filter(t => t === 'FDP').length).toBe(2);
+    expect(texts.filter(t => t === 'DP').length).toBe(2);
+    expect(texts).toContain('8h 15m');
+    expect(texts).toContain('5h 50m');
+    expect(texts).toContain('7h 44m');
+    expect(texts).toContain('6h 33m');
+    expect(texts).toContain('26h 20m');
   });
 });

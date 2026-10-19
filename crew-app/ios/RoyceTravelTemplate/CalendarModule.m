@@ -24,3 +24,11 @@ RCT_EXTERN_METHOD(saveBackgroundConfig:(NSDictionary *)config
                   rejecter:(RCTPromiseRejectBlock)reject)
 
 @end
+
+@interface RCT_EXTERN_MODULE(WeatherModule, NSObject)
+RCT_EXTERN_METHOD(getDailyWeather:(double)latitude
+                  longitude:(double)longitude
+                  timeZone:(NSString *)timeZone
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+@end

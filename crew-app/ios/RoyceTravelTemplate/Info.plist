@@ -52,6 +52,8 @@
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>R'Bot reads your calendar to show meetings and ring an alarm before each one, and adds your flights when you tap the calendar icon on a trip. Your calendar stays on your device.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save your route map picture to Photos when you choose that option in the share sheet.</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.eleihu6.roycetravel.meetingrefresh</string>

@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crew App - Offline Snapshot UI Mockup - Ver1</title>
+<style>
+:root{
+  --paper:#f2efe8;
+  --paper-deep:#e9e4d9;
+  --ink:#1c1a24;
+  --muted:#6c6776;
+  --muted-2:#8a8492;
+  --line:#d7d0c3;
+  --panel:#fbfaf7;
+  --accent:#3d2b8c;
+  --accent-deep:#281b61;
+  --accent-soft:#e9e3f7;
+  --warn:#965a00;
+  --warn-soft:#f7ead1;
+  --bad:#a32b20;
+  --bad-soft:#f8dfdc;
+  --good:#2d6a4b;
+  --good-soft:#dfeee6;
+  --bezel:#131119;
+  --display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  --s:.68;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  color:var(--ink);
+  font:15px/1.55 var(--ui);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(61,43,140,.12), transparent 30%),
+    radial-gradient(circle at 92% 7%, rgba(150,90,0,.08), transparent 26%),
+    linear-gradient(180deg,#f7f4ed 0%,var(--paper) 42%,#ede8de 100%);
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background-image:linear-gradient(rgba(28,26,36,.028) 1px, transparent 1px),linear-gradient(90deg, rgba(28,26,36,.028) 1px, transparent 1px);
+  background-size:34px 34px;
+  mask-image:linear-gradient(180deg, rgba(0,0,0,.8), transparent 72%);
+  z-index:-1;
+}
+a{color:inherit}
+code{font-family:var(--mono);font-size:.92em;background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+.page{max-width:1540px;margin:0 auto;padding:30px 22px 90px}
+
+/* Page chrome */
+.hero{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);
+  gap:38px;
+  align-items:end;
+  padding:26px 0 42px;
+  border-bottom:1px solid var(--line);
+}
+.kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  font:700 11px/1 var(--mono);
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--accent);
+}
+.kicker::before{content:"";width:28px;height:1px;background:currentColor}
+h1{
+  margin:16px 0 14px;
+  max-width:15ch;
+  font:700 clamp(42px,5vw,72px)/.96 var(--display);
+  letter-spacing:-.035em;
+  text-wrap:balance;
+}
+.lede{max-width:70ch;margin:0;color:var(--muted);font-size:16.5px}
+.hero-note{
+  background:rgba(251,250,247,.72);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:18px 18px 16px;
+  box-shadow:0 14px 40px rgba(43,34,70,.06);
+}
+.hero-note h2{font:700 15px/1.25 var(--ui);margin:0 0 8px}
+.hero-note p{margin:0;color:var(--muted);font-size:13px}
+.hero-note .rule{height:1px;background:var(--line);margin:14px 0}
+.tagrow{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font:700 11px/1 var(--ui);letter-spacing:.04em}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.good{background:var(--good-soft);color:var(--good)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.brief{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin:26px 0 0;
+}
+.brief div{
+  padding:15px 16px 14px;
+  background:rgba(251,250,247,.66);
+  border:1px solid var(--line);
+  border-radius:14px;
+}
+.brief b{display:block;font:700 12px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin-bottom:5px}
+.brief span{display:block;font-size:13px;color:var(--muted)}
+
+.bar{
+  position:sticky;
+  top:0;
+  z-index:50;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:12px 0;
+  margin-top:28px;
+  background:rgba(242,239,232,.88);
+  backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--line);
+}
+.bar nav{display:flex;gap:14px;flex-wrap:wrap;flex:1}
+.bar nav a{text-decoration:none;font:700 12px/1 var(--ui);color:var(--accent);padding:7px 0;white-space:nowrap}
+.bar label{display:flex;align-items:center;gap:8px;font:600 11px/1 var(--mono);color:var(--muted);white-space:nowrap}
+input[type="range"]{accent-color:var(--accent);width:120px}
+
+section{padding:48px 0 0;scroll-margin-top:74px}
+.section-head{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:26px;align-items:end;margin-bottom:22px}
+.section-head h2{margin:8px 0 0;font:700 clamp(28px,3.2vw,42px)/1.04 var(--display);letter-spacing:-.025em;text-wrap:balance}
+.section-head p{margin:0;max-width:78ch;color:var(--muted);font-size:15px}
+.eyebrow{font:700 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+
+.phones{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(292px,1fr));
+  gap:34px 28px;
+  align-items:start;
+}
+.phones.tight{grid-template-columns:repeat(auto-fit,minmax(292px,1fr))}
+figure{margin:0;min-width:0}
+figcaption{margin-top:12px;font-size:12.5px;line-height:1.5;color:var(--muted);max-width:320px}
+figcaption b{color:var(--ink);font-weight:750}
+
+.device{
+  --w:420px;
+  --h:912px;
+  position:relative;
+  width:calc(var(--w) * var(--s) + 16px);
+  height:calc(var(--h) * var(--s) + 16px);
+  padding:8px;
+  background:var(--bezel);
+  border-radius:52px;
+  box-shadow:0 26px 60px rgba(24,18,46,.22), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.device::after{
+  content:"";
+  position:absolute;
+  inset:8px;
+  border-radius:44px;
+  pointer-events:none;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);
+}
+.screen{
+  position:absolute;
+  left:8px;
+  top:8px;
+  width:var(--w);
+  height:var(--h);
+  overflow:hidden;
+  border-radius:44px;
+  transform:scale(var(--s));
+  transform-origin:top left;
+  background:#f5f5f7;
+}
+.app{position:relative;width:420px;height:912px;display:flex;flex-direction:column;background:#f5f5f7;color:#1a1a2e;font:500 15px/1.3 var(--ui);overflow:hidden}
+.status{
+  position:absolute;
+  z-index:20;
+  left:0;
+  right:0;
+  top:0;
+  height:54px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 28px;
+  color:#fff;
+  font:600 15px/1 var(--ui);
+  pointer-events:none;
+}
+.status.dark{color:#1a1a2e}
+.island{
+  position:absolute;
+  left:50%;
+  top:11px;
+  width:124px;
+  height:36px;
+  border-radius:20px;
+  background:#000;
+  transform:translateX(-50%);
+}
+.status .signal{font:700 11px/1 var(--mono);letter-spacing:.06em;opacity:.9}
+
+.app-head{
+  position:relative;
+  z-index:2;
+  flex:none;
+  padding:62px 18px 18px;
+  color:#fff;
+  background:linear-gradient(150deg,#1b2749 0%,#2d236d 42%,#3d2b8c 68%,#7b4fb8 100%);
+  overflow:hidden;
+}
+.app-head::after{
+  content:"";
+  position:absolute;
+  right:-54px;
+  top:-60px;
+  width:210px;
+  height:210px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.18),transparent 66%);
+}
+.head-row{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
+.head-title{font:800 24px/1.05 var(--ui);letter-spacing:-.02em}
+.head-sub{font:500 13px/1.35 var(--ui);color:rgba(255,255,255,.76);margin-top:4px}
+.head-actions{display:flex;gap:8px;margin-left:auto}
+.round-btn{width:36px;height:36px;border-radius:18px;background:rgba(255,255,255,.17);display:flex;align-items:center;justify-content:center;color:#fff}
+.round-btn.solid{background:#fff;color:#3d2b8c}
+.profile-head{padding-bottom:22px}
+.profile-id{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+.avatar{width:72px;height:72px;border-radius:36px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#fff,#d8cef3);color:#3d2b8c;font:800 22px/1 var(--ui);border:2px solid rgba(255,255,255,.6);box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.profile-name{font:800 20px/1.1 var(--ui)}
+.profile-meta{font:500 13px/1.4 var(--ui);color:rgba(255,255,255,.76);margin-top:4px}
+.profile-tag{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font:700 11px/1 var(--ui);letter-spacing:.04em;color:rgba(255,255,255,.85)}
+
+.app-body{flex:1;min-height:0;overflow:hidden;padding:16px 16px 96px;display:flex;flex-direction:column;gap:12px;background:#f5f5f7}
+.section-label{font:700 10.5px/1 var(--ui);letter-spacing:.12em;text-transform:uppercase;color:#8b92a5;padding:2px 2px 0}
+.card{background:#fff;border:1px solid #ececf3;border-radius:16px;overflow:hidden;box-shadow:0 4px 14px rgba(26,26,46,.04)}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid #efeff4;min-height:46px}
+.row:first-child{border-top:0}
+.row .grow{flex:1;min-width:0}
+.row-title{font:700 13.5px/1.25 var(--ui);color:#1a1a2e}
+.row-sub{font:500 11.5px/1.35 var(--ui);color:#7b8294;margin-top:2px}
+.mono{font-variant-numeric:tabular-nums;font-family:var(--mono)}
+.muted{color:#7b8294}
+.small{font-size:11.5px}
+.tiny{font-size:10.5px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:#f0eff5;color:#636b7f;font:700 10px/1 var(--ui);letter-spacing:.04em;white-space:nowrap}
+.badge.good{background:var(--good-soft);color:var(--good)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.badge.violet{background:#eee8fb;color:#3d2b8c}
+.icon{width:20px;height:20px;display:block;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.icon.sm{width:16px;height:16px}
+.icon.lg{width:26px;height:26px}
+.icon-wrap{width:34px;height:34px;border-radius:12px;background:#f2f0f8;color:#3d2b8c;display:flex;align-items:center;justify-content:center;flex:none}
+.icon-wrap.warn{background:var(--warn-soft);color:var(--warn)}
+.icon-wrap.bad{background:var(--bad-soft);color:var(--bad)}
+
+.banner{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-radius:14px;border:1px solid #e5dfd2;background:#fbf7ee;color:#6f510d}
+.banner.warn{background:var(--warn-soft);border-color:#ead2a9;color:#724300}
+.banner.bad{background:var(--bad-soft);border-color:#ecc4bf;color:#7e241b}
+.banner.info{background:#eeeaf9;border-color:#d8cff0;color:#3d2b8c}
+.banner .grow{flex:1;min-width:0}
+.banner b{display:block;font:700 12px/1.3 var(--ui)}
+.banner span{display:block;font:500 11px/1.35 var(--ui);margin-top:2px}
+.banner .action{font:700 11px/1 var(--ui);color:inherit;white-space:nowrap;padding-top:2px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 14px;border-radius:19px;border:1px solid transparent;font:700 12px/1 var(--ui);white-space:nowrap}
+.btn.primary{background:#3d2b8c;color:#fff}
+.btn.outline{background:#fff;color:#3d2b8c;border-color:#cfc4eb}
+.btn.ghost{background:#f1eff7;color:#3d2b8c}
+.btn.danger{background:var(--bad);color:#fff}
+.btn.disabled{background:#e4e2e9;color:#9a97a4;border-color:#e4e2e9}
+.btn.wide{width:100%}
+.btn-row{display:flex;gap:8px;padding:12px 14px;border-top:1px solid #efeff4}
+.btn-row .btn{flex:1}
+
+.toggle{position:relative;width:44px;height:26px;border-radius:13px;background:#d9d7df;flex:none}
+.toggle::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:10px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.toggle.on{background:#3d2b8c}
+.toggle.on::after{left:21px}
+
+.subhead{display:flex;align-items:center;gap:8px;margin:2px 0 -2px}
+.subhead b{font:800 14px/1.2 var(--ui)}
+.subhead .sp{flex:1}
+
+.tabs{display:flex;gap:3px;padding:3px;border-radius:11px;background:#e9e7ee}
+.tabs span{flex:1;text-align:center;padding:6px 0;border-radius:8px;font:700 11px/1 var(--ui);color:#6f6a7a}
+.tabs span.on{background:#fff;color:#1a1a2e;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+.trip{display:flex;gap:12px;padding:12px 13px}
+.datebox{width:44px;text-align:center;line-height:1.05;flex:none}
+.datebox b{display:block;font:800 18px/1 var(--ui)}
+.datebox span{display:block;font:700 9.5px/1 var(--ui);letter-spacing:.1em;color:#8b92a5;margin-top:3px}
+.trip-route{font:800 13.5px/1.2 var(--ui)}
+.trip-meta{font:500 11px/1.4 var(--ui);color:#7b8294;margin-top:3px}
+.trip-times{display:flex;gap:7px;align-items:center;margin-top:7px;font:700 11px/1 var(--ui);color:#4b4659}
+.trip-times .line{height:1px;background:#cfc9dd;flex:1}
+.trip-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+
+.duty-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border-radius:7px;background:#f0edf8;color:#3d2b8c;font:700 10px/1 var(--ui);white-space:nowrap}
+.duty-chip.warn{background:var(--warn-soft);color:var(--warn)}
+
+.matrix{border:1px solid #e6e2ea;border-radius:14px;overflow:hidden;background:#fff}
+.matrix-head,.matrix-row{display:grid;grid-template-columns:52px 1.28fr 1fr 1fr;align-items:stretch}
+.matrix-head{background:#faf9fc;border-bottom:1px solid #ece9f1;min-height:38px}
+.matrix-head div,.matrix-row>div{padding:7px 6px;border-left:1px solid #f0edf3;min-width:0}
+.matrix-head div:first-child,.matrix-row>div:first-child{border-left:0}
+.matrix-head b{font:700 10.5px/1.2 var(--ui)}
+.matrix-head span{display:block;font:600 9.5px/1.2 var(--ui);color:#8b92a5;margin-top:1px}
+.matrix-row{min-height:36px;border-top:1px solid #f0edf3}
+.matrix-row .date{font:700 10px/1.2 var(--mono);color:#7b8294;text-align:center;display:flex;align-items:center;justify-content:center}
+.mcell{font:700 10px/1.15 var(--ui);display:flex;align-items:center;overflow:hidden}
+.mblock{border-radius:5px;padding:4px 5px;min-height:22px;display:flex;align-items:center;width:100%;border:1px solid #d8cdf0;background:#f0ebfb;color:#3d2b8c}
+.mblock.mine{background:#e5dcf8;border-color:#c9b8ee}
+.mblock.take{background:#fff;border-color:#b9a6e6;border-style:dashed;color:#4a2e9b}
+.mblock.warn{background:#fff;border-color:#d9a39d;color:#a32b20}
+
+.dock{
+  position:absolute;
+  left:50%;
+  bottom:20px;
+  transform:translateX(-50%);
+  width:360px;
+  height:62px;
+  border-radius:31px;
+  background:rgba(25,23,38,.92);
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  color:rgba(255,255,255,.58);
+  box-shadow:0 12px 28px rgba(0,0,0,.18);
+  z-index:15;
+}
+.dock .on{color:#fff}
+.dock .dot{width:5px;height:5px;border-radius:3px;background:#b9a6f2;position:absolute;top:5px;left:50%;transform:translateX(-50%)}
+.dock-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;font:700 8.5px/1 var(--ui)}
+
+.scrim{position:absolute;inset:0;background:rgba(17,14,26,.48);z-index:24}
+.dialog{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:340px;
+  border-radius:20px;
+  background:#fff;
+  overflow:visible;
+  box-shadow:0 24px 70px rgba(0,0,0,.28);
+  z-index:25;
+}
+.dialog-band{height:58px;border-radius:20px 20px 0 0;background:linear-gradient(150deg,#1b2749 0%,#2d236d 45%,#3d2b8c 68%,#7b4fb8 100%)}
+.dialog-glyph{width:64px;height:64px;border-radius:32px;margin:-32px auto 0;border:4px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;background:#3d2b8c;position:relative;z-index:1}
+.dialog-glyph.bad{background:var(--bad)}
+.dialog-glyph.warn{background:var(--warn)}
+.dialog-body{padding:12px 20px 19px;display:flex;flex-direction:column;gap:9px;text-align:center}
+.dialog-title{font:800 19px/1.15 var(--ui)}
+.dialog-text{font:500 12.5px/1.45 var(--ui);color:#6c6876}
+.dialog-kv{display:flex;justify-content:space-between;gap:12px;padding:8px 10px;border-radius:10px;background:#f6f4f8;font:600 12px/1.2 var(--ui)}
+.dialog-kv span{color:#7b8294}
+.dialog-input{height:38px;border:1px solid #dcd6e8;border-radius:10px;display:flex;align-items:center;justify-content:space-between;padding:0 11px;font:700 13px/1 var(--mono);color:#3d2b8c;background:#fff}
+.dialog-btns{display:flex;gap:8px;margin-top:4px}
+.dialog-btns .btn{flex:1;height:40px}
+.dialog-note{font:500 10.5px/1.4 var(--ui);color:#8b8492}
+
+.capture{
+  position:absolute;
+  inset:0;
+  background:#f7f6fa;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 28px 90px;
+  text-align:center;
+}
+.capture .ring{width:92px;height:92px;border-radius:46px;background:#eee8fb;display:flex;align-items:center;justify-content:center;color:#3d2b8c;margin-bottom:18px}
+.capture h3{font:800 23px/1.1 var(--ui);margin:0 0 6px}
+.capture p{font:500 13px/1.5 var(--ui);color:#6c6876;margin:0;max-width:300px}
+.progress{width:280px;height:8px;border-radius:4px;background:#e5e1ec;margin:20px 0 8px;overflow:hidden}
+.progress i{display:block;width:66%;height:100%;border-radius:4px;background:linear-gradient(90deg,#3d2b8c,#7b4fb8)}
+.capture-meta{font:700 11px/1.3 var(--mono);color:#7b8294}
+.capture-actions{display:flex;gap:8px;margin-top:22px}
+
+.login-screen{
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(183,209,201,.24), transparent 34%),
+    linear-gradient(155deg,#1e3d38 0%,#2c5a52 52%,#4a8074 100%);
+  padding:54px 22px 30px;
+  display:flex;
+  flex-direction:column;
+}
+.login-hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0 22px;color:#fff;text-align:center}
+.login-mark{
+  width:68px;height:68px;border-radius:34px;border:1.5px solid rgba(255,255,255,.55);
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.2),transparent 62%);
+}
+.login-app{font:700 21px/1 var(--display);letter-spacing:.01em}
+.login-sub{font:700 9px/1 var(--mono);letter-spacing:.22em;color:rgba(255,255,255,.7)}
+.login-card{background:rgba(251,250,247,.97);border:1px solid rgba(255,255,255,.6);border-radius:20px;overflow:hidden;box-shadow:0 24px 50px rgba(12,31,27,.3)}
+.login-field{display:flex;align-items:center;gap:11px;padding:14px 15px;border-top:1px solid #ece8df;color:#5f6d68}
+.login-field:first-child{border-top:0}
+.login-field .value{flex:1;min-width:0;font:600 14px/1.2 var(--ui);color:#1c2e2a}
+.login-field .code{font:800 10px/1 var(--mono);letter-spacing:.06em;color:#2c5a52;background:#e4efe9;border-radius:6px;padding:4px 6px}
+.login-field .placeholder{color:#7e8a84;font-weight:500}
+.login-keep{display:flex;align-items:center;gap:9px;padding:12px 15px 2px;color:#334843}
+.login-check{width:18px;height:18px;border-radius:5px;background:#3d7367;color:#fff;display:flex;align-items:center;justify-content:center;font:800 12px/1 var(--ui);flex:none}
+.login-keep b{font:700 12.5px/1.2 var(--ui)}
+.login-helper{padding:6px 15px 13px;color:#62736d;font:500 10.5px/1.4 var(--ui)}
+.login-btn{margin:2px 15px 15px;height:44px;border-radius:22px;background:#3d7367;color:#fff;display:flex;align-items:center;justify-content:center;font:800 14px/1 var(--ui)}
+.login-foot{margin-top:auto;text-align:center;color:rgba(255,255,255,.68);font:600 10px/1.4 var(--mono);letter-spacing:.06em}
+
+.devlab{background:#fbfaf7}
+.devlab-head{padding:62px 18px 16px;background:linear-gradient(150deg,#1f272e,#2b353d 60%,#3f4f5c);color:#fff}
+.devlab-head .tag{background:rgba(255,255,255,.15);color:#fff}
+.pack{display:flex;gap:12px;padding:13px;border-top:1px solid #efeff4}
+.pack:first-child{border-top:0}
+.pack-icon{width:38px;height:38px;border-radius:12px;background:#f0edf8;color:#3d2b8c;display:flex;align-items:center;justify-content:center;flex:none}
+.pack.active .pack-icon{background:#3d2b8c;color:#fff}
+.pack-title{font:800 13px/1.2 var(--ui)}
+.pack-meta{font:500 10.5px/1.35 var(--ui);color:#7b8294;margin-top:2px}
+.pack-actions{display:flex;gap:5px;margin-top:8px}
+.pack-actions .btn{height:29px;padding:0 9px;font-size:10.5px}
+.dev-note{display:flex;gap:8px;padding:10px 12px;border-radius:12px;background:#f1eff7;color:#4d4760;font:500 10.5px/1.35 var(--ui)}
+
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.note-card{background:rgba(251,250,247,.78);border:1px solid var(--line);border-radius:16px;padding:16px 17px}
+.note-card h3{margin:0 0 7px;font:800 14px/1.2 var(--ui)}
+.note-card p{margin:0;color:var(--muted);font-size:13px}
+.note-card ul{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:13px}
+.note-card li{margin:4px 0}
+
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:rgba(251,250,247,.72)}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:12.5px}
+th,td{text-align:left;vertical-align:top;padding:11px 13px;border-top:1px solid var(--line)}
+th{font:700 10px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);background:rgba(233,227,247,.4)}
+tr:first-child th{border-top:0}
+td:first-child{font-weight:750;color:var(--ink)}
+.table-wrap code{white-space:nowrap}
+.copy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.copy{background:#fff;border:1px solid #e7e1d8;border-radius:14px;padding:13px 14px}
+.copy .who{font:700 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.copy .line{font:700 13px/1.4 var(--ui);color:var(--ink)}
+.copy .why{font:500 11.5px/1.4 var(--ui);color:var(--muted);margin-top:4px}
+
+.footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;color:var(--muted);font-size:11.5px}
+.footer b{color:var(--ink)}
+
+@media (max-width:980px){
+  .hero{grid-template-columns:1fr;gap:22px}
+  .brief{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .section-head{grid-template-columns:1fr;gap:10px}
+}
+@media (max-width:640px){
+  .page{padding-inline:14px}
+  .bar{align-items:flex-start;flex-direction:column;gap:8px}
+  .bar label{align-self:flex-end}
+  .brief{grid-template-columns:1fr}
+  .phones{grid-template-columns:1fr;justify-items:center}
+  .footer{flex-direction:column}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-1.6 5"/><path d="M20 4v5h-5"/></symbol>
+  <symbol id="i-login" viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 8l4 4-4 4"/><path d="M14 12H4"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M4 4l16 16"/><path d="M7 18h10a4 4 0 0 0 1.2-7.8A6 6 0 0 0 8.5 7.5"/><path d="M7 18a3.5 3.5 0 0 1-1.4-6.7"/></symbol>
+  <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5"/><path d="M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 4h4M7 7l1 13h8l1-13"/><path d="M10 11v5M14 11v5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 7h12l-3-3M17 17H5l3 3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M3 9a14 14 0 0 1 18 0M6.5 12.5a9 9 0 0 1 11 0M10 16a4 4 0 0 1 4 0"/><circle cx="12" cy="19" r=".6" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13v1M15 13v1"/></symbol>
+  <symbol id="i-plane" viewBox="0 0 24 24"><path d="M3 13l7-2 4-7 2 1-2 6 5-1 2 2-6 3-4 5-2-1 2-4-7 1z"/></symbol>
+</svg>
+
+<div class="page">
+
+<header class="hero">
+  <div>
+    <div class="kicker">Crew app / offline snapshot / design review Ver1</div>
+    <h1>The last roster you loaded should open instantly.</h1>
+    <p class="lede">A cache-first crew session for PR and TG: one portal login creates a local data pack, the app opens from it without waiting for the network, and every refresh stays explicit. This mockup covers every UI surface affected by the design, including the read-only offline states, the re-login path, and the development-only Offline Lab.</p>
+    <div class="tagrow">
+      <span class="tag">Cache-first launch</span>
+      <span class="tag">Read-only offline</span>
+      <span class="tag">Refresh latest</span>
+      <span class="tag">Re-login</span>
+      <span class="tag warn">Dev-only Offline Lab</span>
+    </div>
+  </div>
+  <aside class="hero-note">
+    <h2>What this artwork is for</h2>
+    <p>Review the information hierarchy and state language before implementation. The frames are 420 x 912 iPhone Air points, scaled for reading. Crew IDs, counts, timestamps and the build number are illustrative. No app source, credentials, or portal tokens are included.</p>
+    <div class="rule"></div>
+    <p><b>Source design:</b> <a href="../../../superpowers/specs/2026-10-18-crew-app-offline-snapshot-design.md"><code>docs/superpowers/specs/2026-10-18-crew-app-offline-snapshot-design.md</code></a></p>
+    <div class="tagrow">
+      <span class="tag good">Fresh</span>
+      <span class="tag warn">Stale / offline</span>
+      <span class="tag bad">Refresh failed</span>
+    </div>
+  </aside>
+</header>
+
+<div class="brief">
+  <div><b>01 / One login</b><span>The first successful portal login seeds a per-crew pack. The session is saved before roster capture finishes.</span></div>
+  <div><b>02 / No launch wait</b><span>On the next launch, Keychain identity plus local trips and duties render before any portal request.</span></div>
+  <div><b>03 / Explicit freshness</b><span>Every cached surface says when it was updated. Refresh and Re-login are visible actions, not hidden retries.</span></div>
+  <div><b>04 / Safe offline</b><span>Duty Swap reads the last search. Submit, accept, withdraw, unlock and lock stay disabled until online.</span></div>
+</div>
+
+<div class="bar">
+  <nav aria-label="Mockup sections">
+    <a href="#flow">Flow</a>
+    <a href="#profile">Profile + Data &amp; Sync</a>
+    <a href="#agenda">Agenda states</a>
+    <a href="#swap">Duty Swap</a>
+    <a href="#dialogs">Re-login + clear</a>
+    <a href="#edge">Edge states</a>
+    <a href="#capture">First login</a>
+    <a href="#lab">Offline Lab</a>
+    <a href="#copy">Copy deck</a>
+    <a href="#notes">Change notes</a>
+  </nav>
+  <label>Frame scale <input id="scale" type="range" min=".55" max=".85" step=".01" value=".68" aria-label="Mockup frame scale"></label>
+</div>
+
+<section id="flow">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">The reading path</div>
+      <h2>One pack, four moments.</h2>
+    </div>
+    <p>The UI is intentionally quiet when the copy is fresh. The status language only appears when the crew needs to make a decision: the copy is old, the app is offline, a refresh failed, or there is no cached result for the current Duty Swap search.</p>
+  </div>
+  <div class="notes">
+    <div class="note-card">
+      <h3>1. First login</h3>
+      <p>Portal authentication succeeds. The app saves the session, then captures the roster. The first capture can still block, but a failed capture no longer forces the password to be entered again.</p>
+      <ul><li>Capture progress shows the crew ID and the saved-session state.</li><li>Failure keeps the existing pack and offers Retry capture.</li></ul>
+    </div>
+    <div class="note-card">
+      <h3>2. Next launch</h3>
+      <p>The app restores Keychain identity and reads the pack. The main tabs render from local data. No portal spinner, no WebView, no network dependency.</p>
+      <ul><li>Fresh data shows a small timestamp, not a banner.</li><li>Offline or stale data shows a compact banner.</li></ul>
+    </div>
+    <div class="note-card">
+      <h3>3. Refresh</h3>
+      <p>The crew taps Refresh latest. The current pack stays on screen until the new capture is validated and committed. A timeout leaves the old copy intact.</p>
+      <ul><li>Success replaces the pack and clears the previous error.</li><li>Partial or empty results require confirmation before replacing a good pack.</li></ul>
+    </div>
+    <div class="note-card">
+      <h3>4. Re-login</h3>
+      <p>Use Re-login when the portal rejects the stored session or the password changed. The app validates once, never loops, and keeps the old pack if authentication fails.</p>
+      <ul><li>Refresh reuses the token when possible.</li><li>Re-login always discards the token first.</li></ul>
+    </div>
+  </div>
+</section>
+
+<section id="profile">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">Profile / Data &amp; Sync</div>
+      <h2>The control room for the local copy.</h2>
+    </div>
+    <p>One new section below Preferences. It shows the signed-in crew, the last successful update, what is stored locally, and the two explicit recovery actions. Offline is a toggle, not a hidden mode.</p>
+  </div>
+
+  <div class="phones">
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 87%</span></div>
+          <header class="app-head profile-head">
+            <div class="profile-id">
+              <div class="avatar">PR</div>
+              <div>
+                <div class="profile-name">Crew 433535</div>
+                <div class="profile-meta">Philippine Airlines &middot; PR</div>
+                <div class="profile-tag"><svg class="icon sm"><use href="#i-plane"/></svg> Travel With Love</div>
+              </div>
+            </div>
+          </header>
+          <main class="app-body">
+            <div class="section-label">Preferences</div>
+            <div class="card">
+              <div class="row"><div class="grow"><div class="row-title">Appearance</div><div class="row-sub">Carrier theme</div></div><span class="muted small">System</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              <div class="row"><div class="grow"><div class="row-title">Version</div><div class="row-sub">Installed build</div></div><span class="muted mono small">216</span></div>
+            </div>
+
+            <div class="subhead"><b>Data &amp; Sync</b><span class="sp"></span><span class="badge good"><svg class="icon sm"><use href="#i-check"/></svg> Fresh</span></div>
+            <div class="card">
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-user"/></svg></div>
+                <div class="grow"><div class="row-title">Signed in as PR 433535</div><div class="row-sub">Portal session is remembered on this phone</div></div>
+                <span class="badge violet">Live</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-clock"/></svg></div>
+                <div class="grow"><div class="row-title">Last updated</div><div class="row-sub">18 Oct 2026, 09:12</div></div>
+                <span class="badge good">Fresh</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-database"/></svg></div>
+                <div class="grow"><div class="row-title">Offline copy</div><div class="row-sub">126 duties &middot; 14 trips &middot; 120 swap crew</div></div>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-swap"/></svg></div>
+                <div class="grow"><div class="row-title">Duty Swap</div><div class="row-sub">Last search: 08-11 Oct &middot; Standby &middot; CP &middot; A350</div></div>
+                <span class="badge">Read only</span>
+              </div>
+              <div class="btn-row">
+                <div class="btn primary"><svg class="icon sm"><use href="#i-refresh"/></svg> Refresh latest</div>
+                <div class="btn outline"><svg class="icon sm"><use href="#i-login"/></svg> Re-login</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-cloud-off"/></svg></div>
+                <div class="grow"><div class="row-title">Work offline</div><div class="row-sub">Keep the saved copy and block portal calls</div></div>
+                <div class="toggle"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row"><div class="grow"><div class="row-title" style="color:#a32b20">Clear offline copy</div><div class="row-sub">Removes saved roster and swap data from this phone</div></div><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-user"/></svg>Profile<span class="dot"></span></span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>PR / healthy.</b> The fresh state is quiet: a small Fresh badge and the update time. Refresh latest is primary; Re-login is secondary. The Duty Swap row is visible because PR supports it.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">No service</span></div>
+          <header class="app-head profile-head">
+            <div class="profile-id">
+              <div class="avatar">PR</div>
+              <div>
+                <div class="profile-name">Crew 433535</div>
+                <div class="profile-meta">Philippine Airlines &middot; PR</div>
+                <div class="profile-tag"><svg class="icon sm"><use href="#i-plane"/></svg> Travel With Love</div>
+              </div>
+            </div>
+          </header>
+          <main class="app-body">
+            <div class="banner warn">
+              <svg class="icon"><use href="#i-cloud-off"/></svg>
+              <div class="grow"><b>Offline copy - updated 2 days ago</b><span>Showing 126 duties and 14 trips saved on 16 Oct.</span></div>
+              <span class="action">Refresh</span>
+            </div>
+
+            <div class="subhead"><b>Data &amp; Sync</b><span class="sp"></span><span class="badge warn">Stale</span></div>
+            <div class="card">
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-user"/></svg></div>
+                <div class="grow"><div class="row-title">Signed in as PR 433535</div><div class="row-sub">Session saved; portal not reached</div></div>
+                <span class="badge warn">Offline</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-clock"/></svg></div>
+                <div class="grow"><div class="row-title">Last updated</div><div class="row-sub">16 Oct 2026, 07:40</div></div>
+                <span class="badge warn">2 days</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-database"/></svg></div>
+                <div class="grow"><div class="row-title">Offline copy</div><div class="row-sub">126 duties &middot; 14 trips &middot; 120 swap crew</div></div>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-cloud-off"/></svg></div>
+                <div class="grow"><div class="row-title">Work offline</div><div class="row-sub">Turn off to refresh from the portal</div></div>
+                <div class="toggle on"></div>
+              </div>
+              <div class="btn-row">
+                <div class="btn disabled"><svg class="icon sm"><use href="#i-refresh"/></svg> Refresh latest</div>
+                <div class="btn outline"><svg class="icon sm"><use href="#i-login"/></svg> Re-login</div>
+              </div>
+              <div class="row"><div class="row-sub" style="padding:0 2px">Turn off Work offline to reconnect. Your saved copy will stay visible while the refresh runs.</div></div>
+            </div>
+
+            <div class="card">
+              <div class="row"><div class="grow"><div class="row-title" style="color:#a32b20">Clear offline copy</div><div class="row-sub">Removes saved roster and swap data from this phone</div></div><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-user"/></svg>Profile<span class="dot"></span></span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>PR / offline and stale.</b> The banner explains why data is old. Work offline is on, so Refresh is disabled with an explanation. Re-login remains available. The saved data is never hidden while the app reconnects.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 64%</span></div>
+          <header class="app-head profile-head">
+            <div class="profile-id">
+              <div class="avatar">TG</div>
+              <div>
+                <div class="profile-name">Crew 35459</div>
+                <div class="profile-meta">THAI &middot; TG</div>
+                <div class="profile-tag"><svg class="icon sm"><use href="#i-plane"/></svg> Travel With Love</div>
+              </div>
+            </div>
+          </header>
+          <main class="app-body">
+            <div class="section-label">Preferences</div>
+            <div class="card">
+              <div class="row"><div class="grow"><div class="row-title">Appearance</div><div class="row-sub">Carrier theme</div></div><span class="muted small">System</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              <div class="row"><div class="grow"><div class="row-title">Version</div><div class="row-sub">Installed build</div></div><span class="muted mono small">216</span></div>
+            </div>
+
+            <div class="subhead"><b>Data &amp; Sync</b><span class="sp"></span><span class="badge good"><svg class="icon sm"><use href="#i-check"/></svg> Fresh</span></div>
+            <div class="card">
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-user"/></svg></div>
+                <div class="grow"><div class="row-title">Signed in as TG 35459</div><div class="row-sub">Portal session is remembered on this phone</div></div>
+                <span class="badge violet">Live</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-clock"/></svg></div>
+                <div class="grow"><div class="row-title">Last updated</div><div class="row-sub">17 Oct 2026, 18:40</div></div>
+                <span class="badge good">Fresh</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-database"/></svg></div>
+                <div class="grow"><div class="row-title">Offline copy</div><div class="row-sub">88 duties &middot; 9 trips</div></div>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-info"/></svg></div>
+                <div class="grow"><div class="row-title">Duty Swap</div><div class="row-sub">Not available for this carrier</div></div>
+                <span class="badge">Hidden</span>
+              </div>
+              <div class="btn-row">
+                <div class="btn primary"><svg class="icon sm"><use href="#i-refresh"/></svg> Refresh latest</div>
+                <div class="btn outline"><svg class="icon sm"><use href="#i-login"/></svg> Re-login</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-cloud-off"/></svg></div>
+                <div class="grow"><div class="row-title">Work offline</div><div class="row-sub">Keep the saved copy and block portal calls</div></div>
+                <div class="toggle"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row"><div class="grow"><div class="row-title" style="color:#a32b20">Clear offline copy</div><div class="row-sub">Removes saved roster data from this phone</div></div><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-user"/></svg>Profile<span class="dot"></span></span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>TG / healthy.</b> The same section, scoped to TG, with the same app accent. Carrier identity comes from the code and name, not a second hue. The Duty Swap row states that the capability is not available. No PR counts, crew IDs, or swap data appear.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="agenda">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">Agenda / My Trips</div>
+      <h2>Show the copy, not a spinner.</h2>
+    </div>
+    <p>The existing refresh icon stays. The new layer is a compact status line under the header when the copy is old or a refresh failed. When the copy is fresh, the timestamp is quiet and there is no banner.</p>
+  </div>
+
+  <div class="phones">
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">No service</span></div>
+          <header class="app-head" style="padding-bottom:14px">
+            <div class="head-row">
+              <div class="round-btn"><svg class="icon"><use href="#i-back"/></svg></div>
+              <div class="grow"><div class="head-title">Agenda</div><div class="head-sub">Updated 18 Oct, 09:12</div></div>
+              <div class="head-actions"><div class="round-btn"><svg class="icon"><use href="#i-refresh"/></svg></div><div class="round-btn"><svg class="icon"><use href="#i-filter"/></svg></div></div>
+            </div>
+          </header>
+          <main class="app-body" style="padding-top:12px">
+            <div class="banner warn">
+              <svg class="icon"><use href="#i-cloud-off"/></svg>
+              <div class="grow"><b>Offline copy - updated 18 Oct, 09:12</b><span>Your saved roster is available. Pull to refresh when online.</span></div>
+              <span class="action">Refresh</span>
+            </div>
+            <div class="tabs"><span class="on">Upcoming</span><span>Past</span></div>
+            <div class="card">
+              <div class="trip">
+                <div class="datebox"><b>08</b><span>OCT</span></div>
+                <div class="grow">
+                  <div class="trip-route">PR124 / PR125</div>
+                  <div class="trip-meta">MNL - SEA - MNL &middot; A350 &middot; 4 days</div>
+                  <div class="trip-times"><span>19:00</span><span class="line"></span><span>16:35</span><span class="muted">+1</span></div>
+                </div>
+                <div class="trip-actions"><span class="badge violet">Fly</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              </div>
+              <div class="trip">
+                <div class="datebox"><b>09</b><span>OCT</span></div>
+                <div class="grow">
+                  <div class="trip-route">1HB</div>
+                  <div class="trip-meta">Standby &middot; Home base &middot; All day</div>
+                  <div class="trip-times"><span>00:00</span><span class="line"></span><span>11:59</span></div>
+                </div>
+                <div class="trip-actions"><span class="badge">Standby</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              </div>
+              <div class="trip">
+                <div class="datebox"><b>12</b><span>OCT</span></div>
+                <div class="grow">
+                  <div class="trip-route">PR684 / PR685</div>
+                  <div class="trip-meta">MNL - DOH - MNL &middot; A333 &middot; 3 days</div>
+                  <div class="trip-times"><span>17:15</span><span class="line"></span><span>17:05</span><span class="muted">+2</span></div>
+                </div>
+                <div class="trip-actions"><span class="badge violet">Fly</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-shield"/></svg></div><div class="grow"><div class="row-title">Local actions still work</div><div class="row-sub">Alarms, calendar sync and meetings read device data.</div></div></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-cal"/></svg>Schedule<span class="dot"></span></span>
+            <span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-user"/></svg>Profile</span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>Agenda / offline copy.</b> Trip and duty cards render from the pack. The caption in the header and the banner both carry the same timestamp. The refresh icon remains the explicit online action.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 72%</span></div>
+          <header class="app-head" style="padding-bottom:14px">
+            <div class="head-row">
+              <div class="round-btn"><svg class="icon"><use href="#i-back"/></svg></div>
+              <div class="grow"><div class="head-title">Agenda</div><div class="head-sub">Showing saved roster</div></div>
+              <div class="head-actions"><div class="round-btn"><svg class="icon"><use href="#i-refresh"/></svg></div><div class="round-btn"><svg class="icon"><use href="#i-filter"/></svg></div></div>
+            </div>
+          </header>
+          <main class="app-body" style="padding-top:12px">
+            <div class="banner bad">
+              <svg class="icon"><use href="#i-warning"/></svg>
+              <div class="grow"><b>Refresh failed - portal timed out</b><span>Showing the saved copy from 18 Oct, 09:12. No data was lost.</span></div>
+              <span class="action">Retry</span>
+            </div>
+            <div class="tabs"><span class="on">Upcoming</span><span>Past</span></div>
+            <div class="card">
+              <div class="trip">
+                <div class="datebox"><b>08</b><span>OCT</span></div>
+                <div class="grow">
+                  <div class="trip-route">PR124 / PR125</div>
+                  <div class="trip-meta">MNL - SEA - MNL &middot; A350 &middot; 4 days</div>
+                  <div class="trip-times"><span>19:00</span><span class="line"></span><span>16:35</span><span class="muted">+1</span></div>
+                </div>
+                <div class="trip-actions"><span class="badge violet">Fly</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              </div>
+              <div class="trip">
+                <div class="datebox"><b>09</b><span>OCT</span></div>
+                <div class="grow">
+                  <div class="trip-route">1HB</div>
+                  <div class="trip-meta">Standby &middot; Home base &middot; All day</div>
+                  <div class="trip-times"><span>00:00</span><span class="line"></span><span>11:59</span></div>
+                </div>
+                <div class="trip-actions"><span class="badge">Standby</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-lock"/></svg></div><div class="grow"><div class="row-title">Writes wait for the portal</div><div class="row-sub">Roster edits, swaps and unlock/lock need a live session.</div></div></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-cal"/></svg>Schedule<span class="dot"></span></span>
+            <span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-user"/></svg>Profile</span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>Agenda / refresh failed.</b> The failure is a status, not an empty screen. Retry is next to the message, and the last good copy stays visible with its timestamp.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 81%</span></div>
+          <header class="app-head" style="padding-bottom:14px">
+            <div class="head-row">
+              <div class="round-btn"><svg class="icon"><use href="#i-back"/></svg></div>
+              <div class="grow"><div class="head-title">Agenda</div><div class="head-sub">Updated 18 Oct, 09:12</div></div>
+              <div class="head-actions"><div class="round-btn"><svg class="icon"><use href="#i-refresh"/></svg></div><div class="round-btn"><svg class="icon"><use href="#i-filter"/></svg></div></div>
+            </div>
+          </header>
+          <main class="app-body" style="padding-top:12px">
+            <div class="tabs"><span class="on">Upcoming</span><span>Past</span></div>
+            <div class="card">
+              <div class="trip">
+                <div class="datebox"><b>08</b><span>OCT</span></div>
+                <div class="grow">
+                  <div class="trip-route">PR124 / PR125</div>
+                  <div class="trip-meta">MNL - SEA - MNL &middot; A350 &middot; 4 days</div>
+                  <div class="trip-times"><span>19:00</span><span class="line"></span><span>16:35</span><span class="muted">+1</span></div>
+                </div>
+                <div class="trip-actions"><span class="badge violet">Fly</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              </div>
+              <div class="trip">
+                <div class="datebox"><b>09</b><span>OCT</span></div>
+                <div class="grow">
+                  <div class="trip-route">1HB</div>
+                  <div class="trip-meta">Standby &middot; Home base &middot; All day</div>
+                  <div class="trip-times"><span>00:00</span><span class="line"></span><span>11:59</span></div>
+                </div>
+                <div class="trip-actions"><span class="badge">Standby</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              </div>
+              <div class="trip">
+                <div class="datebox"><b>12</b><span>OCT</span></div>
+                <div class="grow">
+                  <div class="trip-route">PR684 / PR685</div>
+                  <div class="trip-meta">MNL - DOH - MNL &middot; A333 &middot; 3 days</div>
+                  <div class="trip-times"><span>17:15</span><span class="line"></span><span>17:05</span><span class="muted">+2</span></div>
+                </div>
+                <div class="trip-actions"><span class="badge violet">Fly</span><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-check"/></svg></div><div class="grow"><div class="row-title">No banner when fresh</div><div class="row-sub">Only the small timestamp in the header confirms the copy.</div></div></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-cal"/></svg>Schedule<span class="dot"></span></span>
+            <span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-user"/></svg>Profile</span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>Agenda / fresh.</b> No standing banner. The header timestamp is the only freshness cue, so the normal operational layout stays clean.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="swap">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">Duty Swap / PR only</div>
+      <h2>Read the saved market. Never fake a send.</h2>
+    </div>
+    <p>The existing Matrix layout stays. The new layer is a read-only banner, a timestamp in the search strip, and disabled write actions. Changing the date window or filters while offline does not reuse the old result as if it matched.</p>
+  </div>
+
+  <div class="phones">
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">No service</span></div>
+          <header class="app-head" style="padding-bottom:14px">
+            <div class="head-row">
+              <div class="round-btn"><svg class="icon"><use href="#i-back"/></svg></div>
+              <div class="grow"><div class="head-title">Duty Swap</div><div class="head-sub">Saved search &middot; 08-11 Oct</div></div>
+              <div class="head-actions"><div class="round-btn"><svg class="icon"><use href="#i-refresh"/></svg></div><div class="round-btn"><svg class="icon"><use href="#i-cal"/></svg></div></div>
+            </div>
+          </header>
+          <main class="app-body" style="padding-top:12px">
+            <div class="banner warn">
+              <svg class="icon"><use href="#i-cloud-off"/></svg>
+              <div class="grow"><b>Offline copy - read only</b><span>Updated 18 Oct, 09:12. Reconnect to send or accept a swap.</span></div>
+            </div>
+            <div class="card">
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-search"/></svg></div>
+                <div class="grow"><div class="row-title">08 Oct - 11 Oct &middot; Standby</div><div class="row-sub">CP &middot; A350 &middot; 120 crew offers</div></div>
+                <span class="badge">Saved</span>
+              </div>
+            </div>
+            <div class="matrix">
+              <div class="matrix-head">
+                <div></div>
+                <div><b>Mine</b><span>PR124/125</span></div>
+                <div><b>421051</b><span>CP &middot; A350</span></div>
+                <div><b>402452</b><span>CP &middot; A350</span></div>
+              </div>
+              <div class="matrix-row"><div class="date">08</div><div><div class="mblock mine">PR124 / PR125</div></div><div></div><div></div></div>
+              <div class="matrix-row"><div class="date">09</div><div><div class="mblock mine">PR124 / PR125</div></div><div><div class="mblock take">1HB</div></div><div><div class="mblock">PR684 / PR685</div></div></div>
+              <div class="matrix-row"><div class="date">10</div><div><div class="mblock mine">PR124 / PR125</div></div><div><div class="mblock take">4FB</div></div><div><div class="mblock">PR684 / PR685</div></div></div>
+              <div class="matrix-row"><div class="date">11</div><div><div class="mblock mine">PR124 / PR125</div></div><div></div><div><div class="mblock warn">3FB</div></div></div>
+            </div>
+            <div class="card">
+              <div class="row"><div class="grow"><div class="row-title">Give PR124 / PR125</div><div class="row-sub">Take 1HB + 4FB from 421051</div></div><span class="duty-chip">Selected</span></div>
+              <div class="row"><div class="icon-wrap warn"><svg class="icon"><use href="#i-lock"/></svg></div><div class="grow"><div class="row-title">Check &amp; send is unavailable offline</div><div class="row-sub">Reconnect to run legality and submit.</div></div></div>
+              <div class="btn-row"><div class="btn disabled wide"><svg class="icon sm"><use href="#i-lock"/></svg> Check &amp; send</div></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-swap"/></svg>Swap<span class="dot"></span></span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-user"/></svg>Profile</span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>Duty Swap / cached search.</b> The saved Matrix is readable, including the selected give/take duties. The disabled pill is paired with an explanation, not just greyed out.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">No service</span></div>
+          <header class="app-head" style="padding-bottom:14px">
+            <div class="head-row">
+              <div class="round-btn"><svg class="icon"><use href="#i-back"/></svg></div>
+              <div class="grow"><div class="head-title">Duty Swap</div><div class="head-sub">Search pairing</div></div>
+              <div class="head-actions"><div class="round-btn"><svg class="icon"><use href="#i-refresh"/></svg></div><div class="round-btn"><svg class="icon"><use href="#i-cal"/></svg></div></div>
+            </div>
+          </header>
+          <main class="app-body" style="padding-top:12px">
+            <div class="card">
+              <div class="row"><div class="grow"><div class="row-title">12 Oct - 20 Oct &middot; Standby</div><div class="row-sub">CP &middot; A350 &middot; 0 saved crew</div></div><span class="badge warn">No copy</span></div>
+            </div>
+            <div class="banner info">
+              <svg class="icon"><use href="#i-cloud-off"/></svg>
+              <div class="grow"><b>No offline copy for this search</b><span>Your saved search is 08 Oct - 11 Oct. This window was never downloaded.</span></div>
+            </div>
+            <div class="card">
+              <div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-search"/></svg></div><div class="grow"><div class="row-title">Go online to refresh this window</div><div class="row-sub">The app will not reuse a different date range as if it matched.</div></div></div>
+              <div class="btn-row"><div class="btn primary wide"><svg class="icon sm"><use href="#i-refresh"/></svg> Refresh latest</div></div>
+              <div class="btn-row"><div class="btn outline wide">Use saved 08-11 Oct search</div></div>
+            </div>
+            <div class="card">
+              <div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-info"/></svg></div><div class="grow"><div class="row-title">Why the filter matters</div><div class="row-sub">A swap result belongs to one crew, one filter set and one date window.</div></div></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-swap"/></svg>Swap<span class="dot"></span></span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-user"/></svg>Profile</span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>Duty Swap / no cached result for this filter.</b> The app is explicit about what it does not have. The outline action returns to the saved search rather than inventing a result.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="dialogs">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">Recovery dialogs</div>
+      <h2>Recover without losing the copy.</h2>
+    </div>
+    <p>Re-login is a single validation attempt. Clear offline copy is destructive and uses the standard Status-Card dialog: carrier-colour header band, semantic tone on the glyph and primary pill.</p>
+  </div>
+
+  <div class="phones">
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 68%</span></div>
+          <header class="app-head profile-head"><div class="profile-id"><div class="avatar">PR</div><div><div class="profile-name">Crew 433535</div><div class="profile-meta">Philippine Airlines &middot; PR</div></div></div></header>
+          <main class="app-body"><div class="section-label">Data &amp; Sync</div><div class="card"><div class="row"><div class="grow"><div class="row-title">Signed in as PR 433535</div><div class="row-sub">Last updated 18 Oct, 09:12</div></div><span class="badge good">Fresh</span></div></div></main>
+          <div class="scrim"></div>
+          <div class="dialog">
+            <div class="dialog-band"></div>
+            <div class="dialog-glyph"><svg class="icon lg"><use href="#i-login"/></svg></div>
+            <div class="dialog-body">
+              <div class="dialog-title">Sign in again</div>
+              <div class="dialog-text">Validate your portal password once. Your saved roster stays available while the app reconnects.</div>
+              <div class="dialog-kv"><span>Airline</span><b>PR - Philippine Airlines</b></div>
+              <div class="dialog-kv"><span>Crew ID</span><b class="mono">433535</b></div>
+              <div class="dialog-input"><span>Password</span><span>••••••••</span></div>
+              <div class="dialog-btns"><div class="btn ghost">Cancel</div><div class="btn primary">Sign in &amp; refresh</div></div>
+              <div class="dialog-note">A wrong password ends this attempt. It never deletes the offline copy and never retries automatically.</div>
+            </div>
+          </div>
+          <nav class="dock" aria-label="Main navigation"><span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span><span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span><span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span><span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span><span class="dock-item on"><svg class="icon"><use href="#i-user"/></svg>Profile<span class="dot"></span></span></nav>
+        </div>
+      </div></div>
+      <figcaption><b>Re-login.</b> Airline and crew ID are read-only. The password is the only editable field. On failure the dialog closes into an inline error and the pack is untouched.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 68%</span></div>
+          <header class="app-head profile-head"><div class="profile-id"><div class="avatar">PR</div><div><div class="profile-name">Crew 433535</div><div class="profile-meta">Philippine Airlines &middot; PR</div></div></div></header>
+          <main class="app-body"><div class="section-label">Data &amp; Sync</div><div class="card"><div class="row"><div class="grow"><div class="row-title">Offline copy</div><div class="row-sub">126 duties &middot; 14 trips &middot; 120 swap crew</div></div><svg class="icon sm muted"><use href="#i-chev"/></svg></div></div></main>
+          <div class="scrim"></div>
+          <div class="dialog">
+            <div class="dialog-band"></div>
+            <div class="dialog-glyph bad"><svg class="icon lg"><use href="#i-trash"/></svg></div>
+            <div class="dialog-body">
+              <div class="dialog-title">Clear offline copy?</div>
+              <div class="dialog-text">This removes 126 duties, 14 trips and 120 cached crew offers from this phone. Your portal account is unchanged.</div>
+              <div class="dialog-btns"><div class="btn ghost">Keep copy</div><div class="btn danger">Clear copy</div></div>
+              <div class="dialog-note">Use this when testing a clean first launch or when the stored copy is unreadable.</div>
+            </div>
+          </div>
+          <nav class="dock" aria-label="Main navigation"><span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span><span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span><span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span><span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span><span class="dock-item on"><svg class="icon"><use href="#i-user"/></svg>Profile<span class="dot"></span></span></nav>
+        </div>
+      </div></div>
+      <figcaption><b>Clear offline copy.</b> The metric is spelled out in the body, not only in the title. The header band stays carrier-coloured; the destructive tone rides the glyph and the red pill.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="edge">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">Failure and confirmation states</div>
+      <h2>When the portal disagrees, the copy stays.</h2>
+    </div>
+    <p>These are the four states that protect the last good copy: a rejected password, a partial roster, an empty roster, and an unreadable pack. None of them silently replaces usable data.</p>
+  </div>
+
+  <div class="phones">
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 66%</span></div>
+          <header class="app-head profile-head">
+            <div class="profile-id">
+              <div class="avatar">PR</div>
+              <div>
+                <div class="profile-name">Crew 433535</div>
+                <div class="profile-meta">Philippine Airlines &middot; PR</div>
+                <div class="profile-tag"><svg class="icon sm"><use href="#i-plane"/></svg> Travel With Love</div>
+              </div>
+            </div>
+          </header>
+          <main class="app-body">
+            <div class="banner bad">
+              <svg class="icon"><use href="#i-warning"/></svg>
+              <div class="grow"><b>The portal did not accept your password</b><span>Your saved roster is still available. Fix the password and try Re-login once more.</span></div>
+            </div>
+
+            <div class="subhead"><b>Data &amp; Sync</b><span class="sp"></span><span class="badge good">Copy safe</span></div>
+            <div class="card">
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-user"/></svg></div>
+                <div class="grow"><div class="row-title">Signed in as PR 433535</div><div class="row-sub">Session saved; portal sign-in was rejected</div></div>
+                <span class="badge bad">Check password</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-clock"/></svg></div>
+                <div class="grow"><div class="row-title">Last updated</div><div class="row-sub">18 Oct 2026, 09:12</div></div>
+                <span class="badge warn">1 attempt</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-database"/></svg></div>
+                <div class="grow"><div class="row-title">Offline copy</div><div class="row-sub">126 duties &middot; 14 trips &middot; 120 swap crew</div></div>
+              </div>
+              <div class="btn-row">
+                <div class="btn outline"><svg class="icon sm"><use href="#i-refresh"/></svg> Refresh latest</div>
+                <div class="btn primary"><svg class="icon sm"><use href="#i-login"/></svg> Re-login</div>
+              </div>
+              <div class="row"><div class="row-sub" style="padding:0 2px">Re-login stops after one rejected attempt. It never loops, clears the copy, or locks the account.</div></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-user"/></svg>Profile<span class="dot"></span></span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>Re-login / password rejected.</b> The error is inline, not a toast that disappears. The saved copy and its timestamp stay on screen. There is no automatic retry and no second attempt in the background.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 73%</span></div>
+          <header class="app-head" style="padding-bottom:14px"><div class="head-row"><div class="grow"><div class="head-title">Agenda</div><div class="head-sub">My Trips &middot; 18-24 Oct 2026</div></div><div class="head-actions"><div class="round-btn"><svg class="icon"><use href="#i-refresh"/></svg></div></div></div></header>
+          <main class="app-body">
+            <div class="banner warn"><svg class="icon"><use href="#i-warning"/></svg><div class="grow"><b>Refresh returned part of the roster</b><span>The saved copy is still showing.</span></div></div>
+            <div class="card"><div class="trip"><div class="datebox"><b>18</b><span>OCT</span></div><div class="grow"><div class="trip-route">MN</div><div class="trip-meta">Manila &middot; Standby</div></div><span class="duty-chip">SBY</span></div></div>
+            <div class="card"><div class="trip"><div class="datebox"><b>19</b><span>OCT</span></div><div class="grow"><div class="trip-route">PR 102</div><div class="trip-meta">MNL - LAX</div></div><span class="duty-chip">FLT</span></div></div>
+          </main>
+          <div class="scrim"></div>
+          <div class="dialog">
+            <div class="dialog-band"></div>
+            <div class="dialog-glyph warn"><svg class="icon lg"><use href="#i-warning"/></svg></div>
+            <div class="dialog-body">
+              <div class="dialog-title">Partial roster returned</div>
+              <div class="dialog-text">The portal returned part of the roster. Saving it would drop duties that are already on this phone.</div>
+              <div class="dialog-kv"><span>Portal result</span><b>41 duties &middot; 8 trips</b></div>
+              <div class="dialog-kv"><span>Saved copy</span><b>126 duties &middot; 14 trips</b></div>
+              <div class="dialog-btns"><div class="btn primary">Keep saved copy</div><div class="btn ghost">Use partial</div></div>
+              <div class="dialog-note">Keeping the saved copy leaves its original update time unchanged.</div>
+            </div>
+          </div>
+          <nav class="dock" aria-label="Main navigation"><span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span><span class="dock-item on"><svg class="icon"><use href="#i-cal"/></svg>Schedule<span class="dot"></span></span><span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span><span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span><span class="dock-item"><svg class="icon"><use href="#i-user"/></svg>Profile</span></nav>
+        </div>
+      </div></div>
+      <figcaption><b>Refresh / partial result.</b> A partial capture never overwrites a complete pack by default. The confirmation compares both counts, and the safe action is primary. Choosing partial is explicit.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 73%</span></div>
+          <header class="app-head" style="padding-bottom:14px"><div class="head-row"><div class="grow"><div class="head-title">Agenda</div><div class="head-sub">My Trips &middot; 18-24 Oct 2026</div></div><div class="head-actions"><div class="round-btn"><svg class="icon"><use href="#i-refresh"/></svg></div></div></div></header>
+          <main class="app-body">
+            <div class="banner warn"><svg class="icon"><use href="#i-warning"/></svg><div class="grow"><b>Refresh returned no duties</b><span>The saved copy is still showing.</span></div></div>
+            <div class="card"><div class="trip"><div class="datebox"><b>18</b><span>OCT</span></div><div class="grow"><div class="trip-route">MN</div><div class="trip-meta">Manila &middot; Standby</div></div><span class="duty-chip">SBY</span></div></div>
+            <div class="card"><div class="trip"><div class="datebox"><b>19</b><span>OCT</span></div><div class="grow"><div class="trip-route">PR 102</div><div class="trip-meta">MNL - LAX</div></div><span class="duty-chip">FLT</span></div></div>
+          </main>
+          <div class="scrim"></div>
+          <div class="dialog">
+            <div class="dialog-band"></div>
+            <div class="dialog-glyph warn"><svg class="icon lg"><use href="#i-warning"/></svg></div>
+            <div class="dialog-body">
+              <div class="dialog-title">The portal returned no duties</div>
+              <div class="dialog-text">This usually means the portal has not finished loading. Keep the saved copy unless you are certain the roster is empty.</div>
+              <div class="dialog-kv"><span>Saved copy</span><b>126 duties &middot; 14 trips</b></div>
+              <div class="dialog-kv"><span>Portal result</span><b>0 duties &middot; 0 trips</b></div>
+              <div class="dialog-btns"><div class="btn primary">Keep saved copy</div><div class="btn danger">Replace with empty</div></div>
+              <div class="dialog-note">An empty result is never saved automatically.</div>
+            </div>
+          </div>
+          <nav class="dock" aria-label="Main navigation"><span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span><span class="dock-item on"><svg class="icon"><use href="#i-cal"/></svg>Schedule<span class="dot"></span></span><span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span><span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span><span class="dock-item"><svg class="icon"><use href="#i-user"/></svg>Profile</span></nav>
+        </div>
+      </div></div>
+      <figcaption><b>Refresh / empty result.</b> Zero duties is treated as a possible portal problem, not proof that the roster is empty. Replacing the copy requires an explicit destructive choice.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 58%</span></div>
+          <header class="app-head profile-head">
+            <div class="profile-id">
+              <div class="avatar">PR</div>
+              <div>
+                <div class="profile-name">Crew 433535</div>
+                <div class="profile-meta">Philippine Airlines &middot; PR</div>
+                <div class="profile-tag"><svg class="icon sm"><use href="#i-plane"/></svg> Travel With Love</div>
+              </div>
+            </div>
+          </header>
+          <main class="app-body">
+            <div class="banner bad">
+              <svg class="icon"><use href="#i-database"/></svg>
+              <div class="grow"><b>Saved copy unreadable</b><span>The local file could not be opened. Sign in to rebuild a clean copy.</span></div>
+            </div>
+
+            <div class="subhead"><b>Data &amp; Sync</b><span class="sp"></span><span class="badge bad">Rebuild needed</span></div>
+            <div class="card">
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-user"/></svg></div>
+                <div class="grow"><div class="row-title">Signed in as PR 433535</div><div class="row-sub">Portal session is still remembered</div></div>
+                <span class="badge violet">Live</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap bad"><svg class="icon"><use href="#i-database"/></svg></div>
+                <div class="grow"><div class="row-title">Offline copy</div><div class="row-sub">Unreadable &middot; no saved counts available</div></div>
+                <span class="badge bad">Unreadable</span>
+              </div>
+              <div class="row">
+                <div class="icon-wrap"><svg class="icon"><use href="#i-shield"/></svg></div>
+                <div class="grow"><div class="row-title">Nothing was sent to the portal</div><div class="row-sub">The app ignored the damaged file instead of rendering it.</div></div>
+              </div>
+              <div class="btn-row">
+                <div class="btn primary"><svg class="icon sm"><use href="#i-login"/></svg> Sign in to rebuild</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row"><div class="grow"><div class="row-title" style="color:#a32b20">Clear offline copy</div><div class="row-sub">Removes the unreadable file before a fresh sign-in</div></div><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+            </div>
+          </main>
+          <nav class="dock" aria-label="Main navigation">
+            <span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span>
+            <span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span>
+            <span class="dock-item on"><svg class="icon"><use href="#i-user"/></svg>Profile<span class="dot"></span></span>
+          </nav>
+        </div>
+      </div></div>
+      <figcaption><b>Launch / corrupt pack.</b> A damaged or unknown-schema file is never rendered. The app says the copy is unreadable and offers one rebuild path while keeping the remembered session.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="capture">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">First login / capture</div>
+      <h2>Save the login before the roster.</h2>
+    </div>
+    <p>The login page gains one helper line; the capture flow gains a clear separation between "signed in" and "roster updated". If the WebView times out, the crew stays signed in and can retry without re-entering the password. A saved pack, if one exists, remains available.</p>
+  </div>
+
+  <div class="phones">
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="login-screen">
+            <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 82%</span></div>
+            <div class="login-hero">
+              <div class="login-mark"><svg class="icon lg"><use href="#i-plane"/></svg></div>
+              <div class="login-app">ROIs Altair</div>
+              <div class="login-sub">ALWAYS A WAY FORWARD</div>
+            </div>
+            <div class="login-card">
+              <div class="login-field"><svg class="icon sm"><use href="#i-info"/></svg><span class="code">PR</span><span class="value">Philippine Airlines</span><svg class="icon sm"><use href="#i-chev"/></svg></div>
+              <div class="login-field"><svg class="icon sm"><use href="#i-user"/></svg><span class="value">433535</span></div>
+              <div class="login-field"><svg class="icon sm"><use href="#i-lock"/></svg><span class="value">Password</span></div>
+              <div class="login-keep"><span class="login-check">&#10003;</span><b>Keep me logged in</b></div>
+              <div class="login-helper">Required for offline copy and instant relaunch. Your password stays in the phone Keychain.</div>
+              <div class="login-btn">Login As Crew</div>
+            </div>
+            <div class="login-foot">One portal login seeds the local roster</div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Login / helper line.</b> Existing page, one added line. The helper explains the benefit of the checked box without adding a second screen or a modal. The password field and primary action keep their current hierarchy.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 77%</span></div>
+          <header class="app-head" style="padding-bottom:14px"><div class="head-row"><div class="round-btn"><svg class="icon"><use href="#i-back"/></svg></div><div class="grow"><div class="head-title">Signing in</div><div class="head-sub">PR 433535 &middot; crew portal</div></div></div></header>
+          <main class="capture">
+            <div class="ring"><svg class="icon lg"><use href="#i-refresh"/></svg></div>
+            <h3>Capturing your roster</h3>
+            <p>Portal sign-in is complete. The app is collecting the first roster copy so the next launch can open instantly.</p>
+            <div class="progress"><i></i></div>
+            <div class="capture-meta">6 of 9 roster payloads &middot; session saved</div>
+            <div class="capture-actions"><div class="btn outline">Cancel capture</div></div>
+          </main>
+          <div class="banner info" style="position:absolute;left:16px;right:16px;bottom:92px">
+            <svg class="icon"><use href="#i-check"/></svg>
+            <div class="grow"><b>Your login is already saved</b><span>If this capture fails, retry without entering your password again.</span></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>First login / capture in progress.</b> The progress state names the crew and says the session is saved. The first capture remains a blocking step, but a failure no longer means a fresh login.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app">
+          <div class="status dark"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 77%</span></div>
+          <header class="app-head" style="padding-bottom:14px"><div class="head-row"><div class="round-btn"><svg class="icon"><use href="#i-back"/></svg></div><div class="grow"><div class="head-title">Roster not updated</div><div class="head-sub">PR 433535 &middot; signed in</div></div></div></header>
+          <main class="capture" style="justify-content:flex-start;padding-top:54px">
+            <div class="ring" style="background:var(--warn-soft);color:var(--warn)"><svg class="icon lg"><use href="#i-warning"/></svg></div>
+            <h3>Signed in, roster not updated</h3>
+            <p>The portal capture timed out after 45 seconds. Your session is saved and the last good copy, if one exists, is still available.</p>
+            <div class="capture-actions"><div class="btn primary">Retry capture</div><div class="btn outline">Use saved copy</div></div>
+            <div class="card" style="width:100%;margin-top:24px;text-align:left">
+              <div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-clock"/></svg></div><div class="grow"><div class="row-title">Last good copy</div><div class="row-sub">18 Oct 2026, 09:12 &middot; 126 duties &middot; 14 trips</div></div><span class="badge warn">Not updated</span></div>
+              <div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-user"/></svg></div><div class="grow"><div class="row-title">Password not required</div><div class="row-sub">Retry uses the saved portal session.</div></div></div>
+            </div>
+          </main>
+        </div>
+      </div></div>
+      <figcaption><b>First login / capture failed.</b> The screen separates "signed in" from "roster updated". The crew can retry or continue on the saved copy; the password is not requested again.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="lab">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">Developer tools / not shipped</div>
+      <h2>Switch PR and TG in seconds.</h2>
+    </div>
+    <p>The Offline Lab is a development-only route gated by <code>__DEV__</code> plus an explicit flag. It lists local packs, shows their age and counts, and can open one without a portal request. This is the testing accelerator; it does not change production account isolation.</p>
+  </div>
+
+  <div class="phones">
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app devlab">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">5G &nbsp; 55%</span></div>
+          <header class="devlab-head">
+            <div class="head-row"><div class="round-btn"><svg class="icon"><use href="#i-back"/></svg></div><div class="grow"><div class="head-title">Offline Lab</div><div class="head-sub">Cached crew packs</div></div><span class="tag">DEV ONLY</span></div>
+          </header>
+          <main class="app-body" style="background:#fbfaf7">
+            <div class="banner info"><svg class="icon"><use href="#i-info"/></svg><div class="grow"><b>No portal requests while opening a pack</b><span>Identity is injected only through the development route.</span></div></div>
+            <div class="section-label">Available packs</div>
+            <div class="card">
+              <div class="pack active">
+                <div class="pack-icon"><svg class="icon"><use href="#i-database"/></svg></div>
+                <div class="grow">
+                  <div class="pack-title">PR 433535 <span class="badge good">Active</span></div>
+                  <div class="pack-meta">Updated 18 Oct, 09:12 &middot; 126 duties / 14 trips / 120 crew</div>
+                  <div class="pack-actions"><span class="btn primary">Open cached</span><span class="btn outline">Refresh</span><span class="btn ghost">Re-login</span></div>
+                </div>
+              </div>
+              <div class="pack">
+                <div class="pack-icon"><svg class="icon"><use href="#i-database"/></svg></div>
+                <div class="grow">
+                  <div class="pack-title">TG 35459 <span class="badge">Cached</span></div>
+                  <div class="pack-meta">Updated 17 Oct, 18:40 &middot; 88 duties / 9 trips</div>
+                  <div class="pack-actions"><span class="btn outline">Open cached</span><span class="btn ghost">Refresh</span><span class="btn ghost">Delete</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-cloud-off"/></svg></div><div class="grow"><div class="row-title">Force offline</div><div class="row-sub">Block portal calls for UI testing</div></div><div class="toggle on"></div></div>
+              <div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-trash"/></svg></div><div class="grow"><div class="row-title">Clear all test packs</div><div class="row-sub">Removes PR and TG snapshots from this device</div></div><svg class="icon sm muted"><use href="#i-chev"/></svg></div>
+            </div>
+            <div class="dev-note"><svg class="icon sm"><use href="#i-warning"/></svg><span>Gated by <b>__DEV__</b> and <b>ROIS_OFFLINE_LAB=1</b>. Not present in release builds.</span></div>
+          </main>
+          <nav class="dock" aria-label="Main navigation"><span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span><span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span><span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span><span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span><span class="dock-item on"><svg class="icon"><use href="#i-user"/></svg>Profile<span class="dot"></span></span></nav>
+        </div>
+      </div></div>
+      <figcaption><b>Offline Lab.</b> PR is active, TG is cached. Opening TG replaces the whole Redux slice before rendering, so no PR counts or crew IDs survive the switch. The pack labels carry age and record counts.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="device"><div class="screen">
+        <div class="app devlab">
+          <div class="status"><span>9:41</span><div class="island"></div><span class="signal">No service</span></div>
+          <header class="devlab-head">
+            <div class="head-row"><div class="round-btn"><svg class="icon"><use href="#i-back"/></svg></div><div class="grow"><div class="head-title">Offline Lab</div><div class="head-sub">Switch complete</div></div><span class="tag">DEV ONLY</span></div>
+          </header>
+          <main class="app-body" style="background:#fbfaf7">
+            <div class="banner bad"><svg class="icon"><use href="#i-warning"/></svg><div class="grow"><b>TG 35459 is now active</b><span>Loaded from the local pack in 0.8 s. Portal calls are still blocked.</span></div></div>
+            <div class="card">
+              <div class="pack active">
+                <div class="pack-icon"><svg class="icon"><use href="#i-database"/></svg></div>
+                <div class="grow">
+                  <div class="pack-title">TG 35459 <span class="badge good">Active</span></div>
+                  <div class="pack-meta">Updated 17 Oct, 18:40 &middot; 88 duties / 9 trips</div>
+                  <div class="pack-actions"><span class="btn primary">Refresh</span><span class="btn outline">Re-login</span><span class="btn ghost">Delete</span></div>
+                </div>
+              </div>
+              <div class="pack">
+                <div class="pack-icon"><svg class="icon"><use href="#i-database"/></svg></div>
+                <div class="grow">
+                  <div class="pack-title">PR 433535 <span class="badge">Cached</span></div>
+                  <div class="pack-meta">Updated 18 Oct, 09:12 &middot; 126 duties / 14 trips / 120 crew</div>
+                  <div class="pack-actions"><span class="btn outline">Open cached</span><span class="btn ghost">Delete</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="card"><div class="row"><div class="icon-wrap"><svg class="icon"><use href="#i-shield"/></svg></div><div class="grow"><div class="row-title">Isolation check</div><div class="row-sub">PR swap data and PR counts are not present in the TG session.</div></div></div></div>
+            <div class="dev-note"><svg class="icon sm"><use href="#i-info"/></svg><span>Use this path for PR/TG feature validation, not for release QA of real portal writes.</span></div>
+          </main>
+          <nav class="dock" aria-label="Main navigation"><span class="dock-item"><svg class="icon"><use href="#i-home"/></svg>Home</span><span class="dock-item"><svg class="icon"><use href="#i-cal"/></svg>Schedule</span><span class="dock-item"><svg class="icon"><use href="#i-swap"/></svg>Swap</span><span class="dock-item"><svg class="icon"><use href="#i-bot"/></svg>R'Bot</span><span class="dock-item on"><svg class="icon"><use href="#i-user"/></svg>Profile<span class="dot"></span></span></nav>
+        </div>
+      </div></div>
+      <figcaption><b>Offline Lab / switch complete.</b> The active pack and the counts change together. The isolation check is a UI assertion for the tester; it is not a production screen.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="copy">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">Copy deck</div>
+      <h2>Short, factual, and never ambiguous.</h2>
+    </div>
+    <p>The copy avoids "syncing forever" language. It says what is stored, when it was stored, and what is blocked. Timestamps use the same local format everywhere.</p>
+  </div>
+  <div class="copy-grid">
+    <div class="copy"><div class="who">Data &amp; Sync</div><div class="line">Last updated: 18 Oct 2026, 09:12</div><div class="why">One timestamp format; no relative time on the primary row.</div></div>
+    <div class="copy"><div class="who">Offline banner</div><div class="line">Offline copy - updated 2 days ago</div><div class="why">Relative age is useful in the banner; exact time stays in Data &amp; Sync.</div></div>
+    <div class="copy"><div class="who">Refresh failure</div><div class="line">Refresh failed - showing saved roster</div><div class="why">The copy remains usable; the failure is not presented as data loss.</div></div>
+    <div class="copy"><div class="who">Duty Swap offline</div><div class="line">Read only. Reconnect to send or accept a swap.</div><div class="why">States the limitation and the path forward in one line.</div></div>
+    <div class="copy"><div class="who">No cached search</div><div class="line">No offline copy for this search</div><div class="why">Names the object that is missing: the search, not the whole app.</div></div>
+    <div class="copy"><div class="who">Re-login failure</div><div class="line">The portal did not accept your password. Your saved roster is still available.</div><div class="why">Stops retry anxiety and protects the local copy.</div></div>
+    <div class="copy"><div class="who">Partial refresh</div><div class="line">Partial roster returned - keep the saved copy or use the partial result?</div><div class="why">The portal result is compared with local counts before anything is replaced.</div></div>
+    <div class="copy"><div class="who">Empty refresh</div><div class="line">The portal returned no duties. Keep the saved copy unless you are certain the roster is empty.</div><div class="why">Zero is treated as inconclusive until the crew confirms it.</div></div>
+    <div class="copy"><div class="who">Corrupt copy</div><div class="line">Saved copy unreadable. Sign in to rebuild a clean copy.</div><div class="why">Names the failure and the only safe next action without exposing file contents.</div></div>
+    <div class="copy"><div class="who">Clear copy</div><div class="line">This removes 126 duties, 14 trips and 120 cached crew offers from this phone.</div><div class="why">Concrete counts before a destructive action.</div></div>
+    <div class="copy"><div class="who">Login helper</div><div class="line">Keep me logged in is required for offline copy and instant relaunch.</div><div class="why">Explains the value of the checkbox without adding a new screen.</div></div>
+  </div>
+</section>
+
+<section id="notes">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">Change notes</div>
+      <h2>What this mockup adds, and where it belongs.</h2>
+    </div>
+    <p>Every item maps to the design spec. The app code is not changed by this mockup; these are review surfaces for the implementation phase.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Surface</th><th>New UI</th><th>Why</th><th>Spec</th></tr></thead>
+      <tbody>
+        <tr><td>Profile</td><td>Data &amp; Sync section with signed-in identity, last updated, offline counts, Refresh latest, Re-login, Work offline, Clear offline copy.</td><td>One place to understand and control the local copy.</td><td>6.4, 9.1</td></tr>
+        <tr><td>Profile</td><td>Carrier-scoped Duty Swap row; TG shows "Not available for this carrier".</td><td>Capability flags stay explicit; no PR data appears in a TG session.</td><td>6.4, 9.1</td></tr>
+        <tr><td>Global</td><td>Compact banner only for offline, stale, failed, or missing-search states.</td><td>Fresh data stays quiet; problems are visible where they matter.</td><td>6.8, 9.2</td></tr>
+        <tr><td>Agenda</td><td>Header timestamp plus offline and refresh-failed banners; refresh icon remains.</td><td>Roster is usable offline; the crew knows how old it is.</td><td>9.3</td></tr>
+        <tr><td>Duty Swap</td><td>Offline/read-only banner, saved-search timestamp, disabled Check &amp; send with explanation.</td><td>Prevents false success and stale legality decisions.</td><td>7.3, 9.4</td></tr>
+        <tr><td>Duty Swap</td><td>No-offline-copy state for a changed filter/window.</td><td>A cached result must never masquerade as the current search.</td><td>7.1, 12</td></tr>
+        <tr><td>Dialogs</td><td>Re-login sheet with read-only airline/crew and one password field; failure keeps the copy.</td><td>Recovery is explicit and single-attempt.</td><td>6.6, 12</td></tr>
+        <tr><td>Dialogs</td><td>Clear offline copy confirmation with concrete counts and destructive tone.</td><td>Destructive data removal needs a clear consequence.</td><td>9.1, 11</td></tr>
+        <tr><td>Edge states</td><td>Re-login rejected: inline error, saved copy and timestamp remain, single attempt only.</td><td>Credential failure must not look like data loss or trigger a retry loop.</td><td>6.6, 12</td></tr>
+        <tr><td>Edge states</td><td>Partial and empty refresh confirmations compare portal counts with the saved pack before replacement.</td><td>A good roster must never be replaced by accident.</td><td>6.5, 12</td></tr>
+        <tr><td>Edge states</td><td>Unreadable pack: rebuild prompt, remembered session, no counts guessed.</td><td>Corrupt data is ignored safely and has one clear recovery path.</td><td>6.8, 11, 12</td></tr>
+        <tr><td>Login / capture</td><td>Capture progress says the session is saved; failure says "Signed in, roster not updated".</td><td>Decouples authentication from a slow portal capture.</td><td>6.4</td></tr>
+        <tr><td>Login</td><td>Visible helper line under Keep me logged in, with the existing login form unchanged.</td><td>Explains why the checkbox matters for offline copy.</td><td>6.4</td></tr>
+        <tr><td>Developer</td><td>Offline Lab with PR/TG packs, counts, age, Open cached, Refresh, Re-login, Delete, Force offline.</td><td>Fast PR/TG test switching without weakening production isolation.</td><td>8</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="notes" style="margin-top:18px">
+    <div class="note-card">
+      <h3>State rules</h3>
+      <ul>
+        <li>Fresh: no banner, small timestamp only.</li>
+        <li>Stale: amber banner with age and Refresh.</li>
+        <li>Offline: amber banner, read-only actions, Work offline on.</li>
+        <li>Failed: red banner with Retry, last good copy still visible.</li>
+        <li>Missing search: neutral info state, no fabricated rows.</li>
+      </ul>
+    </div>
+    <div class="note-card">
+      <h3>Guardrails</h3>
+      <ul>
+        <li>No portal token, password, or raw payload in the pack.</li>
+        <li>Identity mismatch never renders; late responses never write.</li>
+        <li>Refresh and re-login are single-flight and single-attempt.</li>
+        <li>Duty Swap writes are unavailable offline.</li>
+        <li>Offline Lab and fixtures are dev-only.</li>
+      </ul>
+    </div>
+    <div class="note-card">
+      <h3>Implementation note</h3>
+      <p>This is a design artifact only. The implementation should reuse the existing <code>AppDialog</code>, carrier tokens, outline icon set, one-row header behavior, and existing Duty Swap Matrix.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div><b>Crew App Offline Snapshot - HTML mockup Ver1</b><br>Design review artifact, 2026-10-18. No application source changed.</div>
+  <div>Spec: <code>docs/superpowers/specs/2026-10-18-crew-app-offline-snapshot-design.md</code></div>
+</footer>
+
+</div>
+
+<script>
+(() => {
+  const input = document.getElementById('scale');
+  const root = document.documentElement;
+  const saved = (() => {
+    try { return localStorage.getItem('crew-offline-mockup-scale'); } catch { return null; }
+  })();
+  if (saved) {
+    input.value = saved;
+    root.style.setProperty('--s', saved);
+  }
+  input.addEventListener('input', () => {
+    root.style.setProperty('--s', input.value);
+    try { localStorage.setItem('crew-offline-mockup-scale', input.value); } catch {}
+  });
+})();
+</script>
+</body>
+</html>

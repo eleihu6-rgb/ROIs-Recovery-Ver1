@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en" data-theme="sia">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crew App · Trip Details — operations ledger (Ver5)</title>
+<style>
+/* ── Review page ─────────────────────────────────────────────────────────── */
+:root{
+  --bg:#eef2f5; --panel:#ffffff; --ink:#10212b; --mut:#5a6b76; --line:#d6e0e6;
+  --hl:#d9822b; --hl-soft:#fbe9d5;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0d1418;--panel:#162126;--ink:#e8f0f3;--mut:#9aadb7;--line:#2a3a42;--hl-soft:#3a2915}
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--bg);color:var(--ink);padding:26px 18px 80px;
+  font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+.wrap{max-width:1420px;margin:0 auto}
+h1{font-size:23px;line-height:1.2;margin:0 0 6px;letter-spacing:-.2px}
+h2{font-size:17px;margin:0 0 3px}
+.lede{color:var(--mut);font-size:13px;max-width:980px;margin:0 0 16px}
+.note{color:var(--mut);font-size:12.5px;max-width:1000px;margin:0 0 12px}
+section{margin:0 0 38px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 18px}
+.bar span{font-size:12px;color:var(--mut)}
+.btn{font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink);cursor:pointer}
+.btn.on{border-color:var(--hl);background:var(--hl-soft);color:var(--ink);font-weight:600}
+.reqs{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:0 0 34px}
+.req{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.req b{display:block;font-size:13px;margin:0 0 4px}
+.req p{margin:0;color:var(--mut);font-size:12px}
+.req em{font-style:normal;color:var(--hl);font-weight:700}
+.frames{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+figure{margin:0}
+figcaption{font-size:11.5px;color:var(--mut);margin-top:7px;max-width:660px}
+.dev{background:#05090c;border-radius:34px;padding:10px;box-shadow:0 22px 44px rgba(0,0,0,.28)}
+.vp{position:relative;overflow:hidden;border-radius:26px;background:#000}
+.pt{position:absolute;top:0;left:0;transform-origin:0 0;overflow:hidden;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+.app{position:absolute;inset:0;display:flex;flex-direction:column;
+  background:linear-gradient(158deg,var(--g1) 0%,var(--g2) 46%,var(--g3) 100%)}
+.pt[data-theme="sia"]{--g1:#1e4a76;--g2:#2b6191;--g3:#4c82b2;--accent:#2f6ba6}
+.pt[data-theme="thai"]{--g1:#4a1670;--g2:#5e2a86;--g3:#8a4aa8;--accent:#7a3aa0}
+.status{display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:12px;font-weight:600;flex:none}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:40px;flex:none}
+.nav .back{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:300;line-height:1}
+.nav .title{font-size:17px;font-weight:600;letter-spacing:-.2px}
+.nav .side{width:34px;height:34px}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:3px 16px 16px;overflow:hidden}
+.pt.wide .body{padding:2px 104px 14px 32px;gap:8px}
+.strip{position:absolute;right:9px;top:20px;width:64px;height:116px;border-radius:32px;
+  background:rgba(255,255,255,.10);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:7px;z-index:4}
+.strip svg{opacity:.85}
+.strip i{width:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.6);display:block}
+
+/* ── Ver5: operations ledger ─────────────────────────────────────────────── */
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.sheet{position:relative;flex:none;background:rgba(245,248,250,.96);color:#0b1a22;
+  border-radius:7px;box-shadow:0 12px 26px rgba(0,0,0,.18);overflow:hidden}
+.mast{padding:10px 14px 0}
+.mrow{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.dutyid{font:700 8.6px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:1px;text-transform:uppercase;color:#4a5d69}
+.rep{font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.3px;color:#0b1a22;white-space:nowrap}
+.rep small{font-size:7.6px;font-weight:700;color:#5c6d78;letter-spacing:.7px;margin-right:4px}
+.stitle{font-size:15.5px;font-weight:700;letter-spacing:-.2px;margin-top:6px;line-height:1.2}
+.sroute{font:600 10px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:#324956;margin-top:2px}
+.totals{display:grid;grid-template-columns:repeat(4,1fr);margin-top:8px;border-top:1px solid rgba(11,26,34,.20)}
+.totals .c{padding:5px 9px 6px;border-left:1px solid rgba(11,26,34,.14)}
+.totals .c:first-child{border-left:0;padding-left:0}
+.totals .k{display:block;font:700 7.2px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.7px;color:#5c6d78}
+.totals .v{display:block;font:700 13px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:2px}
+.calrow{display:flex;align-items:center;gap:8px;padding:6px 14px;border-top:1px solid rgba(11,26,34,.20);
+  border-bottom:1px solid rgba(11,26,34,.20);background:rgba(255,255,255,.55)}
+.calrow .ic{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex:none}
+.calrow b{font:700 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.75px;text-transform:uppercase;color:#123242}
+.calrow span{font-size:9.2px;color:#5c6d78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Wide table */
+.lhead,.lmain{display:grid;grid-template-columns:18px 58px 70px 1fr 1fr .94fr 48px;align-items:center;gap:7px;padding:0 14px}
+.lhead{padding-top:6px;padding-bottom:3px;font:700 7px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.8px;text-transform:uppercase;color:#5c6d78;border-bottom:1px solid rgba(11,26,34,.20)}
+.lrow{border-bottom:1px solid rgba(11,26,34,.10);padding:6px 0 7px}
+.foot{display:flex;justify-content:space-between;gap:12px;padding:6px 14px 8px;border-top:1px solid rgba(11,26,34,.20);
+  font:400 8px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:#5c6d78;letter-spacing:.15px}
+.lrow:nth-child(even){background:rgba(11,26,34,.025)}
+.lrow:last-child{border-bottom:0}
+.lmain .i{font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#38505e}
+.lmain .f{font:700 11.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}
+.lmain .r{font-size:10.5px;font-weight:600;color:#324956;white-space:nowrap}
+.pair{display:flex;align-items:baseline;gap:4px;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.pair b{font-size:11px;font-weight:600}
+.pair i{font-style:normal;font-size:9px;color:#7c8d98}
+.lmain .bl{font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#2d4c5e;text-align:right}
+.lops{padding:0 14px 0 42px;font:400 8.6px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;color:#546671;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.lops b{font-weight:600;color:#0b1a22}
+
+/* Compact ledger blocks */
+.block{border-bottom:1px solid rgba(11,26,34,.12);padding:8px 12px 9px}
+.block:last-child{border-bottom:0}
+.bhead{display:flex;align-items:baseline;gap:7px;min-width:0}
+.bhead .i{font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#38505e;width:11px;flex:none}
+.bhead b{font:700 12.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}
+.bhead .r{font-size:10px;font-weight:600;color:#324956;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bhead .bl{margin-left:auto;font:600 8.6px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#2d4c5e;
+  border:1px solid rgba(47,107,166,.35);border-radius:3px;padding:1px 4px;white-space:nowrap}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:6px;border-top:1px solid rgba(11,26,34,.10)}
+.trio .c{padding:4px 7px;border-left:1px solid rgba(11,26,34,.10);min-width:0}
+.trio .c:first-child{border-left:0;padding-left:0}
+.trio .h{font:700 6.8px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.7px;text-transform:uppercase;color:#647580}
+.trio .p{display:flex;align-items:baseline;gap:3px;margin-top:2px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.trio .p b{font-size:11.5px;font-weight:600}
+.trio .p i{font-style:normal;font-size:8px;color:#7c8d98}
+.bops{margin-top:4px;font:400 8.4px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:#5a6b76;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bops b{font-weight:600;color:#0b1a22}
+
+/* Annotation badges */
+.anno{position:absolute;z-index:6;width:17px;height:17px;border-radius:9px;background:var(--hl);
+  color:#fff;font-size:10px;font-weight:800;line-height:17px;text-align:center;
+  box-shadow:0 2px 7px rgba(0,0,0,.3);pointer-events:none}
+.anno.r{right:-7px;top:-7px}
+.hbadge{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:7px;
+  background:var(--hl);color:#fff;font-size:8px;font-weight:800;line-height:1;margin-left:4px;
+  vertical-align:1px;flex:none;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+body.no-anno .anno,body.no-anno .hbadge{display:none}
+
+/* Legend + comparison */
+.legend{display:flex;flex-direction:column;gap:9px;max-width:400px}
+.leg{display:flex;gap:9px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.leg .n{width:20px;height:20px;border-radius:10px;background:var(--hl);color:#fff;flex:none;font-size:11px;font-weight:800;line-height:20px;text-align:center}
+.leg b{display:block;font-size:12.5px;margin:0 0 1px}
+.leg p{margin:0;font-size:11.5px;color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:var(--panel);border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Crew App · Trip Details — operations ledger (Ver5)</h1>
+<p class="lede">
+  One flat <b>sheet</b> instead of stacked cards: ruled rows, monospaced numerals, no shadows or rounded
+  tiles inside the sheet. The masthead states the shared title and duty totals once; the six sectors read
+  as a logbook. Denser than Ver3 — the same screen area carries the duty summary, the calendar action and
+  every sector without scrolling.
+</p>
+
+<div class="bar">
+  <span>Theme</span>
+  <button class="btn on" data-theme-set="sia">Reference blue</button>
+  <button class="btn" data-theme-set="thai">Thai violet</button>
+  <span style="width:10px"></span>
+  <button class="btn on" id="annoBtn">Annotations: on</button>
+</div>
+
+<div class="reqs">
+  <div class="req"><b>1 · Shared duty title in the masthead</b><p>Flight-number string and routing appear once, above the ruled table — not on every sector.</p></div>
+  <div class="req"><b>2 · Paired times as columns</b><p>Scheduled / Estimated / Actual each hold one <em>STD → STA</em> pair, so a delay reads across the row.</p></div>
+  <div class="req"><b>3 · Duty totals in one ruled strip</b><p>FDP · DP · Block · Rest sit in the masthead and never grow with the sector count.</p></div>
+  <div class="req"><b>4 · Calendar as a ruled action row</b><p>One 32 pt line inside the sheet replaces the 50 pt card, keeping the calendar action visible without taking a column.</p></div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>1 · iPhone — compact (420 × 912)</h2>
+  <p class="note">The sheet is the whole page. Each sector is a ruled block: flight line, three paired-time cells and one monospaced ops line. All six sectors and the masthead fit without scrolling on this screen.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:252px;height:547px">
+        <div class="pt" data-layout="ledger-compact" data-theme="sia" style="width:420px;height:912px;transform:scale(.6)"></div>
+      </div></div>
+      <figcaption>Compact: 0.6×. Sheet fills the body width; hairline rules replace card gaps.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">1</span><div><b>Masthead</b><p>Duty id, report, shared title, routing and the four totals — one block, no repeated context below.</p></div></div>
+      <div class="leg"><span class="n">2</span><div><b>Three paired cells</b><p>Each cell holds a full pair; the row keeps <code>STD/ETD/ATD</code> aligned vertically across all six sectors.</p></div></div>
+      <div class="leg"><span class="n">3</span><div><b>Ops on one ruled line</b><p>Boarding · door close · off-block · gate/stand → belt in monospace, identically positioned on every block.</p></div></div>
+      <div class="leg"><span class="n">4</span><div><b>Calendar without a card</b><p>A single ruled action row inside the sheet — visible, tappable, and only 32 pt tall.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>2 · iPhone Duo inner screen — wide (951 × 669)</h2>
+  <p class="note">The wide screen is the natural home of this style: seven columns, every sector on one line, ops on a second line. Six sectors, totals and the calendar action all fit at once.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:589.6px;height:414.8px">
+        <div class="pt wide" data-layout="ledger-wide" data-theme="sia" style="width:951px;height:669px;transform:scale(.62)"></div>
+      </div></div>
+      <figcaption>Wide: 809 pt content. Masthead + calendar row + six ruled sectors; no scrolling.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">2</span><div><b>Column alignment does the work</b><p>Tabular monospace keeps times stacked, so the eye compares ETD against STD down the column without reading labels.</p></div></div>
+      <div class="leg"><span class="n">5</span><div><b>Zebra + hairline rules</b><p>Alternating row tint and 1 px rules replace card shadows; density rises without visual noise.</p></div></div>
+      <div class="leg"><span class="n">6</span><div><b>Two-line row</b><p>The flight line and its ops line stay together; a sixth sector adds ~44 pt, not a new card.</p></div></div>
+      <div class="leg"><span class="n">7</span><div><b>One accent</b><p>Only the duty tag, the pair arrows and the block outline use the carrier accent; the rest is ink and hairlines.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>3 · Where this style sits</h2>
+  <table>
+    <thead><tr><th>Version</th><th>Visual language</th><th>Strength</th><th>Watch-out</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ver1</b></td><td>Per-flight frosted cards</td><td>Each sector feels like a self-contained unit</td><td>Card padding costs height; six sectors scroll</td></tr>
+      <tr><td><b>Ver3</b></td><td>Shared title + light table</td><td>Best balance of readability and fit</td><td>Turns and delay deltas are not explicit</td></tr>
+      <tr><td><b>Ver4</b></td><td>Timeline rail</td><td>Chronology, turns and delays in place</td><td>Two nodes per sector is taller than a table</td></tr>
+      <tr><td><b>Ver5 · this</b></td><td>Operations ledger (mono, rules)</td><td>Highest density; scan by column; logbook feel</td><td>Least friendly to a one-handed glance; small type</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>4 · Data and behavior notes</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Behavior</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td><b>Shared title</b></td><td>All flight numbers in the duty + full routing, in the masthead. Multi-duty trips repeat the masthead once per duty; the hero is not used.</td><td>duty legs (portal <code>briefStart</code>; live API <code>pairingId</code>)</td></tr>
+      <tr><td><b>Paired columns</b></td><td>One pair per column: <code>STD→STA</code>, <code>ETD→ETA</code>, <code>ATD→ATA</code>. Missing values render as an em dash, never blank.</td><td>leg times (<code>localDepTime</code>/<code>localArvTime</code>, est/act UTC)</td></tr>
+      <tr><td><b>FDP / DP / Rest</b></td><td>Four totals in the masthead; omitted when the carrier feed has none (current F8/ET/EK mobile-roster API).</td><td><code>dutyFdp</code> / <code>dutyDp</code> / <code>dutyRestHours</code></td></tr>
+      <tr><td><b>Block</b></td><td>Duty total in the masthead; the per-sector value closes the row.</td><td><code>report.blhHours</code> or summed <code>blockHours</code></td></tr>
+      <tr><td><b>Calendar</b></td><td>Ruled action row opens the same preview sheet; entry set unchanged.</td><td>existing calendar module</td></tr>
+      <tr><td><b>Legibility floor</b></td><td>Mono numerals never below 10 pt; the ops line may drop to 8.6 pt because it is secondary and ellipsizes.</td><td>design token</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</div>
+
+<script>
+/* ── Data shaped like the real roster / portal feed ─────────────────────── */
+const PR_SIX = {
+  dutyId: 'DUTY 01 · 06 SEP 2026', report: '04:10L',
+  title: 'PR1811 · 1812 · 1863 · 1864 · 1885 · 1886',
+  route: 'MNL → TAC → MNL → ILO → MNL → DVO → MNL',
+  totals: [['FDP','13:10'],['DP','13:40'],['BLOCK','08:15'],['REST','14:00']],
+  flights: [
+    { n:1, num:'PR1811', route:'MNL → TAC', block:'1h 15m',
+      sched:['05:10','06:25'], est:['05:10','06:25'], act:['—','—'],
+      ops:'BRD 04:40 · DOOR 05:00 · OFF 05:15', where:'T2 G108 S112 → B03' },
+    { n:2, num:'PR1812', route:'TAC → MNL', block:'1h 15m',
+      sched:['07:00','08:15'], est:['07:00','08:15'], act:['—','—'],
+      ops:'BRD 06:30 · DOOR 06:50 · OFF 07:05', where:'T1 G04 S205 → B11' },
+    { n:3, num:'PR1863', route:'MNL → ILO', block:'1h 15m',
+      sched:['09:15','10:30'], est:['09:15','10:30'], act:['—','—'],
+      ops:'BRD 08:45 · DOOR 09:05 · OFF 09:20', where:'T2 G115 S118 → B02' },
+    { n:4, num:'PR1864', route:'ILO → MNL', block:'1h 15m',
+      sched:['11:05','12:20'], est:['11:05','12:20'], act:['—','—'],
+      ops:'BRD 10:35 · DOOR 10:55 · OFF 11:10', where:'T1 G06 S207 → B14' },
+    { n:5, num:'PR1885', route:'MNL → DVO', block:'1h 40m',
+      sched:['13:20','15:00'], est:['13:20','15:00'], act:['—','—'],
+      ops:'BRD 12:50 · DOOR 13:10 · OFF 13:25', where:'T2 G121 S126 → B05' },
+    { n:6, num:'PR1886', route:'DVO → MNL', block:'1h 35m',
+      sched:['15:45','17:20'], est:['15:45','17:20'], act:['—','—'],
+      ops:'BRD 15:15 · DOOR 15:35 · OFF 15:50', where:'T1 G08 S210 → B16' },
+  ],
+};
+
+/* ── Icons ──────────────────────────────────────────────────────────────── */
+const calIcon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2f6ba6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>`;
+const wifi = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M4 9.5a12 12 0 0 1 16 0M7 13a8 8 0 0 1 10 0M10 16.4a3.6 3.6 0 0 1 4 0"/><circle cx="12" cy="19.2" r=".9" fill="#fff" stroke="none"/></svg>`;
+const statusIcons = `<svg width="52" height="11" viewBox="0 0 52 11" fill="none" aria-hidden="true">
+  <rect x="0" y="6" width="3" height="5" rx="1" fill="#fff"/><rect x="5" y="4.5" width="3" height="6.5" rx="1" fill="#fff"/>
+  <rect x="10" y="3" width="3" height="8" rx="1" fill="#fff"/><rect x="15" y="1.5" width="3" height="9.5" rx="1" fill="#fff" opacity=".55"/>
+  <path d="M23 4.6a7.5 7.5 0 0 1 9 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M25 7a4.5 4.5 0 0 1 5 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+  <circle cx="27.5" cy="9.3" r=".8" fill="#fff"/>
+  <rect x="36" y="2.5" width="13" height="6.5" rx="2" stroke="#fff" stroke-width="1" opacity=".55"/>
+  <rect x="37.5" y="4" width="8" height="3.5" rx="1" fill="#fff"/>
+  <path d="M50 5v2" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity=".55"/>
+</svg>`;
+
+/* ── Pieces ─────────────────────────────────────────────────────────────── */
+function masthead(trip) {
+  return `<div class="mast">
+    <div class="mrow"><span class="dutyid">${trip.dutyId}</span><span class="rep"><small>REPORT</small>${trip.report}</span><span class="anno" data-n="1" style="right:96px;top:4px">1</span></div>
+    <div class="stitle">${trip.title}</div>
+    <div class="sroute">${trip.route}</div>
+    <div class="totals">${trip.totals.map(([k, v], i) => `<div class="c"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('')}</div>
+  </div>`;
+}
+
+function calendarRow() {
+  return `<div class="calrow">
+    <div class="ic">${calIcon}</div>
+    <b>Add to iPhone Calendar<span class="hbadge">4</span></b><span>wake-up · leave home · report · flights</span>
+  </div>`;
+}
+
+function pair(a, b) {
+  return `<span class="pair"><b>${a}</b><i>→</i><b>${b}</b></span>`;
+}
+
+function ledgerWide(trip) {
+  const rows = trip.flights.map(f => `<div class="lrow">
+    <div class="lmain">
+      <span class="i">${f.n}</span><span class="f">${f.num}</span><span class="r">${f.route}</span>
+      ${pair(f.sched[0], f.sched[1])}${pair(f.est[0], f.est[1])}${pair(f.act[0], f.act[1])}
+      <span class="bl">${f.block}</span>
+    </div>
+    <div class="lops">${f.ops} · <b>${f.where}</b></div>
+  </div>`).join('');
+  return `<div class="app">
+    <div class="strip">${wifi}<i></i><i></i><i></i></div>
+    <div class="status"><span>9:41</span><span>${statusIcons}</span></div>
+    <div class="nav"><div class="back">‹</div><div class="title">Trip Details</div><div class="side"></div></div>
+    <div class="body">
+      <div class="sheet">
+        ${masthead(trip)}
+        ${calendarRow()}
+        <div class="lhead"><span>#</span><span>FLIGHT</span><span>ROUTE</span><span>SCHEDULED<span class="hbadge">2</span></span><span>ESTIMATED</span><span>ACTUAL</span><span>BLOCK</span></div>
+        ${rows}
+        <div class="foot"><span>Times local (L) · scheduled / estimated / actual</span><span>6 sectors · A321</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function ledgerCompact(trip) {
+  const blocks = trip.flights.map(f => `<div class="block">
+    <div class="bhead"><span class="i">${f.n}</span><b>${f.num}</b><span class="r">${f.route}</span><span class="bl">${f.block}</span></div>
+    <div class="trio">
+      <div class="c"><div class="h">Scheduled${f.n === 1 ? '<span class="hbadge">2</span>' : ''}</div><div class="p"><b>${f.sched[0]}</b><i>→</i><b>${f.sched[1]}</b></div></div>
+      <div class="c"><div class="h">Estimated</div><div class="p"><b>${f.est[0]}</b><i>→</i><b>${f.est[1]}</b></div></div>
+      <div class="c"><div class="h">Actual</div><div class="p"><b>${f.act[0]}</b><i>→</i><b>${f.act[1]}</b></div></div>
+    </div>
+    <div class="bops">${f.n === 1 ? '<span class="hbadge" style="margin:0 4px 0 0">3</span>' : ''}${f.ops} · <b>${f.where}</b></div>
+  </div>`).join('');
+  return `<div class="app">
+    <div class="status"><span>9:41</span><span>${statusIcons}</span></div>
+    <div class="nav"><div class="back">‹</div><div class="title">Trip Details</div><div class="side"></div></div>
+    <div class="body">
+      <div class="sheet">
+        ${masthead(trip)}
+        ${calendarRow()}
+        ${blocks}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── Mount ──────────────────────────────────────────────────────────────── */
+document.querySelector('.pt[data-layout="ledger-compact"]').innerHTML = ledgerCompact(PR_SIX);
+document.querySelector('.pt[data-layout="ledger-wide"]').innerHTML = ledgerWide(PR_SIX);
+
+document.querySelectorAll('[data-theme-set]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.documentElement.dataset.theme = btn.dataset.themeSet;
+    document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('on', b === btn));
+    document.querySelectorAll('.pt').forEach(pt => pt.dataset.theme = btn.dataset.themeSet);
+  });
+});
+const annoBtn = document.getElementById('annoBtn');
+annoBtn.addEventListener('click', () => {
+  const off = document.body.classList.toggle('no-anno');
+  annoBtn.textContent = off ? 'Annotations: off' : 'Annotations: on';
+  annoBtn.classList.toggle('on', !off);
+});
+</script>
+</body>
+</html>

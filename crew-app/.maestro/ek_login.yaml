@@ -75,7 +75,7 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     id: "sched-view-calendar"
 - extendedWaitUntil:
     visible:
-      id: "cal-grid"
+      id: "cal-month-detail"
     timeout: 15000
 - takeScreenshot: ek_login_04_calendar
 - tapOn:

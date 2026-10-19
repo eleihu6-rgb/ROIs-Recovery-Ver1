@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="780" viewBox="0 0 780 780">
+<rect width="780" height="780" fill="#eef2f5"/>
+<g font-family="Arial,sans-serif">
+<text x="40" y="46" font-size="27" fill="#173345" font-weight="700">Exception states · all three layouts</text>
+<text x="40" y="77" font-size="15" fill="#526879">Same selected-day calculation. Explicit severity and deficit.</text>
+<rect x="40" y="104" width="700" height="615" rx="24" fill="#ffffff"/>
+<text x="64" y="137" font-size="13" fill="#526879">Through 19 Oct 2026 · base time · projected</text>
+<rect x="64" y="159" width="652" height="42" rx="10" fill="#fff0f1"/>
+<text x="80" y="186" font-size="16" fill="#a52d38" font-weight="700">! Hours exceeded · review affected windows</text>
+<text x="64" y="239" font-size="17" fill="#526879">Flight · 28 days · 100h limit</text>
+<text x="510" y="239" font-size="24" fill="#b5323e" font-weight="700">Over by 4.5h</text>
+<text x="64" y="266" font-size="14" fill="#526879">104.5h used / 100h maximum · OVER LIMIT</text>
+<rect x="64" y="284" width="652" height="7" rx="3" fill="#b5323e"/>
+<text x="64" y="337" font-size="17" fill="#526879">Duty · 7 days · 60h limit</text>
+<text x="510" y="337" font-size="24" fill="#b5323e" font-weight="700">Over by 4.0h</text>
+<text x="64" y="364" font-size="14" fill="#526879">64.0h used / 60h maximum · OVER LIMIT</text>
+<rect x="64" y="382" width="652" height="7" rx="3" fill="#b5323e"/>
+<rect x="64" y="425" width="652" height="202" rx="17" fill="#fff5df" stroke="#dbb76d"/>
+<text x="84" y="455" font-size="16" fill="#8b5b09" font-weight="700">90-day recency · below minimum</text>
+<text x="84" y="497" font-size="18" fill="#173345">Take-offs</text>
+<text x="470" y="497" font-size="23" fill="#8b5b09" font-weight="700">2 / 3 · 1 needed</text>
+<rect x="84" y="511" width="612" height="7" rx="3" fill="#e7d7b2"/><rect x="84" y="511" width="408" height="7" rx="3" fill="#a7771c"/>
+<text x="84" y="553" font-size="18" fill="#173345">Landings</text>
+<text x="470" y="553" font-size="23" fill="#8b5b09" font-weight="700">2 / 3 · 1 needed</text>
+<rect x="84" y="567" width="612" height="7" rx="3" fill="#e7d7b2"/><rect x="84" y="567" width="408" height="7" rx="3" fill="#a7771c"/>
+<text x="84" y="604" font-size="13" fill="#8b5b09">One additional operating flight supplies both, under your assumption.</text>
+<text x="64" y="663" font-size="14" fill="#526879">Red = hours exceeded. Amber = recency shortfall.</text>
+<text x="64" y="688" font-size="14" fill="#526879">Counts are estimates from roster flights; planned counts stay projected.</text>
+<text x="40" y="752" font-size="13" fill="#526879">Illustrative design data · warnings also appear in compact / floating summaries</text>
+</g></svg>

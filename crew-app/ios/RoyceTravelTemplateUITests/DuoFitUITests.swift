@@ -1,4 +1,5 @@
 import XCTest
+import EventKit
 
 /// iPhone Duo fit — native XCUITest on the Duo's unfolded INNER screen.
 ///
@@ -20,6 +21,7 @@ final class DuoFitUITests: XCTestCase {
 
   override func setUpWithError() throws {
     continueAfterFailure = false
+    try seedFinalistOct14Calendar()
     // `xcodebuild test` reinstalls the app, wiping any `simctl defaults write`; pass
     // the roster API (where K1001's roster lives) through the argument domain,
     // which `NativeModules.SettingsManager` reads like any user default.
@@ -43,6 +45,54 @@ final class DuoFitUITests: XCTestCase {
       }
     }
     app.launch()
+  }
+
+  func testTicketPolishNavigation() throws {
+    let device = ProcessInfo.processInfo.environment["TICKET_DEVICE"] ?? "air"
+    let version = ProcessInfo.processInfo.environment["TICKET_VERSION"] ?? "2"
+    let dir = try XCTUnwrap(ProcessInfo.processInfo.environment["TICKET_SHOT_DIR"])
+    func capture(_ state: String) throws {
+      let name = "ticket-polish-\(device)-\(state)-Ver\(version).png"
+      try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: dir).appendingPathComponent(name))
+    }
+    let prCrew = ProcessInfo.processInfo.environment["TICKET_PR_CREW"] ?? "473006"
+    try signInAsPR(prCrew, usePrefilledPassword: true)
+    wait("qa-duty-swap").tap()
+    if el("swap-disclaimer").waitForExistence(timeout: 5) { tapDialogConfirm("swap-disclaimer") }
+    if el("app-dialog").exists { tapDialogConfirm("app-dialog") }
+    if el("twin-disclaimer").exists { tapDialogConfirm("twin-disclaimer") }
+    wait("approach-ticket").tap()
+    if el("app-dialog").waitForExistence(timeout: 5) { tapDialogConfirm("app-dialog") }
+    wait("ticket-give")
+    for stage in ["give", "want", "match", "send"] { XCTAssertTrue(el("ticket-stage-\(stage)").exists) }
+    XCTAssertFalse(el("ticket-next").isEnabled)
+    let duty = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ticket-give-' AND enabled == true")).firstMatch
+    XCTAssertTrue(duty.waitForExistence(timeout: 30), "No unlocked duty for PR; inspect portal/empty state")
+    let available = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ticket-give-' AND enabled == true")).allElementsBoundByIndex.filter { $0.isHittable }
+    XCTAssertGreaterThanOrEqual(available.count, 2)
+    available[0].tap()
+    available[1].tap()
+    XCTAssertTrue(text("2 selected").waitForExistence(timeout: 5))
+    XCTAssertTrue(el("ticket-give").exists)
+    try capture("give")
+    wait("ticket-next").tap()
+    XCTAssertTrue(el("ticket-selected-give").exists)
+    try capture("want")
+    wait("ticket-next").tap()
+    let match = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ticket-match-' AND enabled == true")).firstMatch
+    XCTAssertTrue(match.waitForExistence(timeout: 30), "No matching published duty; inspect portal response")
+    match.tap()
+    wait("ticket-matches")
+    try capture("match")
+    wait("ticket-next").tap()
+    wait("swap-ticket")
+    XCTAssertTrue(el("ticket-send").exists)
+    try capture("review")
+    wait("ticket-back").tap()
+    wait("ticket-matches")
+    wait("ticket-next").tap()
+    wait("swap-ticket")
+    // Read-only validation: do not submit a real swap request. TG skipped by Ryan.
   }
 
   // MARK: helpers
@@ -114,6 +164,100 @@ final class DuoFitUITests: XCTestCase {
       if now == value || (field.elementType == .secureTextField && now.count == value.count) { return }
     }
     XCTFail("could not type \(field.identifier): reads \((field.value as? String) ?? "")", file: file, line: line)
+  }
+
+  private func seedFinalistOct14Calendar() throws {
+    guard ProcessInfo.processInfo.environment["SEED_FINALIST_OCT14"] == "1" else { return }
+    let store = EKEventStore()
+    if #available(iOS 17.0, *) {
+      XCTAssertEqual(EKEventStore.authorizationStatus(for: .event), .fullAccess,
+        "grant Calendar access to the UI-test runner before seeding")
+    } else {
+      XCTAssertEqual(EKEventStore.authorizationStatus(for: .event), .authorized,
+        "grant Calendar access to the UI-test runner before seeding")
+    }
+    let zone = try XCTUnwrap(TimeZone(identifier: "Asia/Manila"))
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = zone
+    func date(_ day: Int, _ hour: Int, _ minute: Int) -> Date {
+      calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute))!
+    }
+    let windowStart = date(13, 0, 0)
+    let windowEnd = date(24, 0, 0)
+    let titles = ["RBC Credit Due", "EK371 · BKK → DXB", "Get Ready · PR740", "Leave Home · PR740",
+      "Check-in PR740 · MNL", "Get Ready · PR585", "Flair Weekly Meeting - Every Wed - 10:00/HGH",
+      "Leave Home · PR585", "Check-in PR585 · MNL", "PR585 · MNL → DAD", "PR586 · DAD → MNL",
+      "PR103 · LAX → MNL", "PR116 · MNL → YVR", "EK202 · JFK → DXB", "PR215 · MNL → POM",
+      "PR216 · POM → MNL", "Get Ready · PR507", "Leave Home · PR507", "Check-in PR507 · MNL",
+      "PR507 · MNL → SIN", "SIA-CPS Technical call", "PR508 · SIN → MNL", "PR117 · YVR → MNL",
+      "Weekly Sync (Ryan/Jen/Sameer)", "CPS - Weekly Status call", "Wake Up · PR684", "Leave Home · PR684",
+      "Check-in PR684 · MNL", "PR684 · MNL → DOH", "Wake Up · EK763", "Leave Home · EK763",
+      "Check-in EK763 · DXB", "EK763 · DXB → JNB", "Enhance CrewSE App/Portal planning meeting",
+      "Get Ready · PR685", "Leave Home · PR685", "Check-in PR685 · DOH", "PR685 · DOH → MNL",
+      "EK764 · JNB → DXB"]
+    for event in store.events(matching: store.predicateForEvents(withStart: windowStart, end: windowEnd, calendars: nil))
+      where titles.contains(event.title ?? "") {
+      try store.remove(event, span: .thisEvent, commit: false)
+    }
+    struct Fixture { let title: String; let start: Date; let end: Date; let allDay: Bool; let notes: String?; let url: String? }
+    let teamURL = "https://teams.microsoft.com/l/meetup-join/finalist-oct14"
+    var fixtures = [
+      Fixture(title: titles[0], start: date(14,0,0), end: date(15,0,0), allDay: true, notes: nil, url: nil),
+      Fixture(title: titles[1], start: date(13,22,35), end: date(14,4,35), allDay: false, notes: nil, url: nil),
+      Fixture(title: titles[2], start: date(14,1,35), end: date(14,1,50), allDay: false, notes: nil, url: "royce://flight/PR740-ready"),
+      Fixture(title: titles[3], start: date(14,2,35), end: date(14,2,50), allDay: false, notes: nil, url: "royce://flight/PR740-leave"),
+      Fixture(title: titles[4], start: date(14,3,35), end: date(14,3,50), allDay: false, notes: nil, url: "royce://flight/PR740-checkin"),
+      Fixture(title: titles[5], start: date(14,8,50), end: date(14,9,5), allDay: false, notes: nil, url: "royce://flight/PR585-ready"),
+      Fixture(title: titles[6], start: date(14,9,0), end: date(14,9,30), allDay: false, notes: "經過和團隊成員溝通，項目管理和溝通在這裡。\n\(teamURL)", url: teamURL),
+      Fixture(title: titles[7], start: date(14,9,50), end: date(14,10,5), allDay: false, notes: nil, url: "royce://flight/PR585-leave"),
+      Fixture(title: titles[8], start: date(14,10,50), end: date(14,11,5), allDay: false, notes: nil, url: "royce://flight/PR585-checkin"),
+      Fixture(title: titles[9], start: date(14,12,50), end: date(14,15,20), allDay: false, notes: nil, url: "royce://flight/PR585"),
+      Fixture(title: titles[10], start: date(14,16,30), end: date(14,19,20), allDay: false, notes: nil, url: "royce://flight/PR586"),
+    ]
+    fixtures += [
+      Fixture(title: titles[11], start: date(17,13,45), end: date(18,4,30), allDay: false, notes: "Get Ready 23:05 · Leave Home 00:05 · Check-in 01:05", url: "royce://flight/PR103"),
+      Fixture(title: titles[12], start: date(17,19,40), end: date(18,7,55), allDay: false, notes: "Wake Up 08:40 · Leave Home 09:40 · Check-in 10:40", url: "royce://flight/PR116"),
+      Fixture(title: titles[13], start: date(17,9,45), end: date(17,22,45), allDay: false, notes: "Wake Up 04:40 · Leave Home 05:40 · Check-in 06:40", url: "royce://flight/EK202"),
+      Fixture(title: titles[14], start: date(17,23,20), end: date(18,4,50), allDay: false, notes: "Get Ready 12:20 · Leave Home 13:20 · Check-in 14:20", url: "royce://flight/PR215"),
+      Fixture(title: titles[15], start: date(18,6,5), end: date(18,11,30), allDay: false, notes: "POM to MNL", url: "royce://flight/PR216"),
+      Fixture(title: titles[16], start: date(19,4,30), end: date(19,4,45), allDay: false, notes: nil, url: "royce://flight/PR507-ready"),
+      Fixture(title: titles[17], start: date(19,5,30), end: date(19,5,45), allDay: false, notes: nil, url: "royce://flight/PR507-leave"),
+      Fixture(title: titles[18], start: date(19,6,30), end: date(19,6,45), allDay: false, notes: nil, url: "royce://flight/PR507-checkin"),
+      Fixture(title: titles[19], start: date(19,8,30), end: date(19,12,15), allDay: false, notes: nil, url: "royce://flight/PR507"),
+      Fixture(title: titles[20], start: date(19,9,0), end: date(19,10,0), allDay: false, notes: "FYI SQ weekly tech call", url: teamURL),
+      Fixture(title: titles[21], start: date(19,13,30), end: date(19,17,30), allDay: false, notes: nil, url: "royce://flight/PR508"),
+      Fixture(title: titles[22], start: date(19,15,5), end: date(20,4,45), allDay: false, notes: nil, url: "royce://flight/PR117"),
+      Fixture(title: titles[23], start: date(20,0,30), end: date(20,1,0), allDay: false, notes: nil, url: teamURL),
+      Fixture(title: titles[24], start: date(20,13,0), end: date(20,14,0), allDay: false, notes: nil, url: teamURL),
+      Fixture(title: titles[25], start: date(20,14,0), end: date(20,14,15), allDay: false, notes: nil, url: "royce://flight/PR684-wake"),
+      Fixture(title: titles[26], start: date(20,15,0), end: date(20,15,15), allDay: false, notes: nil, url: "royce://flight/PR684-leave"),
+      Fixture(title: titles[27], start: date(20,16,0), end: date(20,16,15), allDay: false, notes: nil, url: "royce://flight/PR684-checkin"),
+      Fixture(title: titles[28], start: date(20,18,0), end: date(21,3,40), allDay: false, notes: nil, url: "royce://flight/PR684"),
+      Fixture(title: titles[29], start: date(21,7,15), end: date(21,7,30), allDay: false, notes: nil, url: "royce://flight/EK763-wake"),
+      Fixture(title: titles[30], start: date(21,8,15), end: date(21,8,30), allDay: false, notes: nil, url: "royce://flight/EK763-leave"),
+      Fixture(title: titles[31], start: date(21,9,15), end: date(21,9,30), allDay: false, notes: nil, url: "royce://flight/EK763-checkin"),
+      Fixture(title: titles[32], start: date(21,11,15), end: date(21,20,40), allDay: false, notes: nil, url: "royce://flight/EK763"),
+      Fixture(title: titles[33], start: date(22,14,0), end: date(22,15,30), allDay: false, notes: "เรียน คณะทำงานฯ", url: teamURL),
+      Fixture(title: titles[34], start: date(23,1,30), end: date(23,1,45), allDay: false, notes: nil, url: "royce://flight/PR685-ready"),
+      Fixture(title: titles[35], start: date(23,2,30), end: date(23,2,45), allDay: false, notes: nil, url: "royce://flight/PR685-leave"),
+      Fixture(title: titles[36], start: date(23,3,30), end: date(23,3,45), allDay: false, notes: nil, url: "royce://flight/PR685-checkin"),
+      Fixture(title: titles[37], start: date(23,5,30), end: date(23,15,35), allDay: false, notes: nil, url: "royce://flight/PR685"),
+      Fixture(title: titles[38], start: date(23,2,35), end: date(23,10,50), allDay: false, notes: nil, url: "royce://flight/EK764"),
+      Fixture(title: titles[24], start: date(23,13,0), end: date(23,14,0), allDay: false, notes: nil, url: teamURL),
+    ]
+    for fixture in fixtures {
+      let event = EKEvent(eventStore: store)
+      event.calendar = store.defaultCalendarForNewEvents
+      event.title = fixture.title
+      event.startDate = fixture.start
+      event.endDate = fixture.end
+      event.isAllDay = fixture.allDay
+      event.timeZone = zone
+      event.notes = fixture.notes
+      event.url = fixture.url.flatMap(URL.init(string:))
+      try store.save(event, span: .thisEvent, commit: false)
+    }
+    try store.commit()
   }
 
   /// Ends on Home signed in as K1001, whatever state the app was left in.
@@ -245,17 +389,26 @@ final class DuoFitUITests: XCTestCase {
     wait("home-explore")
     XCTAssertTrue(text("Quick actions").exists, "Landscape keeps Quick actions beside the trip")
     try capture("pr-home-landscape")
+    // Trip Details: the duty band and sector pass render on the iPad layout.
+    wait("home-next-trip").tap()
+    wait("page-trip-details")
+    XCTAssertTrue(wait("duty-band-0").exists)
+    XCTAssertTrue(wait("flight-pass-0").exists)
+    XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "TG[0-9]{2,4}")).count, 0,
+                   "TG sector leaked into the PR account")
+    try capture("pr-trip-timeline")
+    wait("page-back").tap()
     wait("tab-schedule").tap()
     wait("sched-view-rail")
     wait("sched-title")
     try capture("pr-schedule-landscape")
     wait("sched-view-calendar").tap()
-    wait("cal-wide")
-    wait("cal-timeline")
+    wait("cal-month-detail")
+    wait("cal-compact")
     try capture("pr-calendar-landscape")
     wait("sched-view-route").tap()
     wait("route-map")
-    wait("route-details")
+    wait("route-stats")
     try capture("pr-route-landscape")
     wait("tab-profile").tap()
     XCTAssertTrue(text("473006").waitForExistence(timeout: 10))
@@ -287,7 +440,12 @@ final class DuoFitUITests: XCTestCase {
     XCTAssertLessThan(portraitExplore.frame.height, 260)
     XCTAssertGreaterThan(portraitQuickActions.frame.minY, max(portraitTrip.frame.maxY, portraitExplore.frame.maxY))
     try capture("pr-home-portrait")
-    wait("dest-SYD").tap()
+    // The destination strip is data-driven per crew; any published tile opens
+    // the same Destination page (the old SYD-only tap assumed one roster).
+    let destTile = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier MATCHES %@", "dest-[A-Z]{3}")).firstMatch
+    XCTAssertTrue(destTile.waitForExistence(timeout: 20), "no destination tile on Home")
+    destTile.tap()
     wait("page-destination")
     try capture("pr-destination-portrait")
     wait("dest-trip-details").tap()
@@ -300,8 +458,8 @@ final class DuoFitUITests: XCTestCase {
     try capture("pr-profile-portrait")
     wait("tab-schedule").tap()
     wait("sched-view-calendar").tap()
-    wait("cal-wide")
-    wait("cal-timeline")
+    wait("cal-month-detail")
+    wait("cal-compact")
     XCTAssertGreaterThanOrEqual(wait("sched-view-rail").frame.minY, 24, "toolbar overlaps iPad status bar")
     try capture("pr-calendar-portrait")
     XCUIDevice.shared.orientation = .portraitUpsideDown
@@ -326,6 +484,25 @@ final class DuoFitUITests: XCTestCase {
     XCTAssertGreaterThanOrEqual(appFrame.width, 700)
     // Meal is shared by carriers; account isolation is asserted on Profile below.
     try capture("tg-home-landscape")
+    // Trip Details as TG: its own duty timeline, with no PR sector left over.
+    // TG's published roster is past, so Home has no next-trip card — use Schedule.
+    wait("tab-schedule").tap()
+    wait("sched-title")
+    let anyDuty = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier BEGINSWITH 'duty-TG'")).firstMatch
+    if !anyDuty.waitForExistence(timeout: 3) { wait("sched-prev-month").tap() }
+    for _ in 0..<10 where !anyDuty.exists { app.swipeUp() }
+    XCTAssertTrue(anyDuty.waitForExistence(timeout: 10), "no TG duty row in the schedule")
+    anyDuty.tap()
+    wait("page-trip-details")
+    XCTAssertTrue(wait("duty-band-0").exists)
+    XCTAssertTrue(wait("flight-pass-0").exists)
+    XCTAssertGreaterThan(app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "TG[0-9]{2,4}")).count, 0,
+                         "TG sector missing")
+    XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "PR[0-9]{2,4}")).count, 0,
+                   "PR sector leaked into the TG account")
+    try capture("tg-trip-timeline")
+    wait("page-back").tap()
     wait("tab-profile").tap()
     XCTAssertFalse(text("473006").exists, "PR identity leaked into TG")
     XCTAssertTrue(text(tgCrew).waitForExistence(timeout: 10))
@@ -364,13 +541,13 @@ final class DuoFitUITests: XCTestCase {
     XCTAssertTrue(el("sched-view-rail").exists, "roster views should sit in the right-side toolbar")
     wait("sched-view-route").tap()
     let map = wait("route-map")
-    let details = wait("route-details")
+    let details = wait("route-stats")
     XCTAssertLessThan(map.frame.maxX, details.frame.minX + 1, "map must be left of the details")
     XCTAssertEqual(map.frame.width, details.frame.width, accuracy: 40, "route map and details should split ~50/50")
     shot("04_route_map")
     wait("sched-view-calendar").tap()
     wait("cal-grid")
-    XCTAssertTrue(el("cal-wide").exists, "Calendar should be grid | day pane on the wide layout")
+    XCTAssertTrue(el("cal-month-detail").exists, "Calendar month grid missing on the wide layout")
     shot("05_calendar")
 
     // R'Bot: back chevron on the LEFT on the wide layout.
@@ -456,7 +633,7 @@ final class DuoFitUITests: XCTestCase {
     XCTAssertGreaterThan(rail.frame.minX, map.frame.maxX, "toolbar stays beside the map")
     sleep(1)
     shot("s02_route")
-    wait("sched-view-calendar").tap(); _ = wait("cal-wide"); sleep(1)
+    wait("sched-view-calendar").tap(); _ = wait("cal-month-detail"); sleep(1)
     shot("s03_calendar")
     wait("sched-view-timeline").tap(); _ = wait("sched-grid")
   }
@@ -478,30 +655,166 @@ final class DuoFitUITests: XCTestCase {
     XCTAssertTrue(saved.label.contains("MOML") || saved.label.contains("halal") || saved.label.contains("Muslim"), "saved row should name the meal: \(saved.label)")
     shot("m01_meal")
     wait("page-back").tap()
-    // Trip details: the ops grid under the first leg's times.
+    // Trip details: the duty band, then the sector pass matrix under it.
     wait("home-next-trip").tap()
     wait("page-trip-details")
-    let grid = el("flight-ops-grid-0")
-    // Trip details has no dock: scroll until the whole grid is on screen.
-    for _ in 0..<6 where !(grid.exists && grid.frame.maxY < appFrame.maxY - 20) { app.swipeUp() }
-    XCTAssertTrue(grid.exists, "ops grid missing on Trip details")
-    for id in ["ops-std-0", "ops-etd-0", "ops-boarding-0", "ops-door-0", "ops-gate-0", "ops-belt-0"] {
+    let band = wait("duty-band-0")
+    XCTAssertGreaterThan(band.frame.height, 60, "duty band should carry report + FDP/DP/BLOCK")
+    let pass = el("flight-pass-0")
+    XCTAssertTrue(pass.waitForExistence(timeout: 10), "sector pass missing on Trip details")
+    // Trip details has no dock: scroll until the whole pass is on screen.
+    for _ in 0..<6 where !(pass.frame.maxY < appFrame.maxY - 20) { app.swipeUp() }
+    for r in 0..<2 {
+      XCTAssertTrue(el("flight-ops-row-0-\(r)").exists, "pass ops row \(r) missing")
+    }
+    for id in ["ops-std-0", "ops-gate-0", "ops-belt-0"] {
       XCTAssertFalse(el(id).label.isEmpty, "\(id) has no value")
     }
-    // Six departure events fill two rows of three, without the former empty
-    // middle slots between STD and ETD.
-    let firstDeparture = ["ops-std-0", "ops-etd-0", "ops-boarding-0"].map { el($0) }
-    let secondDeparture = ["ops-door-0", "ops-offblock-0", "ops-atd-0"].map { el($0) }
-    for row in [firstDeparture, secondDeparture] {
-      XCTAssertLessThan(abs(row[2].frame.midY - row[0].frame.midY), 12, "departure events should share one row")
-      XCTAssertLessThan(row[0].frame.midX, row[1].frame.midX)
-      XCTAssertLessThan(row[1].frame.midX, row[2].frame.midX)
+    // Ops values sit inside the pass: two rows of four, each a single line.
+    for ids in [["ops-etd-0", "ops-atd-0", "ops-eta-0", "ops-ata-0"],
+                ["ops-boarding-0", "ops-door-0", "ops-offblock-0", "ops-block-0"]] {
+      let cells = ids.map { el($0) }
+      for cell in cells { XCTAssertFalse(cell.label.isEmpty, "ops cell has no value") }
+      for cell in cells[1...] {
+        XCTAssertLessThan(abs(cell.frame.midY - cells[0].frame.midY), 12, "ops values should share one row")
+      }
     }
-    // No duplicates: STD and the gate read only in the grid.
+    // No duplicates: STD and the gate read only in the pass.
     XCTAssertFalse(app.staticTexts["Arrival gate"].exists, "old gate row still shown")
-    // Per leg: each leg card shows STD once (a two-leg trip shows two cards).
-    XCTAssertEqual(grid.staticTexts.matching(NSPredicate(format: "label == 'STD'")).count, 1, "STD should read once on the leg card")
+    // Per leg: each pass shows STD once (a two-leg trip shows two passes).
+    XCTAssertEqual(pass.staticTexts.matching(NSPredicate(format: "label == 'STD'")).count, 1, "STD should read once on the pass")
     shot("m02_trip_ops")
+  }
+
+  /// The shared dock/rail hides Global for both airlines and keeps account identity isolated.
+  func testGlobalTabHiddenBothAirlines() throws {
+    let device = ProcessInfo.processInfo.environment["NAV_DEVICE"] ?? "air"
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["NAV_SHOT_DIR"])
+    func capture(_ airline: String) throws {
+      let name = "global-tab-hidden-\(device)-\(airline)-Ver1"
+      if device == "duo" { shot(name) }
+      else {
+        try XCUIScreen.main.screenshot().pngRepresentation.write(to:
+          URL(fileURLWithPath: directory).appendingPathComponent(name + ".png"))
+      }
+    }
+    func assertNavigation(crewId: String, carrier: String, previousCrewId: String?) throws {
+      wait("home-screen", 120)
+      XCTAssertFalse(el("tab-global").exists, "Global tab must stay hidden for \(carrier)")
+      for id in ["tab-home", "tab-schedule", "tab-profile"] {
+        XCTAssertTrue(el(id).exists, "\(id) missing for \(carrier)")
+      }
+      wait("tab-profile").tap()
+      wait("profile-screen")
+      XCTAssertTrue(text(crewId).waitForExistence(timeout: 10), "\(carrier) crew identity missing")
+      XCTAssertTrue(wait("profile-provider-chip").label.lowercased().contains(carrier.lowercased()))
+      if let previousCrewId { XCTAssertFalse(text(previousCrewId).exists, "previous crew identity leaked") }
+      XCTAssertFalse(el("tab-global").exists, "Global tab appeared on the \(carrier) profile")
+      try capture(carrier.lowercased())
+    }
+
+    try signInAsPR("433535", usePrefilledPassword: true)
+    try assertNavigation(crewId: "433535", carrier: "Philippine", previousCrewId: "35459")
+
+    wait("profile-logout").tap()
+    tapDialogConfirm("profile-dialog")
+    wait("login-screen", 60)
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    XCTAssertEqual(el("crew-id").value as? String, "35459")
+    XCTAssertFalse((el("crew-pw").value as? String ?? "").isEmpty, "password is empty")
+    wait("login-btn").tap()
+    let deadline = Date().addingTimeInterval(200)
+    let useRosterAfter = Date().addingTimeInterval(20)
+    while !el("home-screen").exists && Date() < deadline {
+      if el("portal-login-error").exists {
+        XCTAssertEqual(el("portal-login-identity").label, "35459", "submitted crew ID differs from requested ID")
+        XCTFail("portal rejected the TG login; stop and inspect the response")
+        return
+      }
+      let useRoster = el("use-captured-roster")
+      if Date() > useRosterAfter && useRoster.exists && useRoster.isEnabled && useRoster.isHittable {
+        useRoster.tap()
+      }
+      Thread.sleep(forTimeInterval: 0.5)
+    }
+    try assertNavigation(crewId: "35459", carrier: "Thai", previousCrewId: "433535")
+  }
+
+  /// Trip Details duty timeline on the unfolded Duo, PR then TG on the same phone:
+  /// each carrier renders its own sectors and duty band, with no PR/TG mixing.
+  func testDuoTripTimelineBothAirlines() throws {
+    let tag = layoutClass == .wide ? "wide" : "tall"
+    func sector(_ pattern: String) -> XCUIElementQuery {
+      app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", pattern))
+    }
+    func openTimeline(_ name: String) {
+      wait("home-next-trip").tap()
+      wait("page-trip-details")
+      XCTAssertTrue(el("duty-band-0").waitForExistence(timeout: 10), "duty band missing on Trip details")
+      XCTAssertTrue(el("flight-pass-0").waitForExistence(timeout: 10), "sector pass missing on Trip details")
+      XCTAssertTrue(text("FDP").waitForExistence(timeout: 5), "duty totals missing")
+      shot(name)
+    }
+
+    // PR first: its own MNL sectors only, with Global hidden from navigation.
+    try signInAsPR("433535", usePrefilledPassword: true)
+    XCTAssertFalse(el("tab-global").exists, "Global tab must stay hidden for PR")
+    XCTAssertTrue(el("tab-home").exists && el("tab-schedule").exists && el("tab-profile").exists)
+    openTimeline("tt_\(tag)_pr")
+    XCTAssertGreaterThan(sector("PR[0-9]{2,4}").count, 0, "PR sector missing")
+    XCTAssertEqual(sector("TG[0-9]{2,4}").count, 0, "TG sector leaked into the PR account")
+    wait("page-back").tap()
+
+    // Switch to TG through the real Profile flow (portal roster import included).
+    wait("tab-profile").tap()
+    let add = el("profile-add-airline")
+    if add.exists { add.tap() } else { wait("profile-logout").tap() }
+    tapDialogConfirm("profile-dialog")
+    wait("login-screen", 60)
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    XCTAssertEqual(el("crew-id").value as? String, "35459")
+    XCTAssertFalse((el("crew-pw").value as? String ?? "").isEmpty, "password is empty")
+    wait("login-btn").tap()
+    let deadline = Date().addingTimeInterval(200)
+    let useRosterAfter = Date().addingTimeInterval(20)
+    while !el("home-screen").exists && Date() < deadline {
+      if el("portal-login-error").exists {
+        XCTAssertEqual(el("portal-login-identity").label, "35459", "submitted crew ID differs from requested ID")
+        XCTFail("portal rejected the TG login; stop and inspect the response")
+        return
+      }
+      let useRoster = el("use-captured-roster")
+      if Date() > useRosterAfter && useRoster.exists && useRoster.isEnabled && useRoster.isHittable {
+        useRoster.tap()
+      }
+      Thread.sleep(forTimeInterval: 0.5)
+    }
+    wait("home-screen", 120)
+    XCTAssertFalse(el("tab-global").exists, "Global tab must stay hidden after switching to TG")
+    XCTAssertTrue(el("tab-home").exists && el("tab-schedule").exists && el("tab-profile").exists)
+
+    // TG's published roster is already past, so Home has no "next trip" card:
+    // open Trip Details from the Schedule tab, the real entry point for it.
+    wait("tab-schedule").tap()
+    wait("sched-title")
+    let anyDuty = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier BEGINSWITH 'duty-TG'")).firstMatch
+    if !anyDuty.waitForExistence(timeout: 3) { wait("sched-prev-month").tap() }
+    for _ in 0..<10 where !anyDuty.exists { app.swipeUp() }
+    XCTAssertTrue(anyDuty.waitForExistence(timeout: 10), "no TG duty row in the schedule")
+    anyDuty.tap()
+    wait("page-trip-details")
+    XCTAssertTrue(el("duty-band-0").waitForExistence(timeout: 10), "duty band missing on Trip details")
+    XCTAssertTrue(el("flight-pass-0").waitForExistence(timeout: 10), "sector pass missing on Trip details")
+    XCTAssertTrue(text("FDP").waitForExistence(timeout: 5), "duty totals missing")
+    shot("tt_\(tag)_tg")
+    XCTAssertGreaterThan(sector("TG[0-9]{2,4}").count, 0, "TG sector missing")
+    XCTAssertEqual(sector("PR[0-9]{2,4}").count, 0, "PR sector leaked into the TG account")
+    wait("page-back").tap()
   }
 
   /// Duty Swap ▸ Search pairing: the ✕ left of the star closes the filters back to
@@ -724,6 +1037,98 @@ final class DuoFitUITests: XCTestCase {
   /// (side pane on `wide`, bottom half on `tall`). Step 1 is answered on the phone;
   /// step 2 is a free-form request only the ai-server's swap tools answer
   /// (cr.rois.one/ai/crew/chat, screen "duty_swap").
+  func testMatrixPinchHeightPR473006() throws {
+    try signInAsPR("473006", usePrefilledPassword: true)
+    wait("qa-duty-swap", 30).tap()
+    if el("swap-disclaimer").waitForExistence(timeout: 5) { tapDialogConfirm("swap-disclaimer") }
+    wait("search-submit", 60).tap()
+    let matrix = wait("crew-matrix-zoom", 90)
+    let duty = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'duty-473006-PR'")).firstMatch
+    XCTAssertTrue(duty.waitForExistence(timeout: 30))
+    let before = duty.frame.height
+    matrix.pinch(withScale: 2.5, velocity: 1)
+    XCTAssertGreaterThan(duty.frame.height, before + 10, "pinch must grow the duty with its date rows")
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["IPAD_SHOT_DIR"])
+    let version = ProcessInfo.processInfo.environment["IPAD_SHOT_VERSION"] ?? "1"
+    try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: directory).appendingPathComponent("matrix-pinch-expanded-Ver\(version).png"))
+    let expanded = duty.frame.height
+    matrix.pinch(withScale: 0.4, velocity: -1)
+    XCTAssertLessThan(duty.frame.height, expanded - 10)
+    for _ in 0..<3 { matrix.pinch(withScale: 0.3, velocity: -1) }
+    XCTAssertLessThanOrEqual(duty.frame.height, before + 5)
+  }
+
+  /// Matrix uses a vertical time axis, so the selected Mine duty's start/end
+  /// guides run horizontally through the candidate columns and follow pinch.
+  func testMatrixSelectionGuidesAndAccountIsolation() throws {
+    let device = ProcessInfo.processInfo.environment["MATRIX_GUIDE_DEVICE"] ?? "air"
+    let version = ProcessInfo.processInfo.environment["MATRIX_GUIDE_VERSION"] ?? "1"
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["MATRIX_GUIDE_SHOT_DIR"])
+    func capture(_ state: String) throws {
+      let name = "matrix-selection-guides-\(device)-\(state)-Ver\(version).png"
+      try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: directory).appendingPathComponent(name))
+    }
+    func guides() -> XCUIElementQuery {
+      app.descendants(matching: .any).matching(NSPredicate(format:
+        "identifier == 'matrix-guide-start' OR identifier == 'matrix-guide-end'"))
+    }
+
+    if device == "ipad" {
+      XCUIDevice.shared.orientation = .landscapeLeft
+      let landscape = expectation(for: NSPredicate { _, _ in self.appFrame.width > self.appFrame.height }, evaluatedWith: app)
+      wait(for: [landscape], timeout: 10)
+    }
+    try signInAsPR("473006", usePrefilledPassword: true)
+    wait("qa-duty-swap", 30).tap()
+    if el("swap-disclaimer").waitForExistence(timeout: 5) { tapDialogConfirm("swap-disclaimer") }
+    if el("app-dialog").exists && text("Before you swap").exists { tapDialogConfirm("app-dialog") }
+    wait("approach-matrix").tap()
+    if el("search-submit").waitForExistence(timeout: 8) { el("search-submit").tap() }
+    let matrix = wait("crew-matrix-zoom", 90)
+    XCTAssertEqual(guides().count, 0)
+    let duty = app.descendants(matching: .any).matching(NSPredicate(format:
+      "identifier BEGINSWITH 'duty-473006-' AND enabled == true")).allElementsBoundByIndex.first { $0.isHittable }
+    let selected = try XCTUnwrap(duty, "No visible published Mine duty for PR473006")
+    selected.tap()
+    let appeared = expectation(for: NSPredicate { _, _ in guides().count == 2 }, evaluatedWith: app)
+    wait(for: [appeared], timeout: 10)
+    XCTAssertEqual(el("matrix-guide-start").frame.midY, selected.frame.minY, accuracy: 3)
+    XCTAssertEqual(el("matrix-guide-end").frame.midY, selected.frame.maxY, accuracy: 3)
+    XCTAssertGreaterThan(el("matrix-guide-start").frame.maxX, matrix.frame.midX,
+      "Start/end guides must reach the candidate area")
+    try capture("selected")
+
+    matrix.pinch(withScale: 1.6, velocity: 1)
+    let followed = expectation(for: NSPredicate { _, _ in
+      abs(self.el("matrix-guide-start").frame.midY - selected.frame.minY) <= 3 &&
+      abs(self.el("matrix-guide-end").frame.midY - selected.frame.maxY) <= 3
+    }, evaluatedWith: app)
+    wait(for: [followed], timeout: 10)
+    try capture("pinch-expanded")
+    wait("swap-clear").tap()
+    let cleared = expectation(for: NSPredicate { _, _ in guides().count == 0 }, evaluatedWith: app)
+    wait(for: [cleared], timeout: 10)
+    try capture("cleared")
+
+    wait("page-back").tap()
+    wait("tab-profile").tap()
+    let add = el("profile-add-airline")
+    if add.exists { add.tap() } else { wait("profile-logout").tap() }
+    tapDialogConfirm("profile-dialog")
+    wait("login-screen", 60)
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    XCTAssertEqual(el("crew-id").value as? String, "35459")
+    wait("login-btn").tap()
+    wait("home-screen", 30)
+    wait("qa-duty-swap").tap()
+    wait("page-swap")
+    XCTAssertEqual(guides().count, 0)
+    XCTAssertFalse(text("473006").exists, "PR selection leaked into the TG account")
+    try capture("tg-isolation")
+  }
+
   func testDuoDutySwapPR392923() throws {
     try signInAsPR("392923")
     let frame = appFrame
@@ -1031,6 +1436,11 @@ final class DuoFitUITests: XCTestCase {
     }
 
     func capture(_ crew: String, _ view: String) throws {
+      // Debug builds can surface React Native's transient Metro connectivity
+      // toast even after the embedded bundle has loaded. Keep visual receipts
+      // focused on product UI.
+      let dismiss = app.buttons["Dismiss"]
+      if dismiss.exists && dismiss.isHittable { dismiss.tap() }
       let name = "calendar-month-detail-\(device)-\(crew)-\(view)-Ver\(version)"
       if device == "duo" {
         shot(name)
@@ -1045,8 +1455,8 @@ final class DuoFitUITests: XCTestCase {
       wait("tab-schedule").tap()
       wait("sched-title")
       pickView("sched-view-calendar")
-      wait("cal-mode-stacked")
-      wait("cal-grid")
+      wait("cal-mode-toggle")
+      wait("cal-month-detail")
     }
 
     func assertWeekdayGeometry() {
@@ -1079,26 +1489,29 @@ final class DuoFitUITests: XCTestCase {
         XCTAssertTrue(wait("sched-title").label.contains("Sep 2026"))
       }
 
-      // Start in the stacked month view and select a real flying day from the
-      // imported roster, rather than relying on a date that can age out.
-      wait("cal-mode-stacked").tap()
-      wait("cal-grid")
+      // Full month detail is the default, including dim adjacent-month dates.
       assertWeekdayGeometry()
-      try capture(crew, "stacked-month")
-
-      wait("cal-mode-month-detail").tap()
-      wait("cal-month-detail")
-      assertWeekdayGeometry()
+      try capture(crew, "month-detail-default")
+      if ProcessInfo.processInfo.environment["CALENDAR_VALIDATE_ROTATIONS"] == "1" {
+        XCUIDevice.shared.orientation = .landscapeLeft
+        _ = wait("cal-month-detail")
+        assertWeekdayGeometry()
+        try capture(crew, "month-detail-landscape")
+        XCUIDevice.shared.orientation = .portrait
+        _ = wait("cal-month-detail")
+        assertWeekdayGeometry()
+      }
       XCTAssertFalse(el("cal-day-pane").exists, "month detail must not have a right-side day pane")
       XCTAssertFalse(el("cal-agenda-head").exists, "month-detail mode should not show the agenda")
-      XCTAssertGreaterThan(wait("cal-month-detail").frame.width, appFrame.width * 0.75,
+      XCTAssertGreaterThan(wait("cal-month-detail").frame.width, appFrame.width * 0.70,
         "month detail should use the screen width")
       try capture(crew, "month-detail-grid")
 
-      let flightDay = app.descendants(matching: .any)
-        .matching(NSPredicate(format: "identifier MATCHES 'cal-day-[0-9]+' AND label CONTAINS ', flight duty'"))
-        .firstMatch
-      XCTAssertTrue(flightDay.waitForExistence(timeout: 30), "\(crew) has no populated flight date in this month")
+      // Finalist comparison fixture: Wed 14 Oct contains the same shared
+      // Calendar meeting plus PR740 and PR741 in both apps.
+      let flightDay = wait("cal-day-14")
+      XCTAssertTrue(flightDay.label.contains("PR740"), "14 Oct is missing PR740")
+      XCTAssertTrue(flightDay.label.contains("PR741"), "14 Oct is missing PR741")
       let dayID = flightDay.identifier
       let day = String(dayID.dropFirst("cal-day-".count))
       if !flightDay.isHittable {
@@ -1119,40 +1532,103 @@ final class DuoFitUITests: XCTestCase {
       let flightCode = String(dateLabel[flightRange])
 
       flightDay.tap()
-      let detailID = "cal-detail"
-      let detail = wait(detailID)
+      XCTAssertTrue(wait(dayID).isSelected, "tapping a date should select it in the month")
+      XCTAssertFalse(el("cal-agenda-head").exists, "rich month should keep all space for the calendar")
+
+      // First upward swipe compresses event cards to lines and reveals day details.
+      wait("cal-month-detail").swipeUp()
+      wait("cal-grid")
       let agendaHead = wait("cal-agenda-head")
       XCTAssertTrue(agendaHead.label.contains("\(day) "), "selected agenda date mismatch: \(agendaHead.label)")
-      let agendaFlight = detail.descendants(matching: .any)
+      let agendaFlight = app.descendants(matching: .any)
         .matching(NSPredicate(format: "label CONTAINS %@", flightCode))
         .firstMatch
       XCTAssertTrue(agendaFlight.waitForExistence(timeout: 10), "\(crew) selected day details are missing \(flightCode)")
+      for value in ["RBC Credit Due", "EK371", "Get Ready · PR740", "Leave Home · PR740",
+                    "Check-in PR740", "PR740 · MNL → BKK", "Get Ready · PR585",
+                    "Flair Weekly Meeting", "Leave Home · PR585", "PR741 · BKK → MNL",
+                    "Check-in PR585", "PR585 · MNL → DAD", "PR586 · DAD → MNL",
+                    "05:35", "08:55", "10:20", "14:00", "12:50", "15:20", "16:30", "19:20"] {
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", value)).firstMatch.exists,
+          "14 Oct is missing Finalist value \(value)")
+      }
+      let agendaFlights = app.descendants(matching: .any)
+        .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-row-flight-'"))
+      let calendarRows = app.descendants(matching: .any)
+        .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-meeting-' AND identifier != 'cal-meeting-join' AND identifier != 'cal-meeting-alarm'"))
+      XCTAssertEqual(agendaFlights.count + calendarRows.count, 13,
+        "14 Oct must match Finalist's 13 visible events without duplicate roster legs")
+      let pr740Title = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'PR740' AND label CONTAINS 'MNL' AND label CONTAINS 'BKK'")).firstMatch
+      let pr741Title = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'PR741' AND label CONTAINS 'BKK' AND label CONTAINS 'MNL'")).firstMatch
+      XCTAssertLessThan(pr740Title.frame.minY, pr741Title.frame.minY,
+        "PR740/PR741 chronological order differs from Finalist")
+      XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS '經過和團隊成員溝通'")).firstMatch.exists,
+        "Finalist meeting note is missing")
+      XCTAssertTrue(el("cal-meeting-join").exists, "Teams meeting needs a visible Join action")
+      let dailyPlanner = wait("cal-daily-planner")
+      let dayRail = wait("cal-day-rail")
+      let railSpans = app.descendants(matching: .any)
+        .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-rail-flight-'"))
+      XCTAssertLessThanOrEqual(railSpans.count, 2, "dedup must not leave duplicate roster flight spans")
+      let meetingSpans = app.descendants(matching: .any)
+        .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-rail-meet-'"))
+      XCTAssertEqual(railSpans.count + meetingSpans.count, 12,
+        "14 Oct must have one rail span per timed event; all-day RBC has no span")
+      let allRailSpans = (0..<railSpans.count).map { railSpans.element(boundBy: $0) }
+        + (0..<meetingSpans.count).map { meetingSpans.element(boundBy: $0) }
+      let allFrames = allRailSpans.map(\.frame)
+      XCTAssertTrue(allFrames.allSatisfy { $0.width >= 4 && $0.height >= 3 },
+        "every rail span must have visible geometry")
+      let baselineX = dayRail.frame.minX + 7.5
+      for frame in allFrames {
+        XCTAssertEqual(frame.midX, baselineX, accuracy: 1, "all event spans share the rail center")
+      }
+      XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'cal-rail-overlap-'")).firstMatch.exists,
+        "overlapping portions must be visibly shaded")
+      let continuations = app.descendants(matching: .any)
+        .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-rail-continuation-'"))
+      XCTAssertGreaterThanOrEqual(continuations.count, 1, "overnight EK371 needs a rail continuation marker")
+      XCTAssertGreaterThan(dayRail.frame.height, 80,
+        "fixed rail should fit the remaining daily viewport")
+      XCTAssertLessThan(dayRail.frame.width, dailyPlanner.frame.width * 0.2,
+        "24-hour rail should remain a narrow scale beside daily activity")
+      XCTAssertGreaterThan(dayRail.frame.minX, dailyPlanner.frame.midX,
+        "24-hour rail must stay on the right of the selected-day activity list")
       try capture(crew, "selected-day")
 
-      wait("cal-toggle-hours").tap()
-      let timeline = wait("cal-timeline")
-      XCTAssertTrue(text("Day details").waitForExistence(timeout: 10), "hours mode toggle did not change to Day details")
-      let timelineFlight = timeline.descendants(matching: .any)
-        .matching(NSPredicate(format: "label CONTAINS %@", flightCode))
-        .firstMatch
-      XCTAssertTrue(timelineFlight.waitForExistence(timeout: 10), "hours mode is missing \(flightCode)")
-      try capture(crew, "selected-day-hours")
-      wait("cal-toggle-hours").tap()
-      XCTAssertTrue(text("Hourly timeline").waitForExistence(timeout: 10), "day-details mode did not restore")
+      // Events and rail now scroll together; the rail retains its height.
+      let railHeight = dayRail.frame.height
+      wait("cal-daily-scroll").swipeUp()
+      XCTAssertEqual(wait("cal-day-rail").frame.height, railHeight, accuracy: 1)
+      try capture(crew, "selected-day-scrolled")
+      wait("cal-daily-scroll").swipeDown()
+
+      // Second upward swipe selects one week and gives the agenda more room.
+      wait("cal-grid").swipeUp()
+      wait("cal-week-grid")
+      XCTAssertTrue(wait(dayID).exists, "selected date must remain in week mode")
+      try capture(crew, "selected-week")
+
+      // Downward gestures reverse the exact same ladder.
+      wait("cal-week-grid").swipeDown()
+      wait("cal-grid")
+      wait("cal-grid").swipeDown()
+      wait("cal-month-detail")
+      XCTAssertTrue(wait(dayID).isSelected, "expanding the month lost the selected day")
+      XCTAssertFalse(el("cal-agenda-head").exists, "expanded month should hide the agenda")
+      try capture(crew, "returned-month-detail")
+
+      // Hourly details remain an explicit action after selecting a date.
+      wait("cal-mode-toggle").tap()
+      wait("cal-to-detail").tap()
+      let detail = wait("cal-detail")
       let restoredFlight = detail.descendants(matching: .any)
         .matching(NSPredicate(format: "label CONTAINS %@", flightCode))
         .firstMatch
-      XCTAssertTrue(restoredFlight.waitForExistence(timeout: 10), "day details did not restore \(flightCode)")
-
-      // Every screen returns to the full-width month and keeps its selection.
-      do {
-        wait("cal-to-compact").tap()
-        wait("cal-month-detail")
-        XCTAssertFalse(el("cal-grid").exists, "month-detail mode fell back to stacked")
-        XCTAssertFalse(el("cal-agenda-head").exists, "month-detail mode should not show the agenda")
-        XCTAssertTrue(wait(dayID).isSelected, "returning to month detail lost the selected day")
-        try capture(crew, "returned-month-detail")
-      }
+      XCTAssertTrue(restoredFlight.waitForExistence(timeout: 10), "day details did not contain \(flightCode)")
+      try capture(crew, "selected-day-hours")
+      wait("cal-to-compact").tap()
+      wait("cal-grid")
 
       // The month stepper must move forward and back.
       let originalMonth = wait("sched-title").label
@@ -1172,6 +1648,8 @@ final class DuoFitUITests: XCTestCase {
       signOut()
     }
 
+    if ProcessInfo.processInfo.environment["CALENDAR_SKIP_TG"] == "1" { return }
+
     wait("airline-dropdown").tap()
     replaceText(wait("airline-search"), with: "Thai")
     wait("airline-TG").tap()
@@ -1184,6 +1662,123 @@ final class DuoFitUITests: XCTestCase {
     XCTAssertTrue(text("35459").waitForExistence(timeout: 10), "TG identity missing after account switch")
     XCTAssertTrue(wait("profile-provider-chip").label.lowercased().contains("thai"))
     for id in crews { XCTAssertFalse(text(id).exists, "PR identity \(id) leaked into TG") }
+  }
+
+  /// Visual-contract capture for the real Finalist comparison week. The host
+  /// comparator checks these seven date-matched images against iphone-use
+  /// receipts; element-presence assertions alone are not pixel-parity proof.
+  func testFinalistOct17To23PixelParity() throws {
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["FINALIST_COMPARE_SHOT_DIR"])
+    let version = ProcessInfo.processInfo.environment["FINALIST_COMPARE_VERSION"] ?? "1"
+
+    XCUIDevice.shared.orientation = .portrait
+    try signInAsPR("473006", usePrefilledPassword: true)
+    wait("tab-schedule").tap()
+    wait("sched-title")
+    pickView("sched-view-calendar")
+    wait("cal-month-detail")
+
+    var missingPlannerDays: [Int] = []
+    for day in 17...23 {
+      let cell = wait("cal-day-\(day)")
+      if !cell.isHittable {
+        wait("cal-compact").swipeUp()
+      }
+      wait("cal-day-\(day)").tap()
+      XCTAssertTrue(wait("cal-day-\(day)").isSelected)
+      wait("cal-to-detail").tap()
+      wait("cal-detail")
+      XCTAssertTrue(wait("cal-agenda-head").label.contains(" \(day) OCT"))
+      let file = URL(fileURLWithPath: directory)
+        .appendingPathComponent("crew-finalist-oct\(day)-air-Ver\(version).png")
+      try XCUIScreen.main.screenshot().pngRepresentation.write(to: file)
+      if !el("cal-daily-planner").exists || !el("cal-day-rail").exists {
+        missingPlannerDays.append(day)
+      }
+      wait("cal-to-compact").tap()
+      wait("cal-month-detail")
+    }
+    XCTAssertTrue(missingPlannerDays.isEmpty,
+      "Finalist comparison dates without a daily planner/rail: \(missingPlannerDays)")
+  }
+
+  /// Credential-free smoke test for the three calendar gesture levels.
+  func testCalendarGestureGuest() throws {
+    if el("login-screen").waitForExistence(timeout: 20) {
+      let guest = el("guest-login")
+      XCTAssertTrue(guest.waitForExistence(timeout: 10))
+      guest.tap()
+    }
+    wait("home-screen", 60)
+    wait("tab-schedule").tap()
+    wait("sched-title", 30)
+    pickView("sched-view-calendar")
+    shot("duo-schedule-header-v223")
+
+    let full = wait("cal-month-detail")
+    XCTAssertFalse(el("cal-agenda-head").exists)
+    XCTAssertTrue(app.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-adjacent-'")).firstMatch.exists,
+      "full month must include adjacent-month dates")
+
+    let publishedPreviewCount = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-preview-'" )).count
+    let populatedDay = wait("cal-day-18")
+    let normalPreviewCount = populatedDay.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-preview-'" )).count
+    let day = wait("cal-day-17")
+    let normalHeight = day.frame.height
+    full.pinch(withScale: 0.75, velocity: -1)
+    XCTAssertLessThan(day.frame.height, normalHeight - 4,
+      "pinch in must reduce date-cell height")
+    let collapsedHeight = day.frame.height
+    shot("duo-calendar-density-collapsed-v223")
+    wait("cal-month-detail").pinch(withScale: 1.5, velocity: 1)
+    XCTAssertGreaterThan(day.frame.height, collapsedHeight + 4,
+      "pinch out must increase date-cell height to reveal more duty information")
+    XCTAssertGreaterThanOrEqual(populatedDay.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-preview-'" )).count, normalPreviewCount,
+      "expanded density must reveal at least the normal number of duty previews")
+    XCTAssertTrue(el("cal-month-detail").exists, "pinch must preserve the calendar layout level")
+    shot("duo-calendar-density-expanded-v223")
+
+    wait("cal-month-detail").swipeUp()
+    wait("cal-grid")
+    let selected = (1...31)
+      .map { el("cal-day-\($0)") }
+      .first { $0.exists && $0.isSelected }
+    XCTAssertNotNil(selected, "Month + day must expose its selected date")
+    selected?.tap()
+    let monthAgenda = wait("cal-agenda-head")
+    XCTAssertTrue(monthAgenda.label.hasPrefix("MONTH · "))
+    let publishedCount = Int(monthAgenda.label
+      .components(separatedBy: "·").last?
+      .trimmingCharacters(in: .whitespaces)
+      .components(separatedBy: " ").first ?? "0") ?? 0
+    XCTAssertGreaterThanOrEqual(publishedCount, publishedPreviewCount,
+      "deselected Month + day must include every duty preview shown in the month")
+    shot("duo-calendar-month-day-all-duties-v223")
+    wait("cal-grid").swipeUp()
+    wait("cal-week-grid")
+    XCTAssertEqual(app.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier BEGINSWITH 'cal-grid-week-'")).count, 1)
+
+    wait("cal-week-grid").swipeDown()
+    wait("cal-grid")
+    wait("cal-grid").swipeDown()
+    wait("cal-month-detail")
+    XCTAssertFalse(el("cal-agenda-head").exists)
+
+    wait("tab-home").tap()
+    wait("home-screen")
+    wait("qa-duty-swap", 10).tap()
+    XCTAssertTrue(el("page-swap").waitForExistence(timeout: 20) || el("duty-swap-host").exists)
+    shot("duo-duty-swap-pageshell-v223")
+
+    if let directory = ProcessInfo.processInfo.environment["IPAD_SHOT_DIR"] {
+      try XCUIScreen.main.screenshot().pngRepresentation.write(to:
+        URL(fileURLWithPath: directory).appendingPathComponent("calendar-gesture-guest-returned-Ver1.png"))
+    }
   }
 
   // MARK: full tour — every screen on the inner display, for layout review
@@ -1235,16 +1830,15 @@ final class DuoFitUITests: XCTestCase {
     sleep(2)
     shot("t11_schedule_timeline")
     expectLayout("sched-view-rail", on: .wide)
-    pickView("sched-view-calendar"); _ = wait("cal-grid"); sleep(1)
+    pickView("sched-view-calendar"); _ = wait("cal-month-detail"); sleep(1)
     shot("t12_schedule_calendar")
-    expectLayout("cal-wide", on: .wide)
+    XCTAssertTrue(el("cal-month-detail").exists, "month detail should use the full calendar width")
     pickView("sched-view-route"); _ = wait("route-map"); sleep(1)
     shot("t13_schedule_route")
     expectLayout("route-grid", on: .tall)
     pickView("sched-view-timeline")
 
-    wait("tab-global").tap()
-    if el("global-screen").waitForExistence(timeout: 10) { shot("t14_global") }
+    XCTAssertFalse(el("tab-global").exists, "Global tab must stay hidden")
 
     wait("tab-profile").tap()
     _ = wait("profile-logout")
@@ -1268,6 +1862,609 @@ final class DuoFitUITests: XCTestCase {
     }
   }
   // MARK: Market — Duty Swap design Concept A "Swap Board" (PR cabin crew 487424)
+
+  /// Concept B: real portal reads only. Run Air, then Duo, with just one sim booted.
+  func testTwinRailHorizontalZoomAndAccountIsolation() throws {
+    let device = ProcessInfo.processInfo.environment["TWIN_DEVICE"] ?? "air"
+    let version = ProcessInfo.processInfo.environment["TWIN_VERSION"] ?? "1"
+    let prCrew = ProcessInfo.processInfo.environment["TWIN_PR_CREW"] ?? "433535"
+    func capture(_ state: String) throws {
+      let name = "duty-swap-twin-\(device)-\(state)-Ver\(version)"
+      if device == "duo" { shot(name) }
+      else {
+        let dir = try XCTUnwrap(ProcessInfo.processInfo.environment["TWIN_SHOT_DIR"])
+        try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: dir).appendingPathComponent(name + ".png"))
+      }
+    }
+    try signInAsPR(prCrew, usePrefilledPassword: true)
+    wait("qa-duty-swap", 30).tap()
+    if el("swap-disclaimer").waitForExistence(timeout: 8) { tapDialogConfirm("swap-disclaimer") }
+    // The remembered concept may be Ticket or Twin Rail, each with its own dialog.
+    if el("app-dialog").exists && text("Before you swap").exists { tapDialogConfirm("app-dialog") }
+    if el("twin-disclaimer").exists { tapDialogConfirm("twin-disclaimer") }
+    if !el("approach-twin").isHittable { el("swap-approach-header").swipeLeft() }
+    wait("approach-twin").tap()
+    if el("twin-disclaimer").waitForExistence(timeout: 8) { tapDialogConfirm("twin-disclaimer") }
+    let loaded = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'twin-search' OR identifier == 'twin-error'")).firstMatch
+    XCTAssertTrue(loaded.waitForExistence(timeout: 100))
+    try capture("initial-search")
+    XCTAssertFalse(el("twin-error").exists, "Portal could not supply duties; inspect screenshot before retrying")
+    XCTAssertTrue(text(prCrew).exists)
+    // Start with a real crew filter, not the unfiltered first candidate.
+    let targetCrew = ProcessInfo.processInfo.environment["TWIN_TARGET_CREW"] ?? "345945"
+    wait("twin-search")
+    if el("twin-section-Crew").exists { el("twin-section-Crew").tap() }
+    let searchScroll = el("twin-search").descendants(matching: .scrollView).firstMatch
+    let crewFilter = wait("twin-search-crewIdList")
+    for _ in 0..<4 where !crewFilter.isHittable { searchScroll.swipeUp() }
+    crewFilter.tap()
+    let choice = wait("twin-choice-crewIdList-\(targetCrew)", 30)
+    for _ in 0..<8 where !choice.isHittable { searchScroll.swipeUp() }
+    choice.tap()
+    try capture("crew-filter")
+    wait("twin-search-submit").tap()
+    wait("twin-me-rail")
+    wait("twin-crew-\(targetCrew)")
+    XCTAssertTrue(text("1 crew ·").exists, "the chosen crew filter must narrow candidates")
+    XCTAssertTrue(text(prCrew).exists)
+    wait("twin-zoom-3").tap()
+    XCTAssertTrue(el("twin-zoom-3").isSelected)
+    let before = wait("twin-window").label
+    wait("twin-later").tap()
+    XCTAssertNotEqual(wait("twin-window").label, before)
+    wait("twin-zoom-7").tap()
+    let rail = wait("twin-rails")
+    let puck = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "twin-duty-\(prCrew):")).firstMatch
+    let puckHeight = puck.frame.height
+    rail.pinch(withScale: 2.5, velocity: 1)
+    XCTAssertTrue(el("twin-zoom-3").isSelected, "pinch apart must zoom the horizontal time scale in")
+    XCTAssertEqual(puck.frame.height, puckHeight, accuracy: 1, "horizontal zoom must preserve puck height")
+    try capture("pinch-in")
+    rail.pinch(withScale: 0.25, velocity: -1)
+    try capture("pinch-out-first")
+    // UIKit may clamp a large pinch to the touchable viewport. A second gesture
+    // must still reach the widest supported window without changing height.
+    XCTAssertFalse(el("twin-zoom-3").isSelected, "pinch together must widen the time window")
+    if !el("twin-zoom-14").isSelected { rail.pinch(withScale: 0.25, velocity: -1) }
+    XCTAssertTrue(el("twin-zoom-14").isSelected, "pinch together must zoom the horizontal time scale out")
+    XCTAssertEqual(puck.frame.height, puckHeight, accuracy: 1, "zoom out must preserve puck height")
+    try capture("pinch-out")
+    wait("twin-zoom-7").tap()
+    try capture("rails")
+    let ownPrefix = "twin-duty-\(prCrew):"
+    let giveBlock = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND enabled == true", ownPrefix)).allElementsBoundByIndex.first { $0.isHittable }
+    XCTAssertNotNil(giveBlock, "No published own duty in this window")
+    giveBlock?.tap()
+    let takeBlock = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'twin-duty-' AND NOT identifier BEGINSWITH %@ AND enabled == true", ownPrefix)).allElementsBoundByIndex.first { $0.isHittable }
+    XCTAssertNotNil(takeBlock, "No published candidate duty in this window")
+    takeBlock?.tap()
+    if el("twin-review-open").exists { wait("twin-review-open").tap() }
+    wait("twin-delta", 45)
+    wait("twin-review-details").tap()
+    XCTAssertTrue(text("ME · GIVE").exists)
+    XCTAssertTrue(el("twin-note").exists)
+    try capture("review")
+    if el("twin-review-back").exists { el("twin-review-back").tap() }
+    wait("twin-search-open").tap()
+    wait("twin-search-startDate")
+    if el("twin-section-Crew").exists { el("twin-section-Crew").tap() }
+    XCTAssertTrue(el("twin-search-crewIdList").exists)
+    try capture("search")
+    wait("twin-search-close").tap()
+    wait("twin-rails")
+    // The three original approaches still render via the same host.
+    for pair in [("matrix", "duty-swap-screen"), ("market", "market-screen"), ("ticket", "ticket-screen")] {
+      let approach = el("approach-\(pair.0)")
+      if !approach.isHittable { el("swap-approach-header").swipeRight() }
+      wait("approach-\(pair.0)").tap()
+      wait(pair.1)
+      if pair.0 == "ticket", el("app-dialog").waitForExistence(timeout: 8) { tapDialogConfirm("app-dialog") }
+    }
+    wait("page-back").tap()
+    wait("tab-profile").tap()
+    let add = el("profile-add-airline")
+    if add.exists { add.tap() } else { wait("profile-logout").tap() }
+    tapDialogConfirm("profile-dialog")
+    wait("login-screen", 60)
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    XCTAssertEqual(el("crew-id").value as? String, "35459")
+    wait("login-btn").tap()
+    wait("home-screen", 30)
+    wait("qa-duty-swap").tap()
+    wait("page-swap")
+    XCTAssertFalse(el("twin-screen").exists)
+    XCTAssertFalse(text(prCrew).exists)
+    try capture("tg-isolation")
+  }
+
+  /// Search-first Twin Rail: own roster remains pinned while candidates scroll;
+  /// selection guides follow the outer selected edges without changing row height.
+  func testTwinRailSearchFirstGuidesAndAccountIsolation() throws {
+    let device = ProcessInfo.processInfo.environment["TWIN_DEVICE"] ?? "air"
+    let version = ProcessInfo.processInfo.environment["TWIN_VERSION"] ?? "1"
+    func capture(_ state: String) throws {
+      let name = "twin-search-guides-\(device)-\(state)-Ver\(version)"
+      if device == "duo" { shot(name) }
+      else {
+        let dir = try XCTUnwrap(ProcessInfo.processInfo.environment["TWIN_SHOT_DIR"])
+        try XCUIScreen.main.screenshot().pngRepresentation.write(to:
+          URL(fileURLWithPath: dir).appendingPathComponent(name + ".png"))
+      }
+    }
+    func guides() -> XCUIElementQuery {
+      app.descendants(matching: .any).matching(NSPredicate(format:
+        "identifier == 'twin-guide-start' OR identifier == 'twin-guide-end'"))
+    }
+    XCUIDevice.shared.orientation = .portrait
+    try signInAsPR("473006", usePrefilledPassword: true)
+    wait("qa-duty-swap", 30).tap()
+    for id in ["swap-disclaimer", "twin-disclaimer"] {
+      if el(id).waitForExistence(timeout: 5) { tapDialogConfirm(id) }
+    }
+    if el("app-dialog").exists && text("Before you swap").exists { tapDialogConfirm("app-dialog") }
+    if !el("approach-twin").isHittable { el("swap-approach-header").swipeLeft() }
+    wait("approach-twin").tap()
+    if el("twin-disclaimer").waitForExistence(timeout: 8) { tapDialogConfirm("twin-disclaimer") }
+    wait("twin-search", 100)
+    XCTAssertFalse(el("twin-calendar").exists)
+    XCTAssertFalse(el("twin-new").exists)
+    XCTAssertTrue(wait("twin-search-open").isHittable)
+    try capture("initial-search")
+    wait("twin-search-submit").tap()
+    wait("twin-me-rail")
+    wait("twin-candidates", 60)
+    XCUIDevice.shared.orientation = .landscapeLeft
+    let landscape = expectation(for: NSPredicate { _, _ in self.appFrame.width > self.appFrame.height }, evaluatedWith: app)
+    wait(for: [landscape], timeout: 10)
+    wait("twin-zoom-14").tap()
+    let fortnightSelected = expectation(for: NSPredicate(format: "selected == true"), evaluatedWith: el("twin-zoom-14"))
+    wait(for: [fortnightSelected], timeout: 10)
+    let ownRail = wait("twin-me-rail")
+    let ownFrame = ownRail.frame
+    let candidates = wait("twin-candidates")
+    XCTAssertGreaterThan(candidates.frame.intersection(appFrame).height, 40)
+    XCTAssertEqual(guides().count, 0)
+    let ownDuties = app.descendants(matching: .any).matching(NSPredicate(format:
+      "identifier BEGINSWITH 'twin-duty-473006:' AND enabled == true")).allElementsBoundByIndex.filter { $0.isHittable }
+    XCTAssertGreaterThanOrEqual(ownDuties.count, 2, "Real published roster must expose two selectable duties in the fortnight")
+    let first = try XCTUnwrap(ownDuties.first)
+    let second = ownDuties[1]
+    let puckHeight = first.frame.height
+    first.tap()
+    let firstSelected = expectation(for: NSPredicate(format: "selected == true"), evaluatedWith: first)
+    wait(for: [firstSelected], timeout: 10)
+    let firstGuides = expectation(for: NSPredicate { _, _ in guides().count == 2 }, evaluatedWith: app)
+    wait(for: [firstGuides], timeout: 10)
+    XCTAssertEqual(guides().count, 2)
+    XCTAssertEqual(wait("twin-guide-start").frame.midX, first.frame.minX, accuracy: 3)
+    XCTAssertEqual(wait("twin-guide-end").frame.midX, first.frame.maxX, accuracy: 3)
+    XCTAssertGreaterThan(el("twin-guide-start").frame.maxY, candidates.frame.minY)
+    try capture("single-selection")
+    second.tap()
+    let secondSelected = expectation(for: NSPredicate(format: "selected == true"), evaluatedWith: second)
+    wait(for: [secondSelected], timeout: 10)
+    let secondGuides = expectation(for: NSPredicate { _, _ in guides().count == 2 }, evaluatedWith: app)
+    wait(for: [secondGuides], timeout: 10)
+    XCTAssertEqual(guides().count, 2, "Multiple duties must share one pair of outer guides")
+    XCTAssertEqual(el("twin-guide-start").frame.midX, min(first.frame.minX, second.frame.minX), accuracy: 3)
+    XCTAssertEqual(el("twin-guide-end").frame.midX, max(first.frame.maxX, second.frame.maxX), accuracy: 3)
+    let beforeRows = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'twin-crew-'")).allElementsBoundByIndex.filter { $0.isHittable }.map(\.identifier)
+    candidates.swipeUp()
+    let afterRows = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'twin-crew-'")).allElementsBoundByIndex.filter { $0.isHittable }.map(\.identifier)
+    XCTAssertNotEqual(beforeRows, afterRows, "Candidate swipe must reveal different crews")
+    XCTAssertEqual(ownRail.frame.minY, ownFrame.minY, accuracy: 1, "Own roster must stay pinned")
+    XCTAssertEqual(first.frame.height, puckHeight, accuracy: 1)
+    try capture("multiple-scroll")
+    wait("twin-zoom-7").tap()
+    let zoomSelected = expectation(for: NSPredicate(format: "selected == true"), evaluatedWith: el("twin-zoom-7"))
+    wait(for: [zoomSelected], timeout: 10)
+    XCTAssertEqual(first.frame.height, puckHeight, accuracy: 1, "Time zoom must preserve duty height")
+    wait("twin-clear").tap()
+    let cleared = expectation(for: NSPredicate { _, _ in guides().count == 0 && !first.isSelected && !second.isSelected }, evaluatedWith: app)
+    wait(for: [cleared], timeout: 10)
+    XCTAssertEqual(guides().count, 0)
+    XCTAssertFalse(first.isSelected)
+    XCTAssertFalse(second.isSelected)
+    try capture("cleared")
+    wait("twin-search-open").tap()
+    wait("twin-search")
+    wait("twin-search-close").tap()
+    wait("twin-me-rail")
+    if device != "duo" {
+      XCUIDevice.shared.orientation = .portrait
+      let portrait = expectation(for: NSPredicate { _, _ in self.appFrame.height > self.appFrame.width }, evaluatedWith: app)
+      wait(for: [portrait], timeout: 10)
+      XCTAssertTrue(wait("twin-search-open").isHittable)
+      XCTAssertTrue(wait("twin-records").isHittable)
+      XCTAssertTrue(wait("twin-my-duties").isHittable)
+      try capture("portrait-cleared")
+    }
+    wait("page-back").tap()
+    wait("tab-profile").tap()
+    let add = el("profile-add-airline")
+    if add.exists { add.tap() } else { wait("profile-logout").tap() }
+    tapDialogConfirm("profile-dialog")
+    wait("login-screen", 60)
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    XCTAssertEqual(el("crew-id").value as? String, "35459")
+    wait("login-btn").tap()
+    wait("home-screen", 30)
+    wait("qa-duty-swap").tap()
+    wait("page-swap")
+    XCTAssertFalse(el("twin-screen").exists)
+    XCTAssertFalse(text("473006").exists)
+    XCTAssertEqual(guides().count, 0)
+    try capture("tg-isolation")
+  }
+
+  /// Published PR duties through both real review flows. This test never sends.
+  func testCompareFullDetailsAndTwinReviewAccountIsolation() throws {
+    let device = ProcessInfo.processInfo.environment["TWIN_DEVICE"] ?? "air"
+    let version = ProcessInfo.processInfo.environment["TWIN_VERSION"] ?? "1"
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["TWIN_SHOT_DIR"])
+    func capture(_ state: String) throws {
+      let name = "compare-full-details-\(device)-\(state)-Ver\(version)"
+      if device == "duo" { shot(name) }
+      else { try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: directory).appendingPathComponent("\(name).png")) }
+    }
+    func approach(_ name: String) {
+      let button = el("approach-\(name)")
+      for _ in 0..<3 where !button.isHittable {
+        if name == "matrix" { el("swap-approach-header").swipeRight() }
+        else { el("swap-approach-header").swipeLeft() }
+      }
+      wait("approach-\(name)").tap()
+      for id in ["swap-disclaimer", "twin-disclaimer"] {
+        if el(id).waitForExistence(timeout: 3) { tapDialogConfirm(id) }
+      }
+      if el("app-dialog").exists && text("Before you swap").exists { tapDialogConfirm("app-dialog") }
+    }
+    func assertFullDetails(_ root: XCUIElement, state: String) throws {
+      let scroll = root.descendants(matching: .scrollView).firstMatch
+      for _ in 0..<6 { if text("Aircraft ").isHittable { break }; scroll.swipeUp() }
+      let metadata = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Aircraft ' AND label CONTAINS 'BLH '")).allElementsBoundByIndex.first { $0.isHittable }
+      let leg = try XCTUnwrap(metadata, "A complete visible Aircraft + BLH line is required in \(state)")
+      XCTAssertFalse(leg.label.contains("…"), "Leg metadata must not be ellipsized")
+      XCTAssertTrue(leg.label.range(of: #"Aircraft\s+\S+.*BLH\s+\d"#, options: .regularExpression) != nil, "Missing published aircraft/block-hour values: \(leg.label)")
+      print("COMPARE_FULL_LEG \(device) \(state): \(leg.label)")
+      let duty = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'review-duty-fdp-'")).firstMatch
+      XCTAssertTrue(duty.exists, "Duty FDP must remain present on every device")
+      XCTAssertTrue(duty.label.range(of: #"FDP\s+\d"#, options: .regularExpression) != nil, "Published duty FDP value missing")
+      XCTAssertFalse(duty.label.contains("…"))
+      let times = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'review-flight-times-'")).firstMatch
+      XCTAssertTrue(times.exists, "Separate full leg time line missing")
+      XCTAssertFalse(times.label.contains("…"))
+      try capture(state)
+      for _ in 0..<6 where !duty.isHittable { scroll.swipeDown() }
+      XCTAssertTrue(duty.isHittable, "Duty FDP must be readable in the review viewport")
+    }
+    try signInAsPR("473006", usePrefilledPassword: true)
+    wait("qa-duty-swap", 30).tap()
+    if el("swap-disclaimer").waitForExistence(timeout: 5) { tapDialogConfirm("swap-disclaimer") }
+    if el("twin-disclaimer").exists { tapDialogConfirm("twin-disclaimer") }
+    if el("app-dialog").exists && text("Before you swap").exists { tapDialogConfirm("app-dialog") }
+    approach("matrix")
+    if el("search-submit").waitForExistence(timeout: 5) { el("search-submit").tap() }
+    wait("crew-matrix", 90)
+    let own = try XCTUnwrap(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'duty-473006-PR' AND enabled == true")).allElementsBoundByIndex.first { $0.isHittable })
+    print("COMPARE_MATRIX_GIVE: \(own.label)")
+    own.tap()
+    XCTAssertTrue(scrollToCrew("345945", wait("crew-matrix-scroll")))
+    let other = try XCTUnwrap(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'duty-345945-PR' AND enabled == true")).allElementsBoundByIndex.first { $0.isHittable })
+    print("COMPARE_MATRIX_TAKE: \(other.label)")
+    other.tap()
+    wait("swap-compare").tap()
+    let compare = wait("compare-sheet")
+    _ = wait("swap-delta", 60)
+    try assertFullDetails(compare, state: "matrix")
+    XCTAssertTrue(wait("swap-comment").isHittable)
+    XCTAssertTrue(wait("swap-submit").isHittable)
+    XCTAssertTrue(el("swap-submit").isEnabled)
+    wait("compare-close").tap()
+    approach("twin")
+    wait("twin-search", 100)
+    if el("twin-section-Crew").exists { el("twin-section-Crew").tap() }
+    let searchScroll = el("twin-search").descendants(matching: .scrollView).firstMatch
+    let filter = wait("twin-search-crewIdList")
+    for _ in 0..<5 where !filter.isHittable { searchScroll.swipeUp() }
+    filter.tap()
+    let choice = wait("twin-choice-crewIdList-345945")
+    for _ in 0..<8 where !choice.isHittable { searchScroll.swipeUp() }
+    choice.tap()
+    wait("twin-search-submit").tap()
+    wait("twin-crew-345945")
+    wait("twin-zoom-7").tap()
+    for crew in ["473006", "345945"] {
+      let duty = try XCTUnwrap(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND enabled == true", "twin-duty-\(crew):")).allElementsBoundByIndex.first { $0.isHittable })
+      print("COMPARE_TWIN_PICK \(crew): \(duty.label)")
+      duty.tap()
+    }
+    if !el("twin-review").exists { wait("twin-review-open").tap() }
+    wait("twin-delta", 60)
+    for tab in ["date", "details"] {
+      wait("twin-review-\(tab)").tap()
+      let review = wait("twin-review")
+      let scroll = review.descendants(matching: .scrollView).firstMatch
+      for _ in 0..<8 { scroll.swipeDown() }
+      try assertFullDetails(review, state: "twin-\(tab)")
+      let note = wait("twin-note")
+      for _ in 0..<10 where !note.isHittable { scroll.swipeUp() }
+      XCTAssertTrue(note.isHittable)
+      let send = wait("twin-send")
+      for _ in 0..<3 where !send.isHittable { scroll.swipeUp() }
+      XCTAssertTrue(send.isHittable)
+      XCTAssertTrue(send.isEnabled)
+      try capture("twin-\(tab)-footer")
+    }
+    wait("twin-review-back").tap()
+    wait("page-back").tap()
+    wait("tab-profile").tap()
+    let add = el("profile-add-airline")
+    if add.exists { add.tap() } else { wait("profile-logout").tap() }
+    tapDialogConfirm("profile-dialog")
+    wait("login-screen", 60)
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    XCTAssertEqual(el("crew-id").value as? String, "35459")
+    wait("login-btn").tap()
+    wait("home-screen", 30)
+    wait("qa-duty-swap").tap()
+    wait("page-swap")
+    XCTAssertFalse(el("twin-screen").exists)
+    XCTAssertFalse(el("compare-sheet").exists)
+    XCTAssertFalse(text("473006").exists)
+    XCTAssertFalse(text("345945").exists)
+    try capture("tg-isolation")
+  }
+
+  /// iPad review folding keeps both rails usable and retains the local draft.
+  /// Uses published PR duties and never submits the swap.
+  func testTwinRailIPadReviewFoldingAndAccountIsolation() throws {
+    let prCrew = "473006"
+    let targetCrew = "345945"
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["TWIN_SHOT_DIR"])
+    let version = ProcessInfo.processInfo.environment["TWIN_VERSION"] ?? "1"
+    func capture(_ state: String) throws {
+      try XCUIScreen.main.screenshot().pngRepresentation.write(to:
+        URL(fileURLWithPath: directory).appendingPathComponent("twin-ipad-fold-review-\(state)-Ver\(version).png"))
+    }
+    func assertReviewClearOfLauncher() {
+      let reviewButton = wait("twin-review-open")
+      for id in ["dock-rbot", "rail-rbot"] {
+        let launcher = el(id)
+        if launcher.exists && launcher.isHittable {
+          XCTAssertFalse(reviewButton.frame.intersects(launcher.frame), "Review must stay clear of the visible R'Bot launcher")
+        }
+      }
+    }
+    func rotate(_ orientation: UIDeviceOrientation) {
+      XCUIDevice.shared.orientation = orientation
+      let landscape = orientation == .landscapeLeft
+      let rotated = expectation(for: NSPredicate { _, _ in
+        landscape ? self.appFrame.width > self.appFrame.height : self.appFrame.height > self.appFrame.width
+      }, evaluatedWith: app)
+      wait(for: [rotated], timeout: 10)
+      XCTAssertGreaterThanOrEqual(appFrame.width, 700, "Full-size iPad must retain the wide layout")
+    }
+    rotate(.portrait)
+    try signInAsPR(prCrew, usePrefilledPassword: true)
+    wait("qa-duty-swap", 30).tap()
+    if el("swap-disclaimer").waitForExistence(timeout: 8) { tapDialogConfirm("swap-disclaimer") }
+    if el("app-dialog").exists && text("Before you swap").exists { tapDialogConfirm("app-dialog") }
+    if el("twin-disclaimer").exists { tapDialogConfirm("twin-disclaimer") }
+    if !el("approach-twin").isHittable { el("swap-approach-header").swipeLeft() }
+    wait("approach-twin").tap()
+    if el("twin-disclaimer").waitForExistence(timeout: 8) { tapDialogConfirm("twin-disclaimer") }
+    let loaded = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'twin-search' OR identifier == 'twin-error'")).firstMatch
+    XCTAssertTrue(loaded.waitForExistence(timeout: 100))
+    XCTAssertFalse(el("twin-error").exists, "Portal did not supply duties")
+    wait("twin-search-submit").tap()
+    for orientation: UIDeviceOrientation in [.portrait, .landscapeLeft] {
+      rotate(orientation)
+      XCTAssertFalse(el("twin-review").exists, "Review must start collapsed")
+      XCTAssertGreaterThan(wait("twin-rails").frame.width, appFrame.width - 90, "Empty rails must use the available width")
+      assertReviewClearOfLauncher()
+      try capture(orientation == .portrait ? "portrait-empty" : "landscape-empty")
+    }
+    wait("twin-search-open").tap()
+    wait("twin-search")
+    if el("twin-section-Crew").exists { el("twin-section-Crew").tap() }
+    let searchScroll = el("twin-search").descendants(matching: .scrollView).firstMatch
+    let crewFilter = wait("twin-search-crewIdList")
+    for _ in 0..<4 where !crewFilter.isHittable { searchScroll.swipeUp() }
+    crewFilter.tap()
+    let choice = wait("twin-choice-crewIdList-\(targetCrew)", 30)
+    for _ in 0..<8 where !choice.isHittable { searchScroll.swipeUp() }
+    choice.tap()
+    wait("twin-search-submit").tap()
+    wait("twin-crew-\(targetCrew)")
+    wait("twin-zoom-7").tap()
+    let fullWidth = wait("twin-rails").frame.width
+    let give = try XCTUnwrap(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND enabled == true", "twin-duty-\(prCrew):")).allElementsBoundByIndex.first { $0.isHittable })
+    let giveID = give.identifier
+    give.tap()
+    XCTAssertTrue(wait(giveID).isSelected)
+    XCTAssertFalse(el("twin-review").exists, "A give alone must not open review")
+    XCTAssertEqual(wait("twin-rails").frame.width, fullWidth, accuracy: 2)
+    let take = try XCTUnwrap(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND enabled == true", "twin-duty-\(targetCrew):")).allElementsBoundByIndex.first { $0.isHittable })
+    let takeID = take.identifier
+    take.tap()
+    let review = wait("twin-review")
+    XCTAssertEqual(review.frame.width, 320, accuracy: 2)
+    XCTAssertLessThanOrEqual(review.frame.width, appFrame.width * 0.4)
+    XCTAssertGreaterThan(wait("twin-rails").frame.width, review.frame.width)
+    wait("twin-delta", 45)
+    let note = "Keep this iPad review draft"
+    let noteField = wait("twin-note")
+    let reviewScroll = review.descendants(matching: .scrollView).firstMatch
+    for _ in 0..<4 where !noteField.isHittable { reviewScroll.swipeUp() }
+    replaceText(noteField, with: note)
+    if app.buttons["Hide keyboard"].isHittable { app.buttons["Hide keyboard"].tap() }
+    try capture("landscape-open")
+    wait("twin-review-back").tap()
+    XCTAssertFalse(el("twin-review").exists)
+    XCTAssertEqual(wait("twin-rails").frame.width, fullWidth, accuracy: 2)
+    XCTAssertTrue(wait(giveID).isSelected)
+    XCTAssertTrue(wait(takeID).isSelected)
+    assertReviewClearOfLauncher()
+    try capture("landscape-hidden")
+    rotate(.portrait)
+    XCTAssertGreaterThan(wait("twin-rails").frame.width, appFrame.width - 90)
+    assertReviewClearOfLauncher()
+    wait("twin-review-open").tap()
+    XCTAssertEqual(wait("twin-review").frame.width, 320, accuracy: 2)
+    XCTAssertGreaterThan(wait("twin-rails").frame.width, el("twin-review").frame.width)
+    XCTAssertEqual(wait("twin-note").value as? String, note, "Hide and rotation must retain the note")
+    XCTAssertTrue(wait(giveID).isSelected)
+    XCTAssertTrue(wait(takeID).isSelected)
+    try capture("portrait-reopened")
+    wait("twin-clear").tap()
+    XCTAssertFalse(el("twin-review").exists)
+    XCTAssertGreaterThan(wait("twin-rails").frame.width, appFrame.width - 90)
+    XCTAssertFalse(el(giveID).isSelected)
+    XCTAssertFalse(el(takeID).isSelected)
+    XCTAssertFalse(wait("twin-review-open").isEnabled)
+    try capture("portrait-cleared")
+    wait("page-back").tap()
+    wait("tab-profile").tap()
+    let add = el("profile-add-airline")
+    if add.exists { add.tap() } else { wait("profile-logout").tap() }
+    tapDialogConfirm("profile-dialog")
+    wait("login-screen", 60)
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    XCTAssertEqual(el("crew-id").value as? String, "35459")
+    wait("login-btn").tap()
+    wait("home-screen", 30)
+    wait("qa-duty-swap").tap()
+    wait("page-swap")
+    XCTAssertFalse(el("twin-screen").exists)
+    XCTAssertFalse(text(prCrew).exists)
+    XCTAssertFalse(el(giveID).exists)
+    XCTAssertFalse(el(takeID).exists)
+    try capture("tg-isolation")
+  }
+
+  /// Regression: the small phone landscape tray must leave candidate duties usable.
+  /// Reads real published duties and reviews a local draft; never submits a swap.
+  func testTwinRailSmallPhoneLandscapeDraftAndAccountIsolation() throws {
+    let prCrew = ProcessInfo.processInfo.environment["TWIN_PR_CREW"] ?? "473006"
+    let targetCrew = "345945"
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["TWIN_SHOT_DIR"])
+    let version = ProcessInfo.processInfo.environment["TWIN_VERSION"] ?? "1"
+    func capture(_ state: String) throws {
+      try XCUIScreen.main.screenshot().pngRepresentation.write(to:
+        URL(fileURLWithPath: directory).appendingPathComponent("twin-small-phone-\(state)-Ver\(version).png"))
+    }
+    XCUIDevice.shared.orientation = .portrait
+    try signInAsPR(prCrew, usePrefilledPassword: true)
+    wait("qa-duty-swap", 30).tap()
+    if el("swap-disclaimer").waitForExistence(timeout: 8) { tapDialogConfirm("swap-disclaimer") }
+    if el("app-dialog").exists && text("Before you swap").exists { tapDialogConfirm("app-dialog") }
+    if el("twin-disclaimer").exists { tapDialogConfirm("twin-disclaimer") }
+    if !el("approach-twin").isHittable { el("swap-approach-header").swipeLeft() }
+    wait("approach-twin").tap()
+    if el("twin-disclaimer").waitForExistence(timeout: 8) { tapDialogConfirm("twin-disclaimer") }
+    let loaded = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'twin-search' OR identifier == 'twin-error'")).firstMatch
+    XCTAssertTrue(loaded.waitForExistence(timeout: 100))
+    XCTAssertFalse(el("twin-error").exists, "Portal did not supply duties")
+    wait("twin-search-submit").tap()
+    XCUIDevice.shared.orientation = .landscapeLeft
+    let initialLandscape = expectation(for: NSPredicate { _, _ in self.appFrame.width > self.appFrame.height }, evaluatedWith: app)
+    wait(for: [initialLandscape], timeout: 10)
+    XCTAssertLessThan(appFrame.height, 560)
+    XCTAssertTrue(wait("twin-me-rail").isHittable)
+    let initialCandidate = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'twin-crew-'")).firstMatch
+    XCTAssertTrue(initialCandidate.waitForExistence(timeout: 30))
+    XCTAssertTrue(initialCandidate.isHittable, "Unfiltered candidates must retain a usable viewport")
+    XCTAssertGreaterThan(initialCandidate.frame.intersection(appFrame).height, 40)
+    XCTAssertLessThanOrEqual(wait("twin-tray").frame.height, 60)
+    try capture("landscape-unfiltered")
+    XCUIDevice.shared.orientation = .portrait
+    let filterPortrait = expectation(for: NSPredicate { _, _ in self.appFrame.height > self.appFrame.width }, evaluatedWith: app)
+    wait(for: [filterPortrait], timeout: 10)
+    wait("twin-search-open").tap()
+    wait("twin-search")
+    if el("twin-section-Crew").exists { el("twin-section-Crew").tap() }
+    let searchScroll = el("twin-search").descendants(matching: .scrollView).firstMatch
+    let crewFilter = wait("twin-search-crewIdList")
+    for _ in 0..<4 where !crewFilter.isHittable { searchScroll.swipeUp() }
+    crewFilter.tap()
+    let choice = wait("twin-choice-crewIdList-\(targetCrew)", 30)
+    for _ in 0..<8 where !choice.isHittable { searchScroll.swipeUp() }
+    choice.tap()
+    wait("twin-search-submit").tap()
+    wait("twin-crew-\(targetCrew)")
+    wait("twin-zoom-7").tap()
+    XCUIDevice.shared.orientation = .landscapeLeft
+    let landscape = expectation(for: NSPredicate { _, _ in self.appFrame.width > self.appFrame.height }, evaluatedWith: app)
+    wait(for: [landscape], timeout: 10)
+    XCTAssertLessThan(appFrame.height, 560, "This regression requires a short landscape viewport")
+    let ownRail = wait("twin-me-rail")
+    let candidateRail = wait("twin-crew-\(targetCrew)")
+    XCTAssertTrue(ownRail.isHittable, "Own rail must stay visible")
+    XCTAssertTrue(candidateRail.isHittable, "Candidate row must have a usable viewport")
+    XCTAssertGreaterThan(candidateRail.frame.intersection(appFrame).height, 40)
+    XCTAssertLessThanOrEqual(wait("twin-tray").frame.height, 60, "Selection tray must leave space for candidates")
+    try capture("landscape-empty")
+    let ownPrefix = "twin-duty-\(prCrew):"
+    let give = try XCTUnwrap(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND enabled == true", ownPrefix)).allElementsBoundByIndex.first { $0.isHittable }, "No published own duty in view")
+    give.tap()
+    let take = try XCTUnwrap(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND enabled == true", "twin-duty-\(targetCrew):")).allElementsBoundByIndex.first { $0.isHittable }, "No published candidate duty in view")
+    take.tap()
+    let giveID = give.identifier
+    let takeID = take.identifier
+    XCTAssertEqual(give.frame.height, 40, accuracy: 1)
+    XCTAssertEqual(take.frame.height, 40, accuracy: 1)
+    XCTAssertTrue(el(giveID).isSelected)
+    XCTAssertTrue(el(takeID).isSelected)
+    XCTAssertLessThanOrEqual(wait("twin-tray").frame.height, 60)
+    XCTAssertTrue(wait("twin-review-open").isEnabled)
+    try capture("landscape-selected")
+    wait("twin-review-open").tap()
+    wait("twin-delta", 45)
+    wait("twin-review-details").tap()
+    XCTAssertTrue(text("ME · GIVE").exists)
+    XCTAssertTrue(el("twin-note").exists)
+    try capture("landscape-review")
+    wait("twin-review-back").tap()
+    XCTAssertTrue(wait(giveID).isSelected)
+    XCTAssertTrue(wait(takeID).isSelected)
+    XCUIDevice.shared.orientation = .portrait
+    let portrait = expectation(for: NSPredicate { _, _ in self.appFrame.height > self.appFrame.width }, evaluatedWith: app)
+    wait(for: [portrait], timeout: 10)
+    XCTAssertTrue(wait(giveID).isSelected, "Give draft must survive rotation")
+    XCTAssertTrue(wait(takeID).isSelected, "Take draft must survive rotation")
+    XCTAssertEqual(el(giveID).frame.height, 40, accuracy: 1)
+    XCTAssertEqual(el(takeID).frame.height, 40, accuracy: 1)
+    XCTAssertTrue(wait("twin-review-open").isEnabled)
+    try capture("portrait-retained")
+    wait("page-back").tap()
+    wait("tab-profile").tap()
+    let add = el("profile-add-airline")
+    if add.exists { add.tap() } else { wait("profile-logout").tap() }
+    tapDialogConfirm("profile-dialog")
+    wait("login-screen", 60)
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    XCTAssertEqual(el("crew-id").value as? String, "35459")
+    wait("login-btn").tap()
+    wait("home-screen", 30)
+    wait("qa-duty-swap").tap()
+    wait("page-swap")
+    XCTAssertFalse(el("twin-screen").exists)
+    XCTAssertFalse(text(prCrew).exists)
+    XCTAssertFalse(el(giveID).exists)
+    XCTAssertFalse(el(takeID).exists)
+    try capture("tg-isolation")
+  }
 
   /// Matrix | Market switch, then the Market: swap out of 487424's long trip on
   /// 22 Oct (PR104/PR105 MNL–SFO) and short duty on 29 Oct (PR890/PR891 MNL–TPE).
@@ -1410,5 +2607,122 @@ extension XCUIElement {
       usleep(300_000)
     } while Date() < end
     return false
+  }
+}
+
+extension DuoFitUITests {
+  func testCalendarSharedScrollAndFolding() throws {
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["CALENDAR_FIXED_SHOT_DIR"])
+    let version = ProcessInfo.processInfo.environment["CALENDAR_FIXED_VERSION"] ?? "1"
+    func capture(_ name: String) throws {
+      let fileName = "calendar-shared-\(name)-Ver\(version)"
+      if ProcessInfo.processInfo.environment["ROUTE_DEVICE"] == "duo" { shot(fileName) }
+      else { try XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: directory).appendingPathComponent("\(fileName).png")) }
+    }
+    func openCalendar() {
+      wait("tab-schedule").tap()
+      pickView("sched-view-calendar")
+      wait("cal-month-detail")
+    }
+    if el("tab-profile").waitForExistence(timeout: 3) {
+      wait("tab-profile").tap()
+      let add = el("profile-add-airline")
+      if add.exists { add.tap() } else { wait("profile-logout").tap() }
+      tapDialogConfirm("profile-dialog")
+      wait("login-screen")
+    }
+    let guestMode = ProcessInfo.processInfo.environment["CALENDAR_FIXED_GUEST"] == "1"
+    if guestMode { wait("guest-login").tap(); wait("home-screen", 60) }
+    else { try signInAsPR("473006", usePrefilledPassword: true) }
+    openCalendar()
+    for day in 19...25 {
+      let cell = wait("cal-day-\(day)")
+      if !cell.isHittable { wait("cal-compact").swipeUp() }
+      cell.tap()
+      wait("cal-to-detail").tap()
+      wait("cal-detail")
+      XCTAssertTrue(wait("cal-agenda-head").label.contains(" \(day) OCT"))
+      let rail = wait("cal-day-rail")
+      let events = wait("cal-daily-events")
+      let scroll = wait("cal-daily-scroll")
+      XCTAssertGreaterThan(rail.frame.height, 150)
+      if ProcessInfo.processInfo.environment["ROUTE_DEVICE"] == "duo" {
+        // The Duo navigates from the right-edge rail, so the agenda runs to the
+        // bottom of the screen instead of stopping above a floating phone dock.
+        XCTAssertLessThan(rail.frame.maxY, appFrame.maxY)
+        XCTAssertGreaterThan(rail.frame.maxY, appFrame.maxY - 60)
+      } else {
+        XCTAssertLessThan(rail.frame.maxY, appFrame.maxY - 50)
+      }
+      let before = rail.frame
+      try capture("\(guestMode ? "guest" : "pr")-day\(day)-top")
+      let morning = wait("cal-section-MORNING")
+      morning.tap()
+      XCTAssertEqual(rail.frame.minY, before.minY, accuracy: 1)
+      try capture("\(guestMode ? "guest" : "pr")-day\(day)-folded")
+      morning.tap()
+      let eventsY = events.frame.minY
+      let canScroll = events.frame.height > scroll.frame.height + 20
+      scroll.swipeUp()
+      let upY = rail.frame.minY
+      if canScroll { XCTAssertLessThan(upY, before.minY - 10, "rail must move upward with events") }
+      XCTAssertEqual(upY - before.minY, events.frame.minY - eventsY, accuracy: 2, "events and rail must move together")
+      XCTAssertEqual(rail.frame.height, before.height, accuracy: 1)
+      try capture("\(guestMode ? "guest" : "pr")-day\(day)-scrolled")
+      scroll.swipeDown()
+      if canScroll { XCTAssertGreaterThan(rail.frame.minY, upY + 10, "rail must move downward with events") }
+      XCTAssertEqual(rail.frame.height, before.height, accuracy: 1)
+      wait("cal-to-compact").tap()
+    }
+    // Both compact layouts must place the daily panel directly under the grid.
+    wait("cal-mode-toggle").tap()
+    wait("cal-day-20").tap()
+    for layout in ["month", "week"] {
+      if layout == "week" { wait("cal-mode-toggle").tap() }
+      let grid = wait("cal-fixed-month-grid")
+      let heading = wait("cal-agenda-head")
+      XCTAssertLessThan(heading.frame.minY - grid.frame.maxY, 32, "blank space above daily panel")
+      let rail = wait("cal-day-rail")
+      let events = wait("cal-daily-events")
+      let before = rail.frame
+      let eventY = events.frame.minY
+      try capture("\(layout)-top")
+      wait("cal-daily-scroll").swipeUp()
+      XCTAssertEqual(rail.frame.height, before.height, accuracy: 1)
+      XCTAssertEqual(rail.frame.minY - before.minY, events.frame.minY - eventY, accuracy: 2)
+      try capture("\(layout)-scrolled")
+      wait("cal-daily-scroll").swipeDown()
+    }
+    if ProcessInfo.processInfo.environment["ROUTE_DEVICE"] == "duo" {
+      // The Duo has no bottom dock, so the route map must reach the bottom edge.
+      pickView("sched-view-route")
+      let map = wait("route-map")
+      XCTAssertGreaterThan(map.frame.maxY, appFrame.maxY - 60, "route map should use the bottom of the Duo screen")
+      try capture("route-full-height")
+      pickView("sched-view-calendar")
+    }
+    if guestMode { return }
+    wait("tab-profile").tap()
+    let add = el("profile-add-airline")
+    if add.exists { add.tap() } else { wait("profile-logout").tap() }
+    tapDialogConfirm("profile-dialog")
+    wait("login-screen")
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    wait("login-btn").tap()
+    wait("home-screen", 200)
+    if app.buttons["Dismiss"].waitForExistence(timeout: 3) { app.buttons["Dismiss"].tap() }
+    openCalendar()
+    wait("cal-day-19").tap()
+    wait("cal-to-detail").tap()
+    let rail = wait("cal-day-rail")
+    let height = rail.frame.height
+    wait("cal-daily-scroll").swipeUp()
+    XCTAssertEqual(rail.frame.height, height, accuracy: 1)
+    try capture("tg-isolation")
+    wait("tab-profile").tap()
+    XCTAssertTrue(text("35459").waitForExistence(timeout: 10))
+    XCTAssertFalse(text("473006").exists)
   }
 }

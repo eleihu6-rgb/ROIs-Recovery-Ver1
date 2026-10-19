@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en" data-theme="sia">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crew App · Trip Details — timeline rail (Ver4)</title>
+<style>
+/* ── Review page ─────────────────────────────────────────────────────────── */
+:root{
+  --bg:#eef2f5; --panel:#ffffff; --ink:#10212b; --mut:#5a6b76; --line:#d6e0e6;
+  --hl:#d9822b; --hl-soft:#fbe9d5;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0d1418;--panel:#162126;--ink:#e8f0f3;--mut:#9aadb7;--line:#2a3a42;--hl-soft:#3a2915}
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--bg);color:var(--ink);padding:26px 18px 80px;
+  font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+.wrap{max-width:1420px;margin:0 auto}
+h1{font-size:23px;line-height:1.2;margin:0 0 6px;letter-spacing:-.2px}
+h2{font-size:17px;margin:0 0 3px}
+.lede{color:var(--mut);font-size:13px;max-width:980px;margin:0 0 16px}
+.note{color:var(--mut);font-size:12.5px;max-width:1000px;margin:0 0 12px}
+section{margin:0 0 38px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 18px}
+.bar span{font-size:12px;color:var(--mut)}
+.btn{font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink);cursor:pointer}
+.btn.on{border-color:var(--hl);background:var(--hl-soft);color:var(--ink);font-weight:600}
+.reqs{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:0 0 34px}
+.req{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.req b{display:block;font-size:13px;margin:0 0 4px}
+.req p{margin:0;color:var(--mut);font-size:12px}
+.req em{font-style:normal;color:var(--hl);font-weight:700}
+.frames{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+figure{margin:0}
+figcaption{font-size:11.5px;color:var(--mut);margin-top:7px;max-width:660px}
+.dev{background:#05090c;border-radius:34px;padding:10px;box-shadow:0 22px 44px rgba(0,0,0,.28)}
+.vp{position:relative;overflow:hidden;border-radius:26px;background:#000}
+.pt{position:absolute;top:0;left:0;transform-origin:0 0;overflow:hidden;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+.app{position:absolute;inset:0;display:flex;flex-direction:column;
+  background:linear-gradient(158deg,var(--g1) 0%,var(--g2) 46%,var(--g3) 100%)}
+.pt[data-theme="sia"]{--g1:#1e4a76;--g2:#2b6191;--g3:#4c82b2;--accent:#2f6ba6}
+.pt[data-theme="thai"]{--g1:#4a1670;--g2:#5e2a86;--g3:#8a4aa8;--accent:#7a3aa0}
+.status{display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:12px;font-weight:600;flex:none}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:40px;flex:none}
+.nav .back{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:300;line-height:1}
+.nav .title{font-size:17px;font-weight:600;letter-spacing:-.2px}
+.nav .side{width:34px;height:34px}
+.nav .calbtn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:17px;background:rgba(255,255,255,.14)}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:4px 18px 22px;overflow:hidden}
+.pt.wide .body{padding:2px 106px 18px 34px;gap:8px}
+.strip{position:absolute;right:9px;top:20px;width:64px;height:116px;border-radius:32px;
+  background:rgba(255,255,255,.10);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:7px;z-index:4}
+.strip svg{opacity:.85}
+.strip i{width:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.6);display:block}
+.frost{position:relative;background:rgba(255,255,255,.14);color:#fff;border-radius:18px;padding:13px 16px;flex:none}
+.frost h1{margin:0;font-size:18px;font-weight:600;letter-spacing:-.2px;line-height:1.22}
+.frost p{margin:3px 0 0;font-size:13px;color:rgba(255,255,255,.84)}
+
+/* ── Ver4: timeline rail ─────────────────────────────────────────────────── */
+/* Duty totals as one flat band, not four separate tiles. */
+.metrics{display:flex;background:rgba(241,245,249,.68);border-radius:12px;overflow:hidden;flex:none;color:#061624}
+.metrics .m{flex:1;min-width:0;padding:6px 9px;border-left:1px solid rgba(6,22,36,.12)}
+.metrics .m:first-child{border-left:0}
+.metrics .k{display:block;font-size:7.4px;font-weight:800;letter-spacing:.55px;text-transform:uppercase;color:#5c6d78;white-space:nowrap}
+.metrics .v{display:block;font-size:13.5px;font-weight:700;line-height:1.15;margin-top:1px;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.railcard{background:rgba(241,245,249,.68);border-radius:16px;padding:5px 13px 6px 8px;flex:none;color:#061624}
+.node{position:relative;display:grid;grid-template-columns:50px 16px 1fr;column-gap:9px;align-items:stretch}
+.node .t{text-align:right;font-size:13.5px;font-weight:700;line-height:1.18;font-variant-numeric:tabular-nums;padding-top:1px;white-space:nowrap}
+.node .t small{font-size:8px;font-weight:700;color:#5c6d78;letter-spacing:.2px}
+.node .rail{position:relative}
+.node .rail::before{content:'';position:absolute;left:7px;width:2px;background:rgba(47,107,166,.34)}
+.node.dep .rail::before{top:9px;bottom:-1px}
+.node.arr .rail::before{top:-1px;bottom:calc(100% - 8px)}
+.node .dot{position:absolute;left:4px;top:3px;width:8px;height:8px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 0 2px rgba(241,245,249,.95);z-index:2}
+.node.arr .dot{background:#f1f5f9;border:2px solid var(--accent);box-shadow:0 0 0 2px rgba(241,245,249,.95)}
+.nc{min-width:0;padding-bottom:2px}
+.node.arr .nc{padding-bottom:0}
+.l1{display:flex;align-items:baseline;gap:7px;min-width:0}
+.l1 b{font-size:13px;font-weight:700;white-space:nowrap}
+.l1 .rt{font-size:11px;font-weight:600;color:#324956;white-space:nowrap}
+.l1 .blk{margin-left:auto;font-size:9px;font-weight:700;color:#2d4c5e;background:rgba(47,107,166,.10);
+  border-radius:5px;padding:1px 5px;white-space:nowrap}
+.l2{display:flex;align-items:baseline;gap:6px;margin-top:1px;min-width:0;white-space:nowrap}
+.l2 span{font-size:9px;color:#546671}
+.l2 b{font-size:9.6px;font-weight:600;color:#061624;font-variant-numeric:tabular-nums}
+.l2 .where{margin-left:auto;font-size:8.6px;color:#5c6d78;overflow:hidden;text-overflow:ellipsis}
+.l3{display:flex;gap:7px;margin-top:1px;white-space:nowrap;overflow:hidden}
+.l3 span{font-size:8.2px;color:#6a7b86;text-transform:uppercase;letter-spacing:.25px}
+.l3 b{font-size:9px;font-weight:600;color:#33474f;letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums}
+
+/* Gap between sectors: dotted rail + turn time. */
+.turn{position:relative;display:grid;grid-template-columns:50px 16px 1fr;column-gap:9px;height:13px;align-items:center}
+.turn .rail{position:relative;height:100%}
+.turn .rail::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:2px;
+  background:repeating-linear-gradient(to bottom,rgba(47,107,166,.38) 0 3px,transparent 3px 6px)}
+.turn .lab{font-size:8.8px;font-weight:700;color:#5c6d78;letter-spacing:.2px}
+.turn .lab em{font-style:normal;font-weight:600;color:#7a8b96;letter-spacing:.2px}
+
+/* Annotation badges */
+.anno{position:absolute;z-index:6;width:17px;height:17px;border-radius:9px;background:var(--hl);
+  color:#fff;font-size:10px;font-weight:800;line-height:17px;text-align:center;
+  box-shadow:0 2px 7px rgba(0,0,0,.3);pointer-events:none}
+.anno.r{right:-7px;top:-7px}
+.anno.l{left:-9px;top:50%;transform:translateY(-50%)}
+.hbadge{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:7px;
+  background:var(--hl);color:#fff;font-size:8px;font-weight:800;line-height:1;margin-left:4px;
+  vertical-align:1px;flex:none;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+body.no-anno .anno,body.no-anno .hbadge{display:none}
+
+/* Legend + comparison */
+.legend{display:flex;flex-direction:column;gap:9px;max-width:400px}
+.leg{display:flex;gap:9px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.leg .n{width:20px;height:20px;border-radius:10px;background:var(--hl);color:#fff;flex:none;font-size:11px;font-weight:800;line-height:20px;text-align:center}
+.leg b{display:block;font-size:12.5px;margin:0 0 1px}
+.leg p{margin:0;font-size:11.5px;color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:var(--panel);border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Crew App · Trip Details — timeline rail (Ver4)</h1>
+<p class="lede">
+  The duty reads top-to-bottom as a <b>clock</b>, not as a stack of cards. Each sector is two nodes —
+  departure and arrival — joined by the rail; the gap to the next departure is the turn time.
+  Scheduled time sits in the gutter; estimated and actual hang off it. Duty totals form one flat band.
+</p>
+
+<div class="bar">
+  <span>Theme</span>
+  <button class="btn on" data-theme-set="sia">Reference blue</button>
+  <button class="btn" data-theme-set="thai">Thai violet</button>
+  <span style="width:10px"></span>
+  <button class="btn on" id="annoBtn">Annotations: on</button>
+</div>
+
+<div class="reqs">
+  <div class="req"><b>1 · Shared duty title</b><p>The hero names all six flights and the routing once; the rail never repeats a trip title.</p></div>
+  <div class="req"><b>2 · Times stay paired</b><p><em>STD</em> with ETD/ATD on the departure node; <em>STA</em> with ETA/ATA on the arrival node. A pair never splits across columns.</p></div>
+  <div class="req"><b>3 · Duty totals once</b><p>FDP · DP · Block · Rest are one flat band under the hero, independent of sector count.</p></div>
+  <div class="req"><b>4 · Calendar in the header</b><p>The iPhone Calendar action becomes a nav-bar icon — the 50 pt strip is reclaimed for the schedule.</p></div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>1 · iPhone — compact (420 × 912)</h2>
+  <p class="note">Same six-sector duty. The rail keeps every scheduled time in one aligned gutter, so the day scans as a sequence of departures and arrivals; turn times make the gaps explicit.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:252px;height:547px">
+        <div class="pt" data-layout="rail-compact" data-theme="sia" style="width:420px;height:912px;transform:scale(.6)"></div>
+      </div></div>
+      <figcaption>Compact: 0.6×. Gutter 44 pt, rail 16 pt; every STD/STA lines up.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">1</span><div><b>One title, six sectors</b><p>The hero carries the shared flight-number string and routing. Nodes only name the sector.</p></div></div>
+      <div class="leg"><span class="n">2</span><div><b>Departure node</b><p><code>STD</code> in the gutter; <code>ETD</code> and <code>ATD</code> on the same line. Block time rides the right edge.</p></div></div>
+      <div class="leg"><span class="n">3</span><div><b>Arrival node + turn</b><p><code>STA</code> in the gutter with <code>ETA</code>/<code>ATA</code>; the dotted segment states the turn time to the next departure.</p></div></div>
+      <div class="leg"><span class="n">4</span><div><b>Calendar moved to the nav</b><p>A single tap target replaces the full-width card, freeing ~50 pt for the schedule.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>2 · iPhone Duo inner screen — wide (951 × 669)</h2>
+  <p class="note">All six sectors fit without scrolling: six two-node segments plus five turn gaps. The rail is the only vertical structure — there are no per-sector cards to stack.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:589.6px;height:414.8px">
+        <div class="pt wide" data-layout="rail-wide" data-theme="sia" style="width:951px;height:669px;transform:scale(.62)"></div>
+      </div></div>
+      <figcaption>Wide: 809 pt content. 12 nodes + 5 turns; the whole duty is visible at once.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">2</span><div><b>Scheduled vs actual, read across</b><p>The gutter is the plan; the inline ETD/ATD is the reality. A delay shows as a second value on the same line, not another row.</p></div></div>
+      <div class="leg"><span class="n">3</span><div><b>Turns are visible</b><p><code>turn 35 min</code> between sectors answers the question a table cannot: how much ground time is left.</p></div></div>
+      <div class="leg"><span class="n">5</span><div><b>Ops stay with the departure</b><p>Boarding · door close · off-block and the gate/stand path sit under the departure node they belong to; belt stays on arrival.</p></div></div>
+      <div class="leg"><span class="n">6</span><div><b>Scales to six</b><p>Six sectors add six short segments (~56 pt each), not six 138 pt cards.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>3 · How this differs from Ver1 / Ver3</h2>
+  <table>
+    <thead><tr><th>Version</th><th>Structure</th><th>Best at</th><th>Cost at 6 sectors</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ver1</b></td><td>Per-flight card, 3-pair matrix</td><td>Each sector as a self-contained unit</td><td>~138 pt per card; 2 rows below the fold on Duo wide</td></tr>
+      <tr><td><b>Ver3</b></td><td>Shared title + ledger rows</td><td>Fitting all six sectors on one screen</td><td>Chronology is implicit; turns are not shown</td></tr>
+      <tr><td><b>Ver4 · this</b></td><td>Two-node rail per sector</td><td>Reading the day as a clock; seeing turns and delays in place</td><td>Slightly more vertical than Ver3, but all six still fit</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>4 · Data and behavior notes</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Behavior</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td><b>Turn time</b></td><td><code>next STD − previous STA</code>, shown only between sectors inside the same duty. Negative or same-day-crossing values use the existing date-aware leg times.</td><td>leg <code>localDepTime</code>/<code>localArvTime</code></td></tr>
+      <tr><td><b>FDP / DP / Rest</b></td><td>Portal strings shown as-is on the flat band; omitted when the carrier feed has none.</td><td><code>dutyFdp</code> / <code>dutyDp</code> / <code>dutyRestHours</code></td></tr>
+      <tr><td><b>Block</b></td><td>Per-sector chip on the departure line; duty total on the band.</td><td><code>report.blhHours</code> or summed <code>blockHours</code></td></tr>
+      <tr><td><b>Calendar</b></td><td>Nav-bar icon opens the same preview sheet as today; the entry set is unchanged.</td><td>existing calendar module</td></tr>
+      <tr><td><b>Multi-duty trip</b></td><td>Each duty is its own rail under its own shared title; the rest strip stays between rails.</td><td>duty grouping</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</div>
+
+<script>
+/* ── Data shaped like the real roster / portal feed ─────────────────────── */
+const PR_SIX = {
+  hero1: 'PR1811 · MNL → TAC → MNL → ILO → MNL → DVO → MNL',
+  hero2: '6 Sep 2026 · 6 flights · 1 duty',
+  duty: {
+    label: 'DUTY 1 OF 1 · 6 SEP 2026', report: '04:10L',
+    kpis: [['Report','04:10L'],['FDP','13:10'],['DP','13:40'],['Block','08:15'],['Rest','14:00']],
+  },
+  flights: [
+    { n:1, num:'PR1811', route:'MNL → TAC', block:'1h 15m',
+      std:'05:10', sta:'06:25', etd:'05:10', eta:'06:25', atd:'—', ata:'—',
+      ops:[['BRD','04:40'],['DOOR','05:00'],['OFF','05:15']], where:'T2 · G108 · S112', belt:'Belt 03', turn:null },
+    { n:2, num:'PR1812', route:'TAC → MNL', block:'1h 15m',
+      std:'07:00', sta:'08:15', etd:'07:00', eta:'08:15', atd:'—', ata:'—',
+      ops:[['BRD','06:30'],['DOOR','06:50'],['OFF','07:05']], where:'T1 · G04 · S205', belt:'Belt 11', turn:'35 min' },
+    { n:3, num:'PR1863', route:'MNL → ILO', block:'1h 15m',
+      std:'09:15', sta:'10:30', etd:'09:15', eta:'10:30', atd:'—', ata:'—',
+      ops:[['BRD','08:45'],['DOOR','09:05'],['OFF','09:20']], where:'T2 · G115 · S118', belt:'Belt 02', turn:'1 h 00' },
+    { n:4, num:'PR1864', route:'ILO → MNL', block:'1h 15m',
+      std:'11:05', sta:'12:20', etd:'11:05', eta:'12:20', atd:'—', ata:'—',
+      ops:[['BRD','10:35'],['DOOR','10:55'],['OFF','11:10']], where:'T1 · G06 · S207', belt:'Belt 14', turn:'35 min' },
+    { n:5, num:'PR1885', route:'MNL → DVO', block:'1h 40m',
+      std:'13:20', sta:'15:00', etd:'13:20', eta:'15:00', atd:'—', ata:'—',
+      ops:[['BRD','12:50'],['DOOR','13:10'],['OFF','13:25']], where:'T2 · G121 · S126', belt:'Belt 05', turn:'1 h 00' },
+    { n:6, num:'PR1886', route:'DVO → MNL', block:'1h 35m',
+      std:'15:45', sta:'17:20', etd:'15:45', eta:'17:20', atd:'—', ata:'—',
+      ops:[['BRD','15:15'],['DOOR','15:35'],['OFF','15:50']], where:'T1 · G08 · S210', belt:'Belt 16', turn:'45 min' },
+  ],
+};
+
+/* ── Icons ──────────────────────────────────────────────────────────────── */
+const calIcon = `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>`;
+const wifi = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M4 9.5a12 12 0 0 1 16 0M7 13a8 8 0 0 1 10 0M10 16.4a3.6 3.6 0 0 1 4 0"/><circle cx="12" cy="19.2" r=".9" fill="#fff" stroke="none"/></svg>`;
+const statusIcons = `<svg width="52" height="11" viewBox="0 0 52 11" fill="none" aria-hidden="true">
+  <rect x="0" y="6" width="3" height="5" rx="1" fill="#fff"/><rect x="5" y="4.5" width="3" height="6.5" rx="1" fill="#fff"/>
+  <rect x="10" y="3" width="3" height="8" rx="1" fill="#fff"/><rect x="15" y="1.5" width="3" height="9.5" rx="1" fill="#fff" opacity=".55"/>
+  <path d="M23 4.6a7.5 7.5 0 0 1 9 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M25 7a4.5 4.5 0 0 1 5 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+  <circle cx="27.5" cy="9.3" r=".8" fill="#fff"/>
+  <rect x="36" y="2.5" width="13" height="6.5" rx="2" stroke="#fff" stroke-width="1" opacity=".55"/>
+  <rect x="37.5" y="4" width="8" height="3.5" rx="1" fill="#fff"/>
+  <path d="M50 5v2" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity=".55"/>
+</svg>`;
+
+/* ── Pieces ─────────────────────────────────────────────────────────────── */
+function metricsBand(d) {
+  return `<div class="metrics">${d.kpis.map(([k, v]) => `<div class="m"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('')}</div>`;
+}
+
+function depNode(f, first) {
+  const ops = f.ops.map(([k, v]) => `<span>${k} <b>${v}</b></span>`).join('');
+  return `<div class="node dep">
+    <div class="t">${f.std}<small>L</small></div>
+    <div class="rail"><i class="dot"></i></div>
+    <div class="nc">
+      <div class="l1"><b>${f.num}</b><span class="rt">${f.route}</span><span class="blk">${f.block}</span></div>
+      <div class="l2"><span>ETD</span><b>${f.etd}</b><span>·</span><span>ATD</span><b>${f.atd}</b>${first ? '<span class="hbadge">2</span>' : ''}<span class="where">${f.where}</span></div>
+      <div class="l3">${ops}</div>
+    </div>
+  </div>`;
+}
+
+function arrNode(f) {
+  return `<div class="node arr">
+    <div class="t">${f.sta}<small>L</small></div>
+    <div class="rail"><i class="dot"></i></div>
+    <div class="nc">
+      <div class="l2"><span>ETA</span><b>${f.eta}</b><span>·</span><span>ATA</span><b>${f.ata}</b><span class="where">${f.belt}</span></div>
+    </div>
+  </div>`;
+}
+
+function turn(f, first) {
+  return f.turn ? `<div class="turn"><div></div><div class="rail"></div><div class="lab">turn <em>${f.turn}</em>${first ? '<span class="hbadge">3</span>' : ''}</div></div>` : '';
+}
+
+function rail(trip) {
+  return `<div class="railcard" style="position:relative">
+    ${trip.flights.map((f, i) => depNode(f, i === 0) + arrNode(f) +
+      (trip.flights[i + 1] ? turn(trip.flights[i + 1], i === 0) : '')).join('')}
+  </div>`;
+}
+
+function screen(trip, layout) {
+  const isWide = layout === 'rail-wide';
+  return `<div class="app">
+    ${isWide ? `<div class="strip">${wifi}<i></i><i></i><i></i></div>` : ''}
+    <div class="status"><span>9:41</span><span>${statusIcons}</span></div>
+    <div class="nav"><div class="back">‹</div><div class="title">Trip Details</div>
+      <div class="calbtn"><span class="anno r" data-n="4" style="right:-4px;top:-4px">4</span>${calIcon}</div></div>
+    <div class="body">
+      <div class="frost" style="position:relative"><h1>${trip.hero1}</h1><p>${trip.hero2}</p><span class="anno r" data-n="1">1</span></div>
+      ${metricsBand(trip.duty)}
+      ${rail(trip)}
+    </div>
+  </div>`;
+}
+
+/* ── Mount ──────────────────────────────────────────────────────────────── */
+document.querySelector('.pt[data-layout="rail-compact"]').innerHTML = screen(PR_SIX, 'rail-compact');
+document.querySelector('.pt[data-layout="rail-wide"]').innerHTML = screen(PR_SIX, 'rail-wide');
+
+document.querySelectorAll('[data-theme-set]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.documentElement.dataset.theme = btn.dataset.themeSet;
+    document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('on', b === btn));
+    document.querySelectorAll('.pt').forEach(pt => pt.dataset.theme = btn.dataset.themeSet);
+  });
+});
+const annoBtn = document.getElementById('annoBtn');
+annoBtn.addEventListener('click', () => {
+  const off = document.body.classList.toggle('no-anno');
+  annoBtn.textContent = off ? 'Annotations: off' : 'Annotations: on';
+  annoBtn.classList.toggle('on', !off);
+});
+</script>
+</body>
+</html>

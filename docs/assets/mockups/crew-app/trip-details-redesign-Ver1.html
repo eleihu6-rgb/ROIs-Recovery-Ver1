@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en" data-theme="sia">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crew App · Trip Details redesign — Ver1</title>
+<style>
+/* ── Review page ─────────────────────────────────────────────────────────── */
+:root{
+  --bg:#eef2f5; --panel:#ffffff; --ink:#10212b; --mut:#5a6b76; --line:#d6e0e6;
+  --hl:#d9822b; --hl-soft:#fbe9d5; --ok:#2f7a55;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0d1418;--panel:#162126;--ink:#e8f0f3;--mut:#9aadb7;--line:#2a3a42;--hl-soft:#3a2915}
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{
+  margin:0;background:var(--bg);color:var(--ink);padding:26px 18px 80px;
+  font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+}
+.wrap{max-width:1420px;margin:0 auto}
+h1{font-size:23px;line-height:1.2;margin:0 0 6px;letter-spacing:-.2px}
+h2{font-size:17px;margin:0 0 3px}
+.lede{color:var(--mut);font-size:13px;max-width:980px;margin:0 0 16px}
+.note{color:var(--mut);font-size:12.5px;max-width:980px;margin:0 0 12px}
+section{margin:0 0 38px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 18px}
+.bar span{font-size:12px;color:var(--mut)}
+.btn{
+  font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink);cursor:pointer
+}
+.btn.on{border-color:var(--hl);background:var(--hl-soft);color:var(--ink);font-weight:600}
+.reqs{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:0 0 34px}
+.req{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.req b{display:block;font-size:13px;margin:0 0 4px}
+.req p{margin:0;color:var(--mut);font-size:12px}
+.req em{font-style:normal;color:var(--hl);font-weight:700}
+/* ── Device frames ───────────────────────────────────────────────────────── */
+.frames{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+figure{margin:0}
+figcaption{font-size:11.5px;color:var(--mut);margin-top:7px;max-width:620px}
+.dev{background:#05090c;border-radius:34px;padding:10px;box-shadow:0 22px 44px rgba(0,0,0,.28)}
+.vp{position:relative;overflow:hidden;border-radius:26px;background:#000}
+.pt{
+  position:absolute;top:0;left:0;transform-origin:0 0;overflow:hidden;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+}
+.app{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  background:linear-gradient(158deg,var(--g1) 0%,var(--g2) 46%,var(--g3) 100%);
+}
+.pt[data-theme="sia"]{--g1:#1e4a76;--g2:#2b6191;--g3:#4c82b2;--g4:#77a3cb;--btn:#2f6ba6}
+.pt[data-theme="thai"]{--g1:#4a1670;--g2:#5e2a86;--g3:#8a4aa8;--g4:#b989cf;--btn:#7a3aa0}
+.status{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;font-size:12px;font-weight:600;letter-spacing:.2px;flex:none;
+}
+.nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;height:40px;flex:none;
+}
+.nav .back{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:300;line-height:1}
+.nav .title{font-size:17px;font-weight:600;letter-spacing:-.2px}
+.nav .side{width:34px;height:34px}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:4px 20px 26px;overflow:hidden}
+.pt.wide .body,.pt.tall .body{padding:2px 106px 20px 34px;gap:10px}
+.pt.tall .body{padding-right:100px;padding-left:22px}
+/* Scrolled companion frame: the same page with the content shifted up. */
+.shiftwrap{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+/* Right Duo status strip */
+.strip{
+  position:absolute;right:9px;top:20px;width:64px;height:116px;border-radius:32px;
+  background:rgba(255,255,255,.10);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:7px;z-index:4;
+}
+.strip svg{opacity:.85}
+.strip i{width:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.6);display:block}
+/* Cards */
+.card{
+  position:relative;background:rgba(241,245,249,.66);color:#061624;border-radius:18px;
+  padding:11px 15px;box-shadow:0 10px 24px rgba(0,0,0,.13);
+}
+.frost{
+  background:rgba(255,255,255,.14);color:#fff;border-radius:18px;padding:14px 17px;
+  flex:none;
+}
+.hero h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.2px}
+.hero p{margin:3px 0 0;font-size:14px;color:rgba(255,255,255,.84)}
+.kicker{font-size:9px;font-weight:700;letter-spacing:.75px;text-transform:uppercase;color:#4f606c}
+.lbl{display:block;font-size:8.6px;font-weight:700;letter-spacing:.55px;text-transform:uppercase;color:#5c6d78}
+.val{display:block;font-size:16px;font-weight:600;line-height:1.08;margin-top:1px;font-variant-numeric:tabular-nums}
+.sm{font-size:10.5px;color:#4c5d68}
+.dash{border-top:1px dashed #b9c8d3;margin:8px 0}
+/* Calendar strip — moved out of the right column */
+.calstrip{display:flex;align-items:center;gap:11px;padding:9px 13px;flex:none}
+.calicon{
+  width:31px;height:31px;border-radius:16px;background:rgba(47,107,166,.14);
+  display:flex;align-items:center;justify-content:center;flex:none;
+}
+.caltext{flex:1;min-width:0}
+.caltext b{display:block;font-size:14px;font-weight:600;line-height:1.15}
+.caltext small{display:block;font-size:10.2px;color:#4f606c;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chev{font-size:21px;color:#4f606c;font-weight:300;line-height:1}
+/* Duty card */
+.duty{flex:none}
+.duty .head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.duty .report{font-size:11.5px;color:#3f515d;white-space:nowrap}
+.duty .report b{font-weight:600;color:#061624}
+.markers{display:flex;gap:0;margin-top:7px;position:relative}
+.marker{flex:1;min-width:0}
+.marker .val{font-size:15px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px;position:relative}
+.kpi{background:rgba(255,255,255,.45);border-radius:9px;padding:5px 7px;min-width:0}
+.kpi .val{font-size:14.5px}
+/* Flight card — compact: one 3-column time matrix, two rows (DEP / ARR). */
+.flight{flex:none}
+.fhead{display:flex;align-items:center;gap:6px;margin-bottom:5px;position:relative;min-width:0}
+.fchip{
+  font-size:7.6px;font-weight:800;letter-spacing:.5px;background:#dfe8ee;color:#29485d;
+  border-radius:6px;padding:1px 5px;white-space:nowrap
+}
+.fnum{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.route{font-size:11px;font-weight:600;color:#324956;white-space:nowrap}
+.fblk{
+  font-size:9px;font-weight:700;color:#2d4c5e;background:rgba(47,107,166,.10);
+  border-radius:6px;padding:1px 5px;white-space:nowrap
+}
+.fmeta{margin-left:auto;font-size:9.5px;color:#4f606c;white-space:nowrap}
+/* Each column is one pair: Scheduled (STD/STA), Estimated (ETD/ETA), Actual (ATD/ATA). */
+.times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;position:relative}
+.tcol{background:rgba(255,255,255,.42);border-radius:8px;padding:4px 7px;min-width:0}
+.th{font-size:8px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#647580;margin-bottom:1px;white-space:nowrap}
+.tr{display:flex;align-items:baseline;gap:4px;line-height:1.15;min-width:0}
+.tl{font-size:8px;font-weight:800;letter-spacing:.35px;color:#5c6d78;width:17px;flex:none}
+.tv{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.ops{display:flex;gap:10px;margin-top:5px;overflow:hidden;white-space:nowrap}
+.op{font-size:8px;color:#5c6d78;text-transform:uppercase;letter-spacing:.25px;white-space:nowrap}
+.op b{font-size:10px;font-weight:600;color:#061624;margin-left:2px;letter-spacing:0;text-transform:none}
+.where{display:flex;justify-content:space-between;gap:10px;margin-top:3px;font-size:9.5px;color:#3f515d;min-width:0}
+.where span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.where b{font-weight:600;color:#061624}
+.where .lbl{display:inline;font-size:7.5px;margin-right:2px}
+/* 6-sector duty stress test: full-width duty card, flights in two columns. */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px;flex:none}
+.grid2 .flight{flex:none}
+/* Duty grouping */
+.dayrow{display:flex;gap:14px;align-items:stretch;flex:none}
+.dayrow .duty{width:292px;flex:none}
+.dayrow .flightwrap{flex:1;min-width:0;display:flex;flex-direction:column;gap:9px}
+.dayrow .flight{flex:1}
+.rest{
+  display:flex;align-items:center;justify-content:center;gap:9px;flex:none;
+  padding:5px 0;margin:0 5px;font-size:10.5px;color:rgba(255,255,255,.9);
+  border-top:1px dashed rgba(255,255,255,.38);border-bottom:1px dashed rgba(255,255,255,.38);
+}
+.rest b{font-weight:700;letter-spacing:.3px}
+.hotel{
+  display:flex;align-items:center;gap:8px;flex:none;padding:7px 12px;
+  font-size:10px;color:#3f515d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.hotel b{color:#061624;font-size:11px;font-weight:600}
+.hotel .sep{color:#8fa0ab}
+/* Annotation badges */
+.anno{
+  position:absolute;z-index:6;width:17px;height:17px;border-radius:9px;background:var(--hl);
+  color:#fff;font-size:10px;font-weight:800;line-height:17px;text-align:center;
+  box-shadow:0 2px 7px rgba(0,0,0,.3);pointer-events:none
+}
+.anno.r{right:-7px;top:-7px}
+.anno.l{left:-9px;top:50%;transform:translateY(-50%)}
+body.no-anno .anno{display:none}
+/* Legend */
+.legend{display:flex;flex-direction:column;gap:9px;max-width:390px}
+.leg{display:flex;gap:9px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.leg .n{
+  width:20px;height:20px;border-radius:10px;background:var(--hl);color:#fff;flex:none;
+  font-size:11px;font-weight:800;line-height:20px;text-align:center
+}
+.leg b{display:block;font-size:12.5px;margin:0 0 1px}
+.leg p{margin:0;font-size:11.5px;color:var(--mut)}
+/* Before / after wireframe */
+.ba{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.wire{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.wire h3{font-size:12.5px;margin:0 0 8px}
+.wbox{display:flex;gap:8px}
+.wcol{display:flex;flex-direction:column;gap:7px}
+.ph{background:#dfe8ee;border-radius:7px;height:34px}
+.ph.hero{height:48px}
+.ph.tall{height:88px}
+.ph.wide{width:210px}
+.ph.cal{height:38px;border:2px dashed var(--hl);background:var(--hl-soft)}
+.ph.dim{opacity:.5}
+html[data-theme] .wire{color:#10212b}
+@media (prefers-color-scheme:dark){.wire{color:#e8f0f3}.ph{background:#2a3b44}.ph.cal{background:#3a2915}.ph.dim{opacity:.4}}
+/* Tables */
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:var(--panel);border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;padding:1px 6px;border-radius:6px;background:#e6f2ea;color:#256b45}
+.tag.warn{background:#fbe9d5;color:#8a5518}
+.tag.none{background:#e6eaed;color:#51616c}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Crew App · Trip Details — redesign for review (Ver1)</h1>
+<p class="lede">
+  Five changes proposed: <b>(1)</b> pair STD↔STA, ETD↔ETA, ATD↔ATA in a compact 2-row matrix (three pair columns);
+  <b>(2)</b> add duty-level FDP · DP · Block · Rest; <b>(3)</b> move the iPhone Calendar
+  control out of the right column into a slim full-width strip; <b>(4)</b> use one
+  consistent flight title for every flight, however many flights a duty/pairing has;
+  <b>(5)</b> move crew markers (wake-up / leave home / report) onto the duty card so later
+  flights no longer repeat empty “—” rows. Frames are drawn at true point size and scaled.
+</p>
+
+<div class="bar">
+  <span>Theme</span>
+  <button class="btn on" data-theme-set="sia">Reference blue</button>
+  <button class="btn" data-theme-set="thai">Thai violet</button>
+  <span style="width:10px"></span>
+  <button class="btn on" id="annoBtn">Annotations: on</button>
+</div>
+
+<div class="reqs">
+  <div class="req"><b>1 · Related times, paired</b><p>STD/STA, ETD/ETA and ATD/ATA are three pair columns; DEP and ARR stack inside each column. Two text rows instead of three full-width rows, so a duty with six sectors stays scannable. Block time is a chip in the flight header.</p></div>
+  <div class="req"><b>2 · Duty-level totals</b><p>FDP · DP · Block · Rest per duty. The portal capture already receives <code>dutyFdp</code>, <code>dutyDp</code>, <code>dutyRestHours</code> and <code>fdpHours</code>/<code>dpHours</code>/<code>blhHours</code> — they are currently thrown away.</p></div>
+  <div class="req"><b>3 · Calendar repositioned</b><p>No longer a card in the right column. A one-line action strip directly under the hero, full width, on every breakpoint.</p></div>
+  <div class="req"><b>4 · One title for every flight</b><p><em>FLIGHT n · number · DEP → ARR · date</em> on every leg card, including a single-flight trip, so multi-flight duties scan identically.</p></div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>1 · iPhone — compact (420 × 912)</h2>
+  <p class="note">One duty, two flights (PR501 / PR512, MNL–SIN–MNL). Crew markers are shown once on the duty card; each flight card carries only flight data. The calendar strip is full width under the hero. Scroll continues below Flight 2.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:252px;height:547px">
+        <div class="pt" data-theme="sia" data-layout="compact" style="width:420px;height:912px;transform:scale(.6)"></div>
+      </div></div>
+      <figcaption>Compact: done at 0.6×. Same 22 pt page gutter, Hero radius 18, ListCard radius 18 as the shipping screen.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">1</span><div><b>Paired times</b><p>SCHEDULED <code>STD / STA</code>, ESTIMATED <code>ETD / ETA</code>, ACTUAL <code>ATD / ATA</code> are three columns; departure and arrival stack inside each. Two text rows replace the three full-width rows, and block is a header chip.</p></div></div>
+      <div class="leg"><span class="n">2</span><div><b>Duty totals</b><p>Four KPI cells per duty: FDP, DP, Block, Rest. These are the portal’s own values (detailAll / report), not recomputed estimates.</p></div></div>
+      <div class="leg"><span class="n">3</span><div><b>Calendar strip</b><p>One-line, full-width action under the hero. On the Duo this is what frees the right column.</p></div></div>
+      <div class="leg"><span class="n">4</span><div><b>Consistent flight title</b><p>Every flight gets the same header: index, flight number, route, date (+ fleet). It no longer disappears on single-flight trips.</p></div></div>
+      <div class="leg"><span class="n">5</span><div><b>Markers on the duty</b><p>Wake-up / leave home / report belong to the duty. Later flights no longer repeat three “—” marker cells.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>2 · iPhone Duo inner screen — wide (951 × 669)</h2>
+  <p class="note">Two-duty layover trip (TG662 BKK→PVG / TG663 PVG→BKK). Each duty is a horizontal group: the duty summary is sized to its content (292 pt), the flight card takes the remaining width. The rest strip separates duty 1 from duty 2. The 84 pt status/action strip on the right is preserved; the calendar no longer occupies a full right column.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:589.6px;height:414.8px">
+        <div class="pt wide" data-theme="sia" data-layout="wide" style="width:951px;height:669px;transform:scale(.62)"></div>
+      </div></div>
+      <figcaption>Wide: content width 809 pt after the Duo strip; duty card 292 pt + 14 pt gap + flight card ≈ 503 pt. Both duties, the rest strip and the layover hotel fit on one screen.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">3</span><div><b>Right column reclaimed</b><p>Previously the calendar card stretched across the right column with a large empty area. Now it is a 52 pt strip under the hero and the flight content gets the width.</p></div></div>
+      <div class="leg"><span class="n">4</span><div><b>Duty groups, not a flat leg list</b><p><code>DUTY 1 OF 2</code> and <code>DUTY 2 OF 2</code> headers make it obvious when a new report/rest period starts. Flight numbering is continuous across the trip.</p></div></div>
+      <div class="leg"><span class="n">2</span><div><b>Rest between duties</b><p>The dashed strip shows the gap the portal reports as Rest Hours (05:49 arrival → 23:50 report = 18h 01m).</p></div></div>
+      <div class="leg"><span class="n">5</span><div><b>No empty marker cells</b><p>Duty 2 shows only the markers it actually has (hotel pick-up, report) — no “—” filler for wake-up or leave home.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>3 · Six-sector duty — stress test (951 × 669)</h2>
+  <p class="note">The worst realistic duty: six flights on one report. The two-row time matrix keeps every sector card to ~138 pt, so four of six cards fit above the fold at 669 pt and rows 5–6 cost one short scroll. The shared-title table (Ver3) fits all six without scrolling — that is the trade-off between the two versions.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:589.6px;height:414.8px">
+        <div class="pt wide" data-theme="sia" data-layout="six" style="width:951px;height:669px;transform:scale(.62)"></div>
+      </div></div>
+      <figcaption>Six sectors at 951×669. Each card is header + 2-row time matrix + one ops line + one where line; no per-flight wake-up / leave-home filler. Rows 5–6 sit below the fold.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">1</span><div><b>Two rows, three pairs</b><p><code>STD/STA</code>, <code>ETD/ETA</code>, <code>ATD/ATA</code> are three columns; DEP and ARR stack inside each column. Six sectors add six short cards (~138 pt), not eighteen full-width rows.</p></div></div>
+      <div class="leg"><span class="n">2</span><div><b>Duty totals stay on top</b><p>FDP · DP · Block · Rest are reported once per duty, so they do not grow with the sector count.</p></div></div>
+      <div class="leg"><span class="n">4</span><div><b>Same title, six times</b><p>Every sector uses <code>FLT n · number · route · block · fleet/date</code>, so the list scans as a sequence.</p></div></div>
+      <div class="leg"><span class="n">5</span><div><b>Markers once</b><p>Wake-up / leave home / report are on the duty card only — the six sector cards never repeat them.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>4 · iPhone Duo inner screen — tall (669 × 951)</h2>
+  <p class="note">Same TG trip, one column. Duty card and flight card stack; the duty card’s KPI cells stay on one row because the column is 541 pt wide. The layover hotel appears between the two duties, after the rest strip.</p>
+  <div class="frames">
+    <figure>
+      <div class="dev"><div class="vp" style="width:367.95px;height:523.05px">
+        <div class="pt tall" data-theme="sia" data-layout="tall" style="width:669px;height:951px;transform:scale(.55)"></div>
+      </div></div>
+      <figcaption>Tall: 0.55×. Single column, same component order as compact; only the card width changes.</figcaption>
+    </figure>
+    <div class="legend">
+      <div class="leg"><span class="n">3</span><div><b>Same calendar position</b><p>Under the hero at every breakpoint — there is no separate “wide only” calendar layout to maintain.</p></div></div>
+      <div class="leg"><span class="n">2</span><div><b>Hotel in context</b><p>The hotel sits between duties, where the crew actually uses it, instead of after all flights.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>5 · Calendar placement — before / after</h2>
+  <p class="note">The wide change is structural, not cosmetic: removing the calendar from the right column is what removes the empty right half.</p>
+  <div class="ba">
+    <div class="wire">
+      <h3>Before — right column</h3>
+      <div class="wbox">
+        <div class="wcol" style="width:240px">
+          <div class="ph hero"></div>
+          <div class="ph tall"></div>
+          <div class="ph tall"></div>
+        </div>
+        <div class="wcol" style="width:240px">
+          <div class="ph cal" style="height:96px"></div>
+          <div class="ph dim" style="height:60px"></div>
+        </div>
+      </div>
+      <p class="sm" style="margin:8px 0 0">Calendar card + large empty area; flight content squeezed into half the width.</p>
+    </div>
+    <div class="wire">
+      <h3>After — full-width strip</h3>
+      <div class="wcol" style="width:498px">
+        <div class="ph hero"></div>
+        <div class="ph cal"></div>
+        <div class="wbox">
+          <div class="ph" style="width:150px;height:118px"></div>
+          <div class="ph" style="flex:1;height:118px"></div>
+        </div>
+        <div class="ph" style="height:26px"></div>
+        <div class="wbox">
+          <div class="ph" style="width:150px;height:118px"></div>
+          <div class="ph" style="flex:1;height:118px"></div>
+        </div>
+      </div>
+      <p class="sm" style="margin:8px 0 0">Hero → calendar strip → duty groups use the full 809 pt content width.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>6 · Data sources — no invented values</h2>
+  <p class="note">Everything shown in the frames exists in a captured payload or is directly derivable. The values in this mock are shaped like the portal’s own strings (<code>HH:MM</code>).</p>
+  <table>
+    <thead><tr><th>Metric</th><th>Primary source</th><th>Fallback</th><th>Availability</th></tr></thead>
+    <tbody>
+      <tr><td><b>FDP</b></td><td><code>detailAll → portalCalendarDetailRosterInfoVoList[].dutyFdp</code>; also <code>report → fdpHours</code></td><td>—</td><td><span class="tag">Portal</span></td></tr>
+      <tr><td><b>DP</b></td><td><code>detailAll → dutyDp</code>; also <code>report → dpHours</code></td><td><code>deBriefEnd − briefStart</code> (calendar)</td><td><span class="tag">Portal</span></td></tr>
+      <tr><td><b>Block</b></td><td><code>report → blhHours</code>, or sum of <code>detailAll.blockHours</code></td><td>sum of leg <code>blockMinutes</code></td><td><span class="tag">Portal</span> <span class="tag warn">Live API: block only</span></td></tr>
+      <tr><td><b>Rest</b></td><td><code>detailAll → dutyRestHours</code></td><td>previous <code>deBriefEnd</code> → next <code>briefStart</code></td><td><span class="tag">Portal</span> <span class="tag none">Live API: none</span></td></tr>
+      <tr><td><b>STD / STA</b></td><td>roster leg schedule (<code>flightDateUTC</code> / <code>arvDateUTC</code>, or portal local times)</td><td>—</td><td><span class="tag">Both</span></td></tr>
+      <tr><td><b>ETD / ETA</b></td><td>roster estimate (<code>estDepUtc</code> / <code>estArvUtc</code>)</td><td>repeat STD / STA (clearly the filed time)</td><td><span class="tag">Both</span></td></tr>
+      <tr><td><b>ATD / ATA</b></td><td>roster actual (<code>actDepUtc</code> / <code>actArvUtc</code>)</td><td>“—”</td><td><span class="tag">Both</span></td></tr>
+      <tr><td><b>Duty identity</b></td><td>portal <code>briefStart</code>; live API <code>pairingId</code></td><td>first leg’s <code>checkInDateUTC</code></td><td><span class="tag">Both</span></td></tr>
+    </tbody>
+  </table>
+  <p class="note" style="margin-top:10px">
+    <b>Implementation implication:</b> <code>portalCapture.ts</code> must map the captured totals onto <code>PortalDuty</code> /
+    <code>Trip</code> and persist them, because the raw report/detailAll payloads are not stored. For a carrier whose feed has no
+    FDP/DP/Rest (the current F8/ET/EK mobile-roster API exposes only check-in/release + <code>blockMinutes</code>), the duty card
+    should show Block and the duty span and <b>omit</b> the missing cells rather than display demo numbers. Airport ops values
+    (boarding, door close, off-block, gate, stand, belt) remain explicitly demo until an A-CDM/AODB feed exists, as they are today.
+  </p>
+</section>
+
+</div>
+
+<script>
+/* ── Data shaped like the real roster / portal feed ─────────────────────── */
+const PR_TURN = {
+  hero1: 'PR501 · MNL → SIN → MNL',
+  hero2: '6 Sep 2026 · 2 flights · 1 duty',
+  duties: [{
+    label: 'DUTY 1 OF 1 · 6 SEP', report: '13:25L',
+    markers: [['Wake-up','03:32L'],['Leave home','04:32L'],['Report','13:25L']],
+    kpis: [['FDP','10:15'],['DP','10:45'],['Block','06:56'],['Rest','14:00']],
+    flights: [
+      { n:1, num:'PR501', route:'MNL → SIN', date:'6 Sep', fleet:'A321',
+        sched:['15:32L','18:56L'], est:['15:32L','18:56L'], act:['—','—'], block:'3h 24m',
+        miles:[['Boarding','15:02L'],['Door close','15:22L'],['Off-block','15:34L']],
+        dep:'T1 · Gate 124 · Stand 135', arr:'Belt 01' },
+      { n:2, num:'PR512', route:'SIN → MNL', date:'6 Sep', fleet:'A321',
+        sched:['20:08L','23:40L'], est:['20:08L','23:40L'], act:['—','—'], block:'3h 32m',
+        miles:[['Boarding','19:38L'],['Door close','19:58L'],['Off-block','20:12L']],
+        dep:'T2 · Gate B4 · Stand 208', arr:'Belt 12' },
+    ],
+  }],
+};
+
+/* Stress test: the longest realistic duty — six domestic sectors in one day. */
+const PR_SIX = {
+  hero1: 'PR1811 · MNL → TAC → MNL → ILO → MNL → DVO → MNL',
+  hero2: '6 Sep 2026 · 6 flights · 1 duty',
+  duties: [{
+    label: 'DUTY 1 OF 1 · 6 SEP', report: '04:10L',
+    markers: [['Wake-up','02:40L'],['Leave home','03:20L'],['Report','04:10L']],
+    kpis: [['FDP','13:10'],['DP','13:40'],['Block','08:15'],['Rest','14:00']],
+    flights: [
+      { n:1, num:'PR1811', route:'MNL → TAC', date:'6 Sep', fleet:'A321',
+        sched:['05:10L','06:25L'], est:['05:10L','06:25L'], act:['—','—'], block:'1h 15m',
+        miles:[['Boarding','04:40L'],['Door close','05:00L'],['Off-block','05:15L']],
+        dep:'T2 · Gate 108 · Stand 112', arr:'Belt 03' },
+      { n:2, num:'PR1812', route:'TAC → MNL', date:'6 Sep', fleet:'A321',
+        sched:['07:00L','08:15L'], est:['07:00L','08:15L'], act:['—','—'], block:'1h 15m',
+        miles:[['Boarding','06:30L'],['Door close','06:50L'],['Off-block','07:05L']],
+        dep:'T1 · Gate 04 · Stand 205', arr:'Belt 11' },
+      { n:3, num:'PR1863', route:'MNL → ILO', date:'6 Sep', fleet:'A321',
+        sched:['09:15L','10:30L'], est:['09:15L','10:30L'], act:['—','—'], block:'1h 15m',
+        miles:[['Boarding','08:45L'],['Door close','09:05L'],['Off-block','09:20L']],
+        dep:'T2 · Gate 115 · Stand 118', arr:'Belt 02' },
+      { n:4, num:'PR1864', route:'ILO → MNL', date:'6 Sep', fleet:'A321',
+        sched:['11:05L','12:20L'], est:['11:05L','12:20L'], act:['—','—'], block:'1h 15m',
+        miles:[['Boarding','10:35L'],['Door close','10:55L'],['Off-block','11:10L']],
+        dep:'T1 · Gate 06 · Stand 207', arr:'Belt 14' },
+      { n:5, num:'PR1885', route:'MNL → DVO', date:'6 Sep', fleet:'A321',
+        sched:['13:20L','15:00L'], est:['13:20L','15:00L'], act:['—','—'], block:'1h 40m',
+        miles:[['Boarding','12:50L'],['Door close','13:10L'],['Off-block','13:25L']],
+        dep:'T2 · Gate 121 · Stand 126', arr:'Belt 05' },
+      { n:6, num:'PR1886', route:'DVO → MNL', date:'6 Sep', fleet:'A321',
+        sched:['15:45L','17:20L'], est:['15:45L','17:20L'], act:['—','—'], block:'1h 35m',
+        miles:[['Boarding','15:15L'],['Door close','15:35L'],['Off-block','15:50L']],
+        dep:'T1 · Gate 08 · Stand 210', arr:'Belt 16' },
+    ],
+  }],
+};
+
+const TG_TRIP = {
+  hero1: 'TG662 · BKK → PVG → BKK',
+  hero2: '16–17 Sep 2026 · 2 flights · 2 duties · 1 night',
+  duties: [
+    {
+      label: 'DUTY 1 OF 2 · 16 SEP', report: '22:45L',
+      markers: [['Wake-up','20:30L'],['Leave home','21:30L'],['Report','22:45L']],
+      kpis: [['FDP','07:00'],['DP','07:30'],['Block','05:15'],['Rest','14:00']],
+      flights: [{
+        n:1, num:'TG662', route:'BKK → PVG', date:'16 Sep', fleet:'A350',
+        sched:['00:30L','05:45L'], est:['00:30L','05:45L'], act:['00:37L','05:49L'], block:'5h 15m',
+        miles:[['Boarding','23:55L -1'],['Door close','00:20L'],['Off-block','00:35L']],
+        dep:'T1 · Gate D9 · Stand 135', arr:'Belt 08',
+      }],
+    },
+    {
+      label: 'DUTY 2 OF 2 · 17 SEP', report: '23:50L',
+      markers: [['Hotel pick-up','22:30L'],['Report','23:50L']],
+      kpis: [['FDP','06:35'],['DP','07:05'],['Block','05:15'],['Rest','18:01']],
+      flights: [{
+        n:2, num:'TG663', route:'PVG → BKK', date:'17 Sep', fleet:'A350',
+        sched:['01:10L','06:25L'], est:['01:10L','06:25L'], act:['—','—'], block:'5h 15m',
+        miles:[['Boarding','00:35L'],['Door close','01:00L'],['Off-block','01:15L']],
+        dep:'T2 · Gate D12 · Stand 220', arr:'Belt 14',
+      }],
+    },
+  ],
+  rest: ['REST 18h 01m', '16 Sep 05:49 → 16 Sep 23:50'],
+  hotel: ['LAYOVER · SHANGHAI PUDONG', 'Crowne Plaza PVG (expected)', 'in 07:00 → out 21:00 · 1 night'],
+};
+
+/* ── Small HTML helpers ─────────────────────────────────────────────────── */
+const calIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f6ba6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>`;
+const wifi = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M4 9.5a12 12 0 0 1 16 0M7 13a8 8 0 0 1 10 0M10 16.4a3.6 3.6 0 0 1 4 0"/><circle cx="12" cy="19.2" r=".9" fill="#fff" stroke="none"/></svg>`;
+const statusIcons = `<svg width="52" height="11" viewBox="0 0 52 11" fill="none" aria-hidden="true">
+  <rect x="0" y="6" width="3" height="5" rx="1" fill="#fff"/>
+  <rect x="5" y="4.5" width="3" height="6.5" rx="1" fill="#fff"/>
+  <rect x="10" y="3" width="3" height="8" rx="1" fill="#fff"/>
+  <rect x="15" y="1.5" width="3" height="9.5" rx="1" fill="#fff" opacity=".55"/>
+  <path d="M23 4.6a7.5 7.5 0 0 1 9 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M25 7a4.5 4.5 0 0 1 5 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+  <circle cx="27.5" cy="9.3" r=".8" fill="#fff"/>
+  <rect x="36" y="2.5" width="13" height="6.5" rx="2" stroke="#fff" stroke-width="1" opacity=".55"/>
+  <rect x="37.5" y="4" width="8" height="3.5" rx="1" fill="#fff"/>
+  <path d="M50 5v2" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity=".55"/>
+</svg>`;
+
+function dutyCard(d, i) {
+  const markers = d.markers.map(([l, v]) => `<div class="marker"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join('');
+  const kpis = d.kpis.map(([l, v]) => `<div class="kpi"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join('');
+  return `<div class="card duty">
+    <div class="head"><span class="kicker">${d.label}</span><span class="report">Report <b>${d.report}</b></span></div>
+    <div class="markers">${markers}<span class="anno r" data-n="5">5</span></div>
+    <div class="dash"></div>
+    <div class="kpis">${kpis}<span class="anno r" data-n="2">2</span></div>
+  </div>`;
+}
+
+function flightCard(f) {
+  /* One column per pair. DEP and ARR stack inside the column, so the three
+     pairs cost two text rows instead of three full-width rows. */
+  const col = (head, a, b) => `<div class="tcol">
+      <div class="th">${head}</div>
+      <div class="tr"><span class="tl">${a[0]}</span><span class="tv">${a[1]}</span></div>
+      <div class="tr"><span class="tl">${b[0]}</span><span class="tv">${b[1]}</span></div>
+    </div>`;
+  return `<div class="card flight">
+    <div class="fhead">
+      <span class="fchip">FLT ${f.n}</span>
+      <span class="fnum">${f.num}</span>
+      <span class="route">${f.route}</span>
+      <span class="fblk">${f.block}</span>
+      <span class="fmeta">${f.fleet} · ${f.date}</span>
+      <span class="anno l" data-n="4">4</span>
+    </div>
+    <div class="times">
+      ${col('Scheduled', ['STD', f.sched[0]], ['STA', f.sched[1]])}
+      ${col('Estimated', ['ETD', f.est[0]], ['ETA', f.est[1]])}
+      ${col('Actual', ['ATD', f.act[0]], ['ATA', f.act[1]])}
+      <span class="anno r" data-n="1">1</span>
+    </div>
+    <div class="ops">${f.miles.map(([l, v]) => `<span class="op">${l}<b>${v}</b></span>`).join('')}</div>
+    <div class="where">
+      <span><span class="lbl">DEP</span><b>${f.dep}</b></span>
+      <span><span class="lbl">ARR</span><b>${f.arr}</b></span>
+    </div>
+  </div>`;
+}
+
+function calendarStrip() {
+  return `<div class="card calstrip">
+    <div class="calicon">${calIcon}</div>
+    <div class="caltext"><b>Add to iPhone Calendar</b><small>Wake-up · leave home · report · flights</small></div>
+    <div class="chev">›</div>
+    <span class="anno r" data-n="3">3</span>
+  </div>`;
+}
+
+function restStrip(r) {
+  return `<div class="rest"><b>${r[0]}</b><span>·</span><span>${r[1]}</span></div>`;
+}
+
+function hotelStrip(h) {
+  return `<div class="card hotel"><span class="kicker">${h[0]}</span><span class="sep">·</span><b>${h[1]}</b><span class="sep">·</span><span>${h[2]}</span></div>`;
+}
+
+function screen(trip, layout) {
+  const isWide = layout.startsWith('wide') || layout === 'six';
+  let content = '';
+  trip.duties.forEach((d, i) => {
+    if (i > 0) {
+      if (trip.rest) content += restStrip(trip.rest);
+      if (trip.hotel) content += hotelStrip(trip.hotel);
+    }
+    const flights = d.flights.map(flightCard).join('');
+    if (layout === 'six') {
+      content += dutyCard(d, i) + `<div class="grid2">${flights}</div>`;
+    } else if (isWide) {
+      content += `<div class="dayrow">${dutyCard(d, i)}<div class="flightwrap">${flights}</div></div>`;
+    } else {
+      content += dutyCard(d, i) + flights;
+    }
+  });
+  return `<div class="app">
+    ${isWide || layout === 'tall' ? `<div class="strip">${wifi}<i></i><i></i><i></i></div>` : ''}
+    <div class="status"><span>9:41</span><span>${statusIcons}</span></div>
+    <div class="nav"><div class="back">‹</div><div class="title">Trip Details</div><div class="side"></div></div>
+    <div class="body"><div class="shiftwrap">
+      <div class="frost hero"><h1>${trip.hero1}</h1><p>${trip.hero2}</p></div>
+      ${calendarStrip()}
+      ${content}
+    </div></div>
+  </div>`;
+}
+
+/* ── Mount ──────────────────────────────────────────────────────────────── */
+document.querySelector('.pt[data-layout="compact"]').innerHTML = screen(PR_TURN, 'compact');
+document.querySelector('.pt[data-layout="wide"]').innerHTML = screen(TG_TRIP, 'wide');
+document.querySelector('.pt[data-layout="six"]').innerHTML = screen(PR_SIX, 'six');
+document.querySelector('.pt[data-layout="tall"]').innerHTML = screen(TG_TRIP, 'tall');
+
+/* Theme */
+document.querySelectorAll('[data-theme-set]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.documentElement.dataset.theme = btn.dataset.themeSet;
+    document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('on', b === btn));
+    document.querySelectorAll('.pt').forEach(pt => pt.dataset.theme = btn.dataset.themeSet);
+  });
+});
+
+/* Annotations */
+const annoBtn = document.getElementById('annoBtn');
+annoBtn.addEventListener('click', () => {
+  const off = document.body.classList.toggle('no-anno');
+  annoBtn.textContent = off ? 'Annotations: off' : 'Annotations: on';
+  annoBtn.classList.toggle('on', !off);
+});
+</script>
+</body>
+</html>

@@ -17,12 +17,13 @@ import { hasDutyCard, MON, resolveCardIndex, type DayMeeting, type DayModel, typ
 import { useV2Nav } from './nav';
 import { IconButton } from './HomeScreen';
 import { MeetingCard, MeetingRow, type MeetingActions } from './MeetingCard';
-import { CalendarView } from './CalendarView';
+import { CALENDAR_LEVELS, CalendarView, calendarLevelLabel, type CalendarLevel } from './CalendarView';
 import { RouteMapView } from './RouteMapView';
 import { pickDayArt, SCHED_VIEWS, viewPick, type DayArtName, type SchedViewMode, type SchedViewOption } from './schedView';
 import { useBase } from './useV2';
-import { duoActionStripWidth, useLayout } from '../../components/v2/useLayout';
-import { toggleMeetingMute } from '../meetings/meetingsSlice';
+import { bottomDockClearance, duoActionStripWidth, useLayout } from '../../components/v2/useLayout';
+import { syncMeetings, toggleMeetingMute } from '../meetings/meetingsSlice';
+import { airlineByCode } from '../auth/airlines';
 import { codeAddsInfo, type GroundDuty } from '../roster/dutyDisplay';
 import type { TimeZoneMode } from '../settings/settingsSlice';
 import { hhmmForInstant, parseRosterUTC } from '../settings/timeFormat';
@@ -45,6 +46,7 @@ export function ScheduleScreen({ route }: Props = {}) {
   const nav = useV2Nav();
   const dispatch = useAppDispatch();
   const alertCount = useAppSelector(s => s.notifications.notifications.length);
+  const airline = useAppSelector(s => s.auth.airline) ?? '';
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const [now] = useState(() => new Date());
@@ -55,7 +57,16 @@ export function ScheduleScreen({ route }: Props = {}) {
   // the default so nothing about today's screen changes for a crew who never
   // opens the menu.
   const [view, setView] = useState<SchedViewMode>('timeline');
+  const [calendarLevel, setCalendarLevel] = useState<CalendarLevel>('month-detail');
   useEffect(() => { dispatch(setScheduleView(view)); }, [dispatch, view]);
+  // Re-read EventKit at the moment Calendar becomes visible. iCloud/Exchange
+  // may finish syncing after bootstrap, and returning from iOS Calendar should
+  // never leave a stale empty day in this view.
+  useEffect(() => {
+    if (view.startsWith('calendar')) {
+      dispatch(syncMeetings());
+    }
+  }, [dispatch, view]);
   const [menuOpen, setMenuOpen] = useState(false);
   const base = useBase();
   // Airline schedule → iOS Calendar: the same per-duty toggle the v1 flight card
@@ -94,6 +105,8 @@ export function ScheduleScreen({ route }: Props = {}) {
   // A regular iPhone has no such right inset and keeps its compact menu.
   const railWidth = duoActionStripWidth(width, height, insets.right) || insets.right;
   const railInStrip = railWidth >= RAIL_W;
+  const calendarControlsInHeader = view === 'calendar-compact';
+  const compactHeader = width < 560;
 
   // The strip shows every calendar day; the list only carries days that actually
   // have something on them (see hasDutyCard), so the two indexes diverge.
@@ -199,19 +212,35 @@ export function ScheduleScreen({ route }: Props = {}) {
           accessibilityLabel="Close roster view menu"
         />
       ) : null}
-      <View style={[s.head, { paddingTop: insets.top + 4, zIndex: 20 }]}>
+      <View style={[s.head, compactHeader && s.headCompact, { paddingTop: railInStrip ? 8 : insets.top + 4, zIndex: 20 }]} testID="sched-header">
         <View style={s.titleRow}>
           {/* Empty spacer balances the menu button so the month stays screen-centred. */}
-          <View style={s.iconBtn} />
+          {!calendarControlsInHeader ? <View style={s.iconBtn} /> : null}
           <View style={s.monthNav}>
-            <Pressable onPress={shiftMonth(-1)} style={s.iconBtn} testID="sched-prev-month"><Icon name="back" size={24} color={p.ink} strokeWidth={1.8} /></Pressable>
-            <Text style={[s.title, { color: p.ink }]} numberOfLines={1} testID="sched-title">{title}</Text>
-            <Pressable onPress={shiftMonth(1)} style={s.iconBtn} testID="sched-next-month"><Icon name="chev" size={24} color={p.ink} strokeWidth={1.8} /></Pressable>
+            <Pressable onPress={shiftMonth(-1)} hitSlop={compactHeader ? 7 : undefined} style={[s.iconBtn, compactHeader && s.iconBtnCompact]} testID="sched-prev-month"><Icon name="back" size={compactHeader ? 20 : 24} color={p.ink} strokeWidth={1.8} /></Pressable>
+            <Text style={[s.title, compactHeader && s.titleCompact, { color: p.ink }]} numberOfLines={1} testID="sched-title">{title}</Text>
+            <Pressable onPress={shiftMonth(1)} hitSlop={compactHeader ? 7 : undefined} style={[s.iconBtn, compactHeader && s.iconBtnCompact]} testID="sched-next-month"><Icon name="chev" size={compactHeader ? 20 : 24} color={p.ink} strokeWidth={1.8} /></Pressable>
           </View>
           {/* Ver11: the tab's own bell becomes the "Roster view" menu. Alerts keep
               their entry point as a row inside that menu (with the same badge),
               so nothing the bell did is lost. Wide: the toolbar on the right. */}
-          {wide || railInStrip ? <View style={s.iconBtn} /> : <View>
+          {calendarControlsInHeader ? <View style={s.calendarHeaderActions} testID="cal-header-actions">
+            <Pressable testID="cal-mode-toggle" accessibilityRole="button"
+              accessibilityLabel={`Calendar layout, ${calendarLevelLabel(calendarLevel)}`}
+              hitSlop={compactHeader ? 5 : undefined}
+              onPress={() => setCalendarLevel(CALENDAR_LEVELS[(CALENDAR_LEVELS.indexOf(calendarLevel) + 1) % CALENDAR_LEVELS.length])}
+              style={[s.calendarHeaderToggle, compactHeader && s.calendarHeaderToggleCompact, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
+              <Icon name={calendarLevel === 'month-detail' ? 'cal' : 'list'} size={18} color={p.btn} />
+              <Text numberOfLines={1} style={[s.calendarHeaderText, compactHeader && s.calendarHeaderTextCompact, { color: p.ink }]}>
+                {compactHeader && calendarLevel === 'month-detail' ? 'Detail' : calendarLevelLabel(calendarLevel)}
+              </Text>
+              <Icon name="chev" size={14} color={p.inkSoft} />
+            </Pressable>
+            <Pressable onPress={() => { setCalDay(calDay ?? month.focusIndex + 1); setView('calendar-detail'); }} hitSlop={compactHeader ? 7 : undefined} testID="cal-to-detail"
+              style={[s.iconBtn, compactHeader && s.iconBtnCompact]} accessibilityLabel="Open hourly timeline">
+              <Icon name="clock" size={22} color={p.ink} strokeWidth={1.8} />
+            </Pressable>
+          </View> : wide || railInStrip ? <View style={s.iconBtn} /> : <View>
             <IconButton
               name="menu3"
               badge={alertCount}
@@ -255,7 +284,7 @@ export function ScheduleScreen({ route }: Props = {}) {
       </View>
       {view === 'timeline' ? (
         <FlatList
-          ref={list} data={listDays} keyExtractor={d => String(d.key)} contentContainerStyle={s.list} showsVerticalScrollIndicator={false}
+          ref={list} data={listDays} keyExtractor={d => String(d.key)} contentContainerStyle={[s.list, { paddingBottom: bottomDockClearance(width, height, insets, 120) }]} showsVerticalScrollIndicator={false}
           key={`cols-${cols}`} numColumns={cols} columnWrapperStyle={wide ? s.listRow : undefined}
           onViewableItemsChanged={onViewable} viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
           onScrollToIndexFailed={info => setTimeout(() => list.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
@@ -284,9 +313,21 @@ export function ScheduleScreen({ route }: Props = {}) {
           }}
           onBackToCompact={() => setView('calendar-compact')}
           actions={meetingActions}
+          level={calendarLevel}
+          onLevelChange={setCalendarLevel}
+          headerControlsExternal={calendarControlsInHeader}
+          base={base}
         />
       ) : null}
-      {view === 'route' ? <RouteMapView month={month} base={base} palette={p} /> : null}
+      {view === 'route' ? (
+        <RouteMapView
+          month={month}
+          base={base}
+          palette={p}
+          airlineCode={airline}
+          airlineName={airline ? airlineByCode(airline).name : ''}
+        />
+      ) : null}
       </View>
       {wide && !railInStrip ? <View style={{ paddingTop: insets.top }} testID="sched-view-rail-safe">{rail}</View> : null}
       </View>
@@ -647,13 +688,21 @@ function Art({ kind, seed }: { kind: DayKind; seed: number }) {
 
 const s = StyleSheet.create({
   head: { paddingHorizontal: 22, paddingBottom: 8 },
+  headCompact: { paddingHorizontal: 8 },
   // zIndex keeps the whole title row (and the menu hanging off it) above the
   // date strip rendered after it — otherwise the strip's day chips paint over
   // the menu's first row.
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 30 },
   monthNav: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  calendarHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  calendarHeaderToggle: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 14, borderWidth: 1, paddingHorizontal: 8 },
+  calendarHeaderToggleCompact: { maxWidth: 112, minHeight: 34, paddingHorizontal: 6, gap: 3 },
+  calendarHeaderText: { fontSize: 13, fontWeight: '600' },
+  calendarHeaderTextCompact: { flexShrink: 1, fontSize: 12 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  iconBtnCompact: { width: 30, height: 36 },
   title: { textAlign: 'center', fontSize: 18, fontWeight: '600', marginBottom: 8, paddingHorizontal: 4 },
+  titleCompact: { fontSize: 15, marginBottom: 0, paddingHorizontal: 0 },
   strip: { paddingHorizontal: 22, gap: 8, paddingVertical: 4 },
   chip: { width: 52, paddingVertical: 10, borderRadius: 15, alignItems: 'center', borderWidth: 1 },
   dow: { fontSize: 10, fontWeight: '600', letterSpacing: 0.8 },

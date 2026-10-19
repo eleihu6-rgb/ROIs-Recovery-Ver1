@@ -1,0 +1,96 @@
+# Schedule ▸ Route map on the Daylight (light) theme.
+#
+# The endpoint-block labels pick their colour from the carrier palette, so the
+# light theme is a separate validation pass: Profile ▸ Preferences ▸ Appearance
+# ▸ Daylight, then the same Route map.
+#
+# Run: maestro test crew-app/.maestro/route_map_labels_light.yaml --env AIRLINE=PR \
+#        --debug-output /tmp/route-labels-light-pr
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-${AIRLINE}"
+    timeout: 10000
+- tapOn:
+    id: "airline-${AIRLINE}"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "row-preferences"
+    timeout: 20000
+- tapOn:
+    id: "row-preferences"
+- extendedWaitUntil:
+    visible:
+      id: "row-appearance"
+    timeout: 10000
+- tapOn:
+    id: "row-appearance"
+- extendedWaitUntil:
+    visible:
+      id: "theme-light"
+    timeout: 10000
+- tapOn:
+    id: "theme-light"
+- takeScreenshot: route_map_light_theme_${AIRLINE}
+- tapOn:
+    id: "page-back"
+- tapOn:
+    id: "page-back"
+- extendedWaitUntil:
+    visible:
+      id: "row-preferences"
+    timeout: 10000
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-shell"
+    timeout: 20000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+# Phone/portrait uses the menu; iPad and the unfolded Duo use the toolbar.
+- runFlow:
+    when:
+      visible:
+        id: "sched-view-menu"
+    commands:
+      - tapOn:
+          id: "sched-view-menu"
+- tapOn:
+    id: "sched-view-route"
+- repeat:
+    times: ${PREV_MONTHS}
+    commands:
+      - tapOn:
+          id: "sched-prev-month"
+- extendedWaitUntil:
+    visible:
+      id: "route-map"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "route-map-labels"
+    timeout: 10000
+- takeScreenshot: route_map_light_${AIRLINE}

@@ -35,6 +35,21 @@ export const ALL_ORIENTATIONS: Array<'portrait' | 'portrait-upside-down' | 'land
   'landscape-right',
 ];
 
+/**
+ * Bottom clearance for scrolling page content. Phones and iPads keep the
+ * floating bottom dock, so their content must stop above it; on the Duo the
+ * navigation becomes the right-edge rail and only the home-indicator inset is
+ * left, letting the page use the full height.
+ */
+export function bottomDockClearance(
+  width: number,
+  height: number,
+  insets: { bottom: number; right: number },
+  dockClearance: number,
+): number {
+  return duoActionStripWidth(width, height, insets.right) > 0 ? Math.max(insets.bottom, 16) : dockClearance;
+}
+
 export type LayoutClass = 'compact' | 'tall' | 'wide';
 
 export interface Layout {

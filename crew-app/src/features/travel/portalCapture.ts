@@ -230,6 +230,11 @@ interface RoisDuty {
   startDateTime?: string;
   endDateTime?: string;
   briefStart?: string;
+  // Published duty totals (from the roster report / detailAll payload).
+  fdpMinutes?: number;
+  dpMinutes?: number;
+  blockMinutes?: number;
+  restHours?: number;
   [k: string]: any;
 }
 
@@ -273,6 +278,13 @@ export interface PortalDuty {
   baseOffsetMin?: number;
   /** Training/course detail (TRG/SIM), when captured from detailAll. */
   training?: TrainingDetail;
+  /** Published duty totals from the roster report / detailAll payload, when the
+   *  carrier publishes them (TG + PR both do for FDP/DP/Block; Rest only
+   *  detailAll). Minutes for FDP/DP/block, hours for rest. Absent = not published. */
+  fdpMinutes?: number;
+  dpMinutes?: number;
+  blockMinutes?: number;
+  restHours?: number;
   /** IATA airport the duty is anchored to, when the source provides one
    *  (live-server mobile roster sends departureAirport on ground duties). */
   airportCode?: string;
@@ -411,14 +423,18 @@ function buildTrainingIndex(captures: PortalCapture[]): Record<string, TrainingD
 
 /** Every duty (all assignments) found in the captured payloads, de-duped by id.
  *  `roisDuties` may be passed in when the caller has already collected them (it
- *  is an expensive full-tree walk), otherwise it is collected on demand. */
+ *  is an expensive full-tree walk), otherwise it is collected on demand.
+ *  `kpis` may be passed in when the caller already built the duty-total index
+ *  (parsePortalCaptures does — it is the same full-tree walk). */
 export function extractPortalDuties(
   captures: PortalCapture[],
   roisDuties: RoisDuty[] = collectRoisDuties(captures),
   carrier = 'TG',
   baseOffsetMin: number = BASE_OFFSET_MIN,
+  kpis?: DutyKpiIndex,
 ): PortalDuty[] {
   const training = buildTrainingIndex(captures);
+  const kpiIndex = kpis ?? buildDutyKpiIndex(captures);
   const duties = roisDuties.map(d => toPortalDuty(d, carrier, baseOffsetMin));
   const seen = new Set<string>();
   const out: PortalDuty[] = [];
@@ -433,6 +449,15 @@ export function extractPortalDuties(
     const t = training[trainingKey(d.assignment, d.startUTC)];
     if (t) {
       d.training = t;
+    }
+    // Attach published duty totals (report / detailAll) where this duty has a
+    // flight number to match on. Missing totals stay undefined.
+    const k = lookupDutyKpis(kpiIndex, d.fltNum, d.briefStart, d.startUTC);
+    if (k) {
+      if (k.fdpMinutes !== undefined) d.fdpMinutes = k.fdpMinutes;
+      if (k.dpMinutes !== undefined) d.dpMinutes = k.dpMinutes;
+      if (k.blockMinutes !== undefined) d.blockMinutes = k.blockMinutes;
+      if (k.restHours !== undefined) d.restHours = k.restHours;
     }
     out.push(d);
   }
@@ -556,6 +581,294 @@ function buildAirportIndex(captures: PortalCapture[]): Record<string, AirportInf
   return idx;
 }
 
+// ─── Published duty totals (FDP / DP / Block / Rest) ─────────────────────────
+// Two captured payloads publish the same duty's totals, with different shapes:
+//
+//   selectCrewRosterReport row:
+//     { dutyDate:"2026/05/02", fdpHours:"10:12", dpHours:"10:12",
+//       blhHours:"06:54", crewRosterReportInfoDetatilVo:[{fltNum:"TG319",…}] }
+//     → DUTY totals, one row per duty, flights nested.
+//
+//   selectPortalCalendarDetailAll row (portalCalendarDetailRosterInfoVoList):
+//     { fltNum:"TG415", fltDate:"2026-05-09", dutyFdp:"08:05", dutyDp:"08:05",
+//       blockHours:"02:01", dutyRestHours:"12:00" }
+//     → duty-level FDP/DP/Rest REPEATED on every flight row, block PER FLIGHT
+//       (so a multi-leg duty's block total is the sum of its rows).
+//
+// Neither payload publishes rest outside detailAll (the report has only
+// fdpHours/dpHours/blhHours/dhdHours/creditHours). `"-"`, `""` and null mean
+// "not published" and stay undefined — never coerced to 0.
+export interface DutyKpis {
+  fdpMinutes?: number;
+  dpMinutes?: number;
+  blockMinutes?: number;
+  restHours?: number;
+}
+
+interface DutyKpiIndex {
+  /** Keyed by flight number + report `dutyDate` (the duty's local report date). */
+  report: Record<string, DutyKpis>;
+  /** Keyed by flight number + the detail row's flight date. */
+  detail: Record<string, DutyKpis>;
+}
+
+/** "10:12" → 612. "-"/""/null/other → undefined (never 0). */
+function toMinutes(value: unknown): number | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  const s = String(value).trim();
+  if (!s || s === '-') {
+    return undefined;
+  }
+  const m = s.match(/^(\d{1,3}):([0-5]\d)$/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : undefined;
+}
+
+/** "12:00" → 12. "-"/""/null/other → undefined (never 0). */
+function toHours(value: unknown): number | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  const s = String(value).trim();
+  if (!s || s === '-') {
+    return undefined;
+  }
+  const m = s.match(/^(\d{1,3}):([0-5]\d)$/);
+  if (m) {
+    return Number(m[1]) + Number(m[2]) / 60;
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Flight-number key shared across payloads: "TG319" / "319" / "tg 319" → "319".
+ *  (flightKey preserves any leading zeros; report and calendar spell the same
+ *  flight differently, so strip them for the KPI match only.) */
+function kpiFlightKey(value: unknown): string | null {
+  const key = flightKey(value);
+  return key ? key.replace(/^0+(?=\d)/, '') : null;
+}
+
+/** Exact (case/underscore-insensitive) field lookup for duty totals. The KPI
+ *  names are too similar for the substring `pick` above: "fdphours" also
+ *  contains "dphours", so fuzzy matching would report FDP as DP. */
+function pickDutyField(o: Record<string, any>, names: string[]): any {
+  const keys = Object.keys(o);
+  for (const name of names) {
+    const k = keys.find(key => key.toLowerCase().replace(/[_\s-]/g, '') === name);
+    if (k != null && o[k] != null && o[k] !== '') {
+      return o[k];
+    }
+  }
+  return undefined;
+}
+
+function reportFdp(o: Record<string, any>): any {
+  return pickDutyField(o, ['fdphours', 'dutyfdp']);
+}
+
+function reportDp(o: Record<string, any>): any {
+  return pickDutyField(o, ['dphours', 'dutydp']);
+}
+
+function reportBlock(o: Record<string, any>): any {
+  return pickDutyField(o, ['blhhours', 'dutyblockhours', 'blockhours']);
+}
+
+function reportRest(o: Record<string, any>): any {
+  return pickDutyField(o, ['dutyresthours', 'resthours']);
+}
+
+function reportFlightKey(row: Record<string, any>): string | null {
+  return kpiFlightKey(pick(row, ['fltnum', 'flightnumber', 'flightno', 'fltno']));
+}
+
+function reportDutyDate(row: Record<string, any>): string | null {
+  return normDepDate(pick(row, ['dutydate']));
+}
+
+/** Is this a selectCrewRosterReport duty row (per-duty totals + nested flights)? */
+function isReportDutyRow(o: Record<string, any>): boolean {
+  return (
+    reportDutyDate(o) != null &&
+    (reportFdp(o) !== undefined || reportDp(o) !== undefined || reportBlock(o) !== undefined)
+  );
+}
+
+/** Nested flight rows of a report duty row. */
+function reportFlightRows(o: Record<string, any>): Record<string, any>[] {
+  for (const v of Object.values(o)) {
+    if (Array.isArray(v)) {
+      const rows = v.filter(
+        (x): x is Record<string, any> =>
+          x != null && typeof x === 'object' && reportFlightKey(x) != null,
+      );
+      if (rows.length) {
+        return rows;
+      }
+    }
+  }
+  return [];
+}
+
+/** Is this a detailAll flight row carrying duty totals? */
+function isDetailKpiRow(o: Record<string, any>): boolean {
+  return (
+    reportFlightKey(o) != null &&
+    (reportFdp(o) !== undefined ||
+      reportDp(o) !== undefined ||
+      reportRest(o) !== undefined ||
+      reportBlock(o) !== undefined)
+  );
+}
+
+function putKpi(index: Record<string, DutyKpis>, key: string, kpis: DutyKpis): void {
+  if (!index[key]) {
+    index[key] = kpis;
+  }
+}
+
+function buildDutyKpiIndex(captures: PortalCapture[]): DutyKpiIndex {
+  const index: DutyKpiIndex = { report: {}, detail: {} };
+
+  // A detailAll array holds one duty's flight rows. FDP/DP/Rest are repeated on
+  // every row; block is per flight, so sum it once for the whole duty and apply
+  // the same totals to every row (every leg of the duty gets the duty total).
+  const addDetailRows = (rows: Record<string, any>[]) => {
+    let fdpMinutes: number | undefined;
+    let dpMinutes: number | undefined;
+    let restHours: number | undefined;
+    let blockMinutes: number | undefined;
+    const entries: { key: string; date: string }[] = [];
+    for (const row of rows) {
+      const key = reportFlightKey(row);
+      const date =
+        normDepDate(pick(row, ['fltdate', 'depdate', 'flightdate'])) ||
+        normDepDate(pick(row, ['fltstartdatetime', 'startdatetime']));
+      fdpMinutes ??= toMinutes(reportFdp(row));
+      dpMinutes ??= toMinutes(reportDp(row));
+      restHours ??= toHours(reportRest(row));
+      const block = toMinutes(reportBlock(row));
+      if (block !== undefined) {
+        blockMinutes = (blockMinutes ?? 0) + block;
+      }
+      if (key && date) {
+        entries.push({ key, date });
+      }
+    }
+    if (!entries.length) {
+      return;
+    }
+    const kpis: DutyKpis = {
+      ...(fdpMinutes !== undefined ? { fdpMinutes } : {}),
+      ...(dpMinutes !== undefined ? { dpMinutes } : {}),
+      ...(blockMinutes !== undefined ? { blockMinutes } : {}),
+      ...(restHours !== undefined ? { restHours } : {}),
+    };
+    for (const e of entries) {
+      putKpi(index.detail, `${e.key}|${e.date}`, kpis);
+    }
+  };
+
+  const visit = (node: unknown, depth: number) => {
+    if (depth > 8 || node == null) {
+      return;
+    }
+    if (Array.isArray(node)) {
+      const detailRows = node.filter(
+        (x): x is Record<string, any> => x != null && typeof x === 'object' && isDetailKpiRow(x),
+      );
+      if (detailRows.length) {
+        addDetailRows(detailRows);
+        return;
+      }
+      node.forEach(n => visit(n, depth + 1));
+      return;
+    }
+    if (typeof node !== 'object') {
+      return;
+    }
+    const o = node as Record<string, any>;
+    if (isReportDutyRow(o)) {
+      const date = reportDutyDate(o);
+      const fdpMinutes = toMinutes(reportFdp(o));
+      const dpMinutes = toMinutes(reportDp(o));
+      const blockMinutes = toMinutes(reportBlock(o));
+      const restHours = toHours(reportRest(o));
+      const kpis: DutyKpis = {
+        ...(fdpMinutes !== undefined ? { fdpMinutes } : {}),
+        ...(dpMinutes !== undefined ? { dpMinutes } : {}),
+        ...(blockMinutes !== undefined ? { blockMinutes } : {}),
+        ...(restHours !== undefined ? { restHours } : {}),
+      };
+      if (date) {
+        for (const row of reportFlightRows(o)) {
+          const key = reportFlightKey(row);
+          if (key) {
+            putKpi(index.report, `${key}|${date}`, kpis);
+          }
+        }
+      }
+      return;
+    }
+    for (const v of Object.values(o)) {
+      visit(v, depth + 1);
+    }
+  };
+
+  captures.forEach(c => visit(c.body, 0));
+  return index;
+}
+
+function mergeDutyKpis(primary?: DutyKpis, fallback?: DutyKpis): DutyKpis | undefined {
+  if (!primary && !fallback) {
+    return undefined;
+  }
+  const fdpMinutes = primary?.fdpMinutes ?? fallback?.fdpMinutes;
+  const dpMinutes = primary?.dpMinutes ?? fallback?.dpMinutes;
+  const blockMinutes = primary?.blockMinutes ?? fallback?.blockMinutes;
+  const restHours = primary?.restHours ?? fallback?.restHours;
+  const merged: DutyKpis = {
+    ...(fdpMinutes !== undefined ? { fdpMinutes } : {}),
+    ...(dpMinutes !== undefined ? { dpMinutes } : {}),
+    ...(blockMinutes !== undefined ? { blockMinutes } : {}),
+    ...(restHours !== undefined ? { restHours } : {}),
+  };
+  return Object.keys(merged).length ? merged : undefined;
+}
+
+/**
+ * Match a duty/leg to its published totals.
+ *
+ * The calendar and the report are separate arrays, and their date spellings
+ * differ: the report keys a duty by its local `dutyDate` (which can be the day
+ * before the UTC flight date, e.g. TG661 HND→BKK), detailAll keys by flight
+ * date. We therefore try the duty's brief date first for the report and the
+ * flight's start date first for detailAll — and merge, so Rest from detailAll
+ * still reaches a duty whose FDP/DP/Block came from the report.
+ */
+function lookupDutyKpis(
+  index: DutyKpiIndex,
+  fltNum: unknown,
+  briefStart: unknown,
+  startDateTime: unknown,
+): DutyKpis | undefined {
+  const key = kpiFlightKey(fltNum);
+  if (!key) {
+    return undefined;
+  }
+  const briefDate = normDepDate(briefStart);
+  const startDate = normDepDate(startDateTime);
+  const report =
+    (briefDate ? index.report[`${key}|${briefDate}`] : undefined) ??
+    (startDate ? index.report[`${key}|${startDate}`] : undefined);
+  const detail =
+    (startDate ? index.detail[`${key}|${startDate}`] : undefined) ??
+    (briefDate ? index.detail[`${key}|${briefDate}`] : undefined);
+  return mergeDutyKpis(report, detail);
+}
+
 function parseRoisDuties(
   duties: RoisDuty[],
   carrier: string,
@@ -564,6 +877,7 @@ function parseRoisDuties(
   baseAirport: string = BASE_AIRPORT,
   baseOffsetMin: number = BASE_OFFSET_MIN,
   fallbackCrewId = '',
+  kpis?: DutyKpiIndex,
 ): (TripLeg & { checkInDateUTC: string })[] {
   const seen = new Set<string>();
   const legs: (TripLeg & { checkInDateUTC: string })[] = [];
@@ -651,6 +965,14 @@ function parseRoisDuties(
     const hotelEntry = hotels[`${numKey}|${localDepDate}`] || hotels[`${numKey}|${depDateKey}`] || hotels[`${numKey}|${prevDate}`];
     const hotelName = hotelEntry?.hotelName || enr.hotel || '';
 
+    // Duty-level report instant + published totals. Every leg of a multi-leg
+    // duty shares the same briefStart, so all legs get the same report instant
+    // and the same duty totals (matched by flight number + duty date). A leg
+    // with no published brief gets NO duty key rather than its flight time —
+    // the flight time would look like a different duty and split the turn.
+    const dutyReportUTC = brief ? roisBaseToUTC(d.briefStart, baseOffsetMin) : '';
+    const dutyKpis = kpis ? lookupDutyKpis(kpis, num, d.briefStart, d.startDateTime) : undefined;
+
     legs.push({
       // Attribute every leg to the crew: some PR calendar duties omit crewId, so
       // fall back to the logged-in crew. This keeps trips correctly owned (and lets
@@ -668,6 +990,11 @@ function parseRoisDuties(
       localArvTime: d.localEndDateTime,
       assignment: 'FLY',
       checkInDateUTC: isNewDuty ? (d.briefStart || flightDateUTC) : '',
+      ...(dutyReportUTC ? { dutyReportUTC } : {}),
+      ...(dutyKpis?.fdpMinutes !== undefined ? { dutyFdpMinutes: dutyKpis.fdpMinutes } : {}),
+      ...(dutyKpis?.dpMinutes !== undefined ? { dutyDpMinutes: dutyKpis.dpMinutes } : {}),
+      ...(dutyKpis?.blockMinutes !== undefined ? { dutyBlockMinutes: dutyKpis.blockMinutes } : {}),
+      ...(dutyKpis?.restHours !== undefined ? { dutyRestHours: dutyKpis.restHours } : {}),
     });
   }
   return legs;
@@ -696,15 +1023,18 @@ export function parsePortalCaptures(
   // Collect the ROIS duties once (a full recursive tree walk) and reuse for both
   // the duty list and the deterministic trip parse below.
   const roisDuties = collectRoisDuties(captures);
+  // One tree walk for the published duty totals, reused by both the duty list
+  // and the leg parser.
+  const kpis = buildDutyKpiIndex(captures);
 
   // Always extract the full duty list (all assignments) for storage / future use.
-  const duties = extractPortalDuties(captures, roisDuties, carrier, baseOffsetMin);
+  const duties = extractPortalDuties(captures, roisDuties, carrier, baseOffsetMin, kpis);
 
   // 1) ROIS Cloud — deterministic (TG THAI + PR Philippine share this schema).
   if (roisDuties.length) {
     const airports = buildAirportIndex(captures);
     const hotels = buildHotelIndex(captures);
-    const legs = parseRoisDuties(roisDuties, carrier, airports, hotels, baseAirport, baseOffsetMin, fallbackCrewId);
+    const legs = parseRoisDuties(roisDuties, carrier, airports, hotels, baseAirport, baseOffsetMin, fallbackCrewId, kpis);
     if (legs.length) {
       return { trips: groupIntoTrips(legs as RawRow[]), legCount: legs.length, duties };
     }

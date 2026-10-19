@@ -351,6 +351,10 @@ export function mapEkRosterToTrips(value: unknown): Trip[] {
       ...(flight.actualArrivalUtc ? {actArvUtc: flight.actualArrivalUtc} : {}),
       ...(typeof flight.blockMinutes === 'number' ? {blockMinutes: flight.blockMinutes} : {}),
       assignment: flight.assignment,
+      // A pairing is one duty, so every leg shares the pairing's check-in as its
+      // duty report instant. This payload carries no published FDP/DP/Rest
+      // totals, so those stay undefined.
+      dutyReportUTC: toLegacyRosterUtc(pairing.checkInUtc),
     })),
   }));
 }

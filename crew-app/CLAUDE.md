@@ -20,6 +20,11 @@
 - `npx tsc --noEmit` must also pass (no new type errors) as part of done.
 
 ## Simulator validation (MANDATORY after every dev)
+- Validate devices in this order: **iPhone Air → iPhone Duo → iPad**.
+- Keep **at most two simulators booted or testing simultaneously** because this
+  MacBook has limited RAM and compute resources. This limit applies across agents.
+  Prefer one at a time; shut down each test simulator before starting the next.
+  Coordinate simulator ownership and never stop another person's active run.
 - After **every** change, validate on the iOS Simulator with **both accounts**:
   a **TG** (THAI) crew and a **PR** (Philippine Airlines) crew — never just one.
   Test creds live in `TEST_CREDENTIALS` (`rn-app/src/features/auth/airlines.ts`):
@@ -32,6 +37,7 @@
   been seen working in the simulator on both airlines.
 
 ## UI / Style (MANDATORY for every screen)
+- Follow [`docs/standards/crew-app-ui-standard.md`](../docs/standards/crew-app-ui-standard.md) for every user-visible Crew App change. Its screen-utilization, one-row-header, balanced-density, overflow, responsive viewport, and real-UI review rules are mandatory.
 - **Icons: always the nav-bar style.** Outline SVG glyphs (24-unit viewBox,
   ~1.9 stroke, rounded joins, colour from a theme token) — the shared set in
   `rn-app/src/features/travel/components/TripIcons.tsx`. **Never use emoji** as a

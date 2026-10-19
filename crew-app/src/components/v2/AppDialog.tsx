@@ -90,7 +90,15 @@ export function AppDialog({
       >
         {/* The testID lives on the card, not the Modal: RN does not expose a
             Modal's own testID to the accessibility tree (Maestro could not see it). */}
-        <Pressable style={[s.card, p.isLight && s.lightCard, { backgroundColor: p.cardOverlay, borderColor: p.isLight ? p.cardLine : undefined }]} onPress={() => {}} testID={testID}>
+        {/* accessible={false}: the card only swallows taps; leaving it accessible
+            makes iOS merge the whole body (title, message, both pills) into one
+            VoiceOver element, so the actions cannot be focused or pressed. */}
+        <Pressable
+          style={[s.card, p.isLight && s.lightCard, { backgroundColor: p.cardOverlay, borderColor: p.isLight ? p.cardLine : undefined }]}
+          onPress={() => {}}
+          accessible={false}
+          testID={testID}
+        >
           {/* Carrier themes use their brand header; Daylight uses a quiet grouped
               surface. The glyph and primary action carry the semantic tone. */}
           <View style={[s.band, p.isLight && s.lightBand, { backgroundColor: p.isLight ? p.cardOverlay : p.btn }]} testID={`${testID}-band`}>
@@ -112,6 +120,8 @@ export function AppDialog({
                   <Pressable
                     onPress={onCancel ?? onClose}
                     style={[s.pill, s.pillOutline, { borderColor: p.cardLine }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={cancelLabel}
                     testID={`${testID}-cancel`}
                   >
                     <Text style={[s.pillText, { color: p.cardInk }]}>{cancelLabel}</Text>
@@ -121,6 +131,8 @@ export function AppDialog({
                   <Pressable
                     onPress={onConfirm}
                     style={[s.pill, { backgroundColor: accent }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={confirmLabel}
                     testID={`${testID}-confirm`}
                   >
                     <Text style={[s.pillText, { color: p.isLight ? p.dockLight : p.ink }]}>{confirmLabel}</Text>

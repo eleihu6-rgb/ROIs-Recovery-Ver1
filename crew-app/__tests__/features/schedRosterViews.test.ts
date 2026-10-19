@@ -6,6 +6,7 @@
 import {
   agendaRows,
   calendarWeeks,
+  calendarEventIcon,
   dayTimeline,
   formatHM,
   formatKm,
@@ -26,8 +27,26 @@ import {
   toggleCalendarSelection,
   viewPick,
 } from '../../src/features/v2/schedView';
+import { overlapLaneColor } from '../../src/features/v2/CalendarView';
 import type { TimelineBlock } from '../../src/features/v2/schedView';
 import { buildMonth } from '../../src/features/v2/model';
+
+describe('Finalist-style event encoding', () => {
+  it('uses a stable icon for each calendar event type', () => {
+    expect(calendarEventIcon('SIA-CPS Technical call')).toBe('phone');
+    expect(calendarEventIcon('Weekly Sync (Ryan/Jen/Sameer)')).toBe('users');
+    expect(calendarEventIcon('ROIs PBS - Training sessions')).toBe('dumbbell');
+    expect(calendarEventIcon('Technical Data Review')).toBe('briefcase');
+    expect(calendarEventIcon('Leave Home · PR585')).toBe('house');
+    expect(calendarEventIcon('RBC Credit Due')).toBe('cal');
+  });
+
+  it('keeps lane zero identical to the icon and darkens overlapping lanes by 18%', () => {
+    expect(overlapLaneColor('#4c82b2', 0)).toBe('#4c82b2');
+    expect(overlapLaneColor('#4c82b2', 1)).toBe('#3e6b92');
+    expect(overlapLaneColor('#4c82b2', 2)).toBe('#315372');
+  });
+});
 import type { Trip } from '../../src/features/travel/tripCsv';
 import type { PortalDuty } from '../../src/features/travel/portalCapture';
 import type { Meeting } from '../../src/features/meetings/meetingSetup';
@@ -111,6 +130,7 @@ const meetings: Meeting[] = [
   {
     id: 'ev-briefing',
     title: 'Fleet standardisation briefing',
+    notes: 'Review the fleet changes before joining.\nAdditional invite body.',
     // 15:00 Bangkok. The instant matters: buildMonth keys a meeting by calendar
     // date, and the suite must not depend on the machine's own timezone.
     startISO: '2026-09-19T15:00:00+07:00',
@@ -301,29 +321,32 @@ describe('calendar · agenda', () => {
       'TG560 BKK → HAN',
       'Day Off',
       'Standby',
-      'TG920 BKK → LHR',
       'Fleet standardisation briefing',
+      'TG920 BKK → LHR',
       'Layover · LHR',
       'TG911 LHR → BKK',
       'TG403 BKK → SIN',
       'TG402 SIN → BKK',
     ]);
     // A leg row states the route; the date line keeps rows apart.
-    expect(rows[3].sub).toBe('Sat 19 Sep');
+    const lhrFlight = rows.find(row => row.title === 'TG920 BKK → LHR');
+    expect(lhrFlight?.sub).toBe('Sat 19 Sep');
     // The mock's own outline plane carries "flight" — not the filled jet glyph.
-    expect(rows[3].icon).toBe('plane');
-    expect(rows[3].icon).toBe(rows[0].icon);
+    expect(lhrFlight?.icon).toBe('plane');
+    expect(lhrFlight?.icon).toBe(rows[0].icon);
     // Times carry the app's own clock marker (L = airport local).
-    expect(rows[3].time).toBe('22:45L–05:45L +1');
-    expect(rows[4].time).toBe('15:00–15:45');
-    expect(rows[4].sub).toContain('iOS Cal');
+    expect(lhrFlight?.time).toBe('22:45L–05:45L +1');
+    const briefing = rows.find(row => row.title === 'Fleet standardisation briefing');
+    expect(briefing?.time).toBe('15:00–15:45');
+    expect(briefing?.sub).toContain('iOS Cal');
+    expect(briefing?.note).toBe('Review the fleet changes before joining.');
     // Duty rows never restate the icon in words.
     expect(rows.some(r => /flight duty/i.test(r.title))).toBe(false);
   });
 
   it('scopes to a single day when the grid has a selection', () => {
     expect(agendaRows(month(), 20).map(r => r.title)).toEqual(['Layover · LHR']);
-    expect(agendaRows(month(), 19).map(r => r.time)).toEqual(['22:45L–05:45L +1', '15:00–15:45']);
+    expect(agendaRows(month(), 19).map(r => r.time)).toEqual(['15:00–15:45', '22:45L–05:45L +1']);
     expect(agendaRows(month(), 12)).toEqual([]);
   });
 });

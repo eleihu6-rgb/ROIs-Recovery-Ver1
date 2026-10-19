@@ -1,23 +1,44 @@
-// Trip Details — full page for a rotation: timeline per leg (leave home / ready /
-// check-in / STD / STA), hotel booking when the roster carries one.
+// Trip Details — the rotation as one timeline: a duty-level rail node with the
+// duty's report and published totals, then one pass per sector inside it. A
+// layover between duties becomes a dashed rest stop on the same rail.
+//
+// The rail carries the hierarchy the crew scans for: a square D1/D2 node for
+// the duty, small round sector nodes for the flights inside it. The calendar
+// write action is pinned to the bottom so it stays reachable on a long rotation.
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import Svg, { Line } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAppSelector } from '../../store';
-import { useCarrier } from '../../theme/carrier';
-import { NavRow, SectionLabel } from '../../components/v2/rows';
+import { useCarrier, type CarrierPalette } from '../../theme/carrier';
+import { Icon } from '../../components/v2/icons';
 import { AppDialog } from '../../components/v2/AppDialog';
 import { DashedLine } from '../../components/v2/TicketCard';
-import { PageShell, Hero, ListCard, KvRow, Columns } from './PageShell';
-import { useLayout } from '../../components/v2/useLayout';
-import { legView, MON } from './model';
+import { PageShell, Hero } from './PageShell';
+import { legView, MON, type LegView } from './model';
 import { useBase, useDutyAlarms, useDutyCalendar } from './useV2';
 import { flightOpsDemo } from './flightOpsDemo';
-import { hotelFor, hotelTransfer, legOps } from '../travel/opsInfo';
+import { hotelFor, hotelTransfer, legOps, type HotelInfo, type LegOps, type TransferInfo } from '../travel/opsInfo';
+import { fmtDutyMinutes, groupDuties, type DutyGroup } from './dutyGroups';
 import type { V2StackParamList } from './nav';
-import type { TripLeg } from '../travel/tripCsv';
+import type { Trip, TripLeg } from '../travel/tripCsv';
+import type { TimeZoneMode } from '../settings/settingsSlice';
+import type { EffectiveAlarm } from '../settings/alarmSetup';
 
 type Props = NativeStackScreenProps<V2StackParamList, 'TripDetails'>;
+
+interface PassRow {
+  leg: TripLeg;
+  v: LegView;
+  ops: LegOps;
+  dutyStart: boolean;
+}
+
+function fmtHours(hours: number): string {
+  const whole = Math.floor(hours);
+  const mins = Math.round((hours - whole) * 60);
+  return mins ? `${whole}h ${String(mins).padStart(2, '0')}m` : `${whole}h`;
+}
 
 export function TripDetailsScreen({ route }: Props) {
   const p = useCarrier();
@@ -25,149 +46,121 @@ export function TripDetailsScreen({ route }: Props) {
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const base = useBase();
-  // Airline schedule → iOS Calendar (restored from v1): one row writes / removes
-  // this rotation's wake-up, leave-home, check-in and per-leg entries.
   const calendar = useDutyCalendar();
-  // Record view — a rotation that has already flown still lists the wake-up /
-  // leave-home it was reportable against.
   const { byTrip } = useDutyAlarms();
-  const { wide, tall } = useLayout();
   if (!trip) return <PageShell title="Trip Details"><Text style={{ color: p.ink }}>Trip not found.</Text></PageShell>;
-  const legs = trip.legs.map(l => ({
-    leg: l,
-    v: legView(l, trip, mode, baseTz, byTrip[trip.id]),
-    ops: legOps(l, trip, mode, baseTz, { hasLayover: (trip.layoverHours ?? 0) > 0 }),
+  return <TripTimeline trip={trip} p={p} mode={mode} baseTz={baseTz} base={base} calendar={calendar} alarm={byTrip[trip.id]} />;
+}
+
+function TripTimeline({
+  trip, p, mode, baseTz, base, calendar, alarm,
+}: {
+  trip: Trip;
+  p: CarrierPalette;
+  mode: TimeZoneMode;
+  baseTz: string;
+  base: string;
+  calendar: ReturnType<typeof useDutyCalendar>;
+  alarm: EffectiveAlarm | undefined;
+}) {
+  const groups = groupDuties(trip);
+  const rows = groups.map(group => ({
+    group,
+    passes: group.legs.map<PassRow>((leg, i) => ({
+      leg,
+      // Alarm markers exist once per rotation, at the first duty's report.
+      v: legView(leg, trip, mode, baseTz, i === 0 && group.index === 0 ? alarm : undefined, i === 0 ? group.reportUTC : undefined),
+      ops: legOps(leg, trip, mode, baseTz, { hasLayover: (trip.layoverHours ?? 0) > 0 }),
+      dutyStart: i === 0,
+    })),
   }));
-  const first = legs[0].v, last = legs[legs.length - 1].v;
-  const inCalendar = calendar.isAdded(trip.id);
-  // Layover hotel: the roster's own booking when it has one, otherwise a
-  // deterministic stand-in (the F8/NOC feed has no hotel table yet) — labelled
-  // "expected" so it can never be mistaken for a confirmation.
-  const hotel = hotelFor(trip, base);
-  const transfer = hotel ? hotelTransfer(hotel.airport, first.fltNumber, hotel) : null;
-  // Full routing, not just base→base: a same-base turn rendered "ADD → ADD", which
-  // hides where the crew actually went.
-  const routing = [first.dep, ...legs.map(({ v }) => v.arv)].join(' → ');
+  const all = rows.flatMap(row => row.passes);
+  if (!all.length) {
+    return (
+      <PageShell title="Trip Details" testID="page-trip-details" layout="full">
+        <Hero h1="No scheduled sectors" h2="This rotation has no flight legs." palette={p} />
+      </PageShell>
+    );
+  }
+  const first = all[0].v;
+  const last = all[all.length - 1].v;
+  const routing = [first.dep, ...all.map(({ v }) => v.arv)].join(' → ');
   const sameDay = first.day === last.day && first.monthIdx === last.monthIdx && first.year === last.year;
   const window = sameDay
     ? `${first.day} ${MON[first.monthIdx]} ${first.year}`
     : `${first.day} ${MON[first.monthIdx]} – ${last.day} ${MON[last.monthIdx]} ${last.year}`;
-  const calendarSection = (
-    <>
-      <SectionLabel palette={p}>iPhone Calendar</SectionLabel>
-      <ListCard palette={p}>
-        <NavRow
-          icon={inCalendar ? 'calcheck' : 'cal'}
-          label={inCalendar ? 'In your iPhone Calendar' : 'Add to iPhone Calendar'}
-          value={inCalendar ? 'Tap to remove' : 'Wake-up · leave home · check-in · flights'}
-          palette={p}
-          onPress={() => calendar.toggle(trip)}
-          testID="trip-calendar-toggle"
-        />
-      </ListCard>
-    </>
-  );
-  const legSections = legs.map(({ leg, v, ops }, i) => (
-    <View key={i}>
-      {/* A single-leg trip already names the flight, route and date in the hero —
-          repeating them as a section header is pure duplication. */}
-      {legs.length > 1 && (
-        <SectionLabel palette={p}>{v.fltNumber} · {v.dep} → {v.arv} · {v.day} {MON[v.monthIdx]}</SectionLabel>
-      )}
-      {/* One leg = one grid card (Ryan 2026-10-08: one style, not list rows + a
-          grid). Cells run in the order things happen: the crew's own markers,
-          departure (STD/ETD … off-block, ATD), arrival (STA/ETA/ATA, block),
-          then where (terminal / gate / stand, the arrival's belt). Same marker
-          style as the Schedule card's wake-up / leave-home / check-in cells.
-          Ops values other than STD / ETD / STA / ETA / actuals are DEMO
-          (flightOpsDemo.ts); its passenger check-in time is not shown — it read
-          as a second "check-in" next to the crew's report. */}
-      <ListCard palette={p}>
-        <View style={s.ops} testID={`flight-ops-grid-${i}`}>
-          {legGrid(leg, v, ops).map((row, r) => (
-            <View key={r}>
-              {r > 0 && <DashedLine color={p.cardLine} />}
-              <View style={s.opsRow} testID={`flight-ops-row-${i}-${r}`}>
-                {row.map((c, j) => {
-                  const align = j === 0 ? s.left : j === row.length - 1 ? s.right : s.center;
-                  return (
-                    <View key={c.key} style={s.opsCell}>
-                      <Text style={[s.pk, align, { color: p.cardSoft }]} numberOfLines={1}>{c.label.toUpperCase()}</Text>
-                      <Text style={[s.pv, align, { color: p.cardInk }]} numberOfLines={1} adjustsFontSizeToFit testID={`ops-${c.key}-${i}`}>{c.value}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          ))}
-        </View>
-      </ListCard>
-      {/* Departing from a layover: the crew's own hotel transfer, mocked
-          (vehicle/plate/driver/contact) until the transport feed exists. */}
-      {ops.transfer ? (
-        <>
-          <SectionLabel palette={p}>Hotel transfer</SectionLabel>
-          <ListCard palette={p}>
-            <KvRow icon="car" label="Hotel pick-up" value={`${ops.transfer.pickup} (expected)`} palette={p} />
-            <KvRow icon="car" label="Airport drop-off" value={`${ops.transfer.dropOff} (expected)`} palette={p} />
-            <KvRow icon="car" label="Transfer" value={`${ops.transfer.vehicle} · ${ops.transfer.plate}`} palette={p} />
-            <KvRow icon="user" label="Driver" value={`${ops.transfer.driver} · ${ops.transfer.phone}`} palette={p} last />
-          </ListCard>
-        </>
-      ) : null}
-    </View>
-  ));
-  const hotelSection = hotel ? (
-    <View>
-      <SectionLabel palette={p}>Layover</SectionLabel>
-      <ListCard palette={p}>
-        <KvRow icon="bed" label="Hotel" value={`${hotel.name}${hotel.mocked ? ' (expected)' : ''}`} palette={p} />
-        <KvRow icon="house" label="Location" value={hotel.address} palette={p} />
-        <KvRow icon="clock" label="Check-in / out" value={`${hotel.checkIn} → ${hotel.checkOut}`} palette={p} />
-        <KvRow icon="moon" label="Nights" value={String(hotel.nights)} palette={p} />
-        <KvRow icon="car" label="Transport" value={hotel.transfer} palette={p} />
-        <KvRow icon="headset" label="Phone" value={hotel.phone} palette={p} last={!transfer} />
-        {transfer ? (
-          <>
-            <KvRow icon="car" label="Pick-up / drop-off" value={`${transfer.pickup} → ${transfer.dropOff} (expected)`} palette={p} />
-            <KvRow icon="car" label="Vehicle" value={`${transfer.vehicle} · ${transfer.plate}`} palette={p} />
-            <KvRow icon="user" label="Driver" value={`${transfer.driver} · ${transfer.phone}`} palette={p} last />
-          </>
-        ) : null}
-      </ListCard>
-    </View>
-  ) : null;
-  return (
-    // The page lays itself out on the Duo (full-width hero over its own columns).
-    <PageShell title="Trip Details" testID="page-trip-details" layout="full">
-      <Hero h1={`${first.fltNumber} · ${routing}`} h2={`${window} · ${legs.length} leg${legs.length === 1 ? '' : 's'}${trip.layoverHours ? ` · ${Math.round(trip.layoverHours)}h layover` : ''}`} palette={p} />
-      {wide ? (
-        // iPhone Duo inner screen: legs left, calendar + layover hotel right.
-        <Columns>
-          <View>{legSections}</View>
-          <View>{calendarSection}{hotelSection}</View>
-        </Columns>
-      ) : tall ? (
-        // Rotated Duo: the two short cards (calendar, hotel) side by side under
-        // the hero, then the legs at full width.
-        <>
-          <View testID="trip-tall-cards">
-            <Columns>
-              <View>{calendarSection}</View>
-              {hotelSection ? <View>{hotelSection}</View> : null}
-            </Columns>
-          </View>
-          {legSections}
-        </>
-      ) : (
-        <>
-          {calendarSection}
-          {legSections}
-          {hotelSection}
-        </>
-      )}
+  const inCalendar = calendar.isAdded(trip.id);
+  const hotel = hotelFor(trip, base);
+  const transfer = hotel ? hotelTransfer(hotel.airport, first.fltNumber, hotel) : null;
+  const dutyCount = groups.length;
+  const h1 = all.length === 1 ? `${first.fltNumber} · ${routing}` : routing;
+  const h2 = `${window} · ${dutyCount} dut${dutyCount === 1 ? 'y' : 'ies'} · ${all.length} sector${all.length === 1 ? '' : 's'}${trip.layoverHours ? ` · ${Math.round(trip.layoverHours)}h layover` : ''}`;
 
-      {/* Airline schedule → iOS Calendar outcome (pop-up standard). */}
+  return (
+    // PageShell scroll=false: the timeline scrolls, the calendar action stays put.
+    <PageShell title="Trip Details" testID="page-trip-details" layout="full" scroll={false}>
+      <View style={s.root}>
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} testID="trip-timeline-scroll">
+          <Hero h1={h1} h2={h2} palette={p} />
+          <View style={s.timeline} testID="trip-timeline">
+            {rows.map(({ group, passes }, gi) => (
+              <View key={group.key}>
+                {gi > 0 ? (
+                  <RestStop
+                    airport={group.layover?.airport ?? ''}
+                    hours={group.layover?.hours ?? null}
+                    hotel={hotel}
+                    transfer={transfer}
+                    p={p}
+                    testID={`rest-stop-${group.index}`}
+                  />
+                ) : null}
+                <DutyBlock
+                  group={group}
+                  groups={groups.length}
+                  passes={passes}
+                  p={p}
+                />
+              </View>
+            ))}
+            {/* A single-duty rotation can still end in a layover (the return
+                sector is outside this capture): keep the hotel on the rail. */}
+            {hotel && dutyCount < 2 ? (
+              <RestStop
+                airport={hotel.airport}
+                hours={null}
+                hotel={hotel}
+                transfer={transfer}
+                p={p}
+                testID="rest-stop-after-duty"
+              />
+            ) : null}
+          </View>
+        </ScrollView>
+        <View style={[s.calBar, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]}>
+          <Pressable
+            testID="trip-calendar-toggle"
+            onPress={() => calendar.toggle(trip)}
+            style={({ pressed }) => [s.calPress, { opacity: pressed ? 0.85 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel={inCalendar ? 'Remove this duty from iPhone Calendar' : 'Add this duty to iPhone Calendar'}
+          >
+            <View style={[s.calIcon, { backgroundColor: p.cardInset }]}>
+              <Icon name={inCalendar ? 'calcheck' : 'cal'} size={20} color={p.btn} strokeWidth={1.8} />
+            </View>
+            <View style={s.calText}>
+              <Text style={[s.calTitle, { color: p.cardInk }]} numberOfLines={1}>
+                {inCalendar ? 'In your iPhone Calendar' : 'Add to iPhone Calendar'}
+              </Text>
+              <Text style={[s.calSub, { color: p.cardSoft }]} numberOfLines={1}>
+                {inCalendar ? 'Tap to remove' : 'Wake-up · leave home · check-in · flights'}
+              </Text>
+            </View>
+            <Icon name="chev" size={16} color={p.cardSoft} strokeWidth={1.8} />
+          </Pressable>
+        </View>
+      </View>
+
       <AppDialog
         visible={calendar.dialog !== null}
         onClose={calendar.closeDialog}
@@ -182,48 +175,331 @@ export function TripDetailsScreen({ route }: Props) {
   );
 }
 
-type Cell = { key: string; label: string; value: string };
+function DutyBlock({
+  group, groups, passes, p,
+}: {
+  group: DutyGroup;
+  groups: number;
+  passes: PassRow[];
+  p: CarrierPalette;
+}) {
+  const first = passes[0];
+  const v = first.v;
+  const metrics = [
+    group.fdpMinutes != null ? { label: 'FDP', value: fmtDutyMinutes(group.fdpMinutes) } : null,
+    group.dpMinutes != null ? { label: 'DP', value: fmtDutyMinutes(group.dpMinutes) } : null,
+    group.blockMinutes != null ? { label: 'BLOCK', value: fmtDutyMinutes(group.blockMinutes) } : null,
+    group.restHours != null ? { label: 'REST', value: fmtHours(group.restHours) } : null,
+  ].filter((m): m is { label: string; value: string } => m !== null);
+  const markers = [
+    v.ready !== '—' ? { label: v.readyWord.toUpperCase(), value: v.ready } : null,
+    v.leaveHome !== '—' ? { label: 'LEAVE', value: v.leaveHome } : null,
+  ].filter((m): m is { label: string; value: string } => m !== null);
 
-/** The leg card's chronological rows (see the comment where it renders). */
-function legGrid(leg: TripLeg, v: ReturnType<typeof legView>, ops: ReturnType<typeof legOps>): Cell[][] {
-  const demo = new Map(flightOpsDemo({
-    fltNumber: v.fltNumber,
-    dep: v.dep,
-    arv: v.arv,
-    fleet: v.fleet,
-    stdUtc: leg.flightDateUTC,
-    etdUtc: leg.estDepUtc || leg.actDepUtc,
-    stdClock: v.depTime,
-  }).flat().map(c => [c.key, c] as const));
-  const d = (key: string): Cell => demo.get(key) ?? { key, label: key, value: '—' };
-  return [
-    [
-      { key: 'ready', label: v.readyWord, value: v.ready },
-      { key: 'leave', label: 'Leave home', value: v.leaveHome },
-      { key: 'report', label: 'Report', value: v.checkIn },
-      { key: 'aircraft', label: 'Aircraft', value: [v.fleet, ops.register].filter(Boolean).join(' · ') || '—' },
-    ],
-    [d('std'), d('etd'), d('boarding')],
-    [d('door'), d('offblock'), { key: 'atd', label: 'ATD', value: ops.atd || '—' }],
-    [
-      { key: 'sta', label: 'STA', value: `${v.arvTime}${v.arvDayOffset ? ' ' + v.arvDayOffset : ''}` },
-      { key: 'eta', label: 'ETA', value: ops.eta || '—' },
-      { key: 'ata', label: 'ATA', value: ops.ata || '—' },
-      { key: 'block', label: 'Block', value: ops.block || v.duration || '—' },
-    ],
-    [d('terminal'), d('gate'), d('stand'), d('belt')],
-  ];
+  return (
+    <View style={s.group} testID={`duty-block-${group.index}`}>
+      {/* One solid rail spans the whole duty; its square node is the duty level. */}
+      <View style={[s.rail, { backgroundColor: p.btn }]} />
+      <View style={s.row}>
+        <View style={s.gutter}>
+          <View style={[s.dutyNode, { backgroundColor: p.btn }]} testID={`duty-node-${group.index}`}>
+            <Text style={s.dutyNodeText}>{group.index + 1}</Text>
+          </View>
+        </View>
+        <View style={[s.dutyBand, { backgroundColor: p.card }]} testID={`duty-band-${group.index}`}>
+          <View style={s.dutyHead}>
+            <Text style={[s.dutyKicker, { color: p.cardSoft }]}>
+              {groups > 1 ? `DUTY ${group.index + 1} OF ${groups}` : `DUTY ${group.index + 1}`}
+            </Text>
+            <Text style={[s.dutyDate, { color: p.cardSoft }]}>
+              {v.day} {MON[v.monthIdx]}
+            </Text>
+          </View>
+          <View style={[s.dutyMain, markers.length ? s.dutyMainRight : null]}>
+            {markers.length ? (
+              <View style={s.markers}>
+                {markers.map(marker => (
+                  <View key={marker.label} style={[s.marker, { borderColor: p.cardLine }]}>
+                    <Text style={[s.markerLabel, { color: p.cardSoft }]}>{marker.label}</Text>
+                    <Text style={[s.markerValue, { color: p.cardInk }]}>{marker.value}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            <View>
+              <Text style={[s.reportLabel, { color: p.cardSoft }]}>REPORT</Text>
+              <Text style={[s.reportValue, { color: p.cardInk }]} testID={`duty-report-${group.index}`}>{v.checkIn}</Text>
+            </View>
+          </View>
+          {metrics.length ? (
+            <View style={[s.metrics, { borderTopColor: p.cardLine }]}>
+              {metrics.map(metric => (
+                <View key={metric.label} style={s.metric}>
+                  <Text style={[s.metricLabel, { color: p.cardSoft }]}>{metric.label}</Text>
+                  <Text style={[s.metricValue, { color: p.cardInk }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {metric.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      </View>
+      {passes.map((pass, i) => (
+        <View style={s.row} key={`${group.key}-${pass.leg.fltNumber}-${i}`}>
+          <View style={s.gutter}>
+            <View style={[s.segNode, { borderColor: p.btn, backgroundColor: p.cardSolid }]} testID={`segment-node-${group.index}-${i}`}>
+              <Text style={[s.segNodeText, { color: p.btn }]}>{i + 1}</Text>
+            </View>
+          </View>
+          <FlightPass pass={pass} index={i} p={p} />
+        </View>
+      ))}
+    </View>
+  );
 }
 
-// Marker typography shared with the Schedule card's wake-up / leave-home / check-in
-// cells: small spaced label over a semibold value.
+function FlightPass({ pass, index, p }: { pass: PassRow; index: number; p: CarrierPalette }) {
+  const { leg, v, ops } = pass;
+  const demo = new Map(
+    flightOpsDemo({
+      fltNumber: v.fltNumber,
+      dep: v.dep,
+      arv: v.arv,
+      fleet: v.fleet,
+      stdUtc: leg.flightDateUTC,
+      etdUtc: leg.estDepUtc || leg.actDepUtc,
+      stdClock: v.depTime,
+    }).flat().map(cell => [cell.key, cell] as const),
+  );
+  const demoValue = (key: string): string => demo.get(key)?.value ?? '—';
+  const cells = [
+    { key: 'etd', label: 'ETD', value: ops.etd || demoValue('etd') },
+    { key: 'atd', label: 'ATD', value: ops.atd || '—' },
+    { key: 'eta', label: 'ETA', value: ops.eta || '—' },
+    { key: 'ata', label: 'ATA', value: ops.ata || '—' },
+  ];
+  const progress = [
+    { key: 'boarding', label: 'BOARDING', value: demoValue('boarding') },
+    { key: 'door', label: 'DOOR CLOSE', value: demoValue('door') },
+    { key: 'offblock', label: 'OFF-BLOCK', value: demoValue('offblock') },
+    { key: 'block', label: 'BLK', value: ops.block || v.duration || '—' },
+  ];
+  return (
+    <View style={[s.pass, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]} testID={`flight-pass-${index}`}>
+      <View style={s.passHead}>
+        <Text style={[s.flt, { color: p.cardInk }]}>{v.fltNumber}</Text>
+        <Text style={[s.passMeta, { color: p.cardSoft }]} numberOfLines={1}>
+          {[v.fleet, ops.register].filter(Boolean).join(' · ')}
+        </Text>
+      </View>
+
+      <View style={s.route}>
+        <View style={s.endpoint}>
+          <Text style={[s.arp, { color: p.cardInk }]}>{v.dep}</Text>
+          <Text style={[s.arpLabel, { color: p.cardSoft }]}>STD</Text>
+          <Text style={[s.arpTime, { color: p.cardInk }]} testID={`ops-std-${index}`}>{v.depTime}</Text>
+        </View>
+        <View style={s.routeMid}>
+          <Text style={[s.routeDur, { color: p.cardSoft }]}>{v.duration || '—'}</Text>
+          <View style={[s.routeLine, { backgroundColor: p.cardLine }]} />
+        </View>
+        <View style={[s.endpoint, s.endpointRight]}>
+          <View style={s.arpRow}>
+            <Text style={[s.arp, { color: p.cardInk }]}>{v.arv}</Text>
+            {!!v.arvDayOffset && (
+              <Text style={[s.dayOffset, { color: p.cardSoft, borderColor: p.cardLine }]}>{v.arvDayOffset}</Text>
+            )}
+          </View>
+          <Text style={[s.arpLabel, { color: p.cardSoft }]}>STA</Text>
+          <Text style={[s.arpTime, { color: p.cardInk }]} testID={`ops-sta-${index}`}>{v.arvTime}</Text>
+        </View>
+      </View>
+
+      <View style={[s.grid, { borderTopColor: p.cardLine }]}>
+        {[cells, progress].map((row, r) => (
+          <View key={r} testID={`flight-ops-row-${index}-${r}`}>
+            {r > 0 && <DashedLine color={p.cardLine} />}
+            <View style={s.gridRow}>
+              {row.map(cell => (
+                <View key={cell.key} style={s.gridCell}>
+                  <Text style={[s.gridLabel, { color: p.cardSoft }]} numberOfLines={1}>{cell.label}</Text>
+                  <Text
+                    style={[s.gridValue, { color: p.cardInk }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    testID={`ops-${cell.key}-${index}`}
+                  >
+                    {cell.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View style={[s.whereRow, { borderTopColor: p.cardLine }]}>
+        <Text style={[s.whereText, { color: p.cardSoft }]} numberOfLines={1}>
+          Terminal <Text style={[s.whereValue, { color: p.cardInk }]} testID={`ops-terminal-${index}`}>{demoValue('terminal')}</Text>
+          {' · '}Gate <Text style={[s.whereValue, { color: p.cardInk }]} testID={`ops-gate-${index}`}>{demoValue('gate')}</Text>
+          {' · '}Stand <Text style={[s.whereValue, { color: p.cardInk }]} testID={`ops-stand-${index}`}>{demoValue('stand')}</Text>
+        </Text>
+        <Text style={[s.whereText, { color: p.cardSoft }]} numberOfLines={1}>
+          Belt <Text style={[s.whereValue, { color: p.cardInk }]} testID={`ops-belt-${index}`}>{demoValue('belt')}</Text>
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The off-duty stretch of the spine. RN's `borderStyle: 'dashed'` only supports
+ * a uniform border and warns ("Unsupported dashed / dotted border style") for a
+ * single-side dashed border, so the rail is drawn with SVG like DashedLine.
+ */
+function VerticalDashedRail({ color }: { color: string }): React.JSX.Element {
+  const [height, setHeight] = React.useState(0);
+  const onLayout = React.useCallback((e: LayoutChangeEvent) => {
+    setHeight(e.nativeEvent.layout.height);
+  }, []);
+  return (
+    <View style={s.railWrap} onLayout={onLayout} testID="rest-rail-dashed">
+      {height > 0 ? (
+        <Svg width={2} height={height}>
+          <Line x1={1} y1={0} x2={1} y2={height} stroke={color} strokeWidth={2} strokeDasharray="4 4" />
+        </Svg>
+      ) : null}
+    </View>
+  );
+}
+
+function RestStop({
+  airport, hours, hotel, transfer, p, testID,
+}: {
+  airport: string;
+  hours: number | null;
+  hotel: HotelInfo | null;
+  transfer: TransferInfo | null;
+  p: CarrierPalette;
+  testID: string;
+}) {
+  return (
+    <View style={s.row} testID={testID}>
+      <View style={s.gutter}>
+        {/* Dashed between duties: the spine pauses while the crew is off duty. */}
+        <VerticalDashedRail color={p.inkFaint} />
+        <View style={[s.restDot, { backgroundColor: p.inkFaint }]} />
+      </View>
+      <View style={[s.rest, { backgroundColor: p.cardInset, borderColor: p.cardLine }]}>
+        <View style={s.restHead}>
+          <Text style={[s.restKicker, { color: p.cardSoft }]}>
+            LAYOVER{airport ? ` · ${airport}` : ''}
+          </Text>
+          {hours != null && <Text style={[s.restHours, { color: p.cardInk }]}>{fmtHours(hours)}</Text>}
+        </View>
+        {hotel ? (
+          <>
+            <Text style={[s.hotelName, { color: p.cardInk }]}>
+              {hotel.name}{hotel.mocked ? ' (expected)' : ''}
+            </Text>
+            <Text style={[s.hotelMeta, { color: p.cardSoft }]}>
+              {hotel.checkIn} → {hotel.checkOut} · {hotel.nights} night{hotel.nights === 1 ? '' : 's'}
+            </Text>
+            <Text style={[s.hotelMeta, { color: p.cardSoft }]}>{hotel.address}</Text>
+            <Text style={[s.hotelMeta, { color: p.cardSoft }]}>{hotel.transfer}</Text>
+            {transfer ? (
+              <>
+                <Text style={[s.hotelMeta, { color: p.cardSoft }]}>
+                  Pick-up {transfer.pickup} → drop-off {transfer.dropOff} (expected)
+                </Text>
+                <Text style={[s.hotelMeta, { color: p.cardSoft }]}>
+                  {transfer.vehicle} · {transfer.plate} · {transfer.driver} · {transfer.phone}
+                </Text>
+              </>
+            ) : null}
+            <Text style={[s.hotelMeta, { color: p.cardSoft }]}>{hotel.phone}</Text>
+          </>
+        ) : (
+          <Text style={[s.hotelMeta, { color: p.cardSoft }]}>Hotel details not published.</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
-  ops: { paddingVertical: 6 },
-  opsRow: { flexDirection: 'row', paddingVertical: 9, gap: 6 },
-  opsCell: { flex: 1, minWidth: 0 },
-  pk: { fontSize: 10, fontWeight: '600', letterSpacing: 0.6 },
-  pv: { fontSize: 16, fontWeight: '600', marginTop: 3 },
-  left: { textAlign: 'left' },
-  center: { textAlign: 'center' },
-  right: { textAlign: 'right' },
+  root: { flex: 1 },
+  scroll: { paddingHorizontal: 22, paddingTop: 6, paddingBottom: 28 },
+  timeline: { marginTop: 2 },
+
+  // Rail geometry: 30 pt gutter, 2 pt spine centred at x=14; the row content
+  // starts at x=30. Duty nodes are squares, sector nodes are smaller circles.
+  group: { position: 'relative' },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
+  gutter: { width: 30, alignSelf: 'stretch' },
+  rail: { position: 'absolute', left: 13, top: 16, bottom: 18, width: 2, borderRadius: 1, opacity: 0.55 },
+  railWrap: { position: 'absolute', left: 13, top: 0, bottom: 0, width: 2 },
+  dutyNode: { width: 22, height: 22, borderRadius: 6, marginTop: 4, marginLeft: 3, alignItems: 'center', justifyContent: 'center' },
+  dutyNodeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  segNode: { width: 15, height: 15, borderRadius: 7.5, borderWidth: 1.5, marginTop: 15, marginLeft: 6.5, alignItems: 'center', justifyContent: 'center' },
+  segNodeText: { fontSize: 8, fontWeight: '700' },
+  restDot: { width: 7, height: 7, borderRadius: 3.5, marginTop: 20, marginLeft: 10.5 },
+
+  dutyBand: { flex: 1, borderRadius: 16, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 2, marginBottom: 10 },
+  dutyHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dutyKicker: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+  dutyDate: { fontSize: 11, fontWeight: '500' },
+  dutyMain: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: 6 },
+  // Markers come first in reading order (wake-up → leave → report); reverse the
+  // visual row so the big report time keeps the left edge on the band.
+  dutyMainRight: { flexDirection: 'row-reverse' },
+  reportLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.7 },
+  reportValue: { fontSize: 24, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 1 },
+  markers: { flexDirection: 'row', gap: 8, paddingBottom: 2 },
+  marker: { borderWidth: 1, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 4, alignItems: 'center' },
+  markerLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 0.6 },
+  markerValue: { fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  metrics: { flexDirection: 'row', borderTopWidth: 1, marginTop: 10, paddingTop: 8, paddingBottom: 6 },
+  metric: { flex: 1, minWidth: 0 },
+  metricLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.6 },
+  metricValue: { fontSize: 14, fontWeight: '600', fontVariant: ['tabular-nums'], marginTop: 1 },
+
+  pass: { flex: 1, borderRadius: 14, borderWidth: 1, paddingHorizontal: 13, paddingTop: 10, paddingBottom: 8, marginBottom: 10 },
+  passHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
+  flt: { fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
+  passMeta: { flexShrink: 1, textAlign: 'right', fontSize: 11, fontWeight: '500' },
+  route: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  endpoint: { minWidth: 64 },
+  endpointRight: { alignItems: 'flex-end' },
+  arpRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  arp: { fontSize: 23, fontWeight: '700', letterSpacing: 0.5, fontVariant: ['tabular-nums'] },
+  arpLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 0.7, marginTop: 1 },
+  arpTime: { fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  dayOffset: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 3, fontSize: 9, fontWeight: '700' },
+  routeMid: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
+  routeDur: { fontSize: 10, fontWeight: '600', fontVariant: ['tabular-nums'], marginBottom: 4 },
+  routeLine: { alignSelf: 'stretch', height: 1 },
+  grid: { borderTopWidth: 1, marginTop: 8 },
+  gridRow: { flexDirection: 'row', paddingVertical: 6, gap: 6 },
+  gridCell: { flex: 1, minWidth: 0 },
+  gridLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 0.5 },
+  gridValue: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'], marginTop: 1 },
+  whereRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, borderTopWidth: 1, paddingTop: 6 },
+  whereText: { fontSize: 10, fontWeight: '500' },
+  whereValue: { fontWeight: '600' },
+
+  rest: { flex: 1, borderRadius: 14, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 10, marginTop: 2, marginBottom: 10 },
+  restHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  restKicker: { fontSize: 9, fontWeight: '700', letterSpacing: 0.7 },
+  restHours: { fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  hotelName: { fontSize: 14, fontWeight: '600', marginTop: 4 },
+  hotelMeta: { fontSize: 11, marginTop: 2, lineHeight: 15 },
+
+  calBar: { borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: 12, paddingVertical: 8 },
+  calPress: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  calIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  calText: { flex: 1, minWidth: 0 },
+  calTitle: { fontSize: 14, fontWeight: '600' },
+  calSub: { fontSize: 11, marginTop: 1 },
 });

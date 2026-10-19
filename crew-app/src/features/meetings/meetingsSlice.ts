@@ -80,8 +80,9 @@ const meetingsSlice = createSlice({
 });
 
 /**
- * Read the device calendar and sync alarms. No-op (and clears the list) unless
- * meetings are enabled and EventKit access is granted. Mirrors the config to
+ * Read the device calendar for the Schedule day planner and sync alarms.
+ * Calendar visibility is independent of the reminder toggle: disabling meeting
+ * alarms must not make the user's iOS Calendar events disappear. Mirrors the config to
  * native so the background refresh task can keep arming alarms when the app is
  * closed. Called on launch, on toggle, on offset change, and by foreground
  * focus — re-reading is cheap and keeps the cards + alarms fresh.
@@ -90,7 +91,7 @@ export function syncMeetings() {
   return async (dispatch: AppDispatch, getState: () => RootState): Promise<void> => {
     const { enabled, minutesBefore } = getState().meetings;
     await saveBackgroundConfig({ enabled, minutesBefore });
-    if (!enabled || !isCalendarAvailable()) {
+    if (!isCalendarAvailable()) {
       if (getState().meetings.meetings.length) {
         dispatch(meetingsSlice.actions._setMeetings([]));
       }
@@ -110,7 +111,11 @@ export function syncMeetings() {
       // Leave the previous list in place if a read fails.
     }
     await dispatch(reconcileAlarms());
-    await dispatch(syncIslandCountdown());
+    if (enabled) {
+      await dispatch(syncIslandCountdown());
+    } else {
+      await endMeetingCountdown();
+    }
   };
 }
 

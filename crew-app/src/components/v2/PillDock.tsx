@@ -41,7 +41,9 @@ export function PillDock({ state, descriptors, navigation, palette }: PillDockPr
   const scheduleView = useAppSelector(s => s.rbot.scheduleView);
   if (activeRoute.name === 'Schedule') source.view = scheduleView;
 
-  const tabs = state.routes.map((route, index) => {
+  const tabs = state.routes.map((route, index) => ({ route, index }))
+    .filter(({ route }) => route.name !== 'Global')
+    .map(({ route, index }) => {
     const { options } = descriptors[route.key];
     const isFocused = state.index === index;
     const iconName = ICON_BY_ROUTE[route.name] ?? 'home';
@@ -76,7 +78,7 @@ export function PillDock({ state, descriptors, navigation, palette }: PillDockPr
   });
 
   if (duoRightRail) {
-    // Keep the four destination tabs as one group. Page actions occupy the
+    // Keep the three visible destination tabs as one group. Page actions occupy the
     // upper strip; the AI entry retains its own control below the tabs.
     const railRight = Math.max(0, (actionStrip - RAIL_WIDTH) / 2);
     const railBottom = Math.max(insets.bottom, 12) + 8;
@@ -118,7 +120,7 @@ export function PillDock({ state, descriptors, navigation, palette }: PillDockPr
     >
       {dock}
       {/* R'Bot is its OWN box beside the bar — same glass treatment, separate box,
-          so it can never be mistaken for a fifth tab (Ryan, 2026-09-11). */}
+          so it can never be mistaken for another tab (Ryan, 2026-09-11). */}
       {aiEntry}
     </View>
   );
@@ -129,7 +131,7 @@ const WIDE_DOCK_WIDTH = 460;
 const RAIL_WIDTH = 56;
 
 const styles = StyleSheet.create({
-  // The floating row: the pill dock owns the four tabs, R'Bot owns its own box.
+  // The floating row: the pill dock owns the visible tabs, R'Bot owns its own box.
   row: {
     position: 'absolute',
     left: 22,

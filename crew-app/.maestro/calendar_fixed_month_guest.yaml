@@ -1,0 +1,40 @@
+# Run after the native guest fixture test; keeps its guest session and EventKit events.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: false
+- tapOn:
+    id: tab-schedule
+- runFlow:
+    when:
+      visible:
+        id: sched-view-menu
+    commands:
+      - tapOn:
+          id: sched-view-menu
+- tapOn:
+    id: sched-view-calendar
+- tapOn:
+    id: cal-mode-toggle
+- tapOn:
+    id: cal-day-20
+- assertVisible:
+    id: cal-fixed-month-grid
+- assertVisible:
+    id: cal-day-rail
+- assertVisible:
+    id: cal-section-MORNING
+- takeScreenshot: month-day-top
+- swipe:
+    start: 45%, 75%
+    end: 45%, 50%
+- assertVisible:
+    id: cal-day-rail
+- takeScreenshot: month-day-scrolled
+- tapOn:
+    id: cal-mode-toggle
+- assertVisible:
+    id: cal-week-grid
+- assertVisible:
+    id: cal-day-rail
+- takeScreenshot: week-day
