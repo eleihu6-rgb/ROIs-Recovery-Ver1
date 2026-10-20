@@ -1226,8 +1226,11 @@ final class DuoFitUITests: XCTestCase {
     wait("qa-duty-swap", 30).tap()
     if el("swap-disclaimer").waitForExistence(timeout: 5) { tapDialogConfirm("swap-disclaimer") }
     if el("app-dialog").exists { tapDialogConfirm("app-dialog") }
-    XCTAssertTrue(el("swap-approach-header").waitForExistence(timeout: 30) || el("swap-approach-rail").exists,
-                  "no approach switch on the Duo inner screen")
+    // Wide: the switch is the right-hand rail; compact/tall: the header. Wait for either.
+    let switchShown = expectation(for: NSPredicate { _, _ in
+      self.el("swap-approach-header").exists || self.el("swap-approach-rail").exists
+    }, evaluatedWith: app)
+    wait(for: [switchShown], timeout: 30)
     wait("approach-ticket").tap()
     if el("app-dialog").waitForExistence(timeout: 5) { tapDialogConfirm("app-dialog") }
 
