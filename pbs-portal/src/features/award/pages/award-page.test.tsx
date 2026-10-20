@@ -888,7 +888,7 @@ describe("AwardPage", () => {
     expect(within(rosterDetailsPanel).getByText("18 duties · 18 rows")).toBeInTheDocument();
     expect(rosterDetailsPanel.className).not.toContain("100dvh");
     expect(rosterDetailsPanel.className).toContain("flex-1");
-    expect(rosterDetailsScroll.className).toContain("overflow-y-auto");
+    expect(rosterDetailsScroll.className).toContain("overflow-auto");
     expect(reasonReportPreview.className).toContain("shrink-0");
     expect(within(rosterDetailsScroll).getAllByText("TRN15").length).toBeGreaterThan(0);
     expect(within(rosterDetailsPanel).queryByText("Total: 18 duties")).not.toBeInTheDocument();

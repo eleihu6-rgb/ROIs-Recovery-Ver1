@@ -342,11 +342,11 @@ export const RuleBidAvailablePropertiesSection = ({
   >
     {hideChrome ? null : <PanelStripHeader title={sectionTitle} />}
 
-    {hideChrome || !showFavoritePropertiesTab ? null : <div className="mt-[12px] flex items-center gap-[38px]">
+    {hideChrome || !showFavoritePropertiesTab ? null : <div className="mt-[12px] flex items-center gap-[38px] max-md:gap-4 max-md:overflow-x-auto">
       <button
         aria-pressed={activeTab === "favorited" ? "true" : "false"}
         className={cn(
-          "relative cursor-pointer border-0 bg-transparent pb-[14px] text-sm font-medium leading-[18px] text-[#6f7485]",
+          "relative shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent pb-[14px] text-sm font-medium leading-[18px] text-[#6f7485]",
           activeTab === "favorited"
             ? "font-bold text-[#6467d1] after:absolute after:bottom-0 after:left-[-12px] after:right-[-12px] after:h-[3px] after:rounded-full after:bg-[#6467d1] after:content-['']"
             : "",
@@ -359,7 +359,7 @@ export const RuleBidAvailablePropertiesSection = ({
       <button
         aria-pressed={activeTab === "all" ? "true" : "false"}
         className={cn(
-          "relative cursor-pointer border-0 bg-transparent pb-[14px] text-sm font-medium leading-[18px] text-[#6f7485]",
+          "relative shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent pb-[14px] text-sm font-medium leading-[18px] text-[#6f7485]",
           activeTab === "all"
             ? "font-bold text-[#6467d1] after:absolute after:bottom-0 after:left-[-12px] after:right-[-12px] after:h-[3px] after:rounded-full after:bg-[#6467d1] after:content-['']"
             : "",
@@ -392,7 +392,7 @@ export const RuleBidAvailablePropertiesSection = ({
       ) : null}
       <div
         className={cn(
-          "relative w-[270px]",
+          "relative w-[270px] max-md:w-full",
           categoryFilterVariant === "bid-tabs" ? "ml-auto" : "",
         )}
         data-testid="rule-bid-search-shell"

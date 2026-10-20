@@ -277,10 +277,11 @@ describe("DashboardPage", () => {
     )).toBeInTheDocument();
     expect(screen.queryByText(/Mar 06, 08:00/)).not.toBeInTheDocument();
     expect(screen.getByText("MESSAGE CENTER")).toBeInTheDocument();
-    expect(screen.getByTestId("dashboard-layout")).toHaveStyle({
-      gridTemplateColumns: "436px minmax(0, 1fr) 365px",
-      minHeight: "var(--portal-page-shell-height)",
-    });
+    const dashboardLayout = screen.getByTestId("dashboard-layout");
+    expect(dashboardLayout.className).toContain(
+      "md:grid-cols-[436px_minmax(0,1fr)_365px]",
+    );
+    expect(dashboardLayout).toHaveStyle({ minHeight: "var(--portal-page-shell-height)" });
     expect(screen.queryByRole("button", { name: "Collapse bidding calendar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Expand bidding calendar" })).not.toBeInTheDocument();
   });

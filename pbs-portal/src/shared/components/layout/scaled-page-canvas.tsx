@@ -13,6 +13,7 @@ import {
   HEADER_DESIGN_HEIGHT,
   resolveHeaderScale,
 } from "@/app/layout/use-dashboard-header-layout";
+import { useIsMobileViewport } from "@/shared/hooks/use-is-mobile-viewport";
 
 type ScaledPageCanvasProps = {
   children: ReactNode;
@@ -50,6 +51,7 @@ export const ScaledPageCanvas = ({
   canvasTestId,
   allowVerticalOverflow = false,
 }: ScaledPageCanvasProps) => {
+  const isMobileViewport = useIsMobileViewport();
   const [viewport, setViewport] = useState(() => getViewportSize());
   const [canvasContentHeight, setCanvasContentHeight] = useState(designHeight);
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -59,6 +61,10 @@ export const ScaledPageCanvas = ({
   }, []);
 
   useEffect(() => {
+    if (isMobileViewport) {
+      return undefined;
+    }
+
     const handleResize = () => {
       setViewport(getViewportSize());
     };
@@ -69,10 +75,10 @@ export const ScaledPageCanvas = ({
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, []);
+  }, [isMobileViewport]);
 
   useEffect(() => {
-    if (!allowVerticalOverflow) {
+    if (!allowVerticalOverflow || isMobileViewport) {
       setCanvasContentHeight(designHeight);
       return undefined;
     }
@@ -101,7 +107,7 @@ export const ScaledPageCanvas = ({
       resizeObserver?.disconnect();
       window.removeEventListener("resize", updateCanvasContentHeight);
     };
-  }, [allowVerticalOverflow, designHeight]);
+  }, [allowVerticalOverflow, designHeight, isMobileViewport]);
 
   const metrics = useMemo(() => {
     const headerHeight = Math.round(HEADER_DESIGN_HEIGHT * resolveHeaderScale(viewport.width));
@@ -156,6 +162,28 @@ export const ScaledPageCanvas = ({
     width: `${metrics.canvasWidth}px`,
     "--portal-page-shell-height": `${metrics.canvasHeight}px`,
   } as CSSProperties;
+
+  if (isMobileViewport) {
+    return (
+      <div className="w-full" data-layout-mode="mobile" data-testid={viewportTestId}>
+        <div
+          className="relative w-full"
+          data-testid={canvasTestId}
+          ref={canvasRef}
+          style={{ "--portal-page-shell-height": "auto" } as CSSProperties}
+        >
+          <ScaledPageCanvasPortalTargetContext.Provider value={portalTarget}>
+            {children}
+            <div
+              className="pointer-events-none absolute inset-0 z-[80]"
+              data-testid="scaled-page-dialog-portal-root"
+              ref={handlePortalTargetRef}
+            />
+          </ScaledPageCanvasPortalTargetContext.Provider>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

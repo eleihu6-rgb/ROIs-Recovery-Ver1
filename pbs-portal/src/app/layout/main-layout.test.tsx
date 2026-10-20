@@ -38,4 +38,23 @@ describe("MainLayout", () => {
 
     expect(screen.getByTestId("main-layout-content")).toHaveStyle({ paddingTop: "76px" });
   });
+
+  it("uses the phone shell with no fixed header offset below the md breakpoint", () => {
+    setViewportWidth(390);
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <Routes>
+          <Route element={<MainLayout />}>
+            <Route path="/dashboard" element={<div>Body</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const mainContent = screen.getByTestId("main-layout-content");
+    expect(mainContent.getAttribute("style")).toBeNull();
+    expect(mainContent.className).toContain("flex-1");
+    expect(screen.getByTestId("dashboard-top-nav")).toHaveAttribute("data-mobile-nav", "true");
+  });
 });

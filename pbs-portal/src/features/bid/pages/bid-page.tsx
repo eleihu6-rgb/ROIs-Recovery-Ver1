@@ -385,7 +385,7 @@ export const BidPage = () => {
 
   return (
     <section
-      className="flex h-[var(--portal-page-shell-height)] max-h-[var(--portal-page-shell-height)] min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl bg-white px-6 pb-5 pt-5 shadow-[10px_20px_60px_rgba(0,0,0,0.05)]"
+      className="flex h-[var(--portal-page-shell-height)] max-h-[var(--portal-page-shell-height)] min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl bg-white px-6 pb-5 pt-5 shadow-[10px_20px_60px_rgba(0,0,0,0.05)] max-md:px-3 max-md:pb-4 max-md:pt-4"
       data-testid="bid-page"
       data-uiid="bid-page"
     >
@@ -406,40 +406,42 @@ export const BidPage = () => {
       </p>
 
       <div
-        className="mt-3 max-h-[330px] min-h-0 shrink-0 overscroll-contain overflow-y-auto rounded-xl border border-[#e4e8f1]"
+        className="mt-3 max-h-[330px] min-h-0 shrink-0 overscroll-contain overflow-y-auto rounded-xl border border-[#e4e8f1] max-md:overflow-x-auto"
         data-testid="bid-existing-properties-scroll"
       >
-        {existingItems.length > 0 ? (
-          existingItems.map((item) => (
-            <SummaryItemRow
-              key={item.groupKey}
-              item={item}
-              onDelete={
-                item.isEditable
-                && item.editableSource
-                && canEditBidByModule[item.editableSource.module]
-                  ? deleteDetailBid
-                  : undefined
-              }
-              onOpenDetail={openDetail}
-              onPreview={item.isEditable && item.bidType === "Pairing"
-                ? previewPairingProperty
-                : undefined}
-              reserveActionsSpace
-              summary={existingSummaryByGroupKey.has(item.groupKey) ? (
-                <BidPropertySummaryView
-                  ariaLabel={`${item.label} bid summary`}
-                  summary={existingSummaryByGroupKey.get(item.groupKey)!}
-                  variant="tier"
-                />
-              ) : undefined}
-            />
-          ))
-        ) : (
-          <p className="px-4 py-5 text-sm text-[#6f7485]">
-            {`No bid properties are attached to ${activeSummaryTier}.`}
-          </p>
-        )}
+        <div className="min-w-0">
+          {existingItems.length > 0 ? (
+            existingItems.map((item) => (
+              <SummaryItemRow
+                key={item.groupKey}
+                item={item}
+                onDelete={
+                  item.isEditable
+                  && item.editableSource
+                  && canEditBidByModule[item.editableSource.module]
+                    ? deleteDetailBid
+                    : undefined
+                }
+                onOpenDetail={openDetail}
+                onPreview={item.isEditable && item.bidType === "Pairing"
+                  ? previewPairingProperty
+                  : undefined}
+                reserveActionsSpace
+                summary={existingSummaryByGroupKey.has(item.groupKey) ? (
+                  <BidPropertySummaryView
+                    ariaLabel={`${item.label} bid summary`}
+                    summary={existingSummaryByGroupKey.get(item.groupKey)!}
+                    variant="tier"
+                  />
+                ) : undefined}
+              />
+            ))
+          ) : (
+            <p className="px-4 py-5 text-sm text-[#6f7485]">
+              {`No bid properties are attached to ${activeSummaryTier}.`}
+            </p>
+          )}
+        </div>
       </div>
 
       <div
@@ -448,13 +450,17 @@ export const BidPage = () => {
       >
         <PanelStripHeader title="ADD BID PROPERTIES" />
 
-        <div aria-label="Bid property categories" className="mt-3 flex items-center gap-8 border-b border-[#dfe3eb]" role="tablist">
+        <div
+          aria-label="Bid property categories"
+          className="mt-3 flex items-center gap-8 overflow-x-auto border-b border-[#dfe3eb] max-md:gap-4"
+          role="tablist"
+        >
           {AVAILABLE_TABS.map((tab) => (
             <button
               key={tab.key}
               aria-selected={activeTab === tab.key}
               className={cn(
-                "relative cursor-pointer border-0 bg-transparent pb-3 text-sm font-medium leading-[18px] text-[#6f7485]",
+                "relative shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent pb-3 text-sm font-medium leading-[18px] text-[#6f7485]",
                 activeTab === tab.key
                   ? "font-bold text-[#6467d1] after:absolute after:bottom-0 after:left-[-10px] after:right-[-10px] after:h-[3px] after:rounded-full after:bg-[#6467d1] after:content-['']"
                   : "",
@@ -468,7 +474,7 @@ export const BidPage = () => {
           ))}
         </div>
 
-        <div className="mt-3 flex items-center justify-end gap-3">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
           {activeTab === "pairing" ? (
             <Button
               className="h-[30px] cursor-pointer rounded-lg border border-[#d8dde6] bg-white px-[14px] text-xs font-semibold text-[#6f7485] shadow-none hover:bg-[#f8f9fb]"
@@ -479,7 +485,7 @@ export const BidPage = () => {
               ALL PAIRINGS
             </Button>
           ) : null}
-          <div className="relative w-[270px]">
+          <div className="relative w-full sm:w-[270px]">
             <Input
               className="h-[30px] rounded-lg border-[#cfd6e4] bg-white pr-9 text-sm text-[#6f7485] shadow-none placeholder:text-[#c5c9d3] focus-visible:ring-0"
               placeholder="Search Bid Properties"

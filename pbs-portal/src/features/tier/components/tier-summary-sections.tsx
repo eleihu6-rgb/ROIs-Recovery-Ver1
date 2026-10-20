@@ -62,13 +62,13 @@ export const SummaryItemRow = ({
 
   return (
     <div
-      className="flex min-w-0 items-stretch border-t border-[#eef1f6] transition-colors hover:bg-[#fbfcff]"
+      className="flex min-w-0 flex-col items-stretch border-t border-[#eef1f6] transition-colors hover:bg-[#fbfcff] sm:flex-row"
       data-testid="tier-summary-row"
     >
       <div
         aria-label={`Open detail for ${item.displayTier ? `${item.displayTier} ` : ""}${item.readableText}`}
         aria-disabled={isDeleting}
-        className="grid min-w-0 flex-1 cursor-pointer grid-cols-[108px_minmax(0,1fr)_150px] gap-4 px-[10px] py-3 text-left text-sm leading-[20px] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#706cd5] disabled:cursor-not-allowed disabled:opacity-60"
+        className="grid min-w-0 flex-1 cursor-pointer grid-cols-1 gap-2 px-[10px] py-3 text-left text-sm leading-[20px] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#706cd5] disabled:cursor-not-allowed disabled:opacity-60 sm:grid-cols-[108px_minmax(0,1fr)_150px] sm:gap-4"
         role="button"
         tabIndex={isDeleting ? -1 : 0}
         onClick={openItem}
@@ -110,7 +110,7 @@ export const SummaryItemRow = ({
 
       {showActions ? (
         <div
-          className="flex w-[150px] shrink-0 items-start justify-end gap-3 px-[10px] py-3"
+          className="flex w-full shrink-0 items-start justify-end gap-3 px-[10px] py-3 sm:w-[150px]"
           data-testid="tier-summary-actions"
         >
           {onPreview ? (

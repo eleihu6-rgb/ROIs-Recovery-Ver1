@@ -25,6 +25,8 @@ export type RuleBidPropertyTableLayout = {
   existingGridTemplateColumns?: string;
   fieldWidth: string;
   gridTemplateColumns: string;
+  rowGap?: number;
+  stacked?: boolean;
   tierWidth: string;
 };
 
@@ -88,11 +90,13 @@ const clampMinimumN = (value: number) => Math.min(31, Math.max(1, value));
 const getRuleBidTableGridStyle = (layout: RuleBidPropertyTableLayout): CSSProperties => ({
   columnGap: `${layout.columnGap}px`,
   gridTemplateColumns: layout.gridTemplateColumns,
+  rowGap: layout.rowGap ? `${layout.rowGap}px` : undefined,
 });
 
 const getRuleBidExistingGridStyle = (layout: RuleBidPropertyTableLayout): CSSProperties => ({
   columnGap: `${layout.columnGap}px`,
   gridTemplateColumns: layout.existingGridTemplateColumns ?? layout.gridTemplateColumns,
+  rowGap: layout.rowGap ? `${layout.rowGap}px` : undefined,
 });
 
 const formatRuleBidValue = (bid: RuleBidAvailableProperty["bid"]) => {
@@ -146,7 +150,7 @@ const TopUsedBadge = () => (
 
 export const RuleBidPropertyTableHeader = ({ layout, showTiers = true }: RuleBidPropertyTableHeaderProps) => (
   <div
-    className="grid items-center px-4 pb-3 text-sm font-bold leading-[18px] text-[#40424f]"
+    className="grid items-center px-4 pb-3 text-sm font-bold leading-[18px] text-[#40424f] max-md:hidden"
     style={getRuleBidExistingGridStyle(layout)}
   >
     <span>PROPERTY</span>
@@ -508,10 +512,10 @@ const RuleBidPropertyEditor = ({
     className="grid items-start"
     style={getRuleBidTableGridStyle(layout)}
   >
-    <div />
+    <div className={layout.stacked ? "hidden" : ""} />
     <div
       className="rounded-3xl border border-[#e4e8f1] bg-[#fbfcff] px-4 py-4"
-      style={{ gridColumn: "2 / 5" }}
+      style={{ gridColumn: layout.stacked ? "1 / -1" : "2 / 5" }}
     >
       <p className="text-xs font-semibold uppercase tracking-[0.04em] text-[#8d93a5]">
         EDIT BID

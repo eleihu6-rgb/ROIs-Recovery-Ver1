@@ -56,6 +56,11 @@ export default defineConfig(({ mode }) => {
   const liveTarget = env.VITE_LIVE_TARGET || "http://127.0.0.1:3000";
   const ruleTarget = env.VITE_RULE_TARGET || "http://127.0.0.1:3001";
   const aiTarget = env.VITE_AI_TARGET || "http://127.0.0.1:3005";
+  // cr.rois.one is the Gantt/Altair public host. Expose the PBS portal under
+  // /pbs/* here so that host can also reach the crew portal without taking
+  // over the live-server /api/* routes.
+  const pbsPortalTarget = env.VITE_PBS_PORTAL_TARGET || "http://127.0.0.1:3030";
+  const pbsServerTarget = env.VITE_PBS_SERVER_TARGET || "http://127.0.0.1:3002";
   // API prefix — controls both the Vite dev proxy keys and the built-in api-paths.ts constants.
   // Override with VITE_API_PREFIX=dev for the dev deployment environment.
   const apiPrefix = (env.VITE_API_PREFIX || 'altair').replace(/^\/|\/$/g, '');
@@ -75,7 +80,29 @@ export default defineConfig(({ mode }) => {
       }
     : undefined;
 
-  const redirect = (req: { url?: string }, res: { writeHead(s: number, h: Record<string, string>): void; end(): void }, next: () => void) => {
+  const redirect = (
+    req: import('node:http').IncomingMessage,
+    res: import('node:http').ServerResponse,
+    next: () => void,
+  ) => {
+    const requestUrl = req.url ?? '';
+    const path = requestUrl.split('?')[0] ?? '';
+    const search = requestUrl.includes('?') ? `?${requestUrl.split('?').slice(1).join('?')}` : '';
+
+    // Web Crypto (used to encrypt the PBS password) is unavailable in an
+    // insecure context. The public shared host must upgrade /pbs to HTTPS.
+    if (
+      (path === '/pbs' || path.startsWith('/pbs/'))
+      && req.headers.host === 'cr.rois.one'
+      && req.headers['x-forwarded-proto'] === 'http'
+    ) {
+      const targetPath = path === '/pbs' ? '/pbs/' : path;
+      res.writeHead(301, { Location: `https://${req.headers.host}${targetPath}${search}` });
+      res.end();
+      return;
+    }
+
+    if (req.url === '/pbs') { res.writeHead(301, { Location: '/pbs/' }); res.end(); return; }
     const withoutTrailing = base.replace(/\/$/, '');
     if (req.url === withoutTrailing) { res.writeHead(301, { Location: base }); res.end(); return; }
     next();
@@ -156,6 +183,16 @@ export default defineConfig(({ mode }) => {
     hmr,
     // 本地开发：与生产 nginx 一致的前缀，转发到本机后端（否则浏览器请求 Vite 会得到 404）
     proxy: {
+      "/pbs/api": {
+        target: pbsServerTarget,
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/pbs\/api/, "/api"),
+      },
+      "/pbs": {
+        target: pbsPortalTarget,
+        changeOrigin: true,
+        ws: true,
+      },
       "/api/mobile-roster": {
         target: liveTarget,
         changeOrigin: true,
@@ -190,6 +227,8 @@ export default defineConfig(({ mode }) => {
     host: true,
     allowedHosts: true,
     proxy: {
+      "/pbs/api": { target: pbsServerTarget, changeOrigin: true, rewrite: (p) => p.replace(/^\/pbs\/api/, "/api") },
+      "/pbs": { target: pbsPortalTarget, changeOrigin: true, ws: true },
       "/api/mobile-roster": { target: liveTarget, changeOrigin: true },
       [`/${apiPrefix}/live`]: { target: liveTarget, changeOrigin: true, rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/live`), ""), bypass: spaNavigationBypass, ws: true },
       [`/${apiPrefix}/rule`]: { target: ruleTarget, changeOrigin: true, rewrite: (p) => p.replace(new RegExp(`^\\/${apiPrefix}\\/rule`), "") },

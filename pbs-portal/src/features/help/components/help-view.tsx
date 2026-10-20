@@ -111,15 +111,15 @@ export const HelpView = () => {
   }, [activeTopic, pendingConditionId]);
 
   return (
-    <div className="flex h-full overflow-hidden" data-testid="help-view">
-      <aside className="w-[300px] shrink-0 border-r border-[#dfe3eb] bg-[#fbfcff]">
+    <div className="flex h-full flex-col overflow-hidden md:flex-row" data-testid="help-view">
+      <aside className="max-h-[45vh] w-full shrink-0 overflow-hidden border-b border-[#dfe3eb] bg-[#fbfcff] md:max-h-none md:w-[300px] md:border-b-0 md:border-r">
         <HelpNav
           activeConditionId={activeConditionId}
           activeTopic={activeTopic}
           onTopicSelect={handleTopicSelect}
         />
       </aside>
-      <div ref={contentRef} className="min-w-0 flex-1 overflow-y-auto bg-white">
+      <div ref={contentRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-white">
         {!activeTopic ? <HelpHome onTopicSelect={handleTopicSelect} /> : null}
         {activeTopic && TopicBody ? (
           <HelpTopicErrorBoundary>

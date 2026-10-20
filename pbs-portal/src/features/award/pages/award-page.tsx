@@ -24,7 +24,7 @@ const AwardPageLoading = () => (
   <AwardPageCanvas>
     <section
       aria-busy="true"
-      className="flex h-[var(--portal-page-shell-height)] max-h-[var(--portal-page-shell-height)] min-h-0 flex-col overflow-hidden rounded-xl bg-white px-7 pb-8 pt-7 shadow-[0_18px_60px_rgba(15,23,42,0.08)]"
+      className="flex h-[var(--portal-page-shell-height)] max-h-[var(--portal-page-shell-height)] min-h-0 flex-col overflow-hidden rounded-xl bg-white px-7 pb-8 pt-7 shadow-[0_18px_60px_rgba(15,23,42,0.08)] max-md:px-3 max-md:pb-4 max-md:pt-4"
       data-testid="award-page-loading"
     >
       <div aria-label="Loading award results..." aria-live="polite" className="sr-only" role="status">
@@ -37,13 +37,13 @@ const AwardPageLoading = () => (
         </div>
         <LoadingBlock className="h-9 w-44" />
       </div>
-      <div className="mt-4 grid grid-cols-6 gap-4">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-6">
         {Array.from({ length: 6 }, (_, index) => (
           <LoadingBlock key={`award-summary-loading-${index}`} className="h-24 w-full" />
         ))}
       </div>
-      <div className="mt-4 grid min-h-0 flex-1 grid-cols-[1.1fr_0.9fr] gap-4" data-testid="award-loading-detail-grid">
-        <LoadingBlock className="h-[620px] w-full" />
+      <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[1.1fr_0.9fr]" data-testid="award-loading-detail-grid">
+        <LoadingBlock className="h-80 w-full md:h-[620px]" />
         <div className="space-y-4">
           <LoadingBlock className="h-[420px] w-full" />
           <LoadingBlock className="h-36 w-full" />

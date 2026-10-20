@@ -30,6 +30,8 @@ export type PairingPropertyTableLayout = {
   existingCountGridTemplateColumns?: string;
   fieldWidth: string;
   gridTemplateColumns: string;
+  rowGap?: number;
+  stacked?: boolean;
   tierWidth: string;
 };
 
@@ -79,6 +81,7 @@ const getPropertyTableGridStyle = (
   gridTemplateColumns: showCount
     ? layout.existingCountGridTemplateColumns ?? layout.countGridTemplateColumns ?? layout.gridTemplateColumns
     : layout.gridTemplateColumns,
+  rowGap: layout.rowGap ? `${layout.rowGap}px` : undefined,
 });
 
 const PAIRING_POOL_COUNT_UNIT = "pairings";
@@ -125,7 +128,7 @@ export const PairingPropertyTableHeader = ({
   showTiers = true,
 }: PairingPropertyTableHeaderProps) => (
   <div
-    className="grid items-center px-4 pb-3 text-sm font-bold leading-[18px] text-[#40424f]"
+    className="grid items-center px-4 pb-3 text-sm font-bold leading-[18px] text-[#40424f] max-md:hidden"
     style={getPropertyTableGridStyle(layout, showCount)}
   >
     <span>PROPERTY</span>
@@ -363,8 +366,8 @@ export const AvailablePairingPropertyRow = ({
     >
       <div className="flex min-w-0 items-center gap-3">
         <div
-          className="min-w-0"
-          style={{ width: layout.fieldWidth }}
+          className={`min-w-0 ${layout.stacked ? "flex-1" : ""}`}
+          style={{ width: layout.stacked ? undefined : layout.fieldWidth }}
           title={property.name}
         >
           <p className="m-0 truncate text-sm font-semibold leading-5 text-[#40424f]">{property.name}</p>

@@ -8,17 +8,24 @@
 ## Architecture Overview
 
 ```
-Browser → pbs-portal (Vite, :3030, base /fpqe/pbs/)
+Browser → pbs-portal (Vite, :3030, base /pbs/)
               ↓ /api proxy
           pbs-server (Fastify, :3002)
               ↓
           PostgreSQL (remote 47.253.173.207:55432, schema: f8_pbs + f8)
 ```
 
-- **Frontend**: `pbs-portal/` — React 19 + Vite + TypeScript. Routes under `/fpqe/pbs/`.
+- **Frontend**: `pbs-portal/` — React 19 + Vite + TypeScript. Routes under `/pbs/`.
 - **Backend**: `pbs-server/` — Fastify + Drizzle + TypeScript. JWT auth.
 - **DB schemas**: `f8_pbs` = PBS-specific tables; `f8` = live crew/pairing data (read-only from PBS perspective).
 - **Auth**: `POST /api/auth/session` → JWT (24h). Token stored in `sessionStorage`. Fastify `onRequest` hook validates on every route.
+
+### Public entry points
+
+| URL | Notes |
+|-----|-------|
+| `https://pbs.rois.one/pbs/` | Dedicated PBS host; all paths proxy to `localhost:3030`. |
+| `https://cr.rois.one/pbs/` | Shared Gantt host. HTTP is upgraded to HTTPS because password encryption needs a secure context. The portal uses `/pbs/api/*`, which the Gantt Vite origin rewrites to pbs-server `/api/*`, so it cannot collide with live-server `/api/*`. |
 
 ---
 

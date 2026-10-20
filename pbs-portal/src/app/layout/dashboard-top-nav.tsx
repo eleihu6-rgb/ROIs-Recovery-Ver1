@@ -23,6 +23,8 @@ import { Button } from "@/shared/components/ui/button";
 import { PbsDialogFrame } from "@/shared/components/ui/pbs-dialog-frame";
 import type { TopNavItem } from "@/shared/constants/top-nav-items";
 import { useAuthSessionStore } from "@/features/auth/store/use-auth-session-store";
+import { useIsMobileViewport } from "@/shared/hooks/use-is-mobile-viewport";
+import { MobileTopNav } from "@/app/layout/mobile-top-nav";
 import { PBS_APP_VERSION } from "@/version";
 
 const ENV_BADGE_STYLES: Record<string, string> = {
@@ -50,6 +52,7 @@ export const DashboardTopNav = ({
   const [overflowMenuPosition, setOverflowMenuPosition] = useState<{ left: number; top: number } | null>(null);
   const [actionsReservedWidth, setActionsReservedWidth] = useState(MENU_RIGHT_RESERVED);
   const [isUiInspectorEnabled, setIsUiInspectorEnabled] = useState(false);
+  const isMobileViewport = useIsMobileViewport();
   const overflowButtonRef = useRef<HTMLButtonElement | null>(null);
   const overflowMenuRef = useRef<HTMLDivElement | null>(null);
   const actionsRef = useRef<HTMLDivElement | null>(null);
@@ -216,9 +219,58 @@ export const DashboardTopNav = ({
     });
   };
 
+  const envBadge = APP_ENV && ENV_BADGE_STYLES[APP_ENV] ? (
+    <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${ENV_BADGE_STYLES[APP_ENV]}`}>
+      {APP_ENV}
+    </span>
+  ) : null;
+  const logoutDialog = showLogoutConfirm ? (
+    <PbsDialogFrame
+      ariaLabel="Log out of ROIS Crew"
+      bodyClassName="p-0"
+      closeOnOverlayClick
+      footerClassName="mt-6 flex justify-end gap-3"
+      overlayClassName="z-[60] bg-black/45"
+      panelClassName="z-[70] w-full max-w-[420px] rounded-4xl border-border bg-background p-6 text-foreground shadow-xl"
+      footer={(
+        <>
+          <Button
+            className="h-10 rounded-3xl border border-border bg-transparent px-4 text-sm font-medium text-foreground hover:bg-muted"
+            type="button"
+            onClick={() => setShowLogoutConfirm(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="h-10 rounded-3xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            type="button"
+            onClick={() => void handleLogout()}
+          >
+            Log Out
+          </Button>
+        </>
+      )}
+      onClose={() => setShowLogoutConfirm(false)}
+    >
+      <h2 className="text-xl font-semibold leading-7 text-foreground">Log out of ROIS Crew?</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        You will return to the login page and need to sign in again to keep working.
+      </p>
+    </PbsDialogFrame>
+  ) : null;
+
   return (
     <>
       {showUiInspector ? <UIInspectorOverlay enabled={isUiInspectorEnabled} /> : null}
+      {isMobileViewport ? (
+        <MobileTopNav
+          displayName={displayName}
+          envBadge={envBadge}
+          items={items}
+          onRequestLogout={() => setShowLogoutConfirm(true)}
+        />
+      ) : (
+        <>
       <header
         className="fixed inset-x-0 top-0 z-50 w-full overflow-hidden bg-[#24272d] text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
         data-uiid="dashboard-top-nav"
@@ -296,11 +348,7 @@ export const DashboardTopNav = ({
           className="pointer-events-auto absolute right-8 top-0 flex h-full items-center gap-3 text-white"
           data-uiid="dashboard-top-nav-actions"
         >
-          {APP_ENV && ENV_BADGE_STYLES[APP_ENV] && (
-            <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${ENV_BADGE_STYLES[APP_ENV]}`}>
-              {APP_ENV}
-            </span>
-          )}
+          {envBadge}
 
           <span
             className="select-none font-mono tabular-nums text-xs text-white/35"
@@ -366,40 +414,9 @@ export const DashboardTopNav = ({
           ))}
         </div>
       ) : null}
-      {showLogoutConfirm ? (
-        <PbsDialogFrame
-          ariaLabel="Log out of ROIS Crew"
-          bodyClassName="p-0"
-          closeOnOverlayClick
-          footerClassName="mt-6 flex justify-end gap-3"
-          overlayClassName="z-[60] bg-black/45"
-          panelClassName="w-full max-w-[420px] rounded-4xl border-border bg-background p-6 text-foreground shadow-xl"
-          footer={(
-            <>
-              <Button
-                className="h-10 rounded-3xl border border-border bg-transparent px-4 text-sm font-medium text-foreground hover:bg-muted"
-                type="button"
-                onClick={() => setShowLogoutConfirm(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="h-10 rounded-3xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                type="button"
-                onClick={() => void handleLogout()}
-              >
-                Log Out
-              </Button>
-            </>
-          )}
-          onClose={() => setShowLogoutConfirm(false)}
-        >
-          <h2 className="text-xl font-semibold leading-7 text-foreground">Log out of ROIS Crew?</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            You will return to the login page and need to sign in again to keep working.
-          </p>
-        </PbsDialogFrame>
-      ) : null}
+        </>
+      )}
+      {logoutDialog}
     </>
   );
 };

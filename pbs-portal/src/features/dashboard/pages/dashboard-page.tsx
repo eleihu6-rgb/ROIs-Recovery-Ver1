@@ -52,23 +52,28 @@ export const DashboardPage = () => {
 
   return (
     <div
-      className="h-full min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain"
+      className="h-full min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain max-md:h-auto max-md:overflow-visible"
       data-testid="dashboard-scroll-container"
       data-uiid="dashboard-scroll-container"
     >
       <ScaledPageCanvas allowVerticalOverflow designHeight={968} designWidth={1888}>
         <div
-          className="grid items-stretch gap-4"
+          className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-[436px_minmax(0,1fr)_365px] md:gap-4"
           data-uiid="dashboard-page-layout"
           data-testid="dashboard-layout"
           style={{
-            gridTemplateColumns: "436px minmax(0, 1fr) 365px",
             minHeight: "var(--portal-page-shell-height)",
           }}
         >
-          <DashboardLeftPanel data={userPanelData} />
-          <DashboardSchedulePanel density={calendarDensity} />
-          <DashboardRightPanel data={messagePanelData} />
+          <div className="order-2 min-w-0 md:order-none">
+            <DashboardLeftPanel data={userPanelData} />
+          </div>
+          <div className="order-1 min-w-0 md:order-none">
+            <DashboardSchedulePanel density={calendarDensity} />
+          </div>
+          <div className="order-3 min-w-0 md:order-none">
+            <DashboardRightPanel data={messagePanelData} />
+          </div>
         </div>
       </ScaledPageCanvas>
     </div>

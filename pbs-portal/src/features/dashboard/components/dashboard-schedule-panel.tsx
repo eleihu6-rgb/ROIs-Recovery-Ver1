@@ -190,7 +190,7 @@ export const DashboardSchedulePanel = memo(({
       data-uiid="dashboard-schedule-panel"
     >
       <div className={isCompactDensity ? "px-5 pt-4" : "px-6 pt-6"}>
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <div
             className="flex h-8 w-[222px] shrink-0 items-center rounded-sm bg-[rgba(104,102,204,0.08)] pr-10 text-left"
             data-testid="bidding-calendar-title-strip"
@@ -200,10 +200,10 @@ export const DashboardSchedulePanel = memo(({
               {data.title}
             </span>
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-3 max-md:ml-0 max-md:w-full max-md:justify-end">
             <CurrentPeriodStatus
               currentPeriod={currentPeriod}
-              className="min-w-0 shrink-0"
+              className="min-w-0 shrink-0 max-md:w-full max-md:shrink"
               variant="compact"
             />
             {onCollapse ? (
@@ -229,51 +229,56 @@ export const DashboardSchedulePanel = memo(({
       </div>
 
       <div
-        className={isCompactDensity ? "px-5 pb-4" : "px-6 pb-6"}
+        className={cn(
+          isCompactDensity ? "px-5 pb-4" : "px-6 pb-6",
+          "max-md:overflow-x-auto max-md:overscroll-x-contain",
+        )}
         data-testid="bidding-calendar-content-region"
       >
-        <ScheduleTierMatrix
-          activeTierLabel={displayActiveTierLabel}
-          contentMinWidth={contentMinWidth}
-          density={density}
-          dayLabels={scheduleData.dayLabels}
-          rows={scheduleData.tierRows}
-          onSelectTier={(label) => {
-            setActiveTierLabel(label);
-          }}
-        />
+        <div className="max-md:min-w-[632px]">
+          <ScheduleTierMatrix
+            activeTierLabel={displayActiveTierLabel}
+            contentMinWidth={contentMinWidth}
+            density={density}
+            dayLabels={scheduleData.dayLabels}
+            rows={scheduleData.tierRows}
+            onSelectTier={(label) => {
+              setActiveTierLabel(label);
+            }}
+          />
 
-        <ScheduleEventCalendar
-          actionPopover={calendarActionPopover}
-          activeDates={activeDates}
-          calendarCellHeight={resolvedCalendarCellHeight}
-          calendarCells={scheduleData.calendarCells}
-          calendarEvents={scheduleData.calendarEvents}
-          calendarHeight={resolvedCalendarHeight}
-          contentMinWidth={contentMinWidth}
-          density={density}
-          dateActionLabel={
-            editableDaysOffCalendar && pairingCalendarAwardBid && canEditCurrentBid
-              ? (isoDate) => `Add bid for ${isoDate}`
-              : pairingCalendarAwardBid && canEditCurrentBid
-                ? (isoDate) => `Add pairing bid for ${isoDate}`
-              : undefined
-          }
-          onEventSelect={handleCalendarEventSelect}
-          onSelectWeekday={editableDaysOffCalendar && editableCalendarDraft && canEditCurrentBid
-            ? handleRequestDaysOffWeekdayAction
-            : undefined}
-          onToggleDate={
-            editableDaysOffCalendar && pairingCalendarAwardBid && editableCalendarDraft && canEditCurrentBid
-              ? handleRequestBidDateAction
-            : editableDaysOffCalendar && editableCalendarDraft && canEditCurrentBid
-              ? handleRequestDaysOffDateAction
-            : pairingCalendarAwardBid && canEditCurrentBid
-                ? handleRequestPairingDateAction
+          <ScheduleEventCalendar
+            actionPopover={calendarActionPopover}
+            activeDates={activeDates}
+            calendarCellHeight={resolvedCalendarCellHeight}
+            calendarCells={scheduleData.calendarCells}
+            calendarEvents={scheduleData.calendarEvents}
+            calendarHeight={resolvedCalendarHeight}
+            contentMinWidth={contentMinWidth}
+            density={density}
+            dateActionLabel={
+              editableDaysOffCalendar && pairingCalendarAwardBid && canEditCurrentBid
+                ? (isoDate) => `Add bid for ${isoDate}`
+                : pairingCalendarAwardBid && canEditCurrentBid
+                  ? (isoDate) => `Add pairing bid for ${isoDate}`
                 : undefined
-          }
-          weekdayLabels={scheduleData.weekdayLabels}
-        />
+            }
+            onEventSelect={handleCalendarEventSelect}
+            onSelectWeekday={editableDaysOffCalendar && editableCalendarDraft && canEditCurrentBid
+              ? handleRequestDaysOffWeekdayAction
+              : undefined}
+            onToggleDate={
+              editableDaysOffCalendar && pairingCalendarAwardBid && editableCalendarDraft && canEditCurrentBid
+                ? handleRequestBidDateAction
+              : editableDaysOffCalendar && editableCalendarDraft && canEditCurrentBid
+                ? handleRequestDaysOffDateAction
+              : pairingCalendarAwardBid && canEditCurrentBid
+                  ? handleRequestPairingDateAction
+                  : undefined
+            }
+            weekdayLabels={scheduleData.weekdayLabels}
+          />
+        </div>
       </div>
 
       {selectedPairingEventDialog ? (

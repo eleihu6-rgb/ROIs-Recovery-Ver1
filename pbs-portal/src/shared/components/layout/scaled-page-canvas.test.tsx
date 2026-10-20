@@ -4,6 +4,14 @@ import {
   useScaledPageCanvasPortalTarget,
 } from "@/shared/components/layout/scaled-page-canvas";
 
+const setViewportWidth = (width: number) => {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    value: width,
+    writable: true,
+  });
+};
+
 const PortalTargetProbe = () => {
   const portalTarget = useScaledPageCanvasPortalTarget();
 
@@ -15,6 +23,10 @@ const PortalTargetProbe = () => {
 };
 
 describe("ScaledPageCanvas", () => {
+  afterEach(() => {
+    setViewportWidth(1024);
+  });
+
   it("provides a non-interactive portal root after the business content inside the scaled canvas", () => {
     render(
       <ScaledPageCanvas
@@ -38,5 +50,26 @@ describe("ScaledPageCanvas", () => {
     expect(screen.getByTestId("portal-target-probe")).toHaveTextContent(
       "scaled-page-dialog-portal-root",
     );
+  });
+
+  it("renders natural full-width content instead of scaling the desktop canvas on phones", () => {
+    setViewportWidth(390);
+
+    render(
+      <ScaledPageCanvas
+        canvasTestId="scaled-canvas"
+        designHeight={968}
+        designWidth={1888}
+        viewportTestId="scaled-viewport"
+      >
+        <div data-testid="business-content">Business content</div>
+      </ScaledPageCanvas>,
+    );
+
+    expect(screen.getByTestId("scaled-viewport")).toHaveAttribute("data-layout-mode", "mobile");
+    const canvas = screen.getByTestId("scaled-canvas");
+    expect(canvas.style.getPropertyValue("--portal-page-shell-height")).toBe("auto");
+    expect(canvas.style.transform).toBe("");
+    expect(canvas).toContainElement(screen.getByTestId("business-content"));
   });
 });

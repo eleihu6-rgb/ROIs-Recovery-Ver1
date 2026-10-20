@@ -7,7 +7,7 @@ const PBS_PASS = process.env.PBS_TEST_PASS ?? 'rois'
 test.use({ storageState: { cookies: [], origins: [] } })
 
 test('PBS top nav overflow menu is clickable at narrow width', async ({ page }) => {
-  await page.setViewportSize({ width: 940, height: 720 })
+  await page.setViewportSize({ width: 768, height: 720 })
 
   const login = new PbsLoginPage(page)
   await login.goto()

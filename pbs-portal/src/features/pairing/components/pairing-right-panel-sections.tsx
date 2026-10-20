@@ -51,10 +51,10 @@ export const PairingPoolCountsToolbar = ({
   onSearch,
   onToggleView,
 }: PairingPoolCountsToolbarProps) => (
-  <div className="mt-[14px] flex items-center justify-between gap-4">
+  <div className="mt-[14px] flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
     <div
       className={cn(
-        "flex h-[30px] min-w-0 flex-1 items-center overflow-hidden rounded-xl border px-2 text-xs font-semibold leading-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]",
+        "flex h-[30px] min-w-0 flex-1 items-center overflow-hidden rounded-xl border px-2 text-xs font-semibold leading-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] max-md:h-auto max-md:flex-wrap max-md:gap-1 max-md:py-1",
         summary.state === "stale"
           ? "border-[#edc767] bg-[#fff8df] text-[#705616]"
           : summary.state === "error"
@@ -87,7 +87,7 @@ export const PairingPoolCountsToolbar = ({
       </span>
     </div>
 
-    <div className="flex shrink-0 justify-end gap-3">
+    <div className="flex shrink-0 flex-wrap justify-end gap-2 md:gap-3">
       <Button
         className={cn(
           "h-[30px] cursor-pointer rounded-lg border px-[14px] text-xs font-semibold shadow-none disabled:cursor-default disabled:opacity-60",

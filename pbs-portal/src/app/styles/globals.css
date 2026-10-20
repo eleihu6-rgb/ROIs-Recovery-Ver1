@@ -51,11 +51,22 @@ body,
   min-height: 100%;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
   background: #edf4fa;
   color: #282c3b;
+}
+
+@media (max-width: 767px) {
+  body {
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+  }
 }
 
 a {

@@ -65,11 +65,11 @@ export const AwardMonthCalendar = ({
       className="h-full min-w-0 rounded-xl border border-[#e3e9f2] bg-white px-4 pb-4 pt-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)]"
       data-testid="award-month-calendar"
     >
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 md:gap-4">
         <h2 className="text-base font-bold uppercase leading-6 text-[#101a33]">
           {calendar.monthLabel} Award Calendar
         </h2>
-        <div className="flex items-center gap-4 text-xs font-medium leading-[15px] text-[#6f7485]">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-medium leading-[15px] text-[#6f7485] md:gap-4">
           <span className="inline-flex items-center gap-1">
             <span className="h-2.5 w-2.5 rounded-sm bg-[#4FCFED]" />
             Pairing
@@ -106,7 +106,7 @@ export const AwardMonthCalendar = ({
                   style={{ height: `${calendar.calendarCellHeight}px` }}
                 >
                   <header className="relative z-10 flex justify-between text-xs leading-[15px]">
-                    <p className={cell.muted ? "text-[#ACAEB9]" : "text-[#6f7485]"}>
+                    <p className={`${cell.muted ? "text-[#ACAEB9]" : "text-[#6f7485]"} max-md:hidden`}>
                       {cell.monthLabel || ""}
                     </p>
                     <time className={cell.muted ? "text-[#ACAEB9]" : "font-semibold text-[#282c3b]"} dateTime={cell.isoDate || cell.day}>

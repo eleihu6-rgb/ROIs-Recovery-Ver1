@@ -177,18 +177,18 @@ const AwardSummaryCards = ({ data }: { data: AwardPageData }) => {
   ];
 
   return (
-    <dl className="mt-4 grid grid-cols-[1.35fr_repeat(5,minmax(0,1fr))] gap-4" aria-label="Award summary">
+    <dl className="mt-4 grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-[1.35fr_repeat(5,minmax(0,1fr))]" aria-label="Award summary">
       {summaryItems.map((item) => {
         const Icon = item.icon;
 
         return (
           <div
             key={item.label}
-            className="flex min-h-24 items-center gap-4 rounded-xl border border-[#e3e9f2] bg-white px-5 shadow-[0_10px_30px_rgba(15,23,42,0.04)]"
+            className="flex min-h-20 items-center gap-2 rounded-xl border border-[#e3e9f2] bg-white px-3 shadow-[0_10px_30px_rgba(15,23,42,0.04)] md:min-h-24 md:gap-4 md:px-5"
           >
-            <dt className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border text-sm">
+            <dt className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm md:h-12 md:w-12">
               <span className={`flex h-full w-full items-center justify-center rounded-xl ${item.iconClassName}`}>
-                <Icon className="h-6 w-6" />
+                <Icon className="h-5 w-5 md:h-6 md:w-6" />
               </span>
             </dt>
             <dd className="min-w-0">
@@ -255,12 +255,12 @@ const RosterDetailsPanel = ({
       </div>
 
       {groups.length > 0 ? (
-        <div className="mt-3 grid min-h-0 flex-1 grid-rows-[minmax(10rem,0.85fr)_minmax(13rem,1.15fr)] gap-3">
+        <div className="mt-3 grid min-h-0 flex-1 grid-rows-none gap-3 md:grid-rows-[minmax(10rem,0.85fr)_minmax(13rem,1.15fr)]">
           <div
-            className="min-h-0 overflow-y-auto rounded-lg border border-[#edf1f6]"
+            className="max-h-72 min-h-0 overflow-auto rounded-lg border border-[#edf1f6] md:max-h-none"
             data-testid="award-roster-details-scroll"
           >
-            <table className="w-full table-fixed text-left text-sm">
+            <table className="w-full min-w-[680px] table-fixed text-left text-sm md:min-w-0">
               <thead className="sticky top-0 z-10 bg-[#fbfcfe] text-xs font-bold uppercase leading-5 text-[#687184] shadow-[0_1px_0_#edf1f6]">
                 <tr>
                   <th className="w-[82px] px-3 py-2">Code</th>
@@ -425,12 +425,12 @@ export const AwardRightPanel = ({ data, periodControl }: AwardRightPanelProps) =
   return (
     <>
       <section
-        className="flex h-[var(--portal-page-shell-height)] max-h-[var(--portal-page-shell-height)] min-h-0 flex-col overflow-hidden rounded-xl bg-white px-7 pb-8 pt-7 shadow-[0_18px_60px_rgba(15,23,42,0.08)]"
+        className="flex h-[var(--portal-page-shell-height)] max-h-[var(--portal-page-shell-height)] min-h-0 flex-col overflow-hidden rounded-xl bg-white px-7 pb-8 pt-7 shadow-[0_18px_60px_rgba(15,23,42,0.08)] max-md:px-3 max-md:pb-4 max-md:pt-4"
         data-uiid="award-results-page"
         data-testid="award-results-page"
       >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-4">
             <h1 className="text-2xl font-bold uppercase leading-8 text-[#101a33]">Award</h1>
             <span className={`inline-flex h-8 items-center rounded-md border px-3 text-sm font-semibold ${
               data.published
@@ -445,7 +445,7 @@ export const AwardRightPanel = ({ data, periodControl }: AwardRightPanelProps) =
               {data.timeZone.timezoneLabel}
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
             {periodControl}
           <Button
             aria-disabled={!data.report.available}
@@ -481,7 +481,7 @@ export const AwardRightPanel = ({ data, periodControl }: AwardRightPanelProps) =
           </div>
         ) : null}
 
-        <div className="mt-4 grid min-h-0 flex-1 grid-cols-[1.1fr_0.9fr] items-stretch gap-4" data-testid="award-detail-grid">
+        <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 items-stretch gap-4 md:grid-cols-[1.1fr_0.9fr]" data-testid="award-detail-grid">
           <AwardMonthCalendar
             calendar={data.calendar}
             selectedEventIds={selectedRosterGroup?.calendarEventIds ?? []}

@@ -1,9 +1,23 @@
 import { TIER_TOGGLE_COLUMN_WIDTHS } from "@/shared/components/tiers";
 import type { PairingPropertyTableLayout } from "@/features/pairing/components/pairing-property-table";
 
+const getMobilePairingRightPanelTableLayout = (): PairingPropertyTableLayout => ({
+  columnGap: 0,
+  existingCountGridTemplateColumns: "minmax(0, 1fr)",
+  fieldWidth: "100%",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  rowGap: 10,
+  stacked: true,
+  tierWidth: TIER_TOGGLE_COLUMN_WIDTHS.compact,
+});
+
 export const getPairingRightPanelTableLayout = (
   viewportWidth: number,
 ): PairingPropertyTableLayout => {
+  if (viewportWidth <= 767) {
+    return getMobilePairingRightPanelTableLayout();
+  }
+
   if (viewportWidth >= 1750) {
     return {
       countGridTemplateColumns: `minmax(0, 430px) minmax(0, 238px) ${TIER_TOGGLE_COLUMN_WIDTHS.wide} minmax(150px, 170px)`,
@@ -40,6 +54,10 @@ export const getPairingRightPanelAvailableTableLayout = (
   viewportWidth: number,
   showTiers: boolean,
 ): PairingPropertyTableLayout => {
+  if (viewportWidth <= 767) {
+    return getMobilePairingRightPanelTableLayout();
+  }
+
   const tableLayout = getPairingRightPanelTableLayout(viewportWidth);
 
   if (showTiers) {

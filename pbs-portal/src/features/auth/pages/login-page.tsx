@@ -210,10 +210,10 @@ export const LoginPage = () => {
 
   return (
     <div
-      className="min-h-screen bg-cover bg-center bg-no-repeat"
+      className="min-h-dvh bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: `url('${loginBackgroundSrc}')` }}
     >
-      <header className="h-[55px]">
+      <header className="h-12 sm:h-[55px]">
         <img
           alt="Flair Airlines"
           className="block h-full min-w-full w-auto object-cover object-left"
@@ -221,10 +221,10 @@ export const LoginPage = () => {
         />
       </header>
 
-      <main className="flex min-h-[calc(100vh-55px)] items-center justify-center bg-black/15 px-4 py-6">
-        <section className="h-[580px] w-[560px] rounded-xl bg-[rgb(255_255_255_/_0.8)] px-[100px] pb-[100px] pt-[98px] shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
+      <main className="flex min-h-[calc(100dvh-48px)] items-center justify-center bg-black/15 px-3 py-4 sm:min-h-[calc(100dvh-55px)] sm:px-4 sm:py-6">
+        <section className="h-auto w-full max-w-[560px] rounded-xl bg-[rgb(255_255_255_/_0.8)] px-5 pb-8 pt-10 shadow-[0_24px_60px_rgba(0,0,0,0.12)] sm:h-[580px] sm:px-[100px] sm:pb-[100px] sm:pt-[98px]">
           <h1 className="sr-only">Sign in</h1>
-          <div className="mx-auto mb-[45px] flex h-[43px] w-[292px] items-start">
+          <div className="mx-auto mb-8 flex h-[43px] w-full max-w-[292px] items-start sm:mb-[45px]">
             <img
               alt="Flair"
               className="mt-[2px] h-[36px] w-[109px] object-contain"

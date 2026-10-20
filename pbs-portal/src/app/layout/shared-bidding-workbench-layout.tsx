@@ -1,5 +1,6 @@
-import { useEffect, useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { ExpandBiddingCalendarButton } from "@/app/layout/bidding-calendar-expand-button";
 import {
   BIDDING_CALENDAR_BODY_TRANSITION,
@@ -29,12 +30,15 @@ import {
   fetchTierPageData,
   tierPageDataQueryKey,
 } from "@/features/tier/hooks/use-tier-page-data";
+import { useIsMobileViewport } from "@/shared/hooks/use-is-mobile-viewport";
 
 const SHARED_BIDDING_WORKBENCH_LAYOUT_GAP = 16;
 const COLLAPSED_CALENDAR_EXPAND_BUTTON_SPACE = 48;
 
 export const SharedBiddingWorkbenchLayout = () => {
   const location = useLocation();
+  const isMobileViewport = useIsMobileViewport();
+  const [isMobileCalendarOpen, setIsMobileCalendarOpen] = useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
   const {
     isBiddingCalendarCollapsed,
@@ -83,6 +87,62 @@ export const SharedBiddingWorkbenchLayout = () => {
       staleTime: workbenchQueryDefaults.staleTime,
     });
   }, []);
+
+  if (isMobileViewport) {
+    return (
+      <ScaledPageCanvas
+        canvasTestId="shared-bidding-workbench-canvas"
+        designHeight={968}
+        designWidth={1888}
+        viewportTestId="shared-bidding-workbench-viewport"
+      >
+        <div
+          className="flex flex-col gap-3"
+          data-calendar-collapsed={isMobileCalendarOpen ? "false" : "true"}
+          data-mobile-layout="true"
+          data-testid="shared-bidding-workbench-layout"
+          data-uiid="shared-bidding-workbench-layout"
+        >
+          <section className="overflow-hidden rounded-3xl bg-white shadow-[10px_20px_60px_rgba(0,0,0,0.05)]">
+            <button
+              aria-expanded={isMobileCalendarOpen ? "true" : "false"}
+              className="flex min-h-12 w-full cursor-pointer items-center gap-2 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#706cd5]"
+              data-testid="mobile-bidding-calendar-toggle"
+              type="button"
+              onClick={() => setIsMobileCalendarOpen((current) => !current)}
+            >
+              <span className="h-6 w-1 rounded-l-sm bg-[#706cd5]" />
+              <span className="text-sm font-semibold text-[#4d4f5c]">Bidding Calendar</span>
+              <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.04em] text-[#706cd5]">
+                {isMobileCalendarOpen ? "Hide" : "Show"}
+                {isMobileCalendarOpen
+                  ? <ChevronUpIcon className="h-4 w-4" />
+                  : <ChevronDownIcon className="h-4 w-4" />}
+              </span>
+            </button>
+            {isMobileCalendarOpen ? (
+              <div className="max-w-full overflow-x-auto border-t border-border">
+                <div className="min-w-[632px] p-3">
+                  <DashboardSchedulePanel
+                    contentMinWidth={SHARED_SCHEDULE_PANEL_CONTENT_MIN_WIDTH}
+                    editableDaysOffCalendar={
+                      location.pathname === "/bid" || location.pathname === "/days-off"
+                    }
+                    pairingCalendarAwardBid={
+                      location.pathname === "/bid" || location.pathname === "/pairing"
+                    }
+                  />
+                </div>
+              </div>
+            ) : null}
+          </section>
+          <div className="min-w-0" data-testid="shared-bidding-workbench-body">
+            <Outlet />
+          </div>
+        </div>
+      </ScaledPageCanvas>
+    );
+  }
 
   return (
     <ScaledPageCanvas

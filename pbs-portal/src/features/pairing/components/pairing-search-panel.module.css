@@ -814,6 +814,68 @@
   min-height: 120px;
 }
 
+@media (max-width: 767px) {
+  .root {
+    height: auto;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .shell {
+    padding: 16px 12px;
+  }
+
+  .pageHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .criteriaHeaderActions {
+    justify-content: flex-start;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .criteriaEditRow,
+  .criteriaEditRowNoTiers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .criteriaEditPanel,
+  .criteriaEditRowNoTiers .criteriaEditPanel {
+    grid-column: 1 / -1;
+  }
+
+  .resultsActionRow {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .resultFilters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .resultFilterDateRange {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .resultFiltersClear {
+    margin-top: 0;
+    width: 100%;
+  }
+
+  .resultsViewport {
+    overflow-x: hidden;
+  }
+
+  .resultsLoadingContent {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+  }
+}
+
 @keyframes resultsRefreshSpin {
   to {
     transform: rotate(360deg);

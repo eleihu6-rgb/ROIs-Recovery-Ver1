@@ -47,10 +47,10 @@ const StandingBidTierFilter = ({
 }) => (
   <fieldset
     aria-label="Filter existing Standing Bid by tier"
-    className="flex min-w-0 flex-nowrap items-center gap-2"
+    className="flex min-w-0 flex-nowrap items-center gap-2 max-md:w-full max-md:overflow-x-auto max-md:pb-1"
   >
     {STANDING_EXISTING_TIER_FILTERS.map((tier) => (
-      <label key={tier} className="cursor-pointer">
+      <label key={tier} className="shrink-0 cursor-pointer">
         <input
           checked={value === tier}
           className="peer sr-only"

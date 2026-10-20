@@ -1,9 +1,23 @@
 import { TIER_TOGGLE_COLUMN_WIDTHS } from "@/shared/components/tiers";
 import type { RuleBidPropertyTableLayout } from "@/features/rule-bids/components/rule-bid-property-table";
 
+const getMobileRuleBidRightPanelTableLayout = (): RuleBidPropertyTableLayout => ({
+  columnGap: 0,
+  existingGridTemplateColumns: "minmax(0, 1fr)",
+  fieldWidth: "100%",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  rowGap: 10,
+  stacked: true,
+  tierWidth: TIER_TOGGLE_COLUMN_WIDTHS.compact,
+});
+
 export const getRuleBidRightPanelTableLayout = (
   viewportWidth: number,
 ): RuleBidPropertyTableLayout => {
+  if (viewportWidth <= 767) {
+    return getMobileRuleBidRightPanelTableLayout();
+  }
+
   const utilityColumn = " minmax(0, 1fr)";
 
   if (viewportWidth >= 1750) {
@@ -39,6 +53,10 @@ export const getRuleBidRightPanelAvailableTableLayout = (
   viewportWidth: number,
   showTiers: boolean,
 ): RuleBidPropertyTableLayout => {
+  if (viewportWidth <= 767) {
+    return getMobileRuleBidRightPanelTableLayout();
+  }
+
   if (showTiers) {
     return getRuleBidRightPanelTableLayout(viewportWidth);
   }

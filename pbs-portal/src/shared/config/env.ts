@@ -19,7 +19,24 @@ export const resolveSsoLoginUrl = (
   return `${trimTrailingSlash(apiBaseUrl)}/auth/sso/login`;
 };
 
-const apiBaseUrl = resolveEnvValue(import.meta.env.VITE_API_BASE_URL, "/api");
+export const resolvePortalApiBaseUrl = (
+  configuredApiBaseUrl: string,
+  location: Pick<Location, "hostname" | "pathname"> | undefined,
+) => {
+  if (configuredApiBaseUrl !== "/api" || !location) {
+    return configuredApiBaseUrl;
+  }
+
+  return location.hostname === "cr.rois.one" && location.pathname.startsWith("/pbs")
+    ? "/pbs/api"
+    : configuredApiBaseUrl;
+};
+
+const configuredApiBaseUrl = resolveEnvValue(import.meta.env.VITE_API_BASE_URL, "/api");
+const apiBaseUrl = resolvePortalApiBaseUrl(
+  configuredApiBaseUrl,
+  typeof window !== "undefined" ? window.location : undefined,
+);
 
 export const env = {
   apiBaseUrl,

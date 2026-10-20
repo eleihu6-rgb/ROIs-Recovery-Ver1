@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -12,6 +12,40 @@ const resolveString = (rawValue: string | undefined, fallback: string) => {
   const trimmedValue = rawValue?.trim();
   return trimmedValue && trimmedValue.length > 0 ? trimmedValue : fallback;
 };
+
+const redirectPbsBaseTrailingSlash = (): Plugin => ({
+  name: "pbs-base-trailing-slash",
+  configureServer(server) {
+    server.middlewares.use((request, response, next) => {
+      const requestUrl = request.url ?? "";
+      const requestPath = requestUrl.split("?")[0] ?? "";
+      const search = requestUrl.includes("?") ? `?${requestUrl.split("?")[1]}` : "";
+      const host = request.headers.host;
+      const forwardedProto = request.headers["x-forwarded-proto"];
+
+      if (
+        (requestPath === "/pbs" || requestPath.startsWith("/pbs/"))
+        && host === "cr.rois.one"
+        && forwardedProto === "http"
+      ) {
+        const targetPath = requestPath === "/pbs" ? "/pbs/" : requestPath;
+        response.statusCode = 301;
+        response.setHeader("Location", `https://${host}${targetPath}${search}`);
+        response.end();
+        return;
+      }
+
+      if (request.url === "/pbs") {
+        response.statusCode = 302;
+        response.setHeader("Location", "/pbs/");
+        response.end();
+        return;
+      }
+
+      next();
+    });
+  },
+});
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -26,12 +60,17 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
-    plugins: [react(), tailwindcss()],
+    plugins: [redirectPbsBaseTrailingSlash(), react(), tailwindcss()],
     server: {
       port: devPort,
       host: devHost,
       allowedHosts: true,
       proxy: {
+        "/pbs/api": {
+          target: apiProxyTarget,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/pbs\/api/, "/api"),
+        },
         "/api": {
           target: apiProxyTarget,
           changeOrigin: true,

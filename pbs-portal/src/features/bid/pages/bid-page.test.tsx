@@ -384,9 +384,9 @@ describe("BidPage", () => {
     expect(pairingRow).toBeDefined();
     expect(daysOffRow).toBeDefined();
     expect(lineRow).toBeDefined();
-    expect(within(pairingRow!).getByTestId("tier-summary-actions")).toHaveClass("w-[150px]");
-    expect(within(daysOffRow!).getByTestId("tier-summary-actions")).toHaveClass("w-[150px]");
-    expect(within(lineRow!).getByTestId("tier-summary-actions")).toHaveClass("w-[150px]");
+    expect(within(pairingRow!).getByTestId("tier-summary-actions")).toHaveClass("sm:w-[150px]");
+    expect(within(daysOffRow!).getByTestId("tier-summary-actions")).toHaveClass("sm:w-[150px]");
+    expect(within(lineRow!).getByTestId("tier-summary-actions")).toHaveClass("sm:w-[150px]");
     expect(within(pairingRow!).getByRole("button", { name: /^Preview / })).toBeInTheDocument();
     expect(within(pairingRow!).getByRole("button", { name: /^Delete / })).toBeInTheDocument();
     expect(within(daysOffRow!).queryByRole("button", { name: /^Preview / })).not.toBeInTheDocument();

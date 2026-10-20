@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { DashboardTopNav } from "@/app/layout/dashboard-top-nav";
 import { isUiInspectorAvailable } from "@/shared/config/dev-tools";
@@ -102,7 +102,7 @@ describe("DashboardTopNav", () => {
   });
 
   it("moves trailing items into an overflow trigger when the available width shrinks", () => {
-    setViewportWidth(640);
+    setViewportWidth(768);
 
     render(
       <MemoryRouter initialEntries={["/dashboard"]}>
@@ -125,6 +125,29 @@ describe("DashboardTopNav", () => {
     expect(menu).toBeInTheDocument();
     expect(screen.getByTestId("dashboard-top-nav-canvas")).not.toContainElement(menu);
     expect(screen.getByRole("menuitem", { name: "Help" })).toBeInTheDocument();
+  });
+
+  it("uses the mobile drawer instead of the scaled desktop header on phones", () => {
+    setViewportWidth(390);
+
+    render(
+      <MemoryRouter initialEntries={["/bid"]}>
+        <DashboardTopNav displayName="Emma" items={TOP_NAV_ITEMS} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("dashboard-top-nav")).toHaveAttribute("data-mobile-nav", "true");
+    expect(screen.queryByTestId("dashboard-top-nav-canvas")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("mobile-nav-trigger"));
+
+    const drawer = screen.getByTestId("mobile-nav-drawer");
+    expect(drawer).toBeInTheDocument();
+    expect(within(drawer).getByRole("link", { name: "Award" })).toHaveAttribute("href", "/award");
+    expect(screen.getByTestId("mobile-nav-trigger")).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(within(drawer).getAllByRole("button", { name: "Close navigation menu" })[0]!);
+    expect(screen.queryByTestId("mobile-nav-drawer")).not.toBeInTheDocument();
   });
 
   it("shows the UI Inspector toggle in development mode", () => {
