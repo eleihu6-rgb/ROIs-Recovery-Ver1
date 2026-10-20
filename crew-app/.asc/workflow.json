@@ -2,7 +2,7 @@
   "env": { "ASC_TELEMETRY_DISABLED": "1", "DO_NOT_TRACK": "1" },
   "workflows": {
     "testflight_external": {
-      "description": "Archive, upload and submit Crew App to its existing external TestFlight group; preserve the public link.",
+      "description": "Archive, upload and submit Crew App to its existing external TestFlight group; preserve the public link. Export signs with the team's manual App Store profile (this Mac has no Xcode account; asc uses the API key), and the build's export compliance is declared before distribution.",
       "steps": [
         {
           "name": "preflight",
@@ -16,7 +16,7 @@
         },
         {
           "name": "export",
-          "run": "asc xcode export --archive-path '${steps.archive.ARCHIVE_PATH}' --ipa-path '${steps.preflight.ARTIFACT_DIR}/CrewApp.ipa' --method app-store-connect --signing-style automatic --team-id '${steps.preflight.TEAM_ID}' --timeout 10m --xcodebuild-flag=-allowProvisioningUpdates --output json",
+          "run": "asc xcode export --archive-path '${steps.archive.ARCHIVE_PATH}' --ipa-path '${steps.preflight.ARTIFACT_DIR}/CrewApp.ipa' --method app-store-connect --signing-style manual --team-id '${steps.preflight.TEAM_ID}' --timeout 10m --output json",
           "outputs": { "IPA_PATH": "$.ipa_path" }
         },
         {
@@ -24,6 +24,7 @@
           "run": "asc publish testflight --app \"$ASC_APP_ID\" --ipa '${steps.export.IPA_PATH}' --upload-only --output json",
           "outputs": { "BUILD_ID": "$.buildId" }
         },
+        { "name": "compliance", "run": "asc builds update --app \"$ASC_APP_ID\" --build-number '${steps.preflight.BUILD_NUMBER}' --platform IOS --version '${steps.preflight.VERSION}' --uses-non-exempt-encryption=false --output json" },
         { "name": "processing", "run": "asc builds wait --build-id '${steps.upload.BUILD_ID}' --fail-on-invalid --output json" },
         { "name": "distribute", "run": "asc builds add-groups --build-id '${steps.upload.BUILD_ID}' --group \"$ASC_GROUP_ID\" --submit --confirm --output json" },
         { "name": "group_receipt", "run": "asc testflight groups view --id \"$ASC_GROUP_ID\" --output json" },
