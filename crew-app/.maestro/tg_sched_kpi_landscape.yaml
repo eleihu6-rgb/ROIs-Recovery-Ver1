@@ -1,0 +1,19 @@
+# Schedule ▸ Floating limit summary in LANDSCAPE — TG crew 35459.
+# Leave the app on Schedule (run tg_sched_kpi.yaml first), rotate, then run:
+#   xcrun devicectl device orientation set -d <udid> landscapeRight
+#   maestro test crew-app/.maestro/tg_sched_kpi_landscape.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- extendedWaitUntil:
+    visible:
+      id: "sched-kpi"
+    timeout: 20000
+- assertVisible: ".*All limits through .*28-day flight .*7-day duty.*"
+- takeScreenshot: tg_kpi_03_landscape
+- tapOn:
+    id: "sched-kpi"
+- assertVisible:
+    id: "kpi-sheet"
+- takeScreenshot: tg_kpi_04_landscape_sheet
+- tapOn:
+    id: "kpi-sheet-close"

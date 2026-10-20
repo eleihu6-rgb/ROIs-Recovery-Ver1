@@ -228,6 +228,18 @@ export function routeOf(detail: ApiTaskDetail | undefined): string | null {
   return stops.join('–');
 }
 
+/** The airport a flight number flies, printed after it: PR318 MNL-BKK. */
+export function legRoute(dep: string, arr: string): string {
+  return dep === arr ? dep : `${dep}-${arr}`;
+}
+
+/** 'PR318 MNL-BKK / PR319 BKK-MNL' — every real leg with its airports, in
+ *  flight order. Null for a duty the portal sent no flight legs for. */
+export function flightRouteOf(detail: ApiTaskDetail | undefined, carrier = ''): string | null {
+  const legs = realLegs(detail).map(l => `${/^\d+$/.test(l.fltNo) ? `${carrier}${l.fltNo}` : l.fltNo.trim()} ${legRoute(l.dep, l.arr)}`);
+  return legs.length ? legs.join(' / ') : null;
+}
+
 export function cellLines(duty: SwapDuty, detail: ApiTaskDetail | undefined, level: CellLevel): string[] {
   const lines = [duty.code];
   if (level === 0) return lines;

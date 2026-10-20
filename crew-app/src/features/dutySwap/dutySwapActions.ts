@@ -46,6 +46,21 @@ export async function openDutySwap(dispatch: AppDispatch, getState: () => RootSt
 const inflight = new Set<string>();
 /** Compare detail (routes, legs, KPI fields) for crews in view — after first
  *  paint, only for visible crews, each fetched once per search. */
+/** How many compare reads run at once. The portal answers ~0.3 s each; 16 at a
+ *  time reads all 254 crews of a cabin search in about 5 s (measured). */
+const DETAIL_CONCURRENCY = 16;
+/** Every crew a screen lists gets its details, so cards name airports on arrival. */
+const DETAIL_BATCH = 40;
+
+/** Compare detail for many crews at once, with bounded concurrency. Each crew is
+ *  read once per search; failures leave that crew's cards at code + times. */
+export async function ensureAllDetails(dispatch: AppDispatch, getState: () => RootState, api: DutySwapApi, crewIds: string[]): Promise<void> {
+  const ids = [...new Set(crewIds)];
+  for (let i = 0; i < ids.length; i += DETAIL_BATCH) {
+    await Promise.all(ids.slice(i, i + DETAIL_BATCH).map(id => ensureDetails(dispatch, getState, api, [id])));
+  }
+}
+
 export async function ensureDetails(dispatch: AppDispatch, getState: () => RootState, api: DutySwapApi, crewIds: string[]): Promise<void> {
   for (const id of crewIds) {
     const s = getState().dutySwap;

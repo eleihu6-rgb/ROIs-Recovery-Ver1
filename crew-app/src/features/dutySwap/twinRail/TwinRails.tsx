@@ -5,13 +5,13 @@ import { Icon } from '../../../components/v2/icons';
 import { useLayout } from '../../../components/v2/useLayout';
 import { colors, space } from '../../../theme';
 import { glassTint, type CarrierPalette } from '../../../theme/carrier';
-import { dayLabel, DAY_MS, detailFor, isoDay, naiveMs, type ApiCompare, type SwapCrew, type SwapDuty } from '../dutySwapModel';
+import { dayLabel, DAY_MS, detailFor, flightRouteOf, isoDay, naiveMs, type ApiCompare, type SwapCrew, type SwapDuty } from '../dutySwapModel';
 import { precheck, precheckLabel, spanLabel } from '../market/marketModel';
 import { RAIL_ZOOMS, puckLines, railBlocks, zoomForPinch, type RailZoom } from './twinRailModel';
 import { s } from './styles';
 
 interface Props {
-  p: CarrierPalette; me: SwapCrew; others: SwapCrew[]; start: string; zoom: RailZoom;
+  p: CarrierPalette; carrier: string; me: SwapCrew; others: SwapCrew[]; start: string; zoom: RailZoom;
   give: string[]; take: string[]; crewB: string | null; details: Record<string, ApiCompare>;
   onPick: (d: SwapDuty) => void; onMove: (days: number) => void; onZoom: (z: RailZoom) => void;
   onVisible: (ids: string[]) => void;
@@ -41,7 +41,7 @@ const distance = (e: GestureResponderEvent): number => {
 export function TwinRails(props: Props): React.JSX.Element {
   const { height } = useLayout();
   const shortScreen = height < 560;
-  const { p, me, others, start, zoom, give, take, crewB, details, onPick, onMove, onZoom } = props;
+  const { p, carrier, me, others, start, zoom, give, take, crewB, details, onPick, onMove, onZoom } = props;
   const pinch = useRef(0);
   const currentZoom = useRef(zoom);
   currentZoom.current = zoom;
@@ -115,10 +115,11 @@ export function TwinRails(props: Props): React.JSX.Element {
         {blocks.map(({ duty: d, left, width, touchLeft, touchWidth, lane }) => {
           const selected = mine ? give.includes(d.key) : crewB === crew.crewId && take.includes(d.key);
           const detail = detailFor(d, mine ? Object.values(details).find(c => c.mineCrewId === me.crewId)?.mineTaskDetailList : cmp?.othersTaskDetailList);
-          const lines = puckLines(d, detail, touchWidth * railWidth);
+          const lines = puckLines(d, detail, touchWidth * railWidth, carrier);
+          const route = d.kind === 'fly' ? flightRouteOf(detail, carrier) : null;
           return <Pressable key={d.key} disabled={!d.swappable} onPress={() => onPick(d)}
             testID={`twin-duty-${d.key}`} accessibilityRole="button"
-            accessibilityLabel={`${mine ? 'Give' : `Take from ${crew.crewId}`} ${d.code}, ${d.startDt}, ${spanLabel(d)}${d.swappable ? '' : ', locked'}`}
+            accessibilityLabel={`${mine ? 'Give' : `Take from ${crew.crewId}`} ${d.code}, ${d.startDt}, ${spanLabel(d)}${route ? `, ${route}` : ''}${d.swappable ? '' : ', locked'}`}
             accessibilityState={{ selected, disabled: !d.swappable }}
             style={[r.block, { left: `${touchLeft * 100}%`, width: `${touchWidth * 100}%`, top: lane * 46 + 4,
               backgroundColor: selected ? p.btn : p.cardInset, borderColor: selected || d.swappable ? p.btn : p.cardLine,

@@ -5,8 +5,8 @@
 // imports so it stays unit-testable (__tests__/features/dutySwapMarket.test.tsx).
 // Spec: docs/superpowers/specs/2026-10-08-crew-app-duty-swap-market-design.md
 import {
-  activeFilterCount, dayLabel, DAY_MS, fleetsOf, hhmmOf, naiveMs,
-  type ApiTaskDetail, type SwapCrew, type SwapDuty, type SwapFilters,
+  activeFilterCount, dayLabel, DAY_MS, fleetsOf, flightRouteOf, hhmmOf, naiveMs, routeOf,
+  type ApiCompare, type ApiTaskDetail, type SwapCrew, type SwapDuty, type SwapFilters,
 } from '../dutySwapModel';
 
 // ── Approach switch (Matrix = Concept D, Market = Concept A) ────────────────
@@ -187,6 +187,38 @@ export function spanLabel(d: Pick<SwapDuty, 'startDt' | 'endDt'>): string {
   return `${hhmmOf(d.startDt)} → ${e.day} ${e.month} ${hhmmOf(d.endDt)}`;
 }
 export const KIND_BADGE: Partial<Record<SwapDuty['kind'], string>> = { standby: 'Standby', off: 'Day off', ground: 'Ground' };
+/** '20:45 → 30 Oct 06:35 · MNL–LAX–MNL' — the Match card's one flight line: when it
+ *  leaves, when it lands back, then the airports it flies. Just the span until
+ *  the duty's legs are known. */
+export function flightLine(d: Pick<SwapDuty, 'startDt' | 'endDt'>, route: string | null): string {
+  return route ? `${spanLabel(d)} · ${route}` : spanLabel(d);
+}
+/** The airports a pairing flies between, e.g. 'MNL–SEA–MNL' (from 'MNL-SEA / SEA-MNL'),
+ *  or a ground/standby duty's single port ('1HB MNL-MNL' → 'MNL'). */
+export function airportChain(route: string | null): string | null {
+  if (!route) return null;
+  const stops: string[] = [];
+  for (const leg of route.split(' / ')) {
+    const pair = leg.split(' ').pop() ?? '';
+    for (const port of pair.split('-')) if (port && stops[stops.length - 1] !== port) stops.push(port);
+  }
+  return stops.length ? stops.join('–') : null;
+}
+/** The duty's flight legs with their airports ('PR124 MNL-SEA / PR125 SEA-MNL').
+ *  Read from each detail list in turn (Match's compare first); null until a leg
+ *  is known. */
+export function dutyRoute(d: SwapDuty, details: (ApiTaskDetail[] | undefined)[], carrier: string): string | null {
+  if (d.kind !== 'fly') return null;
+  for (const list of details) {
+    const route = flightRouteOf(list?.find(t => (d.isGround ? t.rosterGroundPublishId === d.id : t.pairingId === d.id)), carrier);
+    if (route) return route;
+  }
+  return null;
+}
+/** The same route from either side of a compare. */
+export function compareRoute(d: SwapDuty, compare: ApiCompare | undefined, mine: boolean, carrier: string): string | null {
+  return dutyRoute(d, [mine ? compare?.mineTaskDetailList : compare?.othersTaskDetailList], carrier);
+}
 
 // ── Pre-check chip (design A1: fleet + rank on each card) ───────────────────
 export interface Precheck { rank: string | null; fleets: string[]; rankDiffers: boolean; fleetDiffers: boolean }

@@ -3,12 +3,15 @@
    - llm_tools(messages, tools, system) -> (text, tool_calls)  (chat)
 Tool calls are normalized to: [{'name': str, 'input': dict}]."""
 import json
+import time
 from typing import Any
 
 import httpx
 
 from .config import resolve_provider
 from src.config.settings import settings
+
+RETRYABLE_STATUS_CODES = {500, 502, 503, 504}
 
 
 def _env_from_settings() -> dict[str, str]:
@@ -43,9 +46,15 @@ def _openai_compatible_chat(cfg: dict[str, str], payload: dict[str, Any]) -> dic
         'Content-Type': 'application/json',
     }
     with httpx.Client(timeout=60.0) as client:
-        resp = client.post(_chat_completions_url(cfg['base_url']), headers=headers, json=payload)
-        resp.raise_for_status()
-        return resp.json()
+        for attempt in range(len(settings.llm_retry_delays) + 1):
+            resp = client.post(_chat_completions_url(cfg['base_url']), headers=headers, json=payload)
+            if (resp.status_code in RETRYABLE_STATUS_CODES
+                    and attempt < len(settings.llm_retry_delays)):
+                resp.close()
+                time.sleep(settings.llm_retry_delays[attempt])
+                continue
+            resp.raise_for_status()
+            return resp.json()
 
 
 def llm_text(system: str, user: str, max_tokens: int = 1024) -> str:

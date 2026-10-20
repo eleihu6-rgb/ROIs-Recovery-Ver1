@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     deepseek_api_key: str = ''
     deepseek_model: str = 'deepseek-chat'
     deepseek_base_url: str = 'https://api.deepseek.com'
+    # Delays between attempts for transient OpenAI-compatible HTTP failures.
+    llm_retry_delays: tuple[float, ...] = (1.0, 2.0)
     dashscope_api_key: str = ''
     qwen_model: str = 'qwen-plus'
     dashscope_base_url: str = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'

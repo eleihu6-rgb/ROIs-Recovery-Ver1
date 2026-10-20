@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import type { CarrierPalette } from '../../../theme/carrier';
-import { compareRows, dayLabel, kpiDelta, portalToIso, realLegs, signedHhmm, type ApiTaskDetail, type SwapDuty } from '../dutySwapModel';
+import { compareRows, dayLabel, detailFor, flightRouteOf, kpiDelta, portalToIso, realLegs, signedHhmm, type ApiTaskDetail, type SwapDuty } from '../dutySwapModel';
 import { spanLabel } from '../market/marketModel';
 import { ReviewDutyDetails, ReviewFlightDetails } from '../components/ReviewDetails';
 import { s } from './styles';
 
-export function TwinReview({ p, crewB, give, take, mine, theirs, ready, loading, error, onRetry, note, setNote, submitting, onSubmit, onBack, backLabel = 'Back' }: {
-  p: CarrierPalette; crewB: string | null; give: SwapDuty[]; take: SwapDuty[]; mine: ApiTaskDetail[]; theirs: ApiTaskDetail[];
+export function TwinReview({ p, crewB, carrier, give, take, mine, theirs, ready, loading, error, onRetry, note, setNote, submitting, onSubmit, onBack, backLabel = 'Back' }: {
+  p: CarrierPalette; crewB: string | null; carrier: string; give: SwapDuty[]; take: SwapDuty[]; mine: ApiTaskDetail[]; theirs: ApiTaskDetail[];
   ready: boolean; loading: boolean; error: string | null; onRetry: () => void; note: string; setNote: (v: string) => void;
   submitting: boolean; onSubmit: () => void; onBack?: () => void; backLabel?: string;
 }): React.JSX.Element {
@@ -22,7 +22,9 @@ export function TwinReview({ p, crewB, give, take, mine, theirs, ready, loading,
     <View style={s.bar}>{(['date', 'details'] as const).map(t => <Pressable key={t} onPress={() => setTab(t)} testID={`twin-review-${t}`} accessibilityState={{ selected: tab === t }} style={[s.button, { borderColor: p.cardLine, backgroundColor: tab === t ? p.cardInset : p.cardSolid }]}><Text style={[s.text, { color: p.btn }]}>{t === 'date' ? 'By date' : 'Duty details'}</Text></Pressable>)}</View>
     <ScrollView style={s.flex} contentContainerStyle={s.body} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <Text style={[s.text, { color: p.cardInk }]}>You give: {give.map(d => d.code).join(', ') || 'Tap your duties'}</Text>
+      {give.map(d => { const r = flightRouteOf(detailFor(d, mine), carrier); return r ? <Text key={d.key} testID={`twin-give-route-${d.key}`} style={[s.label, { color: p.cardSoft }]}>{d.code} {r}</Text> : null; })}
       <Text style={[s.text, { color: p.cardInk }]}>You take: {take.map(d => d.code).join(', ') || 'Tap another crew’s duties'}</Text>
+      {take.map(d => { const r = flightRouteOf(detailFor(d, theirs), carrier); return r ? <Text key={d.key} testID={`twin-take-route-${d.key}`} style={[s.label, { color: p.cardSoft }]}>{d.code} {r}</Text> : null; })}
       {loading ? <ActivityIndicator color={p.btn} /> : null}
       {error ? <Pressable onPress={onRetry} testID="twin-details-retry" style={s.button}><Text style={[s.text, { color: p.cardSoft }]}>{error} · Retry details</Text></Pressable> : null}
       {ready && tab === 'date' ? <>

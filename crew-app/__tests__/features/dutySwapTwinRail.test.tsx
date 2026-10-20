@@ -117,7 +117,15 @@ describe('Twin Rail model', () => {
     expect(puckLines(myPairing, detail, 44)).toEqual(['PR124/125']);
     expect(puckLines(myPairing, detail, 100)[1]).toMatch(/\d\d:\d\d–\d\d:\d\d/);
     expect(puckLines(myPairing, detail, 200)[1]).toContain('MNL–SEA–MNL');
-    expect(puckLines(myPairing, detail, 440)[1]).toContain('CRD');
+    // Every leg's flight number now carries its airports after it (MNL-SEA style).
+    expect(puckLines(myPairing, detail, 440, 'PR')[1]).toContain('PR124 MNL-SEA / PR125 SEA-MNL');
+    // The wide puck drops trailing pieces rather than the height (two lines, fixed);
+    // the leg list replaces the old airport-only chain, which carried the same facts.
+    expect(puckLines(myPairing, detail, 440, 'PR')[1]).not.toContain('MNL–SEA–MNL');
+    for (const width of [200, 320, 440, 640, 900]) {
+      const line = puckLines(myPairing, detail, width, 'PR')[1];
+      expect(line.length).toBeLessThanOrEqual(Math.floor((width - 8) / 6.5));
+    }
     for (const width of [44, 100, 200, 440]) expect(puckLines(myPairing, detail, width).length).toBeLessThanOrEqual(2);
   });
   it('clips duty blocks at midnight and the window edges, and places overlapping duties in separate lanes', () => {

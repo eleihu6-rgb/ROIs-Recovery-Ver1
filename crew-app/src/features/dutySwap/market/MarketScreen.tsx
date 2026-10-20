@@ -21,6 +21,7 @@ import { Icon } from '../../../components/v2/icons';
 import { ALL_ORIENTATIONS, useLayout } from '../../../components/v2/useLayout';
 import { useAppDispatch, useAppSelector, type RootState } from '../../../store';
 import { useCarrier, type CarrierPalette } from '../../../theme/carrier';
+import { airlineByCode } from '../../auth/airlines';
 import { PageShell } from '../../v2/PageShell';
 import { useV2Nav } from '../../v2/nav';
 import { dutySwapApiFor, ensureDetails, openDutySwap, runSearch } from '../dutySwapActions';
@@ -49,6 +50,7 @@ export function MarketScreen({ switcher, actionsInRail = false }: {
   const st = useAppSelector(s => s.dutySwap);
   const { width, wide, tall } = useLayout();
   const api = useMemo(() => dutySwapApiFor(auth), [auth]);
+  const carrier = airlineByCode(auth.airline).carrier;
 
   const [disclaimer, setDisclaimer] = useState<string | null>(null);
   const [outKey, setOutKey] = useState<string | null>(null);
@@ -168,7 +170,7 @@ export function MarketScreen({ switcher, actionsInRail = false }: {
   }
 
   const composer = crewB && offer && me && out ? (
-    <MarketComposer palette={p} crewB={crewB} compare={cmp}
+    <MarketComposer palette={p} carrier={carrier} crewB={crewB} compare={cmp}
       takeChoices={takeChoices(crewB, out, offer.duty)} giveChoices={giveChoices(me, out, offer.duty)}
       take={take} give={give} onToggleTake={k => toggle(take, setTake, k)} onToggleGive={k => toggle(give, setGive, k)}
       note={note} onNote={setNote} submitting={submitting} onSend={send} onClose={() => closeComposer()} />

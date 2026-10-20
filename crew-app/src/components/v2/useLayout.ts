@@ -77,3 +77,83 @@ export function useLayout(): Layout {
   const { width, height } = useWindowDimensions();
   return layoutFor(width, height);
 }
+
+// ─── Schedule floating KPI panel ────────────────────────────────────────────
+
+export interface KpiPanelGeometry {
+  /** Panel width in layout points. */
+  width: number;
+  /** Distance from the content area's right edge. */
+  margin: number;
+  /** Distance from the content area's bottom edge (above the dock). */
+  bottom: number;
+  padding: number;
+  /** Gap between the three metric groups. */
+  gap: number;
+  headerSize: number;
+  valueSize: number;
+  labelSize: number;
+  subSize: number;
+  barHeight: number;
+  /** True when the enlarged landscape treatment applies. */
+  landscape: boolean;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Geometry for the floating limit summary. Portrait keeps the selected
+ * Floating Summary size (a ~355–420pt card above the dock); landscape enlarges
+ * the panel and its contents. The enlargement is driven by the usable geometry,
+ * not by device names: the short iPhone Air landscape (420pt tall) stays at the
+ * low end, while the taller Duo and the iPad grow.
+ *
+ * `width` is the window width (the reference targets are stated per device
+ * viewport). The card is still clamped to the content area left by the Duo's
+ * right-edge action strip. `rail` = that strip is in use, so the panel sits
+ * just above the home indicator instead of above a bottom dock.
+ */
+export function kpiPanelGeometry(
+  width: number,
+  height: number,
+  insets: { bottom: number; right?: number },
+  rail: boolean,
+): KpiPanelGeometry {
+  const strip = duoActionStripWidth(width, height, insets.right ?? 0);
+  const contentWidth = Math.max(280, width - (rail ? strip : 0));
+  const bottom = rail ? Math.max(insets.bottom, 8) + 12 : Math.max(insets.bottom, 0) + 82;
+  const landscape = width > height;
+  if (!landscape) {
+    return {
+      width: Math.max(280, Math.min(contentWidth - 32, 420)),
+      margin: 16,
+      bottom,
+      padding: 14,
+      gap: 10,
+      headerSize: 11,
+      valueSize: 21,
+      labelSize: 10,
+      subSize: 9,
+      barHeight: 4,
+      landscape: false,
+    };
+  }
+  // Short landscape screens must not let the panel dwarf the duty grid; a
+  // height-weighted size score keeps Air small, Duo medium and iPad large.
+  const score = Math.min(width, height * 1.5);
+  return {
+    width: Math.max(320, Math.min(contentWidth - 36, clamp(Math.round(width * 0.55), 420, 660))),
+    margin: 18,
+    bottom,
+    padding: clamp(Math.round(18 + (score - 630) * 0.008), 18, 22),
+    gap: clamp(Math.round(14 + (score - 630) * 0.01), 14, 20),
+    headerSize: clamp(Math.round(12 + (score - 630) * 0.002), 12, 13),
+    valueSize: clamp(Math.round(22 + (score - 630) * 0.0103), 22, 28),
+    labelSize: clamp(Math.round(11 + (score - 630) * 0.0034), 11, 13),
+    subSize: clamp(Math.round(10 + (score - 630) * 0.0034), 10, 12),
+    barHeight: clamp(Math.round(4 + (score - 630) * 0.0034), 4, 6),
+    landscape: true,
+  };
+}

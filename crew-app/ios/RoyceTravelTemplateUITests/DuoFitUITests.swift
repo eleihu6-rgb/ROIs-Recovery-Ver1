@@ -1202,6 +1202,86 @@ final class DuoFitUITests: XCTestCase {
     XCTAssertTrue(wait("crew-matrix").exists)
   }
 
+  /// Duty Swap · Match on the inner screen, all four steps. Every duty card has the
+  /// same shape: the date block on the left, then the flight numbers and
+  /// `<start> → [dd Mon] <end> · AIRPORTS` on the right — including Pick, where each
+  /// candidate's detail must arrive without opening a card. Read-only (nothing sent).
+  func testDuoMatchFlightRoutes() throws {
+    let version = ProcessInfo.processInfo.environment["MATCH_ROUTES_VERSION"] ?? "1"
+    try signInAsPR("473006", usePrefilledPassword: true)
+    let frame = appFrame
+    XCTAssertGreaterThanOrEqual(frame.width, 560, "not on the Duo inner screen: \(frame)")
+    let tag = layoutClass == .wide ? "wide" : "tall"
+    func capture(_ step: String) { shot("match-routes-inner-\(tag)-\(step)-Ver\(version)") }
+    /// Flight numbers, then the timing line with its airport chain.
+    let flightRow = NSPredicate(format: "label BEGINSWITH 'PR' OR label BEGINSWITH 'X' OR label BEGINSWITH 'NO_DUTY_DAY' OR label BEGINSWITH 'SBY'")
+    let routeRow = NSPredicate(format: "label CONTAINS %@", " · ") // "08:30–16:45 · MNL–HKG–MNL"
+    /// A `dd` + month block on the left of a card.
+    func dateBlock(_ month: String) -> XCUIElement {
+      app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", month)).firstMatch
+    }
+
+    // An ad / auth overlay can still be up after sign-in; clear it before tapping.
+    if el("app-dialog").waitForExistence(timeout: 5) { tapDialogConfirm("app-dialog") }
+    wait("qa-duty-swap", 30).tap()
+    if el("swap-disclaimer").waitForExistence(timeout: 5) { tapDialogConfirm("swap-disclaimer") }
+    if el("app-dialog").exists { tapDialogConfirm("app-dialog") }
+    XCTAssertTrue(el("swap-approach-header").waitForExistence(timeout: 30) || el("swap-approach-rail").exists,
+                  "no approach switch on the Duo inner screen")
+    wait("approach-ticket").tap()
+    if el("app-dialog").waitForExistence(timeout: 5) { tapDialogConfirm("app-dialog") }
+
+    // ── Step 1 · Give ────────────────────────────────────────────────────────────
+    wait("ticket-give", 60)
+    // Nothing is selected yet: every card must still name its airports (255).
+    XCTAssertTrue(app.descendants(matching: .any).matching(routeRow).firstMatch.waitForExistence(timeout: 180),
+                  "Give (nothing selected): duty cards do not show their timing · airports")
+    XCTAssertTrue(dateBlock("Oct").exists || dateBlock("Nov").exists, "Give: no date block on the card")
+    capture("s01_give_unselected")
+    let duty = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "identifier BEGINSWITH 'ticket-give-' AND enabled == true")).firstMatch
+    XCTAssertTrue(duty.waitForExistence(timeout: 30), "no unlocked duty for PR")
+    duty.tap()
+    XCTAssertTrue(text("1 selected").waitForExistence(timeout: 5))
+    capture("s01b_give_selected")
+    XCTAssertTrue(app.descendants(matching: .any).matching(routeRow).firstMatch.exists,
+                  "Give: the selected duty lost its timing · airports")
+    wait("ticket-next").tap()
+
+    // ── Step 2 · Want ────────────────────────────────────────────────────────────
+    wait("search-form", 30)
+    sleep(5)
+    capture("s02_want")
+    XCTAssertTrue(dateBlock("Oct").exists || dateBlock("Nov").exists, "Want: no date block on my duty")
+    XCTAssertTrue(app.descendants(matching: .any).matching(routeRow).firstMatch.exists,
+                  "Want: my duty lost its timing · airports")
+    wait("ticket-next").tap()
+
+    // ── Step 3 · Pick ────────────────────────────────────────────────────────────
+    wait("ticket-take-title", 60)
+    // Ryan's case (252): crew 541273's PR102/PR103 listed no airports on Pick.
+    XCTAssertTrue(wait("ticket-match-541273", 60).exists, "candidate 541273 is missing from Pick")
+    XCTAssertTrue(app.descendants(matching: .any).matching(routeRow).firstMatch.waitForExistence(timeout: 180),
+                  "Pick: candidate duties do not show their airports")
+    capture("s03_pick")
+    let target = wait("ticket-match-541273", 30)
+    let want = NSPredicate(format: "label CONTAINS %@", "MNL–LAX–MNL")
+    let theirs = target.descendants(matching: .any).matching(want).firstMatch
+    XCTAssertTrue(theirs.waitForExistence(timeout: 60), "541273's PR102/PR103 does not name MNL–LAX–MNL")
+    target.tap()
+    wait("ticket-next").tap()
+
+    // ── Step 4 · Send ────────────────────────────────────────────────────────────
+    wait("swap-ticket", 60)
+    sleep(5)
+    capture("s04_send")
+    let giveSide = wait("ticket-selected-give", 30)
+    XCTAssertTrue(giveSide.descendants(matching: .any).matching(routeRow).firstMatch.exists,
+                  "Send: my give duty does not show its timing · airports")
+    XCTAssertTrue(app.descendants(matching: .any).matching(want).firstMatch.waitForExistence(timeout: 60),
+                  "Send: the duty I take does not name its airports")
+  }
+
   /// Cabin crew PR 452320 (rank FS, several fleets): the search returns 123 candidates
   /// (the web pages them 11 × 12). The matrix shows "1–N of 123 crew" and scrolls to the
   /// far end; R'Bot finds the crew with US duties; then 452320's 13 Oct MNL–LAX trip

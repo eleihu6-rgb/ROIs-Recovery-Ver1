@@ -260,14 +260,17 @@ describe('Schedule ▸ Timeline', () => {
     const tree = withStore(<ScheduleScreen />);
     await openNextMonth(tree);
     // No bottom dock on the Duo — navigation is the right-edge rail — so only
-    // the home-indicator inset remains under the last card.
-    expect(StyleSheet.flatten(dayList(tree, 'sched-grid').props.contentContainerStyle).paddingBottom).toBe(21);
+    // the home-indicator inset remains under the last card, plus the band the
+    // floating limit summary reserves (14pt gap; the card's own measured height
+    // is 0 until a real layout pass).
+    expect(StyleSheet.flatten(dayList(tree, 'sched-grid').props.contentContainerStyle).paddingBottom).toBe(21 + 14);
 
     asPhone();
     mockInsets.current = { top: 0, right: 0, bottom: 0, left: 0 };
     const phone = withStore(<ScheduleScreen />);
     await openNextMonth(phone);
-    expect(StyleSheet.flatten(dayList(phone, 'sched-list').props.contentContainerStyle).paddingBottom).toBe(120);
+    // Same reserved band under the phone's floating dock.
+    expect(StyleSheet.flatten(dayList(phone, 'sched-list').props.contentContainerStyle).paddingBottom).toBe(120 + 14);
   });
 });
 

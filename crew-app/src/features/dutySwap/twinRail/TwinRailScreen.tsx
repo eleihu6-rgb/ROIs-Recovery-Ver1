@@ -6,10 +6,11 @@ import { Icon } from '../../../components/v2/icons';
 import { useLayout } from '../../../components/v2/useLayout';
 import { useAppDispatch, useAppSelector, type RootState } from '../../../store';
 import { useCarrier } from '../../../theme/carrier';
+import { airlineByCode } from '../../auth/airlines';
 import { PageShell } from '../../v2/PageShell';
 import { useV2Nav } from '../../v2/nav';
 import { dutySwapApiFor, ensureDetails, openDutySwap, runSearch, selectDutySwapLive } from '../dutySwapActions';
-import { detailFor, emptyFilters, kpiDelta, parseRuleMessage, signedHhmm, submitBody, type ApiCompare, type ApiTaskDetail, type SwapDuty, type SwapFilters } from '../dutySwapModel';
+import { detailFor, emptyFilters, flightRouteOf, kpiDelta, parseRuleMessage, signedHhmm, submitBody, type ApiCompare, type ApiTaskDetail, type SwapDuty, type SwapFilters } from '../dutySwapModel';
 import { acceptDisclaimer } from '../dutySwapSlice';
 import type { SearchOptions } from '../dutySwapApi';
 import { TwinRails, TwinRangeControls } from './TwinRails';
@@ -29,6 +30,7 @@ function TwinRailSession({ switcher, actionsInRail }: { switcher?: React.ReactNo
   const auth = useAppSelector(state => state.auth), st = useAppSelector(state => state.dutySwap);
   const supported = useAppSelector(selectDutySwapLive);
   const api = useMemo(() => supported ? dutySwapApiFor(auth) : null, [auth, supported]);
+  const carrier = airlineByCode(auth.airline).carrier;
   const { wide, tall, height, width } = useLayout();
   const shortScreen = height < 560;
   const canInlineReview = (wide || tall) && !shortScreen;
@@ -147,7 +149,7 @@ function TwinRailSession({ switcher, actionsInRail }: { switcher?: React.ReactNo
     if (result?.sent) { clear(); setStage('search'); if (api) void openDutySwap(dispatch, store.getState, api); }
     setResult(null);
   };
-  const review = <TwinReview p={p} crewB={crewB} give={giveDuties} take={takeDuties} mine={mine} theirs={theirs} ready={ready}
+  const review = <TwinReview p={p} crewB={crewB} carrier={carrier} give={giveDuties} take={takeDuties} mine={mine} theirs={theirs} ready={ready}
     loading={detailLoading} error={detailError ?? (cmp && giveDuties.length && takeDuties.length && !complete ? 'Some selected duty details are missing' : null)}
     onRetry={() => setDetailAttempt(n => n + 1)} note={note} setNote={setNote} submitting={submitting} onSubmit={() => { void submit(); }}
     onBack={stage === 'review' ? () => setStage('rails') : inlineReview ? () => setReviewCollapsed(true) : undefined}
@@ -167,11 +169,12 @@ function TwinRailSession({ switcher, actionsInRail }: { switcher?: React.ReactNo
           : st.status === 'loading' || st.status === 'idle' ? <View style={s.center}><ActivityIndicator color={p.btn} /><Text style={[s.text, { color: p.ink }]}>Loading duties…</Text></View>
             : !me ? <View style={s.center}><Text style={[s.text, { color: p.ink }]}>No duties in this search window.</Text>{button('Search pairing', 'twin-empty-search', () => setStage('search'))}</View>
               : stage === 'review' ? review : <View style={wide && inlineReview ? s.split : s.stacked}>
-                  <View style={s.flex} pointerEvents={submitting ? 'none' : 'auto'}><TwinRails p={p} me={me} others={others} start={railStart} zoom={zoom} give={give} take={take} crewB={crewB} details={st.details} onPick={pick} onMove={move} onZoom={setZoom} onVisible={visible} controlsInHeader={rangeInHeader} actions={rangeInHeader ? undefined : railActions} />
+                  <View style={s.flex} pointerEvents={submitting ? 'none' : 'auto'}><TwinRails p={p} carrier={carrier} me={me} others={others} start={railStart} zoom={zoom} give={give} take={take} crewB={crewB} details={st.details} onPick={pick} onMove={move} onZoom={setZoom} onVisible={visible} controlsInHeader={rangeInHeader} actions={rangeInHeader ? undefined : railActions} />
                     {!inlineReview && compactTray ? <View style={[s.summary, s.compactSummary, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]} testID="twin-tray">
                       <View style={[s.flex, canInlineReview && s.tabletSelection]} testID="twin-compact-selection">
                         <Text numberOfLines={1} style={[s.label, { color: p.cardInk }]}>Give {giveDuties.map(d => d.code).join(', ') || '—'}</Text>
                         <Text numberOfLines={1} style={[s.label, { color: p.cardInk }]}>Take {takeDuties.map(d => d.code).join(', ') || '—'}{crewB ? ` · ${crewB}` : ''}</Text>
+                        {ready ? <Text style={[s.label, { color: p.cardInk }]} testID="twin-compact-routes">{routesText(giveDuties, takeDuties, mine, theirs, carrier)}</Text> : null}
                       </View>
                       {button('Clear', 'twin-clear', clear)}
                       {button('Review', 'twin-review-open', openReview, true, !hasPair)}
@@ -184,4 +187,14 @@ function TwinRailSession({ switcher, actionsInRail }: { switcher?: React.ReactNo
     <AppDialog visible={!!disclaimer} title="Duty Swap disclaimer" message={disclaimer ?? ''} dismissable={false} onClose={() => nav.goBack()} confirmLabel="I agree" onConfirm={() => { dispatch(acceptDisclaimer()); setDisclaimerReady(true); setDisclaimer(null); }} testID="twin-disclaimer" />
     <AppDialog visible={!!result} title={result?.title ?? ''} message={result?.message} tone={result?.sent ? 'success' : 'warning'} confirmLabel="OK" onConfirm={closeResult} onClose={closeResult} testID="twin-result" />
   </PageShell>;
+}
+
+/** 'Give PR124 MNL-SEA / PR125 SEA-MNL · Take 1HB MNL-MNL' — each selected duty's
+ *  flight legs with their airports, in flight order. */
+function routesText(give: SwapDuty[], take: SwapDuty[], mine: ApiTaskDetail[], theirs: ApiTaskDetail[], carrier: string): string {
+  const side = (label: string, duties: SwapDuty[], list: ApiTaskDetail[]): string | null => {
+    const routes = duties.flatMap(d => { const r = flightRouteOf(detailFor(d, list), carrier); return r ? [`${d.code} ${r}`] : []; });
+    return routes.length ? `${label} ${routes.join(' / ')}` : null;
+  };
+  return [side('Give', give, mine), side('Take', take, theirs)].filter(Boolean).join(' · ');
 }

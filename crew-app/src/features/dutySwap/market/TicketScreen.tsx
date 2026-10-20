@@ -1,5 +1,5 @@
 // Ticket uses the same portal search, compare and submit contracts as Matrix.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStore } from 'react-redux';
@@ -13,14 +13,14 @@ import { useCarrier } from '../../../theme/carrier';
 import { RBOT_ENTRY_WIDTH } from '../../rbot/RBotEntry';
 import { PageShell } from '../../v2/PageShell';
 import { useV2Nav } from '../../v2/nav';
-import { dutySwapApiFor, ensureDetails, loadOptions, openDutySwap, runSearch } from '../dutySwapActions';
-import { dayLabel, detailFor, kpiDelta, parseRuleMessage, signedHhmm, submitBody, validateFilters, type RuleResult, type SwapCrew, type SwapDuty, type SwapFilters } from '../dutySwapModel';
+import { dutySwapApiFor, ensureAllDetails, ensureDetails, loadOptions, openDutySwap, runSearch } from '../dutySwapActions';
+import { dayLabel, detailFor, flightRouteOf, kpiDelta, parseRuleMessage, routeOf, signedHhmm, submitBody, validateFilters, type ApiCompare, type ApiTaskDetail, type RuleResult, type SwapCrew, type SwapDuty, type SwapFilters } from '../dutySwapModel';
 import { acceptDisclaimer } from '../dutySwapSlice';
 import { RuleList } from '../DutySwapScreen';
 import { tint } from '../components/CrewMatrix';
 import { SearchForm } from '../components/SearchForm';
 import {
-  boardOffers, defaultTake, outOfDuties, parseWants, savedWantFor, spanLabel, wantLabel, wantStoreKey,
+  boardOffers, defaultTake, flightLine, outOfDuties, parseWants, savedWantFor, wantLabel, wantStoreKey,
   type Offer, type SavedWants,
 } from './marketModel';
 
@@ -29,6 +29,8 @@ const STEPS: Step[] = ['give', 'want', 'match', 'send'];
 const LABELS = ['Give', 'Want', 'Pick', 'Send'];
 type Result = { kind: 'sent'; crewB: string } | { kind: 'illegal'; rule: RuleResult } | { kind: 'error'; message: string };
 type Palette = ReturnType<typeof useCarrier>;
+/** The date column's width, so rows under a card start with their flight numbers. */
+const DATE_COL = 52;
 
 /** One candidate per crew across all offered duties, ordered by start time. */
 export function ticketMatches(others: SwapCrew[], give: SwapDuty | SwapDuty[] | undefined): Offer[] {
@@ -67,6 +69,7 @@ function TicketFlow({ switcher, actionsInRail = false }: { switcher?: React.Reac
   const [offer, setOffer] = useState<Offer | null>(null); const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false); const [result, setResult] = useState<Result | null>(null);
   const [disclaimer, setDisclaimer] = useState<string | null>(null);
+  const [compared, setCompared] = useState<Record<string, ApiCompare>>({});
 
   useEffect(() => { if (!api) return; void openDutySwap(dispatch, store.getState, api); api.disclaimer().then(t => t ? setDisclaimer(t) : dispatch(acceptDisclaimer())).catch(() => undefined); }, [api, dispatch, store]);
   useEffect(() => { if (api && st.filters && st.status === 'ready') void loadOptions(dispatch, store.getState, api).catch(() => undefined); }, [api, st.filters, st.status, dispatch, store]);
@@ -79,13 +82,43 @@ function TicketFlow({ switcher, actionsInRail = false }: { switcher?: React.Reac
       .catch(() => { if (live) setWants({}); });
     return () => { live = false; };
   }, [auth.airline, auth.crewId]);
+  // Airports come from the portal's detail records, never from the search. Read them
+  // for every crew this window returned as soon as results land, so every step's
+  // cards name their airports on arrival — Give included, before anything is tapped.
+  const detailsRead = useRef<string | null>(null);
+  useEffect(() => {
+    if (!api || st.status !== 'ready' || !st.filters) return;
+    const window = `${auth.crewId}:${st.filters.startDate}:${st.filters.endDate}:${st.filters.swapMode}:${st.crews.length}`;
+    if (detailsRead.current === window) return;
+    detailsRead.current = window;
+    void ensureAllDetails(dispatch, store.getState, api, st.crews.map(c => c.crewId));
+  }, [api, auth.crewId, st.status, st.filters, st.crews, dispatch, store]);
+  // My own compare: mine come back keyed by pairing id there (the store's detail
+  // map is keyed by crew), so my cards read from it.
+  const myCompare = auth.crewId ? (st.details[auth.crewId] ?? compared[auth.crewId]) : undefined;
+  const mine = myCompare?.mineTaskDetailList ?? [];
   const filters = draft ?? st.filters;
   const others = useMemo(() => st.crews.slice(1), [st.crews]);
   const choices = [...new Map([...give, ...outOfDuties(st.crews[0])].map(d => [d.key, d])).values()];
   const matches = useMemo(() => st.status === 'ready' ? ticketMatches(others, give) : [], [others, give, st.status]);
+  // Pick lists each candidate's duties, so their routes need the same detail read
+  // the Matrix does once results land (each crew is fetched once per search).
+  useEffect(() => {
+    if (!api || st.status !== 'ready' || step !== 'match') return;
+    const ids = matches.map(o => o.crewId);
+    if (ids.length) void ensureDetails(dispatch, store.getState, api, ids);
+  }, [api, st.status, step, matches, dispatch, store]);
+  // Keep each crew's compare per session so Send can name the airports of the duties
+  // it takes, even for a candidate whose card was never opened.
+  useEffect(() => {
+    const fresh = Object.fromEntries(Object.entries(st.details).filter(([id]) => !compared[id]));
+    if (Object.keys(fresh).length) setCompared(prev => ({ ...prev, ...fresh }));
+  }, [st.details, compared]);
   const crewB = offer ? others.find(c => c.crewId === offer.crewId) : undefined;
   const take = crewB && offer ? ticketTake(crewB, give, offer) : [];
-  const compare = offer ? st.details[offer.crewId] : undefined;
+  const compare = offer ? (st.details[offer.crewId] ?? compared[offer.crewId]) : undefined;
+  /** A candidate's records for the Pick cards and the Send take list. */
+  const compareOthers = (crewId: string): ApiTaskDetail[] | undefined => (st.details[crewId] ?? compared[crewId])?.othersTaskDetailList;
   const giveDetails = give.flatMap(d => { const detail = detailFor(d, compare?.mineTaskDetailList); return detail ? [detail] : []; });
   const takeDetails = take.flatMap(d => { const detail = detailFor(d, compare?.othersTaskDetailList); return detail ? [detail] : []; });
   const delta = compare && giveDetails.length === give.length && takeDetails.length === take.length ? kpiDelta(giveDetails, takeDetails) : null;
@@ -123,7 +156,9 @@ function TicketFlow({ switcher, actionsInRail = false }: { switcher?: React.Reac
     else setStep(STEPS[index + 1]);
   };
   const back = () => { if (index === 0) nav.goBack(); else setStep(STEPS[index - 1]); };
-  const summary = <DutyGroup title={`You give · ${give.length} selected`} duties={give} p={p} testID="ticket-selected-give" />;
+
+
+  const summary = <DutyGroup title="You give" icon="give" duties={give} p={p} testID="ticket-selected-give" details={mine} />;
   const currentWant = savedWantFor(give, wants);
   if (!api) return <PageShell title="Duty Swap" titleNode={switcher} scroll={false} layout="full"><Empty p={p} text="Sign in with your crew account to swap duties." /></PageShell>;
 
@@ -139,29 +174,33 @@ function TicketFlow({ switcher, actionsInRail = false }: { switcher?: React.Reac
         <Text style={[s.h, { color: p.ink }]}>What will you give?</Text>
         <Text style={[s.sub, { color: p.inkSoft }]}>Select one or more unlocked duties, then choose what you want. A saved want comes back with its duty.</Text>
         <Text style={[s.code, { color: p.ink }]}>{give.length} selected</Text>
-        {choices.map(d => <Pressable key={d.key} accessibilityRole="checkbox" accessibilityState={{ checked: give.some(x => x.key === d.key) }} onPress={() => chooseGive(d)} testID={`ticket-give-${d.key}`} style={[s.row, { backgroundColor: p.cardSolid, borderColor: give.some(x => x.key === d.key) ? p.btn : p.cardLine }]}>
-          <View style={s.flex}>
-            <DutyText duty={d} p={p} />
-            {wants[d.key] ? <View testID={`ticket-want-${d.key}`} style={[s.wantChip, { borderColor: tint(p.btn, 0.35) }]}><Icon name="star" size={11} color={p.btn} /><Text style={[s.wantText, { color: p.btn }]} numberOfLines={1}>{wantLabel(wants[d.key])}</Text></View> : null}
-          </View><View style={[s.checkbox, { borderColor: p.btn }]}>{give.some(x => x.key === d.key) ? <Icon name="check" size={18} color={p.btn} /> : null}</View>
-        </Pressable>)}
+        {choices.map(d => {
+          const on = give.some(x => x.key === d.key);
+          return <Pressable key={d.key} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => chooseGive(d)} testID={`ticket-give-${d.key}`} style={[s.dutyCard, { backgroundColor: p.cardSolid, borderColor: on ? p.btn : p.cardLine }]}>
+            <DutyCard duty={d} p={p} details={mine} action={<View style={[s.checkbox, { borderColor: p.btn }]}>{on ? <Icon name="check" size={18} color={p.btn} /> : null}</View>} />
+            {wants[d.key] ? <View testID={`ticket-want-${d.key}`} style={[s.wantChip, { borderColor: tint(p.btn, 0.35), marginLeft: DATE_COL }]}><Icon name="star" size={11} color={p.btn} /><Text style={[s.wantText, { color: p.btn }]} numberOfLines={1}>{wantLabel(wants[d.key])}</Text></View> : null}
+          </Pressable>;
+        })}
         {st.status === 'loading' ? <ActivityIndicator color={p.ink} /> : st.error ? <Empty p={p} text={st.error} /> : !choices.length ? <Empty p={p} text="Unlock a duty in My duties before starting a match." /> : null}
         {!choices.length && st.status !== 'loading' ? <Pressable style={[s.row, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]} onPress={() => nav.navigate('DutySwapMyDuties')} testID="ticket-my-duties"><Text style={[s.code, { color: p.cardInk }]}>Open My duties</Text><Icon name="chev" size={18} color={p.btn} /></Pressable> : null}
       </ScrollView> : step === 'want' ? filters ? <SearchForm palette={p} crewId={auth.crewId ?? ''} initial={filters} defaults={{ startDate: st.filters!.startDate, endDate: st.filters!.endDate }} options={st.options} twoColumns={wide || tall} onChange={setDraft} onSearch={find} onSaveWant={saveWant} savedWant={currentWant} leadingContent={summary} externalNavigation /> : <Empty p={p} text="Loading the available swap window…" /> : step === 'match' ? <View style={[s.flex, wide && s.columns]}>
         {wide ? <ScrollView style={s.summaryPane} contentContainerStyle={s.body}>{summary}</ScrollView> : null}
         <ScrollView style={s.flex} contentContainerStyle={s.body} testID="ticket-matches">
           {!wide ? summary : null}
-          <Text style={[s.h, { color: p.ink }]}>You take</Text><Text style={[s.sub, { color: p.inkSoft }]}>Choose a crew to review · {matches.length} matches</Text>
-          {matches.map(o => <Pressable key={o.crewId} onPress={() => chooseOffer(o)} testID={`ticket-match-${o.crewId}`} accessibilityRole="radio" accessibilityState={{ selected: offer?.crewId === o.crewId }} style={[s.candidate, { backgroundColor: p.cardSolid, borderColor: offer?.crewId === o.crewId ? p.btn : p.cardLine }]}>
-            <View style={s.rowTitle}><Text style={[s.code, s.flex, { color: p.cardInk }]}>From {o.crewId}</Text>{offer?.crewId === o.crewId ? <Icon name="check" size={20} color={p.btn} /> : null}</View>
-            {ticketTake(others.find(c => c.crewId === o.crewId)!, give, o).map(d => <DutyText key={d.key} duty={d} p={p} />)}
-          </Pressable>)}
+          <View style={[s.titleRow, { alignItems: 'center' }]} testID="ticket-take-title"><Icon name="take" size={20} color={p.ink} testID="ticket-icon-take" /><Text style={[s.h, { color: p.ink }]}>You take</Text></View><Text style={[s.sub, { color: p.inkSoft }]}>Choose a crew to review · {matches.length} matches</Text>
+          {matches.map(o => {
+            const picked = offer?.crewId === o.crewId;
+            return <Pressable key={o.crewId} onPress={() => chooseOffer(o)} testID={`ticket-match-${o.crewId}`} accessibilityRole="radio" accessibilityState={{ selected: picked }} style={[s.candidate, { backgroundColor: p.cardSolid, borderColor: picked ? p.btn : p.cardLine }]}>
+              <View style={s.rowTitle}><Text style={[s.code, s.flex, { color: p.cardInk }]}>From {o.crewId}</Text>{picked ? <Icon name="check" size={20} color={p.btn} /> : null}</View>
+              {ticketTake(others.find(c => c.crewId === o.crewId)!, give, o).map(d => <DutyCard key={d.key} duty={d} p={p} details={compareOthers(o.crewId)} />)}
+            </Pressable>;
+          })}
           {st.status === 'loading' ? <ActivityIndicator color={p.ink} /> : st.error ? <Empty p={p} text={st.error} /> : !matches.length ? <Empty p={p} text="No matching published duties. Go back to change your filters or the duties you give." /> : null}
         </ScrollView>
       </View> : offer && crewB ? <ScrollView contentContainerStyle={s.body} testID="swap-ticket">
         <Text style={[s.h, { color: p.ink }]}>Review your swap</Text>
         <Text style={[s.sub, { color: p.inkSoft }]}>{auth.crewId} ⇄ {crewB.crewId}</Text>
-        <View style={[s.groups, (wide || tall) && s.columns]}><View style={(wide || tall) ? s.group : undefined}>{summary}</View><View style={(wide || tall) ? s.group : undefined}><DutyGroup title={`You take from ${crewB.crewId}`} duties={take} p={p} /></View></View>
+        <View style={[s.groups, (wide || tall) && s.columns]}><View style={(wide || tall) ? s.group : undefined}>{summary}</View><View style={(wide || tall) ? s.group : undefined}><DutyGroup title={`You take from ${crewB.crewId}`} icon="take" duties={take} p={p} details={compareOthers(crewB.crewId)} /></View></View>
         {delta ? <View style={[s.delta, { backgroundColor: p.cardSolid }]}>{([['FDP', signedHhmm(delta.fdp)], ['BLH', signedHhmm(delta.blh)], ['CREDIT', signedHhmm(delta.crd)], ['DO', String(delta.dayOff)]] as const).map(([k,v]) => <View key={k}><Text style={[s.over, { color: p.cardSoft }]}>{k}</Text><Text style={[s.code, { color: p.btn }]}>{v}</Text></View>)}</View> : <Text style={[s.sub, { color: p.inkSoft }]}>Credit comparison unavailable until all duty details are loaded. Legality is checked when you send.</Text>}
         <TextInput value={note} onChangeText={setNote} placeholder={`Note for ${crewB.crewId} (optional)`} placeholderTextColor={p.cardSoft} multiline style={[s.input, { backgroundColor: p.cardSolid, color: p.cardInk, borderColor: p.cardLine }]} testID="ticket-note" />
       </ScrollView> : <Empty p={p} text="Go back and choose a match to build your swap request." />}
@@ -175,12 +214,28 @@ function TicketFlow({ switcher, actionsInRail = false }: { switcher?: React.Reac
   </PageShell>;
 }
 
-function DutyText({ duty, p }: { duty: SwapDuty; p: Palette }) {
+/** One duty, one shape in every step: the big date on the left; on the right the
+ *  flight numbers, then `dep → [arr day] time · airports` underneath. */
+function DutyCard({ duty, p, details, action }: { duty: SwapDuty; p: Palette; details?: ApiTaskDetail[]; action?: React.ReactNode }) {
   const day = dayLabel(duty.startDt);
-  return <View style={s.duty}><Text style={[s.code, { color: p.cardInk }]}>{duty.code}</Text><Text style={[s.sub, { color: p.cardSoft }]}>{day.day} {day.month} · {spanLabel(duty)}</Text></View>;
+  // Compare records are keyed by pairing, and the portal's "mine" side can carry
+  // another crew's id; read this duty's own record, else a same-code one.
+  const own = details ? detailFor(duty, details) ?? details.find(t => flightRouteOf(t)?.startsWith(`${duty.code} `)) : undefined;
+  const route = duty.kind === 'fly' ? (own ? routeOf(own) : null) : null;
+  return <View testID={`ticket-duty-${duty.key}`} style={s.dutyRow}>
+    <View style={s.dateCol}><Text style={[s.dateDay, { color: p.cardInk }]}>{day.day}</Text><Text style={[s.dateDow, { color: p.cardSoft }]}>{day.month}</Text></View>
+    <View style={s.flex}>
+      <Text style={[s.code, { color: p.cardInk }]} numberOfLines={1}>{duty.code}</Text>
+      <Text style={[s.sub, { color: p.cardSoft }]} numberOfLines={1}>{flightLine(duty, route)}</Text>
+    </View>
+    {action}
+  </View>;
 }
-function DutyGroup({ title, duties, p, testID }: { title: string; duties: SwapDuty[]; p: Palette; testID?: string }) {
-  return <View testID={testID} style={[s.candidate, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]}><Text style={[s.over, { color: p.cardSoft }]}>{title}</Text>{duties.map(d => <DutyText key={d.key} duty={d} p={p} />)}</View>;
+function DutyGroup({ title, icon, duties, p, testID, details }: { title: string; icon?: 'give' | 'take'; duties: SwapDuty[]; p: Palette; testID?: string; details?: ApiTaskDetail[] }) {
+  return <View testID={testID} style={s.group}><View style={[s.titleRow, { marginBottom: space.sm8 }]}>{icon ? <TitleIcon name={icon} color={p.cardInk} /> : null}<Text style={[s.over, s.flex, { color: p.cardSoft }]}>{title}</Text></View>{duties.map(d => <DutyCard key={d.key} duty={d} p={p} details={details} />)}</View>;
+}
+function TitleIcon({ name, color }: { name: 'give' | 'take'; color: string }) {
+  return <View testID={`ticket-icon-${name}`} accessibilityLabel={name === 'give' ? 'You give' : 'You take'} style={[s.titleIcon, { backgroundColor: tint(color, 0.12) }]}><Icon name={name} size={15} color={color} /></View>;
 }
 function Empty({ p, text }: { p: Palette; text: string }) { return <View style={s.empty}><Icon name="ticket" size={28} color={p.ink} /><Text style={[s.sub, { color: p.ink }]}>{text}</Text></View>; }
 const s = StyleSheet.create({
@@ -191,9 +246,14 @@ const s = StyleSheet.create({
   body: { padding: space.md12, gap: space.md12 }, h: { ...font.h2, fontWeight: '700' }, sub: { ...font.sub }, code: { ...font.bodyStrong, fontVariant: ['tabular-nums'] },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm8, borderWidth: 1, borderRadius: radius.md, padding: space.md12 },
   rowTitle: { flexDirection: 'row', alignItems: 'center', gap: space.sm8 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm8 },
+  titleIcon: { width: space.xl24, height: space.xl24, borderRadius: radius.op, alignItems: 'center', justifyContent: 'center' },
   candidate: { borderWidth: 1, borderRadius: radius.md, padding: space.md12, gap: space.md12 },
   checkbox: { width: space.xl24, height: space.xl24, borderWidth: 1, borderRadius: radius.op, alignItems: 'center', justifyContent: 'center' },
-  duty: { gap: space.xs4 },
+  dutyRow: { flexDirection: 'row', alignItems: 'center', gap: space.md12, paddingVertical: space.sm8 },
+  dutyCard: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', borderWidth: 1, borderRadius: radius.md, padding: space.md12 },
+  dateCol: { width: DATE_COL - space.md12, alignItems: 'flex-start' },
+  dateDay: { ...font.h2 }, dateDow: { ...font.caption },
   wantChip: { flexDirection: 'row', alignItems: 'center', gap: space.xs4, alignSelf: 'flex-start', borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.sm8, paddingVertical: 2, marginTop: space.xs4 },
   wantText: { ...font.caption, fontWeight: '700', flexShrink: 1 },
   groups: { gap: space.md12 }, group: { flexGrow: 1, flexBasis: 0, minWidth: 0 }, summaryPane: { flex: 1 },

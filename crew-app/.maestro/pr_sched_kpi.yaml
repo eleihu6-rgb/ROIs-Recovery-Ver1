@@ -1,0 +1,42 @@
+# Schedule ▸ Floating limit summary — PR crew 433535 (cross-carrier check).
+# Run: maestro test crew-app/.maestro/pr_sched_kpi.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-kpi"
+    timeout: 20000
+- assertVisible: ".*All limits through .*28-day flight .*7-day duty .*90-day take-offs.*"
+- takeScreenshot: pr_kpi_01_portrait
+- tapOn:
+    id: "sched-kpi"
+- assertVisible:
+    id: "kpi-sheet"
+- assertVisible:
+    id: "kpi-sheet-row-duty28"
+- takeScreenshot: pr_kpi_02_all_limits
+- tapOn:
+    id: "kpi-sheet-close"

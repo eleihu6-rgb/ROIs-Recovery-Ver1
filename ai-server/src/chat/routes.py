@@ -3,10 +3,11 @@ import pathlib
 from datetime import date
 from typing import Literal
 
+import httpx
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from src.llm.client import llm_tools
+from src.llm.client import RETRYABLE_STATUS_CODES, llm_tools
 from src.chat.tools import (
     TOOLS, tool_call_to_action, crew_bids_params,
     build_pairings_missing_message, auto_assign_missing_message,
@@ -146,8 +147,19 @@ def chat(req: ChatRequest) -> dict:
     )
     try:
         text, calls = llm_tools(messages, TOOLS, system)
-    except Exception as exc:  # noqa: BLE001 — surface a friendly error, never 500 the UI
-        return {'role': 'assistant', 'content': f'AI request failed: {exc}', 'actions': []}
+    except httpx.HTTPStatusError as exc:
+        message = (
+            'The AI service is temporarily unavailable after retrying. Please try again shortly.'
+            if exc.response.status_code in RETRYABLE_STATUS_CODES
+            else 'The AI request could not be completed. Please contact your administrator if this continues.'
+        )
+        return {'role': 'assistant', 'content': message, 'actions': []}
+    except Exception:  # noqa: BLE001 — do not expose provider exception details
+        return {
+            'role': 'assistant',
+            'content': 'The AI request could not be completed. Please try again.',
+            'actions': [],
+        }
     # "For this view": fill scope the user left out from their last View Gantt read.
     view_notes: list[str] = []
     filled_calls = []

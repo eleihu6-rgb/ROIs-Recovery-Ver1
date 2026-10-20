@@ -47,7 +47,7 @@ Distinguish constraints from evidence: project instructions define requirements;
 - **Git authorization is unchanged.** Delegation does not authorize commit, push, destructive commands, or history rewriting. Commit/push still require the user's explicit instruction; keep shared-state Git operations coordinated through the primary agent.
 - **Review before delivery.** The primary model integrates delegated results and verifies key conclusions without mechanically repeating the whole subtask. Every existing gate still applies — §Simulate-User, §No-Illusion (exact command + PASS/FAIL), and §PW-Snapshot (versioned screenshot, visually inspected). A delegated PASS summary alone does not replace the required evidence.
 
-For substantial work, delegate a bounded, independent supporting task only when the current runtime permits it and the handoff and review cost is justified. Define scope, expected output, and acceptance checks first. The primary model reviews delegated changes and evidence before delivery. Keep small or tightly coupled tasks local. Delegation is not an approval gate and never relaxes verification or Git authorization.
+Delegation is not an approval gate and never relaxes verification or Git authorization.
 
 ## MCP and Skills
 
@@ -295,21 +295,9 @@ Only add a `Co-Authored-By` trailer when the actual contributor identity is know
 
 ## 版本号管理（Version Bumping，强制执行）
 
-> 版本号用于快速确认当前本机/部署运行态，不再写入 tracked 源码，避免每次提交都修改同一个文件。
-
-- **版本来源**：`live-server/version.tmp`（JSON，本机运行态文件，已加入 `.gitignore`），由 `scripts/version-state.mjs` 创建、读取、递增。
-- **格式**：全局 Gantt 显示 `Ver:B{backend}/F{frontend}/R{rule}`；PBS 显示 `Ver:B{pbsBackend}/F{pbsFrontend}`。
-- **展示位置**：gantt 顶部导航与 ThemeSwitcher 下拉中（与 `__APP_VERSION__` 的 commit/构建时间并列）。
-- **递增时机**：
-  - `gantt` 执行 `npm run dev` / `npm run build` 前，自动递增全局 `frontend`。
-  - Vite HMR 完成热更新时，自动递增全局 `frontend` 并推送到页面。
-  - `live-server` 执行 `npm run dev` / `npm run build` 前，自动递增全局 `backend`。
-  - `connector-server` 执行 `npm run dev` / `npm run build` 前，自动递增全局 `backend`。
-  - `pbs-server` 执行 `npm run dev` / `npm run build` 前，自动递增 `pbsBackend`。
-  - `pbs-portal` 执行 `npm run dev` / `npm run build` 前，自动递增 `pbsFrontend`。
-- **不要手动修改 tracked 文件来 bump 版本**；`gantt/src/version.ts` 已废弃并删除。
-- **永不回退**：版本号只增不减，不复用旧值。若需手动修正本机运行态，仅编辑 ignored 的 `live-server/version.tmp`。
-- 纯文档（`docs/`、`*.md`）、注释、E2E 测试数据等非运行代码改动可不递增。
+- 版本来源为 ignored 的 `live-server/version.tmp`，由 `scripts/version-state.mjs` 在各模块 `npm run dev` / `npm run build`（及 gantt HMR）时自动递增。
+- **不要手动修改 tracked 文件来 bump 版本**；**永不回退**，只增不减。纯文档/注释/E2E 数据改动可不递增。
+- 格式、展示位置、各模块递增时机见 `docs/architecture/version-bumping.md`。
 
 ## 参数化开发规范
 
@@ -374,7 +362,7 @@ File naming: `e2e/tests/<module>/<feature-name>.spec.ts`, named after the change
 3. Assert the outcome a real user would actually see (correct data, correct permissions/menus, correct error message) — never a 200 status, a DB flag, or "no error thrown".
 4. Run it and paste the PASS/FAIL result (§No-Illusion) before calling the change done.
 
-**Why:** a change can look correct at the code/DB/API level — status codes match, flags look right — while silently breaking for the actual user (a missing permission binding, a timezone-sensitive `eff_dt`/`exp_dt` column, a stale cache, a race in a multi-step flow). Only a Playwright run that behaves like the user is proof the change actually works, not just that it should.
+**Why:** code/DB/API can look correct while the user path breaks (missing permission binding, timezone-sensitive `eff_dt`/`exp_dt`, stale cache, multi-step race).
 
 ### §Flight-Change-Ripple-Required — 航班时间变更必须验证对 pairing/roster 的连锁影响，禁止孤立处理（强制执行）
 
@@ -387,7 +375,7 @@ File naming: `e2e/tests/<module>/<feature-name>.spec.ts`, named after the change
 3. 若下游确实需要重算，必须有测试证明重算**发生**且数值正确；若产品设计上确认**不**自动重算（需要人工确认/手动改派），测试要显式断言"下游未变"，而不是干脆没测到——沉默的空白不等于已验证的设计决策。
 4. 新增/修改与航班时间相关的 Playwright/单元测试用例时，用例标题与断言范围要覆盖"对相邻 leg 与 KPI 的影响"，不能只孤立验证被改的那一条。
 
-**Why:** 航班延误只改动自身时间戳，不代表机组的后续行程（换乘、休息、返回基地）依然合法、也不代表 KPI 依然反映实际情况——如果测试只覆盖被改的单条记录，连锁影响类 bug（错误的换乘时间、法定休息不足、返回基地时间计算错误、KPI 与实际延误脱节）会逃过验证。
+**Why:** 只测被改的单条记录，会漏掉换乘时间错误、法定休息不足、回基地时间错误、KPI 与延误脱节等连锁 bug。
 
 ### §Real-Business-Case-Test — 测试 fixture 必须是真实业务场景，禁止孤立/简化的合成数据（强制执行）
 
@@ -395,16 +383,16 @@ File naming: `e2e/tests/<module>/<feature-name>.spec.ts`, named after the change
 
 具体要求：
 
-1. **Pairing fixture 必须是真实结构**：至少覆盖同一 duty 内多个 leg（≥2 flights）、从 base 出发再回到 base 的完整往返，而不是单条 flight 硬凑出的"pairing"——单航段 pairing 在生产数据里几乎不存在，测出来的行为对真实场景没有代表性（`live-server`/`pbs-server` 的 pairing 建造逻辑允许单腿 pairing，但那是边界情况，不是典型 fixture）。
+1. **Pairing fixture 必须是真实结构**：至少覆盖同一 duty 内多个 leg（≥2 flights）、从 base 出发再回到 base 的完整往返；单航段 pairing 在生产中几乎不存在（建造逻辑允许，但只是边界情况，不是典型 fixture）。
 2. **航班/机场/机型组合必须真实可信**：优先复用已在库里验证过的真实航班号、真实航线（同一 base 进出）、真实机型/airline 搭配，避免捏造不存在的航班号或不符合 home-base 规则的航线组合。新增 fixture 前，先用只读查询（或已有 dry-run 接口，如 `POST /api/pairing/build`）验证该组合在真实规则下是合法的，而不是假设它合法。
 3. **禁止为了让测试"更好写"而回避真实结构**：如果某个 cascade/规则本该在多航段 duty、跨 leg 影响下验证，就不能只用单航段简化掉这部分覆盖——单航段能测的东西，多航段测试大多数情况下也能覆盖，反过来不成立。
 4. 与 [[pairing-build-fresh-pairing-kpis-not-computed]] 和 §Flight-Change-Ripple-Required 配合：真实的多航段 pairing fixture 才能验证"未改动的相邻 leg 保持不变"这类关键断言——单航段 fixture 天然测不出这类边界。
 
-**Why:** 一个只有一条航班的"pairing"不是真实业务场景——生产环境的 pairing 几乎都是多航段、base 出发再回到 base 的结构。用简化 fixture 测出来的 PASS 只能证明代码在不真实的输入下工作，不能证明它在真实航班组合下正确；`flight-delay-pairing-roster-propagation.spec.ts` 的 Scenario 2 最初就是用单航段 pairing 写的，重写为 ET137/ET136（ADD→ASO→ADD 真实往返）之后才补出了"未改动的出港 leg 必须保持不变"这类原本测不到的断言。
+**Why:** 简化 fixture 的 PASS 只证明代码在不真实输入下工作。例：`flight-delay-pairing-roster-propagation.spec.ts` Scenario 2 从单航段改为 ET137/ET136（ADD→ASO→ADD）后，才补出"未改动的出港 leg 必须保持不变"断言。
 
 ### §Simulate-User — Playwright must drive the REAL UI
 
-**A Playwright run against gantt or pbs-portal exists for one reason: to reproduce the real user experience — click the actual buttons, menus, dialogs the product exposes and let the UI fire its own network calls. Nothing else counts.**
+**Playwright must reproduce the real user experience — click the product's actual buttons, menus, and dialogs, and let the UI fire its own network calls.**
 
 **禁止**让脚本直接 `fetch` / `request.post` 业务写接口来代替用户操作（即使浏览器开着）；「DB 层面已生效」不算成功标准。只读 seed/校验前置数据可以走 API，但被测的用户动作本身必须经 UI 完成；纯后端逻辑走 Vitest。若某个用户动作**还没有 UI 入口**，先把 UI 补上再测，不要写脚本直接调 API 假装功能可用。
 
@@ -418,10 +406,10 @@ Verify actual outcomes, not just successful tool execution. Select checks for af
 
 ### §PW-Snapshot — every UI-related Playwright validation captures a screenshot, versioned per iteration
 
-**A passing test is not enough for a visual/UI change — capture a screenshot during the same Playwright run and keep it as the visible proof.** Pass/fail text alone doesn't show *what* rendered; a reviewer (or Ryan) needs to see the actual pixels.
+**A passing test is not enough — capture a screenshot in the same Playwright run as visible proof of what rendered.**
 
 - Save under `docs/assets/screenshots/<module>/<feature-name>.png` (module = `gantt`/`pbs-portal`/`pbs-app`/etc., feature-name matches the changed component or spec).
-- **If the same feature/fix gets re-validated across multiple rounds** (a design tweak, a bug re-fix, feedback-driven iteration), do **not** overwrite the previous screenshot — suffix the filename with `-Ver<N>` (`Ver1`, `Ver2`, `Ver3`, ...), incrementing per round, so the sequence of screenshots documents visible progress across iterations. First capture of a feature may omit the suffix or start at `Ver1`; be consistent within one feature's history.
+- **Re-validation rounds never overwrite** earlier screenshots — suffix `-Ver<N>`, incrementing per round. The first capture may omit the suffix or start at `Ver1`; stay consistent within one feature's history.
 - Capture via a Playwright script/test (`page.screenshot()` / `locator.screenshot()`), not a manual/out-of-band screenshot — it must come from the same automated run that proves the behavior, per §No-Illusion.
 - After capturing, inspect the PNG before reporting done; confirm the intended element and state are visible.
   - **If the session's model accepts image input**, use the agent's image-viewing tool.
@@ -500,56 +488,13 @@ Remove only temporary artifacts created for this task and confirmed unnecessary.
 
 ## 样式与排版标准（CSS / Typography Standard，强制执行）
 
-> 适用于所有前端模块（gantt / pbs-portal / pbs-app / packages/ui）。本系统是高密度航空运行界面（Jeppesen / Bloomberg 风格），所有视觉量纲必须 **token 驱动**，禁止散落的魔法值。Token 的唯一来源是 `packages/ui/src/styles/globals.css` 的 `@theme`。
+> 适用于所有前端模块（gantt / pbs-portal / pbs-app / packages/ui）。改前端样式前**必读完整规范** `docs/architecture/ui-style-typography-standard.md`（字号刻度表、字重、间距、圆角、颜色、图标-文字对齐、面板标题栏形态）。Token 唯一来源：`packages/ui/src/styles/globals.css` 的 `@theme`。
 
-### 字体（Font family）
-
-- **正文 / UI 文本**：`font-sans`（`--font-sans`，系统字体栈），是默认值，一般无需显式写
-- **数字 / 代码 / ID**：`font-mono`（`--font-mono`），机组号、时间、航班号等**成列数字**必须配 `tabular-nums`（等宽数字对齐），例：`className="font-mono tabular-nums"`
-- **禁止**引入自定义 Web 字体或在组件里写死 `font-family`
-
-### 字号（Font size）— 唯一标准刻度
-
-全平台只用下面这 **8 级** 命名 token，**禁止** 再写任意 `text-[Npx]`（如 `text-[11px]`、`text-[13px]`）。`xs`–`2xl` 沿用 Tailwind 默认值，`2xs`/`3xs` 由本项目 `@theme` 扩展：
-
-| Token | px | 典型用途 |
-|-------|----|---------|
-| `text-3xs` | 9  | 大写微标签（配 `uppercase tracking-wide`）|
-| `text-2xs` | 10 | 徽章、chip、表格微信息、表单字段标签 |
-| `text-xs`  | 12 | **正文默认**、次级文本、提示 |
-| `text-sm`  | 14 | 强调正文、输入框、小节标题 |
-| `text-base`| 16 | 面板 / 弹窗标题 |
-| `text-lg`  | 18 | 页面标题 |
-| `text-xl`  | 20 | 大标题 |
-| `text-2xl` | 24 | Hero / 极少数场景 |
-
-> 历史代码里的 `text-[Npx]` 仍可渲染，但**新代码禁止新增**；改动到的文件就近迁移。迁移映射表见 `docs/superpowers/specs/2026-06-15-rois-ui-standard-for-ai-agents-design.md`。
-
-### 字重（Font weight）
-
-只用 4 档：`font-normal`(400) 正文 · `font-medium`(500) 标签/次强调 · `font-semibold`(600) 标题/强调 · `font-bold`(700) 关键数据。**禁止** `font-extrabold` 及更重档位。
-
-### 间距 / 圆角（Spacing / Radius）
-
-- 间距走 Tailwind 4px 基准刻度（`gap-1`/`p-2`/`mt-1.5` 等），**禁止**任意 `m-[Npx]`/`p-[Npx]`；确需精确像素（如 Canvas 定位）才用动态 inline style
-- 圆角统一用 `rounded-sm/md/lg/xl`（映射 `--radius`，默认 2px 紧凑风格），禁止写死圆角像素
-
-### 颜色
-
-- 见 `@rois/ui` 规范：一律用语义化 token（`bg-primary`/`text-muted-foreground` 等），**禁止**硬编码颜色值（Canvas 的 `--gantt-*` 变量除外）
-
-### 对齐（Alignment）
-
-图标 + 文字（标题、按钮、列表项、徽章）必须严格对齐，新组件要和现有组件视觉一致：
-
-- **图标与文字同行必须用 `flex items-center`** 做垂直居中，**禁止**用 `mt-*`/`-translate-y-*` 等手动微调图标位置（拖拽指示器等动态定位除外）
-- **间距按文字大小取标准 `gap`**：紧凑行（`text-2xs`/`text-xs`）用 `gap-1.5`；标题/标准行（`text-sm`/`text-base`）用 `gap-2`；**禁止** `gap-3` 及以上的过宽图标-文字间距和任意 `gap-[Npx]`
-- **前导图标尺寸跟随文字**：配 `text-xs` 用 `h-3.5 w-3.5`，配 `text-sm`/`text-base` 用 `h-4 w-4`；图标一律加 `shrink-0`，避免文字 `truncate` 时挤压图标
-- **装饰性前导图标默认 `text-muted-foreground`**，需要强调才用 `text-primary`；**禁止**用 `text-sidebar-primary` 给内容区图标上色（该 token 仅用于侧栏表面）
-- **纯图标按钮**用 `inline-flex items-center justify-center` + 方形点击区（如 `h-7 w-7 p-0`）
-- **内容面板/区块标题栏统一形态**：`flex h-10 shrink-0 items-center gap-2 border-b border-border px-4` + 前导图标 `h-4 w-4 shrink-0 text-muted-foreground` + 标题 `text-sm font-semibold text-foreground`（参照 `scenario-detail-panel` / `crew-bids-view`）
-
-违反以上（魔法字号、写死字体/颜色/圆角、超档字重、图标错位/间距不一致）视同样式 bug，改到的地方必须顺手修正。
+强制要点：
+- 字号只用 8 级 token（`text-3xs`/`2xs`/`xs`/`sm`/`base`/`lg`/`xl`/`2xl`），**禁止** `text-[Npx]`；成列数字用 `font-mono tabular-nums`；禁止自定义字体/写死 `font-family`。
+- 字重只用 `font-normal`/`medium`/`semibold`/`bold`；间距走 Tailwind 刻度，圆角用 `rounded-sm/md/lg/xl`；颜色只用语义 token（Canvas `--gantt-*` 除外）。
+- 图标+文字用 `flex items-center` + 标准 `gap`（`gap-1.5`/`gap-2`），图标 `shrink-0`，禁止手动微调位置。
+- 违反即样式 bug；改到的地方必须顺手修正。
 
 ### §UI-Standard-Gate — 自动门禁（强制执行，团队 + AI agent 全员）
 

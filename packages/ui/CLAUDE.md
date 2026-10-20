@@ -49,7 +49,7 @@ src/
 
 - 优先使用 Tailwind class，**禁止**自定义 CSS 文件（全局 reset 除外）
 - **设计 token 唯一来源是 `src/styles/globals.css` 的 `@theme`**（颜色、字体 `--font-sans`/`--font-mono`、字号 `--text-*`、圆角 `--radius`）
-- **字号只用 8 级命名刻度**（`text-3xs`/`2xs`/`xs`/`sm`/`base`/`lg`/`xl`/`2xl`），**禁止**任意 `text-[Npx]`；完整刻度、迁移映射、字体/字重/间距规则见根 CLAUDE.md「样式与排版标准」
+- **字号只用 8 级命名刻度**（`text-3xs`/`2xs`/`xs`/`sm`/`base`/`lg`/`xl`/`2xl`），**禁止**任意 `text-[Npx]`；完整刻度、迁移映射、字体/字重/间距规则见 `docs/architecture/ui-style-typography-standard.md`
 - 响应式使用 Tailwind 断点（`sm:` `md:` `lg:`）
 - **禁止**使用行内 style，除非动态计算（如 Canvas 定位）
 

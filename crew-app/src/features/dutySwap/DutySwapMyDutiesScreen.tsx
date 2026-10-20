@@ -12,7 +12,7 @@ import { useAppDispatch, useAppSelector, type RootState } from '../../store';
 import { useCarrier } from '../../theme/carrier';
 import { PageShell, PrimaryButton } from '../v2/PageShell';
 import { dutySwapApiFor, runSearch } from './dutySwapActions';
-import { dayLabel, myTaskCode, myTaskId, portalToIso, publishBody, routeOf, type ApiMyTask } from './dutySwapModel';
+import { dayLabel, flightRouteOf, myTaskCode, myTaskId, portalToIso, publishBody, routeOf, type ApiMyTask } from './dutySwapModel';
 
 export function DutySwapMyDutiesScreen(): React.JSX.Element {
   const p = useCarrier();
@@ -84,7 +84,8 @@ export function DutySwapMyDutiesScreen(): React.JSX.Element {
             const end = portalToIso(t.endDateTimeLocal ?? t.endDateTime);
             const d = start ? dayLabel(start.slice(0, 10)) : null;
             const code = myTaskCode(t, carrier);
-            const route = routeOf(t);
+            const legs = routeOf(t);
+            const route = legs ? `${legs} · ${flightRouteOf(t, carrier)}` : null;
             return (
               <View key={id} style={[s.card, s.row, { backgroundColor: p.cardSolid }]}>
                 {d ? (

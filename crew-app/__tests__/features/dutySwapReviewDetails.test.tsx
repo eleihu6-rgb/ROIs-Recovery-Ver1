@@ -40,7 +40,7 @@ it('renders every leg and duty FDP without truncation in Compare & send and keep
 
 it('keeps complete metadata in both Twin Review tabs without altering send readiness', () => {
   const submit = jest.fn();
-  const ui = render(<TwinReview p={p} crewB="447841" give={[]} take={[]} mine={mine} theirs={others}
+  const ui = render(<TwinReview p={p} crewB="447841" carrier="PR" give={[]} take={[]} mine={mine} theirs={others}
     ready loading={false} error={null} onRetry={jest.fn()} note="" setNote={jest.fn()} submitting={false} onSubmit={submit} />);
   assertDetails(ui);
   fireEvent.press(ui.getByTestId('twin-review-details'));

@@ -275,8 +275,8 @@ function FlightPass({ pass, index, p }: { pass: PassRow; index: number; p: Carri
   const demoValue = (key: string): string => demo.get(key)?.value ?? '—';
   const cells = [
     { key: 'etd', label: 'ETD', value: ops.etd || demoValue('etd') },
-    { key: 'atd', label: 'ATD', value: ops.atd || '—' },
     { key: 'eta', label: 'ETA', value: ops.eta || '—' },
+    { key: 'atd', label: 'ATD', value: ops.atd || '—' },
     { key: 'ata', label: 'ATA', value: ops.ata || '—' },
   ];
   const progress = [
@@ -322,7 +322,7 @@ function FlightPass({ pass, index, p }: { pass: PassRow; index: number; p: Carri
             {r > 0 && <DashedLine color={p.cardLine} />}
             <View style={s.gridRow}>
               {row.map(cell => (
-                <View key={cell.key} style={s.gridCell}>
+                <View key={cell.key} style={s.gridCell} testID={`ops-cell-${cell.key}-${index}`}>
                   <Text style={[s.gridLabel, { color: p.cardSoft }]} numberOfLines={1}>{cell.label}</Text>
                   <Text
                     style={[s.gridValue, { color: p.cardInk }]}

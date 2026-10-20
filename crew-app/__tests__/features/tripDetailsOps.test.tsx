@@ -126,8 +126,19 @@ describe('Trip Details · operational timeline', () => {
       .filter(text => ['ETD', 'ATD', 'ETA', 'ATA', 'BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'BLK'].includes(text));
 
     // Times first (departure, then arrival), then the ground sequence + block.
-    expect(labels(0)).toEqual(['ETD', 'ATD', 'ETA', 'ATA']);
+    expect(labels(0)).toEqual(['ETD', 'ETA', 'ATD', 'ATA']);
     expect(labels(1)).toEqual(['BOARDING', 'DOOR CLOSE', 'OFF-BLOCK', 'BLK']);
+  });
+
+  it('keeps each ops cell header with its own value after the ATD/ETA swap', () => {
+    const tree = renderTrip(flownLayover);
+    const cell = (key: string) => textsInOrder(tree.getByTestId(`ops-cell-${key}-0`));
+    const localEq = (utc: string) => new Date(utc).toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Addis_Ababa',
+    }) + 'L';
+    // Order: ETD | ETA | ATD | ATA — each header sits on its own value.
+    expect(cell('eta')).toEqual(['ETA', localEq('2026-09-09T02:05:00.000Z')]);
+    expect(cell('atd')).toEqual(['ATD', localEq('2026-09-08T22:12:00.000Z')]);
   });
 
   it('runs duty markers, then STD/STA, then the sector matrix, each value once', () => {
@@ -144,8 +155,8 @@ describe('Trip Details · operational timeline', () => {
     expect(at('STD')).toBeGreaterThan(at('ET422'));
     expect(at('STA')).toBeGreaterThan(at('STD'));
     expect(at('ETD')).toBeGreaterThan(at('STA'));
-    expect(at('ATD')).toBeGreaterThan(at('ETD'));
-    expect(at('ETA')).toBeGreaterThan(at('ATD'));
+    expect(at('ETA')).toBeGreaterThan(at('ETD'));
+    expect(at('ATD')).toBeGreaterThan(at('ETA'));
     expect(at('ATA')).toBeGreaterThan(at('ETA'));
     expect(at('BOARDING')).toBeGreaterThan(at('ATA'));
     expect(at('DOOR CLOSE')).toBeGreaterThan(at('BOARDING'));

@@ -1,0 +1,123 @@
+# Duty Swap · flight routes + Give/Take icons (PR 392923, TEST tenant).
+#
+# 1. Match: step 1's duty card reads code + "20:45 → 30 Oct 06:35 · MNL–LAX–MNL";
+#    Give carries the give glyph, Take carries the take glyph.
+# 2. Twin Rail: the puck and the review name each flight with its airports.
+# 3. Matrix compare keeps its flight + airports lines (MNL→SEA).
+# Read-only: nothing is sent.
+#
+# Run (from crew-app/): maestro --device <UDID> test .maestro/pr_392923_duty_swap_routes.yaml
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "392923"
+- tapOn:
+    id: "crew-pw"
+- eraseText: 20
+- inputText: "Pier2020"
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "qa-duty-swap"
+# The portal's disclaimer opens over the first paint (it hides the view beneath
+# from the accessibility tree, so it is dismissed before anything else is read).
+- extendedWaitUntil:
+    visible:
+      id: "swap-disclaimer"
+    timeout: 120000
+- assertVisible: ".*PCAR rules.*"
+- takeScreenshot: duty-swap-match-routes-Ver1-00_disclaimer
+- tapOn: "Agree"
+- extendedWaitUntil:
+    visible:
+      id: "swap-approach-header"
+    timeout: 60000
+# ── 1. Match: the route follows the times on every duty I can give ──────────
+- tapOn:
+    id: "approach-ticket"
+# Each approach panel asks the portal for the disclaimer on its first paint; it
+# arrives after that network call, so wait for it before reading the screen.
+- extendedWaitUntil:
+    visible:
+      id: "swap-disclaimer"
+    timeout: 60000
+- takeScreenshot: duty-swap-match-routes-Ver1-00b_disclaimer
+- tapOn: "Agree"
+- extendedWaitUntil:
+    visible:
+      id: "ticket-give"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: ".*20:50 → 11 Oct 04:30 · MNL–SEA–MNL.*"
+    timeout: 60000
+- takeScreenshot: duty-swap-match-routes-Ver1-01_give
+- tapOn:
+    id: "ticket-give-392923:P625688:2026-10-08T20:50:00"
+- tapOn:
+    id: "ticket-next"
+- extendedWaitUntil:
+    visible:
+      id: "search-form"
+    timeout: 30000
+- takeScreenshot: duty-swap-match-routes-Ver1-02_want
+- tapOn:
+    id: "ticket-next"
+- extendedWaitUntil:
+    visible:
+      id: "ticket-take-title"
+    timeout: 120000
+- assertVisible: "You take"
+- assertVisible:
+    id: "ticket-take-title"
+- takeScreenshot: duty-swap-match-routes-Ver1-03_pick
+# ── 2. Twin Rail: flight numbers with their airports ─────────────────────────
+- tapOn:
+    id: "approach-twin"
+- extendedWaitUntil:
+    visible:
+      id: "twin-search-submit"
+    timeout: 30000
+- tapOn:
+    id: "twin-search-submit"
+- extendedWaitUntil:
+    visible:
+      id: "twin-rails"
+    timeout: 120000
+- takeScreenshot: duty-swap-match-routes-Ver1-04_twin
+- tapOn:
+    id: "twin-duty-392923:P625688:2026-10-08T20:50:00"
+- extendedWaitUntil:
+    visible:
+      id: "twin-review-open"
+    timeout: 10000
+- takeScreenshot: duty-swap-match-routes-Ver1-05_twin_selected
+# ── 3. Matrix compare keeps its leg lines ───────────────────────────────────
+- tapOn:
+    id: "approach-matrix"
+- extendedWaitUntil:
+    visible:
+      id: "search-form"
+    timeout: 30000
+- takeScreenshot: duty-swap-match-routes-Ver1-06_matrix

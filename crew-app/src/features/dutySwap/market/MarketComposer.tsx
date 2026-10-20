@@ -11,10 +11,12 @@ import {
   dayLabel, detailFor, kpiDelta, routeOf, signedHhmm, type ApiCompare, type ApiTaskDetail, type SwapCrew, type SwapDuty,
 } from '../dutySwapModel';
 import { tint } from '../components/CrewMatrix';
-import { KIND_BADGE, precheck, precheckLabel, spanLabel } from './marketModel';
+import { compareRoute, KIND_BADGE, precheck, precheckLabel, spanLabel } from './marketModel';
 
 interface Props {
   palette: CarrierPalette;
+  /** The signed-in airline's flight-number prefix ('PR'). */
+  carrier: string;
   crewB: SwapCrew;
   /** Crew B's compare (both sides' details); undefined while it loads. */
   compare: ApiCompare | undefined;
@@ -32,10 +34,12 @@ interface Props {
 }
 
 export function MarketComposer(props: Props): React.JSX.Element {
-  const { palette: p, crewB, compare } = props;
+  const { palette: p, crewB, compare, carrier } = props;
   const takeSet = new Set(props.take), giveSet = new Set(props.give);
   const takeDetails = props.takeChoices.filter(d => takeSet.has(d.key)).map(d => detailFor(d, compare?.othersTaskDetailList)).filter(Boolean) as ApiTaskDetail[];
   const giveDetails = props.giveChoices.filter(d => giveSet.has(d.key)).map(d => detailFor(d, compare?.mineTaskDetailList)).filter(Boolean) as ApiTaskDetail[];
+  const takeRoutes = props.takeChoices.flatMap(d => { const r = compareRoute(d, compare, false, carrier); return r ? [[d.key, r] as const] : []; });
+  const giveRoutes = props.giveChoices.flatMap(d => { const r = compareRoute(d, compare, true, carrier); return r ? [[d.key, r] as const] : []; });
   const ready = props.take.length > 0 && props.give.length > 0;
   const delta = compare && ready ? kpiDelta(giveDetails, takeDetails) : null;
   const firstTake = props.takeChoices.find(d => takeSet.has(d.key));
@@ -43,10 +47,10 @@ export function MarketComposer(props: Props): React.JSX.Element {
   const check = firstTake ? precheck(detailFor(firstTake, compare?.othersTaskDetailList), firstGive && detailFor(firstGive, compare?.mineTaskDetailList)) : null;
   const warn = !!check && (check.rankDiffers || check.fleetDiffers);
 
-  const row = (d: SwapDuty, on: boolean, list: ApiTaskDetail[] | undefined, onPress: () => void, id: string) => {
+  const row = (d: SwapDuty, on: boolean, list: ApiTaskDetail[] | undefined, onPress: () => void, id: string, rows: readonly (readonly [string, string])[]) => {
     const dl = dayLabel(d.startDt.slice(0, 10));
     const det = detailFor(d, list);
-    const route = d.kind === 'fly' ? routeOf(det) : null;
+    const route = rows.find(([key]) => key === d.key)?.[1] ?? (d.kind === 'fly' ? routeOf(det) : null);
     return (
       <Pressable key={d.key} onPress={onPress} testID={id} accessibilityLabel={`${d.code} ${dl.day} ${dl.month}`} accessibilityState={{ checked: on }}
         style={[s.row, { borderColor: on ? p.btn : p.cardLine, backgroundColor: on ? tint(p.btn, 0.06) : 'transparent' }]}>
@@ -84,9 +88,9 @@ export function MarketComposer(props: Props): React.JSX.Element {
       </View>
       <ScrollView style={s.flex} contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
         <Text style={[s.over, { color: p.cardSoft }]}>YOU TAKE FROM {crewB.crewId}</Text>
-        {props.takeChoices.map(d => row(d, takeSet.has(d.key), compare?.othersTaskDetailList, () => props.onToggleTake(d.key), `market-take-${d.key}`))}
+        {props.takeChoices.map(d => row(d, takeSet.has(d.key), compare?.othersTaskDetailList, () => props.onToggleTake(d.key), `market-take-${d.key}`, takeRoutes))}
         <Text style={[s.over, { color: p.cardSoft }]}>YOU GIVE</Text>
-        {props.giveChoices.map(d => row(d, giveSet.has(d.key), compare?.mineTaskDetailList, () => props.onToggleGive(d.key), `market-give-${d.key}`))}
+        {props.giveChoices.map(d => row(d, giveSet.has(d.key), compare?.mineTaskDetailList, () => props.onToggleGive(d.key), `market-give-${d.key}`, giveRoutes))}
         {!compare ? (
           <View style={s.loading}><ActivityIndicator color={p.btn} size="small" /><Text style={[s.sub, { color: p.cardSoft }]}>Loading duty details…</Text></View>
         ) : null}

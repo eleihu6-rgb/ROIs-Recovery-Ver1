@@ -1,0 +1,58 @@
+# Schedule ▸ Floating limit summary — TG crew 35459.
+# Proves the KPI card renders from the live roster, follows the selected day,
+# and opens all six windows in the detail sheet, in both orientations.
+#
+# Run: maestro test crew-app/.maestro/tg_sched_kpi.yaml --debug-output /tmp/tg-kpi
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "login-screen"
+# The form opens empty on a clean install; pick the TG crew first.
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- tapOn:
+    id: "tab-schedule"
+- extendedWaitUntil:
+    visible:
+      id: "sched-kpi"
+    timeout: 20000
+# The card is one accessible element whose label carries all three figures.
+- assertVisible: ".*All limits through .*28-day flight .*7-day duty .*90-day take-offs.*"
+- takeScreenshot: tg_kpi_01_portrait
+
+# Detail sheet: every window plus both recency lines.
+- tapOn:
+    id: "sched-kpi"
+- assertVisible:
+    id: "kpi-sheet"
+- assertVisible:
+    id: "kpi-sheet-row-flightYear"
+- assertVisible:
+    id: "kpi-sheet-row-duty28"
+- assertVisible:
+    id: "kpi-sheet-row-landings"
+- takeScreenshot: tg_kpi_02_all_limits
+- tapOn:
+    id: "kpi-sheet-close"
+- assertNotVisible:
+    id: "kpi-sheet"
+
+# Landscape is validated by rotating the simulator (Simulator ▸ Device ▸
+# Rotate Right) and re-running `.maestro/tg_sched_kpi_landscape.yaml`.

@@ -137,3 +137,70 @@ The consolidated HTML is self-contained and includes all three review alternativ
 
 This document selects Floating Summary and specifies its landscape enlargement. It does not claim that enlargement is already applied to the HTML or app.
 
+---
+
+## 10. Implementation status — 2026-10-19 (app version 250)
+
+Floating Summary is implemented in the crew app (React Native). The other two
+review options are not in the product.
+
+| Concern | Where |
+|---|---|
+| Pure calculation + view model | `crew-app/src/features/v2/scheduleKpi.ts` |
+| Per-carrier limits | `crew-app/src/features/roster/kpiProfile.ts` |
+| Floating card + detail sheet | `crew-app/src/features/v2/ScheduleKpiPanel.tsx` |
+| Responsive geometry | `kpiPanelGeometry` in `crew-app/src/components/v2/useLayout.ts` |
+| Screen integration (one selected date) | `crew-app/src/features/v2/ScheduleScreen.tsx` |
+| Regression tests | `__tests__/features/scheduleKpi.test.ts`, `scheduleKpiPanel.test.tsx` |
+| Native flows | `.maestro/tg_sched_kpi.yaml`, `tg_sched_kpi_landscape.yaml`, `pr_sched_kpi.yaml` |
+
+Landscape geometry measured on the real inner screen: Duo 951×669 → panel **523×212**
+at x=326, ending 38pt before the rail (target width 520–560). Air and iPad land in
+their target bands; portrait keeps a 355–420pt card above the dock.
+
+### 10.1 Missing data contracts (visible, not hidden)
+
+The app's roster capture fetches only the **previous, current and next month**
+(`ROSTER_MONTH_OFFSETS`). That is enough for the 7/14/28-day windows; it is not
+enough for the rest of the contract, and the panel says so rather than inventing
+figures:
+
+1. **Calendar-year and 12-calendar-month block hours** need ≥ 12 months of roster
+   history. With three months they render `—` / “History incomplete”, and the card
+   shows “N limits need full history”. Resolving this needs a historical roster
+   endpoint (or persisted month captures) covering Jan 1 / the rolling 12 months.
+2. **90-day take-offs / landings** are usually only *partially* covered. When the
+   covered portion already meets the minimum the card shows the proven surplus
+   (`+6`, subtitle `≥ 9 / 3 minimum`); it never claims “met” when the proof is
+   missing, and never shows a deficit it cannot prove.
+3. **Cancellation** is not represented on captured legs (`TripLeg` has no cancel
+   flag). Non-flying assignments (deadhead, positioning) and non-flight duties are
+   excluded; a duty cancelled by the airline disappears from the roster itself.
+4. **Cross-midnight allocation** uses the report-date anchor for duty/block windows
+   and the departure date for each flight and for recency. An operator-specific
+   allocation policy is not available in the app; this is recorded as
+   `allocation: 'report-date'` in the calculation.
+5. **Ground-duty DP** falls back to the roster's own report→release window when the
+   portal publishes no duty total (ground duties are not keyed in the KPI index).
+   Flight duties with no published DP stay `—` / “Duty total not published”.
+
+### 10.2 Verification receipts
+
+- `npx tsc --noEmit` — PASS.
+- `npx jest __tests__/features/scheduleKpi.test.ts __tests__/features/scheduleKpiPanel.test.tsx` — PASS (28 tests: window boundaries, year/leap/DST, dedupe, crew isolation, at/over limit, TO/LDG deficit/at/surplus, incomplete history, calendar tap, list viewport settle, sheet contents, landscape geometry).
+- `npx jest __tests__/features/duoPageLayouts.test.tsx` — PASS (updated for the reserved panel band).
+- iPhone Air (iOS 26.5): `.maestro/tg_sched_kpi.yaml` PASS (portrait + all-limits sheet); landscape PASS.
+- iPhone Duo (iOS 27.1): unfolded inner 951×669 → card **523×212** at x=326 (38pt clear of the rail); rotated 669×951 → card **420×176.7**. Login, Schedule, date tap, list swipe, sheet open, sheet scroll and sheet close all driven on the inner screen via `duoctl`.
+- iPad Air 11-inch (iOS 26.5): portrait and landscape PASS.
+- PR crew 433535 portrait PASS; values differ from TG (34.4h left vs 88.8h) — no account mixing.
+- Screenshots: `docs/assets/screenshots/crew-app/sched-kpi-floating-{air-portrait,air-landscape,pr-portrait,ipad-portrait,ipad-landscape,duo-landscape}[-all-limits]-Ver1.png`.
+- Duo rotation bug found and fixed during that pass: the month re-seat effect depended on the `focus` callback, so changing the column count on rotation snapped the selection back to today, and the reflow's viewability event then stole it. The effect now keys on the month only and a short layout lock ignores the reflow event. Verified on the device: 21 Oct survives landscape → portrait → landscape, and a real swipe afterwards still updates the date. Regression test: “keeps the selected day when the device rotates”.
+- **PR 473006 (busy roster) on the Duo.** Card at 19 Oct: 33.1h flight left, 27.6h duty left, TO/LDG +15 (`≥ 18 / 3 minimum`). Scrolled to 31 Oct: 32.9h / 38.5h / +19. The last duty card ended at y=409 with the panel starting at y=411 — the final duty clears the panel. The sheet showed Duty 7/14/28 and both recency lines; scrolling reached them. Rotation preserved the selected date; the first real drag resumed date updates.
+- That roster exposed three data-handling defects, all fixed with unit tests:
+  1. All-day day-off / leave rows (no published DP) were marking whole duty windows “not published”. They are not duty periods and are now skipped.
+  2. Ground duties stored as 23:00 → 02:00 with the same date were read as negative windows; they now roll the release forward a day.
+  3. `startUTC` / `endUTC` from the portal are base-local wall clocks; rows without a brief time were being dropped entirely. They are now converted like the brief time.
+  4. A FLY row without a brief time now matches the nearest trip duty within six hours, filling a missing published total without double counting.
+- Residual, by design: 473006's 28-day duty window (22 Sep–5 Oct) still shows “Duty total not published” — at least one duty in that span has no published DP and no usable roster window. The card reports the gap instead of inventing hours.
+- Full `npx jest` still reports 7 pre-existing failing suites unrelated to this change (safe-area provider in component tests, `RouteShareCard` colour allowlist, `auth.airline` scan, portal-capture timings).
+

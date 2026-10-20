@@ -20,10 +20,15 @@ import { MeetingCard, MeetingRow, type MeetingActions } from './MeetingCard';
 import { CALENDAR_LEVELS, CalendarView, calendarLevelLabel, type CalendarLevel } from './CalendarView';
 import { RouteMapView } from './RouteMapView';
 import { pickDayArt, SCHED_VIEWS, viewPick, type DayArtName, type SchedViewMode, type SchedViewOption } from './schedView';
+import { ScheduleKpiPanel } from './ScheduleKpiPanel';
+import { buildScheduleKpi, captureWindowCoverage, unavailableKpi } from './scheduleKpi';
+import { kpiProfileFor } from '../roster/kpiProfile';
+import { ROSTER_MONTH_OFFSETS } from '../travel/portalInjectedJs';
 import { useBase } from './useV2';
-import { bottomDockClearance, duoActionStripWidth, useLayout } from '../../components/v2/useLayout';
+import { bottomDockClearance, duoActionStripWidth, kpiPanelGeometry, useLayout } from '../../components/v2/useLayout';
 import { syncMeetings, toggleMeetingMute } from '../meetings/meetingsSlice';
 import { airlineByCode } from '../auth/airlines';
+import { selectCrewCarrier } from '../auth/authSlice';
 import { codeAddsInfo, type GroundDuty } from '../roster/dutyDisplay';
 import type { TimeZoneMode } from '../settings/settingsSlice';
 import { hhmmForInstant, parseRosterUTC } from '../settings/timeFormat';
@@ -47,12 +52,22 @@ export function ScheduleScreen({ route }: Props = {}) {
   const dispatch = useAppDispatch();
   const alertCount = useAppSelector(s => s.notifications.notifications.length);
   const airline = useAppSelector(s => s.auth.airline) ?? '';
+  // Limit profiles follow the carrier the crew actually flies (EK crew K1003
+  // signs in through the ET option), never the portal that answered.
+  const crewCarrier = useAppSelector(selectCrewCarrier);
   const mode = useAppSelector(s => s.settings.timeZoneMode);
   const baseTz = useAppSelector(s => s.settings.baseTimeZone);
   const [now] = useState(() => new Date());
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const month = useMonth(ym.y, ym.m, now);
   const [active, setActive] = useState(month.focusIndex);
+  // Floating limit summary (Floating Summary design). The strip index `active`
+  // IS the selected date: a calendar tap and a duty swipe both land here, so
+  // the calendar highlight, the roster and the KPI figures cannot disagree.
+  const trips = useAppSelector(s => s.trips.trips);
+  const portalDuties = useAppSelector(s => s.duties.duties);
+  const crewId = useAppSelector(s => s.auth.crewId);
+  const [kpiHeight, setKpiHeight] = useState(0);
   // Ver11 roster views: one enum decides which sibling view renders. Timeline is
   // the default so nothing about today's screen changes for a crew who never
   // opens the menu.
@@ -95,6 +110,8 @@ export function ScheduleScreen({ route }: Props = {}) {
   const list = useRef<FlatList<DayModel>>(null);
   const strip = useRef<FlatList<DayModel>>(null);
   const lock = useRef(0);
+  /** True between a layout change and the crew's next real drag. */
+  const holdViewability = useRef(false);
   // iPhone Duo inner screen, landscape: the date strip stays on top as on the
   // phone, the day cards run in two columns under it, and the roster views +
   // Alerts sit in a toolbar down the right side instead of behind the menu.
@@ -107,6 +124,40 @@ export function ScheduleScreen({ route }: Props = {}) {
   const railInStrip = railWidth >= RAIL_W;
   const calendarControlsInHeader = view === 'calendar-compact';
   const compactHeader = width < 560;
+
+  // ── Floating limit summary ──
+  // The regulatory calendar is the crew's own base, not the phone's clock or
+  // the display-mode preference. Fall back to the configured base zone when the
+  // base airport is not in the zone table.
+  const kpiZone = airportZone(base) || baseTz;
+  const selectedDay = month.days[active]?.day ?? null;
+  const selectedCivil = useMemo(
+    () => ({ year: ym.y, monthIdx: ym.m, day: selectedDay ?? now.getDate() }),
+    [ym.y, ym.m, selectedDay, now],
+  );
+  const kpiProfile = useMemo(() => kpiProfileFor(crewCarrier), [crewCarrier]);
+  // The portal capture fetches the previous, current and next month. A month
+  // with no duties is therefore a real empty month, not missing history.
+  const kpiCoverage = useMemo(
+    () => captureWindowCoverage(now, ROSTER_MONTH_OFFSETS),
+    [now],
+  );
+  const kpi = useMemo(
+    () => (kpiProfile
+      ? buildScheduleKpi({
+        trips,
+        duties: portalDuties,
+        selected: selectedCivil,
+        zone: kpiZone,
+        profile: kpiProfile,
+        now,
+        crewId,
+        coverage: kpiCoverage,
+      })
+      : unavailableKpi(selectedCivil, kpiZone, crewCarrier)),
+    [kpiProfile, trips, portalDuties, selectedCivil, kpiZone, now, crewId, crewCarrier, kpiCoverage],
+  );
+  const kpiGeometry = kpiPanelGeometry(width, height, insets, railInStrip);
 
   // The strip shows every calendar day; the list only carries days that actually
   // have something on them (see hasDutyCard), so the two indexes diverge.
@@ -136,6 +187,9 @@ export function ScheduleScreen({ route }: Props = {}) {
   const focus = useCallback((i: number, animated = true) => {
     lock.current = Date.now();
     setActive(i);
+    // Calendar and timeline share one selected day (Floating Summary contract):
+    // a strip tap must also re-seat the Calendar view's selection.
+    setCalDay(month.days[i]?.day ?? null);
     // A month with nothing published has no cards — scrolling an empty list to
     // index 0 throws, so only scroll when there is something to land on.
     const listIndex = resolveCardIndex(stripToList, i, listDays.length);
@@ -144,7 +198,7 @@ export function ScheduleScreen({ route }: Props = {}) {
       list.current?.scrollToIndex({ index: Math.floor(listIndex / cols), animated, viewPosition: 0 });
     }
     strip.current?.scrollToIndex({ index: i, animated, viewPosition: 0.5 });
-  }, [stripToList, listDays.length, cols]);
+  }, [month.days, stripToList, listDays.length, cols]);
 
   // Calendar-event actions. "Join" opens the organiser's link (Teams, Zoom,
   // Google Meet, Webex) in the browser / the Teams app; the alarm chip silences
@@ -160,7 +214,25 @@ export function ScheduleScreen({ route }: Props = {}) {
     },
   }), [dispatch]);
 
-  useEffect(() => { const t = setTimeout(() => focus(month.focusIndex, false), 50); return () => clearTimeout(t); }, [month.focusIndex, focus]);
+  // Seat the list on the month's focus day when the month changes. Held in a
+  // ref so a layout change (rotation re-computes `focus` through its column
+  // count) does not re-run this and snap the crew back to today — the selected
+  // day must survive portrait ↔ landscape.
+  const focusRef = useRef(focus);
+  focusRef.current = focus;
+  useEffect(() => {
+    const t = setTimeout(() => focusRef.current(month.focusIndex, false), 50);
+    return () => clearTimeout(t);
+  }, [month.focusIndex, ym.y, ym.m]);
+
+  // A rotation/fold re-lays out the grid and re-fires viewability at the top of
+  // the list — on a long roster that can land well after a fixed timeout. Hold
+  // viewability until the crew actually drags, so the reflow cannot steal the
+  // selected day; the next real scroll restores the scroll-driven behaviour.
+  useEffect(() => {
+    lock.current = Date.now();
+    holdViewability.current = true;
+  }, [width, height]);
   // Re-seat only when the month (or the day it opens on) changes — a live roster
   // refresh must not throw away the day the crew is looking at.
   useEffect(() => {
@@ -168,6 +240,7 @@ export function ScheduleScreen({ route }: Props = {}) {
   }, [ym.y, ym.m, focusDay]);
 
   const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (holdViewability.current) return;
     if (Date.now() - lock.current < 700) return;
     const first = viewableItems[0]?.index;
     if (first == null) return;
@@ -284,9 +357,21 @@ export function ScheduleScreen({ route }: Props = {}) {
       </View>
       {view === 'timeline' ? (
         <FlatList
-          ref={list} data={listDays} keyExtractor={d => String(d.key)} contentContainerStyle={[s.list, { paddingBottom: bottomDockClearance(width, height, insets, 120) }]} showsVerticalScrollIndicator={false}
+          ref={list} data={listDays} keyExtractor={d => String(d.key)}
+          contentContainerStyle={[s.list, {
+            // The floating summary sits over the list: reserve its measured
+            // height (plus the dock clearance) so the last duty can scroll
+            // completely above it instead of hiding behind the card.
+            paddingBottom: bottomDockClearance(width, height, insets, 120) + kpiHeight + 14,
+          }]}
+          showsVerticalScrollIndicator={false}
           key={`cols-${cols}`} numColumns={cols} columnWrapperStyle={wide ? s.listRow : undefined}
           onViewableItemsChanged={onViewable} viewabilityConfig={{ itemVisiblePercentThreshold: 30 }}
+          onScrollBeginDrag={() => {
+            // A real drag always wins over a programmatic scroll/reflow lock.
+            holdViewability.current = false;
+            lock.current = 0;
+          }}
           onScrollToIndexFailed={info => setTimeout(() => list.current?.scrollToIndex({ index: info.index, animated: false }), 200)}
           ListEmptyComponent={<Text style={[s.empty, { color: p.inkSoft }]}>No duties published for {MON[ym.m]} {ym.y}.</Text>}
           renderItem={({ item, index }) => wide ? (
@@ -299,6 +384,9 @@ export function ScheduleScreen({ route }: Props = {}) {
           )}
           testID={wide ? 'sched-grid' : 'sched-list'}
         />
+      ) : null}
+      {view === 'timeline' ? (
+        <ScheduleKpiPanel kpi={kpi} geometry={kpiGeometry} onMeasure={setKpiHeight} />
       ) : null}
       {view === 'calendar-compact' || view === 'calendar-detail' ? (
         <CalendarView
