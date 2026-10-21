@@ -79,7 +79,7 @@ describe('PortalCaptureScreen completion timing', () => {
 
   afterEach(() => jest.useRealTimers());
 
-  it('completes once after a roster capture despite unrelated JSON chatter', async () => {
+  it('keeps waiting for ROIS duty enrichment despite unrelated JSON chatter', async () => {
     const onCaptured = await mountCapture();
     sendCapture('/api/rosterFlight/selectPortalCalendar?month=one');
 
@@ -90,6 +90,9 @@ describe('PortalCaptureScreen completion timing', () => {
       });
     }
 
+    expect(onCaptured).not.toHaveBeenCalled();
+
+    await act(async () => { jest.advanceTimersByTime(7_500); });
     expect(onCaptured).toHaveBeenCalledTimes(1);
     expect(onCaptured).toHaveBeenCalledWith(trips, duties);
   });
@@ -112,7 +115,7 @@ describe('PortalCaptureScreen completion timing', () => {
     expect(onCaptured).toHaveBeenCalledTimes(1);
   });
 
-  it('does not treat repeated responses from one roster URL as complete, and keeps the original fallback deadline', async () => {
+  it('does not treat repeated responses from one roster URL as complete, and keeps the ROIS fallback deadline', async () => {
     const onCaptured = await mountCapture();
     const url = '/api/rosterFlight/selectPortalCalendar?month=same';
     sendCapture(url, '{"rev":0}');
@@ -131,7 +134,7 @@ describe('PortalCaptureScreen completion timing', () => {
     }
     expect(onCaptured).not.toHaveBeenCalled();
 
-    await act(async () => { jest.advanceTimersByTime(400); });
+    await act(async () => { jest.advanceTimersByTime(8_400); });
     expect(onCaptured).toHaveBeenCalledTimes(1);
     expect(onCaptured).toHaveBeenCalledWith(trips, duties);
   });

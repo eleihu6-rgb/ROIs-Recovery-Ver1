@@ -28,6 +28,9 @@ import type { PortalConfig } from '../auth/airlines';
 // the SPA loads (/api/roster), parses it into trips, and auto-builds the trip.
 
 const FALLBACK_URL = 'https://crew-sea-test.roiscloud.com/tg/portal/';
+const COMPLETE_ROSTER_SETTLE_MS = 600;
+const PARTIAL_ROIS_ROSTER_FALLBACK_MS = 12_000;
+const OTHER_PORTAL_FALLBACK_MS = 4_000;
 
 export function PortalCaptureScreen({
   onClose,
@@ -224,10 +227,12 @@ export function PortalCaptureScreen({
     // Debounced auto-build that waits for a COMPLETE roster. The injected JS
     // fetches a calendar + a report + a detail-all for each month offset
     // (3 × 3 = 9 payloads), in parallel. We build only once all expected roster
-    // payloads have arrived (then a short 0.6s settle), so a slow leg isn't
-    // missed — important now that onCaptured() does an authoritative replace and
-    // the modal unmounts right after, dropping any straggler. A longer 4s
-    // fallback still builds a partial roster if some month returns nothing.
+    // payloads have arrived (then a short 0.6s settle), so a slow report/detail
+    // response cannot leave Trip Details with only its calendar-derived Block.
+    // This matters because onCaptured() performs an authoritative replace and the
+    // modal unmounts immediately, dropping stragglers. ROIS gets a bounded 12s
+    // fallback for an unavailable endpoint; unknown portals keep the original 4s
+    // fallback because they do not have this nine-payload contract.
     // (Note: the regex's selectPortalCalendar also matches the longer
     // selectPortalCalendarDetailAll, so all three per-month URLs are counted.)
     const rosterUrl = /selectPortalCalendar|selectCrewRosterReport/i;
@@ -236,7 +241,11 @@ export function PortalCaptureScreen({
     const EXPECTED_ROSTER_PAYLOADS = ROSTER_MONTH_OFFSETS.length * 3;
     const rosterCount = new Set(captures.current.filter(c => rosterUrl.test(c.url || '')).map(c => c.url)).size;
     const haveAll = rosterCount >= EXPECTED_ROSTER_PAYLOADS;
-    const delay = haveAll ? 600 : 4000;
+    const delay = haveAll
+      ? COMPLETE_ROSTER_SETTLE_MS
+      : nativeAuth
+        ? PARTIAL_ROIS_ROSTER_FALLBACK_MS
+        : OTHER_PORTAL_FALLBACK_MS;
     const deadline = Date.now() + delay;
     // Completion may accelerate when all payloads arrive, but never slide
     // indefinitely as duplicate/updated portal responses keep arriving.

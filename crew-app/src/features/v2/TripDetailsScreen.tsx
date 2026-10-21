@@ -186,11 +186,11 @@ function DutyBlock({
   const first = passes[0];
   const v = first.v;
   const metrics = [
-    group.fdpMinutes != null ? { label: 'FDP', value: fmtDutyMinutes(group.fdpMinutes) } : null,
-    group.dpMinutes != null ? { label: 'DP', value: fmtDutyMinutes(group.dpMinutes) } : null,
-    group.blockMinutes != null ? { label: 'BLOCK', value: fmtDutyMinutes(group.blockMinutes) } : null,
-    group.restHours != null ? { label: 'REST', value: fmtHours(group.restHours) } : null,
-  ].filter((m): m is { label: string; value: string } => m !== null);
+    group.blockMinutes != null ? { key: 'block', label: 'BLOCK', value: fmtDutyMinutes(group.blockMinutes) } : null,
+    group.fdpMinutes != null ? { key: 'fdp', label: 'FDP', value: fmtDutyMinutes(group.fdpMinutes) } : null,
+    group.dpMinutes != null ? { key: 'dp', label: 'DP', value: fmtDutyMinutes(group.dpMinutes) } : null,
+    group.restHours != null ? { key: 'rest', label: 'REST', value: fmtHours(group.restHours) } : null,
+  ].filter((m): m is { key: string; label: string; value: string } => m !== null);
   const markers = [
     v.ready !== '—' ? { label: v.readyWord.toUpperCase(), value: v.ready } : null,
     v.leaveHome !== '—' ? { label: 'LEAVE', value: v.leaveHome } : null,
@@ -234,7 +234,7 @@ function DutyBlock({
           {metrics.length ? (
             <View style={[s.metrics, { borderTopColor: p.cardLine }]}>
               {metrics.map(metric => (
-                <View key={metric.label} style={s.metric}>
+                <View key={metric.key} style={s.metric} testID={`duty-metric-${metric.key}-${group.index}`}>
                   <Text style={[s.metricLabel, { color: p.cardSoft }]}>{metric.label}</Text>
                   <Text style={[s.metricValue, { color: p.cardInk }]} numberOfLines={1} adjustsFontSizeToFit>
                     {metric.value}

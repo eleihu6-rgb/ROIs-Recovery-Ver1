@@ -214,5 +214,14 @@ describe('Trip Details · operational timeline', () => {
     expect(texts).toContain('7h 44m');
     expect(texts).toContain('6h 33m');
     expect(texts).toContain('26h 20m');
+
+    const firstDutyMetrics = textsInOrder(tree.getByTestId('duty-band-0'))
+      .filter(text => ['BLOCK', 'FDP', 'DP', 'REST'].includes(text));
+    const secondDutyMetrics = textsInOrder(tree.getByTestId('duty-band-1'))
+      .filter(text => ['BLOCK', 'FDP', 'DP', 'REST'].includes(text));
+    expect(firstDutyMetrics).toEqual(['BLOCK', 'FDP', 'DP']);
+    expect(secondDutyMetrics).toEqual(['BLOCK', 'FDP', 'DP', 'REST']);
+    expect(tree.getByTestId('duty-metric-block-1')).toBeTruthy();
+    expect(tree.getByTestId('duty-metric-rest-1')).toBeTruthy();
   });
 });

@@ -290,6 +290,42 @@ final class DuoFitUITests: XCTestCase {
 
   // MARK: the walk
 
+  /// PR 473006 ▸ Trip Details: portal-published duty metrics sit together on the
+  /// duty card in the requested operational scan order. This focused path runs on
+  /// Air, Duo Test, and iPad; the runner supplies the device label + screenshot dir.
+  func testTripDutyMetricsPR473006() throws {
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["TRIP_METRICS_SHOT_DIR"])
+    let device = ProcessInfo.processInfo.environment["TRIP_METRICS_DEVICE"] ?? "air"
+    let version = ProcessInfo.processInfo.environment["TRIP_METRICS_SHOT_VERSION"] ?? "1"
+    let name = "trip-duty-metrics-pr473006-\(device)-Ver\(version)"
+
+    try signInAsPR("473006", usePrefilledPassword: true)
+    wait("home-next-trip").tap()
+    wait("page-trip-details")
+    let band = wait("duty-band-0")
+    let block = wait("duty-metric-block-0")
+    let fdp = wait("duty-metric-fdp-0")
+    let dp = wait("duty-metric-dp-0")
+    let rest = wait("duty-metric-rest-0")
+
+    for (label, metric) in [("BLOCK", block), ("FDP", fdp), ("DP", dp), ("REST", rest)] {
+      XCTAssertTrue(metric.label.contains(label), "\(label) is missing from the duty-level metric cell: \(metric.label)")
+      XCTAssertTrue(metric.label.range(of: #"\d+h(?: \d+m)?|\d+m"#, options: .regularExpression) != nil,
+                    "\(label) has no duration value: \(metric.label)")
+      XCTAssertTrue(band.frame.contains(metric.frame), "\(label) must stay inside the duty card")
+    }
+    XCTAssertLessThan(block.frame.midX, fdp.frame.midX, "BLOCK must be before FDP")
+    XCTAssertLessThan(fdp.frame.midX, dp.frame.midX, "FDP must be before DP")
+    XCTAssertLessThan(dp.frame.midX, rest.frame.midX, "DP must be before REST")
+
+    if device == "duo" {
+      shot(name)
+    } else {
+      let url = URL(fileURLWithPath: directory).appendingPathComponent("\(name).png")
+      try XCUIScreen.main.screenshot().pngRepresentation.write(to: url)
+    }
+  }
+
   /// Universal iPad build: real PR login, rotation, native modal, and TG switch.
   /// Run only this test on an iPad; existing Duo tests keep their own setup.
   func testIPadHomeKeepsPortraitPanelsContentSized() throws {
