@@ -221,7 +221,7 @@ export const DEFAULT_AIRLINE = 'ET';
 // Test credentials for the airline picker's prefill (dev/QA convenience only —
 // the login form itself now starts empty, see LoginScreen).
 export const TEST_CREW_ID = '35459';
-export const TEST_CREW_PW = 'Pier2026';
+export const TEST_CREW_PW = '2026Pier';
 
 // Per-airline test-crew prefill (sim/QA). Lets the login screen swap the
 // auto-filled crew id/pw when the operator switches airline — but ONLY while the

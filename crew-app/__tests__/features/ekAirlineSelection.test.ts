@@ -33,7 +33,7 @@ describe('EK airline selection', () => {
   it('prefills the approved EK test credentials', () => {
     // K1003 (Khalid Al Nuaimi) is a real Emirates crew, the default EK login.
     expect(TEST_CREDENTIALS.EK).toEqual({crewId: 'K1003', password: 'Pier2026'});
-    expect(prefillForAirline('EK', '35459', 'Pier2026')).toEqual({
+    expect(prefillForAirline('EK', '35459', '2026Pier')).toEqual({
       crewId: 'K1003', password: 'Pier2026',
     });
   });
@@ -49,6 +49,7 @@ describe('EK airline selection', () => {
     expect(loginRouteForAirline('PR')).toBe('Capture');
     expect(airlineByCode('TG').portalKind).toBe('rois');
     expect(airlineByCode('PR').portalKind).toBe('rois');
+    expect(TEST_CREDENTIALS.TG).toEqual({crewId: '35459', password: '2026Pier'});
     expect(TEST_CREDENTIALS.PR).toEqual({crewId: '433535', password: 'Pier2020'});
   });
 

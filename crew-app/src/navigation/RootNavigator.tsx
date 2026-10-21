@@ -452,7 +452,7 @@ export function RootNavigator() {
         <Stack.Screen
           name="Capture"
           component={LoginCaptureScreen}
-          initialParams={{ airline: 'TG', crewId: '35459', password: 'Pier2026', keepLogin: false }}
+          initialParams={{ airline: 'TG', crewId: '35459', password: '2026Pier', keepLogin: false }}
         />
       ) : (
         <>
