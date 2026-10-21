@@ -7,7 +7,7 @@
 <main class="app"><nav class="modes" aria-label="Duty Swap modes"><span>Matrix</span><span>Market</span><span class="active">Ticket</span><span>Twin Rail</span></nav><nav class="steps" aria-label="Ticket progress"></nav><section id="content" class="content"></section><footer class="footer"><button id="back">← Back</button><button id="next" class="primary"></button></footer></main>
 <dialog id="result"><h2>Mockup complete</h2><p>The app checks legality before sending the request to the selected crew. This preview does not contact the crew portal.</p><button onclick="document.querySelector('#result').close()">Back to ticket</button></dialog>
 <script>
-const names=['Give','Want','Match','Send'];
+const names=['Give','Want','Pick','Send'];
 const duties=[{id:'585',code:'PR585/PR586',date:'22 Oct',time:'09:55–18:25',route:'MNL → CEB → MNL'},{id:'181',code:'PR181/PR182',date:'26 Oct',time:'07:10–15:30',route:'MNL → TPE → MNL'},{id:'453',code:'PR453/PR454',date:'28 Oct',time:'08:20–17:15',route:'MNL → GES → MNL',locked:true}];
 const offers=[{id:'481903',duties:[{code:'PR223/PR224',date:'22 Oct',time:'22:25 → 24 Oct 16:20',route:'MNL → BNE → MNL'},{code:'PR1861/PR1862',date:'26 Oct',time:'09:10–14:25',route:'MNL → CEB → MNL'}]},{id:'345945',duties:[{code:'PR213/PR214',date:'22 Oct',time:'11:20 → 24 Oct 09:00',route:'MNL → SYD → MNL'},{code:'PR1845/PR1846',date:'26 Oct',time:'07:10–12:35',route:'MNL → CEB → MNL'}]}];
 let step=0, selected=new Set(), chosen=null, note='',filter='',type='Any duty',start='2026-10-22',end='2026-10-27';

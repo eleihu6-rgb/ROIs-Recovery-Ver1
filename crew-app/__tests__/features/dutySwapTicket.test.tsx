@@ -14,6 +14,7 @@ import { TicketScreen } from '../../src/features/dutySwap/market/TicketScreen';
 import { layoutFor } from '../../src/components/v2/useLayout';
 import { toCrews, type ApiCompare, type ApiCrewRow } from '../../src/features/dutySwap/dutySwapModel';
 import { outOfDuties } from '../../src/features/dutySwap/market/marketModel';
+import { PALETTES } from '../../src/theme/carrier';
 
 const search: { data: ApiCrewRow[] } = require('../fixtures/dutySwap/search.json');
 const compare421051: { data: ApiCompare } = require('../fixtures/dutySwap/compare-421051.json');
@@ -70,9 +71,16 @@ async function mount(ui: React.ReactElement): Promise<{ store: Store; r: ReturnT
 
 
 describe('Ticket navigation', () => {
-  it.each([[420,912],[912,420],[669,951],[951,669],[834,1210],[1210,834]])('keeps numbered stages and a single review at %sx%s', async (w,h) => {
+  it.each([[420,912],[912,420],[669,951],[951,669],[834,1210],[1210,834]])('keeps numbered stages and contained duty summaries at %sx%s', async (w,h) => {
     mockLayout.current = layoutFor(w,h);
     const {r} = await mount(<TicketScreen />);
+    const expectSummarySurface = (testID: string) => {
+      expect(r.getByTestId(testID)).toHaveStyle({
+        backgroundColor: PALETTES.sia.cardSolid,
+        borderColor: PALETTES.sia.cardLine,
+        borderWidth: 1,
+      });
+    };
     await waitFor(() => expect(r.getByTestId(`ticket-give-${pr124.key}`)).toBeTruthy());
     for (const [i, name] of ['give','want','match','send'].entries()) {
       expect(within(r.getByTestId(`ticket-stage-${name}`)).getByText(String(i+1))).toBeTruthy();
@@ -83,13 +91,19 @@ describe('Ticket navigation', () => {
     expect(r.getByTestId(`ticket-give-${pr124.key}`)).toHaveAccessibilityState({checked:true});
     fireEvent.press(r.getByTestId('ticket-next'));
     expect(within(r.getByTestId('ticket-selected-give')).getByText(pr124.code)).toBeTruthy();
+    expectSummarySurface('ticket-selected-give');
     fireEvent.press(r.getByTestId('ticket-next'));
     await waitFor(() => expect(r.getByTestId('ticket-match-421051')).toBeTruthy());
+    expectSummarySurface('ticket-selected-give');
+    expect(r.getByTestId('ticket-match-421051')).toHaveAccessibilityState({selected:false});
     fireEvent.press(r.getByTestId('ticket-match-421051'));
+    expect(r.getByTestId('ticket-match-421051')).toHaveAccessibilityState({selected:true});
     expect(r.getByTestId('ticket-matches')).toBeTruthy();
     fireEvent.press(r.getByTestId('ticket-next'));
     expect(r.getAllByTestId('swap-ticket')).toHaveLength(1);
     expect(r.getAllByTestId('ticket-send')).toHaveLength(1);
+    expectSummarySurface('ticket-selected-give');
+    expectSummarySurface('ticket-selected-take');
     fireEvent.changeText(r.getByTestId('ticket-note'), 'Keep my note');
     fireEvent.press(r.getByTestId('ticket-back'));
     fireEvent.press(r.getByTestId('ticket-next'));

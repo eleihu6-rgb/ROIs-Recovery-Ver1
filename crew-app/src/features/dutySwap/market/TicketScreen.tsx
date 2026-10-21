@@ -200,7 +200,7 @@ function TicketFlow({ switcher, actionsInRail = false }: { switcher?: React.Reac
       </View> : offer && crewB ? <ScrollView contentContainerStyle={s.body} testID="swap-ticket">
         <Text style={[s.h, { color: p.ink }]}>Review your swap</Text>
         <Text style={[s.sub, { color: p.inkSoft }]}>{auth.crewId} ⇄ {crewB.crewId}</Text>
-        <View style={[s.groups, (wide || tall) && s.columns]}><View style={(wide || tall) ? s.group : undefined}>{summary}</View><View style={(wide || tall) ? s.group : undefined}><DutyGroup title={`You take from ${crewB.crewId}`} icon="take" duties={take} p={p} details={compareOthers(crewB.crewId)} /></View></View>
+        <View style={[s.groups, (wide || tall) && s.columns]}><View style={(wide || tall) ? s.group : undefined}>{summary}</View><View style={(wide || tall) ? s.group : undefined}><DutyGroup title={`You take from ${crewB.crewId}`} icon="take" duties={take} p={p} testID="ticket-selected-take" details={compareOthers(crewB.crewId)} /></View></View>
         {delta ? <View style={[s.delta, { backgroundColor: p.cardSolid }]}>{([['FDP', signedHhmm(delta.fdp)], ['BLH', signedHhmm(delta.blh)], ['CREDIT', signedHhmm(delta.crd)], ['DO', String(delta.dayOff)]] as const).map(([k,v]) => <View key={k}><Text style={[s.over, { color: p.cardSoft }]}>{k}</Text><Text style={[s.code, { color: p.btn }]}>{v}</Text></View>)}</View> : <Text style={[s.sub, { color: p.inkSoft }]}>Credit comparison unavailable until all duty details are loaded. Legality is checked when you send.</Text>}
         <TextInput value={note} onChangeText={setNote} placeholder={`Note for ${crewB.crewId} (optional)`} placeholderTextColor={p.cardSoft} multiline style={[s.input, { backgroundColor: p.cardSolid, color: p.cardInk, borderColor: p.cardLine }]} testID="ticket-note" />
       </ScrollView> : <Empty p={p} text="Go back and choose a match to build your swap request." />}
@@ -232,7 +232,7 @@ function DutyCard({ duty, p, details, action }: { duty: SwapDuty; p: Palette; de
   </View>;
 }
 function DutyGroup({ title, icon, duties, p, testID, details }: { title: string; icon?: 'give' | 'take'; duties: SwapDuty[]; p: Palette; testID?: string; details?: ApiTaskDetail[] }) {
-  return <View testID={testID} style={s.group}><View style={[s.titleRow, { marginBottom: space.sm8 }]}>{icon ? <TitleIcon name={icon} color={p.cardInk} /> : null}<Text style={[s.over, s.flex, { color: p.cardSoft }]}>{title}</Text></View>{duties.map(d => <DutyCard key={d.key} duty={d} p={p} details={details} />)}</View>;
+  return <View testID={testID} style={[s.group, s.summaryCard, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]}><View style={[s.titleRow, { marginBottom: space.sm8 }]}>{icon ? <TitleIcon name={icon} color={p.cardInk} /> : null}<Text style={[s.over, s.flex, { color: p.cardSoft }]}>{title}</Text></View>{duties.map(d => <DutyCard key={d.key} duty={d} p={p} details={details} />)}</View>;
 }
 function TitleIcon({ name, color }: { name: 'give' | 'take'; color: string }) {
   return <View testID={`ticket-icon-${name}`} accessibilityLabel={name === 'give' ? 'You give' : 'You take'} style={[s.titleIcon, { backgroundColor: tint(color, 0.12) }]}><Icon name={name} size={15} color={color} /></View>;
@@ -256,7 +256,7 @@ const s = StyleSheet.create({
   dateDay: { ...font.h2 }, dateDow: { ...font.caption },
   wantChip: { flexDirection: 'row', alignItems: 'center', gap: space.xs4, alignSelf: 'flex-start', borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.sm8, paddingVertical: 2, marginTop: space.xs4 },
   wantText: { ...font.caption, fontWeight: '700', flexShrink: 1 },
-  groups: { gap: space.md12 }, group: { flexGrow: 1, flexBasis: 0, minWidth: 0 }, summaryPane: { flex: 1 },
+  groups: { gap: space.md12 }, group: { flexGrow: 1, flexBasis: 0, minWidth: 0 }, summaryCard: { borderWidth: 1, borderRadius: radius.md, padding: space.md12 }, summaryPane: { flex: 1 },
   empty: { alignItems: 'center', padding: space.xl24, gap: space.sm8 }, over: { ...font.overline },
   delta: { flexDirection: 'row', justifyContent: 'space-between', padding: space.md12, borderRadius: radius.md },
   input: { minHeight: 48, borderWidth: 1, borderRadius: radius.md, padding: space.md12, ...font.body },

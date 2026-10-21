@@ -6,7 +6,7 @@ for (const [width,height] of [[420,912],[912,420],[669,951],[951,669],[834,1210]
   test(`Ticket multi-duty flow ${width}x${height}`, async ({ page }) => {
     await page.setViewportSize({width,height});
     await page.goto(`file://${root}/docs/assets/mockups/crew-app/duty-swap-mockups-Ver2.html`);
-    for (const [i,name] of ['Give','Want','Match','Send'].entries()) await expect(page.locator('.step').nth(i)).toHaveText(`${i+1}${name}`);
+    for (const [i,name] of ['Give','Want','Pick','Send'].entries()) await expect(page.locator('.step').nth(i)).toHaveText(`${i+1}${name}`);
     await expect(page.locator('#next')).toBeDisabled();
     await expect(page.getByRole('checkbox').last()).toBeDisabled();
     await page.locator('[data-give="585"]').click();
@@ -31,7 +31,7 @@ for (const [width,height] of [[420,912],[912,420],[669,951],[951,669],[834,1210]
     if (height>550) await page.locator('#theme').click();
     await expect(page.locator('body')).toHaveJSProperty('scrollWidth',width);
     await expect(page.locator('body')).toHaveJSProperty('scrollHeight',height);
-    await page.screenshot({path:`${root}/docs/assets/screenshots/crew-app/ticket-mockup-${width}x${height}-Ver2.png`,fullPage:true});
+    await page.screenshot({path:`${root}/docs/assets/screenshots/crew-app/ticket-mockup-${width}x${height}-Ver3.png`,fullPage:true});
     await page.locator('#next').click();
     await expect(page.getByRole('dialog')).toContainText('does not contact the crew portal');
   });

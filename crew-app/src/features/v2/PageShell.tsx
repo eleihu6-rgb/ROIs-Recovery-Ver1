@@ -17,9 +17,11 @@ export const SINGLE_COLUMN_MAX = 560;
 export const EmbeddedPageContext = createContext(false);
 
 export function PageShell({
-  title, children, right, testID, scroll = true, hero, layout = 'auto', titleNode, headerAccessory,
+  title, children, right, testID, scroll = true, hero, layout = 'auto', titleNode, headerAccessory, onBack,
 }: {
   title: string; children: React.ReactNode; right?: React.ReactNode; testID?: string;
+  /** Override the header back action for an in-route detail state. */
+  onBack?: () => void;
   /** Replaces the title text with a control in the same place (e.g. the Duty
    *  Swap Matrix | Market switch); `title` stays the page's name. */
   titleNode?: React.ReactNode;
@@ -75,7 +77,7 @@ export function PageShell({
   return (
     <GradientScreen palette={p} texture={false}>
       <View style={[s.head, { paddingTop: headerTop }]} testID="page-header">
-        <Pressable onPress={() => nav.goBack()} hitSlop={12} style={s.iconBtn} accessibilityLabel="back" testID="page-back">
+        <Pressable onPress={onBack ?? (() => nav.goBack())} hitSlop={12} style={s.iconBtn} accessibilityLabel="back" testID="page-back">
           <Icon name="back" size={24} color={p.ink} strokeWidth={1.8} />
         </Pressable>
         {titleNode ? <View style={s.titleNode}>{titleNode}</View> : (

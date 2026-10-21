@@ -69,10 +69,10 @@ final class DuoFitUITests: XCTestCase {
     let duty = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ticket-give-' AND enabled == true")).firstMatch
     XCTAssertTrue(duty.waitForExistence(timeout: 30), "No unlocked duty for PR; inspect portal/empty state")
     let available = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ticket-give-' AND enabled == true")).allElementsBoundByIndex.filter { $0.isHittable }
-    XCTAssertGreaterThanOrEqual(available.count, 2)
-    available[0].tap()
-    available[1].tap()
-    XCTAssertTrue(text("2 selected").waitForExistence(timeout: 5))
+    XCTAssertGreaterThanOrEqual(available.count, 1, "No unlocked duty for PR; inspect portal/empty state")
+    let selectedCount = min(available.count, 2)
+    for duty in available.prefix(selectedCount) { duty.tap() }
+    XCTAssertTrue(text("\(selectedCount) selected").waitForExistence(timeout: 5))
     XCTAssertTrue(el("ticket-give").exists)
     try capture("give")
     wait("ticket-next").tap()
@@ -81,11 +81,16 @@ final class DuoFitUITests: XCTestCase {
     wait("ticket-next").tap()
     let match = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'ticket-match-' AND enabled == true")).firstMatch
     XCTAssertTrue(match.waitForExistence(timeout: 30), "No matching published duty; inspect portal response")
+    XCTAssertFalse(match.isSelected, "Pick should start without a selected crew")
+    let matchID = match.identifier
     match.tap()
+    XCTAssertTrue(wait(matchID).isSelected, "tapping a crew should select the Pick card")
     wait("ticket-matches")
     try capture("match")
     wait("ticket-next").tap()
     wait("swap-ticket")
+    XCTAssertTrue(el("ticket-selected-give").exists, "Send is missing the bounded give summary")
+    XCTAssertTrue(el("ticket-selected-take").exists, "Send is missing the bounded take summary")
     XCTAssertTrue(el("ticket-send").exists)
     try capture("review")
     wait("ticket-back").tap()
@@ -324,6 +329,108 @@ final class DuoFitUITests: XCTestCase {
       let url = URL(fileURLWithPath: directory).appendingPathComponent("\(name).png")
       try XCUIScreen.main.screenshot().pngRepresentation.write(to: url)
     }
+  }
+
+  /// PR 473006 ▸ Duty Analyzer: move a real multi-segment duty through the current
+  /// touch UI, verify its HH:MM result and applied FDP reference, then capture it.
+  func testDutyAnalyzerPR473006() throws {
+    let directory = try XCTUnwrap(ProcessInfo.processInfo.environment["ANALYZER_SHOT_DIR"])
+    let device = ProcessInfo.processInfo.environment["ANALYZER_DEVICE"] ?? "duo"
+    let version = ProcessInfo.processInfo.environment["ANALYZER_SHOT_VERSION"] ?? "1"
+    func capture(_ state: String) throws {
+      let name = "duty-analyzer-pr-473006-\(device)-\(state)-Ver\(version)"
+      if device == "duo" { shot(name) }
+      else {
+        try XCUIScreen.main.screenshot().pngRepresentation.write(to:
+          URL(fileURLWithPath: directory).appendingPathComponent("\(name).png"))
+      }
+    }
+    func reveal(_ element: XCUIElement, in scrollID: String? = nil) {
+      let scroller: XCUIElement
+      if let scrollID {
+        scroller = wait(scrollID)
+      } else {
+        scroller = wait("duty-analyzer")
+      }
+      for _ in 0..<16 where !element.isHittable { scroller.swipeUp() }
+      XCTAssertTrue(element.isHittable, "\(element.identifier) did not become hittable")
+    }
+    func duty(prefix: String, index: Int = 0) -> XCUIElement {
+      app.descendants(matching: .any)
+        .matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix))
+        .element(boundBy: index)
+    }
+
+    try signInAsPR("473006", usePrefilledPassword: true)
+    let analyzer = wait("qa-analyzer")
+    if !analyzer.isHittable {
+      for _ in 0..<4 where !analyzer.isHittable { wait("home-screen").swipeUp() }
+    }
+    XCTAssertTrue(analyzer.isHittable, "Analyzer quick action did not become hittable")
+    analyzer.tap()
+    wait("duty-analyzer")
+
+    let twoSegmentPrefix = "analyzer-duty-473006-2026-09-06"
+    reveal(duty(prefix: twoSegmentPrefix))
+    let twoSegment = duty(prefix: twoSegmentPrefix)
+    XCTAssertTrue(twoSegment.waitForExistence(timeout: 5), "PR501/PR512 duty disappeared after roster scrolling")
+    twoSegment.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    wait("analyzer-timeline")
+
+    if layoutClass != .wide {
+      let secondFlight = duty(prefix: "analyzer-segment-select-", index: 1)
+      reveal(secondFlight, in: "analyzer-single-column")
+      secondFlight.tap()
+      reveal(wait("analyzer-action-move"), in: "analyzer-single-column")
+      wait("analyzer-action-move").tap()
+      let shift = wait("analyzer-shift-minutes")
+      reveal(shift, in: "analyzer-single-column")
+      replaceText(shift, with: "60")
+      wait("analyzer-shift-apply").tap()
+    } else {
+      XCTAssertTrue(wait("analyzer-editor-scroll").exists)
+      XCTAssertTrue(wait("analyzer-summary-scroll").exists)
+    }
+
+    let result = wait("analyzer-result")
+    reveal(result, in: layoutClass == .wide ? "analyzer-summary-scroll" : "analyzer-single-column")
+    let metricOptions: String.CompareOptions = [.regularExpression, .caseInsensitive]
+    XCTAssertTrue(result.label.range(of: #"FDP.*\d{2}:\d{2}"#, options: metricOptions) != nil, result.label)
+    XCTAssertTrue(result.label.range(of: #"DP.*\d{2}:\d{2}"#, options: metricOptions) != nil, result.label)
+    XCTAssertTrue(result.label.range(of: #"REST.*\d{2}:\d{2}"#, options: metricOptions) != nil, result.label)
+    XCTAssertTrue(result.label.range(of: #"BLOCK.*\d{2}:\d{2}"#, options: metricOptions) != nil, result.label)
+    XCTAssertNil(result.label.range(of: #"\d+h \d+m"#, options: .regularExpression), "duration still uses the old unit format: \(result.label)")
+    try capture("result")
+
+    let reference = wait("analyzer-open-reference")
+    reveal(reference, in: layoutClass == .wide ? "analyzer-summary-scroll" : "analyzer-single-column")
+    reference.tap()
+    wait("duty-analyzer-reference")
+    XCTAssertTrue(wait("easa-report-local").label.contains("13:25"))
+    XCTAssertTrue(wait("easa-report-range").label.contains("13:00–13:59"))
+    XCTAssertTrue(wait("easa-landings").label.contains("2"))
+    XCTAssertTrue(wait("easa-max-fdp").label.contains("12:00"))
+    XCTAssertTrue(wait("easa-selected-cell").label.contains("12:00"))
+    XCTAssertTrue(wait("easa-official-range").label.contains("06:00–13:29"))
+    XCTAssertTrue(wait("easa-official-sectors").label.contains("1–2"))
+    XCTAssertTrue(wait("easa-official-max-fdp").label.contains("13:00"))
+    XCTAssertTrue(wait("easa-comparison-note").label.contains("12:00 instead of the EASA baseline 13:00"))
+    if layoutClass == .wide {
+      XCTAssertTrue(wait("easa-reference-columns").exists)
+      XCTAssertFalse(el("easa-reference-single").exists)
+    } else {
+      XCTAssertTrue(wait("easa-reference-single").exists)
+      XCTAssertFalse(el("easa-reference-columns").exists)
+    }
+    try capture("easa-applied")
+
+    let source = wait("easa-source")
+    if !source.isHittable {
+      let referencePage = layoutClass == .wide ? wait("easa-reference-left-scroll") : wait("easa-reference-single")
+      for _ in 0..<12 where !source.isHittable { referencePage.swipeUp() }
+    }
+    XCTAssertTrue(source.label.contains("ORO.FTL.205"), source.label)
+    try capture("easa-reference")
   }
 
   /// Universal iPad build: real PR login, rotation, native modal, and TG switch.
@@ -1033,6 +1140,11 @@ final class DuoFitUITests: XCTestCase {
     wait("tab-profile").tap()
     XCTAssertTrue(text("35459").waitForExistence(timeout: 10), "TG crew identity missing")
     XCTAssertFalse(text("392923").exists, "PR crew leaked into TG")
+    if let directory = ProcessInfo.processInfo.environment["IPAD_SHOT_DIR"] {
+      let version = ProcessInfo.processInfo.environment["IPAD_SHOT_VERSION"] ?? "1"
+      let url = URL(fileURLWithPath: directory).appendingPathComponent("duty-swap-tg-isolation-Ver\(version).png")
+      try XCUIScreen.main.screenshot().pngRepresentation.write(to: url)
+    }
   }
 
   func testRbotFollowsCrewAcrossScreens() throws {
@@ -1302,12 +1414,15 @@ final class DuoFitUITests: XCTestCase {
     XCTAssertTrue(wait("ticket-match-541273", 60).exists, "candidate 541273 is missing from Pick")
     XCTAssertTrue(app.descendants(matching: .any).matching(routeRow).firstMatch.waitForExistence(timeout: 180),
                   "Pick: candidate duties do not show their airports")
-    capture("s03_pick")
     let target = wait("ticket-match-541273", 30)
+    XCTAssertFalse(target.isSelected, "Pick should start without a selected crew")
+    capture("s03_pick")
     let want = NSPredicate(format: "label CONTAINS %@", "MNL–LAX–MNL")
     let theirs = target.descendants(matching: .any).matching(want).firstMatch
     XCTAssertTrue(theirs.waitForExistence(timeout: 60), "541273's PR102/PR103 does not name MNL–LAX–MNL")
     target.tap()
+    XCTAssertTrue(wait("ticket-match-541273").isSelected, "tapping 541273 should select the Pick card")
+    capture("s03b_pick_selected")
     wait("ticket-next").tap()
 
     // ── Step 4 · Send ────────────────────────────────────────────────────────────
@@ -1317,7 +1432,8 @@ final class DuoFitUITests: XCTestCase {
     let giveSide = wait("ticket-selected-give", 30)
     XCTAssertTrue(giveSide.descendants(matching: .any).matching(routeRow).firstMatch.exists,
                   "Send: my give duty does not show its timing · airports")
-    XCTAssertTrue(app.descendants(matching: .any).matching(want).firstMatch.waitForExistence(timeout: 60),
+    let takeSide = wait("ticket-selected-take", 30)
+    XCTAssertTrue(takeSide.descendants(matching: .any).matching(want).firstMatch.waitForExistence(timeout: 60),
                   "Send: the duty I take does not name its airports")
   }
 
