@@ -1,0 +1,1315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Duty What-if</title>
+<style>
+/* Layout: compact operational editor that becomes a two-pane flight desk on wide screens. */
+:root {
+  --page: #eeeef4;
+  --surface: #ffffff;
+  --surface-soft: #f7f6fa;
+  --ink: #1a1a2e;
+  --ink-soft: #636b7f;
+  --muted: #8b92a5;
+  --line: #e7e4ef;
+  --primary: #3d2b8c;
+  --accent: #7b4fb8;
+  --tint: #f3eefb;
+  --tint-strong: #e8def7;
+  --on-primary: #ffffff;
+  --danger: #d94040;
+  --danger-soft: #fff3f3;
+  --danger-line: #ffd0d0;
+  --scrim: rgba(26, 26, 46, 0.18);
+  --shadow: 0 18px 46px rgba(26, 26, 46, 0.12);
+  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-data: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #12111a;
+    --surface: #1c1a27;
+    --surface-soft: #252231;
+    --ink: #f4f1fa;
+    --ink-soft: #c0bacd;
+    --muted: #938ca3;
+    --line: #393447;
+    --primary: #bca5ee;
+    --accent: #9a78d0;
+    --tint: #2d273d;
+    --tint-strong: #403454;
+    --on-primary: #1a1426;
+    --danger: #ff7777;
+    --danger-soft: #3d2229;
+    --danger-line: #67313d;
+    --scrim: rgba(0, 0, 0, 0.34);
+    --shadow: 0 18px 46px rgba(0, 0, 0, 0.36);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #12111a;
+  --surface: #1c1a27;
+  --surface-soft: #252231;
+  --ink: #f4f1fa;
+  --ink-soft: #c0bacd;
+  --muted: #938ca3;
+  --line: #393447;
+  --primary: #bca5ee;
+  --accent: #9a78d0;
+  --tint: #2d273d;
+  --tint-strong: #403454;
+  --on-primary: #1a1426;
+  --scrim: rgba(0, 0, 0, 0.34);
+  --shadow: 0 18px 46px rgba(0, 0, 0, 0.36);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { min-height: 100%; }
+body {
+  min-height: 100%;
+  margin: 0;
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow-x: hidden;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.42;
+}
+button, input { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  outline-offset: 2px;
+}
+button:disabled, input:disabled { cursor: not-allowed; }
+.review-shell { width: min(100%, 1240px); margin: 0 auto; display: grid; gap: 14px; }
+.review-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.review-title { min-width: 0; }
+.review-title h1 { margin: 0; font-size: 20px; line-height: 1.15; letter-spacing: -0.02em; }
+.review-title p { margin: 4px 0 0; color: var(--ink-soft); font-size: 12px; }
+.review-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.control-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.control-group button {
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.control-group button[aria-pressed="true"] { color: var(--on-primary); background: var(--primary); }
+.icon-button {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--surface);
+  cursor: pointer;
+}
+.icon-button svg { width: 18px; height: 18px; }
+.preview-stage { display: flex; justify-content: center; min-width: 0; }
+.app-frame {
+  width: 100%;
+  max-width: 1120px;
+  min-width: 0;
+  overflow: hidden;
+  container-type: inline-size;
+  container-name: analyzer;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface-soft);
+  box-shadow: var(--shadow);
+  transition: max-width 180ms ease;
+}
+.app-frame.preview-phone { width: 420px; max-width: 100%; }
+.app-frame.preview-wide { width: 951px; max-width: 100%; }
+.app-frame.preview-full { width: 1120px; max-width: 100%; }
+.app-header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px 12px;
+  color: var(--on-primary);
+  background: var(--primary);
+}
+.app-header h2 { margin: 0; text-align: center; font-size: 17px; line-height: 1.2; letter-spacing: -0.01em; }
+.app-header button {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--on-primary);
+  background: color-mix(in srgb, var(--on-primary) 14%, transparent);
+  cursor: pointer;
+}
+.app-header svg { width: 21px; height: 21px; }
+.app-content { padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.duty-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 16px;
+  color: var(--on-primary);
+  background: linear-gradient(132deg, var(--primary), var(--accent));
+}
+.overline {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.74;
+}
+.duty-route { margin: 0; font-size: 19px; line-height: 1.12; letter-spacing: -0.02em; text-wrap: balance; }
+.duty-meta { margin: 5px 0 0; font-size: 12px; opacity: 0.8; }
+.context-chips { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+.context-chip {
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--on-primary) 27%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--on-primary) 12%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.workspace { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.86fr); gap: 12px; align-items: start; min-width: 0; }
+.editor, .summary { min-width: 0; display: grid; gap: 12px; }
+.panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.panel-heading {
+  min-height: 44px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-heading h3 { margin: 0; font-size: 14px; }
+.panel-heading p { margin: 1px 0 0; color: var(--muted); font-size: 10px; }
+.panel-body { padding: 12px; }
+.duty-report-card {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--tint);
+}
+.duty-report-card .report-row { padding: 0; }
+.segment-list { display: grid; gap: 8px; }
+.segment-card {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+.segment-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent); }
+.segment-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.segment-ident { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.segment-index {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--on-primary);
+  background: var(--primary);
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 700;
+}
+.segment-flight { min-width: 0; }
+.segment-flight b { display: block; font-family: var(--font-data); font-size: 13px; }
+.segment-flight span { display: block; margin-top: 1px; color: var(--ink-soft); font-size: 11px; }
+.select-segment {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+.segment-card.selected .select-segment { border-color: var(--primary); color: var(--primary); background: var(--tint); }
+.segment-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--primary);
+  background: var(--tint);
+  font-size: 9px;
+  font-weight: 700;
+}
+.diversion-form { display: grid; gap: 10px; }
+.diversion-route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr) 20px minmax(0, 1fr);
+  gap: 6px;
+  align-items: end;
+}
+.airport-input {
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--surface);
+  font-family: var(--font-data);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+.route-arrow { align-self: center; color: var(--muted); text-align: center; font-weight: 700; }
+.diversion-times { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.diversion-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.add-segment-button {
+  min-height: 50px;
+  padding: 9px 16px;
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  color: var(--on-primary);
+  background: var(--primary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+.report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--tint);
+}
+.report-copy { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.report-copy svg { width: 17px; height: 17px; flex: 0 0 auto; color: var(--primary); }
+.report-copy b { display: block; font-size: 11px; }
+.report-copy span { display: block; margin-top: 1px; color: var(--ink-soft); font-size: 10px; }
+.switch-wrap { min-height: 48px; display: inline-flex; align-items: center; gap: 8px; padding-inline: 6px; cursor: pointer; touch-action: manipulation; }
+.switch-wrap span { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
+.switch-wrap input { position: absolute; opacity: 0; pointer-events: none; }
+.switch-track {
+  width: 44px;
+  height: 26px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  transition: background 140ms ease;
+}
+.switch-thumb { width: 18px; height: 18px; border-radius: 999px; background: var(--muted); transition: transform 140ms ease, background 140ms ease; }
+.switch-wrap input:checked + .switch-track { background: var(--primary); }
+.switch-wrap input:checked + .switch-track .switch-thumb { transform: translateX(18px); background: var(--on-primary); }
+.time-grid { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); gap: 8px; align-items: end; }
+.time-arrow { align-self: center; color: var(--muted); text-align: center; }
+.field { min-width: 0; display: grid; gap: 4px; }
+.field label, .field-label { color: var(--ink-soft); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.time-input {
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--surface);
+  font-family: var(--font-data);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  touch-action: manipulation;
+}
+.time-control { display: grid; grid-template-columns: 50px minmax(0, 1fr) 50px; gap: 6px; align-items: stretch; }
+.time-stepper {
+  min-width: 50px;
+  min-height: 50px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--primary);
+  background: var(--tint);
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 18px;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+.time-input:disabled { color: var(--ink-soft); background: color-mix(in srgb, var(--surface-soft) 86%, var(--line)); opacity: 1; }
+.original-line { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.original-line.changed { color: var(--primary); font-weight: 700; }
+.flight-action-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; gap: 8px; margin-bottom: 12px; }
+.flight-action-button {
+  min-height: 52px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--surface-soft);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+.flight-action-button[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); background: var(--tint); }
+.flight-action-button.cancel { color: var(--ink-soft); background: var(--surface); }
+.adjust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.option-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.option-button {
+  min-height: 48px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: var(--surface-soft);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.option-button[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); background: var(--tint); }
+.shift-box { display: grid; gap: 9px; padding: 11px; border-radius: 12px; background: var(--surface-soft); }
+.shift-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.shift-header b { font-size: 12px; }
+.shift-header span { color: var(--muted); font-size: 10px; }
+.shift-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: stretch; }
+.shift-input-wrap {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.shift-input {
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  padding: 9px 11px;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.shift-unit { padding-right: 9px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.shift-sign {
+  min-width: 46px;
+  min-height: 50px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: var(--surface);
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 700;
+}
+.shift-apply {
+  min-height: 50px;
+  padding: 9px 15px;
+  border: 1px solid var(--primary);
+  border-radius: 9px;
+  color: var(--on-primary);
+  background: var(--primary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.helper { margin: 0; color: var(--muted); font-size: 10px; }
+.composition-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.comp-button {
+  min-height: 52px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink-soft);
+  background: var(--surface-soft);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.comp-button small { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; font-weight: 600; }
+.comp-button[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); background: var(--tint); }
+.facility { display: grid; gap: 7px; margin-top: 11px; }
+.facility-note {
+  padding: 9px 10px;
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+  color: var(--ink-soft);
+  background: var(--surface-soft);
+  font-size: 10px;
+}
+.facility-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.facility-button {
+  min-height: 56px;
+  padding: 9px 7px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink-soft);
+  background: var(--surface-soft);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.facility-button small { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; font-weight: 500; }
+.facility-button[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); background: var(--tint); }
+.summary { position: sticky; top: 12px; }
+.result-hero { padding: 14px; color: var(--on-primary); background: var(--primary); }
+.result-state { display: flex; align-items: center; gap: 8px; }
+.result-state svg { width: 19px; height: 19px; }
+.result-state b { font-size: 14px; }
+.result-hero p { margin: 4px 0 0 27px; font-size: 10px; opacity: 0.76; }
+.result-hero.exceeded { color: var(--danger); background: var(--danger-soft); border-bottom: 1px solid var(--danger-line); }
+.result-hero.exceeded .result-state,
+.result-hero.exceeded .result-state b { color: var(--danger); }
+.result-hero.exceeded p { color: var(--ink-soft); opacity: 1; }
+.metric-row.exceeded { background: var(--danger-soft); }
+.metric-row.exceeded .metric-label,
+.metric-row.exceeded .metric-main strong,
+.metric-row.exceeded .metric-limit { color: var(--danger); }
+.metric-row.exceeded .metric-margin { color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger-line); }
+.metric-warning { display: inline-flex; width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; }
+.metric-warning svg { width: 14px; height: 14px; }
+.metric-list { display: grid; }
+.metric-row {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 13px;
+  border-top: 1px solid var(--line);
+}
+.metric-row:first-child { border-top: 0; }
+.metric-label { font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+.metric-values { min-width: 0; }
+.metric-main { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.metric-main strong { font-family: var(--font-data); font-size: 17px; font-variant-numeric: tabular-nums; }
+.metric-main del { color: var(--muted); font-family: var(--font-data); font-size: 10px; text-decoration-thickness: 1px; }
+.metric-limit { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.metric-margin {
+  min-width: 72px;
+  padding: 5px 7px;
+  border-radius: 999px;
+  color: var(--primary);
+  background: var(--tint);
+  text-align: center;
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.result-note { padding: 11px 13px; border-top: 1px solid var(--line); color: var(--ink-soft); background: var(--surface-soft); font-size: 10px; }
+.delta-log { display: grid; gap: 7px; }
+.delta-item { display: grid; grid-template-columns: 7px minmax(0, 1fr); gap: 8px; align-items: start; }
+.delta-dot { width: 7px; height: 7px; margin-top: 5px; border-radius: 999px; background: var(--accent); }
+.delta-item b { display: block; font-size: 10px; }
+.delta-item span { display: block; margin-top: 1px; color: var(--muted); font-size: 9px; }
+.actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; padding: 12px; }
+.action-button {
+  min-height: 44px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.action-button.secondary { border: 1px solid var(--line); color: var(--ink); background: var(--surface); }
+.action-button.primary { border: 1px solid var(--primary); color: var(--on-primary); background: var(--primary); }
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  max-width: calc(100% - 32px);
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: var(--on-primary);
+  background: var(--primary);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  font-weight: 700;
+  transform: translate(-50%, 18px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.toast.show { transform: translate(-50%, 0); opacity: 1; }
+.review-note { text-align: center; color: var(--muted); font-size: 11px; }
+[hidden] { display: none !important; }
+@media (max-width: 760px) {
+  body { padding-block-start: 12px; }
+  .review-bar { align-items: flex-start; }
+  .review-title { width: 100%; }
+  .review-controls { width: 100%; justify-content: space-between; }
+}
+@container analyzer (max-width: 620px) {
+  .app-content { padding: 10px; gap: 9px; }
+  .duty-strip { grid-template-columns: 1fr; padding: 13px; }
+  .context-chips { justify-content: flex-start; }
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .summary { position: static; }
+  .flight-action-options { grid-template-columns: minmax(0, 1fr); }
+  .adjust-grid { grid-template-columns: minmax(0, 1fr); }
+  .panel-body { padding: 10px; }
+  .app-header { min-height: 52px; }
+  .duty-route { font-size: 18px; }
+  .segment-head { gap: 8px; }
+  .time-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .time-arrow, .report-status-field { display: none; }
+  .time-input { padding-inline: 10px; font-size: 15px; text-align: center; }
+  .time-control { grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; }
+  .time-stepper { min-width: 56px; font-size: 14px; }
+  .shift-entry { grid-template-columns: minmax(0, 1fr) auto; }
+  .shift-apply { grid-column: 1 / -1; }
+  .diversion-route { grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr); }
+  .diversion-route .planned-destination { grid-column: 1 / -1; }
+  .diversion-route .recovery-arrow { display: none; }
+  .diversion-times { grid-template-columns: minmax(0, 1fr); }
+  .diversion-actions { grid-template-columns: minmax(0, 1fr); }
+  .add-segment-button { width: 100%; }
+  .metric-row { grid-template-columns: 43px minmax(0, 1fr) auto; gap: 7px; padding-inline: 10px; }
+  .metric-main { gap: 5px; flex-wrap: wrap; }
+  .metric-main strong { font-size: 15px; }
+  .metric-margin { min-width: 62px; }
+}
+@media (max-width: 430px) {
+  body { padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px)); }
+  .review-title p { max-width: 34ch; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="review-shell">
+  <header class="review-bar">
+    <div class="review-title">
+      <h1>Duty Analyzer · Current-duty What-if</h1>
+      <p>Interactive local prototype · PR501 / PR512 · 06 Sep 2026</p>
+    </div>
+    <div class="review-controls">
+      <div class="control-group" aria-label="Preview width">
+        <button type="button" data-preview="phone" aria-pressed="false">Air</button>
+        <button type="button" data-preview="wide" aria-pressed="false">Duo</button>
+        <button type="button" data-preview="full" aria-pressed="true">iPad</button>
+      </div>
+      <button type="button" class="icon-button" id="themeToggle" aria-label="Toggle appearance" title="Toggle appearance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a7.5 7.5 0 1 0 9 9 6 6 0 0 1-9-9Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="preview-stage">
+    <section class="app-frame preview-full" id="appFrame" aria-label="Crew App Duty Analyzer prototype">
+      <header class="app-header">
+        <button type="button" aria-label="Back to roster" title="Back to roster">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h2>Duty What-if</h2>
+        <button type="button" id="resetTop" aria-label="Reset scenario" title="Reset scenario">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+      </header>
+
+      <div class="app-content">
+        <section class="duty-strip">
+          <div>
+            <span class="overline">Duty 1 of 1 · Sun 06 Sep 2026</span>
+            <h3 class="duty-route" id="dutyRoute">MNL → SIN → MNL</h3>
+            <p class="duty-meta" id="dutyMeta">PR501 · PR512 · 2 sectors · From My roster</p>
+          </div>
+          <div class="context-chips" aria-label="Derived duty context">
+            <span class="context-chip">Flight deck · from sign-in</span>
+            <span class="context-chip">Ends at home base · MNL</span>
+          </div>
+        </section>
+
+        <div class="workspace">
+          <div class="editor">
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Duty timeline</h3>
+                  <p>Report first, followed by each flight segment in operating order.</p>
+                </div>
+                <span class="context-chip" style="color:var(--primary);background:var(--tint);border-color:var(--line)">Local copy</span>
+              </div>
+              <div class="panel-body">
+                <section class="duty-report-card" aria-label="Duty report time">
+                  <div class="report-row">
+                    <div class="report-copy">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>
+                      <div><b>Duty report time</b><span id="reportHint">Frozen at 05:25</span></div>
+                    </div>
+                    <label class="switch-wrap">
+                      <span>Freeze</span>
+                      <input id="freezeReport" type="checkbox" checked aria-label="Freeze report time">
+                      <span class="switch-track"><span class="switch-thumb"></span></span>
+                    </label>
+                  </div>
+                  <div class="time-grid">
+                    <div class="field">
+                      <label for="reportTime">Report · 06 Sep</label>
+                      <div class="time-control">
+                        <button type="button" class="time-stepper report-stepper" data-time-target="reportTime" data-time-delta="-5" aria-label="Move report time 5 minutes earlier" disabled>−5</button>
+                        <input class="time-input" id="reportTime" type="time" value="05:25" step="60" disabled>
+                        <button type="button" class="time-stepper report-stepper" data-time-target="reportTime" data-time-delta="5" aria-label="Move report time 5 minutes later" disabled>+5</button>
+                      </div>
+                      <span class="original-line" id="reportOriginal">MNL · Local 05:25 · UTC 21:25 (−1 day)</span>
+                    </div>
+                    <span class="time-arrow" aria-hidden="true">›</span>
+                    <div class="field report-status-field" aria-hidden="true">
+                      <span class="field-label">Status</span>
+                      <input class="time-input" type="text" value="Fixed" disabled tabindex="-1">
+                      <span class="original-line">Change only when unfrozen</span>
+                    </div>
+                  </div>
+                </section>
+                <div class="segment-list" id="segmentList"></div>
+              </div>
+            </section>
+
+            <section class="panel" id="flightActionsPanel" hidden>
+              <div class="panel-heading">
+                <div><h3>Flight actions</h3><p>Selected flight: <span id="selectedSegmentLabel"></span></p></div>
+              </div>
+              <div class="panel-body">
+                <div class="flight-action-options">
+                  <button type="button" class="flight-action-button" id="showMoveAction" aria-pressed="false">Move linked times</button>
+                  <button type="button" class="flight-action-button" id="showDiversionAction" aria-pressed="false">Divert &amp; add recovery</button>
+                  <button type="button" class="flight-action-button cancel" id="cancelFlightActions">Cancel selection</button>
+                </div>
+                <div id="moveActionForm" hidden>
+                  <div class="panel-heading" style="padding-inline:0"><div><h3>Move linked times</h3><p>Report stays separate.</p></div></div>
+                <div class="adjust-grid">
+                  <div class="shift-box">
+                    <div class="field-label">Move scope</div>
+                    <div class="option-row" id="scopeOptions">
+                      <button type="button" class="option-button" data-scope="segment" aria-pressed="true">This segment</button>
+                      <button type="button" class="option-button" data-scope="following" aria-pressed="false">This + following</button>
+                      <button type="button" class="option-button" data-scope="duty" aria-pressed="false">Whole duty</button>
+                    </div>
+                    <p class="helper">Moves departure and arrival together, preserving each selected sector’s block time.</p>
+                  </div>
+                  <div class="shift-box">
+                    <div class="shift-header"><b>Shift selected scope</b><span>Report stays separate</span></div>
+                    <div class="shift-entry">
+                      <div class="shift-input-wrap">
+                        <input class="shift-input" id="shiftMinutes" type="number" min="0" step="1" value="60" inputmode="numeric" aria-label="Shift amount in minutes">
+                        <span class="shift-unit">min</span>
+                      </div>
+                      <button type="button" class="shift-sign" id="shiftSign" data-sign="1" aria-label="Shift later">+ later</button>
+                      <button type="button" class="shift-apply" id="applyShift">Apply shift</button>
+                    </div>
+                    <p class="helper">Enter any minute value. Tap “+ later” to switch to “− earlier”. Edit DEP or ARR directly to change flight duration.</p>
+                  </div>
+                  </div>
+                </div>
+                <div id="diversionActionForm" hidden>
+                  <div class="panel-heading" style="padding-inline:0"><div><h3>Divert &amp; add recovery</h3><p>Change this flight’s destination, then continue to its planned destination.</p></div></div>
+                  <div class="diversion-form" style="padding-top:12px">
+                <div class="diversion-route">
+                  <div class="field">
+                    <span class="field-label">Selected origin</span>
+                    <input class="airport-input" id="diversionOrigin" type="text" value="SIN" disabled aria-label="Selected segment origin">
+                  </div>
+                  <span class="route-arrow">→</span>
+                  <div class="field">
+                    <label for="diversionAirport">Divert to</label>
+                    <input class="airport-input" id="diversionAirport" type="text" value="CRK" maxlength="4" autocapitalize="characters" inputmode="text">
+                  </div>
+                  <span class="route-arrow recovery-arrow">→</span>
+                  <div class="field planned-destination">
+                    <span class="field-label">Planned destination</span>
+                    <input class="airport-input" id="plannedDestination" type="text" value="MNL" disabled aria-label="Planned destination">
+                  </div>
+                </div>
+                <div class="diversion-times">
+                  <div class="field">
+                    <label for="divertArrival">Arrive divert · 06 Sep</label>
+                    <input class="time-input" id="divertArrival" type="time" value="16:20" step="60">
+                  </div>
+                  <div class="field">
+                    <label for="recoveryDeparture">Recovery depart · 06 Sep</label>
+                    <input class="time-input" id="recoveryDeparture" type="time" value="17:05" step="60">
+                  </div>
+                  <div class="field">
+                    <label for="recoveryArrival">Recovery arrive · 06 Sep</label>
+                    <input class="time-input" id="recoveryArrival" type="time" value="17:50" step="60">
+                  </div>
+                </div>
+                    <div class="diversion-actions">
+                      <p class="helper">The selected segment keeps its flight identity. A local recovery sector is inserted immediately after it and all downstream calculations update.</p>
+                      <button type="button" class="add-segment-button" id="applyDiversion">Add recovery segment</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <div><h3>Crew composition</h3><p>Basic already means two pilots.</p></div>
+              </div>
+              <div class="panel-body">
+                <div class="composition-row" id="compositionOptions">
+                  <button type="button" class="comp-button" data-composition="basic" aria-pressed="true">Basic<small>2 pilots</small></button>
+                  <button type="button" class="comp-button" data-composition="3P" aria-pressed="false">3 pilots<small>Augmented</small></button>
+                  <button type="button" class="comp-button" data-composition="4P" aria-pressed="false">4 pilots<small>Augmented</small></button>
+                </div>
+                <div class="facility" id="facilitySection">
+                  <span class="field-label">Rest facility</span>
+                  <div class="facility-note" id="facilityNote">Not required for Basic composition.</div>
+                  <div class="facility-options" id="facilityOptions" hidden>
+                    <button type="button" class="facility-button" data-facility="1" aria-pressed="false">Class 1<small>Bunk / separate compartment</small></button>
+                    <button type="button" class="facility-button" data-facility="2" aria-pressed="true">Class 2<small>Reclining seat, screened</small></button>
+                    <button type="button" class="facility-button" data-facility="3" aria-pressed="false">Class 3<small>Reclining seat</small></button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="summary" aria-live="polite">
+            <section class="panel">
+              <div class="result-hero">
+                <div class="result-state">
+                  <svg id="resultIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+                  <b id="resultHeadline">Within evaluated limits</b>
+                </div>
+                <p>Local advisory · Portal roster remains unchanged</p>
+              </div>
+              <div class="metric-list">
+                <div class="metric-row" data-metric-row="fdp">
+                  <span class="metric-label">FDP</span>
+                  <div class="metric-values"><div class="metric-main"><strong id="fdpValue">11h 20m</strong><del id="fdpOriginal">10h 20m</del></div><div class="metric-limit" id="fdpLimit">Limit 12h 00m</div></div>
+                  <span class="metric-margin" id="fdpMargin">Margin 0h 40m</span>
+                </div>
+                <div class="metric-row" data-metric-row="dp">
+                  <span class="metric-label">DP</span>
+                  <div class="metric-values"><div class="metric-main"><strong id="dpValue">11h 35m</strong><del id="dpOriginal">10h 35m</del></div><div class="metric-limit">Limit 16h 00m</div></div>
+                  <span class="metric-margin" id="dpMargin">Margin 4h 25m</span>
+                </div>
+                <div class="metric-row" data-metric-row="rest">
+                  <span class="metric-label">Rest</span>
+                  <div class="metric-values"><div class="metric-main"><strong id="restValue">42h 10m</strong><del id="restOriginal">43h 10m</del></div><div class="metric-limit">Minimum 12h 00m · home base</div></div>
+                  <span class="metric-margin" id="restMargin">Above 30h 10m</span>
+                </div>
+                <div class="metric-row" data-metric-row="block">
+                  <span class="metric-label">Block</span>
+                  <div class="metric-values"><div class="metric-main"><strong id="blockValue">7h 01m</strong><del id="blockOriginal" hidden>7h 01m</del></div><div class="metric-limit">Limit 23h 00m</div></div>
+                  <span class="metric-margin" id="blockMargin">Margin 15h 59m</span>
+                </div>
+              </div>
+              <div class="result-note" id="resultNote">FDP and DP extend because PR512 moved 1 hour. Block stays unchanged because departure and arrival moved together. Following Rest reduces by 1 hour.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading"><div><h3>What changed</h3><p>Compared with portal-published times</p></div></div>
+              <div class="panel-body delta-log" id="deltaLog"></div>
+            </section>
+
+            <section class="panel">
+              <div class="actions">
+                <button type="button" class="action-button secondary" id="resetBottom">Reset</button>
+                <button type="button" class="action-button primary" id="saveScenario">Save scenario</button>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <p class="review-note">Prototype only. No portal roster data is changed, and no scenario leaves this page.</p>
+</div>
+<div class="toast" id="toast" role="status">Scenario preview saved locally for this session</div>
+
+<script>
+(() => {
+  const DAY = 24 * 60;
+  const original = {
+    report: 5 * 60 + 25,
+    segments: [
+      { flight: 'PR501', from: 'MNL', to: 'SIN', fleet: 'A321', dep: 7 * 60 + 32, arr: 10 * 60 + 56 },
+      { flight: 'PR512', from: 'SIN', to: 'MNL', fleet: 'A321', dep: 12 * 60 + 8, arr: 15 * 60 + 45 },
+    ],
+    nextReportAbsolute: 2 * DAY + 11 * 60 + 10,
+  };
+  const initial = {
+    report: original.report,
+    segments: [
+      { ...original.segments[0], originalIndex: 0, added: false },
+      { ...original.segments[1], originalIndex: 1, added: false, dep: original.segments[1].dep + 60, arr: original.segments[1].arr + 60 },
+    ],
+    frozen: true,
+    selected: null,
+    action: null,
+    scope: 'segment',
+    composition: 'basic',
+    facility: 2,
+  };
+  let state = structuredClone(initial);
+
+  const byId = id => document.getElementById(id);
+  const fields = { report: byId('reportTime') };
+
+  const pad = value => String(value).padStart(2, '0');
+  const formatClock = value => `${pad(Math.floor(((value % DAY) + DAY) % DAY / 60))}:${pad(((value % DAY) + DAY) % DAY % 60)}`;
+  const parseClock = value => {
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+  const formatDuration = value => {
+    const abs = Math.abs(Math.round(value));
+    return `${Math.floor(abs / 60)}h ${pad(abs % 60)}m`;
+  };
+  const formatDelta = value => {
+    if (value === 0) return '';
+    const sign = value > 0 ? '+' : '−';
+    return `${sign}${formatDuration(value)}`;
+  };
+  const inputToAbsolute = (value, reference) => {
+    let parsed = parseClock(value);
+    while (parsed - reference > 12 * 60) parsed -= DAY;
+    while (reference - parsed > 12 * 60) parsed += DAY;
+    return parsed;
+  };
+  const basicFdpLimit = report => {
+    const minute = ((report % DAY) + DAY) % DAY;
+    if (minute >= 7 * 60 && minute <= 12 * 60 + 59) return 13 * 60;
+    if (minute >= 13 * 60 && minute <= 13 * 60 + 59) return 12 * 60;
+    if (minute >= 14 * 60 && minute <= 14 * 60 + 59) return 11 * 60;
+    if (minute >= 15 * 60 && minute <= 16 * 60 + 59) return 10 * 60 + 30;
+    if (minute >= 5 * 60 && minute <= 6 * 60 + 59) return 12 * 60;
+    return 10 * 60;
+  };
+  const fdpLimitFor = () => {
+    if (state.composition === 'basic') return basicFdpLimit(state.report);
+    const limits = {
+      '3P': { 1: 16 * 60, 2: 15 * 60, 3: 14 * 60 },
+      '4P': { 1: 17 * 60, 2: 16 * 60, 3: 15 * 60 },
+    };
+    return limits[state.composition][state.facility];
+  };
+  const metricsFor = source => {
+    const finalArrival = source.segments[source.segments.length - 1].arr;
+    const fdp = finalArrival - source.report;
+    const dp = fdp + 15;
+    const releaseAbsolute = finalArrival + 15;
+    const rest = original.nextReportAbsolute - releaseAbsolute;
+    const block = source.segments.reduce((total, segment) => total + (segment.arr - segment.dep), 0);
+    return { fdp, dp, rest, block };
+  };
+  const metricText = (id, value) => { byId(id).textContent = formatDuration(value); };
+  const setMargin = (id, margin, minimum = false) => {
+    const node = byId(id);
+    if (margin >= 0) {
+      node.textContent = `${minimum ? 'Above' : 'Margin'} ${formatDuration(margin)}`;
+    } else {
+      node.textContent = `${minimum ? 'Short' : 'Over'} ${formatDuration(margin)}`;
+    }
+  };
+
+  const originalFor = segment => segment.originalIndex == null ? null : original.segments[segment.originalIndex];
+  const AIRPORT_OFFSET = { MNL: 8 * 60, CRK: 8 * 60, SIN: 8 * 60 };
+  const eventAirport = (segment, key) => key === 'dep' ? segment.from : segment.to;
+  const utcClock = (localMinutes, airport) => formatClock(localMinutes - (AIRPORT_OFFSET[airport] ?? 0));
+  const segmentSourceLabel = (segment, key) => {
+    const portal = originalFor(segment);
+    const airport = eventAirport(segment, key);
+    if (!portal) return `${airport} · Local ${formatClock(segment[key])} · UTC ${utcClock(segment[key], airport)} · added locally`;
+    const delta = segment[key] - portal[key];
+    const routeChanged = segment.from !== portal.from || segment.to !== portal.to;
+    const route = routeChanged ? ` · planned ${portal.from}→${portal.to}` : '';
+    const current = delta ? ` · Now Local ${formatClock(segment[key])} · UTC ${utcClock(segment[key], airport)}` : '';
+    return `${airport} · Local ${formatClock(portal[key])} · UTC ${utcClock(portal[key], airport)}${delta ? ` · ${formatDelta(delta)}` : ''}${current}${route}`;
+  };
+  const segmentCardHtml = (segment, index) => `
+    <article class="segment-card${index === state.selected ? ' selected' : ''}" data-segment-card="${index}">
+      <div class="segment-head">
+        <div class="segment-ident">
+          <span class="segment-index">${index + 1}</span>
+          <div class="segment-flight"><b>${segment.flight}</b><span>${segment.from} → ${segment.to} · ${segment.fleet}</span>${segment.added ? '<span class="segment-badge">Recovery segment · local</span>' : ''}</div>
+        </div>
+        <button type="button" class="select-segment" data-select-segment="${index}">${index === state.selected ? 'Selected' : 'Select'}</button>
+      </div>
+      <div class="time-grid">
+        <div class="field">
+          <label for="seg${index}Dep">Departure · ${segment.from} · 06 Sep</label>
+          <div class="time-control">
+            <button type="button" class="time-stepper" data-segment-time="dep" data-segment-index="${index}" data-time-delta="-5" aria-label="Move ${segment.flight} departure 5 minutes earlier">−5</button>
+            <input class="time-input" id="seg${index}Dep" data-segment-input="dep" data-segment-index="${index}" type="time" value="${formatClock(segment.dep)}" step="60">
+            <button type="button" class="time-stepper" data-segment-time="dep" data-segment-index="${index}" data-time-delta="5" aria-label="Move ${segment.flight} departure 5 minutes later">+5</button>
+          </div>
+          <span class="original-line${segmentSourceLabel(segment, 'dep').includes('·') ? ' changed' : ''}">${segmentSourceLabel(segment, 'dep')}</span>
+        </div>
+        <span class="time-arrow" aria-hidden="true">→</span>
+        <div class="field">
+          <label for="seg${index}Arr">Arrival · ${segment.to} · 06 Sep</label>
+          <div class="time-control">
+            <button type="button" class="time-stepper" data-segment-time="arr" data-segment-index="${index}" data-time-delta="-5" aria-label="Move ${segment.flight} arrival 5 minutes earlier">−5</button>
+            <input class="time-input" id="seg${index}Arr" data-segment-input="arr" data-segment-index="${index}" type="time" value="${formatClock(segment.arr)}" step="60">
+            <button type="button" class="time-stepper" data-segment-time="arr" data-segment-index="${index}" data-time-delta="5" aria-label="Move ${segment.flight} arrival 5 minutes later">+5</button>
+          </div>
+          <span class="original-line${segmentSourceLabel(segment, 'arr').includes('·') ? ' changed' : ''}">${segmentSourceLabel(segment, 'arr')}</span>
+        </div>
+      </div>
+    </article>`;
+
+  function bindSegmentControls() {
+    document.querySelectorAll('[data-select-segment]').forEach(button => button.addEventListener('click', () => {
+      const nextIndex = Number(button.dataset.selectSegment);
+      state.selected = state.selected === nextIndex ? null : nextIndex;
+      state.action = null;
+      render();
+    }));
+    document.querySelectorAll('[data-segment-time]').forEach(button => button.addEventListener('click', () => {
+      const index = Number(button.dataset.segmentIndex);
+      const key = button.dataset.segmentTime;
+      state.segments[index][key] += Number(button.dataset.timeDelta);
+      render();
+    }));
+    document.querySelectorAll('[data-segment-input]').forEach(input => input.addEventListener('change', () => {
+      const index = Number(input.dataset.segmentIndex);
+      const key = input.dataset.segmentInput;
+      state.segments[index][key] = inputToAbsolute(input.value, state.segments[index][key]);
+      render();
+    }));
+  }
+
+  function syncFields() {
+    fields.report.value = formatClock(state.report);
+    fields.report.disabled = state.frozen;
+    document.querySelectorAll('.report-stepper').forEach(button => { button.disabled = state.frozen; });
+    byId('freezeReport').checked = state.frozen;
+    byId('reportHint').textContent = state.frozen ? `Frozen at ${formatClock(state.report)}` : 'Editable · use portal time as reference';
+    byId('segmentList').innerHTML = state.segments.map(segmentCardHtml).join('');
+    bindSegmentControls();
+    const route = [state.segments[0].from, ...state.segments.map(segment => segment.to)];
+    byId('dutyRoute').textContent = route.join(' → ');
+    byId('dutyMeta').textContent = `${state.segments.map(segment => segment.flight).join(' · ')} · ${state.segments.length} sectors · From My roster`;
+  }
+
+  function updateOriginalLabels() {
+    const reportDelta = state.report - original.report;
+    byId('reportOriginal').textContent = `MNL · Local ${formatClock(original.report)} · UTC ${utcClock(original.report, 'MNL')}${reportDelta ? ` · ${formatDelta(reportDelta)} · Now Local ${formatClock(state.report)} · UTC ${utcClock(state.report, 'MNL')}` : ''}`;
+    byId('reportOriginal').classList.toggle('changed', reportDelta !== 0);
+  }
+
+  function updateSelection() {
+    const hasSelection = state.selected != null;
+    byId('flightActionsPanel').hidden = !hasSelection;
+    byId('moveActionForm').hidden = !hasSelection || state.action !== 'move';
+    byId('diversionActionForm').hidden = !hasSelection || state.action !== 'diversion';
+    byId('showMoveAction').setAttribute('aria-pressed', String(state.action === 'move'));
+    byId('showDiversionAction').setAttribute('aria-pressed', String(state.action === 'diversion'));
+    if (!hasSelection) return;
+    const segment = state.segments[state.selected];
+    byId('selectedSegmentLabel').textContent = `${state.selected + 1} · ${segment.flight} · ${segment.from}→${segment.to}`;
+    const planned = originalFor(segment);
+    const plannedDestination = planned?.to ?? segment.to;
+    const recovery = state.segments[state.selected + 1]?.added && state.segments[state.selected + 1].to === plannedDestination
+      ? state.segments[state.selected + 1]
+      : null;
+    byId('diversionOrigin').value = segment.from;
+    byId('plannedDestination').value = plannedDestination;
+    byId('diversionAirport').value = recovery ? segment.to : segment.to === plannedDestination ? 'CRK' : segment.to;
+    byId('divertArrival').value = formatClock(segment.arr);
+    byId('recoveryDeparture').value = formatClock(recovery?.dep ?? segment.arr + 45);
+    byId('recoveryArrival').value = formatClock(recovery?.arr ?? segment.arr + 90);
+    byId('applyDiversion').textContent = recovery ? 'Update recovery segment' : 'Add recovery segment';
+    document.querySelectorAll('[data-scope]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.scope === state.scope)));
+  }
+
+  function updateComposition() {
+    document.querySelectorAll('[data-composition]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.composition === state.composition)));
+    const augmented = state.composition !== 'basic';
+    byId('facilityNote').hidden = augmented;
+    byId('facilityOptions').hidden = !augmented;
+    document.querySelectorAll('[data-facility]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.facility) === state.facility)));
+  }
+
+  function updateDeltaLog(current, baseline) {
+    const changes = [];
+    const reportDelta = state.report - original.report;
+    if (reportDelta) changes.push([`Report ${formatDelta(reportDelta)}`, `Portal ${formatClock(original.report)} → ${formatClock(state.report)}`]);
+    state.segments.forEach(segment => {
+      const portal = originalFor(segment);
+      if (!portal) {
+        changes.push([`Added ${segment.flight} · ${segment.from}→${segment.to}`, `${formatClock(segment.dep)}–${formatClock(segment.arr)} · recovery segment`]);
+        return;
+      }
+      const depDelta = segment.dep - portal.dep;
+      const arrDelta = segment.arr - portal.arr;
+      const routeChanged = segment.from !== portal.from || segment.to !== portal.to;
+      if (depDelta || arrDelta || routeChanged) {
+        const pieces = [];
+        if (routeChanged) pieces.push(`${portal.from}→${portal.to} changed to ${segment.from}→${segment.to}`);
+        if (depDelta) pieces.push(`DEP ${formatDelta(depDelta)}`);
+        if (arrDelta) pieces.push(`ARR ${formatDelta(arrDelta)}`);
+        changes.push([`${segment.flight} · ${pieces.join(' · ')}`, `${formatClock(portal.dep)}–${formatClock(portal.arr)} → ${formatClock(segment.dep)}–${formatClock(segment.arr)}`]);
+      }
+    });
+    const fdpDelta = current.fdp - baseline.fdp;
+    const restDelta = current.rest - baseline.rest;
+    if (fdpDelta || restDelta) changes.push([`Duty impact · FDP ${formatDelta(fdpDelta)} · Rest ${formatDelta(restDelta)}`, 'Block changes only when a sector duration changes.']);
+    if (!changes.length) changes.push(['No local changes', 'Times match the portal roster.']);
+    byId('deltaLog').innerHTML = changes.map(([title, detail]) => `<div class="delta-item"><span class="delta-dot"></span><div><b>${title}</b><span>${detail}</span></div></div>`).join('');
+  }
+
+  function render() {
+    syncFields();
+    updateOriginalLabels();
+    updateSelection();
+    updateComposition();
+
+    const current = metricsFor(state);
+    const baseline = metricsFor({ report: original.report, segments: original.segments });
+    const fdpLimit = fdpLimitFor();
+    const dpLimit = 16 * 60;
+    const restMinimum = 12 * 60;
+    const blockLimit = 23 * 60;
+
+    metricText('fdpValue', current.fdp);
+    metricText('fdpOriginal', baseline.fdp);
+    metricText('dpValue', current.dp);
+    metricText('dpOriginal', baseline.dp);
+    metricText('restValue', current.rest);
+    metricText('restOriginal', baseline.rest);
+    metricText('blockValue', current.block);
+    byId('fdpLimit').textContent = `Limit ${formatDuration(fdpLimit)} · ${state.composition === 'basic' ? 'Basic' : `${state.composition} · Class ${state.facility}`}`;
+    const margins = {
+      fdp: fdpLimit - current.fdp,
+      dp: dpLimit - current.dp,
+      rest: current.rest - restMinimum,
+      block: blockLimit - current.block,
+    };
+    setMargin('fdpMargin', margins.fdp);
+    setMargin('dpMargin', margins.dp);
+    setMargin('restMargin', margins.rest, true);
+    setMargin('blockMargin', margins.block);
+
+    const blockChanged = current.block !== baseline.block;
+    byId('blockOriginal').hidden = !blockChanged;
+    metricText('blockOriginal', baseline.block);
+    const within = Object.values(margins).every(margin => margin >= 0);
+    const warningSvg = '<path d="M12 4 3.5 19h17L12 4Z"/><path d="M12 9v4M12 16.5h.01"/>';
+    const checkSvg = '<path d="m5 12 4 4L19 6"/>';
+    byId('resultHeadline').textContent = within ? 'Within evaluated limits' : 'A limit needs attention';
+    byId('resultIcon').innerHTML = within ? checkSvg : warningSvg;
+    document.querySelector('.result-hero').classList.toggle('exceeded', !within);
+    Object.entries(margins).forEach(([key, margin]) => {
+      const row = document.querySelector(`[data-metric-row="${key}"]`);
+      const label = row.querySelector('.metric-label');
+      row.classList.toggle('exceeded', margin < 0);
+      label.innerHTML = margin < 0 ? `<span class="metric-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${warningSvg}</svg></span>${key.toUpperCase()}` : key.toUpperCase();
+    });
+
+    const finalArrival = state.segments[state.segments.length - 1].arr;
+    const finalShift = finalArrival - original.segments[original.segments.length - 1].arr;
+    const durationChanged = state.segments.length !== original.segments.length || state.segments.some(segment => {
+      const portal = originalFor(segment);
+      return !portal || (segment.arr - segment.dep) !== (portal.arr - portal.dep);
+    });
+    const messages = [];
+    if (finalShift) messages.push(`FDP and DP ${finalShift > 0 ? 'extend' : 'reduce'} because the final arrival moved ${formatDuration(finalShift)}.`);
+    else messages.push('FDP and DP match the portal roster timing.');
+    messages.push(durationChanged ? 'Block recalculates because a sector duration changed.' : 'Block stays unchanged because each edited sector kept its duration.');
+    messages.push(`Following Rest ${current.rest < baseline.rest ? 'reduces' : current.rest > baseline.rest ? 'increases' : 'is unchanged'}${current.rest !== baseline.rest ? ` by ${formatDuration(current.rest - baseline.rest)}` : ''}.`);
+    byId('resultNote').textContent = messages.join(' ');
+    updateDeltaLog(current, baseline);
+  }
+
+  function reset() {
+    state = structuredClone(initial);
+    render();
+  }
+
+  byId('showMoveAction').addEventListener('click', () => {
+    state.action = state.action === 'move' ? null : 'move';
+    updateSelection();
+  });
+  byId('showDiversionAction').addEventListener('click', () => {
+    state.action = state.action === 'diversion' ? null : 'diversion';
+    updateSelection();
+  });
+  byId('cancelFlightActions').addEventListener('click', () => {
+    state.selected = null;
+    state.action = null;
+    render();
+  });
+  document.querySelectorAll('[data-scope]').forEach(button => button.addEventListener('click', () => {
+    state.scope = button.dataset.scope;
+    updateSelection();
+  }));
+  const shiftMinutes = byId('shiftMinutes');
+  const shiftSign = byId('shiftSign');
+  shiftSign.addEventListener('click', () => {
+    const nextSign = shiftSign.dataset.sign === '1' ? '-1' : '1';
+    shiftSign.dataset.sign = nextSign;
+    shiftSign.textContent = nextSign === '1' ? '+ later' : '− earlier';
+    shiftSign.setAttribute('aria-label', nextSign === '1' ? 'Shift later' : 'Shift earlier');
+  });
+  byId('applyShift').addEventListener('click', () => {
+    const amount = Math.max(0, Math.round(Number(shiftMinutes.value)));
+    if (!Number.isFinite(amount) || amount === 0) {
+      shiftMinutes.focus();
+      return;
+    }
+    shiftMinutes.value = String(amount);
+    const delta = amount * Number(shiftSign.dataset.sign);
+    const indexes = state.scope === 'duty'
+      ? state.segments.map((_, index) => index)
+      : state.scope === 'following'
+        ? state.segments.map((_, index) => index).filter(index => index >= state.selected)
+        : [state.selected];
+    indexes.forEach(index => {
+      state.segments[index].dep += delta;
+      state.segments[index].arr += delta;
+    });
+    render();
+  });
+  document.querySelectorAll('[data-time-target]').forEach(button => button.addEventListener('click', () => {
+    const target = byId(button.dataset.timeTarget);
+    if (target.disabled) return;
+    const delta = Number(button.dataset.timeDelta);
+    const current = parseClock(target.value);
+    target.value = formatClock(current + delta);
+    target.dispatchEvent(new Event('change', { bubbles: true }));
+  }));
+  byId('applyDiversion').addEventListener('click', () => {
+    const selected = state.segments[state.selected];
+    const portal = originalFor(selected);
+    const plannedDestination = portal?.to ?? selected.to;
+    const divertAirport = byId('diversionAirport').value.trim().toUpperCase();
+    if (!/^[A-Z]{3,4}$/.test(divertAirport) || divertAirport === selected.from || divertAirport === plannedDestination) {
+      byId('diversionAirport').focus();
+      return;
+    }
+    const divertedArrival = inputToAbsolute(byId('divertArrival').value, selected.arr);
+    const recoveryDeparture = inputToAbsolute(byId('recoveryDeparture').value, divertedArrival);
+    const recoveryArrival = inputToAbsolute(byId('recoveryArrival').value, recoveryDeparture);
+    if (recoveryDeparture < divertedArrival || recoveryArrival <= recoveryDeparture) {
+      byId(recoveryDeparture < divertedArrival ? 'recoveryDeparture' : 'recoveryArrival').focus();
+      return;
+    }
+    selected.to = divertAirport;
+    selected.arr = divertedArrival;
+    const existingRecovery = state.segments[state.selected + 1]?.added && state.segments[state.selected + 1].to === plannedDestination
+      ? state.segments[state.selected + 1]
+      : null;
+    if (existingRecovery) {
+      Object.assign(existingRecovery, { from: divertAirport, dep: recoveryDeparture, arr: recoveryArrival });
+    } else {
+      state.segments.splice(state.selected + 1, 0, {
+        flight: `${selected.flight}R`, from: divertAirport, to: plannedDestination,
+        fleet: selected.fleet, dep: recoveryDeparture, arr: recoveryArrival,
+        originalIndex: null, added: true,
+      });
+    }
+    render();
+  });
+  document.querySelectorAll('[data-composition]').forEach(button => button.addEventListener('click', () => {
+    state.composition = button.dataset.composition;
+    render();
+  }));
+  document.querySelectorAll('[data-facility]').forEach(button => button.addEventListener('click', () => {
+    state.facility = Number(button.dataset.facility);
+    render();
+  }));
+  byId('freezeReport').addEventListener('change', event => {
+    state.frozen = event.target.checked;
+    render();
+    if (!state.frozen) fields.report.focus();
+  });
+  fields.report.addEventListener('change', event => {
+    state.report = inputToAbsolute(event.target.value, state.report);
+    render();
+  });
+  byId('resetTop').addEventListener('click', reset);
+  byId('resetBottom').addEventListener('click', reset);
+  byId('saveScenario').addEventListener('click', () => {
+    const toast = byId('toast');
+    toast.classList.add('show');
+    window.setTimeout(() => toast.classList.remove('show'), 2200);
+  });
+  document.querySelectorAll('[data-preview]').forEach(button => button.addEventListener('click', () => {
+    const mode = button.dataset.preview;
+    const frame = byId('appFrame');
+    frame.classList.toggle('preview-phone', mode === 'phone');
+    frame.classList.toggle('preview-wide', mode === 'wide');
+    frame.classList.toggle('preview-full', mode === 'full');
+    document.querySelectorAll('[data-preview]').forEach(candidate => candidate.setAttribute('aria-pressed', String(candidate === button)));
+  }));
+  byId('themeToggle').addEventListener('click', () => {
+    const root = document.documentElement;
+    const current = root.dataset.theme;
+    root.dataset.theme = current === 'dark' ? 'light' : 'dark';
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

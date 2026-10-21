@@ -143,7 +143,7 @@ export function HomeScreen() {
         <QA icon="shield" label="Discretion" onPress={() => nav.navigate('Discretion')} palette={p} />
         <QA icon="swap" label="Duty Swap" onPress={() => (dutySwapLive ? nav.navigate('DutySwap') : nav.navigate('Spec', { id: 'swap' }))} palette={p} />
         <QA icon="meal" label="Meal" onPress={() => nav.navigate('Meal')} palette={p} />
-        <QA icon="more" label="More" onPress={() => nav.navigate('Spec', { id: 'more' })} palette={p} />
+        <QA icon="clock" label="Analyzer" onPress={() => nav.navigate('DutyAnalyzer')} palette={p} />
       </View>
     </View>
   );

@@ -162,6 +162,33 @@ export function wallClockInZone(instant: Date, timeZone: string): string {
 }
 
 /**
+ * Resolve an airport-local wall clock to a UTC instant. Non-existent DST times
+ * are rejected; repeated fall-back times choose the valid instant nearest the
+ * previous value when one is supplied.
+ */
+export function zonedWallClockToUtc(
+  wallClock: string,
+  timeZone: string,
+  near?: Date,
+): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/.exec(wallClock.trim());
+  if (!match) return null;
+  const wallAsUtc = Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5]);
+  const offsets = new Set<number>();
+  for (let hours = -18; hours <= 18; hours += 3) {
+    const offset = offsetMinutes(new Date(wallAsUtc + hours * 60 * 60_000), timeZone);
+    if (offset != null) offsets.add(offset);
+  }
+  const candidates = [...offsets]
+    .map(offset => new Date(wallAsUtc - offset * 60_000))
+    .filter(candidate => wallClockInZone(candidate, timeZone) === wallClock.trim());
+  if (!candidates.length) return null;
+  if (!near || candidates.length === 1) return candidates[0];
+  return candidates.sort((a, b) =>
+    Math.abs(a.getTime() - near.getTime()) - Math.abs(b.getTime() - near.getTime()))[0];
+}
+
+/**
  * "HH:MM" of an instant in whichever zone the display mode selects, marker
  * included. Used for the duty markers (report / wake up / leave home) that are
  * stored as instants rather than roster strings.

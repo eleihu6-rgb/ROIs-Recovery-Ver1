@@ -35,6 +35,8 @@ import { DutySwapRecordsScreen } from '../dutySwap/DutySwapRecordsScreen';
 import { DutySwapMyDutiesScreen } from '../dutySwap/DutySwapMyDutiesScreen';
 import { MealScreen } from '../meal/MealScreen';
 import { CheckInScreen } from '../checkIn/CheckInScreen';
+import { DutyAnalyzerScreen } from '../dutyAnalyzer/DutyAnalyzerScreen';
+import { DutyAnalyzerReferenceScreen } from '../dutyAnalyzer/DutyAnalyzerReferenceScreen';
 import type { V2Nav, V2StackParamList, V2TabParamList } from './nav';
 import { useLayout } from '../../components/v2/useLayout';
 
@@ -107,6 +109,8 @@ export function V2Navigator() {
         <Stack.Screen name="DutySwapMyDuties" component={DutySwapMyDutiesScreen} />
         <Stack.Screen name="Meal" component={MealScreen} />
         <Stack.Screen name="CheckIn" component={CheckInScreen} />
+        <Stack.Screen name="DutyAnalyzer" component={DutyAnalyzerScreen} />
+        <Stack.Screen name="DutyAnalyzerReference" component={DutyAnalyzerReferenceScreen} />
       </Stack.Navigator>
       {showLauncher ? (
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>

@@ -3,6 +3,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import type { RbotSource } from '../rbot/pageContext';
+import type { DutyAnalyzerInput } from '../dutyAnalyzer/dutyAnalyzerTypes';
 
 export type V2TabParamList = {
   Home: undefined;
@@ -51,6 +52,10 @@ export type V2StackParamList = {
   Meal: undefined;
   /** Check-In for the next duty (portal task or roster rule), Home ▸ Quick actions. */
   CheckIn: undefined;
+  /** On-device FDP / DP / Rest checks and saved what-if scenarios. */
+  DutyAnalyzer: undefined;
+  /** Applied EASA reporting range, landing column and maximum FDP reference. */
+  DutyAnalyzerReference: { input: DutyAnalyzerInput };
 };
 
 export type V2Nav = NativeStackNavigationProp<V2StackParamList>;

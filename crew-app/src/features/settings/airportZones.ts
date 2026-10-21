@@ -17,6 +17,18 @@ export const AIRPORT_TZ: Record<string, string> = {
   // ── Asia / Oceania ──
   TPE: 'Asia/Taipei',
   BKK: 'Asia/Bangkok',
+  DMK: 'Asia/Bangkok',
+  HKT: 'Asia/Bangkok',
+  CNX: 'Asia/Bangkok',
+  CEI: 'Asia/Bangkok',
+  USM: 'Asia/Bangkok',
+  KBV: 'Asia/Bangkok',
+  HDY: 'Asia/Bangkok',
+  UTH: 'Asia/Bangkok',
+  KKC: 'Asia/Bangkok',
+  UBP: 'Asia/Bangkok',
+  MNL: 'Asia/Manila',
+  CRK: 'Asia/Manila',
   NRT: 'Asia/Tokyo',
   HND: 'Asia/Tokyo',
   KIX: 'Asia/Tokyo',
@@ -141,6 +153,7 @@ export const AIRPORT_TZ: Record<string, string> = {
 export const FIXED_OFFSET_MIN: Record<string, number> = {
   UTC: 0,
   'Asia/Bangkok': 420,
+  'Asia/Manila': 480,
   'Asia/Taipei': 480,
   'Asia/Tokyo': 540,
   'Asia/Hong_Kong': 480,
@@ -193,7 +206,12 @@ export const FIXED_OFFSET_MIN: Record<string, number> = {
   'Asia/Dhaka': 360,
 };
 
-/** IANA zone for an IATA code; unknown airports fall back to UTC. */
+/** IANA zone for an IATA code; unknown airports fall back to UTC for legacy display. */
 export function airportZone(iata: string | null | undefined): string {
   return AIRPORT_TZ[(iata ?? '').trim().toUpperCase()] ?? 'UTC';
+}
+
+/** Strict lookup for editable local times: unknown airports must not masquerade as UTC. */
+export function knownAirportZone(iata: string | null | undefined): string | null {
+  return AIRPORT_TZ[(iata ?? '').trim().toUpperCase()] ?? null;
 }

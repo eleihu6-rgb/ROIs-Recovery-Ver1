@@ -1,0 +1,174 @@
+# Duty Analyzer — PR crew 473006 on a regular iPhone.
+# Selecting PR fills the repository's PR test credentials. This flow replaces only
+# the crew ID and leaves the prefilled password unchanged.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "Don.t Allow"
+    optional: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-PR"
+    timeout: 10000
+- tapOn:
+    id: "airline-PR"
+- tapOn:
+    id: "crew-id"
+- eraseText: 12
+- inputText: "473006"
+- tapOn:
+    id: "login-screen"
+    point: "50%,8%"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "use-captured-roster"
+    timeout: 30000
+- assertVisible: ".*Found 11 trips · 22 flights.*"
+- tapOn:
+    id: "use-captured-roster"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 30000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: "qa-analyzer"
+    direction: DOWN
+- tapOn:
+    id: "qa-analyzer"
+- extendedWaitUntil:
+    visible:
+      id: "duty-analyzer"
+    timeout: 10000
+- assertVisible:
+    id: "analyzer-mode-roster"
+- assertVisible:
+    id: "analyzer-mode-new"
+- assertVisible:
+    id: "analyzer-mode-saved"
+- assertNotVisible: "Rules"
+- assertNotVisible: ".*6007.*"
+- assertNotVisible: ".*6008.*"
+
+# PR501/PR512 is one two-segment duty. Open the exact segment editor.
+- scrollUntilVisible:
+    element:
+      id: "analyzer-pairing-473006-2026-09-06.*"
+    direction: DOWN
+    centerElement: true
+- assertVisible: ".*MNL–SIN–MNL.*06 Sep 2026.*D1 MNL–SIN–MNL.*PR512.*"
+- tapOn:
+    id: "analyzer-duty-473006-2026-09-06.*"
+- extendedWaitUntil:
+    visible:
+      id: "analyzer-timeline"
+    timeout: 10000
+- assertVisible: "Duty report time"
+- assertVisible: "MNL · Local .* · UTC .*"
+- assertVisible: "SIN · Local .* · UTC .*"
+- assertNotVisible:
+    id: "analyzer-flight-actions"
+- scrollUntilVisible:
+    element:
+      id: "analyzer-segment-select-.*segment-1"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "analyzer-segment-select-.*segment-1"
+- assertVisible:
+    id: "analyzer-flight-actions"
+- tapOn:
+    id: "analyzer-action-move"
+- assertVisible:
+    id: "analyzer-move-form"
+- scrollUntilVisible:
+    element:
+      id: "analyzer-shift-minutes"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "analyzer-shift-minutes"
+- eraseText: 3
+- inputText: "60"
+- tapOn:
+    id: "analyzer-shift-apply"
+- tapOn:
+    text: "Duty What-if"
+- scrollUntilVisible:
+    element:
+      id: "analyzer-result"
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: "metric-fdp"
+- assertVisible:
+    id: "metric-fdp-baseline"
+- assertVisible:
+    id: "metric-block"
+- assertVisible: ".*FDP.*[0-9]{2}:[0-9]{2}.*"
+- scrollUntilVisible:
+    element:
+      id: "analyzer-open-reference"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "analyzer-open-reference"
+- extendedWaitUntil:
+    visible:
+      id: "duty-analyzer-reference"
+    timeout: 10000
+- assertVisible:
+    id: "easa-report-local"
+- assertVisible:
+    id: "easa-report-range"
+- assertVisible:
+    id: "easa-landings"
+- assertVisible:
+    id: "easa-max-fdp"
+- assertVisible:
+    id: "easa-selected-cell"
+- assertVisible:
+    id: "easa-official-range"
+- assertVisible:
+    id: "easa-official-sectors"
+- assertVisible:
+    id: "easa-official-max-fdp"
+- assertVisible: ".*12:00 instead of the EASA baseline 13:00.*"
+- takeScreenshot: duty-analyzer-pr-473006-easa-applied-Ver4
+- scrollUntilVisible:
+    element:
+      id: "easa-source"
+    direction: DOWN
+- assertVisible: ".*ORO.FTL.205.*"
+- takeScreenshot: duty-analyzer-pr-473006-easa-reference-Ver4
+- tapOn:
+    id: "page-back"
+- extendedWaitUntil:
+    visible:
+      id: "analyzer-result"
+    timeout: 10000
+- takeScreenshot: duty-analyzer-pr-473006-local-utc-Ver3
+- scrollUntilVisible:
+    element:
+      id: "analyzer-save"
+    direction: DOWN
+- tapOn:
+    id: "analyzer-save"
+- extendedWaitUntil:
+    visible:
+      id: "analyzer-saved-dialog"
+    timeout: 10000
+- assertVisible: "Scenario saved"
+- takeScreenshot: duty-analyzer-pr-473006-saved-dialog-Ver2

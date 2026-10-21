@@ -38,8 +38,13 @@ it('uses 45% transparent main cards and keeps card text readable', () => {
     expect(contrast(palette.cardInk, card)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(palette.cardSoft, card)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(palette.cardInk, inset)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(palette.cardInk, panel)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(palette.cardSoft, panel)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(palette.cardSoft, overlay)).toBeGreaterThanOrEqual(4.5);
+    for (const semantic of [palette.cardCrit, palette.cardWarn, palette.cardGood]) {
+      expect(contrast(semantic, card)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(semantic, inset)).toBeGreaterThanOrEqual(4.5);
+    }
     expect(Number(palette.cardOverlay.match(/,([\d.]+)\)$/)?.[1])).toBeGreaterThanOrEqual(0.95);
     expect(glassTint(palette.dockLight)).toMatch(/^rgba\(\d+,\d+,\d+,0\.8\)$/);
   }

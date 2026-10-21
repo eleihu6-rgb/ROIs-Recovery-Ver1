@@ -4,6 +4,7 @@ import {
   legDisplayDate,
   parseRosterUTC,
   wallClockInZone,
+  zonedWallClockToUtc,
   withZoneSuffix,
   zoneSuffix,
 } from '../../src/features/settings/timeFormat';
@@ -114,6 +115,28 @@ describe('airport-local display', () => {
     // A day-off row stored as 08 Sep 21:00Z – 09 Sep 20:59Z is the ADD day of 9 Sep.
     expect(wallClockInZone(new Date('2026-09-08T21:00:00.000Z'), 'Africa/Addis_Ababa'))
       .toBe('2026-09-09 00:00');
+  });
+});
+
+describe('airport-local editing', () => {
+  it('round-trips fixed and daylight-saving airport zones to UTC', () => {
+    expect(zonedWallClockToUtc('2026-09-06 15:45', 'Asia/Manila')?.toISOString())
+      .toBe('2026-09-06T07:45:00.000Z');
+    expect(zonedWallClockToUtc('2026-07-15 12:08', 'America/Vancouver')?.toISOString())
+      .toBe('2026-07-15T19:08:00.000Z');
+    expect(zonedWallClockToUtc('2026-12-15 12:08', 'America/Vancouver')?.toISOString())
+      .toBe('2026-12-15T20:08:00.000Z');
+  });
+
+  it('rejects a non-existent daylight-saving local time', () => {
+    expect(zonedWallClockToUtc('2026-03-29 01:30', 'Europe/London')).toBeNull();
+  });
+
+  it('chooses the repeated daylight-saving clock nearest the existing instant', () => {
+    expect(zonedWallClockToUtc('2026-10-25 01:30', 'Europe/London', new Date('2026-10-25T00:20:00Z'))?.toISOString())
+      .toBe('2026-10-25T00:30:00.000Z');
+    expect(zonedWallClockToUtc('2026-10-25 01:30', 'Europe/London', new Date('2026-10-25T01:20:00Z'))?.toISOString())
+      .toBe('2026-10-25T01:30:00.000Z');
   });
 });
 

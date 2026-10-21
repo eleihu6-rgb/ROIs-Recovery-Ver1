@@ -58,6 +58,10 @@ export interface CarrierPalette {
   cardInk: string;
   cardSoft: string;
   cardLine: string;
+  /** Semantic foregrounds designed for the app's pale card surfaces. */
+  cardCrit: string;
+  cardWarn: string;
+  cardGood: string;
   /** Bottom dock when it floats over light content (Schedule's near-white duty
    *  cards): a light tint of the theme's ground + the theme's dark ink for the
    *  icons/labels. A fixed near-black bar read as a foreign slab against the
@@ -92,6 +96,9 @@ const shared = {
   cardInk: '#061624',
   cardSoft: '#061624',
   cardLine: '#c9d5e1',
+  cardCrit: '#320706',
+  cardWarn: '#261500',
+  cardGood: '#03220e',
   crit: '#e2574b',
   warn: '#e9a53a',
   good: '#3fa66d',
@@ -125,6 +132,7 @@ export const PALETTES: Record<CarrierPreset, CarrierPalette> = {
     card: 'rgba(224,224,230,0.55)', cardInset: 'rgba(255,255,255,0.48)',
     cardSolid: 'rgba(224,224,230,0.70)', cardOverlay: 'rgba(255,255,255,1)',
     cardInk: '#1c1c1e', cardSoft: '#55555a', cardLine: '#c6c6c8',
+    cardCrit: '#320706', cardWarn: '#261500', cardGood: '#03220e',
     crit: '#b42318', warn: '#825000', good: '#146c2e',
   },
 };
