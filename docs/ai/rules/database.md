@@ -1,6 +1,7 @@
 # Database rules — full rule text
 
 > Detail for §Remote-DB-Only, connection info and data-model design rules summarised in root `CLAUDE.md`. Moved here 2026-09-12.
+> Full text refreshed 2026-10-22 from the pre-router root `CLAUDE.md`; edit rules here, not in a second copy.
 
 ## 数据库
 
@@ -43,4 +44,3 @@ HTTP/文件入口 smoke。不得静默跳过失败条件。
 - **地面任务**：`roster_flight.pairing_id` 为 `NULL`（不是 0），`NULL` 表示无配对的地面任务
 - **filiale 默认值**：每个航司 schema 下所有含 `filiale` 字段的表均已设置列默认值（如 f8 schema 全部为 `DEFAULT 'F8'`），新航司初始化后执行对应 migration 即可；seed 脚本中 INSERT 语句无需显式写 `filiale`，让数据库默认值填充
 - **rank 直接用代码**：`composition_rank`、`rank_position`、`rank_acting` 表直接以 `rank varchar` 存储职级代码（如 `'CA'`、`'FO'`），不再保存 `rank_id` 外键，避免不必要的 join
-

@@ -1,6 +1,7 @@
 # UI Standards — full rule text
 
 > Detail for §First-Paint, §Gantt-Unify, pop-up window standard, style/typography standard and §UI-Standard-Gate summarised in root `CLAUDE.md`. Moved here 2026-09-12.
+> Full text refreshed 2026-10-22 from the pre-router root `CLAUDE.md`; edit rules here, not in a second copy.
 
 ## §First-Paint — 1-2 秒首屏是第一优先级（强制，全员遵守）
 
@@ -22,8 +23,6 @@
 
 与 §Minimal-First / §Surgical 不冲突：只下沉**已确认**的共同行为，不预埋投机性抽象，也不顺手重构无关分叉。
 
----
-
 ## 前端语言规范
 
 - **UI 默认语言为英文**：所有按钮、标签、占位符、提示文字、空态文案、弹框内容等，默认一律使用英文
@@ -33,70 +32,38 @@
 
 ## 弹窗窗口标准（Pop-up Window Standard，强制执行）
 
-> 全平台所有弹窗（gantt / pbs-portal / pbs-app）必须共用同一套窗口外观，参考 `image/pop-up-window-template.png`。
+> 全平台所有弹窗（gantt / pbs-portal / pbs-app / crew-app）共用同一套 Status-Card 外观，参考 `image/pop-up-window-template.png` 与 2026-09-13 的 status-card 设计稿。
+> 完整规格见 `docs/superpowers/specs/2026-09-13-app-popup-standard-status-card-Ver1.md`。
 
-唯一实现组件：`@rois/ui` 的 **`AppDialog`**（`packages/ui/src/composites/app-dialog.tsx`，基于 Radix Dialog 原语）。**禁止**再直接用裸 `Dialog`/`DialogContent` 拼装业务弹窗，也禁止用 Modal/Drawer/Popover 代替弹窗。
+唯一实现组件：
 
-标准外观（六条，缺一不可，具体 prop 见组件源码）：左上角图标（`icon`）、蓝色标题栏+白色标题（`bg-primary`/`text-primary-foreground`，禁止硬编码颜色）、右上角关闭按钮（`showClose`）、右下角按钮区（`footer`，取消在左主操作在右）、可拖拽（`draggable`）、可关闭性由 `dismissable` 控制（执行中操作应临时设为 `false`）。
+- Web（gantt / pbs-portal）：`@rois/ui` 的 **`AppDialog`**（`packages/ui/src/composites/app-dialog.tsx`，基于 Radix Dialog 原语）。**禁止**再直接用裸 `Dialog`/`AlertDialog` 拼装业务弹窗，也禁止用 Modal/Drawer/Popover/`createPortal` 自建弹窗框架（含模块内自研 frame；发现即改为委托 AppDialog）。
+- crew-app（React Native）：**`components/v2/AppDialog.tsx`**。产品级提示/确认一律用它；`Alert.alert` 仅保留给 OS 级系统提示（钥匙串/权限等原生 sheet 才是正确交互的场景），且必须写明理由。
 
-新增弹窗或改造旧弹窗一律走 `AppDialog`；若标准本身需要扩展，改 `AppDialog` 而非在业务侧另起炉灶。
+标准外观（必须齐备，具体 prop 见组件源码）：
+
+1. **Tone 色带**置顶：`tone` 决定语义色，一律取主题 token，禁止硬编码颜色 —— `neutral`=`primary`、`success`=`success`（新增 token）、`warning`=`warning`（新增 token）、`destructive`=`destructive`。
+2. **描边圆形图标**：`status` 变体居中大圆、`panel` 变体在色带左侧小圆 + 行内标题（数据录入类弹窗保持信息密度）。
+3. **动作按钮在 body 内、居中 pill 排布**（不再有独立 footer 条）：取消为描边 pill、主操作为实心 pill；危险操作才用 `destructive`。
+4. **右上角圆形关闭按钮**，骑跨卡片边角（白色圆盘 + 深色 ✕）。
+5. 可拖拽（色带即拖拽把手）；`dismissable=false` 用于执行中的操作。
+6. `variant`：消息/结果/确认类弹窗必须用 `variant="status"` + 对应 `tone`；仅数据表格/表单类弹窗保持 `panel`（可省略该 prop）。
+
+新增弹窗一律走上述两个组件；若标准本身需要扩展，改组件而非在业务侧另起炉灶。
+
 
 ## 样式与排版标准（CSS / Typography Standard，强制执行）
 
-> 适用于所有前端模块（gantt / pbs-portal / pbs-app / packages/ui）。本系统是高密度航空运行界面（Jeppesen / Bloomberg 风格），所有视觉量纲必须 **token 驱动**，禁止散落的魔法值。Token 的唯一来源是 `packages/ui/src/styles/globals.css` 的 `@theme`。
+> 适用于所有前端模块（gantt / pbs-portal / pbs-app / packages/ui）。改前端样式前**必读完整规范** `docs/architecture/ui-style-typography-standard.md`（字号刻度表、字重、间距、圆角、颜色、图标-文字对齐、面板标题栏形态）。Token 唯一来源：`packages/ui/src/styles/globals.css` 的 `@theme`。
 
-### 字体（Font family）
-
-- **正文 / UI 文本**：`font-sans`（`--font-sans`，系统字体栈），是默认值，一般无需显式写
-- **数字 / 代码 / ID**：`font-mono`（`--font-mono`），机组号、时间、航班号等**成列数字**必须配 `tabular-nums`（等宽数字对齐），例：`className="font-mono tabular-nums"`
-- **禁止**引入自定义 Web 字体或在组件里写死 `font-family`
-
-### 字号（Font size）— 唯一标准刻度
-
-全平台只用下面这 **8 级** 命名 token，**禁止** 再写任意 `text-[Npx]`（如 `text-[11px]`、`text-[13px]`）。`xs`–`2xl` 沿用 Tailwind 默认值，`2xs`/`3xs` 由本项目 `@theme` 扩展：
-
-| Token | px | 典型用途 |
-|-------|----|---------|
-| `text-3xs` | 9  | 大写微标签（配 `uppercase tracking-wide`）|
-| `text-2xs` | 10 | 徽章、chip、表格微信息、表单字段标签 |
-| `text-xs`  | 12 | **正文默认**、次级文本、提示 |
-| `text-sm`  | 14 | 强调正文、输入框、小节标题 |
-| `text-base`| 16 | 面板 / 弹窗标题 |
-| `text-lg`  | 18 | 页面标题 |
-| `text-xl`  | 20 | 大标题 |
-| `text-2xl` | 24 | Hero / 极少数场景 |
-
-> 历史代码里的 `text-[Npx]` 仍可渲染，但**新代码禁止新增**；改动到的文件就近迁移。迁移映射表见 `docs/superpowers/specs/2026-06-15-rois-ui-standard-for-ai-agents-design.md`。
-
-### 字重（Font weight）
-
-只用 4 档：`font-normal`(400) 正文 · `font-medium`(500) 标签/次强调 · `font-semibold`(600) 标题/强调 · `font-bold`(700) 关键数据。**禁止** `font-extrabold` 及更重档位。
-
-### 间距 / 圆角（Spacing / Radius）
-
-- 间距走 Tailwind 4px 基准刻度（`gap-1`/`p-2`/`mt-1.5` 等），**禁止**任意 `m-[Npx]`/`p-[Npx]`；确需精确像素（如 Canvas 定位）才用动态 inline style
-- 圆角统一用 `rounded-sm/md/lg/xl`（映射 `--radius`，默认 2px 紧凑风格），禁止写死圆角像素
-
-### 颜色
-
-- 见 `@rois/ui` 规范：一律用语义化 token（`bg-primary`/`text-muted-foreground` 等），**禁止**硬编码颜色值（Canvas 的 `--gantt-*` 变量除外）
-
-### 对齐（Alignment）
-
-图标 + 文字（标题、按钮、列表项、徽章）必须严格对齐，新组件要和现有组件视觉一致：
-
-- **图标与文字同行必须用 `flex items-center`** 做垂直居中，**禁止**用 `mt-*`/`-translate-y-*` 等手动微调图标位置（拖拽指示器等动态定位除外）
-- **间距按文字大小取标准 `gap`**：紧凑行（`text-2xs`/`text-xs`）用 `gap-1.5`；标题/标准行（`text-sm`/`text-base`）用 `gap-2`；**禁止** `gap-3` 及以上的过宽图标-文字间距和任意 `gap-[Npx]`
-- **前导图标尺寸跟随文字**：配 `text-xs` 用 `h-3.5 w-3.5`，配 `text-sm`/`text-base` 用 `h-4 w-4`；图标一律加 `shrink-0`，避免文字 `truncate` 时挤压图标
-- **装饰性前导图标默认 `text-muted-foreground`**，需要强调才用 `text-primary`；**禁止**用 `text-sidebar-primary` 给内容区图标上色（该 token 仅用于侧栏表面）
-- **纯图标按钮**用 `inline-flex items-center justify-center` + 方形点击区（如 `h-7 w-7 p-0`）
-- **内容面板/区块标题栏统一形态**：`flex h-10 shrink-0 items-center gap-2 border-b border-border px-4` + 前导图标 `h-4 w-4 shrink-0 text-muted-foreground` + 标题 `text-sm font-semibold text-foreground`（参照 `scenario-detail-panel` / `crew-bids-view`）
-
-违反以上（魔法字号、写死字体/颜色/圆角、超档字重、图标错位/间距不一致）视同样式 bug，改到的地方必须顺手修正。
+强制要点：
+- 字号只用 8 级 token（`text-3xs`/`2xs`/`xs`/`sm`/`base`/`lg`/`xl`/`2xl`），**禁止** `text-[Npx]`；成列数字用 `font-mono tabular-nums`；禁止自定义字体/写死 `font-family`。
+- 字重只用 `font-normal`/`medium`/`semibold`/`bold`；间距走 Tailwind 刻度，圆角用 `rounded-sm/md/lg/xl`；颜色只用语义 token（Canvas `--gantt-*` 除外）。
+- 图标+文字用 `flex items-center` + 标准 `gap`（`gap-1.5`/`gap-2`），图标 `shrink-0`，禁止手动微调位置。
+- 违反即样式 bug；改到的地方必须顺手修正。
 
 ### §UI-Standard-Gate — 自动门禁（强制执行，团队 + AI agent 全员）
 
 > 上述样式标准由 `scripts/check-ui-standard.mjs` 守护，**禁止靠自觉**。全文见 `docs/superpowers/specs/2026-06-15-rois-ui-standard-for-ai-agents-design.md`。
 
 提交/推送前必跑 `npm run check:ui`，**硬违规必须为 0**：魔法字号 `text-[Npx]`、超档字重、写死圆角 `rounded-[Npx]`、任意字体族 `font-[...]`（扫描 `gantt/src` + `packages/ui/src`）。像素间距/内联 `fontFamily` 仅 WARN 不阻断（1px 边框补偿等合法例外）。豁免写 `ui-standard-ignore` / `ui-standard-ignore-next-line`，滥用视同违规。`.githooks/pre-push` 拦截硬违规推送；改动前端样式后必须运行 `npm run check:ui` 并在完成消息贴出 PASS 结果（§No-Illusion）。
-

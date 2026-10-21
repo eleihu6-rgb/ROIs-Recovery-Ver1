@@ -1,6 +1,7 @@
 # Testing Discipline — full rule text
 
 > Detail for the Testing Discipline rules summarised in root `CLAUDE.md`. Rule names (§…) are canonical; this file holds the full requirements, tables, rationale and examples. Moved here 2026-09-12 (agent context optimization Ver2).
+> Full text refreshed 2026-10-22 from the pre-router root `CLAUDE.md`; edit rules here, not in a second copy.
 
 ## 测试策略总览
 
@@ -24,6 +25,8 @@
 1. Write a Playwright e2e test under `e2e/tests/<module>/` (focused module tests apply to pure backend logic with no UI surface).
 2. From `e2e/`, run `npx playwright test --config=config/playwright.config.ts --project=<module> tests/<module>/<your-test-file>.spec.ts --reporter=list`, selecting the touched area's actual config/project and environment.
 3. All tests must pass before the work is considered done.
+
+The Playwright and screenshot gates are shared; the target environment is developer-specific. Use the developer's configured `GANTT_BASE_URL` and corresponding backend environment. Keep personal URL preferences in user-level agent instructions, not shared project defaults. Verify that the chosen target serves the code under test, and report the actual URL with the validation receipt.
 
 Minimum coverage per change type:
 
@@ -55,7 +58,7 @@ File naming: `e2e/tests/<module>/<feature-name>.spec.ts`, named after the change
 3. Assert the outcome a real user would actually see (correct data, correct permissions/menus, correct error message) — never a 200 status, a DB flag, or "no error thrown".
 4. Run it and paste the PASS/FAIL result (§No-Illusion) before calling the change done.
 
-**Why:** a change can look correct at the code/DB/API level — status codes match, flags look right — while silently breaking for the actual user (a missing permission binding, a timezone-sensitive `eff_dt`/`exp_dt` column, a stale cache, a race in a multi-step flow). Only a Playwright run that behaves like the user is proof the change actually works, not just that it should.
+**Why:** code/DB/API can look correct while the user path breaks (missing permission binding, timezone-sensitive `eff_dt`/`exp_dt`, stale cache, multi-step race).
 
 ### §Flight-Change-Ripple-Required — 航班时间变更必须验证对 pairing/roster 的连锁影响，禁止孤立处理（强制执行）
 
@@ -68,7 +71,7 @@ File naming: `e2e/tests/<module>/<feature-name>.spec.ts`, named after the change
 3. 若下游确实需要重算，必须有测试证明重算**发生**且数值正确；若产品设计上确认**不**自动重算（需要人工确认/手动改派），测试要显式断言"下游未变"，而不是干脆没测到——沉默的空白不等于已验证的设计决策。
 4. 新增/修改与航班时间相关的 Playwright/单元测试用例时，用例标题与断言范围要覆盖"对相邻 leg 与 KPI 的影响"，不能只孤立验证被改的那一条。
 
-**Why:** 航班延误只改动自身时间戳，不代表机组的后续行程（换乘、休息、返回基地）依然合法、也不代表 KPI 依然反映实际情况——如果测试只覆盖被改的单条记录，连锁影响类 bug（错误的换乘时间、法定休息不足、返回基地时间计算错误、KPI 与实际延误脱节）会逃过验证。
+**Why:** 只测被改的单条记录，会漏掉换乘时间错误、法定休息不足、回基地时间错误、KPI 与延误脱节等连锁 bug。
 
 ### §Real-Business-Case-Test — 测试 fixture 必须是真实业务场景，禁止孤立/简化的合成数据（强制执行）
 
@@ -76,16 +79,16 @@ File naming: `e2e/tests/<module>/<feature-name>.spec.ts`, named after the change
 
 具体要求：
 
-1. **Pairing fixture 必须是真实结构**：至少覆盖同一 duty 内多个 leg（≥2 flights）、从 base 出发再回到 base 的完整往返，而不是单条 flight 硬凑出的"pairing"——单航段 pairing 在生产数据里几乎不存在，测出来的行为对真实场景没有代表性（`live-server`/`pbs-server` 的 pairing 建造逻辑允许单腿 pairing，但那是边界情况，不是典型 fixture）。
+1. **Pairing fixture 必须是真实结构**：至少覆盖同一 duty 内多个 leg（≥2 flights）、从 base 出发再回到 base 的完整往返；单航段 pairing 在生产中几乎不存在（建造逻辑允许，但只是边界情况，不是典型 fixture）。
 2. **航班/机场/机型组合必须真实可信**：优先复用已在库里验证过的真实航班号、真实航线（同一 base 进出）、真实机型/airline 搭配，避免捏造不存在的航班号或不符合 home-base 规则的航线组合。新增 fixture 前，先用只读查询（或已有 dry-run 接口，如 `POST /api/pairing/build`）验证该组合在真实规则下是合法的，而不是假设它合法。
 3. **禁止为了让测试"更好写"而回避真实结构**：如果某个 cascade/规则本该在多航段 duty、跨 leg 影响下验证，就不能只用单航段简化掉这部分覆盖——单航段能测的东西，多航段测试大多数情况下也能覆盖，反过来不成立。
 4. 与 [[pairing-build-fresh-pairing-kpis-not-computed]] 和 §Flight-Change-Ripple-Required 配合：真实的多航段 pairing fixture 才能验证"未改动的相邻 leg 保持不变"这类关键断言——单航段 fixture 天然测不出这类边界。
 
-**Why:** 一个只有一条航班的"pairing"不是真实业务场景——生产环境的 pairing 几乎都是多航段、base 出发再回到 base 的结构。用简化 fixture 测出来的 PASS 只能证明代码在不真实的输入下工作，不能证明它在真实航班组合下正确；`flight-delay-pairing-roster-propagation.spec.ts` 的 Scenario 2 最初就是用单航段 pairing 写的，重写为 ET137/ET136（ADD→ASO→ADD 真实往返）之后才补出了"未改动的出港 leg 必须保持不变"这类原本测不到的断言。
+**Why:** 简化 fixture 的 PASS 只证明代码在不真实输入下工作。例：`flight-delay-pairing-roster-propagation.spec.ts` Scenario 2 从单航段改为 ET137/ET136（ADD→ASO→ADD）后，才补出"未改动的出港 leg 必须保持不变"断言。
 
 ### §Simulate-User — Playwright must drive the REAL UI
 
-**A Playwright run against gantt or pbs-portal exists for one reason: to reproduce the real user experience — click the actual buttons, menus, dialogs the product exposes and let the UI fire its own network calls. Nothing else counts.**
+**Playwright must reproduce the real user experience — click the product's actual buttons, menus, and dialogs, and let the UI fire its own network calls.**
 
 **禁止**让脚本直接 `fetch` / `request.post` 业务写接口来代替用户操作（即使浏览器开着）；「DB 层面已生效」不算成功标准。只读 seed/校验前置数据可以走 API，但被测的用户动作本身必须经 UI 完成；纯后端逻辑走 Vitest。若某个用户动作**还没有 UI 入口**，先把 UI 补上再测，不要写脚本直接调 API 假装功能可用。
 
@@ -99,12 +102,19 @@ Verify actual outcomes, not just successful tool execution. Select checks for af
 
 ### §PW-Snapshot — every UI-related Playwright validation captures a screenshot, versioned per iteration
 
-**A passing test is not enough for a visual/UI change — capture a screenshot during the same Playwright run and keep it as the visible proof.** Pass/fail text alone doesn't show *what* rendered; a reviewer (or Ryan) needs to see the actual pixels.
+**A passing test is not enough — capture a screenshot in the same Playwright run as visible proof of what rendered.**
 
 - Save under `docs/assets/screenshots/<module>/<feature-name>.png` (module = `gantt`/`pbs-portal`/`pbs-app`/etc., feature-name matches the changed component or spec).
-- **If the same feature/fix gets re-validated across multiple rounds** (a design tweak, a bug re-fix, feedback-driven iteration), do **not** overwrite the previous screenshot — suffix the filename with `-Ver<N>` (`Ver1`, `Ver2`, `Ver3`, ...), incrementing per round, so the sequence of screenshots documents visible progress across iterations. First capture of a feature may omit the suffix or start at `Ver1`; be consistent within one feature's history.
+- **Re-validation rounds never overwrite** earlier screenshots — suffix `-Ver<N>`, incrementing per round. The first capture may omit the suffix or start at `Ver1`; stay consistent within one feature's history.
 - Capture via a Playwright script/test (`page.screenshot()` / `locator.screenshot()`), not a manual/out-of-band screenshot — it must come from the same automated run that proves the behavior, per §No-Illusion.
-- After capturing, inspect the PNG with the current agent's image-viewing tool before reporting done; confirm the intended element and state are visible.
+- After capturing, inspect the PNG before reporting done; confirm the intended element and state are visible.
+  - **If the session's model accepts image input**, use the agent's image-viewing tool.
+  - **If it does not** (`view_image` returns *"not allowed because you do not support image inputs"* — a **model capability** gate driven by the active model catalog, not a file or permission problem), you are still expected to inspect the capture. Use `node scripts/screenshot-review/review.mjs <png> --expect "<text you must see on screen>" --vision`:
+    - `--vision` delegates a genuine visual read to a multimodal model on the same local gateway (`scripts/screenshot-review/vision.mjs`), covering colour/layout/rendering defects.
+    - The same run OCRs the capture via native macOS Vision (no installs), measures it, and exits non-zero when the expected content is missing or the image is blank.
+    - Use `--diff <previous-Ver.png>` to prove an iteration actually changed pixels, and where.
+    - Report the sidecar paths (`<png>.review.txt`, `<png>.vision.txt`) and PASS/FAIL in the delivery report.
+  - **Never claim a visual inspection you could not perform.** If neither path is available, say so explicitly and record the inspection as an unrun required check with the residual risk.
 - Include the screenshot path alongside the exact Playwright command and PASS/FAIL result in the delivery report. This applies to every user-related validation, including backend/data changes verified through the UI, not only visual styling changes.
 
 ### §Stale-Test — update it, never just report it
@@ -114,4 +124,3 @@ Verify actual outcomes, not just successful tool execution. Select checks for af
 Stale = selector/route/field renamed but the feature still exists, or UI structure changed after a redesign. **NOT stale** (don't silently "fix"): test is red because the code is actually broken (debug the code, never weaken the test), the feature was intentionally removed (delete the test, say so), or you're unsure whether the behavior change was intended (investigate first — may be a regression).
 
 ---
-

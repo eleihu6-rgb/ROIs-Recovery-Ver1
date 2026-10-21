@@ -1,6 +1,7 @@
 # Coding conventions — full rule text
 
 > TypeScript / Python / Git / versioning / parameterisation / security conventions summarised in root `CLAUDE.md`. Moved here 2026-09-12.
+> Full text refreshed 2026-10-22 from the pre-router root `CLAUDE.md`; edit rules here, not in a second copy.
 
 ## TypeScript 通用规范
 
@@ -101,21 +102,9 @@ Only add a `Co-Authored-By` trailer when the actual contributor identity is know
 
 ## 版本号管理（Version Bumping，强制执行）
 
-> 版本号用于快速确认当前本机/部署运行态，不再写入 tracked 源码，避免每次提交都修改同一个文件。
-
-- **版本来源**：`live-server/version.tmp`（JSON，本机运行态文件，已加入 `.gitignore`），由 `scripts/version-state.mjs` 创建、读取、递增。
-- **格式**：全局 Gantt 显示 `Ver:B{backend}/F{frontend}/R{rule}`；PBS 显示 `Ver:B{pbsBackend}/F{pbsFrontend}`。
-- **展示位置**：gantt 顶部导航与 ThemeSwitcher 下拉中（与 `__APP_VERSION__` 的 commit/构建时间并列）。
-- **递增时机**：
-  - `gantt` 执行 `npm run dev` / `npm run build` 前，自动递增全局 `frontend`。
-  - Vite HMR 完成热更新时，自动递增全局 `frontend` 并推送到页面。
-  - `live-server` 执行 `npm run dev` / `npm run build` 前，自动递增全局 `backend`。
-  - `connector-server` 执行 `npm run dev` / `npm run build` 前，自动递增全局 `backend`。
-  - `pbs-server` 执行 `npm run dev` / `npm run build` 前，自动递增 `pbsBackend`。
-  - `pbs-portal` 执行 `npm run dev` / `npm run build` 前，自动递增 `pbsFrontend`。
-- **不要手动修改 tracked 文件来 bump 版本**；`gantt/src/version.ts` 已废弃并删除。
-- **永不回退**：版本号只增不减，不复用旧值。若需手动修正本机运行态，仅编辑 ignored 的 `live-server/version.tmp`。
-- 纯文档（`docs/`、`*.md`）、注释、E2E 测试数据等非运行代码改动可不递增。
+- 版本来源为 ignored 的 `live-server/version.tmp`，由 `scripts/version-state.mjs` 在各模块 `npm run dev` / `npm run build`（及 gantt HMR）时自动递增。
+- **不要手动修改 tracked 文件来 bump 版本**；**永不回退**，只增不减。纯文档/注释/E2E 数据改动可不递增。
+- 格式、展示位置、各模块递增时机见 `docs/architecture/version-bumping.md`。
 
 ## 参数化开发规范
 
@@ -137,36 +126,24 @@ Only add a `Co-Authored-By` trailer when the actual contributor identity is know
 - **代码复用**：相同或相似逻辑必须抽取为可复用的方法/工厂/工具函数，禁止在多个文件中散落重复代码。常见场景包括但不限于：HTTP 客户端配置、响应封装解包、错误处理、日期格式化、权限校验、表单校验等。新增功能前先检查是否已有类似实现可以复用或扩展
 - **性能意识**：编写代码时必须考虑性能影响，发现潜在性能问题（如 N+1 查询、全量计算、缺少索引、大数据量循环、不必要的重复计算等）必须主动提醒用户并给出优化建议
 
-## 信息安全规范
+## Security — dev-environment posture
 
-> 航空机组排班数据属于高度敏感信息，信息安全是所有项目模块的硬性要求。
+> This is a development system, not production. Security controls are relaxed to keep development fast. Production hardening is a deployment-time gate, not a per-change rule.
 
-### 依赖安全
+Still required in dev (cheap, and the repo is pushed to GitHub):
 
-- **只允许使用开源许可的依赖**：MIT、Apache-2.0、ISC、BSD（禁止 GPL 或其他 copyleft 许可）
-- **只允许使用知名可信来源的包**：Meta (React)、Microsoft (TypeScript)、Fastify 团队、Radix/WorkOS、Vite 生态、Drizzle 团队、Redis Ltd 等
-- **禁止引入任何包含遥测/分析/外发数据功能的包**：如 Sentry、Segment、Amplitude、PostHog 等 — 除非经过明确授权
-- **禁止引入来源不明或维护不活跃的包**：GitHub star < 1000 且无知名组织背书的包需经过评审
-- 新增任何依赖前必须确认：许可证合规 + 无已知漏洞 + 无外发数据行为
+- Never commit secrets: passwords, tokens, keys and full connection strings stay in ignored `.env` files and out of tracked code, docs and logs. Hosts, ports and schema names may appear in docs.
+- Dependencies: permissive licenses only (MIT, Apache-2.0, ISC, BSD; no GPL/copyleft) and no telemetry/analytics packages (Sentry, Segment, Amplitude, PostHog, etc.) without explicit approval.
+- Do not log crew personal data to the browser console in code that is meant to ship.
 
-### 漏洞管理
+Relaxed in dev (allowed without asking):
 
-- 生产依赖（dependencies）：**零容忍**，`npm audit --omit=dev` 必须 0 vulnerabilities
-- 开发依赖（devDependencies）：moderate 以上需评估影响，critical 必须立即修复
-- 定期（每月至少一次）运行 `npm audit` 全量扫描
-- CI/CD 流水线应加入 `npm audit --audit-level=moderate` 门禁
+- Permissive CORS, plain HTTP/WS, and unauthenticated WebSocket subscriptions on local or SIT services.
+- Hardcoded `localhost` / SIT base URLs in dev-only config, scripts and tests.
+- Unreviewed low-star packages that meet the license and no-telemetry rules; dev-dependency audit findings unless critical.
 
-### 数据安全
+Production checklist (apply when preparing a production or customer-facing deployment, not during routine dev):
 
-- **禁止**在代码、配置文件或日志中明文存储密码、密钥、Token
-- 数据库连接串、Redis 密码、JWT 密钥等必须通过环境变量（`.env`）注入
-- `.env` 文件必须在 `.gitignore` 中，**禁止**提交到仓库
-- API 通信中的敏感数据（机组个人信息、排班数据）禁止记录到前端 console.log
-- 前端 API baseURL 必须从环境变量或 `window.location` 动态获取，禁止硬编码外部地址
-
-### 网络安全
-
-- 所有 HTTP 端点必须启用 CORS 白名单（不使用 `origin: '*'` 通配符在生产环境）
-- WebSocket 连接需要验证 schema/用户身份后才允许订阅频道
-- 生产环境必须使用 HTTPS / WSS
-- Redis 和 PostgreSQL 只监听内网地址，禁止暴露公网
+- `npm audit --omit=dev` = 0 vulnerabilities; critical dev-dependency findings fixed.
+- CORS allowlist (no `origin: '*'`), HTTPS/WSS, WebSocket schema/user verification before channel subscription.
+- Redis and PostgreSQL reachable only on internal networks; frontend API base URL from env or `window.location`.

@@ -1,6 +1,7 @@
 # Agent workflow — full rule text
 
 > Detail for Agent Operating Defaults, §Model-Routing, MCP and Skills, Design Before Implementation, Senior Engineering Workflow, §Minimal-First, §Surgical and the docs directory standard, summarised in root `CLAUDE.md`. Moved here 2026-09-12.
+> Full text refreshed 2026-10-22 from the pre-router root `CLAUDE.md`; edit rules here, not in a second copy.
 
 ## Agent Operating Defaults
 
@@ -26,7 +27,7 @@
 - **Git authorization is unchanged.** Delegation does not authorize commit, push, destructive commands, or history rewriting. Commit/push still require the user's explicit instruction; keep shared-state Git operations coordinated through the primary agent.
 - **Review before delivery.** The primary model integrates delegated results and verifies key conclusions without mechanically repeating the whole subtask. Every existing gate still applies — §Simulate-User, §No-Illusion (exact command + PASS/FAIL), and §PW-Snapshot (versioned screenshot, visually inspected). A delegated PASS summary alone does not replace the required evidence.
 
-For substantial work, delegate a bounded, independent supporting task only when the current runtime permits it and the handoff and review cost is justified. Define scope, expected output, and acceptance checks first. The primary model reviews delegated changes and evidence before delivery. Keep small or tightly coupled tasks local. Delegation is not an approval gate and never relaxes verification or Git authorization.
+Delegation is not an approval gate and never relaxes verification or Git authorization.
 
 ## MCP and Skills
 
@@ -77,8 +78,6 @@ Remove only temporary artifacts created for this task and confirmed unnecessary.
 
 唯一例外（优先于本节）：改到的文件里命中「样式与排版标准」的历史魔法值必须顺手归一到 token；改到的区域发现 stale 测试按 §Stale-Test 重写。除此之外的「顺手优化」一律先单独提出、单独提交。
 
----
-
 ## AI 文档目录规范
 
 所有 AI（Claude、Codex、其他 agent）生成或维护的开发文档，统一放在根目录 `docs/` 下。后续禁止新增 `doc/` 下的 AI 开发文档；如果旧文档仍在 `doc/` 或模块私有 `docs/` 中，迁移时单独规划，不在日常开发中继续扩散。
@@ -106,4 +105,3 @@ Remove only temporary artifacts created for this task and confirmed unnecessary.
 - 测试用例写入 `docs/test-cases/<module>/`。
 - 长期模块说明写入 `docs/modules/<module>/`，全局架构写入 `docs/architecture/`。
 - `.env`、数据库密码、Token、生产账号等敏感信息不得写入任何文档。
-
