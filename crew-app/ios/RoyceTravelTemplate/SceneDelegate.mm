@@ -1,6 +1,8 @@
 #import "SceneDelegate.h"
 
+#import <CoreBluetooth/CoreBluetooth.h>
 #import <React/RCTBundleURLProvider.h>
+#import <React/RCTEventEmitter.h>
 #import <React/RCTLinkingManager.h>
 #import <ReactAppDependencyProvider/RCTAppDependencyProvider.h>
 #import <RCTReactNativeFactory.h>

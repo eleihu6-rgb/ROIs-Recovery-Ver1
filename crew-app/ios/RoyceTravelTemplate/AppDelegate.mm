@@ -1,5 +1,8 @@
 #import "AppDelegate.h"
 
+#import <CoreBluetooth/CoreBluetooth.h>
+#import <React/RCTEventEmitter.h>
+
 #import "RoyceTravelTemplate-Swift.h"
 
 @implementation AppDelegate
