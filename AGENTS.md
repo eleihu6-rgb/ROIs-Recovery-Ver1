@@ -22,7 +22,7 @@ Shared project rules belong in `CLAUDE.md` or referenced `docs/` files. Do not d
 
 ## Daily Workflow
 
-- Follow **Agent Operating Defaults** and **MCP and Skills** in `CLAUDE.md`. Use **§Model-Routing** when a substantial task has independent supporting work and delegation is available and economical; report delegated work and its review when used.
+- Follow **Agent Operating Defaults** and **MCP and Skills** in `CLAUDE.md`. Per **§Model-Routing**, spawn subagents by default for independent parallel work and run test writing/execution on a lower-cost subagent model; report delegated work and its review.
 - Prefer the codebase-memory graph for code discovery; check current tool availability and indexing. Use `rg` for docs/config/literals or insufficient graph results.
 - Resolve skills through the session catalog and read the applicable `SKILL.md`. Old model names, local installation paths, and prior transcripts are not capability guarantees.
 - Inspect the worktree before editing. Preserve other contributors' changes, including concurrent work.
