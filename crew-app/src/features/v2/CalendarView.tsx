@@ -3,13 +3,13 @@
 // The calendar progressively collapses from a rich full month, to a compact
 // month with a day agenda, to one selected week with a larger day agenda.
 // All presentations share the Timeline's MonthModel.
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import {
-  PanGestureHandler,
-  PinchGestureHandler,
-  type HandlerStateChangeEvent,
-  type PinchGestureHandlerGestureEvent,
+  Gesture,
+  GestureDetector,
+  type PanGestureHandlerEventPayload,
+  type PinchGestureHandlerEventPayload,
 } from 'react-native-gesture-handler';
 import { Icon } from '../../components/v2/icons';
 import type { CarrierPalette } from '../../theme/carrier';
@@ -139,13 +139,13 @@ export function CalendarView({
   const setLevelIndex = useCallback((index: number) => {
     setLevel(CALENDAR_LEVELS[Math.max(0, Math.min(CALENDAR_LEVELS.length - 1, index))]);
   }, [setLevel]);
-  const onPinch = useCallback((event: PinchGestureHandlerGestureEvent) => {
-    const scale = Number(event.nativeEvent.scale ?? 1);
+  const onPinch = useCallback((event: PinchGestureHandlerEventPayload) => {
+    const scale = Number(event.scale ?? 1);
     if (scale < 0.82) setZoomIndex(index => Math.max(0, index - 1));
     if (scale > 1.18) setZoomIndex(index => Math.min(2, index + 1));
   }, []);
-  const onSwipeEnd = useCallback((event: HandlerStateChangeEvent<Record<string, unknown>>) => {
-    const translationY = Number(event.nativeEvent.translationY ?? 0);
+  const onSwipeEnd = useCallback((event: PanGestureHandlerEventPayload) => {
+    const translationY = Number(event.translationY ?? 0);
     if (translationY < -36) setLevelIndex(levelIndex + 1);
     if (translationY > 36) setLevelIndex(levelIndex - 1);
   }, [levelIndex, setLevelIndex]);
@@ -197,8 +197,8 @@ function MonthGrid({
   level: CalendarLevel;
   zoomIndex: number;
   viewportHeight?: number;
-  onPinch: (event: PinchGestureHandlerGestureEvent) => void;
-  onSwipeEnd: (event: HandlerStateChangeEvent<Record<string, unknown>>) => void;
+  onPinch: (event: PinchGestureHandlerEventPayload) => void;
+  onSwipeEnd: (event: PanGestureHandlerEventPayload) => void;
 }): React.JSX.Element {
   const weeks = calendarWeeks(month);
   const detail = level === 'month-detail';
@@ -225,12 +225,16 @@ function MonthGrid({
   const firstDow = new Date(month.year, month.monthIdx, 1).getDay();
   const previousMonthDays = new Date(month.year, month.monthIdx, 0).getDate();
   const lastDow = new Date(month.year, month.monthIdx + 1, 0).getDay();
-  const panRef = useRef<PanGestureHandler>(null);
-  const pinchRef = useRef<PinchGestureHandler>(null);
+  const gesture = useMemo(() => Gesture.Simultaneous(
+    Gesture.Pan().runOnJS(true).onEnd(onSwipeEnd),
+    Gesture.Pinch().withTestId('cal-pinch-surface').runOnJS(true).onUpdate(onPinch),
+  ), [onPinch, onSwipeEnd]);
   return (
-    <PanGestureHandler ref={panRef} simultaneousHandlers={pinchRef} onEnded={onSwipeEnd} testID={level === 'month-detail' ? 'cal-month-detail' : level === 'week' ? 'cal-week-grid' : 'cal-grid'}>
-    <PinchGestureHandler ref={pinchRef} simultaneousHandlers={panRef} key={`calendar-pinch-${zoomIndex}`} onGestureEvent={onPinch} testID="cal-pinch-surface">
-    <View style={[s.grid, { backgroundColor: p.card, borderColor: p.cardLine }]}>
+    <GestureDetector gesture={gesture}>
+    <View
+      style={[s.grid, { backgroundColor: p.card, borderColor: p.cardLine }]}
+      testID={level === 'month-detail' ? 'cal-month-detail' : level === 'week' ? 'cal-week-grid' : 'cal-grid'}
+    >
       <View style={s.gridWeek} testID="cal-weekdays">
       {WEEKDAY_INITIALS.map((d, i) => (
         <Text key={`dow-${i}`} testID={`cal-weekday-${i}`} style={[s.dow, { color: p.cardSoft }]}>
@@ -289,8 +293,7 @@ function MonthGrid({
         </View>
       );})}
     </View>
-    </PinchGestureHandler>
-    </PanGestureHandler>
+    </GestureDetector>
   );
 }
 
@@ -376,7 +379,7 @@ function CompactMonth({
   base,
   fixedBottom,
   scrollBottom,
-}: Omit<CalendarViewProps, 'mode' | 'onBackToCompact'> & { tall?: boolean; level: CalendarLevel; zoomIndex: number; controls: React.ReactNode; headerControlsExternal: boolean; onPinch: (event: PinchGestureHandlerGestureEvent) => void; onSwipeEnd: (event: HandlerStateChangeEvent<Record<string, unknown>>) => void; viewportHeight: number; fixedBottom: number; scrollBottom: number }): React.JSX.Element {
+}: Omit<CalendarViewProps, 'mode' | 'onBackToCompact'> & { tall?: boolean; level: CalendarLevel; zoomIndex: number; controls: React.ReactNode; headerControlsExternal: boolean; onPinch: (event: PinchGestureHandlerEventPayload) => void; onSwipeEnd: (event: PanGestureHandlerEventPayload) => void; viewportHeight: number; fixedBottom: number; scrollBottom: number }): React.JSX.Element {
   const detail = level === 'month-detail';
   const weather = useAppleWeather(base ?? '', month.year, month.monthIdx, selectedDay);
   const fixedDay = !detail && selectedDay != null;

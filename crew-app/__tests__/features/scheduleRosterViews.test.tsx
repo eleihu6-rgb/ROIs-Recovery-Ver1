@@ -6,6 +6,7 @@ import { render, fireEvent, act, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ScheduleScreen } from '../../src/features/v2/ScheduleScreen';
 import { RouteMapView } from '../../src/features/v2/RouteMapView';
@@ -91,9 +92,11 @@ afterEach(() => { act(() => { jest.runOnlyPendingTimers(); }); jest.useRealTimer
 function renderSchedule() {
   const store = makeStore();
   return render(
-    <Provider store={store}>
-      <ScheduleScreen />
-    </Provider>,
+    <GestureHandlerRootView>
+      <Provider store={store}>
+        <ScheduleScreen />
+      </Provider>
+    </GestureHandlerRootView>,
   );
 }
 

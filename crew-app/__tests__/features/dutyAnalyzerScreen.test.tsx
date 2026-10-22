@@ -1,7 +1,7 @@
 import React from 'react';
-import { act, fireEvent, render, within } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { CarrierContext, PALETTES } from '../../src/theme/carrier';
 import { DutyAnalyzerScreen } from '../../src/features/dutyAnalyzer/DutyAnalyzerScreen';
 import { layoutFor } from '../../src/components/v2/useLayout';
@@ -38,6 +38,7 @@ const mockState = {
   trips: { trips: [trip] },
 };
 const mockLayout = { current: layoutFor(420, 912) };
+const mockInsets = { current: { top: 0, right: 0, bottom: 0, left: 0 } };
 const mockNavigate = jest.fn();
 
 jest.mock('../../src/store', () => ({
@@ -47,7 +48,7 @@ jest.mock('../../src/components/v2/useLayout', () => {
   const actual = jest.requireActual('../../src/components/v2/useLayout');
   return { ...actual, useLayout: () => mockLayout.current };
 });
-jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) }));
+jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => mockInsets.current }));
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
   useFocusEffect: jest.fn(),
@@ -57,8 +58,10 @@ type Node = { children: Array<Node | string> };
 const textOf = (node: Node): string => node.children.map(child => typeof child === 'string' ? child : textOf(child)).join('');
 
 beforeEach(async () => {
+  jest.useRealTimers();
   await AsyncStorage.clear();
   mockLayout.current = layoutFor(420, 912);
+  mockInsets.current = { top: 0, right: 0, bottom: 0, left: 0 };
   mockNavigate.mockClear();
 });
 
@@ -89,42 +92,82 @@ it('groups a dated base-to-base pairing while keeping each duty available for wh
   expect(screen.getByText(/HND · Local 16:20 · UTC 07:20/)).toBeTruthy();
 });
 
-it('exposes every rule modifier and recalculates the selected context', async () => {
+it('uses the optimized iOS duty facts and calculates FDP immediately from chock-on', async () => {
+  jest.useFakeTimers().setSystemTime(new Date(2026, 9, 21, 13, 30));
   const screen = render(<DutyAnalyzerScreen />);
   await act(async () => {});
   fireEvent.press(screen.getByTestId('analyzer-mode-new'));
 
-  fireEvent.changeText(screen.getByTestId('analyzer-report'), '13:30');
-  fireEvent(screen.getByTestId('analyzer-report'), 'blur');
-  expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toMatch(/10:00.*Limit 12:00/);
+  expect(screen.getByTestId('analyzer-basic-scroll')).toBeTruthy();
+  expect(screen.getByTestId('analyzer-report').props.value).toBe('13:30');
+  expect(screen.getByTestId('analyzer-chock-on').props.value).toBe('');
+  expect(textOf(screen.getByTestId('analyzer-new-form') as unknown as Node)).not.toContain('MAX FDP');
+  expect(textOf(screen.getByTestId('analyzer-new-duty-projection') as unknown as Node)).toMatch(/MAX FDP.*12:00.*LATEST CHOCK-ON.*01:30 \+1 day/);
+  expect(textOf(screen.getByTestId('analyzer-result') as unknown as Node)).toMatch(/Enter chock-on for actual FDP/);
+  expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toMatch(/Awaiting last chock-on time.*Limit 12:00/);
+  expect(textOf(screen.getByTestId('metric-dp') as unknown as Node)).toMatch(/Awaiting last chock-on time.*Limit 16:00/);
+  expect(screen.getAllByText('Awaiting last chock-on time')).toHaveLength(2);
+  expect(screen.getAllByText('Awaiting last chock-on time')[0].props.numberOfLines).toBe(2);
+  expect(screen.queryByTestId('analyzer-fdp')).toBeNull();
+  expect(screen.queryByTestId('analyzer-dp')).toBeNull();
+  expect(screen.queryByTestId('analyzer-acclimatisation-unknown')).toBeNull();
+  expect(screen.queryByTestId('analyzer-timezone')).toBeNull();
+  expect(screen.queryByTestId('analyzer-block')).toBeNull();
+  expect(screen.queryByTestId('metric-block')).toBeNull();
+  expect(screen.queryByTestId('analyzer-rest')).toBeNull();
+  expect(screen.queryByTestId('analyzer-split')).toBeNull();
+  expect(textOf(screen.getByTestId('metric-rest') as unknown as Node)).toMatch(/Awaiting DP.*Required after duty.*From DP/);
+  expect(StyleSheet.flatten(screen.getByTestId('analyzer-sectors-value').props.style).width).toBe(48);
 
-  fireEvent.press(screen.getByTestId('analyzer-category-cabin'));
-  expect(textOf(screen.getByTestId('analyzer-result') as unknown as Node)).toMatch(/Needs review.*Cabin-crew limits require an approved cabin rule pack/);
-  fireEvent.press(screen.getByTestId('analyzer-category-flight-deck'));
+  fireEvent.changeText(screen.getByTestId('analyzer-chock-on'), '2345');
+  expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toMatch(/10:15.*Limit 12:00/);
+  fireEvent(screen.getByTestId('analyzer-chock-on'), 'blur');
+  expect(screen.getByTestId('analyzer-chock-on').props.value).toBe('23:45');
+  expect(textOf(screen.getByTestId('metric-dp') as unknown as Node)).toMatch(/10:15.*Limit 16:00/);
+  expect(textOf(screen.getByTestId('metric-rest') as unknown as Node)).toMatch(/12:00.*Required after duty.*From DP/);
+
   fireEvent.press(screen.getByTestId('analyzer-composition-3P'));
+  expect(screen.getByTestId('analyzer-facility-2').props.accessibilityState).toEqual({ selected: true });
+  expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toMatch(/Limit 15:00/);
   fireEvent.press(screen.getByTestId('analyzer-facility-1'));
   expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toMatch(/Limit 16:00/);
 
-  fireEvent.press(screen.getByTestId('analyzer-rest-location-away'));
-  expect(screen.getByTestId('analyzer-timezone')).toBeTruthy();
-  fireEvent.changeText(screen.getByTestId('analyzer-timezone'), '4');
-  expect(textOf(screen.getByTestId('metric-rest') as unknown as Node)).toMatch(/Minimum 14:00/);
+  fireEvent.changeText(screen.getByTestId('analyzer-chock-on'), '');
+  expect(textOf(screen.getByTestId('analyzer-result') as unknown as Node)).toMatch(/Enter chock-on for actual FDP/);
+  expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toContain('Awaiting last chock-on time');
+  expect(textOf(screen.getByTestId('metric-dp') as unknown as Node)).toContain('Awaiting last chock-on time');
+});
 
-  expect(screen.queryByText('Rules')).toBeNull();
-  expect(screen.queryByText(/6007|6008/)).toBeNull();
-  fireEvent.press(screen.getByTestId('analyzer-composition-basic'));
-  fireEvent.press(screen.getByTestId('analyzer-acclimatisation-unknown'));
-  expect(screen.getByTestId('analyzer-odp-before')).toBeTruthy();
-  fireEvent.changeText(screen.getByTestId('analyzer-odp-before'), '720');
-  expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toMatch(/Limit 10:00/);
+it('resets every new-duty value to a fresh scenario', async () => {
+  jest.useFakeTimers().setSystemTime(new Date(2026, 9, 21, 13, 30));
+  const screen = render(<DutyAnalyzerScreen />);
+  await act(async () => {});
+  fireEvent.press(screen.getByTestId('analyzer-mode-new'));
+  fireEvent.changeText(screen.getByTestId('analyzer-report'), '07:00');
+  fireEvent.changeText(screen.getByTestId('analyzer-chock-on'), '22:00');
+  fireEvent.press(screen.getByTestId('analyzer-sectors-increase'));
+  fireEvent.press(screen.getByTestId('analyzer-composition-3P'));
+  fireEvent.press(screen.getByTestId('analyzer-facility-1'));
+  fireEvent.press(screen.getByTestId('analyzer-rest-location-away'));
+
+  fireEvent.press(screen.getByTestId('analyzer-reset'));
+  await act(async () => {});
+
+  expect(screen.getByTestId('analyzer-report').props.value).toBe('13:30');
+  expect(screen.getByTestId('analyzer-chock-on').props.value).toBe('');
+  expect(textOf(screen.getByTestId('analyzer-sectors-value') as unknown as Node)).toBe('2');
+  expect(screen.getByTestId('analyzer-composition-basic').props.accessibilityState).toEqual({ selected: true });
+  expect(screen.queryByTestId('analyzer-facility-1')).toBeNull();
+  expect(screen.getByTestId('analyzer-rest-location-home').props.accessibilityState).toEqual({ selected: true });
 });
 
 it('creates a new duty, recalculates live, saves it, reopens it, and confirms delete', async () => {
   const screen = render(<DutyAnalyzerScreen />);
   await act(async () => {});
   fireEvent.press(screen.getByTestId('analyzer-mode-new'));
-  expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toMatch('10:00');
-  fireEvent.changeText(screen.getByTestId('analyzer-fdp'), '900');
+  fireEvent.changeText(screen.getByTestId('analyzer-report'), '07:00');
+  fireEvent(screen.getByTestId('analyzer-report'), 'blur');
+  fireEvent.changeText(screen.getByTestId('analyzer-chock-on'), '22:00');
   expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toMatch(/15:00.*Limit 13:00/);
   expect(screen.getByText('Limit exceeded')).toBeTruthy();
 
@@ -135,6 +178,10 @@ it('creates a new duty, recalculates live, saves it, reopens it, and confirms de
   const saved = screen.getAllByTestId(/^analyzer-saved-/).find(node => node.props.testID !== 'analyzer-saved-list' && node.props.testID !== 'analyzer-saved-dialog');
   expect(saved).toBeTruthy();
   expect(textOf(saved as unknown as Node)).toMatch(/New duty.*Limit exceeded/);
+  fireEvent.press(saved!);
+  expect(screen.getByTestId('analyzer-chock-on').props.value).toBe('22:00');
+  expect(textOf(screen.getByTestId('metric-fdp') as unknown as Node)).toMatch(/15:00.*Limit 13:00/);
+  fireEvent.press(screen.getByTestId('analyzer-mode-saved'));
   fireEvent.press(screen.getAllByTestId(/^analyzer-delete-/)[0]);
   expect(textOf(screen.getByTestId('analyzer-delete-dialog-title') as unknown as Node)).toBe('Delete scenario?');
   await act(async () => { fireEvent.press(screen.getByTestId('analyzer-delete-dialog-confirm')); });
@@ -227,10 +274,63 @@ it('adds one diversion recovery segment and shows an exceeded FDP warning', asyn
   expect(screen.getAllByTestId(/^analyzer-segment-(?!select-|dep-|arr-).+:segment-\d+(?::recovery)?$/)).toHaveLength(3);
 });
 
-it.each([[420, 912], [912, 420], [669, 951], [951, 669], [834, 1210], [1210, 834]])('uses the approved what-if structure at %sx%s', async (width, height) => {
+it('uses compact timeline controls and the right-edge action rail only on Duo wide', async () => {
+  mockLayout.current = layoutFor(951, 669);
+  mockInsets.current = { top: 0, right: 0, bottom: 0, left: 0 };
+  const screen = render(<DutyAnalyzerScreen />);
+  await act(async () => {});
+  fireEvent.press(screen.getByTestId('analyzer-mode-new'));
+  expect(screen.getByTestId('analyzer-action-rail-edge')).toBeTruthy();
+  expect(screen.queryByTestId('analyzer-content-actions')).toBeNull();
+  fireEvent.press(screen.getByTestId('analyzer-reset'));
+  expect(screen.getByTestId('analyzer-report').props.value).toMatch(/^\d{2}:\d{2}$/);
+
+  fireEvent.press(screen.getByTestId('analyzer-mode-roster'));
+  fireEvent.press(screen.getAllByTestId(/^analyzer-duty-/)[0]);
+
+  expect(screen.getByTestId('analyzer-action-rail-edge')).toBeTruthy();
+  expect(screen.queryByTestId('analyzer-reset-top')).toBeNull();
+  expect(screen.queryByTestId('analyzer-content-actions')).toBeNull();
+  expect(screen.getByTestId('analyzer-rule-context-compact')).toBeTruthy();
+  const segment = screen.getAllByTestId(/^analyzer-segment-(?!select-|dep-|arr-|times-).+:segment-\d+$/)[0];
+  const segmentId = segment.props.testID.replace('analyzer-segment-', '');
+  const compactTimes = screen.getByTestId(`analyzer-segment-times-compact-${segmentId}`);
+  expect(StyleSheet.flatten(compactTimes.props.style).flexWrap).toBe('nowrap');
+  const departureField = screen.getByTestId(`analyzer-segment-dep-${segmentId}-field`);
+  const arrivalField = screen.getByTestId(`analyzer-segment-arr-${segmentId}-field`);
+  expect(StyleSheet.flatten(departureField.props.style).minWidth).toBe(0);
+  expect(departureField.findAllByType(Text).some(node => StyleSheet.flatten(node.props.style).minHeight === 40)).toBe(true);
+  expect(arrivalField.findAllByType(Text).some(node => StyleSheet.flatten(node.props.style).minHeight === 40)).toBe(true);
+  expect(StyleSheet.flatten(screen.getByTestId(`analyzer-segment-dep-${segmentId}-earlier`).props.style).height).toBe(44);
+  expect(StyleSheet.flatten(screen.getByTestId(`analyzer-segment-dep-${segmentId}`).props.style).height).toBe(44);
+
+  screen.unmount();
+  mockLayout.current = layoutFor(1210, 834);
+  mockInsets.current = { top: 24, right: 0, bottom: 20, left: 0 };
+  const ipad = render(<DutyAnalyzerScreen />);
+  await act(async () => {});
+  fireEvent.press(ipad.getAllByTestId(/^analyzer-duty-/)[0]);
+  expect(ipad.queryByTestId('analyzer-action-rail-edge')).toBeNull();
+  expect(ipad.getByTestId('analyzer-content-actions')).toBeTruthy();
+  expect(ipad.queryByTestId('analyzer-rule-context-compact')).toBeNull();
+});
+
+it.each([[420, 912], [912, 420], [669, 951], [951, 669], [834, 1210], [1210, 834]])('uses the approved what-if and optimized new-duty structures at %sx%s', async (width, height) => {
   mockLayout.current = layoutFor(width, height);
   const screen = render(<DutyAnalyzerScreen />);
   await act(async () => {});
+  fireEvent.press(screen.getByTestId('analyzer-mode-new'));
+  expect(screen.getByTestId('analyzer-new-form')).toBeTruthy();
+  expect(screen.getByTestId('analyzer-new-duty-projection')).toBeTruthy();
+  expect(screen.getByTestId('analyzer-result')).toBeTruthy();
+  const newDutyColumns = screen.queryByTestId('analyzer-columns');
+  expect(Boolean(newDutyColumns)).toBe(layoutFor(width, height).wide);
+  if (newDutyColumns) {
+    expect(StyleSheet.flatten(screen.getByTestId('analyzer-sectors-value').props.style).width).toBe(48);
+    expect(StyleSheet.flatten(screen.getByTestId('analyzer-new-duty-editor-column').props.style).flex).toBe(1);
+    expect(StyleSheet.flatten(screen.getByTestId('analyzer-new-duty-summary-column').props.style).flex).toBe(1);
+  }
+  fireEvent.press(screen.getByTestId('analyzer-mode-roster'));
   fireEvent.press(screen.getAllByTestId(/^analyzer-duty-/)[0]);
   const columns = screen.queryByTestId('analyzer-columns');
   const single = screen.queryByTestId('analyzer-single-column');

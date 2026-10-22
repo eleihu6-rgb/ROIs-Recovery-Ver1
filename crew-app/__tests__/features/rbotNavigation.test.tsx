@@ -5,6 +5,7 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ScheduleScreen } from '../../src/features/v2/ScheduleScreen';
 import settingsReducer from '../../src/features/settings/settingsSlice';
@@ -83,9 +84,11 @@ describe("R'Bot -> Schedule roster view", () => {
 
   it('opens the calendar the assistant asked for', () => {
     const {getByTestId, queryByTestId} = render(
-      <Provider store={makeStore()}>
-        <ScheduleScreen route={{params: {view: 'calendar-compact', viewAt: 1}}} />
-      </Provider>,
+      <GestureHandlerRootView>
+        <Provider store={makeStore()}>
+          <ScheduleScreen route={{params: {view: 'calendar-compact', viewAt: 1}}} />
+        </Provider>
+      </GestureHandlerRootView>,
     );
     // The calendar renders the day grid; the route map must not be mounted.
     expect(queryByTestId('route-view')).toBeNull();

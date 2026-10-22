@@ -4,7 +4,7 @@ import {
   clearPortalTokens, createPortalClient, isAuthFailure, portalSiteFor, toQuery, PortalError,
 } from '../../src/features/portal/portalClient';
 import { createDutySwapApi } from '../../src/features/dutySwap/dutySwapApi';
-import { emptyFilters } from '../../src/features/dutySwap/dutySwapModel';
+import { emptyFilters, toCrews } from '../../src/features/dutySwap/dutySwapModel';
 
 const creds = { airline: 'PR', crewId: '392923', password: 'pw' };
 const json = (body: unknown, status = 200) => Promise.resolve({ status, json: () => Promise.resolve(body) } as Response);
@@ -47,6 +47,32 @@ it('logs in once (RSA password + outCaptcha) and sends Bearer token + userId', a
   expect(api[0].init!.headers).toMatchObject({ Authorization: 'Bearer T1', userId: '392923' });
 });
 
+it('accepts direct string tokens without using their length as an auth signal', async () => {
+  const { fetchImpl } = fakePortal({
+    '/system/getPublicKey': () => ({ body: { code: 0, data: 'K' } }),
+    '/login': () => ({ body: { code: 0, data: 'short-token' } }),
+    '/api/x': (init) => ({
+      body: (init!.headers as Record<string, string>).Authorization === 'Bearer short-token'
+        ? { code: 0, data: 'ok' }
+        : { code: 1, message: 'Unauthorized', data: null },
+    }),
+  });
+  const client = createPortalClient(creds, { fetchImpl, encrypt: () => 'e' });
+  await expect(client.get('/api/x')).resolves.toBe('ok');
+});
+
+it('does not echo an unknown login string into a PortalError', async () => {
+  const { fetchImpl } = fakePortal({
+    '/system/getPublicKey': () => ({ body: { code: 0, data: 'K' } }),
+    '/login': () => ({ body: { code: 1, data: 'opaque-sensitive-value' } }),
+  });
+  const client = createPortalClient(creds, { fetchImpl, encrypt: () => 'e' });
+  await expect(client.get('/api/x')).rejects.toMatchObject({
+    message: 'Portal sign-in failed.',
+    failureCode: null,
+  });
+});
+
 it('re-logs in once when the portal rejects the token (real JWT error text)', async () => {
   let n = 0;
   const { fetchImpl } = fakePortal({
@@ -85,6 +111,77 @@ it('encodes queries: arrays repeat, empties dropped', () => {
 });
 
 describe('dutySwapApi', () => {
+  it('prefers the TG web portal window and treats its missing disclaimer as none', async () => {
+    const client = {
+      get: jest.fn(async (path: string) => {
+        if (path.endsWith('getMyLatestTaskDate')) return { startDate: '2026-10-22', endDate: '2026-11-30' };
+        throw new PortalError('Portal error (HTTP 404).', -1, 404);
+      }),
+    } as unknown as Parameters<typeof createDutySwapApi>[1];
+    const api = createDutySwapApi({ airline: 'TG', crewId: '35459', password: 'pw' }, client);
+
+    await expect(api.defaultWindow()).resolves.toEqual({ startDate: '2026-10-22', endDate: '2026-11-30', swapMode: 'FS' });
+    await expect(api.disclaimer()).resolves.toBeNull();
+  });
+
+  it('falls back to the legacy window and keeps TG My duties usable without auto-unlock', async () => {
+    const client = {
+      get: jest.fn(async (path: string, query?: unknown) => {
+        if (path.endsWith('getMyLatestTaskDate') || path.endsWith('findUnlockedDutyPref')) {
+          throw new PortalError('Portal error (HTTP 404).', -1, 404);
+        }
+        if (path.endsWith('getTaskDefaultStartDate')) return '2026-10-22';
+        if (path.endsWith('selectMyTaskList')) {
+          expect(query).toEqual({ startDate: '2026-10-22', endDate: '2026-11-30' });
+          return [{ pairingId: 375245156, publishStatus: 'Hide' }];
+        }
+        return null;
+      }),
+    } as unknown as Parameters<typeof createDutySwapApi>[1];
+    const api = createDutySwapApi({ airline: 'TG', crewId: '35459', password: 'pw' }, client);
+
+    await expect(api.defaultWindow()).resolves.toEqual({ startDate: '2026-10-22', endDate: '2026-10-22', swapMode: 'FS' });
+    await expect(api.myTasks({ startDate: '2026-10-22', endDate: '2026-11-30' })).resolves.toMatchObject({
+      tasks: [{ pairingId: 375245156, publishStatus: 'Hide' }], autoUnlock: false, supportsAutoUnlock: false,
+    });
+  });
+
+  it('uses TG Handshake candidates without requiring My Duty publication', async () => {
+    const get = jest.fn(async (path: string) => path.endsWith('selectMyTaskList') ? [{
+      pairingId: 375245156, rosterGroundPublishId: null, assignment: 'FLY', publishStatus: 'Hide',
+      startDateTimeLocal: '29-Oct-2026 16:35', endDateTimeLocal: '31-Oct-2026 20:10',
+      startDateTime: '29-Oct-2026 16:35', endDateTime: '31-Oct-2026 20:10',
+      segmentDetailVoList: [{ fltDt: '29-Oct-2026', fltNo: '465', dep: 'BKK', arr: 'MEL' }],
+    }] : null);
+    const client = {
+      raw: jest.fn(async () => ({ code: 0, message: null, data: [{
+        crewId: '25324', crewName: 'Candidate', cellVoList: [{
+          taskDate: '2026-10-29', taskDateTime: '2026-10-29T18:20',
+          taskType: 'PAIRING', assignment: 'FLY', taskDetail: 'TG936', pairingId: 800,
+          rosterGroundPublishId: null, status: null, hasSwap: null, publishStatus: null,
+        }, {
+          taskDate: '2026-10-31', taskDateTime: '2026-10-31T00:00',
+          taskType: 'PAIRING', assignment: 'FLY', taskDetail: null, pairingId: 800,
+          rosterGroundPublishId: null, status: null, hasSwap: null, publishStatus: null,
+        }],
+      }] })),
+      get,
+    } as unknown as Parameters<typeof createDutySwapApi>[1];
+    const api = createDutySwapApi({ airline: 'TG', crewId: '35459', password: 'pw' }, client);
+
+    const rows = await api.search(emptyFilters('2026-10-22', '2026-11-30', 'FS'));
+    expect(rows.map(row => row.crewId)).toEqual(['35459', '25324']);
+    expect(get).toHaveBeenCalledWith('/api/portal/taskSwap/selectMyTaskList', {
+      startDate: '2026-10-22', endDate: '2026-11-30',
+    });
+    const crews = toCrews(rows);
+    expect(crews[0].duties[0]).toMatchObject({ code: 'TG465', swappable: true });
+    expect(crews[1].duties[0]).toMatchObject({
+      code: 'TG936', swappable: true,
+      startDt: '2026-10-29T18:20', endDt: '2026-10-31T23:59:59',
+    });
+  });
+
   it('search sends the web params; submit returns the legality message instead of throwing', async () => {
     const { calls, fetchImpl } = fakePortal({
       '/system/getPublicKey': () => ({ body: { code: 0, data: 'K' } }),

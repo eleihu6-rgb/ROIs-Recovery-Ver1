@@ -13,9 +13,9 @@ import { dutySwapApiFor, ensureDetails, openDutySwap, runSearch, selectDutySwapL
 import { detailFor, emptyFilters, flightRouteOf, kpiDelta, parseRuleMessage, signedHhmm, submitBody, type ApiCompare, type ApiTaskDetail, type SwapDuty, type SwapFilters } from '../dutySwapModel';
 import { acceptDisclaimer } from '../dutySwapSlice';
 import type { SearchOptions } from '../dutySwapApi';
+import { SearchForm } from '../components/SearchForm';
 import { TwinRails, TwinRangeControls } from './TwinRails';
 import { TwinReview } from './TwinReview';
-import { TwinSearch } from './TwinSearch';
 import { moveWindow, type RailZoom } from './twinRailModel';
 import { s } from './styles';
 
@@ -57,7 +57,7 @@ function TwinRailSession({ switcher, actionsInRail }: { switcher?: React.ReactNo
   useEffect(() => {
     if (!api) return;
     const existing = store.getState().dutySwap.filters;
-    if (existing) void runSearch(dispatch, api, emptyFilters(existing.startDate, existing.endDate));
+    if (existing) void runSearch(dispatch, api, emptyFilters(existing.startDate, existing.endDate, existing.swapMode));
     else void openDutySwap(dispatch, store.getState, api);
   }, [api, dispatch, store]);
   useEffect(() => {
@@ -154,7 +154,7 @@ function TwinRailSession({ switcher, actionsInRail }: { switcher?: React.ReactNo
     onRetry={() => setDetailAttempt(n => n + 1)} note={note} setNote={setNote} submitting={submitting} onSubmit={() => { void submit(); }}
     onBack={stage === 'review' ? () => setStage('rails') : inlineReview ? () => setReviewCollapsed(true) : undefined}
     backLabel={stage === 'review' ? 'Back' : 'Hide'} />;
-  const button = (label: string, id: string, action: () => void, primary = false, disabled = false): React.JSX.Element => <Pressable key={id} testID={id} onPress={action} disabled={disabled || submitting} style={[s.button, { borderColor: p.btn, backgroundColor: primary ? p.btn : p.cardSolid, opacity: disabled || submitting ? 0.5 : 1 }]}><Text style={[s.buttonText, primary ? s.onPrimary : { color: p.btn }]}>{label}</Text></Pressable>;
+  const button = (label: string, id: string, action: () => void, primary = false, disabled = false): React.JSX.Element => <Pressable key={id} testID={id} accessibilityRole="button" onPress={action} disabled={disabled || submitting} style={[s.button, { borderColor: p.btn, backgroundColor: primary ? p.btn : p.cardSolid, opacity: disabled || submitting ? 0.5 : 1 }]}><Text style={[s.buttonText, primary ? s.onPrimary : { color: p.btn }]}>{label}</Text></Pressable>;
 
   const railActions = !actionsInRail ? <>
     <Pressable testID="twin-records" accessibilityLabel="Swap requests" disabled={submitting} onPress={() => nav.navigate('DutySwapRecords')} style={s.headerAction}><Icon name="history" size={20} color={p.btn} /></Pressable>
@@ -164,7 +164,10 @@ function TwinRailSession({ switcher, actionsInRail }: { switcher?: React.ReactNo
   return <PageShell title="Duty Swap" titleNode={rangeInHeader ? undefined : switcher} headerAccessory={rangeAccessory} layout="full" scroll={false} testID="twin-screen" right={<Pressable testID="twin-search-open" accessibilityRole="button" accessibilityLabel="Search pairing" disabled={submitting} onPress={() => setStage('search')} style={s.headerAction}><Icon name="sliders" size={24} color={p.ink} /></Pressable>}>
     {!api ? <View style={s.center}><Text style={[s.text, { color: p.ink }]}>Duty Swap is not available for this account.</Text></View> : <>
       {disclaimerError ? <Text style={[s.text, s.body, { color: p.ink }]}>{disclaimerError}</Text> : null}
-      {stage === 'search' && st.filters ? <TwinSearch p={p} initial={st.filters} defaults={initialWindow ?? st.filters} options={options} optionsError={optionsError} onRetryOptions={() => setOptionsAttempt(n => n + 1)} large={wide} onSearch={search} onClose={() => setStage('rails')} />
+      {stage === 'search' && st.filters ? <SearchForm palette={p} crewId={auth.crewId ?? ''} initial={st.filters}
+        defaults={initialWindow ?? st.filters} options={options} optionsError={optionsError}
+        onRetryOptions={() => setOptionsAttempt(n => n + 1)} twoColumns={tall || (!wide && width > height)}
+        onSearch={search} onClose={me ? () => setStage('rails') : undefined} />
         : st.status === 'error' ? <View style={s.center} testID="twin-error"><Text style={[s.title, { color: p.ink }]}>Could not load duties</Text><Text style={[s.text, { color: p.ink }]}>{st.error}</Text>{button('Retry', 'twin-retry', () => { void openDutySwap(dispatch, store.getState, api); })}{button('My duties', 'twin-unlock', () => nav.navigate('DutySwapMyDuties'))}</View>
           : st.status === 'loading' || st.status === 'idle' ? <View style={s.center}><ActivityIndicator color={p.btn} /><Text style={[s.text, { color: p.ink }]}>Loading duties…</Text></View>
             : !me ? <View style={s.center}><Text style={[s.text, { color: p.ink }]}>No duties in this search window.</Text>{button('Search pairing', 'twin-empty-search', () => setStage('search'))}</View>
@@ -176,8 +179,10 @@ function TwinRailSession({ switcher, actionsInRail }: { switcher?: React.ReactNo
                         <Text numberOfLines={1} style={[s.label, { color: p.cardInk }]}>Take {takeDuties.map(d => d.code).join(', ') || '—'}{crewB ? ` · ${crewB}` : ''}</Text>
                         {ready ? <Text style={[s.label, { color: p.cardInk }]} testID="twin-compact-routes">{routesText(giveDuties, takeDuties, mine, theirs, carrier)}</Text> : null}
                       </View>
-                      {button('Clear', 'twin-clear', clear)}
-                      {button('Review', 'twin-review-open', openReview, true, !hasPair)}
+                      <View style={s.compactActions} testID="twin-compact-actions">
+                        {button('Clear', 'twin-clear', clear)}
+                        {button('Review', 'twin-review-open', openReview, true, !hasPair)}
+                      </View>
                     </View> : null}
                     {!inlineReview && !compactTray ? <View style={[s.summary, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]} testID="twin-tray"><Text style={[s.text, { color: p.cardInk }]}>Give {giveDuties.map(d => d.code).join(', ') || '—'}</Text><Text style={[s.text, { color: p.cardInk }]}>Take {takeDuties.map(d => d.code).join(', ') || '—'}{crewB ? ` · ${crewB}` : ''}</Text>{delta ? <Text style={[s.number, { color: p.btn }]}>FDP {signedHhmm(delta.fdp)} · BLH {signedHhmm(delta.blh)} · CRD {signedHhmm(delta.crd)} · DO {delta.dayOff}</Text> : null}<View style={s.row}>{button('Clear', 'twin-clear', clear)}{button('Review swap', 'twin-review-open', () => setStage('review'), true, !giveDuties.length || !takeDuties.length)}</View></View> : null}
                   </View>

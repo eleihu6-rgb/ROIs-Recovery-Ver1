@@ -32,8 +32,6 @@ import { AppDialog, type AppDialogTone } from '../../components/v2/AppDialog';
 import {
   AIRLINES,
   DEFAULT_AIRLINE,
-  TEST_CREW_ID,
-  TEST_CREW_PW,
   airlineByCode,
   crewIdKeyboardType,
   loginRouteForAirline,

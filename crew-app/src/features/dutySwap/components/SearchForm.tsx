@@ -9,6 +9,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, Tex
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Icon } from '../../../components/v2/icons';
+import { colors, font, radius, space } from '../../../theme';
 import { CrewAvatar } from '../../settings/avatars';
 import { RBOT_AVATAR_INDEX } from '../../rbot/RBotEntry';
 import type { CarrierPalette } from '../../../theme/carrier';
@@ -39,8 +40,10 @@ interface Props {
   onChange?: (f: SwapFilters) => void;
   /** The R'Bot bar; hidden while R'Bot is already open. */
   onAskRbot?: () => void;
-  /** Close the form and show the matrix, when there is a result to show. */
+  /** Close the form and show the current result, when there is one. */
   onClose?: () => void;
+  optionsError?: string | null;
+  onRetryOptions?: () => void;
   /** Match mode: the star saves the want for the selected give duties. */
   onSaveWant?: (f: SwapFilters) => void;
   /** Match mode: the saved want of the give duty currently in context. */
@@ -92,8 +95,8 @@ export function SearchForm(props: Props): React.JSX.Element {
         <Range label="BLH (hours)" a={f.blhStart} b={f.blhEnd} onA={v => set('blhStart', v)} onB={v => set('blhEnd', v)} p={p} />
       </View>
       <View style={s.pair}>
-        <Range label="Report time" time a={f.briefStart} b={f.briefEnd} onA={v => set('briefStart', v)} onB={v => set('briefEnd', v)} p={p} />
-        <Range label="Flight end" time a={f.debriefStart} b={f.debriefEnd} onA={v => set('debriefStart', v)} onB={v => set('debriefEnd', v)} p={p} />
+        <Range label="Report time" time a={f.briefStart} b={f.briefEnd} onA={v => set('briefStart', v)} onB={v => set('briefEnd', v)} p={p} aTestID="search-briefStart" bTestID="search-briefEnd" />
+        <Range label="Flight end" time a={f.debriefStart} b={f.debriefEnd} onA={v => set('debriefStart', v)} onB={v => set('debriefEnd', v)} p={p} aTestID="search-debriefStart" bTestID="search-debriefEnd" />
       </View>
       <Chips label="Type" options={options?.taskTypes} value={f.taskTypeList} onChange={v => set('taskTypeList', v)} p={p} testID="search-type" />
     </Section>
@@ -110,7 +113,7 @@ export function SearchForm(props: Props): React.JSX.Element {
         <Chips label="Fleet" options={options?.fleets} value={f.fltFleetList} onChange={v => set('fltFleetList', v)} p={p} testID="search-fleet" />
       </Section>
       <Section title="Crew" p={p}>
-        <Chips label="Crew ID" options={options?.crews.map(c => c.crewId)} value={f.crewIdList} onChange={v => set('crewIdList', v)} p={p} />
+        <Chips label="Crew ID" options={options?.crews.map(c => c.crewId)} value={f.crewIdList} onChange={v => set('crewIdList', v)} p={p} testID="search-crew" />
         <Chips label="Rank" options={options?.ranks} value={f.activeRankList} onChange={v => set('activeRankList', v)} p={p} />
         <View style={s.toggleRow}>
           <Text style={[s.fieldLabel, s.flex, { color: p.cardInk }]}>Hide crew without duties</Text>
@@ -190,7 +193,11 @@ export function SearchForm(props: Props): React.JSX.Element {
             ))}
           </ScrollView>
         ) : null}
-        {!options ? <View style={s.loadingRow}><ActivityIndicator color={p.btn} size="small" /><Text style={[s.sub, { color: p.cardSoft }]}>Loading choices…</Text></View> : null}
+        {props.optionsError ? (
+          <Pressable onPress={props.onRetryOptions} disabled={!props.onRetryOptions} style={[s.retry, { borderColor: p.cardLine }]} testID="search-options-retry">
+            <Text style={[s.sub, { color: p.btn }]}>{props.optionsError} · Retry choices</Text>
+          </Pressable>
+        ) : !options ? <View style={s.loadingRow}><ActivityIndicator color={p.btn} size="small" /><Text style={[s.sub, { color: p.cardSoft }]}>Loading choices…</Text></View> : null}
         {props.twoColumns ? <View style={s.cols}><View style={s.flex}>{pairing}</View><View style={s.flex}>{rest}</View></View> : <>{pairing}{rest}</>}
       </ScrollView>
 
@@ -200,10 +207,10 @@ export function SearchForm(props: Props): React.JSX.Element {
           testID="search-reset" style={[s.btn, s.btnOutline, { borderColor: p.btn }]}>
           <Text style={[s.btnText, { color: p.btn }]}>Reset</Text>
         </Pressable>
-        <Pressable disabled={!!error} onPress={() => props.onSearch(f)} testID="search-submit"
+        <Pressable disabled={!!error} accessibilityState={{ disabled: !!error }} onPress={() => props.onSearch(f)} testID="search-submit"
           style={[s.btn, s.flex, { backgroundColor: p.btn, opacity: error ? 0.45 : 1 }]}>
-          <Icon name="zoomIn" size={17} color="#fff" strokeWidth={2} />
-          <Text style={[s.btnText, { color: '#fff' }]} numberOfLines={1}>
+          <Icon name="zoomIn" size={17} color={colors.onPrimary} strokeWidth={2} />
+          <Text style={[s.btnText, { color: colors.onPrimary }]} numberOfLines={1}>
             {['Search', activeFilterCount(f) ? `${activeFilterCount(f)} filters` : null, props.resultLabel].filter(Boolean).join(' · ')}
           </Text>
         </Pressable>
@@ -255,16 +262,28 @@ function DateField({ label, value, onChange, p, testID }: { label: string; value
   );
 }
 
-function Range({ label, a, b, onA, onB, p, time }: { label: string; a: string; b: string; onA: (v: string) => void; onB: (v: string) => void; p: CarrierPalette; time?: boolean }) {
-  const box = (v: string, on: (v: string) => void, ph: string) => (
-    <TextInput value={v} onChangeText={on} placeholder={ph} placeholderTextColor={p.cardSoft}
-      keyboardType={time ? 'numbers-and-punctuation' : 'number-pad'} maxLength={time ? 5 : 3}
-      style={[s.input, { color: p.cardInk, borderColor: v ? tint(p.btn, 0.4) : p.cardLine }]} />
+export function hhmmInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
+}
+
+function Range({ label, a, b, onA, onB, p, time, aTestID, bTestID }: {
+  label: string; a: string; b: string; onA: (v: string) => void; onB: (v: string) => void;
+  p: CarrierPalette; time?: boolean; aTestID?: string; bTestID?: string;
+}) {
+  const box = (v: string, on: (v: string) => void, ph: string, testID?: string) => (
+    <View style={[s.inputShell, { borderColor: v ? tint(p.btn, 0.4) : p.cardLine }]}>
+      {time ? <Icon name="clock" size={14} color={p.cardSoft} strokeWidth={2} /> : null}
+      <TextInput value={v} onChangeText={value => on(time ? hhmmInput(value) : value)} placeholder={ph} placeholderTextColor={p.cardSoft}
+        keyboardType="number-pad" maxLength={time ? 5 : 3} testID={testID}
+        accessibilityLabel={`${label} ${ph === 'Min' || ph === 'From' ? 'from' : 'to'}`}
+        style={[s.input, { color: p.cardInk }]} />
+    </View>
   );
   return (
     <View style={s.field}>
       <Text style={[s.fieldLabel, { color: p.cardSoft }]}>{label.toUpperCase()}</Text>
-      <View style={s.rangeRow}>{box(a, onA, time ? 'HH:mm' : 'Min')}<Text style={{ color: p.cardSoft }}>–</Text>{box(b, onB, time ? 'HH:mm' : 'Max')}</View>
+      <View style={s.rangeRow}>{box(a, onA, time ? 'From' : 'Min', aTestID)}<Text style={{ color: p.cardSoft }}>–</Text>{box(b, onB, time ? 'To' : 'Max', bTestID)}</View>
     </View>
   );
 }
@@ -275,7 +294,7 @@ function Chips({ label, options, value, onChange, p, testID }: {
   const [q, setQ] = useState('');
   const [all, setAll] = useState(false);
   const list = options ?? [];
-  const long = list.length > 10;
+  const long = list.length > 10 || label === 'Crew ID';
   const shown = (q ? list.filter(x => x.toLowerCase().includes(q.toLowerCase())) : list);
   const visible = [...value.filter(v => !shown.includes(v)), ...(all || q ? shown : shown.slice(0, 10))];
   const toggle = (x: string) => onChange(value.includes(x) ? value.filter(v => v !== x) : [...value, x]);
@@ -285,7 +304,7 @@ function Chips({ label, options, value, onChange, p, testID }: {
         <Text style={[s.fieldLabel, s.flex, { color: p.cardSoft }]}>{label.toUpperCase()}{value.length ? ` · ${value.length}` : ''}</Text>
         {long ? (
           <TextInput value={q} onChangeText={setQ} placeholder="Search" placeholderTextColor={p.cardSoft} autoCapitalize="characters"
-            style={[s.search, { color: p.cardInk, borderColor: p.cardLine }]} />
+            testID={testID ? `${testID}-query` : undefined} style={[s.search, { color: p.cardInk, borderColor: p.cardLine }]} />
         ) : null}
       </View>
       <View style={s.chipWrap}>
@@ -293,8 +312,9 @@ function Chips({ label, options, value, onChange, p, testID }: {
           const on = value.includes(x);
           return (
             <Pressable key={x} onPress={() => toggle(x)} testID={testID ? `${testID}-${x}` : undefined}
+              accessibilityRole="checkbox" accessibilityLabel={x} accessibilityState={{ checked: on }}
               style={[s.chip, { borderColor: on ? p.btn : p.cardLine, backgroundColor: on ? p.btn : 'transparent' }]}>
-              <Text style={[s.chipText, { color: on ? '#fff' : p.cardInk }]}>{x}</Text>
+              <Text style={[s.chipText, { color: on ? colors.onPrimary : p.cardInk }]}>{x}</Text>
             </Pressable>
           );
         })}
@@ -310,45 +330,47 @@ function Chips({ label, options, value, onChange, p, testID }: {
 }
 
 const s = StyleSheet.create({
-  page: { flex: 1, borderRadius: 16, overflow: 'hidden', paddingBottom: 10 },
+  page: { flex: 1, borderRadius: radius.lg, overflow: 'hidden', paddingBottom: space.sm8 },
   flex: { flex: 1 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  rbotBar: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8 },
-  rbotText: { flex: 1, fontSize: 13, fontWeight: '600' },
-  title: { fontSize: 18, fontWeight: '800' },
-  sub: { fontSize: 13, fontWeight: '500' },
-  iconBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  body: { padding: 14, gap: 12 },
-  cols: { flexDirection: 'row', gap: 14 },
-  seg: { flexDirection: 'row', borderRadius: 12, padding: 3, gap: 3 },
-  segItem: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: 'center' },
-  segText: { fontSize: 13, fontWeight: '700' },
-  savedRow: { gap: 8 },
-  wantSummary: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 8 },
-  wantHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  wantTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
-  wantChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  wantChip: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 9, paddingVertical: 4 },
-  wantChipText: { fontSize: 12, fontWeight: '700' },
-  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  section: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 10, marginBottom: 12 },
-  sectionTitle: { fontSize: 14, fontWeight: '800' },
-  pair: { flexDirection: 'row', gap: 10 },
-  field: { flex: 1, gap: 5, minWidth: 0 },
-  fieldLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.6 },
-  dateBox: { height: 40, borderWidth: 1, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
-  dateText: { fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  rangeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  input: { flex: 1, height: 40, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, fontSize: 14, fontVariant: ['tabular-nums'] },
-  chipHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  search: { width: 110, height: 30, borderWidth: 1, borderRadius: 15, paddingHorizontal: 10, fontSize: 12 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 6 },
-  chipText: { fontSize: 12.5, fontWeight: '700' },
-  toggleRow: { flexDirection: 'row', alignItems: 'center' },
-  error: { fontSize: 13, fontWeight: '600', paddingHorizontal: 18, paddingTop: 8 },
-  footer: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, paddingTop: 10 },
-  btn: { height: 48, borderRadius: 24, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: space.sm8, paddingHorizontal: space.md12, paddingVertical: space.sm8, borderBottomWidth: StyleSheet.hairlineWidth },
+  rbotBar: { flexDirection: 'row', alignItems: 'center', gap: space.sm8, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: space.sm8, paddingVertical: space.sm8 },
+  rbotText: { flex: 1, ...font.sub, fontWeight: '600' },
+  title: { ...font.h2 },
+  sub: { ...font.sub },
+  iconBtn: { width: 44, height: 44, borderRadius: radius.round, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  body: { padding: space.md12, gap: space.sm8 },
+  cols: { flexDirection: 'row', gap: space.sm8 },
+  seg: { flexDirection: 'row', borderRadius: radius.md, padding: space.xs4, gap: space.xs4 },
+  segItem: { flex: 1, minHeight: 44, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  segText: { ...font.sub, fontWeight: '700' },
+  savedRow: { gap: space.sm8 },
+  wantSummary: { borderWidth: 1, borderRadius: radius.md, padding: space.sm8, gap: space.sm8 },
+  wantHead: { flexDirection: 'row', alignItems: 'center', gap: space.xs4 },
+  wantTitle: { ...font.caption },
+  wantChips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs4 },
+  wantChip: { borderWidth: 1, borderRadius: radius.md, paddingHorizontal: space.sm8, paddingVertical: space.xs4 },
+  wantChipText: { ...font.caption },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm8 },
+  retry: { minHeight: 44, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: space.sm8, justifyContent: 'center' },
+  section: { borderWidth: 1, borderRadius: radius.md, padding: space.sm8, gap: space.sm8, marginBottom: space.sm8 },
+  sectionTitle: { ...font.bodyStrong },
+  pair: { flexDirection: 'row', gap: space.sm8 },
+  field: { flex: 1, gap: space.xs4, minWidth: 0 },
+  fieldLabel: { ...font.caption },
+  dateBox: { minHeight: 44, borderWidth: 1, borderRadius: radius.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.sm8 },
+  dateText: { ...font.sub, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  rangeRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs4 },
+  inputShell: { flex: 1, minHeight: 44, borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: space.sm8, flexDirection: 'row', alignItems: 'center', gap: space.xs4 },
+  input: { flex: 1, minWidth: 0, height: 42, paddingHorizontal: 0, paddingVertical: 0, ...font.sub, fontVariant: ['tabular-nums'] },
+  chipHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm8 },
+  search: { width: 110, minHeight: 44, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.sm8, ...font.caption },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs4 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: space.xs4, minHeight: 44, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.sm8, paddingVertical: space.xs4 },
+  chipText: { ...font.caption },
+  toggleRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center' },
+  error: { ...font.sub, fontWeight: '600', paddingHorizontal: space.lg16, paddingTop: space.sm8 },
+  footer: { flexDirection: 'row', gap: space.sm8, paddingHorizontal: space.md12, paddingTop: space.sm8 },
+  btn: { height: 48, borderRadius: radius.pill, paddingHorizontal: space.xl24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm8 },
   btnOutline: { borderWidth: 1.5 },
-  btnText: { fontSize: 15, fontWeight: '700' },
+  btnText: { ...font.bodyStrong },
 });

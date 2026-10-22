@@ -86,43 +86,23 @@ interface ShareColors {
 }
 
 function shareColors(p: CarrierPalette): ShareColors {
-  if (p.isLight) {
-    return {
-      bgA: '#fbfcff',
-      bgB: '#e7edf8',
-      ink: p.ink,
-      soft: p.inkSoft,
-      faint: 'rgba(60,60,67,0.45)',
-      accent: p.btn,
-      cardLine: 'rgba(60,60,67,0.20)',
-      mapBg: p.mapBg,
-      landFill: p.mapLand,
-      landStroke: 'rgba(60,60,67,0.18)',
-      landOpacity: 0.72,
-      route: p.mapRoute,
-      chipFill: 'rgba(255,255,255,0.74)',
-      chipLine: 'rgba(60,60,67,0.26)',
-      glow: 'rgba(0,102,204,0.07)',
-      sparkle: 'rgba(0,102,204,0.55)',
-    };
-  }
   return {
     bgA: p.g1,
     bgB: p.g2,
-    ink: '#ffffff',
-    soft: 'rgba(255,255,255,0.80)',
-    faint: 'rgba(255,255,255,0.48)',
+    ink: p.ink,
+    soft: p.inkSoft,
+    faint: p.inkFaint,
     accent: p.mapRoute,
-    cardLine: 'rgba(255,255,255,0.26)',
+    cardLine: p.frostLine,
     mapBg: p.mapBg,
-    landFill: p.g4,
-    landStroke: 'rgba(255,255,255,0.18)',
-    landOpacity: 0.34,
+    landFill: p.mapLand,
+    landStroke: p.mapMutedRoute,
+    landOpacity: p.isLight ? 0.72 : 0.34,
     route: p.mapRoute,
-    chipFill: 'rgba(255,255,255,0.10)',
-    chipLine: 'rgba(255,255,255,0.32)',
-    glow: 'rgba(255,255,255,0.07)',
-    sparkle: 'rgba(255,255,255,0.70)',
+    chipFill: p.cardInset,
+    chipLine: p.cardLine,
+    glow: p.frost,
+    sparkle: p.mapRoute,
   };
 }
 

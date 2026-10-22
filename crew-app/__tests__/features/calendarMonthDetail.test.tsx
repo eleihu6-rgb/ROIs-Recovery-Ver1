@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet } from 'react-native';
-import { fireEvent, render, within } from '@testing-library/react-native';
+import { act, fireEvent, render, within } from '@testing-library/react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { createGestureController, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { CalendarView } from '../../src/features/v2/CalendarView';
 import { buildMonth } from '../../src/features/v2/model';
 import { PALETTES } from '../../src/theme/carrier';
@@ -11,6 +13,9 @@ const mockLayout = { current: layoutFor(420, 912) };
 jest.mock('../../src/components/v2/useLayout', () => ({
   ...jest.requireActual('../../src/components/v2/useLayout'),
   useLayout: () => mockLayout.current,
+}));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 const trip: Trip = {
   id: 'pr-roundtrip', crewId: '487424', checkInDateUTC: '08 Oct 2026 0000',
@@ -29,9 +34,9 @@ month.days[7].meetings = Array.from({ length: 4 }, (_, i) => ({
 function Calendar({ sourceMonth = month }: { sourceMonth?: typeof month }) {
   const [day, setDay] = useState<number | null>(8);
   const [mode, setMode] = useState<'calendar-compact' | 'calendar-detail'>('calendar-compact');
-  return <CalendarView month={sourceMonth} mode={mode} palette={PALETTES.thai} selectedDay={day}
+  return <GestureHandlerRootView><CalendarView month={sourceMonth} mode={mode} palette={PALETTES.thai} selectedDay={day}
     onSelectDay={setDay} onOpenDetail={d => { setDay(d); setMode('calendar-detail'); }}
-    onBackToCompact={() => setMode('calendar-compact')} actions={{ onJoin: jest.fn(), onToggleAlarm: jest.fn() }} />;
+    onBackToCompact={() => setMode('calendar-compact')} actions={{ onJoin: jest.fn(), onToggleAlarm: jest.fn() }} /></GestureHandlerRootView>;
 }
 
 afterEach(() => { mockLayout.current = layoutFor(420, 912); });
@@ -113,10 +118,16 @@ it('retains all 31 dates and six week rows in a long month', () => {
 it('pinches cell height to reveal more detail and ellipsizes hidden items', () => {
   const tree = render(<Calendar />);
   expect(tree.getByTestId('cal-month-detail')).toBeTruthy();
-  const pinch = (scale: number) => fireEvent(tree.getByTestId('cal-month-detail'), 'gestureEvent', { nativeEvent: { scale } });
+  const pinch = (scale: number) => {
+    const gesture = createGestureController(getByGestureTestId('cal-pinch-surface'));
+    gesture.begin({ scale: 1 });
+    gesture.activate({ scale: 1 });
+    gesture.update({ scale });
+    gesture.end({ scale });
+  };
   const initialHeight = StyleSheet.flatten(tree.getByTestId('cal-day-8').props.style).minHeight;
   expect(tree.getByText('+3…')).toBeTruthy();
-  pinch(1.25);
+  act(() => pinch(1.25));
   expect(tree.getByTestId('cal-month-detail')).toBeTruthy();
   expect(within(tree.getByTestId('cal-day-8')).getAllByTestId(/^cal-preview-/)).toHaveLength(5);
   expect(tree.getByText('+1…')).toBeTruthy();

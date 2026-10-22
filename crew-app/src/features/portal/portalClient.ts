@@ -119,10 +119,19 @@ export function createPortalClient(
       });
       const env = (await res.json()) as Envelope<{ token?: string; failMessage?: string | null } | string | null>;
       const data = env.data;
-      const token = typeof data === 'string' ? data : data?.token;
+      // TG reports a failed login as HTTP 200 / code 0 / data
+      // "ERROR_WRONG_PASSWORD". Accept only an explicit failure code or a token;
+      // never surface an unknown string that could itself be a credential.
+      const token = typeof data === 'string'
+        ? (data.startsWith('ERROR_') ? undefined : data)
+        : data?.token;
       if (env.code !== 0 || !token) {
-        const fail = typeof data === 'object' && data ? data.failMessage : null;
-        const reason = fail === 'ERROR_WRONG_PASSWORD' ? 'The crew portal did not accept your password.' : fail || env.message;
+        const fail = typeof data === 'string' && data.startsWith('ERROR_')
+          ? data
+          : typeof data === 'object' && data ? data.failMessage : null;
+        const reason = fail === 'ERROR_WRONG_PASSWORD'
+          ? 'The crew portal did not accept your password.'
+          : env.message;
         throw new PortalError(reason || 'Portal sign-in failed.', env.code, res.status, fail ?? null);
       }
       tokens.set(key, token);

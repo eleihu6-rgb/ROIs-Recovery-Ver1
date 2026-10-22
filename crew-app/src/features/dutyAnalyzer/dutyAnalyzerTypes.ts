@@ -12,6 +12,7 @@ export interface DutyAnalyzerInput {
   composition: CrewComposition;
   restFacility: RestFacility;
   reportMinuteOfDay: number;
+  latestChockOnMinuteOfDay?: number | null;
   sectors: number;
   fdpMinutes: number | null;
   dpMinutes: number | null;

@@ -1,0 +1,133 @@
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- assertVisible:
+    id: "home-screen"
+- scrollUntilVisible:
+    element:
+      id: "qa-analyzer"
+    direction: DOWN
+- tapOn:
+    id: "qa-analyzer"
+- extendedWaitUntil:
+    visible:
+      id: "duty-analyzer"
+    timeout: 10000
+- tapOn:
+    id: "analyzer-mode-new"
+- scrollUntilVisible:
+    element:
+      id: "analyzer-composition-3P"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "analyzer-composition-3P"
+- assertVisible:
+    id: "analyzer-facility-2"
+- scrollUntilVisible:
+    element:
+      id: "metric-fdp"
+    direction: DOWN
+    centerElement: true
+- assertVisible: ".*Limit 15:00.*"
+- assertNotVisible: "Needs review"
+- scrollUntilVisible:
+    element:
+      id: "analyzer-open-reference"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "analyzer-open-reference"
+- extendedWaitUntil:
+    visible:
+      id: "duty-analyzer-reference"
+    timeout: 10000
+- assertVisible:
+    id: "easa-augmented-applied-row"
+- assertVisible: ".*3 pilots · one additional.*"
+- assertVisible: ".*Class 2.*"
+- assertVisible:
+    id: "easa-augmented-selected-cell"
+- assertVisible: ".*15:00.*"
+- scrollUntilVisible:
+    element:
+      id: "easa-augmented-source"
+    direction: DOWN
+- assertVisible: '.*ORO.FTL.205\(e\).*'
+- assertVisible: '.*CS FTL.1.205\(c\)\(1\)–\(2\).*'
+- takeScreenshot: duty-analyzer-augmented-3p-reference-Ver1
+- tapOn:
+    id: "page-back"
+- scrollUntilVisible:
+    element:
+      id: "analyzer-composition-4P"
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: "analyzer-composition-4P"
+- scrollUntilVisible:
+    element:
+      id: "metric-fdp"
+    direction: DOWN
+    centerElement: true
+- assertVisible: ".*Limit 16:00.*"
+- assertNotVisible: "Needs review"
+- scrollUntilVisible:
+    element:
+      id: "analyzer-open-reference"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "analyzer-open-reference"
+- extendedWaitUntil:
+    visible:
+      id: "duty-analyzer-reference"
+    timeout: 10000
+- assertVisible:
+    id: "easa-augmented-applied-row"
+- assertVisible: ".*4 pilots · double crew.*"
+- assertVisible:
+    id: "easa-augmented-selected-cell"
+- assertVisible: ".*16:00.*"
+- takeScreenshot: duty-analyzer-augmented-4p-reference-Ver1
+- stopApp
+- launchApp
+- assertVisible:
+    id: "home-screen"
+- scrollUntilVisible:
+    element:
+      id: "qa-analyzer"
+    direction: DOWN
+- tapOn:
+    id: "qa-analyzer"
+- extendedWaitUntil:
+    visible:
+      id: "duty-analyzer"
+    timeout: 10000
+- tapOn:
+    id: "analyzer-mode-new"
+- scrollUntilVisible:
+    element:
+      id: "analyzer-open-reference"
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: "analyzer-open-reference"
+- extendedWaitUntil:
+    visible:
+      id: "duty-analyzer-reference"
+    timeout: 10000
+- assertVisible:
+    id: "easa-table-header-report"
+- assertVisible:
+    id: "easa-table-header-1–3"
+- assertVisible:
+    id: "easa-table-header-4"
+- assertVisible:
+    id: "easa-table-header-5"
+- assertVisible:
+    id: "easa-table-header-6"
+- assertVisible:
+    id: "easa-table-header-7"
+- assertVisible:
+    id: "easa-table-header-8plus"
+- takeScreenshot: duty-analyzer-basic-wide-grid-Ver1

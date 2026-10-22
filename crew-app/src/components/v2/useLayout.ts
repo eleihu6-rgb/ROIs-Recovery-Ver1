@@ -17,6 +17,7 @@ export const TALL_MIN_WIDTH = 560;
  * zero right safe-area inset. Regular iPhones and iPads keep their bottom dock. */
 export function duoActionStripWidth(width: number, height: number, rightInset: number): number {
   if (rightInset >= 64 && width >= TALL_MIN_WIDTH) return rightInset;
+  if (width >= 900 && width < 1100 && height >= 620 && height < 760) return 84;
   if (width >= 600 && width < WIDE_MIN_WIDTH && height >= 850) return 84;
   if (width >= 450 && width < TALL_MIN_WIDTH && height < 760) return rightInset >= 64 ? rightInset : 84;
   return 0;

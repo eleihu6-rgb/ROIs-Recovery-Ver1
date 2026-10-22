@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { AppDispatch } from '../../store';
 import { DEFAULT_AIRLINE } from './airlines';
 import { saveSession, loadSession, clearSession } from './sessionStore';
+import { clearDutySwapApis } from '../dutySwap/dutySwapActions';
 import { clearDutySwap } from '../dutySwap/dutySwapSlice';
 import { clearPortalTokens } from '../portal/portalClient';
 import { clearTrips } from '../travel/tripsSlice';
@@ -271,6 +272,7 @@ export function logout() {
     await dispatch(clearRbotSession());
     // Duty Swap holds live portal data (other crews' duties) and a portal token.
     dispatch(clearDutySwap());
+    clearDutySwapApis();
     clearPortalTokens();
     await clearStoredTrips();
     await clearStoredDuties();

@@ -27,16 +27,16 @@ export function TwinReview({ p, crewB, carrier, give, take, mine, theirs, ready,
       {take.map(d => { const r = flightRouteOf(detailFor(d, theirs), carrier); return r ? <Text key={d.key} testID={`twin-take-route-${d.key}`} style={[s.label, { color: p.cardSoft }]}>{d.code} {r}</Text> : null; })}
       {loading ? <ActivityIndicator color={p.btn} /> : null}
       {error ? <Pressable onPress={onRetry} testID="twin-details-retry" style={s.button}><Text style={[s.text, { color: p.cardSoft }]}>{error} · Retry details</Text></Pressable> : null}
-      {ready && tab === 'date' ? <>
-        <View style={s.row}><View style={s.dateCell} /><Text style={[s.label, s.flex, { color: p.cardSoft }]}>ME · GIVE</Text><Text style={[s.label, s.flex, { color: p.cardSoft }]}>{crewB} · TAKE</Text></View>
-        {compareRows(mine, theirs).map(row => <View key={row.date} style={[s.row, s.divider, { borderColor: p.cardLine, alignItems: 'flex-start' }]}>
-          <Text style={[s.label, s.dateCell, { color: p.cardSoft }]}>{dayLabel(row.date).day} {dayLabel(row.date).month}</Text>
+      {ready && tab === 'date' ? <View testID="twin-review-grid" style={[s.grid, { borderColor: p.cardLine }]}>
+        <View style={[s.gridRow, { borderColor: p.cardLine, backgroundColor: p.cardInset }]}><View style={[s.gridCell, s.dateCell]} /><Text style={[s.label, s.flex, s.gridCell, s.gridSide, { color: p.cardSoft, borderColor: p.cardLine }]}>ME · GIVE</Text><Text style={[s.label, s.flex, s.gridCell, s.gridSide, { color: p.cardSoft, borderColor: p.cardLine }]}>{crewB} · TAKE</Text></View>
+        {compareRows(mine, theirs).map(row => <View key={row.date} testID={`twin-review-row-${row.date}`} style={[s.gridRow, { borderColor: p.cardLine }]}>
+          <Text style={[s.label, s.gridCell, s.dateCell, { color: p.cardSoft }]}>{dayLabel(row.date).day} {dayLabel(row.date).month}</Text>
           {[row.mine, row.others].map((side, i) => {
             const starts = (i === 0 ? mine : theirs).filter(t => portalToIso(t.startDateTimeLocal ?? t.startDateTime)?.slice(0, 10) === row.date);
-            return <View key={i} style={s.flex}>{starts.map((t, index) => <ReviewDutyDetails key={index} task={t} p={p} />)}{!starts.length && !side.legs.length ? <Text style={[s.text, { color: p.cardSoft }]}>—</Text> : null}{side.legs.map((leg, j) => <ReviewFlightDetails key={j} leg={leg} p={p} />)}</View>;
+            return <View key={i} style={[s.flex, s.gridCell, s.gridSide, { borderColor: p.cardLine }]}>{starts.map((t, index) => <ReviewDutyDetails key={index} task={t} p={p} />)}{!starts.length && !side.legs.length ? <Text style={[s.text, { color: p.cardSoft }]}>—</Text> : null}{side.legs.map((leg, j) => <ReviewFlightDetails key={j} leg={leg} p={p} />)}</View>;
           })}
         </View>)}
-      </> : null}
+      </View> : null}
       {ready && tab === 'details' ? <><Text style={[s.label, { color: p.btn }]}>ME · GIVE</Text>{mine.map(task)}<Text style={[s.label, { color: p.btn }]}>{crewB} · TAKE</Text>{theirs.map(task)}</> : null}
       {!ready ? [...give, ...take].map(d => <Text key={d.key} style={[s.text, { color: p.cardSoft }]}>{d.code} · {spanLabel(d)}</Text>) : null}
       {delta ? <View style={[s.wrap, s.body, { backgroundColor: p.cardInset }]} testID="twin-delta">{([['FDP', signedHhmm(delta.fdp)], ['BLH', signedHhmm(delta.blh)], ['CREDIT', signedHhmm(delta.crd)], ['DO', String(delta.dayOff)]] as const).map(([label, value]) => <View key={label} style={s.flex}><Text style={[s.label, { color: p.cardSoft }]}>{label}</Text><Text style={[s.number, { color: p.btn }]}>{value}</Text></View>)}</View> : null}

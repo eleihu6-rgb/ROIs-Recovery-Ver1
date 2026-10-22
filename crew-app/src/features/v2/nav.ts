@@ -31,6 +31,7 @@ export type V2StackParamList = {
   AlarmsSettings: undefined;
   TimeZone: undefined;
   Preferences: undefined;
+  M5Display: undefined;
   Appearance: undefined;
   PersonalInfo: undefined;
   /** `absenceFrom` / `absenceTo` / `absenceNote` pre-fill the Absence form when
@@ -42,7 +43,7 @@ export type V2StackParamList = {
   /** The crew's own FDP-discretion requests (pending + history),
    *  from Home ▸ Quick actions ▸ Discretion. */
   Discretion: undefined;
-  /** Duty Swap (Concept D crew matrix) — PR portal crews, Home ▸ Quick actions. */
+  /** Duty Swap (Concept D crew matrix) — supported portal crews, Home ▸ Quick actions. */
   DutySwap: undefined;
   /** The crew's swap requests (sent and received). */
   DutySwapRecords: undefined;

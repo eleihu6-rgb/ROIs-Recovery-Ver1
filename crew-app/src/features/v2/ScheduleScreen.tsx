@@ -51,7 +51,6 @@ export function ScheduleScreen({ route }: Props = {}) {
   const nav = useV2Nav();
   const dispatch = useAppDispatch();
   const alertCount = useAppSelector(s => s.notifications.notifications.length);
-  const airline = useAppSelector(s => s.auth.airline) ?? '';
   // Limit profiles follow the carrier the crew actually flies (EK crew K1003
   // signs in through the ET option), never the portal that answered.
   const crewCarrier = useAppSelector(selectCrewCarrier);
@@ -412,8 +411,8 @@ export function ScheduleScreen({ route }: Props = {}) {
           month={month}
           base={base}
           palette={p}
-          airlineCode={airline}
-          airlineName={airline ? airlineByCode(airline).name : ''}
+          airlineCode={crewCarrier}
+          airlineName={crewCarrier ? airlineByCode(crewCarrier).name : ''}
         />
       ) : null}
       </View>

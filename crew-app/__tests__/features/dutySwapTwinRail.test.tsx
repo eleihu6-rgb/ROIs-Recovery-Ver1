@@ -1,5 +1,8 @@
+import fs from 'fs';
+import path from 'path';
+
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { PanResponder, StyleSheet, View } from 'react-native';
 import { Line } from 'react-native-svg';
 import { act, fireEvent, render, waitFor, within } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
@@ -81,13 +84,13 @@ async function mountTwin(airline = 'PR', crewId = '392923', palette?: CarrierPal
   store.dispatch(acceptDisclaimer());
   const screen = palette ? <CarrierContext.Provider value={palette}><TwinRailScreen /></CarrierContext.Provider> : <TwinRailScreen />;
   const r = render(<Provider store={store}>{screen}</Provider>);
-  await waitFor(() => expect(r.getByTestId('twin-search')).toBeTruthy());
+  await waitFor(() => expect(r.getByTestId('search-form')).toBeTruthy());
   return { store, r };
 }
 
 async function chooseOct8Pairing(r: ReturnType<typeof render>): Promise<void> {
-  fireEvent.changeText(r.getByTestId('twin-search-startDate'), '2026-10-08');
-  fireEvent.press(r.getByTestId('twin-search-submit'));
+  fireEvent.press(r.getByTestId('search-start-next'));
+  fireEvent.press(r.getByTestId('search-submit'));
   await waitFor(() => expect(r.getByTestId('twin-rails')).toBeTruthy());
   fireEvent.press(r.getByTestId(`twin-duty-${myPairing.key}`));
   expect(r.getByTestId('twin-window').props.children.join('')).toBe('08 Oct – 14 Oct');
@@ -108,6 +111,17 @@ async function chooseStandbys(r: ReturnType<typeof render>): Promise<void> {
 }
 
 describe('Twin Rail model', () => {
+  it('reserves horizontal gestures for Duty Swap instead of native stack back navigation', () => {
+    const navigator = fs.readFileSync(path.join(
+      __dirname,
+      '../../src/features/v2/V2Navigator.tsx',
+    ), 'utf8');
+
+    expect(navigator).toMatch(
+      /<Stack\.Screen\s+name="DutySwap"[\s\S]*?options=\{\{\s*gestureEnabled:\s*false\s*\}\}/,
+    );
+  });
+
   it('pinches horizontally in and out and adapts content within two fixed-height text lines', () => {
     expect(zoomForPinch(7, 2.5)).toBe(3);
     expect(zoomForPinch(3, 0.25)).toBe(14);
@@ -117,13 +131,17 @@ describe('Twin Rail model', () => {
     expect(puckLines(myPairing, detail, 44)).toEqual(['PR124/125']);
     expect(puckLines(myPairing, detail, 100)[1]).toMatch(/\d\d:\d\d–\d\d:\d\d/);
     expect(puckLines(myPairing, detail, 200)[1]).toContain('MNL–SEA–MNL');
-    // Every leg's flight number now carries its airports after it (MNL-SEA style).
-    expect(puckLines(myPairing, detail, 440, 'PR')[1]).toContain('PR124 MNL-SEA / PR125 SEA-MNL');
-    // The wide puck drops trailing pieces rather than the height (two lines, fixed);
-    // the leg list replaces the old airport-only chain, which carried the same facts.
-    expect(puckLines(myPairing, detail, 440, 'PR')[1]).not.toContain('MNL–SEA–MNL');
+    // The first line already identifies the flights; the second uses the compact
+    // airport chain once, followed by time and credits.
+    const wideLines = puckLines(myPairing, detail, 440);
+    expect(wideLines[0]).toBe('08 Oct · PR124/PR125');
+    expect(wideLines[1]).toContain('MNL–SEA–MNL');
+    expect(wideLines[1]).not.toContain('PR124');
+    expect(wideLines[1]).not.toContain('PR125');
+    expect(wideLines[1]).toContain('BLH');
+    expect(wideLines[1]).toContain('CRD');
     for (const width of [200, 320, 440, 640, 900]) {
-      const line = puckLines(myPairing, detail, width, 'PR')[1];
+      const line = puckLines(myPairing, detail, width)[1];
       expect(line.length).toBeLessThanOrEqual(Math.floor((width - 8) / 6.5));
     }
     for (const width of [44, 100, 200, 440]) expect(puckLines(myPairing, detail, width).length).toBeLessThanOrEqual(2);
@@ -169,7 +187,7 @@ describe('Twin Rail model', () => {
     await waitFor(() => expect(r.getByTestId('duty-swap-screen')).toBeTruthy());
 
     fireEvent.press(r.getByTestId('approach-twin'));
-    await waitFor(() => expect(r.getByTestId('twin-search')).toBeTruthy());
+    await waitFor(() => expect(r.getByTestId('search-form')).toBeTruthy());
     expect(AsyncStorage.setItem).toHaveBeenCalledWith('@duty_swap_approach_PR_392923', 'twin');
 
     fireEvent.press(r.getByTestId('approach-market'));
@@ -187,17 +205,14 @@ describe('Twin Rail model', () => {
 
   it('searches from Crew with the empty-duty filter, resets it, and renders the filtered fixture results', async () => {
     const { r } = await mountTwin();
-    fireEvent.press(r.getByTestId('twin-search-open'));
-    await waitFor(() => expect(r.getByTestId('twin-search')).toBeTruthy());
-    fireEvent.press(r.getByTestId('twin-section-Crew'));
-    const hideEmpty = r.getByTestId('twin-search-hide-empty');
+    const hideEmpty = r.getByTestId('search-hide-empty');
     expect(hideEmpty.props.value).toBe(false);
     fireEvent(hideEmpty, 'valueChange', true);
-    expect(r.getByTestId('twin-search-hide-empty').props.value).toBe(true);
-    fireEvent.press(r.getByTestId('twin-search-reset'));
-    expect(r.getByTestId('twin-search-hide-empty').props.value).toBe(false);
-    fireEvent(r.getByTestId('twin-search-hide-empty'), 'valueChange', true);
-    fireEvent.press(r.getByTestId('twin-search-submit'));
+    expect(r.getByTestId('search-hide-empty').props.value).toBe(true);
+    fireEvent.press(r.getByTestId('search-reset'));
+    expect(r.getByTestId('search-hide-empty').props.value).toBe(false);
+    fireEvent(r.getByTestId('search-hide-empty'), 'valueChange', true);
+    fireEvent.press(r.getByTestId('search-submit'));
 
     await waitFor(() => expect(r.getByTestId('twin-rails')).toBeTruthy());
     expect(mockApi.search).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -210,6 +225,72 @@ describe('Twin Rail model', () => {
 });
 
 describe('Twin Rail screen', () => {
+  it.each([
+    [420, 912], [912, 420], [669, 951], [951, 669], [834, 1210], [1210, 834],
+  ])('shares the compact Matrix Search Pairing form at %sx%s', async (width, height) => {
+    mockLayout.current = layoutFor(width, height);
+    const { r } = await mountTwin();
+    expect(r.getByTestId('search-form')).toBeTruthy();
+    expect(r.getByTestId('search-start')).toBeTruthy();
+    expect(r.getByTestId('search-end')).toBeTruthy();
+    expect(r.getByTestId('search-briefStart').props.placeholder).toBe('From');
+    expect(r.getByTestId('search-briefEnd').props.placeholder).toBe('To');
+    expect(r.getByTestId('search-crew-query')).toBeTruthy();
+    expect(r.getByTestId('search-reset')).toBeTruthy();
+    expect(r.getByTestId('search-submit')).toBeTruthy();
+  });
+
+  it.each(['sia', 'thai', 'emerald', 'graphite', 'light'] as const)('themes the top date row for readable contrast in %s', async preset => {
+    const palette = paletteFor(preset);
+    const { r } = await mountTwin('PR', '392923', palette);
+    fireEvent.press(r.getByTestId('search-submit'));
+    await waitFor(() => expect(r.getByTestId('twin-date-band')).toBeTruthy());
+    expect(StyleSheet.flatten(r.getByTestId('twin-date-band').props.style)).toMatchObject({
+      backgroundColor: palette.cardInset,
+      borderColor: palette.cardLine,
+    });
+    const firstDay = r.getAllByTestId(/^twin-date-day-/)[0];
+    const firstDow = r.getAllByTestId(/^twin-date-dow-/)[0];
+    expect(StyleSheet.flatten(firstDay.props.style).color).toBe(palette.btn);
+    expect(StyleSheet.flatten(firstDow.props.style).color).toBe(palette.cardSoft);
+  });
+
+  it.each([
+    [3, '08 Oct – 10 Oct', '09 Oct – 11 Oct'],
+    [7, '08 Oct – 14 Oct', '09 Oct – 15 Oct'],
+    [14, '08 Oct – 21 Oct', '09 Oct – 22 Oct'],
+  ] as const)('moves exactly one day per horizontal swipe in the %id range', async (zoom, initialWindow, laterWindow) => {
+    const create = jest.spyOn(PanResponder, 'create');
+    const { r } = await mountTwin();
+    fireEvent.press(r.getByTestId('search-start-next'));
+    fireEvent.press(r.getByTestId('search-submit'));
+    await waitFor(() => expect(r.getByTestId('twin-rails')).toBeTruthy());
+    fireEvent.press(r.getByTestId(`twin-zoom-${zoom}`));
+    expect(r.getByTestId('twin-window').props.children.join('')).toBe(initialWindow);
+
+    const handlers = create.mock.calls[0][0];
+    create.mockRestore();
+    const swipe = (dx: number, dy = 0): void => {
+      act(() => {
+        (handlers.onPanResponderRelease as Function)(
+          { nativeEvent: { touches: [{ pageX: 100, pageY: 100 }] } },
+          { dx, dy },
+        );
+      });
+    };
+
+    swipe(-31);
+    expect(r.getByTestId('twin-window').props.children.join('')).toBe(laterWindow);
+    swipe(31);
+    expect(r.getByTestId('twin-window').props.children.join('')).toBe(initialWindow);
+    swipe(-30);
+    expect(r.getByTestId('twin-window').props.children.join('')).toBe(initialWindow);
+    expect(handlers.onMoveShouldSetPanResponder!(
+      { nativeEvent: { touches: [{ pageX: 100, pageY: 100 }] } } as never,
+      { dx: -40, dy: 30 } as never,
+    )).toBe(false);
+  });
+
   it.each([[951, 669], [1210, 834]])('moves the complete range toolbar into the landscape header at %sx%s', async (width, height) => {
     mockLayout.current = layoutFor(width, height);
     const { r } = await mountTwin();
@@ -235,17 +316,17 @@ describe('Twin Rail screen', () => {
     expect(r.queryByTestId('twin-calendar')).toBeNull();
     expect(r.queryByTestId('twin-new')).toBeNull();
     fireEvent.press(r.getByTestId('twin-search-open'));
-    expect(r.getByTestId('twin-search')).toBeTruthy();
-    fireEvent.press(r.getByTestId('twin-search-submit'));
+    expect(r.getByTestId('search-form')).toBeTruthy();
+    fireEvent.press(r.getByTestId('search-submit'));
     await waitFor(() => expect(r.getByTestId('twin-rails')).toBeTruthy());
     expect(r.queryByTestId('twin-calendar')).toBeNull();
     fireEvent.press(r.getByTestId('twin-search-open'));
-    expect(r.getByTestId('twin-search')).toBeTruthy();
+    expect(r.getByTestId('search-form')).toBeTruthy();
   });
 
   it('draws exactly two shared guides for my selection, follows outer bounds and zoom, and removes them on deselect or clear', async () => {
     const { r } = await mountTwin('PR', '392923', paletteFor('graphite'));
-    fireEvent.press(r.getByTestId('twin-search-submit'));
+    fireEvent.press(r.getByTestId('search-submit'));
     await waitFor(() => expect(r.getByTestId('twin-rails')).toBeTruthy());
     const guides = () => r.queryAllByTestId(/^twin-guide-(start|end)$/);
     const left = (id: string) => StyleSheet.flatten(r.getByTestId(id).props.style).left;
@@ -302,7 +383,7 @@ describe('Twin Rail screen', () => {
   it.each([[1210, 834], [834, 1210], [669, 951]])('folds review on %sx%s until both sides are selected, and preserves the draft on Hide', async (width, height) => {
     mockLayout.current = layoutFor(width, height);
     const { r } = await mountTwin();
-    fireEvent.press(r.getByTestId('twin-search-submit'));
+    fireEvent.press(r.getByTestId('search-submit'));
     await waitFor(() => expect(r.getByTestId('twin-rails')).toBeTruthy());
     expect(r.queryByTestId('twin-review')).toBeNull();
     expect(r.queryByTestId('twin-review-pane')).toBeNull();
@@ -341,7 +422,9 @@ describe('Twin Rail screen', () => {
     await chooseOct8Pairing(r);
     expect(r.getByTestId('twin-compact-selection')).toBeTruthy();
     expect(StyleSheet.flatten(r.getByTestId('twin-tray').props.style)).toMatchObject({ flexDirection: 'row', flexShrink: 0 });
+    expect(StyleSheet.flatten(r.getByTestId('twin-compact-actions').props.style)).toMatchObject({ flexDirection: 'row', flexShrink: 0 });
     expect(StyleSheet.flatten(r.getByTestId('twin-candidates').props.style)).toMatchObject({ flex: 1, minHeight: 0 });
+    expect(r.getByTestId('twin-review-open').props.accessibilityRole).toBe('button');
     expect(r.getByTestId('twin-review-open').props.accessibilityState.disabled).toBe(true);
     fireEvent.press(r.getByTestId(`twin-duty-${standby.key}`));
     await waitFor(() => expect(r.getByTestId('twin-review-open').props.accessibilityState.disabled).toBe(false));
@@ -358,12 +441,8 @@ describe('Twin Rail screen', () => {
 
   it('filters to a specific crew before inspecting and selecting their duty on the rails', async () => {
     const { r } = await mountTwin();
-    fireEvent.press(r.getByTestId('twin-search-open'));
-    fireEvent.press(r.getByTestId('twin-section-Crew'));
-    fireEvent.press(r.getByTestId('twin-search-crewIdList'));
-    await waitFor(() => expect(r.getByTestId('twin-choice-crewIdList-421051')).toBeTruthy());
-    fireEvent.press(r.getByTestId('twin-choice-crewIdList-421051'));
-    fireEvent.press(r.getByTestId('twin-search-submit'));
+    fireEvent.press(r.getByTestId('search-crew-421051'));
+    fireEvent.press(r.getByTestId('search-submit'));
     await waitFor(() => expect(r.getByText('1 crew · tap my block, then theirs')).toBeTruthy());
     expect(mockApi.search).toHaveBeenLastCalledWith(expect.objectContaining({ crewIdList: ['421051'] }));
     expect(r.queryByTestId('twin-crew-402452')).toBeNull();
@@ -376,7 +455,7 @@ describe('Twin Rail screen', () => {
   });
   it('selects duties on the rails, reviews both views, and retains the draft after a failed send before retry success', async () => {
     const { r } = await mountTwin();
-    fireEvent.press(r.getByTestId('twin-search-submit'));
+    fireEvent.press(r.getByTestId('search-submit'));
     await waitFor(() => expect(r.getByTestId('twin-rails')).toBeTruthy());
     const lockedExam = r.getByTestId(`twin-duty-${exam.key}`);
     fireEvent.press(lockedExam);
@@ -433,15 +512,15 @@ describe('Twin Rail screen', () => {
     expect(r.getByTestId(`twin-duty-${otherStandby.key}`).props.accessibilityState.selected).toBe(true);
   });
 
-  it('keeps the PR fixture out of a TG session', async () => {
+  it('keeps the PR fixture out of a non-Duty-Swap session', async () => {
     const { store, r } = await mountTwin();
-    expect(r.getByTestId('twin-search')).toBeTruthy();
+    expect(r.getByTestId('search-form')).toBeTruthy();
     await act(async () => {
       store.dispatch(clearDutySwap());
-      await store.dispatch(login({ airline: 'TG', crewId: '35459', password: 'test-password', keepLogin: false }) as never);
+      await store.dispatch(login({ airline: 'ET', crewId: 'J4002', password: 'test-password', keepLogin: false }) as never);
     });
     await waitFor(() => expect(r.getByText('Duty Swap is not available for this account.')).toBeTruthy());
-    expect(r.queryByTestId('twin-search')).toBeNull();
+    expect(r.queryByTestId('search-form')).toBeNull();
     expect(r.queryByTestId('twin-crew-421051')).toBeNull();
     expect(mockApi.search).toHaveBeenCalledTimes(1);
   });

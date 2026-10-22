@@ -6,6 +6,9 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
 ---
 - launchApp:
     clearState: true
+- tapOn:
+    text: "Don.t Allow"
+    optional: true
 - assertVisible:
     id: "login-screen"
 - scrollUntilVisible:

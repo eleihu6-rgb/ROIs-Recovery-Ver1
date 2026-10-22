@@ -17,6 +17,28 @@ import { DestinationScreen } from '../../src/features/v2/DestinationScreen';
 import { blockLabel, hotelFor, legOps, mockGate } from '../../src/features/travel/opsInfo';
 import { PALETTES } from '../../src/theme/carrier';
 import type { Trip } from '../../src/features/travel/tripCsv';
+import type { AppleWeatherState } from '../../src/features/weather/weatherModule';
+
+const mockWeatherState: AppleWeatherState = {
+  base: '',
+  status: 'unavailable',
+  day: null,
+  outlook: [],
+  hours: [],
+  attribution: null,
+  retry: jest.fn(),
+};
+const mockUseAppleWeather = jest.fn(
+  (base: string, _year: number, _monthIdx: number, _day: number | null): AppleWeatherState => ({
+    ...mockWeatherState,
+    base,
+  }),
+);
+jest.mock('../../src/features/weather/weatherModule', () => ({
+  ...jest.requireActual('../../src/features/weather/weatherModule'),
+  useAppleWeather: (base: string, year: number, monthIdx: number, day: number | null) =>
+    mockUseAppleWeather(base, year, monthIdx, day),
+}));
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
@@ -224,6 +246,12 @@ describe('destination viewer · screen', () => {
     jest.useFakeTimers({ now: NOW });
     mockNavigate.mockClear();
     mockGoBack.mockClear();
+    mockUseAppleWeather.mockClear();
+    mockWeatherState.status = 'unavailable';
+    mockWeatherState.day = null;
+    mockWeatherState.outlook = [];
+    mockWeatherState.hours = [];
+    mockWeatherState.attribution = null;
   });
 
   afterEach(() => jest.useRealTimers());
@@ -266,14 +294,49 @@ describe('destination viewer · screen', () => {
     expect(texts).toContain('expected');
   });
 
-  it('pages to the next city on a horizontal swipe', async () => {
+  it('loads weather only for the opened city and switches it when the user pages', async () => {
+    mockWeatherState.status = 'ready';
+    mockWeatherState.day = {
+      date: '2026-09-14',
+      symbolName: 'cloud.sun.fill',
+      condition: 'Partly Cloudy',
+      highC: 34,
+      lowC: 26,
+    };
+    mockWeatherState.hours = [
+      { date: '2026-09-14', hour: 2, symbolName: 'cloud.sun.fill', temperatureC: 29.6 },
+    ];
+    mockWeatherState.attribution = {
+      serviceName: 'Apple Weather',
+      legalPageURL: 'https://weatherkit.apple.com/legal-attribution.html',
+      combinedMarkDarkURL: 'https://example.test/dark.png',
+      combinedMarkLightURL: 'https://example.test/light.png',
+    };
     const { tree } = renderScreen(0);
+
+    expect(mockUseAppleWeather).toHaveBeenLastCalledWith('DMM', 2026, 8, 14);
+    expect(tree.getByTestId('dest-weather').props.accessibilityLabel).toBe('DMM weather, Partly Cloudy, 30 degrees Celsius');
+    expect(tree.getByText('30° · Partly Cloudy')).toBeTruthy();
+    expect(tree.getByTestId('dest-weather-attribution')).toBeTruthy();
     expect(tree.getByTestId('dest-position').props.children).toBe('1 / 2');
+
     const pager = tree.getByTestId('dest-pager');
     await act(async () => {
       pager.props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: Dimensions.get('window').width } } });
     });
+
     expect(tree.getByTestId('dest-position').props.children).toBe('2 / 2');
+    expect(mockUseAppleWeather).toHaveBeenLastCalledWith('DAR', 2026, 8, 15);
+  });
+
+  it.each(['loading', 'unavailable', 'out-of-range'] as const)('keeps city details clean when opened-city weather is %s', status => {
+    mockWeatherState.status = status;
+    const { tree } = renderScreen(0);
+
+    expect(mockUseAppleWeather).toHaveBeenLastCalledWith('DMM', 2026, 8, 14);
+    expect(tree.queryByTestId('dest-weather')).toBeNull();
+    expect(tree.queryByTestId('dest-weather-attribution')).toBeNull();
+    expect(tree.queryByText(/weather unavailable|loading apple weather|no forecast/i)).toBeNull();
   });
 
   it('orders the flight rows schedule → estimate → actual', () => {

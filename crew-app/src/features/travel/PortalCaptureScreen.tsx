@@ -18,17 +18,19 @@ import { debugSetJson } from './portalDebug';
 import type { Trip } from './tripCsv';
 import { parsePortalCaptures, type PortalCapture, type PortalDuty } from './portalCapture';
 import { buildInjectedJS, ROSTER_MONTH_OFFSETS } from './portalInjectedJs';
+import { pullPortalRoster } from './portalRosterPull';
 import { createPortalClient } from '../portal/portalClient';
 import { colors, font, space, radius } from '../../theme';
 import { useCarrier } from '../../theme/carrier';
 import type { PortalConfig } from '../auth/airlines';
+import {RosterLoadingScreen} from '../auth/RosterLoadingScreen';
 
 // Crew-portal roster capture (doc/Add Trip Ver2). Loads the portal in a WebView,
 // AUTO-LOGS-IN with the test crew, hooks fetch/XHR to capture the roster API JSON
 // the SPA loads (/api/roster), parses it into trips, and auto-builds the trip.
 
 const FALLBACK_URL = 'https://crew-sea-test.roiscloud.com/tg/portal/';
-const COMPLETE_ROSTER_SETTLE_MS = 600;
+const COMPLETE_ROSTER_SETTLE_MS = 0;
 const PARTIAL_ROIS_ROSTER_FALLBACK_MS = 12_000;
 const OTHER_PORTAL_FALLBACK_MS = 4_000;
 
@@ -53,7 +55,9 @@ export function PortalCaptureScreen({
 }) {
   const palette = useCarrier();
   const nativeAuth = /roiscloud/i.test(portalUrl) && !!crewId && !!password;
+  const nativeOnly = nativeAuth && carrier === 'TG';
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [rosterError, setRosterError] = useState<string | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [urlText, setUrlText] = useState(portalUrl);
   const [currentUrl, setCurrentUrl] = useState(portalUrl);
@@ -65,6 +69,8 @@ export function PortalCaptureScreen({
   // Product pop-up (pop-up standard: status card, not a native alert).
   const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
   const captures = useRef<PortalCapture[]>([]);
+  const captureSignatures = useRef(new Set<string>());
+  const captureMetadata = useRef<Array<{ source: PortalCapture['source']; url: string; bytes: number }>>([]);
   const reqLog = useRef<string[]>([]);
   const buildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const buildAt = useRef<number | null>(null);
@@ -89,14 +95,51 @@ export function PortalCaptureScreen({
       apiBase: portalUrl.replace(/^(https?:\/\/[^/]+)(\/.*?)\/portal.*$/, '$1$2/apiPortal'),
       outCaptcha: portalConfig?.loginOutCaptcha,
     };
-    createPortalClient({ airline: carrier, crewId, password }, { site })
+    const client = createPortalClient({ airline: carrier, crewId, password }, { site });
+    client
       .token()
       .then(t => {
         if (cancelled) return;
         nativeToken.current = t;
         setAuthenticated(true);
         debugSetJson('@royce_debug_token', { type: 'token', src: 'native', len: t.length });
-        handToken();
+        if (!nativeOnly) handToken();
+        // TG capture is native-only: the SPA can remain on its loading shell even
+        // while the API is healthy. Pull all nine payloads directly and require
+        // the complete set before importing an authoritative roster. Other
+        // carriers retain their existing capture path.
+        if (nativeOnly) {
+          void pullPortalRoster(client, crewId).then(nativeCaptures => {
+            if (cancelled || built.current) return;
+            const expected = ROSTER_MONTH_OFFSETS.length * 3;
+            if (nativeCaptures.length !== expected) {
+              setLoading(false);
+              setRosterError(`The crew portal returned ${nativeCaptures.length} of ${expected} roster datasets. Try again for a complete roster.`);
+              return;
+            }
+            captures.current = nativeCaptures;
+            captureSignatures.current = new Set(nativeCaptures.map(c => `${c.url}|${JSON.stringify(c.body).length}`));
+            captureMetadata.current = nativeCaptures.map(c => ({ source: c.source, url: c.url ?? '', bytes: JSON.stringify(c.body).length }));
+            debugSetJson('@royce_debug_caps', captureMetadata.current);
+            const parsed = parsePortalCaptures(nativeCaptures, crewId, carrier, {
+              baseAirport: portalConfig?.baseAirport,
+              baseOffsetMin: portalConfig?.baseOffsetMin,
+            });
+            setLegCount(parsed.legCount);
+            setTripCount(parsed.trips.length);
+            if (parsed.trips.length > 0) {
+              built.current = true;
+              onCaptured(parsed.trips, parsed.duties);
+            } else {
+              setLoading(false);
+              setRosterError('The crew portal returned no roster trips for the previous, current or next month.');
+            }
+          }).catch(() => {
+            if (cancelled) return;
+            setLoading(false);
+            setRosterError('The crew portal roster could not be loaded. Check your connection and try again.');
+          });
+        }
       })
       .catch(e => {
         if (cancelled) return;
@@ -132,7 +175,7 @@ export function PortalCaptureScreen({
     };
   }, []);
 
-  const injectedJS = buildInjectedJS(crewId, password, true, {
+  const injectedJS = nativeOnly ? '' : buildInjectedJS(crewId, password, true, {
     outCaptcha: portalConfig?.loginOutCaptcha,
     nativeAuth,
   });
@@ -216,18 +259,21 @@ export function PortalCaptureScreen({
     const url = String(msg.url || '');
     // De-dupe by url+size so the polling scan doesn't pile up duplicates.
     const sig = `${url}|${msg.body.length}`;
-    if (captures.current.some(c => `${c.url}|${JSON.stringify(c.body).length}` === sig)) {
+    if (captureSignatures.current.has(sig)) {
       return;
     }
-    captures.current.push({ source: classify(url), url, body });
-    // Debug: persist redacted, size-capped captured payloads for inspection
-    // (no-op in production — never retains raw portal bodies).
-    debugSetJson('@royce_debug_caps', captures.current.map(c => ({ url: c.url, body: c.body })));
-    reparse();
+    captureSignatures.current.add(sig);
+    const source = classify(url);
+    captures.current.push({ source, url, body });
+    captureMetadata.current.push({ source, url, bytes: msg.body.length });
+    // Keep capture diagnostics cheap: serialising every growing raw-payload set
+    // blocked the JS thread during dev login. The in-screen inspector still owns
+    // the raw bodies; persisted diagnostics only need endpoint + payload size.
+    debugSetJson('@royce_debug_caps', captureMetadata.current);
     // Debounced auto-build that waits for a COMPLETE roster. The injected JS
     // fetches a calendar + a report + a detail-all for each month offset
     // (3 × 3 = 9 payloads), in parallel. We build only once all expected roster
-    // payloads have arrived (then a short 0.6s settle), so a slow report/detail
+    // payloads have arrived, so a slow report/detail
     // response cannot leave Trip Details with only its calendar-derived Block.
     // This matters because onCaptured() performs an authoritative replace and the
     // modal unmounts immediately, dropping stragglers. ROIS gets a bounded 12s
@@ -280,21 +326,32 @@ export function PortalCaptureScreen({
     onCaptured(trips, duties);
   };
 
-  if (loginError) {
+  if (loginError || rosterError) {
     // Unmount the WebView on rejection: its timers and form submissions stop.
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: palette.cardSolid }]}>
         <View style={styles.loginFailure}>
-          <Text style={[font.h1, { color: palette.cardInk }]}>Sign-in failed</Text>
+          <Text style={[font.h1, { color: palette.cardInk }]}>{loginError ? 'Sign-in failed' : 'Roster unavailable'}</Text>
           <Text style={[font.body, { color: palette.cardSoft }]}>{carrier} crew</Text>
           <Text testID="portal-login-identity" style={[font.title, { color: palette.cardInk }]}>{crewId}</Text>
-          <Text testID="portal-login-error" style={[font.body, { color: palette.cardInk }]}>{loginError}</Text>
+          <Text testID={loginError ? 'portal-login-error' : 'portal-roster-error'} style={[font.body, { color: palette.cardInk }]}>{loginError ?? rosterError}</Text>
           <TouchableOpacity testID="portal-login-back" accessibilityRole="button" onPress={onClose}
             style={[styles.loginBack, { backgroundColor: palette.btn }]}>
             <Text style={[font.title, { color: colors.white }]}>Back to login</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+    );
+  }
+
+  if (nativeOnly) {
+    return (
+      <RosterLoadingScreen
+        palette={palette}
+        airline={carrier}
+        phase={authenticated ? 'loading-roster' : 'signing-in'}
+        testID="native-roster-pull"
+      />
     );
   }
 

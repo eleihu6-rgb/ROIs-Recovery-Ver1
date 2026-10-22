@@ -1,6 +1,10 @@
 const path = require('node:path');
 const { readFileSync } = require('node:fs');
-const { localConfig, validateRemote } = require('../../scripts/testflight-preflight.cjs');
+const {
+  localConfig,
+  readAscJson,
+  validateRemote,
+} = require('../../scripts/testflight-preflight.cjs');
 
 const crewAppRoot = path.resolve(__dirname, '../..');
 const envWithIds = {
@@ -36,6 +40,45 @@ function validate(config = getConfig(), overrides = {}) {
 }
 
 describe('TestFlight release preflight', () => {
+  it('retries transient read-only ASC lookups before returning JSON', () => {
+    const run = jest
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new Error('temporary ASC failure');
+      })
+      .mockReturnValueOnce('{"data":{"id":"123"}}');
+    const pause = jest.fn();
+
+    expect(readAscJson(['apps', 'view', '--id', '123'], {
+      execFileSync: run,
+      sleepSync: pause,
+      attempts: 3,
+      execOptions: { encoding: 'utf8' },
+    })).toEqual({ data: { id: '123' } });
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(pause).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenLastCalledWith(
+      'asc',
+      ['apps', 'view', '--id', '123', '--output', 'json'],
+      { encoding: 'utf8' },
+    );
+  });
+
+  it('stops after the configured read-only ASC attempt limit', () => {
+    const run = jest.fn(() => {
+      throw new Error('ASC unavailable');
+    });
+    const pause = jest.fn();
+
+    expect(() => readAscJson(['apps', 'list'], {
+      execFileSync: run,
+      sleepSync: pause,
+      attempts: 3,
+    })).toThrow('ASC unavailable');
+    expect(run).toHaveBeenCalledTimes(3);
+    expect(pause).toHaveBeenCalledTimes(2);
+  });
+
   it('reads the real project version and confirms every native build number agrees', () => {
     const config = getConfig();
     const source = readFileSync(path.join(crewAppRoot, 'src/version.ts'), 'utf8');

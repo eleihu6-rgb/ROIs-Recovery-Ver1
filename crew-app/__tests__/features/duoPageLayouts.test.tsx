@@ -10,6 +10,7 @@ import { FlatList, StyleSheet } from 'react-native';
 import { render, fireEvent, act, within } from '@testing-library/react-native';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ScheduleScreen } from '../../src/features/v2/ScheduleScreen';
 import { HomeScreen } from '../../src/features/v2/HomeScreen';
@@ -17,7 +18,7 @@ import { DestinationScreen } from '../../src/features/v2/DestinationScreen';
 import { cityForAirport } from '../../src/features/home/cities';
 import { buildMonth, MON } from '../../src/features/v2/model';
 import { daySummary } from '../../src/features/v2/schedView';
-import { layoutFor } from '../../src/components/v2/useLayout';
+import { bottomDockClearance, layoutFor } from '../../src/components/v2/useLayout';
 import settingsReducer from '../../src/features/settings/settingsSlice';
 import tripsReducer, { setTrips } from '../../src/features/travel/tripsSlice';
 import alarmsReducer from '../../src/features/alarms/alarmsSlice';
@@ -27,6 +28,25 @@ import notificationsReducer from '../../src/features/notifications/notifications
 import flightCalendarReducer from '../../src/features/calendar/flightCalendarSlice';
 import type { Trip } from '../../src/features/travel/tripCsv';
 import type { PortalDuty } from '../../src/features/travel/portalCapture';
+import type { AppleWeatherState } from '../../src/features/weather/weatherModule';
+
+const mockWeatherState: AppleWeatherState = {
+  base: 'LHR',
+  status: 'unavailable',
+  day: null,
+  outlook: [],
+  hours: [],
+  attribution: null,
+  retry: jest.fn(),
+};
+const mockUseAppleWeather = jest.fn(
+  (_base: string, _year: number, _monthIdx: number, _day: number | null): AppleWeatherState => mockWeatherState,
+);
+jest.mock('../../src/features/weather/weatherModule', () => ({
+  ...jest.requireActual('../../src/features/weather/weatherModule'),
+  useAppleWeather: (base: string, year: number, monthIdx: number, day: number | null) =>
+    mockUseAppleWeather(base, year, monthIdx, day),
+}));
 
 const mockInsets = { current: { top: 0, right: 0, bottom: 0, left: 0 } };
 jest.mock('react-native-safe-area-context', () => ({
@@ -115,7 +135,7 @@ function makeStore() {
   return store;
 }
 
-const withStore = (ui: React.ReactElement) => render(<Provider store={makeStore()}>{ui}</Provider>);
+const withStore = (ui: React.ReactElement) => render(<GestureHandlerRootView><Provider store={makeStore()}>{ui}</Provider></GestureHandlerRootView>);
 
 /** Schedule opens on this month; the fixtures live in the next one. The screen
  *  re-seats its focused day on a short timer after the month rolls, so wait for it. */
@@ -126,6 +146,12 @@ async function openNextMonth(tree: ReturnType<typeof render>) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockWeatherState.base = 'LHR';
+  mockWeatherState.status = 'unavailable';
+  mockWeatherState.day = null;
+  mockWeatherState.outlook = [];
+  mockWeatherState.hours = [];
+  mockWeatherState.attribution = null;
   mockInsets.current = { top: 0, right: 0, bottom: 0, left: 0 };
   asPhone();
 });
@@ -371,8 +397,9 @@ describe('Home', () => {
     expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).paddingBottom).toBe(24);
   });
 
-  it('tall portrait: trip details owns the rotation and destinations stay in one horizontal row', () => {
+  it('tall portrait: trip details owns the rotation and destinations grow into the remaining height', () => {
     asTall();
+    mockInsets.current = { top: 0, right: 84, bottom: 21, left: 0 };
     const tree = withStore(<HomeScreen />);
     expect(tree.getByTestId('home-next-trip')).toBeTruthy();
     expect(tree.queryByTestId('home-rotation')).toBeNull();
@@ -381,6 +408,9 @@ describe('Home', () => {
     expect(tree.getByText('Trip details')).toBeTruthy();
     const strip = tree.getByTestId('home-explore-strip');
     expect(strip.props.horizontal).toBe(true);
+    fireEvent(tree.getByTestId('home-tall-explore'), 'layout', { nativeEvent: { layout: { x: 0, y: 500, width: 625, height: 250 } } });
+    fireEvent(tree.getByTestId('home-quick-actions'), 'layout', { nativeEvent: { layout: { x: 0, y: 764, width: 625, height: 120 } } });
+    expect(StyleSheet.flatten(tree.getAllByTestId(/^dest-/)[0].props.style)).toMatchObject({ width: 200, height: 253 });
     fireEvent.press(tree.getByTestId('home-trip-details-link'));
     expect(mockNavigate).toHaveBeenCalledWith('TripDetails', { tripId: lhrTrip.id });
     fireEvent.press(tree.getByTestId('home-trip-qr'));
@@ -388,56 +418,94 @@ describe('Home', () => {
     expect(StyleSheet.flatten(tree.getByTestId('home-trip-qr').props.style).width).toBe(44);
   });
 
-  it('wide landscape: Explore fills the right side and shows multiple destination rows', () => {
-    asWide();
-    const tree = withStore(<HomeScreen />);
-    expect(tree.queryByTestId('home-rotation')).toBeNull();
-    expect(tree.getByTestId('home-wide-row-1')).toBeTruthy();
-    expect(tree.queryByTestId('home-wide-row-2')).toBeNull();
-    expect(tree.getByTestId('home-explore-strip').props.horizontal).toBe(false);
-    expect(StyleSheet.flatten(tree.getByTestId('home-explore-strip').props.contentContainerStyle).flexWrap).toBe('wrap');
-  });
-
-  it('wide: ticket and Quick actions stack beside the full-height Explore grid', () => {
-    asWide();
-    const tree = withStore(<HomeScreen />);
-    const top = (id: string) => [tree.getByTestId(id).props.style].flat(3).reduce((m, s) => (s && (s as { marginTop?: number }).marginTop !== undefined ? (s as { marginTop: number }).marginTop : m), undefined as number | undefined);
-    expect(top('home-explore')).toBe(0);
-    expect(top('home-next-trip')).toBeUndefined();
-    const row1 = within(tree.getByTestId('home-wide-row-1'));
-    expect(row1.getByTestId('home-next-trip')).toBeTruthy();
-    expect(row1.getByTestId('home-explore')).toBeTruthy();
-    expect(row1.getByText('Quick actions')).toBeTruthy();
-    fireEvent(tree.getByTestId('home-left-stack'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 365, height: 332 } } });
-    expect(StyleSheet.flatten(tree.getByTestId('home-explore').props.style).height).toBe(332);
-
-    // Two destination tiles fit each grid row without clipping.
-    fireEvent(tree.getByTestId('home-explore-strip'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 365, height: 176 } } });
-    const tiles = tree.getAllByTestId(/^dest-/);
-    expect(tiles.length).toBeGreaterThan(0);
-    const w = [tiles[0].props.style].flat(3).reduce((m, s) => (s && (s as { width?: number }).width !== undefined ? (s as { width: number }).width : m), 0);
-    expect(w * 2 + 12).toBeLessThanOrEqual(365);
-    expect(w).toBe(176);
-    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).minHeight).toBeUndefined();
-    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).paddingBottom).toBe(100);
-    expect(StyleSheet.flatten(tiles[0].props.style).height).toBe(128);
-  });
-
-  it.each([[1194, 834], [834, 1194]])('iPad %ix%i: no rotation duplicate; Explore follows orientation', (width, height) => {
+  it.each([[912, 420], [951, 669], [1194, 834]])('landscape %ix%i: trip and Quick actions share the dashboard strip above Explore', (width, height) => {
     mockLayout.current = layoutFor(width, height);
     const tree = withStore(<HomeScreen />);
-    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).minHeight).toBe(height);
+    const dashboard = within(tree.getByTestId('home-landscape-dashboard'));
+    expect(dashboard.getByTestId('home-next-trip')).toBeTruthy();
+    expect(dashboard.getByTestId('home-quick-actions')).toBeTruthy();
+    expect(dashboard.queryByTestId('home-explore')).toBeNull();
+    expect(tree.getByTestId('home-landscape-header')).toBeTruthy();
+    expect(tree.getByTestId('home-explore-strip').props.horizontal).toBe(true);
+    expect(tree.queryByTestId('home-wide-row-1')).toBeNull();
+    expect(tree.queryByTestId('home-ipad-quick-row')).toBeNull();
+
+    fireEvent(tree.getByTestId('home-landscape-explore'), 'layout', { nativeEvent: { layout: { x: 0, y: 324, width: 800, height: 154 } } });
+    fireEvent(tree.getByTestId('home-explore-strip'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 800, height: 154 } } });
+    const tiles = tree.getAllByTestId(/^dest-/);
+    expect(tiles.length).toBeGreaterThan(0);
+    const tile = StyleSheet.flatten(tiles[0].props.style);
+    expect(tile.width * 4 + 36).toBeLessThanOrEqual(800);
+    const bottomClear = bottomDockClearance(
+      width,
+      height,
+      mockInsets.current,
+      height >= 700 ? 130 : 100,
+    );
+    expect(tile.height).toBe(Math.max(154, height - 324 - 59 - bottomClear));
+  });
+
+  it('Duo landscape: grows landmarks to the bottom rail boundary when iOS reports no right inset', () => {
+    asWide();
+    mockInsets.current = { top: 0, right: 0, bottom: 21, left: 0 };
+    const tree = withStore(<HomeScreen />);
+    fireEvent(tree.getByTestId('home-landscape-explore'), 'layout', { nativeEvent: { layout: { x: 0, y: 324, width: 800, height: 154 } } });
+    expect(StyleSheet.flatten(tree.getAllByTestId(/^dest-/)[0].props.style).height).toBe(265);
+    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).paddingBottom).toBe(21);
+  });
+
+  it('landscape: shows the nearest arrival-hour Apple Weather inline beside the airport', () => {
+    asWide();
+    mockWeatherState.status = 'ready';
+    mockWeatherState.day = {
+      date: `${Y}-${String(M + 1).padStart(2, '0')}-08`,
+      symbolName: 'cloud.sun.fill',
+      condition: 'Partly Cloudy',
+      highC: 18,
+      lowC: 11,
+    };
+    mockWeatherState.hours = [
+      { date: `${Y}-${String(M + 1).padStart(2, '0')}-08`, hour: 3, symbolName: 'cloud.fill', temperatureC: 12 },
+      { date: `${Y}-${String(M + 1).padStart(2, '0')}-08`, hour: 6, symbolName: 'cloud.sun.fill', temperatureC: 13.6 },
+    ];
+    mockWeatherState.attribution = {
+      serviceName: 'Apple Weather',
+      legalPageURL: 'https://weatherkit.apple.com/legal-attribution.html',
+      combinedMarkDarkURL: 'https://example.test/dark.png',
+      combinedMarkLightURL: 'https://example.test/light.png',
+    };
+    const tree = withStore(<HomeScreen />);
+
+    expect(mockUseAppleWeather).toHaveBeenLastCalledWith('LHR', Y, M, 8);
+    expect(tree.getByText('14°')).toBeTruthy();
+    expect(tree.getByTestId('home-weather-attribution')).toBeTruthy();
+    expect(tree.getByTestId('home-arrival-weather').props.accessibilityLabel).toBe('LHR arrival weather, 14 degrees Celsius');
+    expect(tree.queryByText(/Weather unavailable|forecast not yet available|weather loading/i)).toBeNull();
+  });
+
+  it.each(['loading', 'unavailable', 'out-of-range'] as const)('landscape: keeps the arrival block clean when weather is %s', status => {
+    asWide();
+    mockWeatherState.status = status;
+    const tree = withStore(<HomeScreen />);
+
+    expect(tree.getAllByText('LHR').length).toBeGreaterThan(0);
+    expect(tree.queryByTestId('home-arrival-weather')).toBeNull();
+    expect(tree.queryByText(/Weather unavailable|forecast not yet available|weather loading/i)).toBeNull();
+  });
+
+  it('iPad portrait: keeps the existing two panels and separate Quick actions row', () => {
+    mockLayout.current = layoutFor(834, 1194);
+    const tree = withStore(<HomeScreen />);
+    expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).minHeight).toBe(1194);
     expect(StyleSheet.flatten(tree.getByTestId('home-screen').props.contentContainerStyle).paddingBottom).toBe(130);
-    expect(StyleSheet.flatten(tree.getByTestId('home-wide-row-1').props.style).flexGrow).toBe(width > height ? 1 : undefined);
-    expect(tree.queryByTestId('home-wide-row-2')).toBeNull();
-    expect(tree.queryByTestId('home-rotation')).toBeNull();
-    expect(tree.getByText('Quick actions')).toBeTruthy();
-    // The inner scroll view stays flexible in both orientations; only the
-    // portrait iPad's outer columns stop stretching to viewport height.
-    expect(StyleSheet.flatten(tree.getByTestId('home-explore-strip').props.style).flex).toBe(1);
-    expect(tree.getByTestId('home-explore-strip').props.horizontal).toBe(width < height);
-    fireEvent(tree.getByTestId('home-explore-strip'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 500 } } });
-    expect(StyleSheet.flatten(tree.getAllByTestId(/^dest-/)[0].props.style).width).toBe(width > height ? 112 : 174);
+    expect(tree.getByTestId('home-wide-row-1')).toBeTruthy();
+    expect(tree.getByTestId('home-ipad-quick-row')).toBeTruthy();
+    expect(tree.queryByTestId('home-landscape-dashboard')).toBeNull();
+    expect(tree.queryByTestId('home-landscape-header')).toBeNull();
+    expect(tree.queryByTestId('home-arrival-weather')).toBeNull();
+    expect(tree.getByTestId('home-explore-strip').props.horizontal).toBe(true);
+    fireEvent(tree.getByTestId('home-explore-strip'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 190 } } });
+    expect(StyleSheet.flatten(tree.getAllByTestId(/^dest-/)[0].props.style).width).toBe(174);
   });
 
   it('iPad portrait: keeps the Duo-style columns content-sized instead of stretching the cards to the viewport', () => {
@@ -450,11 +518,37 @@ describe('Home', () => {
     expect(tree.getByTestId('home-ipad-quick-row')).toBeTruthy();
   });
 
-  it('compact (phone): no rotation list, destinations as the horizontal strip', () => {
+  it.each([
+    ['compact phone portrait', 420, 912],
+    ['Duo portrait', 669, 951],
+    ['iPad portrait', 834, 1194],
+  ])('%s: requests and shows arrival weather inline beside the airport', (_label, width, height) => {
+    mockLayout.current = layoutFor(width, height);
+    mockWeatherState.status = 'ready';
+    mockWeatherState.day = {
+      date: `${Y}-${String(M + 1).padStart(2, '0')}-08`,
+      symbolName: 'cloud.sun.fill',
+      condition: 'Partly Cloudy',
+      highC: 18,
+      lowC: 11,
+    };
+    mockWeatherState.hours = [
+      { date: `${Y}-${String(M + 1).padStart(2, '0')}-08`, hour: 6, symbolName: 'cloud.sun.fill', temperatureC: 13.6 },
+    ];
+    const tree = withStore(<HomeScreen />);
+
+    expect(tree.getByTestId('home-next-trip')).toBeTruthy();
+    expect(mockUseAppleWeather).toHaveBeenLastCalledWith('LHR', Y, M, 8);
+    expect(tree.getByTestId('home-arrival-weather').props.accessibilityLabel).toBe('LHR arrival weather, 14 degrees Celsius');
+    expect(tree.getByText('14°')).toBeTruthy();
+  });
+
+  it('compact phone portrait: keeps the existing Home structure around arrival weather', () => {
     const tree = withStore(<HomeScreen />);
     expect(tree.getByTestId('home-next-trip')).toBeTruthy();
     expect(tree.queryByTestId('home-rotation')).toBeNull();
     expect(tree.queryByTestId('home-dest-grid')).toBeNull();
+    expect(tree.queryByTestId('home-landscape-dashboard')).toBeNull();
     expect(tree.getByTestId('home-trip-details-link')).toBeTruthy();
     expect(tree.getByTestId('home-trip-qr')).toBeTruthy();
   });

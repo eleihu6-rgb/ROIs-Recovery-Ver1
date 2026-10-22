@@ -1,0 +1,69 @@
+# Duty Analyzer New duty — TG crew on a regular iPhone.
+appId: org.reactjs.native.example.RoyceTravelTemplate
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "Don.t Allow"
+    optional: true
+- assertVisible:
+    id: "login-screen"
+- tapOn:
+    id: "airline-dropdown"
+- extendedWaitUntil:
+    visible:
+      id: "airline-TG"
+    timeout: 10000
+- tapOn:
+    id: "airline-TG"
+- tapOn:
+    id: "login-btn"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 200000
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: "qa-analyzer"
+    direction: DOWN
+- tapOn:
+    id: "qa-analyzer"
+- extendedWaitUntil:
+    visible:
+      id: "duty-analyzer"
+    timeout: 10000
+- tapOn:
+    id: "analyzer-mode-new"
+- assertVisible:
+    id: "analyzer-new-form"
+- assertNotVisible:
+    id: "analyzer-fdp"
+- assertNotVisible:
+    id: "analyzer-dp"
+- tapOn:
+    id: "analyzer-report"
+- eraseText: 5
+- inputText: "0700"
+- tapOn:
+    id: "analyzer-chock-on"
+- inputText: "1830"
+- tapOn: "Duty facts"
+- takeScreenshot: duty-analyzer-new-duty-tg-air-input-Ver5
+- scrollUntilVisible:
+    element:
+      id: "analyzer-new-duty-projection"
+    direction: DOWN
+    centerElement: true
+- assertVisible: ".*MAX FDP.*LATEST CHOCK-ON.*"
+- scrollUntilVisible:
+    element:
+      id: "metric-fdp"
+    direction: DOWN
+    centerElement: true
+- assertVisible: ".*FDP.*11:30.*Limit 13:00.*"
+- assertVisible: ".*REST.*12:00.*Required after duty.*From DP.*"
+- takeScreenshot: duty-analyzer-new-duty-tg-air-Ver5

@@ -1,23 +1,23 @@
 import React, {useEffect, useState} from 'react';
-import {ActivityIndicator, SafeAreaView, StyleSheet, Text} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {AppDialog, type AppDialogTone} from '../../components/v2/AppDialog';
 import type {AuthStackParamList} from '../../navigation/RootNavigator';
-import {useAppDispatch} from '../../store';
-import {font, space} from '../../theme';
-import {GradientScreen} from '../../components/v2/GradientScreen';
-import {paletteFor, presetForAirline} from '../../theme/carrier';
+import {useAppDispatch, useAppSelector} from '../../store';
+import {paletteFor, resolveTheme} from '../../theme/carrier';
 import {airlineByCode} from './airlines';
 import {isEkRosterLoginAbortError, loadEkRosterSession} from './ekRosterLogin';
+import {RosterLoadingScreen} from './RosterLoadingScreen';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'EkRoster'>;
 
 export function EkRosterLoginScreen({navigation, route}: Props) {
   const dispatch = useAppDispatch();
   const airline = airlineByCode(route.params.airline);
-  // Same palette as the screen the crew just left and the Home they land on —
-  // the loading page used to be the app-theme purple, unrelated to either.
-  const palette = paletteFor(presetForAirline(route.params.airline));
+  const chosenTheme = useAppSelector(s => s.settings.themePreset);
+  // The saved appearance choice wins; without one, use the airline default.
+  // This is the same precedence as the main app, so loading never flashes a
+  // different theme between Login and Home.
+  const palette = paletteFor(resolveTheme(chosenTheme, route.params.airline));
   // One product pop-up (pop-up standard: status card, not a native alert).
   // The crew stays on this screen until they acknowledge the failure, then we
   // go back (the old alert navigated away underneath itself).
@@ -54,11 +54,14 @@ export function EkRosterLoginScreen({navigation, route}: Props) {
   }, [airline.name, dispatch, navigation, route.params]);
 
   return (
-    <GradientScreen palette={palette} texture={false}>
-      <SafeAreaView style={styles.container} testID="ek-roster-loading">
-        <ActivityIndicator size="large" color={palette.ink} />
-        <Text style={[styles.text, { color: palette.ink }]}>Loading {airline.name} roster…</Text>
-      </SafeAreaView>
+    <>
+      <RosterLoadingScreen
+        palette={palette}
+        airline={route.params.airline}
+        airlineName={airline.name}
+        phase="loading-roster"
+        testID="ek-roster-loading"
+      />
 
       <AppDialog
         visible={dialog !== null}
@@ -70,18 +73,6 @@ export function EkRosterLoginScreen({navigation, route}: Props) {
         confirmLabel={dialog?.confirmLabel}
         testID="ek-roster-dialog"
       />
-    </GradientScreen>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  text: {
-    ...font.body,
-    marginTop: space.md12,
-  },
-});

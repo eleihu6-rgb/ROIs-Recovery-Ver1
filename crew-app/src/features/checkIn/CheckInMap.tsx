@@ -43,7 +43,7 @@ export function CheckInMap({ pin, radiusM, locationKind, airport, palette: p, fi
         ref={map}
         key={`${pin.lat}:${pin.lon}`}
         testID="checkin-native-map"
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         initialRegion={regionAt(pin)}
         onRegionChangeComplete={setRegion}
         mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
@@ -93,7 +93,7 @@ export function CheckInMap({ pin, radiusM, locationKind, airport, palette: p, fi
 const s = StyleSheet.create({
   card: { height: MAP_HEIGHT, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   fill: { flex: 1, height: undefined, minHeight: MAP_HEIGHT },
-  tint: { ...StyleSheet.absoluteFillObject, opacity: 0.3 },
+  tint: { ...StyleSheet.absoluteFill, opacity: 0.3 },
   pin: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   pinCore: { width: 6, height: 6, borderRadius: 3 },
   badge: { position: 'absolute', left: 10, top: 10, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },

@@ -12,7 +12,7 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
 - assertVisible:
     id: "login-screen"
 # The form opens on the default carrier with empty fields — pick THAI, which
-# prefills the TG test crew (35459 / Pier2026), exactly like v2_et_login does.
+# prefills the current TG test crew credentials, exactly like v2_et_login does.
 - tapOn:
     id: "airline-dropdown"
 - tapOn:

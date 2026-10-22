@@ -82,7 +82,7 @@ it('enlarges only the hour digits of the daily start time', () => {
   const start = within(row).getByTestId('cal-row-start-flight-20261019-PR585');
   // The colon and minutes are a plain run in the parent Text, so they inherit
   // its size; only the nested hour span is larger.
-  const parts = (start.props.children as React.ReactElement).props.children as unknown[];
+  const parts = (start.props.children as React.ReactElement<{ children: unknown[] }>).props.children;
   expect(parts[1]).toBe(':33');
   expect(StyleSheet.flatten(start.props.style).fontSize).toBe(14);
 });

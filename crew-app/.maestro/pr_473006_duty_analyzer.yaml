@@ -1,7 +1,6 @@
 # Duty Analyzer — PR crew 473006 on a regular iPhone.
-# Selecting PR fills the repository's PR test credentials. This flow replaces only
-# the crew ID and leaves the prefilled password unchanged.
-appId: org.reactjs.native.example.RoyceTravelTemplate
+# The password is supplied by the runner as PR_PASSWORD and is never stored here.
+appId: com.eleihu6.roycetravel
 ---
 - setOrientation: PORTRAIT
 - launchApp:
@@ -23,6 +22,9 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     id: "crew-id"
 - eraseText: 12
 - inputText: "473006"
+- tapOn:
+    id: "crew-pw"
+- inputText: ${PR_PASSWORD}
 - tapOn:
     id: "login-screen"
     point: "50%,8%"
@@ -61,6 +63,43 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
 - assertNotVisible: "Rules"
 - assertNotVisible: ".*6007.*"
 - assertNotVisible: ".*6008.*"
+
+# New duty starts from the current reporting time, projects the latest legal
+# chock-on while empty, then calculates actual FDP as soon as chock-on is entered.
+- tapOn:
+    id: "analyzer-mode-new"
+- assertVisible:
+    id: "analyzer-new-form"
+- assertVisible:
+    id: "analyzer-new-duty-projection"
+- assertVisible: ".*MAX FDP.*LATEST CHOCK-ON.*"
+- assertNotVisible:
+    id: "analyzer-fdp"
+- assertNotVisible:
+    id: "analyzer-dp"
+- tapOn:
+    id: "analyzer-report"
+- eraseText: 5
+- inputText: "07:00"
+- tapOn:
+    id: "analyzer-chock-on"
+- eraseText: 5
+- inputText: "18:30"
+- tapOn: "Duty facts"
+- scrollUntilVisible:
+    element:
+      id: "metric-fdp"
+    direction: DOWN
+    centerElement: true
+- assertVisible: ".*FDP.*11:30.*Limit 13:00.*"
+- takeScreenshot: duty-analyzer-new-duty-fdp-Ver1
+- scrollUntilVisible:
+    element:
+      id: "analyzer-mode-roster"
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: "analyzer-mode-roster"
 
 # PR501/PR512 is one two-segment duty. Open the exact segment editor.
 - scrollUntilVisible:

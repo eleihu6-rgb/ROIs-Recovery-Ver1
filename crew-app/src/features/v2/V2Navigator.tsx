@@ -24,6 +24,7 @@ import { UpcomingAlarmsScreen } from './UpcomingAlarmsScreen';
 import { AlarmsSettingsScreen } from './AlarmsSettingsScreen';
 import { TimeZoneScreen } from './TimeZoneScreen';
 import { PreferencesScreen } from './PreferencesScreen';
+import { M5DisplayScreen } from '../m5-display/M5DisplayScreen';
 import { AppearanceScreen } from './AppearanceScreen';
 import { PersonalInfoScreen } from './PersonalInfoScreen';
 import { NotificationsScreen } from '../notifications/NotificationsScreen';
@@ -99,12 +100,13 @@ export function V2Navigator() {
         <Stack.Screen name="AlarmsSettings" component={AlarmsSettingsScreen} />
         <Stack.Screen name="TimeZone" component={TimeZoneScreen} />
         <Stack.Screen name="Preferences" component={PreferencesScreen} />
+        <Stack.Screen name="M5Display" component={M5DisplayScreen} />
         <Stack.Screen name="Appearance" component={AppearanceScreen} />
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
         <Stack.Screen name="Spec" component={SpecPage} />
         <Stack.Screen name="AbsenceHistory" component={AbsenceHistoryScreen} />
         <Stack.Screen name="Discretion" component={DiscretionScreen} />
-        <Stack.Screen name="DutySwap" component={DutySwapHost} />
+        <Stack.Screen name="DutySwap" component={DutySwapHost} options={{ gestureEnabled: false }} />
         <Stack.Screen name="DutySwapRecords" component={DutySwapRecordsScreen} />
         <Stack.Screen name="DutySwapMyDuties" component={DutySwapMyDutiesScreen} />
         <Stack.Screen name="Meal" component={MealScreen} />

@@ -6,6 +6,7 @@
 // in routeShare.test.ts and the real sheet is exercised on the simulator.
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { ReactTestInstance } from 'react-test-renderer';
 
 import { RouteMapView } from '../../src/features/v2/RouteMapView';
@@ -77,13 +78,20 @@ function textOf(node: ReactTestInstance): string {
 
 function openShare() {
   const tree = render(
-    <RouteMapView
-      month={month}
-      base="BKK"
-      palette={PALETTES.sia}
-      airlineCode="TG"
-      airlineName="THAI"
-    />,
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 420, height: 912 },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      }}
+    >
+      <RouteMapView
+        month={month}
+        base="BKK"
+        palette={PALETTES.sia}
+        airlineCode="TG"
+        airlineName="THAI"
+      />
+    </SafeAreaProvider>,
   );
   fireEvent(tree.getByTestId('route-map'), 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 520 } },

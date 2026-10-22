@@ -1,4 +1,4 @@
-import { DAY_MS, flightRouteOf, hhmmOf, isoDay, naiveMs, routeOf, type ApiTaskDetail, type SwapDuty } from '../dutySwapModel';
+import { DAY_MS, dayLabel, hhmmOf, isoDay, naiveMs, routeOf, type ApiTaskDetail, type SwapDuty } from '../dutySwapModel';
 
 export const RAIL_ZOOMS = [3, 7, 14] as const;
 export type RailZoom = typeof RAIL_ZOOMS[number];
@@ -10,20 +10,21 @@ export function zoomForPinch(initial: RailZoom, scale: number): RailZoom {
 }
 
 /** Progressive information within the fixed 40pt puck; never change its height. */
-export function puckLines(duty: SwapDuty, detail: ApiTaskDetail | undefined, width: number, carrier = ''): string[] {
+export function puckLines(duty: SwapDuty, detail: ApiTaskDetail | undefined, width: number): string[] {
   const code = width < 100 ? duty.code.replace(/\/([A-Z]{2})(\d+)/g, '/$2') : duty.code;
   if (width < 78) return [code];
   const time = `${hhmmOf(duty.startDt)}–${hhmmOf(duty.endDt)}`;
   if (width < 140) return [code, time];
+  const start = dayLabel(duty.startDt);
+  const heading = `${start.day} ${start.month} · ${code}`;
   const capacity = Math.floor((width - 8) / 6.5);
-  // The numbered legs already name the airports, so skip the old airport-only chain.
-  const pieces = [carrier ? flightRouteOf(detail, carrier) : routeOf(detail), time, detail ? `BLH ${detail.blh}` : null, detail ? `CRD ${detail.crd}` : null].filter((v): v is string => !!v);
+  const pieces = [routeOf(detail), time, detail ? `BLH ${detail.blh}` : null, detail ? `CRD ${detail.crd}` : null].filter((v): v is string => !!v);
   let line = '';
   for (const piece of pieces) {
     const next = line ? `${line} · ${piece}` : piece;
     if (next.length <= capacity) line = next;
   }
-  return [code, line || time];
+  return [heading, line || time];
 }
 
 /** Exact local-time geometry, clipped to the visible window; never split a pairing. */

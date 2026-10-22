@@ -10,6 +10,7 @@
 		00E356F31AD99517003FC87E /* RoyceTravelTemplateTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* RoyceTravelTemplateTests.m */; };
 		0C80B921A6F3F58F76C31292 /* libPods-RoyceTravelTemplate.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-RoyceTravelTemplate.a */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
+		A3230001000000000000B001 /* SceneDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = A3230001000000000000F001 /* SceneDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		2DCE005D87FFAC1160FBF754 /* AlarmModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31566B2C332DFA83D2D9F647 /* AlarmModule.swift */; };
@@ -26,6 +27,8 @@
 		CA1E0006000000000000B006 /* RoyceMeetingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1E0006000000000000F006 /* RoyceMeetingAttributes.swift */; };
 		CA1E0007000000000000B007 /* ShareModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1E0007000000000000F007 /* ShareModule.swift */; };
 		CA1E0008000000000000B008 /* ShareModule.m in Sources */ = {isa = PBXBuildFile; fileRef = CA1E0008000000000000F008 /* ShareModule.m */; };
+		M5D10001000000000000B001 /* M5DisplayModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = M5D10001000000000000F001 /* M5DisplayModule.swift */; };
+		M5D10002000000000000B002 /* M5DisplayModule.m in Sources */ = {isa = PBXBuildFile; fileRef = M5D10002000000000000F002 /* M5DisplayModule.m */; };
 		E526C382CC7CDFA33D2A5BB9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A7B1DB8E43484C6B816CE95 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
@@ -56,6 +59,8 @@
 		13B07F961A680F5B00A75B9A /* RoyceTravelTemplate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RoyceTravelTemplate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = RoyceTravelTemplate/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = RoyceTravelTemplate/AppDelegate.mm; sourceTree = "<group>"; };
+		A3230001000000000000F000 /* SceneDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SceneDelegate.h; path = RoyceTravelTemplate/SceneDelegate.h; sourceTree = "<group>"; };
+		A3230001000000000000F001 /* SceneDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = SceneDelegate.mm; path = RoyceTravelTemplate/SceneDelegate.mm; sourceTree = "<group>"; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = RoyceTravelTemplate/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = RoyceTravelTemplate/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = RoyceTravelTemplate/main.m; sourceTree = "<group>"; };
@@ -77,6 +82,8 @@
 		CA1E0006000000000000F006 /* RoyceMeetingAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RoyceMeetingAttributes.swift; path = RoyceTravelTemplate/RoyceMeetingAttributes.swift; sourceTree = "<group>"; };
 		CA1E0007000000000000F007 /* ShareModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ShareModule.swift; path = RoyceTravelTemplate/ShareModule.swift; sourceTree = "<group>"; };
 		CA1E0008000000000000F008 /* ShareModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = ShareModule.m; path = RoyceTravelTemplate/ShareModule.m; sourceTree = "<group>"; };
+		M5D10001000000000000F001 /* M5DisplayModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = M5DisplayModule.swift; path = RoyceTravelTemplate/M5DisplayModule.swift; sourceTree = "<group>"; };
+		M5D10002000000000000F002 /* M5DisplayModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = M5DisplayModule.m; path = RoyceTravelTemplate/M5DisplayModule.m; sourceTree = "<group>"; };
 		D067FE2198F4FBA8ADA925DD /* RoyceTravelTemplateUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RoyceTravelTemplateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F2CA5552AE8E2BCDB21A7DCB /* AlarmModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = AlarmModule.m; path = RoyceTravelTemplate/AlarmModule.m; sourceTree = "<group>"; };
@@ -132,6 +139,8 @@
 			children = (
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
+				A3230001000000000000F000 /* SceneDelegate.h */,
+				A3230001000000000000F001 /* SceneDelegate.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -148,6 +157,8 @@
 				CA1E0006000000000000F006 /* RoyceMeetingAttributes.swift */,
 				CA1E0007000000000000F007 /* ShareModule.swift */,
 				CA1E0008000000000000F008 /* ShareModule.m */,
+				M5D10001000000000000F001 /* M5DisplayModule.swift */,
+				M5D10002000000000000F002 /* M5DisplayModule.m */,
 				48A8C7B8743C483CBCE33FBE /* RoyceTravelTemplate-Bridging-Header.h */,
 			);
 			name = RoyceTravelTemplate;
@@ -497,6 +508,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
+				A3230001000000000000B001 /* SceneDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				2DCE005D87FFAC1160FBF754 /* AlarmModule.swift in Sources */,
 				8F9265E3D90213C39C11C98B /* AlarmModule.m in Sources */,
@@ -508,6 +520,8 @@
 				CA1E0006000000000000B006 /* RoyceMeetingAttributes.swift in Sources */,
 				CA1E0007000000000000B007 /* ShareModule.swift in Sources */,
 				CA1E0008000000000000B008 /* ShareModule.m in Sources */,
+				M5D10001000000000000B001 /* M5DisplayModule.swift in Sources */,
+				M5D10002000000000000B002 /* M5DisplayModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -593,12 +607,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "RoyceTravelTemplate/RoyceTravelTemplate.entitlements";
-				CURRENT_PROJECT_VERSION = 268;
+				CODE_SIGN_ENTITLEMENTS = RoyceTravelTemplate/RoyceTravelTemplate.entitlements;
+				CURRENT_PROJECT_VERSION = 329;
 				DEVELOPMENT_TEAM = 6B2783K6KM;
 				EK_ROSTER_API_BASE_URL = "https://ai.rois.one/api";
 				ENABLE_BITCODE = NO;
-				"F8_ROSTER_API_BASE_URL" = "https://cr.rois.one/api";
+				F8_ROSTER_API_BASE_URL = "https://cr.rois.one/api";
 				INFOPLIST_FILE = RoyceTravelTemplate/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -611,7 +625,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.eleihu6.roycetravel;
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.eleihu6.roycetravel;
 				PRODUCT_NAME = RoyceTravelTemplate;
 				SWIFT_OBJC_BRIDGING_HEADER = "RoyceTravelTemplate/RoyceTravelTemplate-Bridging-Header.h";
@@ -628,11 +642,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "RoyceTravelTemplate/RoyceTravelTemplate.entitlements";
-				CURRENT_PROJECT_VERSION = 268;
+				CODE_SIGN_ENTITLEMENTS = RoyceTravelTemplate/RoyceTravelTemplate.entitlements;
+				CURRENT_PROJECT_VERSION = 329;
 				DEVELOPMENT_TEAM = 6B2783K6KM;
 				EK_ROSTER_API_BASE_URL = "https://ai.rois.one/api";
-				"F8_ROSTER_API_BASE_URL" = "https://cr.rois.one/api";
+				F8_ROSTER_API_BASE_URL = "https://cr.rois.one/api";
 				INFOPLIST_FILE = RoyceTravelTemplate/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -645,7 +659,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.eleihu6.roycetravel;
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.eleihu6.roycetravel;
 				PRODUCT_NAME = RoyceTravelTemplate;
 				SWIFT_OBJC_BRIDGING_HEADER = "RoyceTravelTemplate/RoyceTravelTemplate-Bridging-Header.h";
@@ -737,6 +751,10 @@
 				);
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
+				);
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(OTHER_CFLAGS)",
 					"-DFOLLY_NO_CONFIG",
@@ -744,13 +762,17 @@
 					"-DFOLLY_USE_LIBCPP=1",
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					" ",
 				);
+				PODFILE_DIR = "$(SRCROOT)";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				USE_HERMES = true;
 			};
 			name = Debug;
@@ -812,6 +834,10 @@
 					"\"$(inherited)\"",
 				);
 				MTL_ENABLE_DEBUG_INFO = NO;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
+				);
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(OTHER_CFLAGS)",
 					"-DFOLLY_NO_CONFIG",
@@ -819,13 +845,16 @@
 					"-DFOLLY_USE_LIBCPP=1",
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					" ",
 				);
+				PODFILE_DIR = "$(SRCROOT)";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
 			};

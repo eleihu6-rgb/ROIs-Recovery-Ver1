@@ -46,10 +46,10 @@ describe('PR airline wiring (airlines.ts)', () => {
     expect(pr.portalConfig).toEqual({ baseAirport: 'MNL', baseOffsetMin: 480, loginOutCaptcha: '202604', dutySwap: true });
   });
 
-  it('does not disturb TG (still Bangkok / UTC+7, no captcha)', () => {
+  it('opens TG Duty Swap without changing its Bangkok / UTC+7 login contract', () => {
     const tg = airlineByCode('TG');
     expect(tg.carrier).toBe('TG');
-    expect(tg.portalConfig).toEqual({ baseAirport: 'BKK', baseOffsetMin: 420 });
+    expect(tg.portalConfig).toEqual({ baseAirport: 'BKK', baseOffsetMin: 420, dutySwap: true });
     expect(tg.portalConfig?.loginOutCaptcha).toBeUndefined();
   });
 });

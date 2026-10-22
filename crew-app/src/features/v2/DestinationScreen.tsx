@@ -33,6 +33,10 @@ import { useBase, useDestinations, type DestinationEntry } from './useV2';
 import { MON } from './model';
 import { useV2Nav, type V2StackParamList } from './nav';
 import { useLayout } from '../../components/v2/useLayout';
+import { airportZone } from '../settings/airportZones';
+import { legDisplayDate } from '../settings/timeFormat';
+import { WeatherAttribution, WeatherSymbol } from '../weather/WeatherStrip';
+import { nearestWeatherHour, useAppleWeather, type AppleWeatherState } from '../weather/weatherModule';
 
 type Props = NativeStackScreenProps<V2StackParamList, 'Destination'>;
 
@@ -112,16 +116,22 @@ function InfoBlock({
   entry,
   ops,
   hotel,
+  weather,
   panel,
 }: {
   entry: DestinationEntry;
   ops: LegOps;
   hotel: HotelInfo | null;
+  weather: AppleWeatherState;
   /** Duo inner screen: the block is its own panel beside/under the photo, not type over it. */
   panel?: 'side' | 'below';
 }) {
   const insets = useSafeAreaInsets();
   const leg = entry.leg;
+  const forecast = weather.status === 'ready'
+    ? nearestWeatherHour(weather.hours, entry.trip.legs[0].localArvTime ?? '')
+    : null;
+  const temperature = forecast ? Math.round(forecast.temperatureC) : null;
   const bookedHotel = hotel && !hotel.mocked ? hotel : null;
   const hotelLines = bookedHotel ? (
     <>
@@ -143,6 +153,24 @@ function InfoBlock({
     >
       <Text style={s.airport}>{entry.city.airport}</Text>
       <Text style={s.city} testID="dest-city">{entry.city.name}</Text>
+      {forecast && weather.day && temperature != null ? (
+        <View
+          style={s.weather}
+          testID="dest-weather"
+          accessibilityLabel={`${weather.base} weather, ${weather.day.condition}, ${temperature} degrees Celsius`}
+        >
+          <WeatherSymbol symbol={forecast.symbolName} color="#fff" />
+          <Text style={s.weatherText}>{temperature}° · {weather.day.condition}</Text>
+          {weather.attribution ? (
+            <WeatherAttribution
+              attribution={weather.attribution}
+              lightMark
+              compact
+              testID="dest-weather-attribution"
+            />
+          ) : null}
+        </View>
+      ) : null}
       <Text style={s.sub}>
         {leg.fltNumber}{leg.fleet ? ` · ${leg.fleet}` : ''} · {leg.day} {MON[leg.monthIdx]} {leg.year}
       </Text>
@@ -228,6 +256,22 @@ export function DestinationScreen({ route }: Props) {
     [current, mode, baseTz],
   );
   const hotel = useMemo(() => (current ? hotelFor(current.trip, base) : null), [current, base]);
+  const destinationLeg = current?.trip.legs[0];
+  const destinationDate = destinationLeg
+    ? legDisplayDate({
+      flightDateUTC: destinationLeg.arvDateUTC,
+      localTime: destinationLeg.localArvTime,
+      mode: 'airport',
+      baseTz,
+      airportTz: airportZone(current.city.airport),
+    })
+    : null;
+  const destinationWeather = useAppleWeather(
+    current?.city.airport ?? '',
+    destinationDate?.year ?? 0,
+    destinationDate?.monthIdx ?? 0,
+    destinationDate?.day ?? null,
+  );
 
   const onViewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const first = viewableItems[0]?.index;
@@ -300,6 +344,7 @@ export function DestinationScreen({ route }: Props) {
         entry={current}
         ops={ops}
         hotel={hotel}
+        weather={destinationWeather}
         panel={wide ? 'side' : tall ? 'below' : undefined}
       />
 
@@ -355,6 +400,8 @@ const s = StyleSheet.create({
   infoPanelBody: { paddingTop: 64 },
   airport: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '700', letterSpacing: 2 },
   city: { color: '#fff', fontSize: 34, fontWeight: '700', marginTop: 2 },
+  weather: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  weatherText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   sub: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginTop: 6 },
   // Compact icon-led lines (Ryan: less block, simple line icons).
   line: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },

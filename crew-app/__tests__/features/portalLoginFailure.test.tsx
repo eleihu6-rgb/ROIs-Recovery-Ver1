@@ -61,9 +61,10 @@ describe('PortalCaptureScreen native login failure', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('passes nativeAuth to the injected script after native login succeeds', async () => {
+  it('passes nativeAuth to the injected script for non-TG ROIS login', async () => {
     mockedCreatePortalClient.mockReturnValue({
       token: jest.fn().mockResolvedValue('test-session-token'),
+      raw: jest.fn(async () => { throw new Error('not needed'); }),
     } as never);
 
     render(

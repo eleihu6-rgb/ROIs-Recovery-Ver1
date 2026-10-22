@@ -11,12 +11,14 @@ import {
 } from '../../src/components/v2/useLayout';
 
 describe('layoutFor (iPhone vs iPhone Duo)', () => {
-  it('reserves the portrait inner action strip when rotation reports no right inset', () => {
+  it('reserves the inner action strip when rotation reports no right inset', () => {
     expect(duoActionStripWidth(669, 951, 0)).toBe(84);
+    expect(duoActionStripWidth(951, 669, 0)).toBe(84);
     expect(duoActionStripWidth(951, 669, 84)).toBe(84);
     expect(duoActionStripWidth(420, 912, 0)).toBe(0);
     expect(duoActionStripWidth(466, 678, 0)).toBe(84);
     expect(duoActionStripWidth(834, 1210, 0)).toBe(0);
+    expect(duoActionStripWidth(1210, 834, 0)).toBe(0);
   });
 
   it('keeps a regular iPhone (iPhone Air 420x912) compact', () => {

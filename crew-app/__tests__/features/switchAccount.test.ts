@@ -82,27 +82,27 @@ describe('account switch — TG 44117 ⇄ PR 433535 never mix', () => {
   });
 });
 
-describe('fresh-login boundary drops another crew\'s stale trips (the live-sim leak)', () => {
-  // Reproduces what the sim surfaced: stale TG crew-42596 trips sitting in store
-  // (from an earlier session, no logout) must NOT survive a PR 433535 login.
+describe('fresh-login boundary replaces the previous airline roster', () => {
+  // Reproduces what the sim surfaced: stale TG trips sitting in store (from an
+  // earlier session, no logout) must NOT survive a PR login — even if both
+  // airlines issue the same numeric crew ID.
   const leg = (fltNumber: string): any => ({
     crewId: '', fltNumber, flightDateUTC: '', depArp: 'X', arvDateUTC: '', arvArp: 'Y', fleet: '', hotel: '',
   });
   const trip = (id: string, crewId: string, legs: any[]): Trip =>
     ({ id, crewId, checkInDateUTC: '', legs } as unknown as Trip);
 
-  it('filtering to the logging-in crew before sync removes the other crew, keeps mine', () => {
-    const staleTG = trip('tg-1', '42596', [leg('TG670')]);
-    const myPR = trip('pr-1', '433535', [leg('PR400')]);
-    let state = reducer(undefined, setTrips([staleTG, myPR]));
-    // The LoginCaptureScreen guard: keep only the logging-in crew, then sync fresh.
-    const crewId = '433535';
-    const mine = state.trips.filter(t => t.crewId === crewId);
-    state = reducer(state, setTrips(mine));
-    state = reducer(state, syncCapturedTrips([trip('pr-2', '433535', [leg('PR401')])]));
+  it('drops stale TG data when PR logs in with the same crew ID', () => {
+    const sharedCrewId = '433535';
+    const staleTG = trip('tg-1', sharedCrewId, [leg('TG670')]);
+    const freshPR = trip('pr-1', sharedCrewId, [leg('PR400')]);
+    let state = reducer(undefined, setTrips([staleTG]));
+
+    // LoginCaptureScreen replaces the roster at the fresh-login boundary.
+    state = reducer(state, setTrips([freshPR]));
+
     const flts = state.trips.flatMap(t => t.legs.map((l: any) => l.fltNumber));
-    expect(flts).not.toContain('TG670'); // stale other-crew trip gone
-    expect(flts).toEqual(expect.arrayContaining(['PR400', 'PR401']));
-    expect(state.trips.every(t => t.crewId === '433535')).toBe(true);
+    expect(flts).toEqual(['PR400']);
+    expect(flts).not.toContain('TG670');
   });
 });

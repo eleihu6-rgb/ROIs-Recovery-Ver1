@@ -97,10 +97,10 @@ appId: org.reactjs.native.example.RoyceTravelTemplate
     id: "approach-twin"
 - extendedWaitUntil:
     visible:
-      id: "twin-search-submit"
+      id: "search-submit"
     timeout: 30000
 - tapOn:
-    id: "twin-search-submit"
+    id: "search-submit"
 - extendedWaitUntil:
     visible:
       id: "twin-rails"

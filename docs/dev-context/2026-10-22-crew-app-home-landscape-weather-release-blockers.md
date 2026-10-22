@@ -1,0 +1,1053 @@
+# 开发上下文（2026-10-22）
+
+> 这份文档由 `./save-context.sh` 生成，用于给后续 AI / 开发者恢复本次对话上下文。
+> 只记录开发侧上下文，不写产品用户记忆、数据库密码、Token 或其他运行时敏感信息。
+
+## 基本信息
+
+- 时间：2026-10-22 01:50:05 +07
+- Wing：`crew-app`
+- Topic：`home-landscape-weather-release-blockers`
+- Title：home-landscape-weather-release-blockers
+- Git branch：`feat/crew-app/easa-duty-analyzer`
+
+## 本轮对话上下文
+
+Build 307 is the current Crew App candidate. Home landscape dashboard, dynamic destination cards, Duty Analyzer Reset/Save rail, time alignment, and Air portrait preservation are implemented. Full Jest passed 135/135 suites, 1268/1268 tests; TypeScript, UI standard (0 hard violations), and git diff --check passed. Air Analyzer XCUITest Ver14 passed with four visually inspected screenshots. Air Home Ver17 captured and visually inspected both landscape and portrait; layout assertions passed, but the strict inline arrival weather assertion failed. Simulator logs prove WeatherKit accepted the app entitlement and signed the request, then https://weatherkit.apple.com/v3/token returned HTTP 401 for com.eleihu6.roycetravel with invalidJWTResponse. Do not fake weather or weaken the assertion. TestFlight workflow validation, verified-ID preflight, and dry-run plan passed for build 307, but no publish was run. Production npm audit remains a mandatory blocker: 43 findings (14 moderate, 29 high) in RN 0.74/Metro/navigation tooling; zero requires a separately planned framework migration and npm audit fix --force must not be used. No commit, merge, push, upload, Duo/iPad run, or physical iPhone install occurred. Also fixed fresh-login TG/PR isolation for same numeric crew ID, Duty Swap password-client cache cleanup on logout, and TG compare empty-list fallback; focused tests pass. Stage explicit files only: exclude .done/.request markers, timestamped Maestro output, portal response/token artifacts, stale failed screenshots, and bulk screenshot directories.
+
+## 当前工作树快照
+
+### git status --short
+
+```text
+ M AGENTS.md
+ M crew-app/.maestro/guest_login.yaml
+ M crew-app/.maestro/pr_473006_duty_analyzer.yaml
+ M crew-app/.maestro/v2_tg_flight_calendar.yaml
+ M crew-app/__tests__/features/calendarMonthDetail.test.tsx
+ M crew-app/__tests__/features/duoLayout.test.ts
+ M crew-app/__tests__/features/duoNavRail.test.tsx
+ M crew-app/__tests__/features/duoPageLayouts.test.tsx
+ M crew-app/__tests__/features/dutyAnalyzerEngine.test.ts
+ M crew-app/__tests__/features/dutyAnalyzerReferenceScreen.test.tsx
+ M crew-app/__tests__/features/dutyAnalyzerScreen.test.tsx
+ M crew-app/__tests__/features/dutySwapTwinRail.test.tsx
+ M crew-app/__tests__/features/ekAirlineSelection.test.ts
+ M crew-app/__tests__/features/etAirlineSelection.test.ts
+ M crew-app/__tests__/features/portalCaptureCompletion.test.tsx
+ M crew-app/__tests__/features/portalClient.test.ts
+ M crew-app/__tests__/features/portalLoginAttempts.test.ts
+ M crew-app/__tests__/features/portalLoginFailure.test.tsx
+ M crew-app/__tests__/features/prPortalCapture.test.ts
+ M crew-app/__tests__/features/routeMapStatsCard.test.tsx
+ M crew-app/__tests__/features/routeShareCard.test.tsx
+ M crew-app/__tests__/features/switchAccount.test.ts
+ M crew-app/ios/RoyceTravelTemplate.xcodeproj/project.pbxproj
+ M crew-app/ios/RoyceTravelTemplateUITests/DuoFitUITests.swift
+ M crew-app/src/components/v2/useLayout.ts
+ M crew-app/src/features/auth/EkRosterLoginScreen.tsx
+ M crew-app/src/features/auth/LoginCaptureScreen.tsx
+ M crew-app/src/features/auth/LoginScreen.tsx
+ M crew-app/src/features/auth/airlines.ts
+ M crew-app/src/features/auth/authSlice.ts
+ M crew-app/src/features/dutyAnalyzer/DutyAnalyzerReferenceScreen.tsx
+ M crew-app/src/features/dutyAnalyzer/DutyAnalyzerScreen.tsx
+ M crew-app/src/features/dutyAnalyzer/dutyAnalyzerEngine.ts
+ M crew-app/src/features/dutyAnalyzer/dutyAnalyzerTypes.ts
+ M crew-app/src/features/dutySwap/DutySwapMyDutiesScreen.tsx
+ M crew-app/src/features/dutySwap/DutySwapScreen.tsx
+ M crew-app/src/features/dutySwap/dutySwapActions.ts
+ M crew-app/src/features/dutySwap/dutySwapApi.ts
+ M crew-app/src/features/dutySwap/dutySwapModel.ts
+ M crew-app/src/features/dutySwap/market/TicketScreen.tsx
+ M crew-app/src/features/dutySwap/twinRail/TwinRailScreen.tsx
+ M crew-app/src/features/portal/portalClient.ts
+ M crew-app/src/features/travel/PortalCaptureScreen.tsx
+ M crew-app/src/features/v2/HomeScreen.tsx
+ M crew-app/src/features/v2/RouteShareCard.tsx
+ M crew-app/src/features/v2/ScheduleScreen.tsx
+ M crew-app/src/features/v2/nav.ts
+ M crew-app/src/navigation/RootNavigator.tsx
+ M crew-app/src/version.ts
+?? "Crew App Duty Swap.mhtml"
+?? crew-app/.maestro/duty_analyzer_augmented_reference.yaml
+?? crew-app/.maestro/duty_analyzer_new_duty_tg.yaml
+?? crew-app/__tests__/features/dutySwapActions.test.ts
+?? crew-app/__tests__/features/dutySwapTgCompare.test.ts
+?? crew-app/__tests__/features/loginCaptureIsolation.test.tsx
+?? crew-app/__tests__/features/portalRosterPull.test.ts
+?? crew-app/__tests__/features/rosterLoadingScreen.test.tsx
+?? crew-app/docs/
+?? crew-app/ios/docs/
+?? crew-app/src/features/auth/RosterLoadingScreen.tsx
+?? crew-app/src/features/travel/portalRosterPull.ts
+?? docs/assets/screenshots/crew-app/air-meal-trip-Ver1-01_home_quick_actions.png
+?? docs/assets/screenshots/crew-app/air-meal-trip-Ver1-02_saved_dialog.png
+?? docs/assets/screenshots/crew-app/air-meal-trip-Ver1-03_saved_row.png
+?? docs/assets/screenshots/crew-app/air-meal-trip-Ver1-04_trip_ops_grid.png
+?? docs/assets/screenshots/crew-app/air-meal-trip-Ver1-05_tg_no_pr_meal.png
+?? docs/assets/screenshots/crew-app/air-meal-trip-Ver1-06_tg_trip_ops_grid.png
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-air-Ver1/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-air-Ver2-retry/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-air-Ver2/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-air-Ver3-final/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-air-Ver3/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-air-Ver4/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-air-Ver5-retry/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-air-Ver5/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-air-Ver6/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-duo-Ver1/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-duo-Ver4/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-duo-Ver5/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-duo-Ver6/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-ipad-Ver3/
+?? docs/assets/screenshots/crew-app/analyzer-new-duty-ipad-Ver4/
+?? docs/assets/screenshots/crew-app/appearance-dark-audit-Ver1.png
+?? docs/assets/screenshots/crew-app/appearance-daylight-Ver1.png
+?? docs/assets/screenshots/crew-app/calendar-adaptive-ver216/
+?? docs/assets/screenshots/crew-app/calendar-daily-rail-ipad-portrait-Ver13.png
+?? docs/assets/screenshots/crew-app/calendar-finalist-oct14-air-failure-Ver26.png
+?? docs/assets/screenshots/crew-app/calendar-fixed-air-Ver2/
+?? docs/assets/screenshots/crew-app/calendar-fixed-air-Ver3/
+?? docs/assets/screenshots/crew-app/calendar-fixed-air-Ver4/
+?? docs/assets/screenshots/crew-app/calendar-fixed-duo-landscape-Ver1/
+?? docs/assets/screenshots/crew-app/calendar-fixed-duo-portrait-Ver1/
+?? docs/assets/screenshots/crew-app/calendar-fixed-ipad-landscape-Ver1/
+?? docs/assets/screenshots/crew-app/calendar-fixed-ipad-portrait-Ver1/
+?? docs/assets/screenshots/crew-app/calendar-gesture-ver220/
+?? docs/assets/screenshots/crew-app/calendar-gesture-ver221/
+?? docs/assets/screenshots/crew-app/calendar-gesture-ver223/
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-month-detail-default-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-month-detail-default-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-month-detail-grid-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-month-detail-grid-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-month-detail-grid-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-month-detail-grid-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-month-detail-grid-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-returned-month-detail-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-returned-month-detail-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-returned-month-detail-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-returned-month-detail-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-day-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-day-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-day-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-day-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-day-hours-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-day-hours-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-day-hours-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-day-hours-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-week-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-selected-week-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-stacked-month-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-stacked-month-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-35459-stacked-month-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-452320-month-detail-grid-Ver1.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-452320-month-detail-grid-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-452320-returned-month-detail-Ver1.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-452320-returned-month-detail-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-452320-selected-day-Ver1.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-452320-selected-day-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-452320-selected-day-hours-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-452320-stacked-month-Ver1.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-452320-stacked-month-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver23.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver26.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver27.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver29.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver31.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver32.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver34.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-default-Ver36.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver23.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver26.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver27.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver29.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver31.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver32.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver34.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-month-detail-grid-Ver36.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-returned-month-detail-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-returned-month-detail-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-returned-month-detail-Ver23.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-day-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-day-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-day-Ver23.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-day-hours-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-day-hours-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-day-hours-Ver23.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-day-scrolled-Ver23.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-week-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-week-Ver11.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-473006-selected-week-Ver23.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-month-detail-grid-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-month-detail-grid-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-month-detail-grid-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-month-detail-grid-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-month-detail-grid-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-returned-month-detail-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-returned-month-detail-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-returned-month-detail-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-selected-day-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-selected-day-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-selected-day-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-selected-day-hours-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-selected-day-hours-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-selected-day-hours-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-stacked-month-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-stacked-month-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-stacked-month-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-stacked-month-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-487424-stacked-month-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-540753-month-detail-grid-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-540753-returned-month-detail-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-540753-selected-day-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-540753-selected-day-hours-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-air-540753-stacked-month-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-month-detail-grid-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-month-detail-grid-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-month-detail-grid-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-month-detail-grid-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-month-detail-grid-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-month-detail-grid-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-returned-month-detail-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-returned-month-detail-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-returned-month-detail-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-returned-month-detail-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-returned-month-detail-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-returned-month-detail-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-hours-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-hours-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-hours-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-hours-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-hours-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-selected-day-hours-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-stacked-month-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-stacked-month-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-stacked-month-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-stacked-month-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-stacked-month-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-35459-stacked-month-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-month-detail-grid-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-month-detail-grid-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-returned-month-detail-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-returned-month-detail-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-selected-day-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-selected-day-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-selected-day-hours-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-selected-day-hours-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-stacked-month-Ver9.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-452320-stacked-month-Ver9.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-month-detail-grid-Ver4.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-month-detail-grid-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-month-detail-grid-Ver6.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-month-detail-grid-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-month-detail-grid-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-month-detail-grid-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-returned-month-detail-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-returned-month-detail-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-Ver4.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-Ver6.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-hours-Ver4.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-hours-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-hours-Ver6.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-hours-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-hours-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-selected-day-hours-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-stacked-month-Ver4.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-stacked-month-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-stacked-month-Ver5.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-stacked-month-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-stacked-month-Ver6.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-stacked-month-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-stacked-month-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-465800-stacked-month-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver16.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver16.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver17.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver17.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver19.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver19.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver20.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver20.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver24.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver24.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver25.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-default-Ver25.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-grid-Ver19.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-grid-Ver19.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-grid-Ver20.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-grid-Ver20.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-grid-Ver25.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-month-detail-grid-Ver25.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-returned-month-detail-Ver19.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-returned-month-detail-Ver19.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-returned-month-detail-Ver20.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-returned-month-detail-Ver20.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-returned-month-detail-Ver25.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-returned-month-detail-Ver25.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-Ver19.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-Ver19.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-Ver20.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-Ver20.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-Ver25.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-Ver25.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-hours-Ver19.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-hours-Ver19.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-hours-Ver20.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-hours-Ver20.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-hours-Ver25.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-hours-Ver25.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-scrolled-Ver19.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-day-scrolled-Ver19.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-week-Ver19.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-week-Ver19.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-week-Ver20.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-week-Ver20.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-week-Ver25.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-473006-selected-week-Ver25.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-month-detail-grid-Ver4.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-month-detail-grid-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-month-detail-grid-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-month-detail-grid-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-returned-month-detail-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-returned-month-detail-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-selected-day-Ver4.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-selected-day-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-selected-day-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-selected-day-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-selected-day-hours-Ver4.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-selected-day-hours-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-selected-day-hours-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-selected-day-hours-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-stacked-month-Ver4.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-stacked-month-Ver4.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-stacked-month-Ver7.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-479274-stacked-month-Ver7.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-month-detail-grid-Ver5.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-month-detail-grid-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-month-detail-grid-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-month-detail-grid-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-returned-month-detail-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-returned-month-detail-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-selected-day-Ver5.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-selected-day-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-selected-day-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-selected-day-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-selected-day-hours-Ver5.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-selected-day-hours-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-selected-day-hours-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-selected-day-hours-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-stacked-month-Ver5.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-stacked-month-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-stacked-month-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-493065-stacked-month-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-month-detail-grid-Ver5.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-month-detail-grid-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-month-detail-grid-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-month-detail-grid-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-returned-month-detail-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-returned-month-detail-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-selected-day-Ver5.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-selected-day-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-selected-day-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-selected-day-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-selected-day-hours-Ver5.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-selected-day-hours-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-selected-day-hours-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-selected-day-hours-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-stacked-month-Ver5.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-stacked-month-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-stacked-month-Ver8.done
+?? docs/assets/screenshots/crew-app/calendar-month-detail-duo-532510-stacked-month-Ver8.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-month-detail-grid-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-month-detail-grid-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-returned-month-detail-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-returned-month-detail-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-selected-day-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-selected-day-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-selected-day-hours-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-selected-day-hours-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-stacked-month-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-35459-stacked-month-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-default-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-default-Ver12.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-default-Ver13.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-default-Ver14.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-default-Ver15.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-default-Ver22.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-grid-Ver10.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-grid-Ver12.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-grid-Ver13.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-grid-Ver14.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-grid-Ver15.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-grid-Ver22.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-grid-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-month-detail-grid-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-returned-month-detail-Ver15.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-returned-month-detail-Ver22.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-returned-month-detail-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-returned-month-detail-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-day-Ver14.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-day-Ver15.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-day-Ver22.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-day-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-day-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-day-hours-Ver15.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-day-hours-Ver22.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-day-hours-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-day-hours-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-week-Ver15.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-selected-week-Ver22.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-stacked-month-Ver3.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-473006-stacked-month-Ver6.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-563044-month-detail-grid-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-563044-returned-month-detail-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-563044-selected-day-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-563044-selected-day-hours-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-detail-ipad-563044-stacked-month-Ver5.png
+?? docs/assets/screenshots/crew-app/calendar-month-ipad-Ver1/
+?? docs/assets/screenshots/crew-app/calendar-month-ipad-Ver2/
+?? docs/assets/screenshots/crew-app/calendar-shared-air-Ver1/
+?? docs/assets/screenshots/crew-app/calendar-shared-duo-Ver1/
+?? docs/assets/screenshots/crew-app/calendar-shared-ipad-Ver1/
+?? docs/assets/screenshots/crew-app/checkin-dark-map-Ver1.png
+?? docs/assets/screenshots/crew-app/checkin-daylight-map-Ver1.png
+?? docs/assets/screenshots/crew-app/checkin-native-wide-Ver1.png
+?? docs/assets/screenshots/crew-app/checkin-native-wide-Ver2.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-matrix-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-matrix-Ver2.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-tg-isolation-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-tg-isolation-Ver2.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-twin-date-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-twin-date-Ver2.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-twin-date-footer-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-twin-date-footer-Ver2.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-twin-details-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-twin-details-Ver2.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-twin-details-footer-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-air-twin-details-footer-Ver2.png
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-matrix-Ver1.done
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-matrix-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-tg-isolation-Ver1.done
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-tg-isolation-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-twin-date-Ver1.done
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-twin-date-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-twin-date-footer-Ver1.done
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-twin-date-footer-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-twin-details-Ver1.done
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-twin-details-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-twin-details-footer-Ver1.done
+?? docs/assets/screenshots/crew-app/compare-full-details-duo-twin-details-footer-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-ipad-matrix-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-ipad-tg-isolation-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-ipad-twin-date-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-ipad-twin-date-footer-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-ipad-twin-details-Ver1.png
+?? docs/assets/screenshots/crew-app/compare-full-details-ipad-twin-details-footer-Ver1.png
+?? docs/assets/screenshots/crew-app/crew-app-duo-test-build-228-display-1.png
+?? docs/assets/screenshots/crew-app/crew-app-duo-test-build-228-display-3.png
+?? docs/assets/screenshots/crew-app/crew-app-duo-test-build-228.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct17-air-Ver1.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct17-air-Ver2.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct17-air-Ver3.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct17-air-Ver4.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct17-air-Ver5.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct18-air-Ver1.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct18-air-Ver2.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct18-air-Ver3.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct18-air-Ver4.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct18-air-Ver5.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct19-air-Ver1.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct19-air-Ver2.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct19-air-Ver3.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct19-air-Ver4.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct19-air-Ver5.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct20-air-Ver4.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct20-air-Ver5.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct21-air-Ver4.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct21-air-Ver5.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct22-air-Ver4.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct22-air-Ver5.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct23-air-Ver4.png
+?? docs/assets/screenshots/crew-app/crew-finalist-oct23-air-Ver5.png
+?? docs/assets/screenshots/crew-app/daylight-grey-panels-appearance-Ver1.png
+?? docs/assets/screenshots/crew-app/daylight-grey-panels-home-Ver1.png
+?? docs/assets/screenshots/crew-app/daylight-grey-panels-home-Ver2.png
+?? docs/assets/screenshots/crew-app/daylight-grey-panels-preferences-Ver1.png
+?? docs/assets/screenshots/crew-app/daylight-grey-panels-preferences-Ver2.png
+?? docs/assets/screenshots/crew-app/daylight-grey-panels-profile-Ver1.png
+?? docs/assets/screenshots/crew-app/daylight-grey-panels-profile-Ver2.png
+?? docs/assets/screenshots/crew-app/daylight-grey-panels-profile-Ver3.png
+?? docs/assets/screenshots/crew-app/destination-daylight-landscape-Ver1.png
+?? docs/assets/screenshots/crew-app/destination-photo-blend-tall-Ver1.png
+?? docs/assets/screenshots/crew-app/destination-photo-blend-wide-Ver1.png
+?? docs/assets/screenshots/crew-app/destination-polish-tg-Ver1.png
+?? docs/assets/screenshots/crew-app/dialog-daylight-audit-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-cover-home-no-overlap-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-cover-home-no-overlap-v197-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-cover-home-no-overlap-v197-Ver2.png
+?? docs/assets/screenshots/crew-app/duo-cover-home-right-rail-v198-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-cover-home-right-rail-v198-Ver3.png
+?? docs/assets/screenshots/crew-app/duo-home-dark-final-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-home-landscape-nav-final-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-home-portrait-nav-final-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-home-tall-aligned-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-home-wide-aligned-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-meal-L-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-meal-T-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-nav-inner-portrait-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-nav-outer-portrait-Ver2.png
+?? docs/assets/screenshots/crew-app/duo-nav-outer-portrait-Ver3.png
+?? docs/assets/screenshots/crew-app/duo-nav-outer-portrait-Ver4.png
+?? docs/assets/screenshots/crew-app/duo-nav-portrait-separated-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-nav-portrait-separated-Ver2.png
+?? docs/assets/screenshots/crew-app/duo-nav-portrait-separated-Ver3.png
+?? docs/assets/screenshots/crew-app/duo-nav-rail-landscape-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-nav-rail-profile-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-nav-rail-schedule-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-nav-rail-schedule-map-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-nav-trip-details-cover-Ver2.png
+?? docs/assets/screenshots/crew-app/duo-profile-L-Ver3.png
+?? docs/assets/screenshots/crew-app/duo-profile-T-Ver2.png
+?? docs/assets/screenshots/crew-app/duo-release-bundle-launch-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-release-bundle-launch-Ver2.png
+?? docs/assets/screenshots/crew-app/duo-route-map-L-Ver3.png
+?? docs/assets/screenshots/crew-app/duo-route-map-T-Ver2.png
+?? docs/assets/screenshots/crew-app/duo-schedule-calendar-L-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-schedule-dark-final-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-schedule-timeline-L-Ver3.png
+?? docs/assets/screenshots/crew-app/duo-schedule-timeline-T-Ver2.png
+?? docs/assets/screenshots/crew-app/duo-swap-market-T-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-test-version173-installed-Ver1.png
+?? docs/assets/screenshots/crew-app/duo-trip-details-L-Ver3.png
+?? docs/assets/screenshots/crew-app/duo-trip-details-T-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-analyzer-Ver10/
+?? docs/assets/screenshots/crew-app/duty-analyzer-Ver11/
+?? docs/assets/screenshots/crew-app/duty-analyzer-Ver13/
+?? docs/assets/screenshots/crew-app/duty-analyzer-Ver14/
+?? docs/assets/screenshots/crew-app/duty-analyzer-augmented-ipad-3p-reference-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-analyzer-augmented-ipad-4p-reference-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-analyzer-basic-ipad-wide-grid-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-analyzer-new-duty-tg-air-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-analyzer-new-duty-tg-air-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-analyzer-pr-473006-ipad-one-segment-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-analyzer-pr-473006-ipad-one-segment-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-analyzer-pr-473006-ipad-two-segment-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-analyzer-pr-473006-ipad-two-segment-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-compare-air-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-matrix_tall-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-matrix_wide-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-matrix_wide-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-rbot_local_tall-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-rbot_local_wide-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-rbot_local_wide-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-rbot_open_tall-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-rbot_open_wide-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-rbot_open_wide-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-rbot_server_tall-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-rbot_server_wide-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-rbot_server_wide-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-search_tall-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-duo-search_wide-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-matrix-air-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-rbot-1-search-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-rbot-2-crews-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-rbot-3-picked-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-rbot-landscape-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-rbot-search-context-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-rbot-server-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-search-air-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-tg-my-duties-duo-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-tg-preview-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-tg-window-duo-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-ticket-air-launch-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-ticket-air-metro-retry-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-ticket-air-running-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-calendar-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-calendar-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-calendar-Ver4.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-calendar-Ver5.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-calendar-Ver6.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-calendar-Ver7.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-pinch-in-Ver4.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-pinch-in-Ver5.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-pinch-in-Ver6.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-pinch-in-Ver7.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-pinch-out-Ver7.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-pinch-out-first-Ver7.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-rails-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-rails-Ver7.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-review-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-review-Ver7.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-search-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-search-Ver7.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-tg-isolation-Ver2.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-air-tg-isolation-Ver7.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-calendar-Ver1.done
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-calendar-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-crew-filter-Ver1.done
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-crew-filter-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-pinch-in-Ver1.done
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-pinch-in-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-pinch-out-Ver1.done
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-pinch-out-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-pinch-out-first-Ver1.done
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-pinch-out-first-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-rails-Ver1.done
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-rails-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-review-Ver1.done
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-review-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-search-Ver1.done
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-search-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-tg-isolation-Ver1.done
+?? docs/assets/screenshots/crew-app/duty-swap-twin-duo-tg-isolation-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-ipad-calendar-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-ipad-crew-filter-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-ipad-pinch-in-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-ipad-pinch-out-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-ipad-pinch-out-first-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-ipad-rails-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-ipad-review-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-ipad-search-Ver1.png
+?? docs/assets/screenshots/crew-app/duty-swap-twin-ipad-tg-isolation-Ver1.png
+?? docs/assets/screenshots/crew-app/finalist-oct17-23-pixel-report-Ver1.json
+?? docs/assets/screenshots/crew-app/finalist-reference-oct14/
+?? docs/assets/screenshots/crew-app/finalist-reference-oct17-23/
+?? docs/assets/screenshots/crew-app/finalist-reference-oct19-25-Ver1/
+?? docs/assets/screenshots/crew-app/glass-surfaces-calendar-graphite-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-calendar-tg-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-duo-calendar-65pct-transparent-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-duo-login-65pct-transparent-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-duo-month-detail-65pct-transparent-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-duo-schedule-55pct-transparent-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-duo-schedule-60pct-transparent-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-duo-schedule-65pct-transparent-Ver2.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-home-graphite-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-home-tg-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-login-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-menu-graphite-Ver1.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-menu-graphite-Ver2.png
+?? docs/assets/screenshots/crew-app/glass-surfaces-menu-graphite-Ver3.png
+?? docs/assets/screenshots/crew-app/global-daylight-landscape-Ver1.png
+?? docs/assets/screenshots/crew-app/global-tab-hidden-air-philippine-Ver1.png
+?? docs/assets/screenshots/crew-app/home-dark-audit-Ver1.png
+?? docs/assets/screenshots/crew-app/home-dashboard-Ver2/
+?? docs/assets/screenshots/crew-app/home-daylight-ios-neutral-Ver1.png
+?? docs/assets/screenshots/crew-app/home-daylight-landscape-Ver1.png
+?? docs/assets/screenshots/crew-app/home-landscape-dashboard-Ver1/
+?? docs/assets/screenshots/crew-app/home-landscape-dashboard-Ver17/
+?? docs/assets/screenshots/crew-app/home-landscape-destination-grid-Ver1.png
+?? docs/assets/screenshots/crew-app/home-landscape-destination-grid-Ver2.png
+?? docs/assets/screenshots/crew-app/home-landscape-destination-grid-Ver3.png
+?? docs/assets/screenshots/crew-app/home-landscape-destination-grid-Ver4.png
+?? docs/assets/screenshots/crew-app/home-landscape-destination-grid-Ver5.png
+?? docs/assets/screenshots/crew-app/home-portrait-destination-row-Ver1.png
+?? docs/assets/screenshots/crew-app/ipad-landmark-DAD-landscape-Ver2.png
+?? docs/assets/screenshots/crew-app/ipad-landmark-DAD-portrait-Ver2.png
+?? docs/assets/screenshots/crew-app/ipad-landmark-DOH-landscape-Ver2.png
+?? docs/assets/screenshots/crew-app/ipad-landmark-DOH-portrait-Ver2.png
+?? docs/assets/screenshots/crew-app/ipad-landmark-SEA-landscape-Ver2.png
+?? docs/assets/screenshots/crew-app/ipad-landmark-SEA-portrait-Ver2.png
+?? docs/assets/screenshots/crew-app/ipad-pr-avatar-picker-landscape-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-avatar-picker-landscape-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-avatar-picker-landscape-Ver6.png
+?? docs/assets/screenshots/crew-app/ipad-pr-avatar-picker-landscape-Ver7.png
+?? docs/assets/screenshots/crew-app/ipad-pr-avatar-picker-landscape-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-landscape-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-landscape-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-landscape-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-landscape-Ver6.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-landscape-Ver7.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-landscape-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-portrait-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-portrait-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-portrait-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-pr-calendar-portrait-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-destination-portrait-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-destination-portrait-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-destination-portrait-Ver6.png
+?? docs/assets/screenshots/crew-app/ipad-pr-destination-portrait-Ver7.png
+?? docs/assets/screenshots/crew-app/ipad-pr-destination-portrait-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-duty-swap-landscape-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-duty-swap-landscape-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-duty-swap-landscape-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-pr-duty-swap-landscape-Ver6.png
+?? docs/assets/screenshots/crew-app/ipad-pr-duty-swap-landscape-Ver7.png
+?? docs/assets/screenshots/crew-app/ipad-pr-duty-swap-landscape-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-landscape-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-landscape-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-landscape-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-landscape-Ver6.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-landscape-Ver7.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-landscape-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-portrait-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-portrait-Ver11.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-portrait-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-portrait-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-portrait-Ver6.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-portrait-Ver7.png
+?? docs/assets/screenshots/crew-app/ipad-pr-home-portrait-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-modal-upside-down-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-modal-upside-down-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-modal-upside-down-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-pr-modal-upside-down-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-profile-landscape-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-profile-landscape-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-profile-landscape-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-pr-profile-landscape-Ver6.png
+?? docs/assets/screenshots/crew-app/ipad-pr-profile-landscape-Ver7.png
+?? docs/assets/screenshots/crew-app/ipad-pr-profile-landscape-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-profile-portrait-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-profile-portrait-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-profile-portrait-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-route-landscape-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-route-landscape-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-route-landscape-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-pr-route-landscape-Ver6.png
+?? docs/assets/screenshots/crew-app/ipad-pr-route-landscape-Ver7.png
+?? docs/assets/screenshots/crew-app/ipad-pr-route-landscape-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-schedule-landscape-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-schedule-landscape-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-schedule-landscape-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-pr-schedule-landscape-Ver6.png
+?? docs/assets/screenshots/crew-app/ipad-pr-schedule-landscape-Ver7.png
+?? docs/assets/screenshots/crew-app/ipad-pr-schedule-landscape-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pr-trip-details-portrait-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-pr-trip-details-portrait-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-pr-trip-details-portrait-Ver8.png
+?? docs/assets/screenshots/crew-app/ipad-pro-11-v198-launch-Ver1.png
+?? docs/assets/screenshots/crew-app/ipad-pro-11-v198-launch-Ver2.png
+?? docs/assets/screenshots/crew-app/ipad-pro-11-v198-launch-Ver3.png
+?? docs/assets/screenshots/crew-app/ipad-tg-home-landscape-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-tg-home-landscape-Ver12.png
+?? docs/assets/screenshots/crew-app/ipad-tg-profile-landscape-Ver10.png
+?? docs/assets/screenshots/crew-app/ipad-tg-profile-landscape-Ver12.png
+?? docs/assets/screenshots/crew-app/iphone-air-release-170-checkin-Ver1.png
+?? docs/assets/screenshots/crew-app/logten-plan-observation-Ver1-12-months.png
+?? docs/assets/screenshots/crew-app/logten-plan-observation-Ver1-28-days.png
+?? docs/assets/screenshots/crew-app/logten-plan-observation-Ver1-365-days.png
+?? docs/assets/screenshots/crew-app/logten-plan-observation-Ver1-672-hours.png
+?? docs/assets/screenshots/crew-app/logten-plan-observation-Ver1-contributing-flights.png
+?? docs/assets/screenshots/crew-app/logten-plan-observation-Ver1-recency-future.png
+?? docs/assets/screenshots/crew-app/logten-plan-observation-Ver1-recency-now.png
+?? docs/assets/screenshots/crew-app/match-mode-want-Ver1-01-give.png
+?? docs/assets/screenshots/crew-app/match-mode-want-Ver1-02-want-summary.png
+?? docs/assets/screenshots/crew-app/match-mode-want-Ver1-03-criteria.png
+?? docs/assets/screenshots/crew-app/match-mode-want-Ver1-04-saved.png
+?? docs/assets/screenshots/crew-app/match-mode-want-Ver1-05-give-saved.png
+?? docs/assets/screenshots/crew-app/match-mode-want-Ver1-06-reapplied.png
+?? docs/assets/screenshots/crew-app/match-summary-duo-tall-Ver2/
+?? docs/assets/screenshots/crew-app/match-summary-duo-wide-Ver2/
+?? docs/assets/screenshots/crew-app/match-summary-ipad-portrait-Ver3/
+?? docs/assets/screenshots/crew-app/matrix-pinch-expanded-Ver1.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-air-cleared-Ver2.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-air-pinch-expanded-Ver2.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-air-selected-Ver2.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-air-tg-isolation-Ver2.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-duo-cleared-Ver1.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-duo-pinch-expanded-Ver1.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-duo-selected-Ver1.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-ipad-cleared-Ver3.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-ipad-pinch-expanded-Ver3.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-ipad-selected-Ver3.png
+?? docs/assets/screenshots/crew-app/matrix-selection-guides-ipad-tg-isolation-Ver3.png
+?? docs/assets/screenshots/crew-app/offline-snapshot-mockup-Ver1.png
+?? docs/assets/screenshots/crew-app/portal-452320-auto-import-home-Ver1.png
+?? docs/assets/screenshots/crew-app/portal-452320-auto-import-home-Ver2.done
+?? docs/assets/screenshots/crew-app/portal-452320-auto-import-home-Ver2.png
+?? docs/assets/screenshots/crew-app/portal-452320-auto-import-profile-Ver2.done
+?? docs/assets/screenshots/crew-app/portal-452320-auto-import-profile-Ver2.png
+?? docs/assets/screenshots/crew-app/portal-452320-refresh-before-Ver1.png
+?? docs/assets/screenshots/crew-app/portal-auth-486541-response-Ver1.json
+?? docs/assets/screenshots/crew-app/portal-login-rejection-ipad-Ver1.png
+?? docs/assets/screenshots/crew-app/profile-dark-audit-Ver1.png
+?? docs/assets/screenshots/crew-app/profile-daylight-audit-Ver1.png
+?? docs/assets/screenshots/crew-app/profile-daylight-landscape-Ver1.png
+?? docs/assets/screenshots/crew-app/profile-daylight-landscape-Ver2.png
+?? docs/assets/screenshots/crew-app/profile-duo-pane-Ver1.png
+?? docs/assets/screenshots/crew-app/profile-duo-pane-Ver2.png
+?? docs/assets/screenshots/crew-app/profile-duo-pane-Ver3.png
+?? docs/assets/screenshots/crew-app/profile-duo-pane-Ver4.png
+?? docs/assets/screenshots/crew-app/profile-duo-pane-Ver5.png
+?? docs/assets/screenshots/crew-app/profile-duo-pane-Ver6.png
+?? docs/assets/screenshots/crew-app/profile-duo-pane-Ver7.png
+?? docs/assets/screenshots/crew-app/profile-duo-pane-Ver8.png
+?? docs/assets/screenshots/crew-app/profile-duo-pane-Ver9.png
+?? docs/assets/screenshots/crew-app/profile-preferences-dark-audit-Ver1.png
+?? docs/assets/screenshots/crew-app/profile-preferences-daylight-audit-Ver1.png
+?? docs/assets/screenshots/crew-app/rbot-context-across-screens-Ver1.png
+?? docs/assets/screenshots/crew-app/rbot-context-across-screens-Ver2.png
+?? docs/assets/screenshots/crew-app/roster-loading-theme-air-tg-Ver1.png
+?? docs/assets/screenshots/crew-app/roster-loading-theme-duo-tg-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-air-35459-Ver3.png
+?? docs/assets/screenshots/crew-app/route-map-air-465800-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-air-465800-Ver3.png
+?? docs/assets/screenshots/crew-app/route-map-air-473006-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-air-473006-Ver3.png
+?? docs/assets/screenshots/crew-app/route-map-air-487424-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-air-487424-Ver2.png
+?? docs/assets/screenshots/crew-app/route-map-dark-audit-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-grey-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-landscape-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-landscape-Ver2.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-landscape-Ver3.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-landscape-Ver4.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-landscape-Ver5.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-landscape-Ver6.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-landscape-Ver7.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-landscape-Ver8.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-portrait-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-portrait-Ver2.png
+?? docs/assets/screenshots/crew-app/route-map-daylight-portrait-Ver3.png
+?? docs/assets/screenshots/crew-app/route-map-duo-35459-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-duo-35459-Ver3.png
+?? docs/assets/screenshots/crew-app/route-map-duo-465800-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-duo-473006-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-duo-473006-Ver3.png
+?? docs/assets/screenshots/crew-app/route-map-duo-487424-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-labels-air-dark-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-labels-air-dark-Ver2.png
+?? docs/assets/screenshots/crew-app/route-map-labels-air-dark-tg-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-labels-air-dark-tg-Ver2.png
+?? docs/assets/screenshots/crew-app/route-map-labels-air-light-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-labels-duo-dark-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-labels-duo-dark-Ver2.png
+?? docs/assets/screenshots/crew-app/route-map-labels-duo-dark-tg-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-labels-duo-light-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-labels-duo-tall-Ver2.png
+?? docs/assets/screenshots/crew-app/route-map-labels-ipad-dark-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-labels-ipad-dark-Ver2.png
+?? docs/assets/screenshots/crew-app/route-map-labels-ipad-dark-tg-Ver1.png
+?? docs/assets/screenshots/crew-app/route-map-labels-ipad-light-Ver2.png
+?? docs/assets/screenshots/crew-app/route-share-card-Ver1.png
+?? docs/assets/screenshots/crew-app/route-share-card-Ver2.png
+?? docs/assets/screenshots/crew-app/route-share-card-png-Ver1.png
+?? docs/assets/screenshots/crew-app/route-share-card-png-Ver2.png
+?? docs/assets/screenshots/crew-app/route-share-sheet-Ver1.png
+?? docs/assets/screenshots/crew-app/route-share-sheet-Ver2.png
+?? docs/assets/screenshots/crew-app/schedule-dark-last-two-flights-row-Ver1.png
+?? docs/assets/screenshots/crew-app/schedule-daylight-last-two-flights-row-Ver1.png
+?? docs/assets/screenshots/crew-app/schedule-outer-daylight-calendar-rail-Ver1.png
+?? docs/assets/screenshots/crew-app/schedule-outer-daylight-rail-Ver1.png
+?? docs/assets/screenshots/crew-app/schedule-outer-daylight-rail-Ver2.png
+?? docs/assets/screenshots/crew-app/swap-rail-market-v196-Ver2.png
+?? docs/assets/screenshots/crew-app/swap-rail-matrix-v196-Ver2.png
+?? docs/assets/screenshots/crew-app/swap-rail-my-duties-v196-Ver1.png
+?? docs/assets/screenshots/crew-app/swap-rail-rbot-open-v196-Ver1.png
+?? docs/assets/screenshots/crew-app/swap-rail-requests-v196-Ver1.png
+?? docs/assets/screenshots/crew-app/tg-duty-swap-duo-Ver3.done
+?? docs/assets/screenshots/crew-app/tg-duty-swap-duo-Ver3.png
+?? docs/assets/screenshots/crew-app/tg-duty-swap-match-routes-01-give-Ver1.png
+?? docs/assets/screenshots/crew-app/tg-duty-swap-match-routes-02-want-Ver1.png
+?? docs/assets/screenshots/crew-app/tg-duty-swap-match-routes-03-pick-Ver1.png
+?? docs/assets/screenshots/crew-app/tg-duty-swap-match-routes-04-send-Ver1.png
+?? docs/assets/screenshots/crew-app/tg-initial-pull-Ver1/
+?? docs/assets/screenshots/crew-app/ticket-mockup-1210x834-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-1210x834-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-1210x834-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-420x912-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-420x912-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-420x912-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-669x951-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-669x951-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-669x951-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-834x1210-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-834x1210-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-834x1210-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-912x420-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-912x420-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-912x420-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-951x669-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-951x669-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-mockup-951x669-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-give-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-give-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-give-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-give-Ver3.png.review.txt
+?? docs/assets/screenshots/crew-app/ticket-polish-air-give-Ver3.png.vision.txt
+?? docs/assets/screenshots/crew-app/ticket-polish-air-match-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-match-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-match-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-match-Ver3.png.review.txt
+?? docs/assets/screenshots/crew-app/ticket-polish-air-match-Ver3.png.vision.txt
+?? docs/assets/screenshots/crew-app/ticket-polish-air-review-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-review-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-review-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-review-Ver3.png.review.txt
+?? docs/assets/screenshots/crew-app/ticket-polish-air-review-Ver3.png.vision.txt
+?? docs/assets/screenshots/crew-app/ticket-polish-air-want-Ver1.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-want-Ver2.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-want-Ver3.png
+?? docs/assets/screenshots/crew-app/ticket-polish-air-want-Ver3.png.review.txt
+?? docs/assets/screenshots/crew-app/ticket-polish-air-want-Ver3.png.vision.txt
+?? docs/assets/screenshots/crew-app/trip-details-dark-audit-Ver1.png
+?? docs/assets/screenshots/crew-app/trip-details-grid-pr-login-loading-Ver1.png
+?? docs/assets/screenshots/crew-app/trip-details-grid-run-Ver2/
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-pr-1210x834.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-pr-420x912.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-pr-669x951.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-pr-834x1210.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-pr-912x420.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-pr-951x669.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-tg-1210x834.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-tg-420x912.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-tg-669x951.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-tg-834x1210.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-tg-912x420.png
+?? docs/assets/screenshots/crew-app/trip-details-redesign-Ver2-tg-951x669.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-air-pr.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-air-tg-duty1.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-air-tg-top.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-duo-tall-pr.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-duo-tall-tg.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-duo-wide-pr.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-duo-wide-tg.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-ipad-pr-raw.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-ipad-pr.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-ipad-tg-raw.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver1-ipad-tg.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver2-air-pr-top.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver2-air-tg-duty2.png
+?? docs/assets/screenshots/crew-app/trip-details-timeline-Ver2-air-tg-top.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-landscape-empty-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-landscape-empty-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-landscape-hidden-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-landscape-hidden-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-landscape-open-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-landscape-open-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-portrait-cleared-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-portrait-cleared-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-portrait-empty-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-portrait-empty-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-portrait-reopened-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-portrait-reopened-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-tg-isolation-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-ipad-fold-review-tg-isolation-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-cleared-Ver3.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-cleared-Ver5.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-initial-search-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-initial-search-Ver3.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-initial-search-Ver4.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-initial-search-Ver5.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-multiple-scroll-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-multiple-scroll-Ver3.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-multiple-scroll-Ver4.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-multiple-scroll-Ver5.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-portrait-cleared-Ver3.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-portrait-cleared-Ver5.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-single-selection-Ver2.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-single-selection-Ver3.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-single-selection-Ver4.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-single-selection-Ver5.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-tg-isolation-Ver3.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-air-tg-isolation-Ver5.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-duo-initial-search-Ver1.done
+?? docs/assets/screenshots/crew-app/twin-search-guides-duo-initial-search-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-duo-initial-search-Ver3.done
+?? docs/assets/screenshots/crew-app/twin-search-guides-duo-initial-search-Ver3.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-ipad-cleared-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-ipad-initial-search-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-ipad-multiple-scroll-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-ipad-portrait-cleared-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-ipad-single-selection-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-search-guides-ipad-tg-isolation-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-small-phone-landscape-empty-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-small-phone-landscape-review-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-small-phone-landscape-selected-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-small-phone-landscape-unfiltered-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-small-phone-portrait-retained-Ver1.png
+?? docs/assets/screenshots/crew-app/twin-small-phone-tg-isolation-Ver1.png
+?? docs/assets/screenshots/crew-app/ui-standard-audit-ver226-live/
+?? docs/assets/screenshots/crew-app/ui-standard-audit-ver226/
+?? docs/superpowers/specs/2026-10-21-crew-app-home-landscape-dashboard-weather.md
+?? docs/superpowers/specs/2026-10-21-crew-app-new-duty-optimization-design.md
+```
+
+### unstaged changed files
+
+```text
+AGENTS.md
+crew-app/.maestro/guest_login.yaml
+crew-app/.maestro/pr_473006_duty_analyzer.yaml
+crew-app/.maestro/v2_tg_flight_calendar.yaml
+crew-app/__tests__/features/calendarMonthDetail.test.tsx
+crew-app/__tests__/features/duoLayout.test.ts
+crew-app/__tests__/features/duoNavRail.test.tsx
+crew-app/__tests__/features/duoPageLayouts.test.tsx
+crew-app/__tests__/features/dutyAnalyzerEngine.test.ts
+crew-app/__tests__/features/dutyAnalyzerReferenceScreen.test.tsx
+crew-app/__tests__/features/dutyAnalyzerScreen.test.tsx
+crew-app/__tests__/features/dutySwapTwinRail.test.tsx
+crew-app/__tests__/features/ekAirlineSelection.test.ts
+crew-app/__tests__/features/etAirlineSelection.test.ts
+crew-app/__tests__/features/portalCaptureCompletion.test.tsx
+crew-app/__tests__/features/portalClient.test.ts
+crew-app/__tests__/features/portalLoginAttempts.test.ts
+crew-app/__tests__/features/portalLoginFailure.test.tsx
+crew-app/__tests__/features/prPortalCapture.test.ts
+crew-app/__tests__/features/routeMapStatsCard.test.tsx
+crew-app/__tests__/features/routeShareCard.test.tsx
+crew-app/__tests__/features/switchAccount.test.ts
+crew-app/ios/RoyceTravelTemplate.xcodeproj/project.pbxproj
+crew-app/ios/RoyceTravelTemplateUITests/DuoFitUITests.swift
+crew-app/src/components/v2/useLayout.ts
+crew-app/src/features/auth/EkRosterLoginScreen.tsx
+crew-app/src/features/auth/LoginCaptureScreen.tsx
+crew-app/src/features/auth/LoginScreen.tsx
+crew-app/src/features/auth/airlines.ts
+crew-app/src/features/auth/authSlice.ts
+crew-app/src/features/dutyAnalyzer/DutyAnalyzerReferenceScreen.tsx
+crew-app/src/features/dutyAnalyzer/DutyAnalyzerScreen.tsx
+crew-app/src/features/dutyAnalyzer/dutyAnalyzerEngine.ts
+crew-app/src/features/dutyAnalyzer/dutyAnalyzerTypes.ts
+crew-app/src/features/dutySwap/DutySwapMyDutiesScreen.tsx
+crew-app/src/features/dutySwap/DutySwapScreen.tsx
+crew-app/src/features/dutySwap/dutySwapActions.ts
+crew-app/src/features/dutySwap/dutySwapApi.ts
+crew-app/src/features/dutySwap/dutySwapModel.ts
+crew-app/src/features/dutySwap/market/TicketScreen.tsx
+crew-app/src/features/dutySwap/twinRail/TwinRailScreen.tsx
+crew-app/src/features/portal/portalClient.ts
+crew-app/src/features/travel/PortalCaptureScreen.tsx
+crew-app/src/features/v2/HomeScreen.tsx
+crew-app/src/features/v2/RouteShareCard.tsx
+crew-app/src/features/v2/ScheduleScreen.tsx
+crew-app/src/features/v2/nav.ts
+crew-app/src/navigation/RootNavigator.tsx
+crew-app/src/version.ts
+```
+
+### staged files
+
+```text
+(none)
+```
+
+## 新窗口恢复建议
+
+新窗口先阅读：
+
+1. `NEXT_CONTEXT.md`
+2. 本文件：`docs/dev-context/2026-10-22-crew-app-home-landscape-weather-release-blockers.md`
+3. `docs/dev-context/LATEST.md`
+
+然后运行：
+
+```bash
+./scripts/memory/wakeup-rois-ai.sh crew-app
+git status --short
+```

@@ -55,6 +55,24 @@ export interface AppleWeatherState {
   retry: () => void;
 }
 
+export function nearestWeatherHour(
+  hours: AppleWeatherState['hours'],
+  localTime: string,
+): AppleWeatherState['hours'][number] | null {
+  const match = /(?:^|\s)(\d{1,2}):(\d{2})$/.exec(localTime.trim());
+  if (!match) return null;
+  const arrivalHour = Number(match[1]);
+  if (arrivalHour < 0 || arrivalHour > 23) return null;
+
+  return hours.reduce<AppleWeatherState['hours'][number] | null>((nearest, row) => {
+    const rowDistance = Math.abs(row.hour - arrivalHour);
+    const nearestDistance = nearest
+      ? Math.abs(nearest.hour - arrivalHour)
+      : Number.POSITIVE_INFINITY;
+    return rowDistance < nearestDistance ? row : nearest;
+  }, null);
+}
+
 export function useAppleWeather(base: string, year: number, monthIdx: number, day: number | null): AppleWeatherState {
   const cacheKey = base.trim().toUpperCase();
   const [attempt, setAttempt] = useState(0);

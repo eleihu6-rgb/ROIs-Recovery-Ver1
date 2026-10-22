@@ -19,12 +19,13 @@ describe('ET airline selection', () => {
     expect(loginRouteForAirline('ET')).toBe('EkRoster');
   });
 
-  it('prefills approved ET test credentials', () => {
-    expect(TEST_CREDENTIALS.ET).toEqual({crewId: 'J4002', password: 'Pier2026'});
-    expect(prefillForAirline('ET', '35459', 'Pier2026')).toEqual({
-      crewId: 'J4002',
-      password: 'Pier2026',
-    });
+  it('prefills only the approved ET test crew ID', () => {
+    expect(TEST_CREDENTIALS.ET).toEqual({crewId: 'J4002', password: ''});
+    expect(prefillForAirline(
+      'ET',
+      TEST_CREDENTIALS.TG.crewId,
+      TEST_CREDENTIALS.TG.password,
+    )).toEqual(TEST_CREDENTIALS.ET);
   });
 
   it('does not overwrite user-entered credentials for ET', () => {
@@ -39,7 +40,7 @@ describe('ET airline selection', () => {
   it('prefills the ET test crew when the form is empty', () => {
     expect(prefillForAirline('ET', '', '')).toEqual({
       crewId: 'J4002',
-      password: 'Pier2026',
+      password: '',
     });
   });
 

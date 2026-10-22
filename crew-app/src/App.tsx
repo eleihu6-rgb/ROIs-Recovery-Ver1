@@ -17,6 +17,7 @@ import { loadFlightCalendar, topUpCalendarSync } from './features/calendar/fligh
 import { loadTripTrade } from './features/tripTrade/tripTradeSlice';
 import { loadRbotThread } from './features/rbot/rbotSlice';
 import { login } from './features/auth/authSlice';
+import { useM5DisplaySync } from './features/m5-display/useM5DisplaySync';
 import type { Trip } from './features/travel/tripCsv';
 
 // Dev-only seeding for simulator visual testing (gated). OFF for normal bootstrap
@@ -50,6 +51,7 @@ const SEED_TRIPS: Trip[] = [
 // (doc/App Flow Ver1: "keep it live, no need to login again").
 function Bootstrap() {
   const dispatch = useAppDispatch();
+  useM5DisplaySync();
   const trips = useAppSelector(s => s.trips.trips);
   const calendarSyncAll = useAppSelector(s => s.flightCalendar.syncAll);
   const calendarHydrated = useAppSelector(s => s.flightCalendar.hydrated);

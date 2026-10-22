@@ -1,7 +1,7 @@
 import React from 'react';
 import fs from 'fs';
 import path from 'path';
-import renderer from 'react-test-renderer';
+import renderer, { act } from 'react-test-renderer';
 import { Provider } from 'react-redux';
 import { store } from '../../src/store';
 import { TripCards } from '../../src/features/travel/TripCards';
@@ -21,6 +21,26 @@ import { formatLegTime } from '../../src/features/settings/timeFormat';
 const withStore = (node: React.ReactElement) => (
   <Provider store={store}>{node}</Provider>
 );
+
+// React 19 defers the first commit of a bare renderer.create() outside act(),
+// so toJSON() would read null. Commit synchronously inside act() instead.
+// Trees are unmounted after each test so later store updates cannot re-render
+// them after the Jest environment is torn down.
+const mounted: Array<ReturnType<typeof renderer.create>> = [];
+const createTree = (node: React.ReactElement) => {
+  let instance!: ReturnType<typeof renderer.create>;
+  act(() => {
+    instance = renderer.create(node);
+  });
+  mounted.push(instance);
+  return instance;
+};
+
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach(tree => tree.unmount());
+  });
+});
 
 const CSV_PATH = path.resolve(
   __dirname,
@@ -49,17 +69,46 @@ function normalizeInternalSortKeys(tree: unknown) {
   return tree;
 }
 
+// React 19 tags elements with `react.transitional.element`, which the Jest 29
+// pretty-format plugin does not recognise. Left alone, it walks the dev-only
+// `_owner` fiber and throws RangeError. Re-tag them as classic elements so they
+// print as before, without the owner back-reference.
+const TRANSITIONAL_ELEMENT = Symbol.for('react.transitional.element');
+const CLASSIC_ELEMENT = Symbol.for('react.element');
+function toClassicElements(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(toClassicElements);
+  }
+  const isPlainObject =
+    value !== null && typeof value === 'object' &&
+    [Object.prototype, null].includes(Object.getPrototypeOf(value));
+  if (!isPlainObject) {
+    return value;
+  }
+  // Reflect.ownKeys keeps the symbol-valued $$typeof tag that toJSON nodes carry.
+  const source = value as Record<PropertyKey, unknown>;
+  const copy: Record<PropertyKey, unknown> = {};
+  for (const key of Reflect.ownKeys(source)) {
+    copy[key] = toClassicElements(source[key]);
+  }
+  if (source.$$typeof === TRANSITIONAL_ELEMENT) {
+    copy.$$typeof = CLASSIC_ELEMENT;
+    copy._owner = null;
+  }
+  return copy;
+}
+
 describe('TripCards', () => {
   it('renders upcoming trips parsed from the sample CSV', () => {
     const { upcoming } = parseAndClassify(csv, NOW);
-    const tree = renderer.create(withStore(<TripCards trips={upcoming} />)).toJSON();
-    expect(normalizeInternalSortKeys(tree)).toMatchSnapshot();
+    const tree = createTree(withStore(<TripCards trips={upcoming} />)).toJSON();
+    expect(normalizeInternalSortKeys(toClassicElements(tree))).toMatchSnapshot();
   });
 
   it('renders the FA200/A350 long-haul card from the sample', () => {
     const { upcoming } = parseAndClassify(csv, NOW);
     const json = JSON.stringify(
-      renderer.create(withStore(<TripCards trips={upcoming} />)).toJSON(),
+      createTree(withStore(<TripCards trips={upcoming} />)).toJSON(),
       (key, value) => (key === '_context' || key === '_owner' ? undefined : value),
     );
     expect(json).toContain('FA200');
@@ -92,7 +141,7 @@ describe('TripCards', () => {
     const { effective, displays } = buildDisplays(upcoming);
     expect(effective.length).toBeGreaterThan(0);
     const json = JSON.stringify(
-      renderer.create(withStore(<TripCards trips={upcoming} alarmDisplays={displays} alarmsEnabled />)).toJSON(),
+      createTree(withStore(<TripCards trips={upcoming} alarmDisplays={displays} alarmsEnabled />)).toJSON(),
       (k, v) => (k === '_context' || k === '_owner' ? undefined : v),
     );
     // One chip pair per duty, each tagged with its testID.
@@ -111,7 +160,7 @@ describe('TripCards', () => {
     expect(fa200!.leaveHome?.hhmm).toBe('08:00');
     // And those exact times reach the rendered chips.
     const json = JSON.stringify(
-      renderer.create(withStore(<TripCards trips={upcoming} alarmDisplays={displays} alarmsEnabled />)).toJSON(),
+      createTree(withStore(<TripCards trips={upcoming} alarmDisplays={displays} alarmsEnabled />)).toJSON(),
       (k, v) => (k === '_context' || k === '_owner' ? undefined : v),
     );
     expect(json).toContain('07:00');
@@ -122,7 +171,7 @@ describe('TripCards', () => {
     const { upcoming } = parseAndClassify(csv, NOW);
     const { displays } = buildDisplays(upcoming);
     const json = JSON.stringify(
-      renderer.create(
+      createTree(
         withStore(<TripCards trips={upcoming} alarmDisplays={displays} alarmsEnabled={false} />),
       ).toJSON(),
       (k, v) => (k === '_context' || k === '_owner' ? undefined : v),
@@ -169,7 +218,7 @@ describe('TripCards — Profile mode switch (TG960 BKK→ARN, DST arrival)', () 
 
   const renderJson = () =>
     JSON.stringify(
-      renderer.create(withStore(<TripCards trips={trips} />)).toJSON(),
+      createTree(withStore(<TripCards trips={trips} />)).toJSON(),
       (key, value) => (key === '_context' || key === '_owner' ? undefined : value),
     );
 

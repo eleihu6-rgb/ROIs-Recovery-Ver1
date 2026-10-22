@@ -157,6 +157,33 @@ describe('native portal login failure and timeout', () => {
     expect(calls.filter(url => url.endsWith('/login'))).toHaveLength(1);
   });
 
+  it('rejects the TG string failure code before any roster request', async () => {
+    const calls: string[] = [];
+    const fetchImpl = jest.fn(async (url: string) => {
+      calls.push(url);
+      if (url.endsWith('/system/getPublicKey')) return { status: 200, json: async () => ({ code: 0, data: 'KEY' }) } as Response;
+      if (url.endsWith('/login')) return {
+        status: 200,
+        json: async () => ({ code: 0, message: null, data: 'ERROR_WRONG_PASSWORD' }),
+      } as Response;
+      throw new Error('Roster must not be requested after rejected credentials');
+    });
+    const client = createPortalClient(
+      { airline: 'TG', crewId: '35459', password: 'password-test' },
+      { site: { apiBase: 'https://portal.example.test/apiPortal' }, fetchImpl, encrypt: () => 'encrypted-test' },
+    );
+
+    const error = await client.token().catch(e => e);
+    expect(error).toBeInstanceOf(PortalError);
+    expect(error).toMatchObject({
+      message: 'The crew portal did not accept your password.',
+      failureCode: 'ERROR_WRONG_PASSWORD',
+      status: 200,
+      code: 0,
+    });
+    expect(calls).toHaveLength(2);
+  });
+
   it('aborts a pending login after its 30-second deadline', async () => {
     jest.useFakeTimers();
     try {

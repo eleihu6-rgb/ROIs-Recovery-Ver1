@@ -211,12 +211,16 @@ class WeatherModule: NSObject {
                        resolver resolve: @escaping RCTPromiseResolveBlock,
                        rejecter reject: @escaping RCTPromiseRejectBlock) {
     Task {
+      var requestStage = "forecast"
       do {
         let location = CLLocation(latitude: latitude, longitude: longitude)
-        async let dailyRequest = WeatherService.shared.weather(for: location, including: .daily)
-        async let attributionRequest = WeatherService.shared.attribution
-        async let hourlyRequest = WeatherService.shared.weather(for: location, including: .hourly)
-        let (daily, attribution, hourly) = try await (dailyRequest, attributionRequest, hourlyRequest)
+        let (daily, hourly) = try await WeatherService.shared.weather(
+          for: location,
+          including: .daily,
+          .hourly
+        )
+        requestStage = "attribution"
+        let attribution = try await WeatherService.shared.attribution
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -252,6 +256,14 @@ class WeatherModule: NSObject {
           ],
         ])
       } catch {
+        let nsError = error as NSError
+        NSLog(
+          "[WeatherKit] %@ failed domain=%@ code=%ld message=%@",
+          requestStage,
+          nsError.domain,
+          nsError.code,
+          nsError.localizedDescription
+        )
         reject("weather_unavailable", error.localizedDescription, error)
       }
     }

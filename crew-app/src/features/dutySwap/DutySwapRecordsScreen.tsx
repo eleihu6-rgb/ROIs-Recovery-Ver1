@@ -13,7 +13,7 @@ import { useAppSelector } from '../../store';
 import { useCarrier } from '../../theme/carrier';
 import { PageShell } from '../v2/PageShell';
 import { dutySwapApiFor } from './dutySwapActions';
-import { parseRuleMessage, recordActions, recordStatusLabel, type ApiCompare, type ApiRecord } from './dutySwapModel';
+import { parseRuleMessage, recordActions, recordStatusLabel, withoutYear, type ApiCompare, type ApiRecord } from './dutySwapModel';
 import { CompareSheet } from './components/CompareSheet';
 import { tint } from './components/CrewMatrix';
 
@@ -101,10 +101,10 @@ export function DutySwapRecordsScreen(): React.JSX.Element {
       <Pressable key={r.id} onPress={() => openRecord(r)} style={[s.card, { backgroundColor: p.cardSolid }]} testID={`record-${r.id}`}>
         <View style={s.cardTop}>
           <Text style={[s.badge, { color: p.btn, backgroundColor: tint(p.btn, 0.12) }]} testID={`record-status-${r.id}`}>{recordStatusLabel(r.status)}</Text>
-          <Text style={[s.time, { color: p.cardSoft }]}>{r.submitTime.slice(0, 17)}</Text>
+          <Text style={[s.time, { color: p.cardSoft }]}>{withoutYear(r.submitTime.slice(0, 17))}</Text>
         </View>
         <Text style={[s.line, { color: p.cardInk }]}>
-          {mine ? `You give ${r.mineSwappedDate}  ⇄  take ${r.othersSwappedDate}` : `You give ${r.othersSwappedDate}  ⇄  take ${r.mineSwappedDate}`}
+          {mine ? `You give ${withoutYear(r.mineSwappedDate)}  ⇄  take ${withoutYear(r.othersSwappedDate)}` : `You give ${withoutYear(r.othersSwappedDate)}  ⇄  take ${withoutYear(r.mineSwappedDate)}`}
         </Text>
         <Text style={[s.sub, { color: p.cardSoft }]}>{mine ? 'Sent by you' : `Request from ${r.crewId}`}</Text>
         {r.remark ? <Text style={[s.sub, { color: p.cardSoft }]}>{r.remark}</Text> : null}

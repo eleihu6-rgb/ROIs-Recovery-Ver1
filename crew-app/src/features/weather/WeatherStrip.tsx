@@ -3,7 +3,7 @@ import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { CarrierPalette } from '../../theme/carrier';
 import { font, space } from '../../theme';
-import type { AppleWeatherState } from './weatherModule';
+import type { AppleWeatherAttribution, AppleWeatherState } from './weatherModule';
 
 /** Outline weather glyphs driven by the actual WeatherKit condition symbol. */
 export function WeatherSymbol({ symbol, color }: { symbol: string; color: string }) {
@@ -18,6 +18,34 @@ export function WeatherSymbol({ symbol, color }: { symbol: string; color: string
   </Svg>;
 }
 
+export function WeatherAttribution({
+  attribution,
+  lightMark,
+  compact = false,
+  testID,
+}: {
+  attribution: AppleWeatherAttribution;
+  lightMark: boolean;
+  compact?: boolean;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      style={s.attribution}
+      accessibilityRole="link"
+      accessibilityLabel="Apple Weather legal attribution"
+      testID={testID}
+      onPress={() => { void Linking.openURL(attribution.legalPageURL); }}
+    >
+      <Image
+        resizeMode="contain"
+        source={{ uri: lightMark ? attribution.combinedMarkLightURL : attribution.combinedMarkDarkURL }}
+        style={compact ? s.markCompact : s.mark}
+      />
+    </Pressable>
+  );
+}
+
 export function WeatherStrip({ weather, palette: p }: { weather: AppleWeatherState; palette: CarrierPalette }) {
   if (weather.status !== 'ready') return <View testID="cal-weather-status" style={s.status}>
     <Text style={[s.caption, { color: p.inkSoft }]}>{weather.status === 'loading' ? 'Loading Apple Weather…' : weather.status === 'out-of-range' ? 'No forecast for this date' : `Weather unavailable${weather.base ? ` · ${weather.base}` : ''}`}</Text>
@@ -30,14 +58,20 @@ export function WeatherStrip({ weather, palette: p }: { weather: AppleWeatherSta
       <Text style={[s.caption, { color: p.inkSoft }]}>{new Date(`${day.date}T12:00:00`).toLocaleDateString('en', { weekday: 'short' })}</Text>
       <Text style={[s.temperature, { color: p.ink }]}>{`${Math.round(day.highC)}°`}</Text>
     </View>)}</View>
-    {weather.attribution ? <Pressable style={s.attribution} accessibilityRole="link" accessibilityLabel="Apple Weather legal attribution" testID="cal-weather-attribution" onPress={() => { void Linking.openURL(weather.attribution!.legalPageURL); }}>
-      <Image resizeMode="contain" source={{ uri: p.isLight ? weather.attribution.combinedMarkDarkURL : weather.attribution.combinedMarkLightURL }} style={s.mark} />
-    </Pressable> : null}
+    {weather.attribution ? (
+      <WeatherAttribution
+        attribution={weather.attribution}
+        lightMark={!p.isLight}
+        testID="cal-weather-attribution"
+      />
+    ) : null}
   </View>;
 }
 const s = StyleSheet.create({
   wrap: { gap: space.xs4 }, status: { flexDirection: 'row', gap: space.sm8, alignItems: 'center', minHeight: 28 },
   outlook: { flexDirection: 'row', gap: space.xs4 }, day: { flex: 1, alignItems: 'center', gap: space.xs4 },
   caption: { ...font.caption, flexShrink: 1 }, temperature: { ...font.bodyStrong },
-  attribution: { alignSelf: 'flex-end', minHeight: 24, justifyContent: 'center' }, mark: { width: 80, height: 16 },
+  attribution: { alignSelf: 'flex-end', minHeight: 24, justifyContent: 'center' },
+  mark: { width: 80, height: 16 },
+  markCompact: { width: 42, height: 12 },
 });

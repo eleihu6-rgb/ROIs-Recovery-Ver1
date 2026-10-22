@@ -58,7 +58,7 @@ export function TwinRails(props: Props): React.JSX.Element {
     onPanResponderRelease: (e, g) => {
       setPinching(false);
       if (pinch.current) { pinch.current = 0; return; }
-      if (Math.abs(g.dx) > 30) callbacks.current.onMove(g.dx < 0 ? currentZoom.current : -currentZoom.current);
+      if (Math.abs(g.dx) > 30) callbacks.current.onMove(g.dx < 0 ? 1 : -1);
     },
     onPanResponderTerminate: () => { setPinching(false); pinch.current = 0; },
     onPanResponderTerminationRequest: () => false,
@@ -115,7 +115,7 @@ export function TwinRails(props: Props): React.JSX.Element {
         {blocks.map(({ duty: d, left, width, touchLeft, touchWidth, lane }) => {
           const selected = mine ? give.includes(d.key) : crewB === crew.crewId && take.includes(d.key);
           const detail = detailFor(d, mine ? Object.values(details).find(c => c.mineCrewId === me.crewId)?.mineTaskDetailList : cmp?.othersTaskDetailList);
-          const lines = puckLines(d, detail, touchWidth * railWidth, carrier);
+          const lines = puckLines(d, detail, touchWidth * railWidth);
           const route = d.kind === 'fly' ? flightRouteOf(detail, carrier) : null;
           return <Pressable key={d.key} disabled={!d.swappable} onPress={() => onPick(d)}
             testID={`twin-duty-${d.key}`} accessibilityRole="button"
@@ -134,7 +134,7 @@ export function TwinRails(props: Props): React.JSX.Element {
   };
   return <View style={[s.flex, s.panel, { borderColor: p.cardLine, backgroundColor: p.cardSolid }]} testID="twin-rails" {...pan.panHandlers}>
     {!props.controlsInHeader ? <View style={[s.bar, shortScreen && s.shortBar]}><TwinRangeControls p={p} start={start} zoom={zoom} onMove={onMove} onZoom={onZoom} actions={props.actions} /></View> : null}
-    <View style={[s.row, { gap: 0 }]}><View style={r.name} /><View style={[s.row, s.flex, { gap: 0 }]}>{days.map(day => <View key={day} style={[r.date, shortScreen && railWidth / zoom >= 72 && r.shortDate]}><Text style={[s.label, { color: p.cardSoft }]} numberOfLines={1}>{dayLabel(day).dow}</Text><Text style={[s.number, { color: p.cardInk }]}>{dayLabel(day).day}</Text></View>)}</View></View>
+    <View style={[s.row, r.dateBand, { backgroundColor: p.cardInset, borderColor: p.cardLine }]} testID="twin-date-band"><View style={r.name} /><View style={[s.row, s.flex, { gap: 0 }]}>{days.map(day => <View key={day} style={[r.date, shortScreen && railWidth / zoom >= 72 && r.shortDate]}><Text testID={`twin-date-dow-${day}`} style={[s.label, { color: p.cardSoft }]} numberOfLines={1}>{dayLabel(day).dow}</Text><Text testID={`twin-date-day-${day}`} style={[s.number, { color: p.btn }]}>{dayLabel(day).day}</Text></View>)}</View></View>
     <View style={s.flex}>
     {renderRail(me, true)}
     <Text style={[s.label, { color: p.cardSoft, paddingHorizontal: 8, paddingVertical: shortScreen ? 4 : 8 }]}>{others.length} crew · tap my block, then theirs</Text>
@@ -156,6 +156,7 @@ const r = StyleSheet.create({
   rail: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth },
   block: { position: 'absolute', height: 40, borderRadius: 6, borderWidth: 1, padding: 3, overflow: 'hidden' },
   noDuty: { padding: 12 },
+  dateBand: { gap: 0, borderBottomWidth: StyleSheet.hairlineWidth },
   date: { flex: 1, alignItems: 'center', paddingVertical: 4 },
   shortDate: { flexDirection: 'row', justifyContent: 'center', gap: space.xs4 },
   arrow: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

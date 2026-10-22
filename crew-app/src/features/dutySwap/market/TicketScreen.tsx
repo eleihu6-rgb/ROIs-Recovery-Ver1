@@ -1,5 +1,5 @@
 // Ticket uses the same portal search, compare and submit contracts as Matrix.
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStore } from 'react-redux';
@@ -13,7 +13,7 @@ import { useCarrier } from '../../../theme/carrier';
 import { RBOT_ENTRY_WIDTH } from '../../rbot/RBotEntry';
 import { PageShell } from '../../v2/PageShell';
 import { useV2Nav } from '../../v2/nav';
-import { dutySwapApiFor, ensureAllDetails, ensureDetails, loadOptions, openDutySwap, runSearch } from '../dutySwapActions';
+import { dutySwapApiFor, ensureDetails, loadOptions, openDutySwap, runSearch } from '../dutySwapActions';
 import { dayLabel, detailFor, flightRouteOf, kpiDelta, parseRuleMessage, routeOf, signedHhmm, submitBody, validateFilters, type ApiCompare, type ApiTaskDetail, type RuleResult, type SwapCrew, type SwapDuty, type SwapFilters } from '../dutySwapModel';
 import { acceptDisclaimer } from '../dutySwapSlice';
 import { RuleList } from '../DutySwapScreen';
@@ -82,20 +82,19 @@ function TicketFlow({ switcher, actionsInRail = false }: { switcher?: React.Reac
       .catch(() => { if (live) setWants({}); });
     return () => { live = false; };
   }, [auth.airline, auth.crewId]);
-  // Airports come from the portal's detail records, never from the search. Read them
-  // for every crew this window returned as soon as results land, so every step's
-  // cards name their airports on arrival — Give included, before anything is tapped.
-  const detailsRead = useRef<string | null>(null);
+  // A compare with any candidate also carries my detailed duties. Preload a small
+  // leading set so Give and Want can show my airports immediately. Pick separately
+  // loads only its actual matches instead of reading hundreds of cabin-crew rows.
   useEffect(() => {
     if (!api || st.status !== 'ready' || !st.filters) return;
-    const window = `${auth.crewId}:${st.filters.startDate}:${st.filters.endDate}:${st.filters.swapMode}:${st.crews.length}`;
-    if (detailsRead.current === window) return;
-    detailsRead.current = window;
-    void ensureAllDetails(dispatch, store.getState, api, st.crews.map(c => c.crewId));
+    void ensureDetails(dispatch, store.getState, api, st.crews.filter(c => c.crewId !== auth.crewId).slice(0, 8).map(c => c.crewId));
   }, [api, auth.crewId, st.status, st.filters, st.crews, dispatch, store]);
-  // My own compare: mine come back keyed by pairing id there (the store's detail
-  // map is keyed by crew), so my cards read from it.
-  const myCompare = auth.crewId ? (st.details[auth.crewId] ?? compared[auth.crewId]) : undefined;
+  // PR can answer a self-compare; TG Handshake cannot, but every candidate compare
+  // contains the same signed-in crew side. Use either source for Give and Want.
+  const allCompared = { ...compared, ...st.details };
+  const myCompare = auth.crewId
+    ? allCompared[auth.crewId] ?? Object.values(allCompared).find(c => c.mineTaskDetailList?.length)
+    : undefined;
   const mine = myCompare?.mineTaskDetailList ?? [];
   const filters = draft ?? st.filters;
   const others = useMemo(() => st.crews.slice(1), [st.crews]);

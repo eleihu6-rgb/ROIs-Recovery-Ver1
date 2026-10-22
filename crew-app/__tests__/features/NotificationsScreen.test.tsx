@@ -1,5 +1,5 @@
 import React from 'react';
-import renderer from 'react-test-renderer';
+import renderer, {act} from 'react-test-renderer';
 import {Provider} from 'react-redux';
 import {configureStore} from '@reduxjs/toolkit';
 import {Text} from 'react-native';
@@ -52,11 +52,7 @@ function renderWithPendingDiscretion() {
     }],
   }));
 
-  return renderer.create(
-    <Provider store={store}>
-      <NotificationsScreen />
-    </Provider>,
-  );
+  return renderInAct(store);
 }
 
 /** The sick-leave stand-down the crew actually receives (Crew Recovery Story 101). */
@@ -123,11 +119,20 @@ function renderWithRosterChange() {
     openDiscretions: [],
   }));
 
-  return renderer.create(
-    <Provider store={store}>
-      <NotificationsScreen />
-    </Provider>,
-  );
+  return renderInAct(store);
+}
+
+/** React 19 defers the initial commit unless the render runs inside act(). */
+function renderInAct(store: ReturnType<typeof configureStore>) {
+  let tree!: renderer.ReactTestRenderer;
+  act(() => {
+    tree = renderer.create(
+      <Provider store={store}>
+        <NotificationsScreen />
+      </Provider>,
+    );
+  });
+  return tree;
 }
 
 function textContent(value: unknown): string {

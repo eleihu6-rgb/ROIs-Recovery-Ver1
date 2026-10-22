@@ -5,17 +5,37 @@ import { createDutySwapApi, type DutySwapApi } from './dutySwapApi';
 import { emptyFilters, friendlyPortalMessage, toCrews, validateFilters, type SwapFilters } from './dutySwapModel';
 import { detailLoaded, optionsLoaded, searchFailed, searchStarted, searchSucceeded } from './dutySwapSlice';
 
-/** The signed-in airline's crew portal serves Duty Swap (PR today). */
+/** The signed-in airline's crew portal serves Duty Swap. */
 export const selectDutySwapLive = (s: RootState): boolean => !!airlineByCode(s.auth.airline).portalConfig?.dutySwap;
 
-const apis = new Map<string, DutySwapApi>();
-/** One API (and so one cached portal token) per signed-in crew. */
+interface CachedDutySwapApi {
+  password: string;
+  api: DutySwapApi;
+}
+
+const apis = new Map<string, CachedDutySwapApi>();
+
+/** Drop cached clients when a crew session ends so password-bearing closures do
+ * not survive logout in memory. */
+export function clearDutySwapApis(): void {
+  apis.clear();
+}
+
+/** One API per signed-in crew and current credential. The portal token itself
+ *  remains shared per portal + crew, but a password change must replace this
+ *  client's login closure so the next token refresh uses the new password. */
 export function dutySwapApiFor(auth: RootState['auth']): DutySwapApi | null {
   if (!auth.crewId || !auth.password) return null;
   const k = `${auth.airline}|${auth.crewId}`;
-  let api = apis.get(k);
-  if (!api) { api = createDutySwapApi({ airline: auth.airline, crewId: auth.crewId, password: auth.password }); apis.set(k, api); }
-  return api;
+  let cached = apis.get(k);
+  if (!cached || cached.password !== auth.password) {
+    cached = {
+      password: auth.password,
+      api: createDutySwapApi({ airline: auth.airline, crewId: auth.crewId, password: auth.password }),
+    };
+    apis.set(k, cached);
+  }
+  return cached.api;
 }
 
 const msg = (e: unknown) => (e instanceof Error && e.message ? friendlyPortalMessage(e.message) : 'Could not reach the crew portal.');
@@ -37,7 +57,7 @@ export async function openDutySwap(dispatch: AppDispatch, getState: () => RootSt
   if (existing) { await runSearch(dispatch, api, existing); return; }
   try {
     const w = await api.defaultWindow();
-    await runSearch(dispatch, api, emptyFilters(w.startDate, w.endDate));
+    await runSearch(dispatch, api, emptyFilters(w.startDate, w.endDate, w.swapMode));
   } catch (e) {
     dispatch(searchFailed(msg(e)));
   }

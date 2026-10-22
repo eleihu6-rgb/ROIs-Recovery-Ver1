@@ -131,10 +131,18 @@ describe('Duo inner-screen right-edge navigation', () => {
     }
   });
 
-  it('keeps the bottom dock for a wide window without the Duo right status strip', () => {
-    mockLayout.current = layoutFor(951, 669);
+  it('keeps the bottom dock on iPad landscape without the Duo right status strip', () => {
+    mockLayout.current = layoutFor(1210, 834);
     const tree = mount();
     expect(tree.queryByTestId('duo-nav-rail')).toBeNull();
+    expect(tree.getByTestId('dock-rbot')).toBeTruthy();
+  });
+
+  it('shows the right rail on Duo landscape when rotation reports no right inset', () => {
+    mockLayout.current = layoutFor(951, 669);
+    const tree = mount();
+    expect(tree.getByTestId('duo-nav-rail')).toBeTruthy();
+    expect(tree.queryByTestId('dock-rbot')).toBeNull();
   });
 
   it('uses the dark palette for the rail and keeps the active tab legible', () => {

@@ -21,7 +21,7 @@ export function DutySwapMyDutiesScreen(): React.JSX.Element {
   const auth = useAppSelector(s => s.auth);
   const api = dutySwapApiFor(auth);
   const carrier = airlineByCode(auth.airline).carrier;
-  const [state, setState] = useState<{ kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; tasks: ApiMyTask[]; autoUnlock: boolean }>({ kind: 'loading' });
+  const [state, setState] = useState<{ kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; tasks: ApiMyTask[]; autoUnlock: boolean; supportsAutoUnlock: boolean }>({ kind: 'loading' });
   const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
   const [auto, setAuto] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,24 +30,28 @@ export function DutySwapMyDutiesScreen(): React.JSX.Element {
   const load = useCallback(async () => {
     if (!api) return;
     try {
-      const r = await api.myTasks();
+      const filters = store.getState().dutySwap.filters;
+      const r = await api.myTasks(filters ? { startDate: filters.startDate, endDate: filters.endDate } : undefined);
       setState({ kind: 'ready', ...r });
       setUnlocked(new Set(r.tasks.filter(t => t.publishStatus === 'Publish').map(myTaskId)));
       setAuto(r.autoUnlock);
     } catch (e) {
       setState({ kind: 'error', message: e instanceof Error ? e.message : 'Could not reach the crew portal.' });
     }
-  }, [api]);
+  }, [api, store]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   const tasks = state.kind === 'ready' ? state.tasks : [];
-  const changed = state.kind === 'ready' && (auto !== state.autoUnlock || tasks.some(t => (t.publishStatus === 'Publish') !== unlocked.has(myTaskId(t))));
+  const changed = state.kind === 'ready' && ((state.supportsAutoUnlock && auto !== state.autoUnlock)
+    || tasks.some(t => (t.publishStatus === 'Publish') !== unlocked.has(myTaskId(t))));
 
   const save = async () => {
     if (!api || state.kind !== 'ready') return;
     setSaving(true);
     try {
-      await api.saveMyTasks(publishBody(tasks, unlocked), auto !== state.autoUnlock ? auto : undefined);
+      const filters = store.getState().dutySwap.filters;
+      const window = filters ? { startDate: filters.startDate, endDate: filters.endDate } : undefined;
+      await api.saveMyTasks(publishBody(tasks, unlocked, window), state.supportsAutoUnlock && auto !== state.autoUnlock ? auto : undefined);
       // The swap search depends on what I have unlocked: refresh it.
       const f = store.getState().dutySwap.filters;
       if (f) void runSearch(dispatch, api, f);
@@ -69,13 +73,13 @@ export function DutySwapMyDutiesScreen(): React.JSX.Element {
       {state.kind === 'error' ? <Text style={[s.intro, { color: p.ink }]}>{state.message}</Text> : null}
       {state.kind === 'ready' ? (
         <View style={s.list}>
-          <View style={[s.card, s.row, { backgroundColor: p.cardSolid }]}>
+          {state.supportsAutoUnlock ? <View style={[s.card, s.row, { backgroundColor: p.cardSolid }]}>
             <View style={s.flex}>
               <Text style={[s.code, { color: p.cardInk }]}>Unlock new duties automatically</Text>
               <Text style={[s.sub, { color: p.cardSoft }]}>Existing duties keep their setting.</Text>
             </View>
             <Switch value={auto} onValueChange={setAuto} trackColor={{ true: p.btn, false: p.cardLine }} testID="my-duties-auto" />
-          </View>
+          </View> : null}
           {tasks.length === 0 ? <Text style={[s.intro, { color: p.inkSoft }]}>No upcoming duties to unlock.</Text> : null}
           {tasks.map(t => {
             const id = myTaskId(t);

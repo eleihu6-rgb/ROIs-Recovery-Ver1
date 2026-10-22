@@ -12,6 +12,7 @@ import authReducer, { login } from '../../src/features/auth/authSlice';
 import dutySwapReducer, { acceptDisclaimer, searchSucceeded, setStep, toggleGive } from '../../src/features/dutySwap/dutySwapSlice';
 import rbotReducer from '../../src/features/rbot/rbotSlice';
 import { DutySwapScreen } from '../../src/features/dutySwap/DutySwapScreen';
+import { hhmmInput } from '../../src/features/dutySwap/components/SearchForm';
 import { layoutFor } from '../../src/components/v2/useLayout';
 import { toCrews, type ApiCrewRow, type SwapFilters } from '../../src/features/dutySwap/dutySwapModel';
 
@@ -63,6 +64,35 @@ const layout = (ui: ReturnType<typeof render>, id: string, width: number, height
   fireEvent(ui.getByTestId(id), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width, height } } });
 
 beforeEach(() => { jest.clearAllMocks(); mockLayout.current = layoutFor(420, 912); });
+
+it.each([
+  [420, 912], [912, 420], [669, 951], [951, 669], [834, 1210], [1210, 834],
+])('uses the same compact Search Pairing controls at %sx%s', async (width, height) => {
+  mockLayout.current = layoutFor(width, height);
+  const { ui } = await open();
+  expect(ui.getByTestId('search-start')).toBeTruthy();
+  expect(ui.getByTestId('search-end')).toBeTruthy();
+  expect(ui.getByTestId('search-briefStart').props.keyboardType).toBe('number-pad');
+  expect(ui.getByTestId('search-briefStart').props.placeholder).toBe('From');
+  expect(ui.getByTestId('search-briefEnd').props.placeholder).toBe('To');
+  expect(ui.getByTestId('search-reset')).toBeTruthy();
+  expect(ui.getByTestId('search-submit')).toBeTruthy();
+});
+
+it('normalizes plain HHMM typing for the shared report and flight-end controls', async () => {
+  expect(hhmmInput('0830')).toBe('08:30');
+  expect(hhmmInput('08:30')).toBe('08:30');
+  expect(hhmmInput('8')).toBe('8');
+  expect(hhmmInput('2561')).toBe('25:61');
+  const { ui } = await open();
+  fireEvent.changeText(ui.getByTestId('search-briefStart'), '0830');
+  expect(ui.getByTestId('search-briefStart').props.value).toBe('08:30');
+  fireEvent.changeText(ui.getByTestId('search-debriefEnd'), '1735');
+  expect(ui.getByTestId('search-debriefEnd').props.value).toBe('17:35');
+  fireEvent.changeText(ui.getByTestId('search-briefStart'), '2561');
+  expect(ui.getByText('Report time: use HH:mm.')).toBeTruthy();
+  expect(ui.getByTestId('search-submit').props.accessibilityState.disabled).toBe(true);
+});
 
 it('opens on Search pairing: no other crew\'s duties until the crew searches', async () => {
   const { store, ui } = await open();

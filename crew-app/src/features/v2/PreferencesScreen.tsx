@@ -133,6 +133,10 @@ export function PreferencesScreen() {
           />
           <DashedLine color={p.cardLine} />
         </View>
+        <View style={divider}>
+          <NavRow icon="clock" label="M5 Crew Display" value="Bluetooth" palette={p} onPress={() => nav.navigate('M5Display')} testID="row-m5-display" />
+          <DashedLine color={p.cardLine} />
+        </View>
         <KvRow label="Connected accounts" value="None" palette={p} last={!__DEV__} />
         {__DEV__ && <NavRow icon="cal" label="Add demo meetings (dev)" value="4 events" palette={p} onPress={addDemoMeetings} testID="dev-demo-meetings" />}
       </ListCard>

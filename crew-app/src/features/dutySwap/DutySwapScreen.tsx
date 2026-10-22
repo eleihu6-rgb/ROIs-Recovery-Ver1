@@ -221,7 +221,7 @@ export function DutySwapScreen({ switcher, rbot }: {
 
   const showSummary = st.give.length > 0 || st.take.length > 0 || !!st.crewB;
   // "Please publish task.": nothing of mine is unlocked → the fix is My duties.
-  const noUnlocked = !!st.error && /no unlocked duties/.test(st.error);
+  const noUnlocked = auth.airline.toUpperCase() !== 'TG' && !!st.error && /no unlocked duties/.test(st.error);
   const errorCard = (
     <View style={[s.center, s.card, { backgroundColor: p.cardSolid }]} testID="swap-error">
       <Text style={[s.msgStrong, { color: p.cardInk }]}>Could not load duties</Text>

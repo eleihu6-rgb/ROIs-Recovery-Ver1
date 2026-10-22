@@ -20,6 +20,10 @@ import { PALETTES } from '../../src/theme/carrier';
 import { buildMonth } from '../../src/features/v2/model';
 import type { Trip } from '../../src/features/travel/tripCsv';
 
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+}));
+
 const BASE = 'BKK';
 const MODE = 'airport' as const;
 const BASE_TZ = 'Asia/Bangkok';

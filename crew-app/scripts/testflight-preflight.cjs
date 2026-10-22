@@ -3,6 +3,30 @@ const { join, resolve } = require('node:path');
 const { tmpdir } = require('node:os');
 const { execFileSync } = require('node:child_process');
 
+const ASC_READ_ATTEMPTS = 3;
+const ASC_READ_RETRY_DELAY_MS = 1000;
+
+function sleepSync(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function readAscJson(args, options = {}) {
+  const run = options.execFileSync ?? execFileSync;
+  const pause = options.sleepSync ?? sleepSync;
+  const attempts = options.attempts ?? ASC_READ_ATTEMPTS;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return JSON.parse(run('asc', [...args, '--output', 'json'], options.execOptions));
+    } catch (error) {
+      if (attempt === attempts) throw error;
+      pause(ASC_READ_RETRY_DELAY_MS);
+    }
+  }
+
+  throw new Error('ASC read failed without an attempt.');
+}
+
 function localConfig(root, env) {
   const appId = env.ASC_APP_ID;
   const groupId = env.ASC_GROUP_ID;
@@ -43,10 +67,10 @@ function validateRemote(config, app, group, groupApp, next) {
 function main() {
   const root = resolve(__dirname, '..');
   const config = localConfig(root, process.env);
-  const asc = args => JSON.parse(execFileSync('asc', [...args, '--output', 'json'], {
+  const asc = args => readAscJson(args, { execOptions: {
     cwd: root, env: { ...process.env, ASC_TELEMETRY_DISABLED: '1', DO_NOT_TRACK: '1' },
     encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 4 * 1024 * 1024,
-  }));
+  } });
   const result = validateRemote(config,
     asc(['apps', 'view', '--id', config.appId]),
     asc(['testflight', 'groups', 'view', '--id', config.groupId]),
@@ -67,4 +91,4 @@ if (require.main === module) {
     process.exitCode = 1;
   }
 }
-module.exports = { localConfig, validateRemote };
+module.exports = { localConfig, readAscJson, validateRemote };

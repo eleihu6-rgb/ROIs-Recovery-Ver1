@@ -73,6 +73,35 @@ it('separates the configured airline limit from the official EASA Table 2 baseli
   );
 });
 
+it.each([
+  ['3P', 2, '3 pilots · one additional', '15:00'],
+  ['4P', 1, '4 pilots · double crew', '17:00'],
+] as const)('shows the applicable augmented EASA source for %s', (composition, restFacility, compositionLabel, limit) => {
+  const screen = renderReference(input({ composition, restFacility, sectors: 2 }));
+
+  expect(textOf(screen.getByTestId('easa-augmented-applied-row') as unknown as Node)).toMatch(
+    new RegExp(`${compositionLabel}.*Class ${restFacility}.*2 of max 3.*${limit}`),
+  );
+  expect(textOf(screen.getByTestId('easa-augmented-selected-cell') as unknown as Node)).toBe(limit);
+  expect(textOf(screen.getByTestId('easa-augmented-source') as unknown as Node)).toMatch(
+    /ORO\.FTL\.205\(e\).*CS FTL\.1\.205\(c\)\(1\)–\(2\).*Revision 24, March 2026/,
+  );
+  expect(screen.queryByTestId('easa-applied-unavailable')).toBeNull();
+  expect(screen.queryByTestId('easa-fdp-table')).toBeNull();
+});
+
+it('fits the complete Basic table header inside the wide right pane', () => {
+  mockLayout.current = layoutFor(1210, 834);
+  const screen = renderReference();
+
+  expect(screen.queryByTestId('easa-table-scroll')).toBeNull();
+  expect(StyleSheet.flatten(screen.getByTestId('easa-table-grid').props.style)).toMatchObject({
+    minWidth: 0,
+    width: '100%',
+  });
+  expect(screen.getAllByTestId(/^easa-table-header-/)).toHaveLength(7);
+});
+
 it.each([[420, 912], [912, 420], [669, 951], [951, 669], [834, 1210], [1210, 834]])(
   'keeps the applied lookup and table available at %sx%s',
   (width, height) => {

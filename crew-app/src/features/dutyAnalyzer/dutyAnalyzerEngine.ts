@@ -110,6 +110,14 @@ interface FdpEvaluation {
   review: string | null;
 }
 
+export interface NewDutyTiming {
+  actualFdpMinutes: number | null;
+  requiredRestMinutes: number | null;
+  maximumFdpMinutes: number | null;
+  latestChockOnMinuteOfDay: number | null;
+  latestChockOnDayOffset: number;
+}
+
 const evaluateFdpLimits = (input: DutyAnalyzerInput): FdpEvaluation => {
   if (input.crewCategory !== 'flight-deck') {
     return {
@@ -219,6 +227,30 @@ const evaluateFdpLimits = (input: DutyAnalyzerInput): FdpEvaluation => {
       detail: '',
       review: 'No approved limit row matches this report time and landing count.',
     };
+};
+
+export const newDutyTiming = (input: DutyAnalyzerInput): NewDutyTiming => {
+  const limits = evaluateFdpLimits(input);
+  const splitExtension = Math.max(0, Math.floor(input.splitBreakMinutes / 2));
+  const maximumFdpMinutes = limits.fdpLimit == null ? null : limits.fdpLimit + splitExtension;
+  const chockOn = input.latestChockOnMinuteOfDay;
+  const actualFdpMinutes = chockOn == null
+    ? null
+    : (chockOn - input.reportMinuteOfDay + 24 * 60) % (24 * 60);
+  const requiredRestMinutes = actualFdpMinutes == null
+    ? null
+    : Math.max(actualFdpMinutes, input.atHomeBase ? 720 : input.timezoneDifferenceHours < 4 ? 600 : 840);
+  return {
+    actualFdpMinutes,
+    requiredRestMinutes,
+    maximumFdpMinutes,
+    latestChockOnMinuteOfDay: maximumFdpMinutes == null
+      ? null
+      : (input.reportMinuteOfDay + maximumFdpMinutes) % (24 * 60),
+    latestChockOnDayOffset: maximumFdpMinutes == null
+      ? 0
+      : Math.floor((input.reportMinuteOfDay + maximumFdpMinutes) / (24 * 60)),
+  };
 };
 
 const evaluateRestLimit = (input: DutyAnalyzerInput): { limit: number | null; detail: string } => {

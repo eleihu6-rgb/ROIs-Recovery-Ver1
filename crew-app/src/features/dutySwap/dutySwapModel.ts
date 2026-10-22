@@ -175,6 +175,10 @@ export function portalToIso(s: string | null | undefined): string | null {
   const d = `${m[3]}-${String(mon).padStart(2, '0')}-${m[1]}`;
   return m[4] ? `${d}T${m[4]}` : d;
 }
+/** '25-Oct-2026 22:05' → '25-Oct 22:05' (every date in the text): crew know the year, so display drops it to save width. */
+export function withoutYear(s: string | null | undefined): string {
+  return (s ?? '').replace(/\b(\d{2}-[A-Za-z]{3})-\d{4}\b/g, '$1');
+}
 export function hhmmOf(iso: string): string {
   return iso.slice(11, 16);
 }
@@ -414,7 +418,7 @@ export const myTaskId = (t: Pick<ApiMyTask, 'pairingId' | 'rosterGroundPublishId
   t.pairingId != null ? `P${t.pairingId}` : `G${t.rosterGroundPublishId}`;
 
 /** Body for `batchUpdateTaskPublishStatus` (same as the web): every task, plus the unlocked ones. */
-export function publishBody(tasks: ApiMyTask[], unlocked: Set<string>) {
+export function publishBody(tasks: ApiMyTask[], unlocked: Set<string>, window?: Pick<SwapFilters, 'startDate' | 'endDate'>) {
   const pairingIdList: number[] = [], rosterGroundPublishIdList: number[] = [];
   const publishPairingIdList: number[] = [], publishRosterGroundPublishIdList: number[] = [];
   for (const t of tasks) {
@@ -422,7 +426,7 @@ export function publishBody(tasks: ApiMyTask[], unlocked: Set<string>) {
     if (t.pairingId != null) { pairingIdList.push(t.pairingId); if (on) publishPairingIdList.push(t.pairingId); }
     if (t.rosterGroundPublishId != null) { rosterGroundPublishIdList.push(t.rosterGroundPublishId); if (on) publishRosterGroundPublishIdList.push(t.rosterGroundPublishId); }
   }
-  return { pairingIdList, rosterGroundPublishIdList, publishPairingIdList, publishRosterGroundPublishIdList };
+  return { pairingIdList, rosterGroundPublishIdList, publishPairingIdList, publishRosterGroundPublishIdList, ...window };
 }
 
 // ── Records ────────────────────────────────────────────────────────────────

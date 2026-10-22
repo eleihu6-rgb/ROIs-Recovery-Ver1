@@ -79,7 +79,7 @@ export interface PortalConfig {
    *  this hardcoded value is test-only and must become real OTP entry for prod. */
   loginOutCaptcha?: string;
   /** The portal serves the crew Duty Swap APIs (`/api/portal/taskSwap/*`), so the
-   *  app shows its Duty Swap page. PR only for now (verified on the TEST tenant). */
+   *  app shows its live Duty Swap page. */
   dutySwap?: boolean;
 }
 
@@ -114,7 +114,7 @@ const WIRED: Airline[] = [
     portalUrl: 'https://crew-sea-test.roiscloud.com/tg/portal/',
     carrier: 'TG',
     portalKind: 'rois',
-    portalConfig: { baseAirport: 'BKK', baseOffsetMin: 420 },
+    portalConfig: { baseAirport: 'BKK', baseOffsetMin: 420, dutySwap: true },
   },
   {
     // Philippine Airlines — same ROIS multi-tenant infra as TG, different tenant
@@ -218,23 +218,18 @@ export const AIRLINES: Airline[] = [
 // (no TG→ET switch every launch). TG/PR remain selectable in the picker.
 export const DEFAULT_AIRLINE = 'ET';
 
-// Test credentials for the airline picker's prefill (dev/QA convenience only —
-// the login form itself now starts empty, see LoginScreen).
+// Test crew IDs for the airline picker's QA convenience. Passwords are never
+// shipped in the app; simulator runners inject them from local secure storage.
 export const TEST_CREW_ID = '35459';
-export const TEST_CREW_PW = '2026Pier';
 
-// Per-airline test-crew prefill (sim/QA). Lets the login screen swap the
-// auto-filled crew id/pw when the operator switches airline — but ONLY while the
-// fields still hold an untouched known test value, so real typed input is never
-// clobbered. TG 44117 & PR 433535 are the two switch-test crews.
 export const TEST_CREDENTIALS: Record<string, { crewId: string; password: string }> = {
-  TG: { crewId: TEST_CREW_ID, password: TEST_CREW_PW },
-  PR: { crewId: '433535', password: 'Pier2020' },
+  TG: { crewId: TEST_CREW_ID, password: '' },
+  PR: { crewId: '433535', password: '' },
   // K1003 (Khalid Al Nuaimi, CA, A380, DXB) is EK's default login: a real
   // Emirates crew from the ROIS live DB, not an EVACC C9000xx demo account.
-  EK: { crewId: 'K1003', password: 'Pier2026' },
+  EK: { crewId: 'K1003', password: '' },
   F8: { crewId: '113', password: '' },
-  ET: { crewId: 'J4002', password: 'Pier2026' },
+  ET: { crewId: 'J4002', password: '' },
 };
 
 export function airlineByCode(code: string): Airline {

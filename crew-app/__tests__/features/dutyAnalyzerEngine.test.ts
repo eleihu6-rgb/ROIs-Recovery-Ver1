@@ -1,4 +1,4 @@
-import { evaluateDuty, formatDuration } from '../../src/features/dutyAnalyzer/dutyAnalyzerEngine';
+import { evaluateDuty, formatDuration, newDutyTiming } from '../../src/features/dutyAnalyzer/dutyAnalyzerEngine';
 import {
   cloneDutyTimeline,
   divertAndAddRecovery,
@@ -260,6 +260,39 @@ describe('dutyAnalyzerEngine', () => {
 
     expect(result.status).toBe('needs-review');
     expect(metric(result, 'fdp')).toMatchObject({ status: 'needs-review', detail });
+  });
+
+  it('projects maximum FDP and latest chock-on while chock-on is empty', () => {
+    expect(newDutyTiming(input({
+      reportMinuteOfDay: 13 * 60 + 30,
+      sectors: 2,
+      latestChockOnMinuteOfDay: null,
+    }))).toEqual({
+      actualFdpMinutes: null,
+      requiredRestMinutes: null,
+      maximumFdpMinutes: 720,
+      latestChockOnMinuteOfDay: 90,
+      latestChockOnDayOffset: 1,
+    });
+  });
+
+  it.each([
+    ['same day', 7 * 60, 18 * 60 + 30, 690],
+    ['overnight', 20 * 60, 5 * 60 + 15, 555],
+  ])('calculates actual FDP from report to %s chock-on', (_case, reportMinuteOfDay, latestChockOnMinuteOfDay, expected) => {
+    expect(newDutyTiming(input({ reportMinuteOfDay, latestChockOnMinuteOfDay })).actualFdpMinutes).toBe(expected);
+  });
+
+  it.each([
+    ['home-base floor', true, 690, 720],
+    ['DP when longer', true, 780, 780],
+    ['away-base floor', false, 555, 600],
+  ])('calculates required rest from DP using the %s rule', (_case, atHomeBase, dpMinutes, expected) => {
+    expect(newDutyTiming(input({
+      reportMinuteOfDay: 7 * 60,
+      latestChockOnMinuteOfDay: 7 * 60 + dpMinutes,
+      atHomeBase,
+    })).requiredRestMinutes).toBe(expected);
   });
 
   it('accepts an exact FDP maximum and fails one minute over it', () => {

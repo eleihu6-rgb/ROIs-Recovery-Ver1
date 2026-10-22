@@ -2,10 +2,11 @@
 // upcoming-alarms icon), time-of-day greeting, crew status line, Upcoming Trip
 // ticket card (or the no-duty placeholder), Explore destinations, Quick actions.
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, ImageBackground } from 'react-native';
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '../../store';
 import { selectCrewCarrier, selectIsGuest } from '../auth/authSlice';
+import { font } from '../../theme';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
 import { GradientScreen } from '../../components/v2/GradientScreen';
 import { Icon, type IconName } from '../../components/v2/icons';
@@ -14,8 +15,12 @@ import { TicketCard, DashedLine } from '../../components/v2/TicketCard';
 import { daysUntil, greetingFor, legView, tripStartMs, MON } from './model';
 import { useAlarms, useDestinations, useNextTrip } from './useV2';
 import { useV2Nav } from './nav';
-import { useLayout } from '../../components/v2/useLayout';
+import { bottomDockClearance, useLayout } from '../../components/v2/useLayout';
 import { selectDutySwapLive } from '../dutySwap/dutySwapActions';
+import { airportZone } from '../settings/airportZones';
+import { legDisplayDate } from '../settings/timeFormat';
+import { WeatherAttribution, WeatherSymbol } from '../weather/WeatherStrip';
+import { nearestWeatherHour, useAppleWeather, type AppleWeatherState } from '../weather/weatherModule';
 
 // The dock floats over the page, so the scroll content carries its own clearance.
 // 110 (dock height + the bottom inset) left the Quick actions card half-under the
@@ -63,27 +68,67 @@ export function HomeScreen() {
   // The Duo's landscape inner screen is short; an iPad has room to let the
   // existing cards occupy the page down to the floating dock.
   const ipad = wide && height >= 700;
-  const ipadPortrait = ipad && height > width;
-  const landscapeGrid = wide && width > height;
-  const landscapeColumns = ipad ? 3 : 2;
+  const landscapeDashboard = wide && width > height;
+  const arrivalLeg = trip?.legs[0];
+  const arrivalDate = arrivalLeg
+    ? legDisplayDate({
+      flightDateUTC: arrivalLeg.arvDateUTC,
+      localTime: arrivalLeg.localArvTime,
+      mode: 'airport',
+      baseTz,
+      airportTz: airportZone(arrivalLeg.arvArp),
+    })
+    : null;
+  const arrivalWeather = useAppleWeather(
+    arrivalLeg?.arvArp ?? '',
+    arrivalDate?.year ?? 0,
+    arrivalDate?.monthIdx ?? 0,
+    arrivalDate?.day ?? null,
+  );
   // Tall: three tiles visible in the portrait strip, with more offscreen.
-  const tallTile = Math.floor((width - 44 - 24) / 3);
-  // Measure the Explore viewport, including the Duo's landscape safe-area inset.
+  const tallTileWidth = Math.floor((width - 44 - 24) / 3);
+  // Measure each responsive stack instead of guessing from device names. Explore
+  // receives whatever height remains around the following actions/navigation.
   const [stripW, setStripW] = useState(0);
-  const [leftStackH, setLeftStackH] = useState(0);
+  const [exploreTop, setExploreTop] = useState(0);
+  const [tallExploreTop, setTallExploreTop] = useState(0);
+  const [tallQuickHeight, setTallQuickHeight] = useState(0);
+  const landscapeBottomClear = bottomDockClearance(
+    width,
+    height,
+    { bottom: insets.bottom, right: insets.right },
+    ipad ? IPAD_DOCK_CLEAR : WIDE_DOCK_CLEAR,
+  );
+  const landscapeTileHeight = exploreTop > 0
+    ? Math.max(154, height - exploreTop - 59 - landscapeBottomClear)
+    : 154;
+  const tallTileHeight = tallExploreTop > 0 && tallQuickHeight > 0
+    ? Math.max(
+      tallTileWidth,
+      height - tallExploreTop - 43 - tallQuickHeight - 14 - Math.max(insets.bottom, 16),
+    )
+    : tallTileWidth;
   const wideTile = stripW > 0
-    ? Math.floor((stripW - 12 * (landscapeGrid ? landscapeColumns - 1 : 1)) / (landscapeGrid ? landscapeColumns : 2))
-    : landscapeGrid && ipad ? 150 : 180;
+    ? landscapeDashboard
+      ? Math.floor((stripW - 36) / 4)
+      : Math.floor((stripW - 12) / 2)
+    : 180;
 
   const ticketSection = trip && first ? (
       <TicketCard palette={p} style={wide ? s.tripWide : s.trip} holeY={holeY} onPress={() => nav.navigate('TripDetails', { tripId: trip.id })} testID="home-next-trip">
         <View style={s.uh}><Icon name="trip" size={22} color={p.cardInk} /><Text style={[s.uhText, { color: p.cardInk }]}>Upcoming Trip</Text></View>
         <Text style={[s.sub, { color: p.cardSoft }]}>{first.fltNumber} · {first.day} {MON[first.monthIdx]} {first.year} · {inDays === 0 ? 'Reports today' : `Reports in ${inDays} day${inDays === 1 ? '' : 's'}`}</Text>
-        <View style={s.legRow}>
+        <View style={[s.legRow, landscapeDashboard && s.legRowDashboard]}>
           <View style={s.leg}>
             <View><Text style={[s.cd, { color: p.cardInk }]}>{first.dep}</Text><Text style={[s.ct, { color: p.cardSoft }]}>{first.depTime}</Text></View>
             <Icon name="plane" size={20} color={p.cardInk} />
-            <View><Text style={[s.cd, { color: p.cardInk }]}>{first.arv}</Text><Text style={[s.ct, { color: p.cardSoft }]}>{first.arvTime}{first.arvDayOffset ? ` ${first.arvDayOffset}` : ''}</Text></View>
+            <View>
+              <View style={s.arrivalAirportRow}>
+                <Text style={[s.cd, { color: p.cardInk }]}>{first.arv}</Text>
+                <ArrivalWeather weather={arrivalWeather} arrivalLocalTime={arrivalLeg?.localArvTime ?? ''} palette={p} />
+              </View>
+              <Text style={[s.ct, { color: p.cardSoft }]}>{first.arvTime}{first.arvDayOffset ? ` ${first.arvDayOffset}` : ''}</Text>
+            </View>
           </View>
           <View style={s.kv}>
             <Text style={[s.kvk, { color: p.cardSoft }]}>Ready <Text style={[s.kvv, { color: p.cardInk }]}>{first.ready}</Text></Text>
@@ -103,7 +148,7 @@ export function HomeScreen() {
       </TicketCard>
     ) : null;
   const destTiles = destinations.map((d, i) => (
-    <Pressable key={d.city.airport} style={[s.dest, wide && { width: wideTile, height: landscapeGrid ? ipad ? 150 : 128 : 190 }, tall && { width: tallTile, height: tallTile }]} onPress={() => nav.navigate('Destination', { index: i })} testID={`dest-${d.city.airport}`}>
+    <Pressable key={d.city.airport} style={[s.dest, landscapeDashboard && { width: wideTile, height: landscapeTileHeight }, wide && !landscapeDashboard && { width: wideTile, height: 190 }, tall && { width: tallTileWidth, height: tallTileHeight }]} onPress={() => nav.navigate('Destination', { index: i })} testID={`dest-${d.city.airport}`}>
       <ImageBackground source={d.city.image} style={StyleSheet.absoluteFill} imageStyle={{ borderRadius: 14 }} />
       <View style={s.destGrad} />
       <View style={s.fav}><Icon name="heart" size={16} color="#fff" strokeWidth={1.8} /></View>
@@ -115,12 +160,12 @@ export function HomeScreen() {
       </View>
     </Pressable>
   ));
-  // Landscape Explore fills the right column, with a vertically scrolling grid.
-  // Portrait Explore stays one horizontal row, even on the iPad.
+  // Landscape Explore is a dense, full-width destination row. Portrait keeps the
+  // existing horizontal strip, including the iPad portrait arrangement.
   const exploreSection = wide ? (
-    <View style={[s.qa, s.flush, landscapeGrid && leftStackH > 0 && { height: leftStackH }, { backgroundColor: p.frost }]} testID="home-explore">
+    <View style={[s.qa, s.flush, { backgroundColor: p.frost }]} testID="home-explore">
       <View style={s.secCard}><Text style={[s.secTitle, { color: p.ink }]}>Explore your destinations</Text><Text style={[s.secLink, { color: p.inkSoft }]}>See all</Text></View>
-      <ScrollView horizontal={!landscapeGrid} showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false} style={s.exploreScroll} contentContainerStyle={landscapeGrid ? s.destGridWide : s.destRowWide} testID="home-explore-strip" onLayout={e => setStripW(e.nativeEvent.layout.width)}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.exploreScroll} contentContainerStyle={s.destRowWide} testID="home-explore-strip" onLayout={e => setStripW(e.nativeEvent.layout.width)}>
         {destinations.length === 0 && <Text style={{ color: p.inkSoft, fontSize: 13 }}>No upcoming destinations this month.</Text>}
         {destTiles}
       </ScrollView>
@@ -135,7 +180,11 @@ export function HomeScreen() {
     </>
   );
   const quickSection = (
-    <View style={[s.qa, { backgroundColor: p.frost }]}>
+    <View
+      style={[s.qa, landscapeDashboard && s.qaDashboard, { backgroundColor: p.frost }]}
+      testID="home-quick-actions"
+      onLayout={tall ? e => setTallQuickHeight(e.nativeEvent.layout.height) : undefined}
+    >
       <Text style={[s.qaTitle, { color: p.ink }]}>Quick actions</Text>
       <View style={s.qaGrid}>
         <QA icon="checkin" label="Check-In" onPress={() => nav.navigate('CheckIn')} palette={p} />
@@ -150,21 +199,31 @@ export function HomeScreen() {
 
   return (
     <GradientScreen palette={p}>
-      <ScrollView contentContainerStyle={[s.body, ipad && { minHeight: height }, { paddingTop: insets.top + 10, paddingBottom: duoCover ? COVER_RAIL_CLEAR : ipad ? IPAD_DOCK_CLEAR : wide ? WIDE_DOCK_CLEAR : DOCK_CLEAR }]} showsVerticalScrollIndicator={false} testID="home-screen">
-        <View style={s.brandRow}>
-          <View style={p.isLight ? [s.brandLight, { backgroundColor: p.btn }] : undefined}>
-            <BrandLogo airline={airline} height={34} />
+      <ScrollView contentContainerStyle={[s.body, ipad && { minHeight: height }, { paddingTop: insets.top + 10, paddingBottom: landscapeDashboard ? landscapeBottomClear : duoCover ? COVER_RAIL_CLEAR : ipad ? IPAD_DOCK_CLEAR : wide ? WIDE_DOCK_CLEAR : DOCK_CLEAR }]} showsVerticalScrollIndicator={false} testID="home-screen">
+        <View style={[s.brandRow, landscapeDashboard && s.landscapeHeader]} testID={landscapeDashboard ? 'home-landscape-header' : undefined}>
+          <View style={landscapeDashboard ? s.landscapeIdentity : undefined}>
+            <View style={p.isLight ? [s.brandLight, { backgroundColor: p.btn }] : undefined}>
+              <BrandLogo airline={airline} height={landscapeDashboard ? 30 : 34} />
+            </View>
+            {landscapeDashboard ? (
+              <View style={s.greetLandscape}>
+                <Icon name={greet.icon} size={22} color={p.ink} />
+                <Text style={[s.greetLandscapeText, { color: p.ink }]} testID="home-greeting">{greet.text}</Text>
+              </View>
+            ) : null}
           </View>
-          <View style={{ flexDirection: 'row', gap: 2 }}>
+          <View style={s.headerActions}>
             <IconButton name="bell" badge={alertCount} palette={p} onPress={() => nav.navigate('Alerts')} testID="home-alerts" />
             <IconButton name="alarm" badge={alarmCount} palette={p} onPress={() => nav.navigate('UpcomingAlarms')} testID="home-alarms" />
           </View>
         </View>
 
-        <View style={s.greet}>
-          <Icon name={greet.icon} size={34} color={p.ink} />
-          <Text style={[s.greetText, { color: p.ink }]} testID="home-greeting">{greet.text}</Text>
-        </View>
+        {!landscapeDashboard ? (
+          <View style={s.greet}>
+            <Icon name={greet.icon} size={34} color={p.ink} />
+            <Text style={[s.greetText, { color: p.ink }]} testID="home-greeting">{greet.text}</Text>
+          </View>
+        ) : null}
 
         {/* Why the roster is empty: this session has no airline behind it, and
             Profile holds the way to add one (Ryan 2026-09-12). */}
@@ -184,23 +243,40 @@ export function HomeScreen() {
             row now; Home goes straight to the trip (or straight to Explore when
             nothing is published). */}
 
-        {wide && ticketSection ? (
+        {landscapeDashboard && ticketSection ? (
           <>
-            <View style={[s.wideRow, s.wideRowFirst, ipad && !ipadPortrait && s.ipadRow]} testID="home-wide-row-1">
-              <View style={[s.wideCol, landscapeGrid && s.stackTop]} testID="home-left-stack" onLayout={e => setLeftStackH(e.nativeEvent.layout.height)}>
-                {ticketSection}
-                {!ipadPortrait ? quickSection : null}
-              </View>
+            <View
+              style={[s.wideRow, s.wideRowFirst, s.dashboardStrip]}
+              testID="home-landscape-dashboard"
+            >
+              <View style={s.tripDashboard}>{ticketSection}</View>
+              <View style={s.quickDashboard}>{quickSection}</View>
+            </View>
+            <View
+              style={s.landscapeExplore}
+              testID="home-landscape-explore"
+              onLayout={e => setExploreTop(e.nativeEvent.layout.y)}
+            >
+              {exploreSection}
+            </View>
+          </>
+        ) : wide && ticketSection ? (
+          <>
+            <View style={[s.wideRow, s.wideRowFirst]} testID="home-wide-row-1">
+              <View style={s.wideCol}>{ticketSection}</View>
               <View style={s.wideCol}>{exploreSection}</View>
             </View>
-            {ipadPortrait ? (
-              <View style={s.ipadQuickRow} testID="home-ipad-quick-row">{quickSection}</View>
-            ) : null}
+            <View style={s.ipadQuickRow} testID="home-ipad-quick-row">{quickSection}</View>
           </>
         ) : (
           <>
             {ticketSection}
-            {exploreSection}
+            <View
+              testID={tall ? 'home-tall-explore' : undefined}
+              onLayout={tall ? e => setTallExploreTop(e.nativeEvent.layout.y) : undefined}
+            >
+              {exploreSection}
+            </View>
             {quickSection}
           </>
         )}
@@ -209,6 +285,42 @@ export function HomeScreen() {
   );
 }
 
+
+function ArrivalWeather({
+  weather,
+  arrivalLocalTime,
+  palette: p,
+}: {
+  weather: AppleWeatherState;
+  arrivalLocalTime: string;
+  palette: CarrierPalette;
+}) {
+  const forecast = weather.status === 'ready'
+    ? nearestWeatherHour(weather.hours, arrivalLocalTime)
+    : null;
+
+  if (!forecast) return null;
+
+  const temperature = Math.round(forecast.temperatureC);
+  return (
+    <View
+      style={s.arrivalWeather}
+      testID="home-arrival-weather"
+      accessibilityLabel={`${weather.base} arrival weather, ${temperature} degrees Celsius`}
+    >
+      <WeatherSymbol symbol={forecast.symbolName} color={p.cardInk} />
+      <Text style={[s.arrivalWeatherText, { color: p.cardInk }]}>{temperature}°</Text>
+      {weather.attribution ? (
+        <WeatherAttribution
+          attribution={weather.attribution}
+          lightMark={!p.isLight}
+          compact
+          testID="home-weather-attribution"
+        />
+      ) : null}
+    </View>
+  );
+}
 
 export function IconButton({ name, badge, palette, onPress, testID }: { name: IconName; badge?: number; palette: CarrierPalette; onPress: () => void; testID?: string }) {
   return (
@@ -234,20 +346,26 @@ const s = StyleSheet.create({
   // Wide: the rows carry the vertical gaps so the cards side by side start level.
   wideRow: { flexDirection: 'row', gap: 18, marginTop: 14 },
   wideRowFirst: { marginTop: 16 },
-  ipadRow: { flexGrow: 1 },
+  dashboardStrip: { alignItems: 'stretch' },
+  tripDashboard: { width: '43%', minWidth: 0 },
+  quickDashboard: { flex: 1, minWidth: 0 },
+  landscapeExplore: { marginTop: 14 },
   ipadQuickRow: { marginTop: 14 },
   flush: { marginTop: 0 },
   wideCol: { flex: 1, minWidth: 0 },
-  stackTop: { alignSelf: 'flex-start' },
-  fill: { flex: 1 },
   body: { paddingHorizontal: 22 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
+  landscapeHeader: { minHeight: 44 },
+  landscapeIdentity: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  headerActions: { flexDirection: 'row', gap: 2 },
   brandLight: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 999, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   badgeText: { fontSize: 10, fontWeight: '700' },
   greet: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22 },
   greetText: { fontSize: 34, fontWeight: '600', letterSpacing: -0.3 },
+  greetLandscape: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  greetLandscapeText: { ...font.title },
   // Guest strip: says why the roster is empty and opens Profile.
   guestStrip: {
     flexDirection: 'row',
@@ -264,7 +382,11 @@ const s = StyleSheet.create({
   uh: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   uhText: { fontSize: 19, fontWeight: '600' },
   sub: { fontSize: 13 },
+  arrivalAirportRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  arrivalWeather: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  arrivalWeatherText: { ...font.caption, fontWeight: '600' },
   legRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
+  legRowDashboard: { marginTop: 8 },
   leg: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   cd: { fontSize: 22, fontWeight: '600' },
   ct: { fontSize: 12, marginTop: 3 },
@@ -284,11 +406,10 @@ const s = StyleSheet.create({
   // dock, and every destination's own content still fits the shorter tile.
   dest: { width: 165, height: 172, borderRadius: 14, overflow: 'hidden' },
   destRowWide: { gap: 12 },
-  destGridWide: { flexDirection: 'row', flexWrap: 'wrap', alignContent: 'flex-start', gap: 12 },
   exploreScroll: { flex: 1 },
   // Neutral black scrim over the destination photo — a tinted scrim would fight
   // whichever theme the crew picked (theme coverage test).
-  destGrad: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,.45)' },
+  destGrad: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,.45)' },
   fav: { position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,.18)', alignItems: 'center', justifyContent: 'center' },
   destBottom: { position: 'absolute', left: 14, right: 14, bottom: 14 },
   destCo: { fontSize: 11 },
@@ -296,10 +417,11 @@ const s = StyleSheet.create({
   destFrom: { fontSize: 10, letterSpacing: 0.5, marginTop: 8 },
   destFlt: { fontSize: 14, fontWeight: '600', color: '#fff', marginTop: 1 },
   qa: { marginTop: 14, borderRadius: 18, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 10 },
+  qaDashboard: { marginTop: 0, flex: 1, justifyContent: 'center' },
   qaTitle: { fontSize: 17, fontWeight: '500', marginBottom: 12 },
   qaGrid: { flexDirection: 'row', gap: 8 },
-  qaItem: { flex: 1, alignItems: 'center', gap: 10 },
-  // Five quick actions now share the row (Discretion joined Check-In / Absence /
-  // Duty Swap / More), so the label tightens to keep "Discretion" on two lines.
+  qaItem: { flex: 1, minWidth: 0, alignItems: 'center', gap: 10 },
+  // Six quick actions share one landscape row, so longer labels shrink instead of
+  // wrapping into a second line and making the strip uneven.
   qaLabel: { fontSize: 11, fontWeight: '500', textAlign: 'center' },
 });

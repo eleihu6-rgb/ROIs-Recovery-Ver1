@@ -8,9 +8,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppDialog } from '../../components/v2/AppDialog';
 import { Icon } from '../../components/v2/icons';
-import { useLayout } from '../../components/v2/useLayout';
+import { duoActionStripWidth, useLayout } from '../../components/v2/useLayout';
 import { useAppSelector } from '../../store';
 import { colors, font, radius, space } from '../../theme';
 import { useCarrier, type CarrierPalette } from '../../theme/carrier';
@@ -19,7 +20,7 @@ import { knownAirportZone } from '../settings/airportZones';
 import { hhmmInZone, wallClockInZone, zonedWallClockToUtc } from '../settings/timeFormat';
 import { PageShell, PrimaryButton } from '../v2/PageShell';
 import { useV2Nav } from '../v2/nav';
-import { evaluateDuty, formatDuration } from './dutyAnalyzerEngine';
+import { evaluateDuty, formatDuration, newDutyTiming, type NewDutyTiming } from './dutyAnalyzerEngine';
 import {
   addUtcMinutes,
   cloneDutyTimeline,
@@ -53,23 +54,26 @@ import type {
 type Mode = 'roster' | 'new' | 'saved';
 type FlightAction = 'move' | 'diversion' | null;
 
-const NEW_DUTY: DutyAnalyzerInput = {
+const newDutyInput = (now = new Date()): DutyAnalyzerInput => ({
   crewCategory: 'flight-deck',
   acclimatisation: 'acclimatised',
   composition: 'basic',
   restFacility: null,
-  reportMinuteOfDay: 7 * 60,
+  reportMinuteOfDay: now.getHours() * 60 + now.getMinutes(),
+  latestChockOnMinuteOfDay: null,
   sectors: 2,
-  fdpMinutes: 600,
-  dpMinutes: 660,
-  blockMinutes: 480,
-  restBeforeMinutes: 720,
-  restAfterMinutes: 720,
+  fdpMinutes: null,
+  dpMinutes: null,
+  blockMinutes: null,
+  restBeforeMinutes: null,
+  restAfterMinutes: null,
   atHomeBase: true,
   timezoneDifferenceHours: 0,
   splitBreakMinutes: 0,
   useDiscretion: false,
-};
+});
+
+const ROSTER_CONTEXT = newDutyInput(new Date(2026, 0, 1, 7));
 
 const statusLabel = (status: MetricStatus): string => ({
   within: 'Within limit',
@@ -100,7 +104,9 @@ const utcClock = (iso: string): string => {
 };
 
 const parseClockValue = (value: string): number | null => {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  const compact = /^(\d{2})(\d{2})$/.exec(value.trim());
+  const separated = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  const match = compact ?? separated;
   if (!match) return null;
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
@@ -154,8 +160,8 @@ function ModeTabs({ mode, onChange, p }: { mode: Mode; onChange: (mode: Mode) =>
   </View>;
 }
 
-function Panel({ children, p, testID }: { children: React.ReactNode; p: CarrierPalette; testID?: string }) {
-  return <View style={[s.panel, { backgroundColor: p.card, borderColor: p.cardLine }]} testID={testID}>{children}</View>;
+function Panel({ children, p, testID, compact = false }: { children: React.ReactNode; p: CarrierPalette; testID?: string; compact?: boolean }) {
+  return <View style={[s.panel, compact && s.panelCompact, { backgroundColor: p.card, borderColor: p.cardLine }]} testID={testID}>{children}</View>;
 }
 
 function PanelHeading({ title, detail, p }: { title: string; detail?: string; p: CarrierPalette }) {
@@ -165,17 +171,39 @@ function PanelHeading({ title, detail, p }: { title: string; detail?: string; p:
   </View>;
 }
 
+function AnalyzerActionRail({ p, onReset, onSave, width }: { p: CarrierPalette; onReset: () => void; onSave: () => void; width: number }) {
+  return <View pointerEvents="box-none" style={[s.actionRailEdge, { right: -width, width }]} testID="analyzer-action-rail-edge">
+    <View style={[s.actionRail, { backgroundColor: p.frost, borderColor: p.frostLine }]}>
+      <Pressable onPress={onReset} accessibilityLabel="Reset scenario" testID="analyzer-reset" hitSlop={4} style={s.actionRailButton}>
+        <Icon name="history" size={21} color={p.ink} strokeWidth={1.8} />
+        <Text style={[s.actionRailLabel, { color: p.ink }]}>Reset</Text>
+      </Pressable>
+      <View style={[s.actionRailDivider, { backgroundColor: p.frostLine }]} />
+      <Pressable onPress={onSave} accessibilityLabel="Save scenario" testID="analyzer-save" hitSlop={4} style={s.actionRailButton}>
+        <Icon name="check" size={21} color={p.ink} strokeWidth={1.8} />
+        <Text style={[s.actionRailLabel, { color: p.ink }]}>Save</Text>
+      </Pressable>
+    </View>
+  </View>;
+}
+
 function MetricCard({
   result,
   p,
   baseline,
   onOpenReference,
+  unavailableLabel,
+  derivedRestMinutes,
+  hiddenMetrics = [],
   testID = 'analyzer-result',
 }: {
   result: DutyAnalyzerResult;
   p: CarrierPalette;
   baseline?: DutyAnalyzerResult;
   onOpenReference: () => void;
+  unavailableLabel?: string;
+  derivedRestMinutes?: number | null;
+  hiddenMetrics?: AnalyzerMetric['key'][];
   testID?: string;
 }) {
   const color = statusColor(result.status, p);
@@ -191,9 +219,12 @@ function MetricCard({
       <Text style={[s.statusText, { color: result.status === 'exceeded' ? p.cardCrit : p.cardInk }]}>{statusLabel(result.status)}</Text>
     </View>
     <View style={s.metrics}>
-      {result.metrics.map(metric => {
+      {result.metrics.filter(metric => !hiddenMetrics.includes(metric.key)).map(metric => {
         const original = baseline?.metrics.find(item => item.key === metric.key);
-        return <MetricRow key={metric.key} metric={metric} baseline={original} p={p} />;
+        if (metric.key === 'rest' && derivedRestMinutes !== undefined) {
+          return <DerivedRestRow key={metric.key} minutes={derivedRestMinutes} p={p} />;
+        }
+        return <MetricRow key={metric.key} metric={metric} baseline={original} p={p} unavailableLabel={unavailableLabel} />;
       })}
     </View>
     <View style={[s.resultNote, { backgroundColor: p.cardInset }]}>
@@ -210,16 +241,29 @@ function MetricCard({
   </Panel>;
 }
 
-function DurationValue({ minutes, color, style }: { minutes: number | null; color: string; style?: object }) {
+function DurationValue({ minutes, color, style, unavailableLabel }: { minutes: number | null; color: string; style?: object; unavailableLabel?: string }) {
   const value = formatDuration(minutes);
-  if (value === 'Not published') return <Text style={[s.metricValue, style, { color }]}>{value}</Text>;
+  if (value === 'Not published') return <Text numberOfLines={unavailableLabel ? 2 : 1} style={[s.metricUnavailable, style, { color }]}>{unavailableLabel ?? value}</Text>;
   const colon = value.indexOf(':');
   return <Text accessibilityLabel={value} style={[s.metricValue, style, { color }]}>
     {value.slice(0, colon)}<Text style={[s.metricMinutes, { color }]}>{value.slice(colon)}</Text>
   </Text>;
 }
 
-function MetricRow({ metric, baseline, p }: { metric: AnalyzerMetric; baseline?: AnalyzerMetric; p: CarrierPalette }) {
+function DerivedRestRow({ minutes, p }: { minutes: number | null; p: CarrierPalette }) {
+  return <View style={[s.metricRow, { backgroundColor: p.cardInset, borderColor: p.cardLine }]} testID="metric-rest">
+    <View style={s.metricLabelRow}>
+      <Text style={[s.metricLabel, { color: p.cardInk }]}>REST</Text>
+    </View>
+    <View style={s.metricMiddle}>
+      <DurationValue minutes={minutes} color={p.cardInk} unavailableLabel="Awaiting DP" />
+      <Text style={[s.metricLimit, { color: p.cardSoft }]}>Required after duty</Text>
+    </View>
+    <Text style={[s.metricMargin, { color: p.cardInk, borderColor: p.cardLine }]}>From DP</Text>
+  </View>;
+}
+
+function MetricRow({ metric, baseline, p, unavailableLabel }: { metric: AnalyzerMetric; baseline?: AnalyzerMetric; p: CarrierPalette; unavailableLabel?: string }) {
   const exceeded = metric.status === 'exceeded';
   const color = exceeded ? p.cardCrit : p.cardInk;
   const minimum = metric.key === 'rest';
@@ -235,7 +279,7 @@ function MetricRow({ metric, baseline, p }: { metric: AnalyzerMetric; baseline?:
     </View>
     <View style={s.metricMiddle}>
       <View style={s.metricValues}>
-        <DurationValue minutes={metric.actualMinutes} color={color} />
+        <DurationValue minutes={metric.actualMinutes} color={color} unavailableLabel={unavailableLabel} />
         {baseline ? <Text style={[s.metricBaseline, { color: p.cardSoft }]} testID={`metric-${metric.key}-baseline`}>Portal {formatDuration(baseline.actualMinutes)}</Text> : null}
       </View>
       <Text style={[s.metricLimit, { color: p.cardSoft }]}>{metric.limitMinutes == null ? statusLabel(metric.status) : `${minimum ? 'Minimum' : 'Limit'} ${formatDuration(metric.limitMinutes)}`}</Text>
@@ -281,6 +325,51 @@ function ClockField({ label, value, onChange, p, testID }: { label: string; valu
   </View>;
 }
 
+function OptionalClockField({ label, value, onChange, p, testID }: { label: string; value: number | null; onChange: (value: number | null) => void; p: CarrierPalette; testID: string }) {
+  const [draft, setDraft] = React.useState(value == null ? '' : clockValue(value));
+  React.useEffect(() => setDraft(value == null ? '' : clockValue(value)), [value]);
+  const change = (text: string) => {
+    setDraft(text);
+    const next = parseClockValue(text);
+    if (next != null) onChange(next);
+    else if (!text.trim()) onChange(null);
+  };
+  const commit = () => {
+    const next = parseClockValue(draft);
+    if (next == null) {
+      setDraft('');
+      onChange(null);
+      return;
+    }
+    setDraft(clockValue(next));
+    onChange(next);
+  };
+  return <View style={s.field}>
+    <Text style={[s.fieldLabel, { color: p.cardInk }]}>{label}</Text>
+    <View style={[s.inputWrap, { backgroundColor: p.cardInset, borderColor: p.cardLine }]}>
+      <TextInput value={draft} onChangeText={change} onBlur={commit} keyboardType="numbers-and-punctuation" maxLength={5} placeholder="Optional" placeholderTextColor={p.cardSoft} style={[s.input, { color: p.cardInk }]} testID={testID} accessibilityLabel={label} />
+      <Text style={[s.suffix, { color: p.cardSoft }]}>24h</Text>
+    </View>
+  </View>;
+}
+
+function SectorStepper({ value, onChange, p }: { value: number; onChange: (value: number) => void; p: CarrierPalette }) {
+  return <View style={s.sectorInline}>
+    <Text style={[s.fieldLabel, { color: p.cardInk }]}>Sectors</Text>
+    <View style={s.stepper}>
+      <Pressable onPress={() => onChange(Math.max(1, value - 1))} style={[s.stepButton, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]} testID="analyzer-sectors-decrease" accessibilityLabel="Decrease sectors">
+        <Text style={[s.stepButtonText, { color: p.btn }]}>−</Text>
+      </Pressable>
+      <View style={[s.stepValue, { backgroundColor: p.cardInset, borderColor: p.cardLine }]} testID="analyzer-sectors-value">
+        <Text style={[s.stepValueText, { color: p.cardInk }]} testID="analyzer-sectors">{value}</Text>
+      </View>
+      <Pressable onPress={() => onChange(Math.min(10, value + 1))} style={[s.stepButton, { backgroundColor: p.cardSolid, borderColor: p.cardLine }]} testID="analyzer-sectors-increase" accessibilityLabel="Increase sectors">
+        <Text style={[s.stepButtonText, { color: p.btn }]}>+</Text>
+      </Pressable>
+    </View>
+  </View>;
+}
+
 function ChoiceRow<T extends string>({ values, selected, onSelect, p, prefix }: { values: ReadonlyArray<readonly [T, string]>; selected: T; onSelect: (value: T) => void; p: CarrierPalette; prefix: string }) {
   return <View style={s.choices}>{values.map(([value, label]) => {
     const active = value === selected;
@@ -290,54 +379,94 @@ function ChoiceRow<T extends string>({ values, selected, onSelect, p, prefix }: 
   })}</View>;
 }
 
-function RuleContextFields({ input, onChange, p, inferred = false }: { input: DutyAnalyzerInput; onChange: (input: DutyAnalyzerInput) => void; p: CarrierPalette; inferred?: boolean }) {
+function RuleContextFields({ input, onChange, p, inferred = false, compact = false }: { input: DutyAnalyzerInput; onChange: (input: DutyAnalyzerInput) => void; p: CarrierPalette; inferred?: boolean; compact?: boolean }) {
   const set = <K extends keyof DutyAnalyzerInput>(key: K, value: DutyAnalyzerInput[K]) => onChange({ ...input, [key]: value });
-  return <>
+  return <View style={compact ? s.ruleContextCompact : undefined} testID={compact ? 'analyzer-rule-context-compact' : undefined}>
     {!inferred ? <View style={s.choiceGroup}>
       <Text style={[s.fieldLabel, { color: p.cardInk }]}>Crew category</Text>
       <ChoiceRow values={[["flight-deck", "Flight deck"], ["cabin", "Cabin crew"]]} selected={input.crewCategory} onSelect={value => set('crewCategory', value)} p={p} prefix="category" />
     </View> : null}
-    <View style={s.choiceGroup}>
-      <Text style={[s.fieldLabel, { color: p.cardInk }]}>Acclimatisation</Text>
+    <View style={compact ? s.ruleChoiceInline : s.choiceGroup}>
+      <Text style={[s.fieldLabel, compact && s.ruleChoiceLabel, { color: p.cardInk }]}>Acclimatisation</Text>
       <ChoiceRow values={[["acclimatised", "Acclimatised"], ["unknown", "Unknown"]]} selected={input.acclimatisation} onSelect={value => set('acclimatisation', value)} p={p} prefix="acclimatisation" />
     </View>
-    <View style={s.choiceGroup} testID="analyzer-composition">
-      <Text style={[s.fieldLabel, { color: p.cardInk }]}>Crew composition</Text>
-      <Text style={[s.help, { color: p.cardSoft }]}>Basic already means two pilots.</Text>
-      <ChoiceRow values={[["basic", "Basic"], ["3P", "3 pilots"], ["4P", "4 pilots"]]} selected={input.composition === '2P' ? 'basic' : input.composition} onSelect={value => set('composition', value)} p={p} prefix="composition" />
+    <View style={compact ? s.ruleChoiceInline : s.choiceGroup} testID="analyzer-composition">
+      <View style={compact ? s.ruleChoiceLabel : undefined}>
+        <Text style={[s.fieldLabel, { color: p.cardInk }]}>Crew composition</Text>
+        {!compact ? <Text style={[s.help, { color: p.cardSoft }]}>Basic already means two pilots.</Text> : null}
+      </View>
+      <ChoiceRow values={[["basic", "Basic"], ["3P", "3 pilots"], ["4P", "4 pilots"]]} selected={input.composition === '2P' ? 'basic' : input.composition} onSelect={composition => onChange({
+        ...input,
+        composition,
+        restFacility: composition === '3P' || composition === '4P'
+          ? input.restFacility ?? 2
+          : input.restFacility,
+      })} p={p} prefix="composition" />
     </View>
-    {input.composition === '3P' || input.composition === '4P' ? <View style={s.choiceGroup}>
-      <Text style={[s.fieldLabel, { color: p.cardInk }]}>Rest facility</Text>
+    {input.composition === '3P' || input.composition === '4P' ? <View style={compact ? s.ruleChoiceInline : s.choiceGroup}>
+      <Text style={[s.fieldLabel, compact && s.ruleChoiceLabel, { color: p.cardInk }]}>Rest facility</Text>
       <ChoiceRow values={[["1", "Class 1"], ["2", "Class 2"], ["3", "Class 3"]]} selected={String(input.restFacility ?? 2)} onSelect={value => set('restFacility', Number(value) as 1 | 2 | 3)} p={p} prefix="facility" />
-    </View> : <Text style={[s.facilityNote, { color: p.cardSoft }]}>Rest facility is not required for Basic composition.</Text>}
+    </View> : !compact ? <Text style={[s.facilityNote, { color: p.cardSoft }]}>Rest facility is not required for Basic composition.</Text> : null}
     {!inferred ? <View style={s.choiceGroup}>
       <Text style={[s.fieldLabel, { color: p.cardInk }]}>Post-duty rest location</Text>
       <ChoiceRow values={[["home", "Home base"], ["away", "Away from base"]]} selected={input.atHomeBase ? 'home' : 'away'} onSelect={value => set('atHomeBase', value === 'home')} p={p} prefix="rest-location" />
     </View> : null}
     {!inferred && !input.atHomeBase ? <Field label="Time-zone difference" value={input.timezoneDifferenceHours} onChange={value => set('timezoneDifferenceHours', value)} suffix="hours" p={p} testID="analyzer-timezone" /> : null}
     {input.acclimatisation === 'unknown' ? <Field label="Prior off-duty period" value={input.restBeforeMinutes ?? 0} onChange={value => set('restBeforeMinutes', value)} suffix="min" p={p} testID="analyzer-odp-before" /> : null}
-    <Pressable onPress={() => set('useDiscretion', !input.useDiscretion)} style={s.toggle} testID="analyzer-discretion" accessibilityState={{ checked: input.useDiscretion }}>
+    <Pressable onPress={() => set('useDiscretion', !input.useDiscretion)} style={[s.toggle, compact && s.toggleCompact]} testID="analyzer-discretion" accessibilityState={{ checked: input.useDiscretion }}>
       <Icon name={input.useDiscretion ? 'check' : 'close'} size={19} color={p.btn} />
       <Text style={[s.fieldLabel, { color: p.cardInk }]}>Apply commander discretion</Text>
     </Pressable>
-  </>;
+  </View>;
+}
+
+function NewDutyProjection({ timing, p }: { timing: NewDutyTiming; p: CarrierPalette }) {
+  const latest = timing.latestChockOnMinuteOfDay == null
+    ? 'Needs input'
+    : `${clockValue(timing.latestChockOnMinuteOfDay)}${timing.latestChockOnDayOffset ? ' +1 day' : ''}`;
+  return <View style={[s.projection, { backgroundColor: p.cardInset, borderColor: p.cardLine }]} testID="analyzer-new-duty-projection">
+    <View style={s.projectionIcon}><Icon name="clock" size={20} color={p.btn} /></View>
+    <View style={s.projectionMetric}>
+      <Text style={[s.metricLabel, { color: p.cardSoft }]}>MAX FDP</Text>
+      <Text style={[s.projectionValue, { color: p.cardInk }]}>{formatDuration(timing.maximumFdpMinutes)}</Text>
+    </View>
+    <View style={s.projectionMetric}>
+      <Text style={[s.metricLabel, { color: p.cardSoft }]}>LATEST CHOCK-ON</Text>
+      <Text style={[s.projectionValue, { color: p.cardInk }]}>{latest}</Text>
+    </View>
+  </View>;
 }
 
 function ScenarioForm({ input, onChange, p }: { input: DutyAnalyzerInput; onChange: (input: DutyAnalyzerInput) => void; p: CarrierPalette }) {
   const set = <K extends keyof DutyAnalyzerInput>(key: K, value: DutyAnalyzerInput[K]) => onChange({ ...input, [key]: value });
   return <Panel p={p} testID="analyzer-new-form">
     <PanelHeading title="Duty facts" p={p} />
-    <View style={s.fieldGrid}>
-      <ClockField label="Report time" value={input.reportMinuteOfDay} onChange={value => set('reportMinuteOfDay', value)} p={p} testID="analyzer-report" />
-      <Field label="Sectors" value={input.sectors} onChange={value => set('sectors', Math.max(1, value))} suffix="legs" p={p} testID="analyzer-sectors" />
-      <Field label="FDP" value={input.fdpMinutes ?? 0} onChange={value => set('fdpMinutes', value)} suffix="min" p={p} testID="analyzer-fdp" />
-      <Field label="DP" value={input.dpMinutes ?? 0} onChange={value => set('dpMinutes', value)} suffix="min" p={p} testID="analyzer-dp" />
-      <Field label="Block" value={input.blockMinutes ?? 0} onChange={value => set('blockMinutes', value)} suffix="min" p={p} testID="analyzer-block" />
-      <Field label="Rest before" value={input.restBeforeMinutes ?? 0} onChange={value => set('restBeforeMinutes', value)} suffix="min" p={p} testID="analyzer-rest-before" />
-      <Field label="Rest after" value={input.restAfterMinutes ?? 0} onChange={value => set('restAfterMinutes', value)} suffix="min" p={p} testID="analyzer-rest" />
-      <Field label="Split break" value={input.splitBreakMinutes} onChange={value => set('splitBreakMinutes', value)} suffix="min" p={p} testID="analyzer-split" />
+    <View style={s.compactFormSection}>
+      <View style={s.fieldGrid}>
+        <ClockField label="Reporting time" value={input.reportMinuteOfDay} onChange={value => set('reportMinuteOfDay', value)} p={p} testID="analyzer-report" />
+        <OptionalClockField label="Latest chock-on" value={input.latestChockOnMinuteOfDay ?? null} onChange={value => set('latestChockOnMinuteOfDay', value)} p={p} testID="analyzer-chock-on" />
+      </View>
+      <Text numberOfLines={1} style={[s.compactHelp, { color: p.cardSoft }]}>Empty chock-on projects the legal latest time.</Text>
     </View>
-    <RuleContextFields input={input} onChange={onChange} p={p} />
+    <View style={[s.compactFormSection, { borderTopColor: p.cardLine }]}>
+      <SectorStepper value={input.sectors} onChange={value => set('sectors', value)} p={p} />
+      <View style={s.factChoiceRow} testID="analyzer-composition">
+        <Text style={[s.fieldLabel, { color: p.cardInk }]}>Crew</Text>
+        <ChoiceRow values={[["basic", "Basic"], ["3P", "3P"], ["4P", "4P"]]} selected={input.composition === '2P' ? 'basic' : input.composition} onSelect={composition => onChange({
+          ...input,
+          composition,
+          restFacility: composition === '3P' || composition === '4P' ? input.restFacility ?? 2 : null,
+        })} p={p} prefix="composition" />
+      </View>
+      {input.composition === '3P' || input.composition === '4P' ? <View style={s.choiceGroup}>
+        <Text style={[s.fieldLabel, { color: p.cardInk }]}>Rest facility</Text>
+        <ChoiceRow values={[["1", "Class 1"], ["2", "Class 2"], ["3", "Class 3"]]} selected={String(input.restFacility ?? 2)} onSelect={value => set('restFacility', Number(value) as 1 | 2 | 3)} p={p} prefix="facility" />
+      </View> : null}
+      <View style={s.factChoiceRow}>
+        <Text style={[s.fieldLabel, { color: p.cardInk }]}>Duty ends</Text>
+        <ChoiceRow values={[["home", "Home"], ["away", "Away"]]} selected={input.atHomeBase ? 'home' : 'away'} onSelect={value => set('atHomeBase', value === 'home')} p={p} prefix="rest-location" />
+      </View>
+    </View>
   </Panel>;
 }
 
@@ -346,6 +475,7 @@ function TimeStepper({
   airport,
   iso,
   disabled = false,
+  compact = false,
   onChange,
   onInvalidLocalTime,
   p,
@@ -356,6 +486,7 @@ function TimeStepper({
   airport: string;
   iso: string;
   disabled?: boolean;
+  compact?: boolean;
   onChange: (iso: string) => void;
   onInvalidLocalTime: () => void;
   p: CarrierPalette;
@@ -375,14 +506,14 @@ function TimeStepper({
     onChange(next);
   };
   const delta = baseline ? minutesBetween(baseline, iso) : 0;
-  return <View style={s.timeField}>
-    <Text style={[s.fieldLabel, { color: p.cardInk }]}>{label} · {airport} · {localDate(iso, airport)}</Text>
-    <View style={s.timeControl}>
-      <Pressable disabled={disabled} onPress={() => onChange(addUtcMinutes(iso, -5))} style={[s.timeStep, { backgroundColor: disabled ? p.cardInset : p.cardSolid, borderColor: p.cardLine }]} testID={`${testID}-earlier`} accessibilityLabel={`Move ${label} 5 minutes earlier`}>
+  return <View style={[s.timeField, compact && s.timeFieldCompact]} testID={`${testID}-field`}>
+    <Text style={[s.fieldLabel, compact && s.timeFieldLabelCompact, { color: p.cardInk }]}>{label} · {airport} · {localDate(iso, airport)}</Text>
+    <View style={[s.timeControl, compact && s.timeControlCompact]}>
+      <Pressable disabled={disabled} onPress={() => onChange(addUtcMinutes(iso, -5))} style={[s.timeStep, compact && s.timeStepCompact, { backgroundColor: disabled ? p.cardInset : p.cardSolid, borderColor: p.cardLine }]} testID={`${testID}-earlier`} accessibilityLabel={`Move ${label} 5 minutes earlier`}>
         <Text style={[s.timeStepText, { color: disabled ? p.cardSoft : p.btn }]}>−5</Text>
       </Pressable>
-      <TextInput editable={!disabled} value={draft} onChangeText={setDraft} onBlur={commit} maxLength={5} keyboardType="numbers-and-punctuation" style={[s.timeInput, { color: disabled ? p.cardSoft : p.cardInk, backgroundColor: p.cardInset, borderColor: p.cardLine }]} testID={testID} accessibilityLabel={label} />
-      <Pressable disabled={disabled} onPress={() => onChange(addUtcMinutes(iso, 5))} style={[s.timeStep, { backgroundColor: disabled ? p.cardInset : p.cardSolid, borderColor: p.cardLine }]} testID={`${testID}-later`} accessibilityLabel={`Move ${label} 5 minutes later`}>
+      <TextInput editable={!disabled} value={draft} onChangeText={setDraft} onBlur={commit} maxLength={5} keyboardType="numbers-and-punctuation" style={[s.timeInput, compact && s.timeInputCompact, { color: disabled ? p.cardSoft : p.cardInk, backgroundColor: p.cardInset, borderColor: p.cardLine }]} testID={testID} accessibilityLabel={label} />
+      <Pressable disabled={disabled} onPress={() => onChange(addUtcMinutes(iso, 5))} style={[s.timeStep, compact && s.timeStepCompact, { backgroundColor: disabled ? p.cardInset : p.cardSolid, borderColor: p.cardLine }]} testID={`${testID}-later`} accessibilityLabel={`Move ${label} 5 minutes later`}>
         <Text style={[s.timeStepText, { color: disabled ? p.cardSoft : p.btn }]}>+5</Text>
       </Pressable>
     </View>
@@ -391,8 +522,8 @@ function TimeStepper({
   </View>;
 }
 
-function SegmentCard({ segment, index, selected, onSelect, onEdit, onInvalidLocalTime, p }: { segment: AnalyzerRosterSegment; index: number; selected: boolean; onSelect: () => void; onEdit: (edit: { departureUtc?: string; arrivalUtc?: string }) => void; onInvalidLocalTime: () => void; p: CarrierPalette }) {
-  return <View style={[s.segment, { backgroundColor: p.cardInset, borderColor: selected ? p.btn : p.cardLine }]} testID={`analyzer-segment-${segment.id}`}>
+function SegmentCard({ segment, index, selected, onSelect, onEdit, onInvalidLocalTime, p, compact = false }: { segment: AnalyzerRosterSegment; index: number; selected: boolean; onSelect: () => void; onEdit: (edit: { departureUtc?: string; arrivalUtc?: string }) => void; onInvalidLocalTime: () => void; p: CarrierPalette; compact?: boolean }) {
+  return <View style={[s.segment, compact && s.segmentCompact, { backgroundColor: p.cardInset, borderColor: selected ? p.btn : p.cardLine }]} testID={`analyzer-segment-${segment.id}`}>
     <View style={s.segmentHead}>
       <View style={s.segmentIdent}>
         <View style={[s.segmentIndex, { backgroundColor: p.btn }]}><Text style={s.segmentIndexText}>{index + 1}</Text></View>
@@ -406,9 +537,9 @@ function SegmentCard({ segment, index, selected, onSelect, onEdit, onInvalidLoca
         <Text style={[s.selectText, { color: selected ? p.btn : p.cardInk }]}>{selected ? 'Selected' : 'Select'}</Text>
       </Pressable>
     </View>
-    <View style={s.timeGrid}>
-      <TimeStepper label="Departure" airport={segment.from} iso={segment.departureUtc} onChange={departureUtc => onEdit({ departureUtc })} onInvalidLocalTime={onInvalidLocalTime} p={p} testID={`analyzer-segment-dep-${segment.id}`} baseline={segment.publishedDepartureUtc} />
-      <TimeStepper label="Arrival" airport={segment.to} iso={segment.arrivalUtc} onChange={arrivalUtc => onEdit({ arrivalUtc })} onInvalidLocalTime={onInvalidLocalTime} p={p} testID={`analyzer-segment-arr-${segment.id}`} baseline={segment.publishedArrivalUtc} />
+    <View style={[s.timeGrid, compact && s.timeGridCompact]} testID={compact ? `analyzer-segment-times-compact-${segment.id}` : undefined}>
+      <TimeStepper label="Departure" airport={segment.from} iso={segment.departureUtc} compact={compact} onChange={departureUtc => onEdit({ departureUtc })} onInvalidLocalTime={onInvalidLocalTime} p={p} testID={`analyzer-segment-dep-${segment.id}`} baseline={segment.publishedDepartureUtc} />
+      <TimeStepper label="Arrival" airport={segment.to} iso={segment.arrivalUtc} compact={compact} onChange={arrivalUtc => onEdit({ arrivalUtc })} onInvalidLocalTime={onInvalidLocalTime} p={p} testID={`analyzer-segment-arr-${segment.id}`} baseline={segment.publishedArrivalUtc} />
     </View>
   </View>;
 }
@@ -563,6 +694,8 @@ export function DutyAnalyzerScreen(): React.JSX.Element {
   const p = useCarrier();
   const nav = useV2Nav();
   const layout = useLayout();
+  const insets = useSafeAreaInsets();
+  const duoWide = layout.wide && duoActionStripWidth(layout.width, layout.height, insets.right) > 0;
   const trips = useAppSelector(state => state.trips.trips);
   const airline = useAppSelector(state => state.auth.airline);
   const crewId = useAppSelector(state => state.auth.crewId);
@@ -579,8 +712,9 @@ export function DutyAnalyzerScreen(): React.JSX.Element {
   const [shiftMinutes, setShiftMinutes] = React.useState('60');
   const [shiftLater, setShiftLater] = React.useState(true);
   const [diversion, setDiversion] = React.useState({ airport: 'CRK', arrival: '', departure: '', recoveryArrival: '' });
-  const [input, setInput] = React.useState<DutyAnalyzerInput>(NEW_DUTY);
-  const [rosterContext, setRosterContext] = React.useState<DutyAnalyzerInput>(NEW_DUTY);
+  const [input, setInput] = React.useState<DutyAnalyzerInput>(() => newDutyInput());
+  const [newDutyResetKey, setNewDutyResetKey] = React.useState(0);
+  const [rosterContext, setRosterContext] = React.useState<DutyAnalyzerInput>(ROSTER_CONTEXT);
   const [saved, setSaved] = React.useState<SavedDutyScenario[]>([]);
   const [editingScenarioId, setEditingScenarioId] = React.useState<string | null>(null);
   const [dialog, setDialog] = React.useState<'saved' | 'delete' | 'storage-error' | 'invalid-diversion' | 'invalid-local-time' | null>(null);
@@ -610,8 +744,19 @@ export function DutyAnalyzerScreen(): React.JSX.Element {
       atHomeBase: !!base && finalDestination === base,
     };
   }, [base, rosterContext, timeline]);
-  const activeInput = timeline ? timelineInput(timeline, inferredContext) : input;
-  const result = React.useMemo(() => evaluateDuty(activeInput), [activeInput]);
+  const timing = React.useMemo(() => newDutyTiming(input), [input]);
+  const calculatedInput = React.useMemo((): DutyAnalyzerInput => input.latestChockOnMinuteOfDay === undefined
+    ? input
+    : input.latestChockOnMinuteOfDay === null
+      ? { ...input, fdpMinutes: null, dpMinutes: null }
+      : { ...input, fdpMinutes: timing.actualFdpMinutes, dpMinutes: timing.actualFdpMinutes }, [input, timing.actualFdpMinutes]);
+  const activeInput = timeline ? timelineInput(timeline, inferredContext) : calculatedInput;
+  const result = React.useMemo(() => {
+    const evaluated = evaluateDuty(activeInput);
+    return !timeline && input.latestChockOnMinuteOfDay === null
+      ? { ...evaluated, status: 'not-evaluated' as const, headline: 'Enter chock-on for actual FDP' }
+      : evaluated;
+  }, [activeInput, input.latestChockOnMinuteOfDay, timeline]);
   const baselineResult = React.useMemo(() => selectedDuty
     ? evaluateDuty(rosterInput(selectedDuty, 0, inferredContext))
     : null, [inferredContext, selectedDuty]);
@@ -632,6 +777,25 @@ export function DutyAnalyzerScreen(): React.JSX.Element {
     setTimeline(null);
     setSelectedSegmentId(null);
     setFlightAction(null);
+    setEditingScenarioId(null);
+  };
+
+  const resetWhatIf = () => {
+    if (!selectedDuty) return;
+    setTimeline(cloneDutyTimeline(selectedDuty));
+    setRosterContext(ROSTER_CONTEXT);
+    setSelectedSegmentId(null);
+    setFlightAction(null);
+    setShiftScope('segment');
+    setShiftMinutes('60');
+    setShiftLater(true);
+    setDiversion({ airport: 'CRK', arrival: '', departure: '', recoveryArrival: '' });
+    setEditingScenarioId(null);
+  };
+
+  const resetNewDuty = () => {
+    setInput(newDutyInput());
+    setNewDutyResetKey(value => value + 1);
     setEditingScenarioId(null);
   };
 
@@ -700,7 +864,7 @@ export function DutyAnalyzerScreen(): React.JSX.Element {
         sourceDuty: selectedDuty,
         delayMinutes: 0,
         timeline: timeline ?? undefined,
-        input: activeInput,
+        input: timeline ? activeInput : input,
         result,
       });
       setSaved(next);
@@ -748,33 +912,35 @@ export function DutyAnalyzerScreen(): React.JSX.Element {
   if (timeline && selectedDuty && baselineResult) {
     const editor = <View style={s.stack} testID="analyzer-editor-pane">
       <View style={s.contextChips}><Text style={[s.contextChip, { color: p.ink, backgroundColor: p.frost, borderColor: p.frostLine }]}>Flight deck · from sign-in</Text><Text style={[s.contextChip, { color: p.ink, backgroundColor: p.frost, borderColor: p.frostLine }]}>{activeInput.atHomeBase ? `Ends at home base · ${base}` : `Ends away from base · ${timeline.segments[timeline.segments.length - 1]?.to}`}</Text></View>
-      <Panel p={p} testID="analyzer-timeline">
-        <View style={s.panelHeadingRow}><PanelHeading title="Duty timeline" detail="Report first, followed by each flight segment in operating order." p={p} /><Text style={[s.localBadge, { color: p.ink, backgroundColor: p.frost }]}>Local copy</Text></View>
-        <View style={[s.reportCard, { backgroundColor: p.cardInset, borderColor: p.cardLine }]}>
+      <Panel p={p} testID="analyzer-timeline" compact={duoWide}>
+        <View style={s.panelHeadingRow}><PanelHeading title="Duty timeline" detail={duoWide ? undefined : "Report first, followed by each flight segment in operating order."} p={p} /><Text style={[s.localBadge, { color: p.ink, backgroundColor: p.frost }]}>Local copy</Text></View>
+        <View style={[s.reportCard, duoWide && s.reportCardCompact, { backgroundColor: p.cardInset, borderColor: p.cardLine }]}>
           <View style={s.reportHead}><View style={s.reportCopy}><Icon name="clock" size={22} color={p.btn} /><View><Text style={[s.segmentFlight, { color: p.cardInk }]}>Duty report time</Text><Text style={[s.help, { color: p.cardSoft }]}>{timeline.reportFrozen ? `Frozen at ${utcClock(timeline.reportUtc)}` : 'Editable · portal time is the reference'}</Text></View></View><View style={s.freeze}><Text style={[s.fieldLabel, { color: p.cardInk }]}>Freeze</Text><Switch value={timeline.reportFrozen} onValueChange={reportFrozen => setTimeline({ ...timeline, reportFrozen })} trackColor={{ false: p.cardLine, true: p.btn }} testID="analyzer-report-freeze" /></View></View>
-          <TimeStepper label="Report" airport={timeline.reportAirport} iso={timeline.reportUtc} disabled={timeline.reportFrozen} onChange={reportUtc => setTimeline({ ...timeline, reportUtc })} onInvalidLocalTime={() => setDialog('invalid-local-time')} p={p} testID="analyzer-report-time" baseline={timeline.publishedBaseline.reportUtc} />
+          <TimeStepper label="Report" airport={timeline.reportAirport} iso={timeline.reportUtc} disabled={timeline.reportFrozen} compact={duoWide} onChange={reportUtc => setTimeline({ ...timeline, reportUtc })} onInvalidLocalTime={() => setDialog('invalid-local-time')} p={p} testID="analyzer-report-time" baseline={timeline.publishedBaseline.reportUtc} />
         </View>
-        <View style={s.segmentList}>{timeline.segments.map((segment, index) => <SegmentCard key={segment.id} segment={segment} index={index} selected={selectedSegmentId === segment.id} onSelect={() => selectSegment(segment)} onEdit={edit => setTimeline(editSegmentTimes(timeline, segment.id, edit))} onInvalidLocalTime={() => setDialog('invalid-local-time')} p={p} />)}</View>
+        <View style={s.segmentList}>{timeline.segments.map((segment, index) => <SegmentCard key={segment.id} segment={segment} index={index} selected={selectedSegmentId === segment.id} onSelect={() => selectSegment(segment)} onEdit={edit => setTimeline(editSegmentTimes(timeline, segment.id, edit))} onInvalidLocalTime={() => setDialog('invalid-local-time')} p={p} compact={duoWide} />)}</View>
       </Panel>
       {selectedSegment ? <FlightActions timeline={timeline} segment={selectedSegment} action={flightAction} scope={shiftScope} shiftMinutes={shiftMinutes} shiftLater={shiftLater} diversion={diversion} onAction={chooseAction} onScope={setShiftScope} onShiftMinutes={setShiftMinutes} onShiftLater={() => setShiftLater(value => !value)} onApplyShift={applyShift} onDiversion={setDiversion} onApplyDiversion={applyDiversion} onCancel={() => { setSelectedSegmentId(null); setFlightAction(null); }} p={p} /> : null}
-      <Panel p={p}><RuleContextFields input={inferredContext} onChange={setRosterContext} p={p} inferred /></Panel>
+      <Panel p={p} compact={duoWide}><RuleContextFields input={inferredContext} onChange={setRosterContext} p={p} inferred compact={duoWide} /></Panel>
     </View>;
-    const summary = <View style={s.stack} testID="analyzer-summary-pane"><MetricCard result={result} baseline={baselineResult} p={p} onOpenReference={openReference} /><ChangeLog timeline={timeline} result={result} baseline={baselineResult} p={p} /><View style={s.saveActions}><Pressable onPress={() => setTimeline(cloneDutyTimeline(selectedDuty))} style={[s.resetButton, { borderColor: p.cardLine, backgroundColor: p.cardSolid }]} testID="analyzer-reset"><Text style={[s.choiceText, { color: p.cardInk }]}>Reset</Text></Pressable><PrimaryButton label="Save scenario" onPress={() => void saveCurrent()} palette={p} testID="analyzer-save" style={s.saveButton} /></View>{advisory}</View>;
+    const contentActions = <View style={s.saveActions} testID="analyzer-content-actions"><Pressable onPress={resetWhatIf} style={[s.resetButton, { borderColor: p.cardLine, backgroundColor: p.cardSolid }]} testID="analyzer-reset"><Text style={[s.choiceText, { color: p.cardInk }]}>Reset</Text></Pressable><PrimaryButton label="Save scenario" onPress={() => void saveCurrent()} palette={p} testID="analyzer-save" style={s.saveButton} /></View>;
+    const summary = <View style={s.stack} testID="analyzer-summary-pane"><MetricCard result={result} baseline={baselineResult} p={p} onOpenReference={openReference} /><ChangeLog timeline={timeline} result={result} baseline={baselineResult} p={p} />{!duoWide ? contentActions : null}{advisory}</View>;
     body = layout.wide
-      ? <View style={s.whatIfColumns} testID="analyzer-columns"><ScrollView style={s.editorPane} contentContainerStyle={s.paneContent} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets testID="analyzer-editor-scroll">{editor}</ScrollView><ScrollView style={s.summaryPane} contentContainerStyle={s.paneContent} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets testID="analyzer-summary-scroll">{summary}</ScrollView></View>
+      ? <View style={s.whatIfColumns} testID="analyzer-columns"><ScrollView style={s.editorPane} contentContainerStyle={s.paneContent} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets testID="analyzer-editor-scroll">{editor}</ScrollView><ScrollView style={s.summaryPane} contentContainerStyle={s.paneContent} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets testID="analyzer-summary-scroll">{summary}</ScrollView>{duoWide ? <AnalyzerActionRail p={p} onReset={resetWhatIf} onSave={() => void saveCurrent()} width={duoActionStripWidth(layout.width, layout.height, insets.right)} /> : null}</View>
       : <ScrollView contentContainerStyle={[s.screenContent, layout.tall && s.tallContent]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets testID="analyzer-single-column">{editor}{summary}</ScrollView>;
   } else {
     let main: React.ReactNode;
     let side: React.ReactNode = null;
     if (mode === 'roster') main = <RosterList pairings={pairings} onSelect={openDuty} p={p} />;
     else if (mode === 'new') {
-      main = <ScenarioForm input={input} onChange={setInput} p={p} />;
-      side = <View style={s.stack}><MetricCard result={result} p={p} onOpenReference={openReference} /><PrimaryButton label="Save scenario" onPress={() => void saveCurrent()} palette={p} testID="analyzer-save" /></View>;
-    } else main = <View style={s.stack} testID="analyzer-saved-list">{saved.length === 0 ? <View style={[s.empty, { backgroundColor: p.frost }]}><Icon name="history" size={28} color={p.inkSoft} /><Text style={[s.emptyTitle, { color: p.ink }]}>No saved scenarios</Text><Text style={[s.emptyText, { color: p.inkSoft }]}>Save a roster what-if or a new duty to revisit it here.</Text></View> : saved.map(scenario => <View key={scenario.id} style={[s.saved, { backgroundColor: p.card, borderColor: p.cardLine }]} testID={`analyzer-saved-${scenario.id}`}><Pressable onPress={() => restore(scenario)} style={s.savedMain}><Text style={[s.route, { color: p.cardInk }]}>{scenario.name}</Text><Text style={[s.source, { color: p.cardSoft }]}>{scenario.kind === 'roster-what-if' ? 'Roster what-if' : 'New duty'} · {scenario.result.headline}</Text></Pressable><Pressable onPress={() => { setPendingDelete(scenario.id); setDialog('delete'); }} accessibilityLabel={`Delete ${scenario.name}`} testID={`analyzer-delete-${scenario.id}`} style={s.delete}><Icon name="close" size={17} color={p.crit} /></Pressable></View>)}</View>;
-    body = <ScrollView contentContainerStyle={[s.screenContent, (layout.wide || layout.tall) && !side && s.tallContent]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets><ModeTabs mode={mode} onChange={value => { closeWhatIf(); setMode(value); setEditingScenarioId(null); }} p={p} />{layout.wide && side ? <View style={s.basicColumns} testID="analyzer-columns"><View style={s.editorColumn}>{main}</View><View style={s.summaryColumn}>{side}</View></View> : <View style={s.stack}>{main}{side}</View>}{advisory}</ScrollView>;
+      main = <ScenarioForm key={newDutyResetKey} input={input} onChange={setInput} p={p} />;
+      const newDutyActions = <View style={s.saveActions} testID="analyzer-content-actions"><Pressable onPress={resetNewDuty} style={[s.resetButton, { borderColor: p.cardLine, backgroundColor: p.cardSolid }]} testID="analyzer-reset"><Text style={[s.choiceText, { color: p.cardInk }]}>Reset</Text></Pressable><PrimaryButton label="Save scenario" onPress={() => void saveCurrent()} palette={p} testID="analyzer-save" style={s.saveButton} /></View>;
+      side = <View style={s.stack}><NewDutyProjection timing={timing} p={p} /><MetricCard result={result} p={p} onOpenReference={openReference} unavailableLabel="Awaiting last chock-on time" derivedRestMinutes={timing.requiredRestMinutes} hiddenMetrics={['block']} />{!duoWide ? newDutyActions : null}</View>;
+    } else main = <View style={s.stack} testID="analyzer-saved-list">{saved.length === 0 ? <View style={[s.empty, { backgroundColor: p.frost }]}><Icon name="history" size={28} color={p.inkSoft} /><Text style={[s.emptyTitle, { color: p.ink }]}>No saved scenarios</Text><Text style={[s.emptyText, { color: p.inkSoft }]}>Save a roster what-if or a new duty to revisit it here.</Text></View> : saved.map(scenario => <View key={scenario.id} style={[s.saved, { backgroundColor: p.card, borderColor: p.cardLine }]}><Pressable onPress={() => restore(scenario)} style={s.savedMain} testID={`analyzer-saved-${scenario.id}`} accessibilityLabel={`Open ${scenario.name}`}><Text style={[s.route, { color: p.cardInk }]}>{scenario.name}</Text><Text style={[s.source, { color: p.cardSoft }]}>{scenario.kind === 'roster-what-if' ? 'Roster what-if' : 'New duty'} · {scenario.result.headline}</Text></Pressable><Pressable onPress={() => { setPendingDelete(scenario.id); setDialog('delete'); }} accessibilityLabel={`Delete ${scenario.name}`} testID={`analyzer-delete-${scenario.id}`} style={s.delete}><Icon name="close" size={17} color={p.crit} /></Pressable></View>)}</View>;
+    body = <View style={s.flex}><ScrollView contentContainerStyle={[s.screenContent, (layout.wide || layout.tall) && !side && s.tallContent]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets testID="analyzer-basic-scroll"><ModeTabs mode={mode} onChange={value => { closeWhatIf(); setMode(value); setEditingScenarioId(null); }} p={p} />{layout.wide && side ? <View style={s.basicColumns} testID="analyzer-columns"><View style={s.editorColumn} testID="analyzer-new-duty-editor-column">{main}</View><View style={s.summaryColumn} testID="analyzer-new-duty-summary-column">{side}</View></View> : <View style={s.stack}>{main}{side}</View>}{advisory}</ScrollView>{mode === 'new' && duoWide ? <AnalyzerActionRail p={p} onReset={resetNewDuty} onSave={() => void saveCurrent()} width={duoActionStripWidth(layout.width, layout.height, insets.right)} /> : null}</View>;
   }
 
-  return <PageShell title={timeline ? 'Duty What-if' : 'Duty Analyzer'} testID="duty-analyzer" layout="full" scroll={false} onBack={timeline ? closeWhatIf : undefined} right={timeline ? <Pressable onPress={() => selectedDuty && setTimeline(cloneDutyTimeline(selectedDuty))} accessibilityLabel="Reset scenario" testID="analyzer-reset-top"><Icon name="history" size={22} color={p.ink} /></Pressable> : undefined}>
+  return <PageShell title={timeline ? 'Duty What-if' : 'Duty Analyzer'} testID="duty-analyzer" layout="full" scroll={false} onBack={timeline ? closeWhatIf : undefined} right={timeline && !duoWide ? <Pressable onPress={resetWhatIf} accessibilityLabel="Reset scenario" testID="analyzer-reset-top"><Icon name="history" size={22} color={p.ink} /></Pressable> : undefined}>
     {body}
     <AppDialog visible={dialog === 'saved'} onClose={() => setDialog(null)} title="Scenario saved" message="This scenario is stored locally for this crew account." tone="success" icon="check" confirmLabel="Done" onConfirm={() => setDialog(null)} testID="analyzer-saved-dialog" />
     <AppDialog visible={dialog === 'delete'} onClose={() => setDialog(null)} title="Delete scenario?" message="This removes only the local what-if. Your airline roster is unchanged." tone="destructive" icon="warning" cancelLabel="Keep" confirmLabel="Delete" onConfirm={() => void confirmDelete()} testID="analyzer-delete-dialog" />
@@ -790,20 +956,27 @@ const s = StyleSheet.create({
   screenContent: { paddingHorizontal: 22, paddingTop: 6, paddingBottom: 64, gap: space.md12 },
   tallContent: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   whatIfColumns: { flex: 1, flexDirection: 'row', gap: space.lg16, paddingHorizontal: 22, paddingTop: 6 },
+  actionRailEdge: { position: 'absolute', top: 58, alignItems: 'center' },
+  actionRail: { width: 64, borderWidth: 1, borderRadius: radius.pill, paddingVertical: space.xs4, alignItems: 'center' },
+  actionRailButton: { width: 56, minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: space.xs4 },
+  actionRailLabel: { ...font.caption },
+  actionRailDivider: { width: 36, height: StyleSheet.hairlineWidth },
   editorPane: { flex: 1.6, minWidth: 0 },
   summaryPane: { flex: 0.86, minWidth: 0 },
   paneContent: { paddingBottom: 64 },
   basicColumns: { flexDirection: 'row', alignItems: 'flex-start', gap: space.lg16 },
-  editorColumn: { flex: 1.6, minWidth: 0 },
-  summaryColumn: { flex: 0.86, minWidth: 0 },
+  editorColumn: { flex: 1, minWidth: 0 },
+  summaryColumn: { flex: 1, minWidth: 0 },
   tabs: { flexDirection: 'row', padding: space.xs4, borderRadius: radius.lg },
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, borderWidth: 1, borderColor: 'transparent' },
   tabText: { ...font.sub, fontWeight: '700' },
   panel: { borderWidth: 1, borderRadius: radius.lg, padding: space.lg16 },
+  panelCompact: { padding: space.md12 },
   panelHeading: { gap: 2, flexShrink: 1 },
   panelHeadingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: space.md12 },
   sectionTitle: { ...font.title },
   help: { ...font.sub, lineHeight: 18 },
+  compactHelp: { ...font.caption },
   localBadge: { ...font.caption, borderRadius: radius.pill, paddingHorizontal: space.sm8, paddingVertical: space.xs4, overflow: 'hidden' },
   contextChips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm8 },
   contextChip: { ...font.caption, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.md12, paddingVertical: space.sm8, overflow: 'hidden' },
@@ -834,6 +1007,7 @@ const s = StyleSheet.create({
   metricMiddle: { flex: 1, minWidth: 0 },
   metricValues: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: space.sm8 },
   metricValue: { ...font.h2, fontVariant: ['tabular-nums'] },
+  metricUnavailable: { ...font.bodyStrong },
   metricMinutes: { ...font.sub, fontVariant: ['tabular-nums'] },
   metricBaseline: { ...font.caption, textDecorationLine: 'line-through', fontVariant: ['tabular-nums'] },
   metricLimit: { ...font.caption, marginTop: 2 },
@@ -845,24 +1019,44 @@ const s = StyleSheet.create({
   referenceButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.xs4, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.md12 },
   referenceButtonText: { ...font.caption },
   explainText: { ...font.sub, lineHeight: 18 },
-  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md12, marginTop: space.md12 },
+  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md12 },
+  formSection: { gap: space.sm8, marginTop: space.lg16, paddingTop: space.lg16, borderTopWidth: StyleSheet.hairlineWidth },
+  compactFormSection: { gap: space.sm8, marginTop: space.md12, paddingTop: space.md12, borderTopWidth: StyleSheet.hairlineWidth },
+  formSectionTitle: { ...font.bodyStrong },
   field: { flexGrow: 1, flexBasis: 142, gap: space.xs4 },
+  sectorInline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md12 },
   fieldLabel: { ...font.sub, fontWeight: '700' },
   inputWrap: { minHeight: 48, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: radius.md, paddingHorizontal: space.md12 },
   input: { ...font.bodyStrong, flex: 1, paddingVertical: 0, fontVariant: ['tabular-nums'] },
   suffix: { ...font.caption },
-  choiceGroup: { marginTop: space.lg16, gap: space.sm8 },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: space.sm8 },
+  stepButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: radius.md },
+  stepButtonText: { ...font.h2 },
+  stepValue: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: radius.md },
+  stepValueText: { ...font.bodyStrong, fontVariant: ['tabular-nums'] },
+  projection: { minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: space.md12, borderWidth: 1, borderRadius: radius.md, padding: space.md12 },
+  projectionIcon: { width: 32, alignItems: 'center' },
+  projectionMetric: { flex: 1, minWidth: 0 },
+  projectionValue: { ...font.bodyStrong, marginTop: space.xs4, fontVariant: ['tabular-nums'] },
+  choiceGroup: { marginTop: space.sm8, gap: space.xs4 },
+  ruleContextCompact: { gap: space.sm8 },
+  ruleChoiceInline: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm8 },
+  ruleChoiceLabel: { flex: 1, minWidth: 0 },
+  factChoiceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md12 },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm8 },
-  choice: { minHeight: 48, borderWidth: 1, borderRadius: radius.pill, justifyContent: 'center', paddingHorizontal: space.md12 },
+  choice: { minHeight: 44, borderWidth: 1, borderRadius: radius.pill, justifyContent: 'center', paddingHorizontal: space.md12 },
   choiceText: { ...font.sub, fontWeight: '700' },
   toggle: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.sm8, marginTop: space.md12 },
+  toggleCompact: { minHeight: 44, marginTop: 0 },
   facilityNote: { ...font.sub, marginTop: space.md12 },
   reportCard: { borderWidth: 1, borderRadius: radius.md, padding: space.md12, marginTop: space.md12, gap: space.md12 },
+  reportCardCompact: { padding: space.sm8, marginTop: space.sm8, gap: space.sm8 },
   reportHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm8 },
   reportCopy: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: space.sm8 },
   freeze: { flexDirection: 'row', alignItems: 'center', gap: space.xs4 },
   segmentList: { gap: space.sm8, marginTop: space.sm8 },
   segment: { borderWidth: 1, borderRadius: radius.md, padding: space.md12 },
+  segmentCompact: { padding: space.sm8 },
   segmentHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.sm8 },
   segmentIdent: { flex: 1, minWidth: 0, flexDirection: 'row', gap: space.sm8 },
   segmentIndex: { width: 28, height: 28, borderRadius: radius.round, alignItems: 'center', justifyContent: 'center' },
@@ -873,11 +1067,17 @@ const s = StyleSheet.create({
   selectButton: { minHeight: 48, borderWidth: 1, borderRadius: radius.pill, justifyContent: 'center', paddingHorizontal: space.md12 },
   selectText: { ...font.sub, fontWeight: '700' },
   timeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md12, marginTop: space.md12 },
+  timeGridCompact: { flexWrap: 'nowrap', gap: space.sm8, marginTop: space.sm8 },
   timeField: { flex: 1, minWidth: 210, gap: space.xs4 },
+  timeFieldCompact: { minWidth: 0 },
+  timeFieldLabelCompact: { minHeight: 40 },
   timeControl: { flexDirection: 'row', gap: space.sm8 },
+  timeControlCompact: { gap: space.xs4 },
   timeStep: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: radius.md },
+  timeStepCompact: { width: 44, height: 44 },
   timeStepText: { ...font.bodyStrong },
   timeInput: { ...font.bodyStrong, minWidth: 88, flex: 1, height: 52, borderWidth: 1, borderRadius: radius.md, textAlign: 'center', paddingVertical: 0, fontVariant: ['tabular-nums'] },
+  timeInputCompact: { minWidth: 68, height: 44 },
   originalLine: { ...font.caption, fontVariant: ['tabular-nums'] },
   liveUtcLine: { ...font.caption, fontVariant: ['tabular-nums'] },
   actionChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm8, marginTop: space.md12 },

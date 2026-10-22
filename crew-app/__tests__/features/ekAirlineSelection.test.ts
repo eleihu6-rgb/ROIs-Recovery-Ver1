@@ -30,11 +30,12 @@ describe('EK airline selection', () => {
     expect(loginRouteForAirline('F8')).toBe('EkRoster');
   });
 
-  it('prefills the approved EK test credentials', () => {
-    // K1003 (Khalid Al Nuaimi) is a real Emirates crew, the default EK login.
-    expect(TEST_CREDENTIALS.EK).toEqual({crewId: 'K1003', password: 'Pier2026'});
-    expect(prefillForAirline('EK', '35459', '2026Pier')).toEqual({
-      crewId: 'K1003', password: 'Pier2026',
+  it('prefills only the approved EK test crew ID', () => {
+    // K1003 (Khalid Al Nuaimi) is a real Emirates crew; its password is injected
+    // by the local test runner and never shipped in the app bundle.
+    expect(TEST_CREDENTIALS.EK).toEqual({crewId: 'K1003', password: ''});
+    expect(prefillForAirline('EK', TEST_CREDENTIALS.TG.crewId, '')).toEqual({
+      crewId: 'K1003', password: '',
     });
   });
 
@@ -49,8 +50,10 @@ describe('EK airline selection', () => {
     expect(loginRouteForAirline('PR')).toBe('Capture');
     expect(airlineByCode('TG').portalKind).toBe('rois');
     expect(airlineByCode('PR').portalKind).toBe('rois');
-    expect(TEST_CREDENTIALS.TG).toEqual({crewId: '35459', password: '2026Pier'});
-    expect(TEST_CREDENTIALS.PR).toEqual({crewId: '433535', password: 'Pier2020'});
+    expect(airlineByCode('TG').portalConfig?.dutySwap).toBe(true);
+    expect(airlineByCode('PR').portalConfig?.dutySwap).toBe(true);
+    expect(TEST_CREDENTIALS.TG).toEqual({crewId: '35459', password: ''});
+    expect(TEST_CREDENTIALS.PR).toEqual({crewId: '433535', password: ''});
   });
 
   it('uses simulator localhost only as the explicit development fallback', () => {
@@ -80,5 +83,42 @@ describe('EK airline selection', () => {
     expect(appDelegate).toContain('registerDefaults:@{@"EKRosterApiBaseURL": ekRosterApiBaseURL}');
     expect(appDelegate).toContain('objectForInfoDictionaryKey:@"F8RosterApiBaseURL"');
     expect(appDelegate).toContain('registerDefaults:@{@"F8RosterApiBaseURL": f8RosterApiBaseURL}');
+  });
+
+  it('starts React Native from a dedicated iOS scene-owned window', () => {
+    const appDelegateHeader = fs.readFileSync(path.join(
+      __dirname,
+      '../../ios/RoyceTravelTemplate/AppDelegate.h',
+    ), 'utf8');
+    const appDelegate = fs.readFileSync(path.join(
+      __dirname,
+      '../../ios/RoyceTravelTemplate/AppDelegate.mm',
+    ), 'utf8');
+    const sceneDelegateHeader = fs.readFileSync(path.join(
+      __dirname,
+      '../../ios/RoyceTravelTemplate/SceneDelegate.h',
+    ), 'utf8');
+    const sceneDelegate = fs.readFileSync(path.join(
+      __dirname,
+      '../../ios/RoyceTravelTemplate/SceneDelegate.mm',
+    ), 'utf8');
+    const project = fs.readFileSync(path.join(
+      __dirname,
+      '../../ios/RoyceTravelTemplate.xcodeproj/project.pbxproj',
+    ), 'utf8');
+    const infoPlist = fs.readFileSync(path.join(
+      __dirname,
+      '../../ios/RoyceTravelTemplate/Info.plist',
+    ), 'utf8');
+
+    expect(infoPlist).toContain('<key>UISceneDelegateClassName</key>');
+    expect(infoPlist).toContain('<string>SceneDelegate</string>');
+    expect(appDelegateHeader).toContain('UIResponder <UIApplicationDelegate>');
+    expect(appDelegateHeader).not.toContain('UISceneDelegate');
+    expect(appDelegate).not.toContain('willConnectToSession');
+    expect(sceneDelegateHeader).toContain('RCTDefaultReactNativeFactoryDelegate <UIWindowSceneDelegate>');
+    expect(sceneDelegate).toContain('initWithWindowScene:windowScene');
+    expect(sceneDelegate).toContain('startReactNativeWithModuleName:@"RoyceTravelTemplate"');
+    expect(project).toContain('SceneDelegate.mm in Sources');
   });
 });
