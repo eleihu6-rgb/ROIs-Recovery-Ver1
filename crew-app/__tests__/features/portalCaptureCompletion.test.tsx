@@ -125,6 +125,33 @@ describe('PortalCaptureScreen completion timing', () => {
     expect(screen.queryByTestId('portal-capture-web')).toBeNull();
   });
 
+  it('completes PR crew 452320 from the TG-style native roster pull without mounting a WebView', async () => {
+    const onCaptured = jest.fn();
+    const raw = jest.fn(async () => ({ code: 0, message: null, data: [] }));
+    mockedCreatePortalClient.mockReturnValue({ token: jest.fn().mockResolvedValue('test-token'), raw } as never);
+    mockedParsePortalCaptures.mockReturnValue({ trips, legCount: 24, duties } as never);
+
+    const screen = renderCapture(<PortalCaptureScreen onClose={jest.fn()} onCaptured={onCaptured}
+      portalUrl="https://crew-pal-sea-tst.roiscloud.com/pefg/portal/login" crewId="452320"
+      password="test-password" carrier="PR"
+      portalConfig={{ baseAirport: 'MNL', baseOffsetMin: 480, loginOutCaptcha: '202604' }} />);
+    await act(async () => { for (let i = 0; i < 15; i += 1) await Promise.resolve(); });
+
+    expect(mockedCreatePortalClient).toHaveBeenCalledWith(
+      { airline: 'PR', crewId: '452320', password: 'test-password' },
+      { site: { apiBase: 'https://crew-pal-sea-tst.roiscloud.com/pefg/apiPortal', outCaptcha: '202604' } },
+    );
+    expect(raw).toHaveBeenCalledTimes(9);
+    expect(mockedParsePortalCaptures).toHaveBeenCalledWith(
+      expect.any(Array),
+      '452320',
+      'PR',
+      { baseAirport: 'MNL', baseOffsetMin: 480 },
+    );
+    expect(onCaptured).toHaveBeenCalledWith(trips, duties);
+    expect(screen.queryByTestId('portal-capture-web')).toBeNull();
+  });
+
   it('refuses an incomplete native TG roster instead of importing partial data', async () => {
     let request = 0;
     const raw = jest.fn(async () => {

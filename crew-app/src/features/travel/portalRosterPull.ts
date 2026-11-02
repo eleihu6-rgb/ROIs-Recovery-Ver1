@@ -4,7 +4,7 @@ import { ROSTER_MONTH_OFFSETS } from './portalInjectedJs';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
-/** Pull TG roster payloads without waiting for the portal SPA/WebView to load. */
+/** Pull ROIS roster payloads without waiting for the portal SPA/WebView to load. */
 export async function pullPortalRoster(
   client: PortalClient,
   crewId: string,

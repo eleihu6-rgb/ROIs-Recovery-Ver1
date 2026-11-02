@@ -73,8 +73,8 @@ export function isAuthFailure(status: number, message: string | null | undefined
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 export interface PortalClient {
-  /** The session token (cached, else a fresh login). The roster capture WebView
-   *  needs it: the portal's CSP blocks the JSEncrypt CDN the in-page login used. */
+  /** The session token (cached, else a fresh login). Native roster and Duty Swap
+   *  requests reuse it; the portal's CSP blocks the old in-page login approach. */
   token(): Promise<string>;
   get<T>(path: string, query?: Query): Promise<T>;
   send<T>(method: 'POST' | 'PUT', path: string, opts?: { query?: Query; body?: unknown; timeoutMs?: number }): Promise<T>;

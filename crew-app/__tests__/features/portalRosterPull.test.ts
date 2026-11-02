@@ -1,6 +1,6 @@
 import { pullPortalRoster } from '../../src/features/travel/portalRosterPull';
 
-it('pulls TG previous/current/next calendar, report and detail payloads in parallel', async () => {
+it('pulls ROIS previous/current/next calendar, report and detail payloads in parallel', async () => {
   const raw = jest.fn(async (_method: string, path: string, opts: { query: Record<string, string> }) => ({
     code: 0, message: null, data: { path, start: opts.query.startDateTime },
   }));
@@ -15,7 +15,7 @@ it('pulls TG previous/current/next calendar, report and detail payloads in paral
   ]));
 });
 
-it('keeps successful TG roster payloads when one enrichment endpoint fails', async () => {
+it('keeps successful ROIS roster payloads when one enrichment endpoint fails', async () => {
   let call = 0;
   const raw = jest.fn(async () => {
     if (++call === 2) throw new Error('report unavailable');

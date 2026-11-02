@@ -135,6 +135,47 @@ describe('injected portal login attempts', () => {
 describe('native portal login failure and timeout', () => {
   beforeEach(() => clearPortalTokens());
 
+  it('uses PR account login with fixed captcha 202604 and never calls SSO', async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchImpl = jest.fn(async (url: string, init?: RequestInit) => {
+      requests.push({ url, init });
+      if (url.endsWith('/system/getPublicKey')) {
+        return { status: 200, json: async () => ({ code: 0, data: 'KEY' }) } as Response;
+      }
+      if (url.endsWith('/login')) {
+        return {
+          status: 200,
+          json: async () => ({ code: 0, message: null, data: { token: 'pr-account-token' } }),
+        } as Response;
+      }
+      throw new Error('Unexpected test request');
+    });
+    const client = createPortalClient(
+      { airline: 'PR', crewId: '452320', password: 'password-test' },
+      {
+        site: { apiBase: 'https://portal.example.test/apiPortal', outCaptcha: '202604' },
+        fetchImpl,
+        encrypt: () => 'encrypted-test',
+      },
+    );
+
+    await expect(client.token()).resolves.toBe('pr-account-token');
+    expect(requests.map(request => request.url)).toEqual([
+      'https://portal.example.test/apiPortal/system/getPublicKey',
+      'https://portal.example.test/apiPortal/login',
+    ]);
+    expect(requests.some(request => /sso/i.test(request.url))).toBe(false);
+    expect(JSON.parse(String(requests[1].init?.body))).toEqual({
+      user: {
+        passwords: 'encrypted-test',
+        userCode: '452320',
+        captcha: '',
+        uniqueCode: '',
+        outCaptcha: '202604',
+      },
+    });
+  });
+
   it('preserves ERROR_WRONG_PASSWORD from HTTP 200 code 0 and sends one login request', async () => {
     const calls: string[] = [];
     const fetchImpl = jest.fn(async (url: string) => {

@@ -1849,9 +1849,13 @@ final class DuoFitUITests: XCTestCase {
       XCTAssertTrue(text(id).waitForExistence(timeout: 10), "wrong crew after account switch")
       wait("tab-schedule").tap()
       // TG's test account publishes September, while these PR accounts publish
-      // October. Exercise the actual month controls, not a fabricated roster.
-      if base == "BKK" { wait("sched-prev-month").tap() }
-      XCTAssertTrue(wait("sched-title").label.contains(base == "BKK" ? "Sep 2026" : "Oct 2026"))
+      // October. Navigate from the real current month instead of assuming the
+      // test still runs in October 2026.
+      let rosterMonth = base == "BKK" ? "Sep 2026" : "Oct 2026"
+      for _ in 0..<3 where !wait("sched-title").label.contains(rosterMonth) {
+        wait("sched-prev-month").tap()
+      }
+      XCTAssertTrue(wait("sched-title").label.contains(rosterMonth))
       pickView("sched-view-route")
       wait("route-svg", 60)
       XCTAssertFalse(el("route-empty").exists)
@@ -1893,6 +1897,12 @@ final class DuoFitUITests: XCTestCase {
 
   /// Focused capture regression: complete login without pressing Use roster.
   func testPortalAutomaticImportPR452320() throws {
+    func capture(_ name: String) throws {
+      guard let evidenceDir = ProcessInfo.processInfo.environment["PORTAL_SHOT_DIR"],
+            !evidenceDir.isEmpty else { return }
+      try app.screenshot().pngRepresentation.write(to:
+        URL(fileURLWithPath: evidenceDir).appendingPathComponent(name + ".png"))
+    }
     XCTAssertEqual(ProcessInfo.processInfo.environment["CALENDAR_REQUIRE_AUTO_IMPORT"], "1")
     try signInAsPR("452320", usePrefilledPassword: true)
     wait("tab-profile").tap()
@@ -1903,6 +1913,31 @@ final class DuoFitUITests: XCTestCase {
     XCTAssertFalse(el("portal-capture-web").exists)
     XCTAssertFalse(el("use-captured-roster").exists)
     shot("portal-452320-auto-import-home-Ver2")
+    try capture("portal-452320-native-login-air-Ver2")
+
+    // Reverse transition: TG must still use the same native-only path and must
+    // not retain the prior PR crew identity or roster session.
+    wait("tab-profile").tap()
+    let addAirline = el("profile-add-airline")
+    if addAirline.exists { addAirline.tap() } else { wait("profile-logout").tap() }
+    wait("profile-dialog-confirm").tap()
+    wait("login-screen", 60)
+    wait("airline-dropdown").tap()
+    replaceText(wait("airline-search"), with: "Thai")
+    wait("airline-TG").tap()
+    XCTAssertEqual(el("crew-id").value as? String, "35459")
+    let tgPassword = try XCTUnwrap(
+      ProcessInfo.processInfo.environment["DUO_TG_PASSWORD"],
+      "set DUO_TG_PASSWORD from local secure storage"
+    )
+    replaceText(wait("crew-pw"), with: tgPassword)
+    wait("login-btn").tap()
+    wait("home-screen", 30)
+    XCTAssertFalse(el("portal-capture-web").exists)
+    wait("tab-profile").tap()
+    XCTAssertTrue(text("35459").waitForExistence(timeout: 10))
+    XCTAssertFalse(text("452320").exists, "PR identity leaked into TG session")
+    try capture("portal-tg-35459-after-pr-air-Ver1")
   }
 
   /// One intentionally invalid fixture verifies rejection recovery; never retries a real crew.

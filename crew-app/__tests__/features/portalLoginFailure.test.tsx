@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PortalCaptureScreen } from '../../src/features/travel/PortalCaptureScreen';
 import { createPortalClient } from '../../src/features/portal/portalClient';
 import { buildInjectedJS } from '../../src/features/travel/portalInjectedJs';
@@ -25,6 +26,14 @@ jest.mock('react-native-webview', () => {
 
 const mockedCreatePortalClient = jest.mocked(createPortalClient);
 const mockedBuildInjectedJS = jest.mocked(buildInjectedJS);
+const safeAreaMetrics = {
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+  insets: { top: 47, right: 0, bottom: 34, left: 0 },
+};
+
+const renderCapture = (node: React.ReactElement) => render(
+  <SafeAreaProvider initialMetrics={safeAreaMetrics}>{node}</SafeAreaProvider>,
+);
 
 describe('PortalCaptureScreen native login failure', () => {
   const onClose = jest.fn();
@@ -40,7 +49,7 @@ describe('PortalCaptureScreen native login failure', () => {
       token,
     } as never);
 
-    const screen = render(
+    const screen = renderCapture(
       <PortalCaptureScreen
         onClose={onClose}
         onCaptured={onCaptured}
@@ -61,29 +70,26 @@ describe('PortalCaptureScreen native login failure', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('passes nativeAuth to the injected script for non-TG ROIS login', async () => {
+  it('does not build or mount the WebView path for PR native login', async () => {
+    const raw = jest.fn(async () => ({ code: 0, message: null, data: [] }));
     mockedCreatePortalClient.mockReturnValue({
       token: jest.fn().mockResolvedValue('test-session-token'),
-      raw: jest.fn(async () => { throw new Error('not needed'); }),
+      raw,
     } as never);
 
-    render(
+    const screen = renderCapture(
       <PortalCaptureScreen
         onClose={onClose}
         onCaptured={onCaptured}
         portalUrl="https://crew-pal-sea-tst.roiscloud.com/pefg/portal/login"
-        crewId="486541"
+        crewId="452320"
         password="test-only"
         carrier="PR"
       />,
     );
 
-    await waitFor(() => expect(mockedBuildInjectedJS).toHaveBeenCalled());
-    expect(mockedBuildInjectedJS).toHaveBeenCalledWith(
-      '486541',
-      'test-only',
-      true,
-      expect.objectContaining({ nativeAuth: true }),
-    );
+    await waitFor(() => expect(raw).toHaveBeenCalledTimes(9));
+    expect(mockedBuildInjectedJS).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('portal-capture-web')).toBeNull();
   });
 });

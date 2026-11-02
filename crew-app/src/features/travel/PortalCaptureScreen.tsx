@@ -25,9 +25,9 @@ import { useCarrier } from '../../theme/carrier';
 import type { PortalConfig } from '../auth/airlines';
 import {RosterLoadingScreen} from '../auth/RosterLoadingScreen';
 
-// Crew-portal roster capture (doc/Add Trip Ver2). Loads the portal in a WebView,
-// AUTO-LOGS-IN with the test crew, hooks fetch/XHR to capture the roster API JSON
-// the SPA loads (/api/roster), parses it into trips, and auto-builds the trip.
+// Crew-portal roster capture (doc/Add Trip Ver2). ROIS Cloud carriers authenticate
+// and pull the roster directly through the native portal client. The WebView path
+// remains only for non-ROIS portals that still need browser capture.
 
 const FALLBACK_URL = 'https://crew-sea-test.roiscloud.com/tg/portal/';
 const COMPLETE_ROSTER_SETTLE_MS = 0;
@@ -55,7 +55,7 @@ export function PortalCaptureScreen({
 }) {
   const palette = useCarrier();
   const nativeAuth = /roiscloud/i.test(portalUrl) && !!crewId && !!password;
-  const nativeOnly = nativeAuth && carrier === 'TG';
+  const nativeRosterPull = nativeAuth;
   const [loginError, setLoginError] = useState<string | null>(null);
   const [rosterError, setRosterError] = useState<string | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
@@ -76,11 +76,8 @@ export function PortalCaptureScreen({
   const buildAt = useRef<number | null>(null);
   const built = useRef(false);
   const webRef = useRef<React.ElementRef<typeof WebView>>(null);
-  // Token from the NATIVE portal login, handed to the page script. The in-page
-  // directAuth needs JSEncrypt from a CDN, which the portal's CSP blocks ("JSEncrypt
-  // CDN blocked (CSP)"), and PR's login form sits behind a splash the script
-  // cannot dismiss — so a PR crew sat at "Auto-logging in…" forever. The app
-  // already logs in natively for Duty Swap (bundled RSA); reuse that session.
+  // Token from the native portal login. ROIS carriers consume it through direct
+  // roster API calls; the legacy page hand-off remains for non-native capture.
   const nativeToken = useRef<string | null>(null);
   const loginFailed = useRef(false);
   const handToken = () => {
@@ -103,12 +100,11 @@ export function PortalCaptureScreen({
         nativeToken.current = t;
         setAuthenticated(true);
         debugSetJson('@royce_debug_token', { type: 'token', src: 'native', len: t.length });
-        if (!nativeOnly) handToken();
-        // TG capture is native-only: the SPA can remain on its loading shell even
-        // while the API is healthy. Pull all nine payloads directly and require
-        // the complete set before importing an authoritative roster. Other
-        // carriers retain their existing capture path.
-        if (nativeOnly) {
+        if (!nativeRosterPull) handToken();
+        // ROIS capture is native-only: the SPA can remain on its loading shell
+        // even while the API is healthy. Pull all nine payloads directly and
+        // require the complete set before importing an authoritative roster.
+        if (nativeRosterPull) {
           void pullPortalRoster(client, crewId).then(nativeCaptures => {
             if (cancelled || built.current) return;
             const expected = ROSTER_MONTH_OFFSETS.length * 3;
@@ -175,7 +171,7 @@ export function PortalCaptureScreen({
     };
   }, []);
 
-  const injectedJS = nativeOnly ? '' : buildInjectedJS(crewId, password, true, {
+  const injectedJS = nativeRosterPull ? '' : buildInjectedJS(crewId, password, true, {
     outCaptcha: portalConfig?.loginOutCaptcha,
     nativeAuth,
   });
@@ -344,7 +340,7 @@ export function PortalCaptureScreen({
     );
   }
 
-  if (nativeOnly) {
+  if (nativeRosterPull) {
     return (
       <RosterLoadingScreen
         palette={palette}
